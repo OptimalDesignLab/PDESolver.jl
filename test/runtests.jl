@@ -1,5 +1,6 @@
 using PDESolver
-using Base.Test
+#using Base.Test
+using FactCheck
 
 include("test_empty.jl")
 
