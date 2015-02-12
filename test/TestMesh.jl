@@ -1,0 +1,20 @@
+module TestMesh
+
+include("meshType.jl")
+
+using .MeshType
+
+
+# Make sure that the elemnt size is a factor of the length and width
+# [ ] = MeshType.createMesh(Length,Width,Element Size)
+
+(xnodes,ynodes,nnp,nel,IEN) = MeshType.createMesh(4,4,1)
+(NodeEdgex,NodeEdgey,ElemEdgex,ElemEdgey) = MeshType.boundaryInfo(xnodes,ynodes)
+println(xnodes)
+println(ynodes)
+
+
+
+
+
+end  # module
