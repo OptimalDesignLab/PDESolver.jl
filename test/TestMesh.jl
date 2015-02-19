@@ -1,15 +1,16 @@
-module TestMesh
+# module TestMesh
 
-include("meshType.jl")
+using PDESolver
+include("../src/simple_mesh/SimpleMeshType.jl")
 
-using .MeshType
 
+using .SimpleMeshType
 
 # Make sure that the elemnt size is a factor of the length and width
 # [ ] = MeshType.createMesh(Length,Width,Element Size)
 
-(xnodes,ynodes,nnp,nel,IEN) = MeshType.createMesh(4,4,1)
-(NodeEdgex,NodeEdgey,ElemEdgex,ElemEdgey) = MeshType.boundaryInfo(xnodes,ynodes)
+(xnodes,ynodes,nnp,nel,IEN) = SimpleMeshType.createMesh(4,4,4,4)
+(NodeEdgex,NodeEdgey,ElemEdgex,ElemEdgey) = SimpleMeshType.boundaryInfo(xnodes,ynodes)
 println(xnodes)
 println(ynodes)
 
@@ -17,4 +18,4 @@ println(ynodes)
 
 
 
-end  # module
+# end  # module
