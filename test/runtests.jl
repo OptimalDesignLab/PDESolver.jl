@@ -3,6 +3,7 @@ using PDESolver
 using FactCheck
 
 include("test_empty.jl")
+include("TestMesh.jl")
 
 FactCheck.exitstatus()
 
