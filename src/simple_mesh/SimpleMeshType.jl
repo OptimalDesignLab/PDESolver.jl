@@ -70,7 +70,7 @@ if nnpe == 2
 	return xnodes,ynodes,nnp,nel,IEN
 	break
 
-elseif nnpe = 3
+elseif nnpe == 3
 	xnodes = (nedx*2)+1;
   ynodes = (nedy*2)+1;
   nel = 2*nedx*nedy;
