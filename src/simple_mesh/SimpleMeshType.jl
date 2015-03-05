@@ -68,9 +68,9 @@ if nnpe == 2
             end
         end
 	return xnodes,ynodes,nnp,nel,IEN
-	break
+	#break
 
-elseif nnpe = 3
+elseif nnpe == 3
 	xnodes = (nedx*2)+1;
   ynodes = (nedy*2)+1;
   nel = 2*nedx*nedy;
@@ -122,7 +122,8 @@ elseif nnpe = 3
     m = 0;
     n = n+1;
   end
-  break
+  return xnodes,ynodes,nnp,nel,IEN
+  #break
 
 elseif nnpe==4
 	xnodes = (nnpe-1)*nedx + 1;
@@ -183,10 +184,116 @@ elseif nnpe==4
     end
     n = n+1;
     m = 0;
-  end 
-  break
+  end
+  return xnodes,ynodes,nnp,nel,IEN 
+  #break
 
-end
+elseif nnpe==5
+  xnodes = (nnpe-1)*nedx + 1;
+  ynodes = (nnpe-1)*nedy + 1;
+  nel = 2*nedx*nedy;
+  nnp = xnodes*(nedy+1) + (nnpe-2)*nedy*(2*nedx+1) + 6*nel;
+  IEN = zeros(18,nel);
+  m = 1;
+  nmen = 2*nedx +1; # Number of midpoint element nodes in a row
+  for j = 1:nedy
+    k = 2;
+    for i = 1:2:2*nedx
+      index = i + 2*(j-1)*nedx;
+      intv = (j-1)*(xnodes+(nnpe-2)*nmen);     # Intermediate variable
+      IEN[:,index] = [m;m+(nnpe-1);m+xnodes+(nnpe-2)*nmen;m+1;m+2;m+3;
+                      xnodes+k+intv;xnodes+nmen+k+intv;xnodes+(2*nmen)+k+intv;
+                      xnodes+(k-1)+intv;xnodes+nmen+(k-1)+intv;
+                      xnodes+(2*nmen)+(k-1)+intv;0;0;0;0;0;0];
+      m = m+(nnpe-1);
+      k = k+2;
+      if index == 2*nedx*j - 1
+        m = m+(nnpe-2)*(2*nedx+1)+1;
+      end
+    end
+  end
+  m = nnpe;
+  for j = 1:nedy
+    k = 2;
+    for i = 2:2:2*nedx
+      index = i + 2*(j-1)*nedx;
+      intv = (j-1)*(xnodes+(nnpe-2)*nmen);     # Intermediate variable
+      IEN[:,index] = [m;m+xnodes+(nnpe-2)*nmen;m+xnodes+(nnpe-2)*nmen-4;
+                      xnodes+(k+1)+intv;xnodes+nmen+(k+1)+intv;
+                      xnodes+(2*nmen)+(k+1)+intv;m+xnodes+(nnpe-2)*nmen-1;
+                      m+xnodes+(nnpe-2)*nmen-2;m+xnodes+(nnpe-2)*nmen-3;
+                      xnodes+k+intv;xnodes+nmen+k+intv;xnodes+(2*nmen)+k+intv;
+                      0;0;0;0;0;0];
+      m = m+(nnpe-1);
+      k = k+2;
+      if index == 2*nedx*j
+        m = m+(nnpe-2)*(2*nedx+1)+1;
+      end
+    end
+  end
+  m = xnodes*(nedy+1) + (nnpe-2)*nedy*(2*nedx+1) + 1;
+  for j = 1:nedy
+    for i = 1:2*nedx
+      index = i + 2*(j-1)*nedx;
+      IEN[13,index] = m;
+      IEN[14,index] = m+1;
+      IEN[15,index] = m+2;
+      IEN[16,index] = m+3;
+      IEN[17,index] = m+4;
+      IEN[18,index] = m+5;
+      m = m+6;
+    end
+  end
+
+  # Determining the location of the vertices and storing them in an array which
+  # is supposed to contain location of all the nodes 
+  
+  elem_edge_lengthx = lengthx/nedx;
+  elem_edge_lengthy = lengthy/nedy;
+  vtx_loc = zeros(2,nnp);
+  m = 0;
+  n = 0;
+  for j = 1:(nedy+1)
+    for i = 1:4:xnodes
+      vtx_loc[1,i+(j-1)*(xnodes+(nnpe-2)*nmen)] = m*elem_edge_lengthx;
+      vtx_loc[2,i+(j-1)*(xnodes+(nnpe-2)*nmen)] = n*elem_edge_lengthy;
+      m = m+1;
+    end
+    n = n+1;
+    m = 0;
+  end
+  return xnodes,ynodes,nnp,nel,IEN
+  #break
+end # Ends the if-else statement
+printf("Code Works!")
+
+end # Ends the function
+
+@doc """
+### adj_info
+
+This function is responsible for generating the adjacency information. 
+
+In case of the upward adjacency information, each edge lies on two elements except the boundary edges. In case of the boundary edges, the Array upAdjEdge(2,<edge>) will have a value 0.
+
+Storage of adjacency information for edges will be done for all horizontal edges first, followed by all diagonal edges and then all the vertical edges.
+"""->
+function adj_info(IEN,xnodes,ynodes,nnp,nedx,nedy,nnpe)
+
+# Downward adjacency (from Element Edge to Node)
+nedges = nedx*(nedy+1) + nedx*nedy + (nedx+1)*nedy;
+downAdjEdge = zeros(nnpe,nedges);
+#
+# Populate the downAdjMatrix
+#
+
+# Upward Adjacency (from edge to the neighboring elements)
+upAdjEdge = zeros(2,nedges); # Each edge lies on 2 elements except boundary elements
+#
+# Populate upAdjEdge
+#
+
+end # Ends the function
 
 @doc """
 ### boundaryInfo
@@ -198,21 +305,23 @@ implementing boundary conditions.
 
 *  `xnodes` : Number of nodes along X-axis in one row
 *  `ynodes` : Number of nodes along Y-axis in one column
+*  `nedx`   : Number of element edges along X-axis
+*  `nedy`   : Number of element edges along Y-axis
+*  `nnpe`   : Number of nodes per element edge (This value is same for all edges of an element)
 
 **Outputs**
 *  `NodeEdgex` : A 2*xnodes matrix that stores nodes on the boundaries along the X-axis. First row stores the nodes on edge 1 and the scond row stores nodes on edge 3 of the entire geometry. The nodes are stored from left to right.
 *  `NodeEdgey` : A 2*ynodes matrix that stores nodes on the boundaries along the Y-axis.First row stores nodes on edge 2 and second row stores nodes on edge 4 of the entire geometry. The nodes are stored from bottom to top.
 *  `ElemEdgex` : A 2*(xnodes-1) matrix that stores boundary elements along the X-axis. The First row stores elements on the base of the geometry. The second row stores elements on the top of the geometry.
-*  `ElemEdgey` : A 2*(ynodes-1) matrix that stores boundary elements along the Y-axis. The first row stores elements on the left side of the geopmetry while the second row stores elements on the right side of the geometry.
+*  `ElemEdgey` : A 2*(ynodes-1) matrix that stores boundary elements along the Y-axis. The first row stores elements on the left side of the geometry while the second row stores elements on the right side of the geometry.
 
 """->
 
-function boundaryInfo(xnodes,ynodes)
-# Identifying which nodes are on the boundary
-  nedx = xnodes - 1
-	nedy = ynodes - 1
-	NodeEdgex = zeros(2,xnodes)
-	NodeEdgey = zeros(2,ynodes)
+function boundaryInfo(xnodes,ynodes,nedx,nedy,nnpe)
+NodeEdgex = zeros(2,xnodes)
+NodeEdgey = zeros(2,ynodes)
+
+if nnpe == 2
 	for i = 1:xnodes
 	  NodeEdgex[1,i] = i
 	  NodeEdgex[2,i] = xnodes*nedy + i
@@ -222,25 +331,74 @@ function boundaryInfo(xnodes,ynodes)
 	  NodeEdgey[2,j] = 1+(j-1)*xnodes
 	end
 
-	# Identifying Elements that have boundary node(s)
-	ElemEdgex = zeros(2,2*nedx)
-	ElemEdgey = zeros(2,2*nedy)
-    
-    # Populating ElemEdgex
-	for i = 1:(2*nedx)
-	  ElemEdgex[1,i] = i
-	  ElemEdgex[2,i] = 2*nedx*(ynodes-2) + i
-	end
+elseif nnpe == 3
+  for i = 1:xnodes
+    NodeEdgex[1,i] = i;
+    NodeEdgex[2,i] = xnodes*nedy + (nnpe-2)*(2*nedx+1)*nedy + i;
+  end
+  for j = 1:ynodes
+    NodeEdgey[1,j] = j*xnodes
+    NodeEdgey[2,j] = 1+(j-1)*xnodes
+  end
 
-    # Populating ElemEdgey
-	m = 0;
-	for j = 1:2:2*nedy
-	  ElemEdgey[1,j] = 1+2*nedx*m
-	  ElemEdgey[1,j+1] = ElemEdgey[1,j]+1
-	  ElemEdgey[2,j] = 2*nedx-1 + 2*nedx*m
-	  ElemEdgey[2,j+1] = ElemEdgey[2,j] + 1
-	  m = m+1
-	end
-	return NodeEdgex,NodeEdgey,ElemEdgex,ElemEdgey
+elseif nnpe == 4
+  intv = 2*nedx + 1 # Intermediate variable which stores the value of number of midpoint nodes in a row
+  for i = 1:xnodes
+    NodeEdgex[1,i] = i;
+    NodeEdgex[2,i] = xnodes*nedy + (nnpe-2)*(intv)*nedy + i;
+  end
+  m = 1;
+  for j = 1:nedy
+    NodeEdgey[1,m] = xnodes + (j-1)*(xnodes+(nnpe-2)*(intv));
+    NodeEdgey[1,m+1] = (xnodes + intv) + (j-1)*(xnodes+(nnpe-2)*(intv));
+    NodeEdgey[1,m+2] = (xnodes + 2*intv) + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[2,m] = 1 + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[2,m+1] = 1 + xnodes + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[2,m+2] = 1 + xnodes + intv  + (j-1)*(xnodes+(nnpe-2)*intv);
+    if j == nedy
+      NodeEdgey[1,m+3] = 2*(xnodes+intv) + (j-1)*(xnodes+(nnpe-2)*intv);
+      NodeEdgey[2,m+3] = 1 + xnodes + 2*intv + (j-1)*(xnodes+(nnpe-2)*intv);
+    end
+    m += 3;
+  end
+
+elseif nnpe == 5
+  intv = 2*nedx + 1
+  for i = 1:xnodes
+    NodeEdgex[1,i] = i;
+    NodeEdgex[2,i] = xnodes*nedy + (nnpe-2)*(2*nedx+1)*nedy + i;
+  end
+  m = 1;
+  for j = 1:nedy
+    NodeEdgey[1,m] = xnodes + (j-1)*(xnodes+(nnpe-2)*(intv));
+    NodeEdgey[1,m+1] = (xnodes + intv) + (j-1)*(xnodes+(nnpe-2)*(intv));
+    NodeEdgey[1,m+2] = (xnodes + 2*intv) + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[1,m+3] = (xnodes + 3*intv) + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[2,m] = 1 + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[2,m+1] = 1 + xnodes + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[2,m+2] = 1 + xnodes + intv  + (j-1)*(xnodes+(nnpe-2)*intv);
+    NodeEdgey[2,m+3] = 1 + xnodes + 2*intv + (j-1)*(xnodes+(nnpe-2)*intv);
+    if j == nedy
+      NodeEdgey[1,m+4] = 2*xnodes + 3*intv + (j-1)*(xnodes+(nnpe-2)*intv);
+      NodeEdgey[2,m+4] = 1 + xnodes + 3*intv + (j-1)*(xnodes+(nnpe-2)*intv);
+    end
+    m += 4;
+  end 
+end # Ends the if statement
+
+# Boundary Edges
+nedges = nedx*(nedy+1) + nedx*nedy + (nedx+1)*nedy;
+HBedges = zeros(2,nedx);  # Horizontal Boundary edges
+VBedges = zeros(2,nedy);  # Vertical Boundary edges
+for i = 1:nedx
+  HBedges[1,i] = i;
+  HBedges[2,i] = nedx*nedy + i;
+end  
+for i = 1:nedy
+  VBedges[1,i] = nedx*(nedy+1) + nedx*nedy + 1 + (i-1)*(nedx+1);
+  VBedges[2,i] = nedx*(nedy+1) + nedx*nedy + i*(nedx+1);
 end
+return NodeEdgex,NodeEdgey,HBedges,VBedges
+
+end   # Ends function
 end  # module
