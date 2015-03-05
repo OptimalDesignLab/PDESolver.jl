@@ -1,5 +1,4 @@
-:Info: PDESolver Documentation
-:Author: Anthony Ashley <ashlea@rpi.edu>
+.. PDESolver Documentation
 
 Introduction
 ============
