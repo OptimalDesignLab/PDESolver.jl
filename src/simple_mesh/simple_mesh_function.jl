@@ -1,4 +1,27 @@
+@doc """
+### createMesh
 
+It creates a simple mesh with triangle elements in a rectangular domain in 2D. In This code The horizontal axis is referred to as X-axis and the vertical axis is referred to as the Y-axis.
+
+**Inputs**
+
+*  `lengthx` : Length on the X-axis
+*  `lengthy` : Length on the Y-axis
+*  `nedx`    : Number of element edges along X-axis
+*  `nedy`    : Number of element edges along Y-axis
+*  `nnpe`    : Number of nodes per element edge (same for all edges)
+
+**Outputs**
+
+*  `xnodes` : Number of nodes along X-axis in one row
+*  `ynodes` : Number of nodes along Y-axis in one column
+*  `nnp`    : Number of nodal points
+*  `nel`    : Number of elements mesh
+*  `ien`    : Element information matrix
+*  `vtx_loc`: Location coordinates of the vertices
+
+We assume a counter-clockwise numbering scheme for the the elements and edges with the numbering starting from the base of the geometry.
+"""->
 function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	if nnpe == 2
 		xnodes = nedx + 1 # Total number of nodes on all adjacent element edges along X-axis
@@ -6,14 +29,14 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 		nnp = xnodes*ynodes	# number of nodal points
 		nel = 2*(xnodes - 1)*(ynodes - 1)
 		nsd = 2             # Number of spatial dimensions
-		IEN = zeros(3,nel)
+		ien = zeros(3,nel)
 		  
-		# Populating the IEN Matrix
+		# Populating the ien Matrix
 		m = 1
 		for j = 1:nedy
 		    for i = 1:2:2*nedx
 		      index = i+2*(j-1)*nedx
-		      IEN[:,index] = [m;m+1;m+xnodes]
+		      ien[:,index] = [m;m+1;m+xnodes]
 		      m = m+1
 		      if index == 2*nedx*j - 1
 		          m = m+1
@@ -24,36 +47,26 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 		for j = 1:nedy
 		    for i = 2:2:2*nedx
 		        index = i + 2*(j-1)*nedx
-		        IEN[:,index] = [m;m+xnodes;m+(xnodes-1)]
+		        ien[:,index] = [m;m+xnodes;m+(xnodes-1)]
 		        m = m+1
 		        if index == 2*nedx*j
 		            m = m+1
 		        end
 		    end
 		end
-		#=
-		vtx_loc = zeros(2,nnp);
-	  elem_edge_lengthx = lengthx/nedx;
-	  elem_edge_lengthy = lengthy/nedy;
-	  for j = 1:(ynodes)
-	    for i = 1:(xnodes)
-	      vtx_loc[1,i+(j-1)*xnodes] = (i-1)*elem_edge_lengthx;
-	      vtx_loc[2,i+(j-1)*xnodes] = (j-1)*elem_edge_lengthy;
-	    end
-	  end =#
-	  return IEN,nnp,nel
+	  return ien,nnp,nel
 
 	elseif nnpe == 3
 		xnodes = (nedx*2)+1; # Total number of nodes on all adjacent element edges along X-axis
 	  ynodes = (nedy*2)+1; # Total number of nodes on all adjacent element edges along Y-axis
 	  nel = 2*nedx*nedy;
 	  nnp = xnodes*ynodes + nel;
-	  IEN = zeros(7,nel);
+	  ien = zeros(7,nel);
 	  m = 1;
 	  for j = 1:nedy
 	    for i = 1:2:2*nedx
 	      index = i+2*(j-1)*nedx;
-	      IEN[:,index] = [m;m+2;m+(2*xnodes);m+1;m+xnodes+1;m+xnodes;0];
+	      ien[:,index] = [m;m+2;m+(2*xnodes);m+1;m+xnodes+1;m+xnodes;0];
 	      m = m+2;
 	      if index == 2*nedx*j - 1
 	        m = m+xnodes+1;
@@ -64,7 +77,7 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	  for j = 1:nedy
 	    for i = 2:2:2*nedx
 	      index = i + 2*(j-1)*nedx;
-	      IEN[:,index] = [m;m+2*xnodes;m+(2*xnodes)-2;m+xnodes;m+(2*xnodes)-1;m+xnodes-1;0];
+	      ien[:,index] = [m;m+2*xnodes;m+(2*xnodes)-2;m+xnodes;m+(2*xnodes)-1;m+xnodes-1;0];
 	      m = m+2;
 	      if index == 2*nedx*j
 	        m = m+xnodes+1;
@@ -75,18 +88,18 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	  for j = 1:nedy
 	    for i = 1:2*nedx
 	      index = i + 2*(j-1)*nedx;
-	      IEN[7,index] = m;
+	      ien[7,index] = m;
 	      m = m+1;
 	    end
 	  end
-	  return IEN,nnp,nel
+	  return ien,nnp,nel
 
 	elseif nnpe==4
 		xnodes = (nnpe-1)*nedx + 1; # Total number of nodes on all adjacent element edges along X-axis
 	  ynodes = (nnpe-1)*nedy + 1; # Total number of nodes on all adjacent element edges along Y-axis
 	  nel = 2*nedx*nedy;
 	  nnp = xnodes*(nedy+1) + (nnpe-2)*nedy*(2*nedx+1) + 3*nel;
-	  IEN = zeros(12,nel);
+	  ien = zeros(12,nel);
 	  m = 1;
 	  nmen = 2*nedx +1; # Number of midpoint element nodes in a row
 	  for j = 1:nedy
@@ -94,7 +107,7 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	    for i = 1:2:2*nedx
 	      index = i+2*(j-1)*nedx;
 	      intv = (j-1)*(xnodes+2*nmen);     # Intermediate variable
-	      IEN[:,index] = [m;m+(nnpe-1);m+xnodes+(nnpe-2)*nmen;m+1;m+2;xnodes+k+intv;xnodes+nmen+k+intv;xnodes+(k-1)+intv;xnodes+nmen+(k-1)+intv;0;0;0];
+	      ien[:,index] = [m;m+(nnpe-1);m+xnodes+(nnpe-2)*nmen;m+1;m+2;xnodes+k+intv;xnodes+nmen+k+intv;xnodes+(k-1)+intv;xnodes+nmen+(k-1)+intv;0;0;0];
 	      m = m+(nnpe-1);
 	      k = k+2;
 	      if index == 2*nedx*j - 1
@@ -108,7 +121,7 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	    for i = 2:2:2*nedx
 	      index = i + 2*(j-1)*nedx;
 	      intv = (j-1)*(xnodes+2*nmen);     # Intermediate variable
-	      IEN[:,index] = [m;m+xnodes+(nnpe-2)*nmen;m+xnodes+(nnpe-2)*nmen-3;xnodes+(k+1)+intv;xnodes+nmen+(k+1)+intv;m+xnodes+(nnpe-2)*nmen-1;m+xnodes+(nnpe-2)*nmen-2;xnodes+k+intv;xnodes+nmen+k+intv;0;0;0];
+	      ien[:,index] = [m;m+xnodes+(nnpe-2)*nmen;m+xnodes+(nnpe-2)*nmen-3;xnodes+(k+1)+intv;xnodes+nmen+(k+1)+intv;m+xnodes+(nnpe-2)*nmen-1;m+xnodes+(nnpe-2)*nmen-2;xnodes+k+intv;xnodes+nmen+k+intv;0;0;0];
 	      m = m+(nnpe-1);
 	      k = k+2;
 	      if index == 2*nedx*j
@@ -120,20 +133,20 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	  for j = 1:nedy
 	    for i = 1:2*nedx
 	      index = i + 2*(j-1)*nedx;
-	      IEN[10,index] = m;
-	      IEN[11,index] = m+1;
-	      IEN[12,index] = m+2;
+	      ien[10,index] = m;
+	      ien[11,index] = m+1;
+	      ien[12,index] = m+2;
 	      m = m+3;
 	    end
 	  end
-	  return IEN,nnp,nel
+	  return ien,nnp,nel
 
 	elseif nnpe==5
 	  xnodes = (nnpe-1)*nedx + 1; # Total number of nodes on all adjacent element edges along X-axis
 	  ynodes = (nnpe-1)*nedy + 1; # Total number of nodes on all adjacent element edges along Y-axis
 	  nel = 2*nedx*nedy;
 	  nnp = xnodes*(nedy+1) + (nnpe-2)*nedy*(2*nedx+1) + 6*nel;
-	  IEN = zeros(18,nel);
+	  ien = zeros(18,nel);
 	  m = 1;
 	  nmen = 2*nedx +1; # Number of midpoint element nodes in a row
 	  for j = 1:nedy
@@ -141,7 +154,7 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	    for i = 1:2:2*nedx
 	      index = i + 2*(j-1)*nedx;
 	      intv = (j-1)*(xnodes+(nnpe-2)*nmen);     # Intermediate variable
-	      IEN[:,index] = [m;m+(nnpe-1);m+xnodes+(nnpe-2)*nmen;m+1;m+2;m+3;
+	      ien[:,index] = [m;m+(nnpe-1);m+xnodes+(nnpe-2)*nmen;m+1;m+2;m+3;
 	                      xnodes+k+intv;xnodes+nmen+k+intv;xnodes+(2*nmen)+k+intv;
 	                      xnodes+(k-1)+intv;xnodes+nmen+(k-1)+intv;
 	                      xnodes+(2*nmen)+(k-1)+intv;0;0;0;0;0;0];
@@ -158,7 +171,7 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	    for i = 2:2:2*nedx
 	      index = i + 2*(j-1)*nedx;
 	      intv = (j-1)*(xnodes+(nnpe-2)*nmen);     # Intermediate variable
-	      IEN[:,index] = [m;m+xnodes+(nnpe-2)*nmen;m+xnodes+(nnpe-2)*nmen-4;
+	      ien[:,index] = [m;m+xnodes+(nnpe-2)*nmen;m+xnodes+(nnpe-2)*nmen-4;
 	                      xnodes+(k+1)+intv;xnodes+nmen+(k+1)+intv;
 	                      xnodes+(2*nmen)+(k+1)+intv;m+xnodes+(nnpe-2)*nmen-1;
 	                      m+xnodes+(nnpe-2)*nmen-2;m+xnodes+(nnpe-2)*nmen-3;
@@ -175,18 +188,39 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	  for j = 1:nedy
 	    for i = 1:2*nedx
 	      index = i + 2*(j-1)*nedx;
-	      IEN[13,index] = m;
-	      IEN[14,index] = m+1;
-	      IEN[15,index] = m+2;
-	      IEN[16,index] = m+3;
-	      IEN[17,index] = m+4;
-	      IEN[18,index] = m+5;
+	      ien[13,index] = m;
+	      ien[14,index] = m+1;
+	      ien[15,index] = m+2;
+	      ien[16,index] = m+3;
+	      ien[17,index] = m+4;
+	      ien[18,index] = m+5;
 	      m = m+6;
 	    end
 	  end
-	return IEN,nnp,nel
+	return ien,nnp,nel
 	end # Ends the if-else statement
 end # Ends the function
+
+@doc """
+### nodeLocation
+
+It creates 2D array of length equal to the number of nodal points and stores the X & Y coordinates of all the nodes. 
+
+**Inputs**
+
+*  `lengthx` : Length on the X-axis
+*  `lengthy` : Length on the Y-axis
+*  `nedx`    : Number of element edges along X-axis
+*  `nedy`    : Number of element edges along Y-axis
+*  `nnpe`    : Number of nodes per element edge (same for all edges)
+
+**Outputs**
+
+*  `vtx_loc` : 2D array which stores the X & Y coordinates of all nodes
+*  `elem_edge_lengthx : Length of element edge along the X-axis
+*  `elem_edge_lengthy : Length of element edge along the Y-axis
+
+"""->
 
 function nodeLocation(lengthx,lengthy,nedx,nedy,nnpe)
 	if nnpe == 2
@@ -272,6 +306,24 @@ function nodeLocation(lengthx,lengthy,nedx,nedy,nnpe)
 	  return vtx_loc,elem_edge_lengthx,elem_edge_lengthy
 	end # Ends if-else statement
 end # Ends the function
+
+@doc """
+### boundaryNodeInfo
+
+It generates information about nodes on the boundary for implementing boundary conditions.
+
+**Inputs**
+
+*  `nedx`   : Number of element edges along X-axis
+*  `nedy`   : Number of element edges along Y-axis
+*  `nnpe`		: Number of nodes per element edge (same for all edges)
+
+**Outputs**
+
+*  `NodeEdgex` : A 2*xnodes matrix that stores nodes on the boundaries along the X-axis. First row stores the nodes on edge 1 and the scond row stores nodes on edge 3 of the entire geometry. The nodes are stored from left to right.
+*  `NodeEdgey` : A 2*ynodes matrix that stores nodes on the boundaries along the Y-axis.First row stores nodes on edge 2 and second row stores nodes on edge 4 of the entire geometry. The nodes are stored from bottom to top.
+
+"""->
 
 function boundaryNodeInfo(nedx,nedy,nnpe)		
 	if nnpe == 2
@@ -359,6 +411,24 @@ function boundaryNodeInfo(nedx,nedy,nnpe)
 	  return NodeEdgex, NodeEdgey 
 	end # Ends the if statement
 end # Ends function boundaryNodeInfo
+
+@doc """
+### boundaryEdgeInfo
+
+This function identifies the mesh edges on the boundary of the geometry.
+
+**Inputs**
+
+*  `nedx`   : Number of element edges along X-axis
+*  `nedy`   : Number of element edges along Y-axis
+
+**Outputs**
+
+*  `HBedges` : A 2*nedx array which stores the edge numbers on the boundary along the X-axis. The first row stores the edges along the base of the rectangle. The second row stores edges on the top of the rectangle.
+*  `VBedges` : A 2*nedy array which stores the edge numbers on the boundary along the Y-axis. The first row stores the vertical edges along the right side of the rectangle. The second row stores the edges on the left side of the rectangle.
+*  `nedges`  : Total number of mesh edges in the geometry.
+
+"""->
 
 function boundaryEdgeInfo(nedx,nedy)
 	# Boundary Edges
