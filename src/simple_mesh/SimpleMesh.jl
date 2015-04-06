@@ -13,8 +13,8 @@ simpleMesh is a mesh type which generates a rectangular mesh in 2D with triangul
 
 **Fields**
 
-*  `lengthx` : Length on the X-axis
-*  `lengthy` : Length on the Y-axis
+*  `lengthx` : Length of domain on the X-axis
+*  `lengthy` : Length of domain on the Y-axis
 *  `nedx`    : Number of element edges along X-axis
 *  `nedy`    : Number of element edges along Y-axis
 *  `nnpe`    : Number of nodes per element edge (Same for all edges)
