@@ -19,18 +19,21 @@ function rk4(f, h, x_ic, t_max)
   t_steps = int(floor(t_max/h))
   println("t_steps: ",t_steps)
 
+  (m,) = size(x_ic)
 #   x = Array(Float64,3,t_steps+2)
-  x = Array(Float64,3,t_steps+1)
+  x = Array(Float64,m,t_steps+1)
 
   iter = 1
 
   x[:,1] = x_ic
 
 
-  while t < t_max
+  for i=2:(t_steps + 1)
 
 #     println("iter: ",iter)
     iter += 1
+    println("in rk4, iter = ", iter)
+    println("in rk4, t = ", t)
 
     x_old = x[:,iter-1]
 
