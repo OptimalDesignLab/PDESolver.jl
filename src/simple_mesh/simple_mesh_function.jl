@@ -44,17 +44,6 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 		    end
 		end
 		m = 2
-		#=
-		for j = 1:nedy
-		    for i = 2:2:2*nedx
-		        index = i + 2*(j-1)*nedx
-		        ien[:,index] = [m;m+xnodes;m+(xnodes-1)]
-		        m = m+1
-		        if index == 2*nedx*j
-		            m = m+1
-		        end
-		    end
-		end =#
 
 		for j = 1:nedy
 		    for i = 2:2:2*nedx
@@ -86,17 +75,6 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	    end
 	  end
 	  m = 3;
-	  #=
-	  for j = 1:nedy
-	    for i = 2:2:2*nedx
-	      index = i + 2*(j-1)*nedx;
-	      ien[:,index] = [m;m+2*xnodes;m+(2*xnodes)-2;m+xnodes;m+(2*xnodes)-1;m+xnodes-1;0];
-	      m = m+2;
-	      if index == 2*nedx*j
-	        m = m+xnodes+1;
-	      end
-	    end
-	  end =#
 	  for j = 1:nedy
 	    for i = 2:2:2*nedx
 	      index = i + 2*(j-1)*nedx;
@@ -139,19 +117,6 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	    end
 	  end
 	  m = 4;
-	  #= for j = 1:nedy
-	    k = 2;
-	    for i = 2:2:2*nedx
-	      index = i + 2*(j-1)*nedx;
-	      intv = (j-1)*(xnodes+2*nmen);     # Intermediate variable
-	      ien[:,index] = [m;m+xnodes+(nnpe-2)*nmen;m+xnodes+(nnpe-2)*nmen-3;xnodes+(k+1)+intv;xnodes+nmen+(k+1)+intv;m+xnodes+(nnpe-2)*nmen-1;m+xnodes+(nnpe-2)*nmen-2;xnodes+k+intv;xnodes+nmen+k+intv;0;0;0];
-	      m = m+(nnpe-1);
-	      k = k+2;
-	      if index == 2*nedx*j
-	        m = m+(nnpe-2)*(2*nedx+1)+1;
-	      end
-	    end
-	  end =#
 
 	  for j = 1:nedy
 	    k = 2;
@@ -207,26 +172,6 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe)
 	    end
 	  end
 	  m = nnpe;
-	  #=
-	  for j = 1:nedy
-	    k = 2;
-	    for i = 2:2:2*nedx
-	      index = i + 2*(j-1)*nedx;
-	      intv = (j-1)*(xnodes+(nnpe-2)*nmen);     # Intermediate variable
-	      ien[:,index] = [m;m+xnodes+(nnpe-2)*nmen;m+xnodes+(nnpe-2)*nmen-4;
-	                      xnodes+(k+1)+intv;xnodes+nmen+(k+1)+intv;
-	                      xnodes+(2*nmen)+(k+1)+intv;m+xnodes+(nnpe-2)*nmen-1;
-	                      m+xnodes+(nnpe-2)*nmen-2;m+xnodes+(nnpe-2)*nmen-3;
-	                      xnodes+k+intv;xnodes+nmen+k+intv;xnodes+(2*nmen)+k+intv;
-	                      0;0;0;0;0;0];
-	      m = m+(nnpe-1);
-	      k = k+2;
-	      if index == 2*nedx*j
-	        m = m+(nnpe-2)*(2*nedx+1)+1;
-	      end
-	    end
-	  end =#
-
 	  for j = 1:nedy
 	    k = 2;
 	    for i = 2:2:2*nedx
