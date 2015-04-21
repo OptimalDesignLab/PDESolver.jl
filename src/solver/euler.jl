@@ -12,9 +12,9 @@ function evalSCResidual(mesh::AbstractMesh, operator::SBPOperator, u::AbstractVe
 # not clear how to do source term using SBP operators
 
 # initilize
-println("entered evalResidual")
-println("u = \n", u)
-println("u0 =\n", u0)
+#println("entered evalResidual")
+#println("u = \n", u)
+#println("u0 =\n", u0)
 
 ndof = getNumNodes(mesh)
 numEl = getNumEl(mesh)
@@ -27,22 +27,22 @@ fluxes = zeros(nnodes, 2)  # jacobian term times advection velocity divided by j
 
 Q_xi = operator.Q[:,:,1]
 Q_eta = operator.Q[:,:,2]
-println("Q_xi = \n", Q_xi)
-println("Q_eta = \n", Q_eta)
+#println("Q_xi = \n", Q_xi)
+#println("Q_eta = \n", Q_eta)
 
-println("performing volume integrals")
+p#rintln("performing volume integrals")
 for i=1:numEl  # loop over element
-  println("\nelement i = ", i)
+#  println("\nelement i = ", i)
   dofnums_i = getGlobalNodeNumbers(mesh, i)
 
   ub = u0[dofnums_i]  # get original solution values
-  println("ub = \n", ub)
+#  println("ub = \n", ub)
 
   vert_coords = getElementVertCoords(mesh, [i])
 #  println("vert_coords = ", vert_coords)
 #  println("size(vert_coords) = ", size(vert_coords))
   vert_coords_extract = vert_coords[1:2, :, :]
-  println("vert_coords_extract = ", vert_coords_extract)
+#  println("vert_coords_extract = ", vert_coords_extract)
 #  println("type of vert_coords_extract = ", typeof(vert_coords_extract))
 #  println("size of vert_coords_extract = ", size(vert_coords_extract))
 
@@ -51,25 +51,26 @@ for i=1:numEl  # loop over element
   jac = zeros(nnodes, 1)
   mappingjacobian!(operator, vert_coords_extract, dxi_dx, jac)
 
-  println("jac = ", jac)
+#  println("jac = ", jac)
   dxi_dxu = zeros(nnodes,2)
 
 
   for j=1:nnodes
-    println("\nj = ", j)
-    println("jac_j = \n", dxi_dx[:,:,j,1])
+#    println("\nj = ", j)
+#    println("jac_j = \n", dxi_dx[:,:,j,1])
 
 
     dxi_dxu[j,1] += (dxi_dx[1,1,j,1]*alpha_x + dxi_dx[1,2,j,1]*alpha_y)*ub[j]
     dxi_dxu[j,2] += (dxi_dx[2,1,j,1]*alpha_x + dxi_dx[2,2,j,1]*alpha_y)*ub[j]
   end
 
-  println("dxi_dxu = ", dxi_dxu)
+#  println("dxi_dxu = ", dxi_dxu)
   # multiply by stiffness matrix here because it is the same for all points in the element
 
 
-  res_x = zeros(nnodes, 1)
-  res_y = zeros(nnodes, 1)
+  res = zeros(nnodes,1)
+#  res_x = zeros(nnodes, 1)
+#  res_y = zeros(nnodes, 1)
  
   # copy dxi_dxu into column matricies to satisfy SBP
   dxi_dxu_x = zeros(nnodes,1)
@@ -77,26 +78,26 @@ for i=1:numEl  # loop over element
   dxi_dxu_x[:] = dxi_dxu[:,1]
   dxi_dxu_y = zeros(nnodes,1)
   dxi_dxu_y[:] = dxi_dxu[:,2]
-  println("dxi_dxu_x = ", dxi_dxu_x)
-  println("dxi_dxu_y = ", dxi_dxu_y)
-  weakdifferentiate!(sbp, 1, dxi_dxu_x, res_x, trans=true)
-  weakdifferentiate!(sbp, 2, dxi_dxu_y, res_y, trans=true)
+#  println("dxi_dxu_x = ", dxi_dxu_x)
+#  println("dxi_dxu_y = ", dxi_dxu_y)
+  weakdifferentiate!(sbp, 1, dxi_dxu_x, res, trans=true)
+  weakdifferentiate!(sbp, 2, dxi_dxu_y, res, trans=true)
 
-  println("dxi_dxu_x = \n", dxi_dxu_x)
-  println("dxi_dxu_y = \n", dxi_dxu_y)
-  println("res_x = \n", res_x)
-  println("res_y = \n", res_y)
+#  println("dxi_dxu_x = \n", dxi_dxu_x)
+#  println("dxi_dxu_y = \n", dxi_dxu_y)
+#  println("res_x = \n", res_x)
+#  println("res_y = \n", res_y)
 
-  res = res_x + res_y
+#  res = res_x + res_y
 
-  println("res = \n", res)
-  println("dofnums_i = ", dofnums_i)
+#  println("res = \n", res)
+#  println("dofnums_i = ", dofnums_i)
 
   u[dofnums_i] += res
-  println("u = \n", u)
+#  println("u = \n", u)
 end  # end loop over elements
 
-println("after volume integral, u = \n", u)
+#println("after volume integral, u = \n", u)
 
 end  # end function
 
@@ -111,8 +112,8 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector, u0
 
 
 println("entered evalBndry")
-println("u = \n", u)
-println("u0 = \n", u0)
+#println("u = \n", u)
+#println("u0 = \n", u0)
 
 # get arguments needed for sbp boundaryintegrate!
 
@@ -122,9 +123,9 @@ num_bndry_edges = length(bndry_edges)
 bndry_faces = Array(Boundary, num_bndry_edges)
 bndry_sign = zeros(Int, num_bndry_edges)
 bndry_orientation = zeros(Int, num_bndry_edges)
-println("getting boundary edge numbers")
+#println("getting boundary edge numbers")
 for i=1:num_bndry_edges  # extract element and edge numbers
-  println("i = ", i)
+#  println("i = ", i)
   edgenum_i = bndry_edges[i]
   edge_i = mesh.edges[edgenum_i]
 
@@ -170,7 +171,7 @@ for i=1:num_bndry_edges  # extract element and edge numbers
     end
   end
 =#
-  println("after correction, edgenum_local = ", edgenum_local)
+#  println("after correction, edgenum_local = ", edgenum_local)
   bndry_faces[i] = Boundary(facenum_i, edgenum_local)
 end
 
@@ -178,17 +179,17 @@ end
 
 for i=1:num_bndry_edges
   bndry_i = bndry_faces[i]
-  println("i = ", i, " element ", bndry_i.element, "face ", bndry_i.face)
+#  println("i = ", i, " element ", bndry_i.element, "face ", bndry_i.face)
 end
 
-println("size(bndry_faces) = ", size(bndry_faces))
+#println("size(bndry_faces) = ", size(bndry_faces))
 
 # create new u formatted for SBP
 # also get coordinates needed for  mapping jacobian
 u_sbp = zeros(operator.numnodes, mesh.numEl)
 x = zeros(2, operator.numnodes, mesh.numEl)
 
-println("u = ", u)
+#println("u = ", u)
 for i=1:mesh.numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)
   u_sbp[:,i] = u0[dofnums_i]
@@ -217,16 +218,16 @@ u_bc = sin(-1)  # boundary condition (for all sides)
     # nrm is the normal vector
 
 
-    println("\nentered flux1")
-    println("cntr = ", cntr)
-    println("u_sbp_ = ", u_sbp_)
-    println("dxi_dx_ = \n", dxi_dx_)
-    println("u_sbp_ = ", u_sbp_)
-    println("u_bc = ", u_bc)
+#    println("\nentered flux1")
+#    println("cntr = ", cntr)
+#    println("u_sbp_ = ", u_sbp_)
+#    println("dxi_dx_ = \n", dxi_dx_)
+#    println("u_sbp_ = ", u_sbp_)
+#    println("u_bc = ", u_bc)
     u_xi = dxi_dx_[1,1]*alpha_x + dxi_dx_[1,2]*alpha_y
     u_eta = dxi_dx_[2,1]*alpha_x + dxi_dx_[2,2]*alpha_y
 
-    println("nrm = ", nrm)
+#    println("nrm = ", nrm)
 #=
     # modify normal vector
     cnt_i = fld((cntr-1),2)
@@ -245,56 +246,56 @@ u_bc = sin(-1)  # boundary condition (for all sides)
       nrm[2] = tmp
     end
 =#
-    println("nrm_mod = ", nrm)
-    println("u_xi = ", u_xi)
-    println("u_eta = ", u_eta)
+#    println("nrm_mod = ", nrm)
+#    println("u_xi = ", u_xi)
+#    println("u_eta = ", u_eta)
 
     mag_x = u_xi*nrm[1]  # x flow magnitude
     mag_y = u_eta*nrm[2]  # y flow magnitude
 
     mag = mag_x + mag_y
 
-    println("mag_x = ", mag_x, " mag_y = ", mag_y)
+#    println("mag_x = ", mag_x, " mag_y = ", mag_y)
 
     # because mag is scalar,not vector, can combine these if statements
     if mag < 0  # inflow condition, added factor of nrm[2]
-      println("xi inflow condition")
+#      println("xi inflow condition")
       flx_xi = u_xi*u_bc
     else
-      println("xi outflow condition")
+#      println("xi outflow condition")
       flx_xi = u_xi*u_sbp_
     end
 
     if mag < 0  # inflow condition, added factor of nrm[1]
-      println("eta inflow condition")
+#      println("eta inflow condition")
       flx_eta = u_eta*u_bc
     else
-      println("eta outflow condition")
+#      println("eta outflow condition")
       flx_eta = u_eta*u_sbp_
     end
 
 
-    println("flx_xi = ", flx_xi, " flx_eta = ", flx_eta)
+#    println("flx_xi = ", flx_xi, " flx_eta = ", flx_eta)
     net_flux = flx_xi*nrm[1] + flx_eta*nrm[2]
-    println("net_flux = ", net_flux)
+#    println("net_flux = ", net_flux)
 
     cntr += 1
     return net_flux
 
   end
 
-  println("\nu_sbp = \n", u_sbp)
+#  println("\nu_sbp = \n", u_sbp)
   boundaryintegrate!(operator, bndry_faces, u_sbp, dxi_dx, flux1, res)
-  println("finished performing boundaryintegrate!()\n")
+#  println("finished performing boundaryintegrate!()\n")
 
-  println("before applying boundary integral, u = \n", u)
-  println("\nu_sbp = \n", u_sbp)
+#  println("before applying boundary integral, u = \n", u)
+#  println("\nu_sbp = \n", u_sbp)
 
   bndry_contrib = zeros(mesh.numDof)
-println("assembling boundary terms")
+#println("assembling boundary terms")
 for i=1:mesh.numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)
-  println("dofnums_i = ", dofnums_i)
+#  println("dofnums_i = ", dofnums_i)
   vals_i = res[:,i]
 
   u[dofnums_i] -= vals_i
@@ -302,9 +303,9 @@ for i=1:mesh.numEl
 
 end
 
-  println("res = \n", res)
-  println("bndry_contrib = \n", bndry_contrib)
-  println("after boundary integral, u = \n", u)
+#  println("res = \n", res)
+#  println("bndry_contrib = \n", bndry_contrib)
+#  println("after boundary integral, u = \n", u)
 
 end # end of outer function
 

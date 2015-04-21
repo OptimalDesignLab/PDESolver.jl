@@ -6,8 +6,8 @@ include("../rk4/rk4.jl")
 include("euler.jl")
 
 dmg_name = ".null"
-#smb_name = "tri2l.smb"  # the -1 to 1 mesh
-smb_name = "tri2l2.smb" # different orientation mesh
+smb_name = "tri8l.smb"  # the -1 to 1 mesh
+#smb_name = "tri2l2.smb" # different orientation mesh
 #smb_name = "tri2ccw.smb" # the 0 to 1 mesh
 
 
@@ -15,8 +15,8 @@ smb_name = "tri2l2.smb" # different orientation mesh
 
 alpha_x = 1.0
 alpha_y = 0.0
-delta_t = 0.5
-tsteps = 100
+delta_t = 0.1
+tsteps = 2500
 # load mesh
 order = 1
 
@@ -61,13 +61,13 @@ function evalAdvection(t, x)
   evalSCResidual(mesh, sbp, u_i_1, x, alpha_x, alpha_y)
   evalBndry(mesh, sbp, u_i_1, x, alpha_x, alpha_y)
 
-  println("du/dt at current t,x = ", u_i_1)
+#  println("du/dt at current t,x = ", u_i_1)
 
 #  mass_matrix = getMass(sbp, mesh)
   u_i_1 = mass_matrix\u_i_1
 
 #  println("mass_matrix = ", mass_matrix)
-  println("after mass matrix u_i_1 = \n", u_i_1)
+#  println("after mass matrix u_i_1 = \n", u_i_1)
 
 
 #  cnt_advec += 1
@@ -78,7 +78,7 @@ u_next = rk4(evalAdvection, delta_t, u_i, delta_t*tsteps)
 println("finished rk4")
 res_vec = sin(-1) - u_next
 #println("res_vec = ", res_vec)
-println("u_next = ", u_next)
+#println("u_next = ", u_next)
 println("u_final = ", u_next[:,tsteps+1])
 
 #=
