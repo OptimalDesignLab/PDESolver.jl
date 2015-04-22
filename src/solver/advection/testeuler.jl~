@@ -15,15 +15,15 @@ smb_name = "tri8l.smb"  # the -1 to 1 mesh
 
 alpha_x = 1.0
 alpha_y = 0.0
-delta_t = 0.1
-tsteps = 2500
+delta_t = 0.5
+tsteps = 500
 # load mesh
 order = 1
 
 sbp = TriSBP{Float64}()
 
 
-mesh = PumiMesh2(dmg_name, smb_name, order)
+mesh = PumiMesh2(dmg_name, smb_name, order; dofpernode=2)
 
 u_i = zeros(mesh.numDof)  # create u vector (current timestep)
 u_i_1 = zeros(mesh.numDof) # u at next timestep

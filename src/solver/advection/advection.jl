@@ -93,7 +93,7 @@ for i=1:numEl  # loop over element
 #  println("res = \n", res)
 #  println("dofnums_i = ", dofnums_i)
 
-  u[dofnums_i] += res
+  u[dofnums_i.'] += res
 #  println("u = \n", u)
 end  # end loop over elements
 
@@ -210,6 +210,7 @@ res = zeros(operator.numnodes, mesh.numEl)
 
 # define the flux function
 u_bc = sin(-1)  # boundary condition (for all sides)
+#u_bc = 0.0
 
   cntr = 1  # count number of times flux function is called
   function flux1(u_sbp_, dxi_dx_, nrm)
@@ -298,8 +299,8 @@ for i=1:mesh.numEl
 #  println("dofnums_i = ", dofnums_i)
   vals_i = res[:,i]
 
-  u[dofnums_i] -= vals_i
-  bndry_contrib[dofnums_i] -= vals_i
+  u[dofnums_i.'] -= vals_i
+  bndry_contrib[dofnums_i.'] -= vals_i
 
 end
 
@@ -311,15 +312,18 @@ end # end of outer function
 
 function getMass(operator, mesh)
   # assemble mesh
-  numdof = mesh.numDof  # number of dofs
+  numnodes = mesh.numNodes  # number of dofs
+  numdof = numnodes*mesh.numDofPerNode
   mass_matrix = zeros(numdof, numdof)
 
   for i=1:mesh.numEl
     dofnums_i = getGlobalNodeNumbers(mesh, i)
-    nnodes = length(dofnums_i)  # number of nodes
+    nnodes = size(dofnums_i)[2]  # number of nodes
     for j=1:nnodes
-      dofnum_j = dofnums_i[j]
-      mass_matrix[dofnum_j, dofnum_j] += sbp.w[j]
+      for k=1:mesh.numDofPerNode
+        dofnum_k = dofnums_i[k,j]
+        mass_matrix[dofnum_k, dofnum_k] += sbp.w[j]
+      end
     end
   end
 
