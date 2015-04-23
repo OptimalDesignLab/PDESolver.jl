@@ -19,7 +19,7 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "tri8l.smb"
+smb_name = "tri2l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -39,6 +39,22 @@ u = zeros(mesh.numDof) # solution at current timestep
 ICZero(mesh, sbp, eqn, u0)
 
 
+# test getF1
+for i=1:16
+  u0[i] = i
+end
+
+f1 = zeros(12)
+getF1(mesh, sbp, eqn, u0, 1, f1)
+f2 = zeros(12)
+getF2(mesh, sbp, eqn, u0, 1, f2)
+
+
+# test assembleU
+#assembleU(f1, 1, u)
+
+vec = [f1[1], f1[5], f1[9]]
+assembleU(vec, 1, 1, u)
 
 function evalEuler(t, x)
 # this function is called by time stepping algorithm
