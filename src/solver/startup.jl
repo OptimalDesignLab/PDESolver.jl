@@ -24,10 +24,10 @@ mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 
 
 # create euler equation
 eqn = EulerEquation(sbp)
-println("eqn.bigQ_xi = \n", eqn.bigQ_xi)
-println("eqn.bigQ_eta = \n", eqn.bigQ_eta)
-println("sbp.Q_xi' = \n", sbp.Q[:,:,1].')
-println("sbp.Q_eta' = \n", sbp.Q[:,:,2].')
+println("eqn.bigQT_xi = \n", eqn.bigQT_xi)
+println("eqn.bigQT_eta = \n", eqn.bigQT_eta)
+println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
+println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
 
 
 # create vectors to hold solution at current, previous timestep
