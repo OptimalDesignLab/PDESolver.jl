@@ -39,6 +39,8 @@ u = zeros(mesh.numDof) # solution at current timestep
 ICZero(mesh, sbp, eqn, u0)
 
 
+# test code, please ignore
+#=
 # test getF1
 for i=1:16
   u0[i] = i
@@ -55,6 +57,12 @@ getF2(mesh, sbp, eqn, u0, 1, f2)
 
 vec = [f1[1], f1[5], f1[9]]
 assembleU(vec, 1, 1, u)
+
+
+edgenum_local = getBoundaryEdgeLocalNum(mesh, 1)
+println("edgenum_local = ", edgenum_local)
+=#
+
 
 function evalEuler(t, x)
 # this function is called by time stepping algorithm
