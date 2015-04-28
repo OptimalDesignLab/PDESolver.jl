@@ -34,4 +34,38 @@ end
 return nothing
 
 end  # end function
+
+
+function ICLinear(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+nnodes = operator.numnodes
+dofpernode = getNumDofPerNode(mesh)
+dofnums_i = zeros(dofpernode)
+
+cntr = 1
+for i=1:mesh.numVert
+  for j=1:dofpernode
+    dofnums_i[j] = getNumberJ(mesh.dofnums_Nptr, mesh.verts[i], 0, j-1)
+  end
+
+      dofnum_rho = dofnums_i[1]
+      dofnum_rhou = dofnums_i[2]
+      dofnum_rhov = dofnums_i[3]
+      dofnum_e = dofnums_i[4]
+
+
+      # apply initial conditions here
+      u0[dofnum_rho] = cntr
+      u0[dofnum_rhou] = cntr+1
+      u0[dofnum_rhov] = cntr+2
+      u0[dofnum_e] = cntr+3
+
+      cntr += 4
+end
+
+return nothing
+
+end  # end function
  
