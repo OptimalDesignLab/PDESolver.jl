@@ -17,12 +17,13 @@ t_max = 1.00
 
 # create operator
 sbp = TriSBP{Float64}()  # create linear sbp operator
+println("sbp.numnodes = ", sbp.numnodes)
 
 # create mesh
 dmg_name = ".null"
 #smb_name = "tri2l.smb"
-smb_name = "tri18l.smb"
-#smb_name = "adapt_big.smb"
+#smb_name = "tri18l.smb"
+smb_name = "adapt_big.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -39,13 +40,14 @@ u = zeros(mesh.numDof) # solution at current timestep
 
 
 # populate u0 with initial condition
-ICLinear(mesh, sbp, eqn, u0) # change this
+#ICLinear(mesh, sbp, eqn, u0) # change this
+ICsmoothHeaviside(mesh, sbp, eqn, u0)
 println("u0 = \n", u0)
 saveSolutionToMesh(mesh, u0)
 
-cfunc3 = cfunction(func3, Void, (Ptr{Void}, Ptr{Float64}, Ptr{Float64}, Ptr{Void}, Ptr{Float64}))
+cfunc3 = cfunction(shockRefine2, Void, (Ptr{Void}, Ptr{Float64}, Ptr{Float64}, Ptr{Void}, Ptr{Void}, Ptr{TriSBP{Float64}}))
 
-createAnisoFunc(mesh.m_ptr, cfunc3, u)
+createAnisoFunc(mesh.m_ptr, cfunc3, mesh.f_ptr, sbp)
 writeVtkFiles("output_pre", mesh.m_ptr)
 
   runAnisoAdapt(mesh.m_ptr)
