@@ -7,8 +7,8 @@ using SummationByParts
 # using using PDESolver
 using SimpleMesh
 
-lengthx = 3
-lengthy = 2
+lengthx = 2
+lengthy = 3
 nedx = 2
 nedy = 2
 
@@ -43,13 +43,15 @@ for p = 1:d
 
 	mappingjacobian!(sbp, node_coord, jacobian, jacmod) # Get the Jocabian for transformation between actual and iso-parametric space
 
+	# println(round(jacobian,1));
 	func[1,:,:] =  (node_coord[1,:,:].^p).*(node_coord[2,:,:].^q)
 	actderiv[1,:,:] = p*(node_coord[1,:,:].^(p-1)).*(node_coord[2,:,:].^q); # Actual derivative of the function
+	
 	for i = 1:m.nel
 	  for j = 1:sbp.numnodes
-	    actderiv[1,j,i] = actderiv[1,j,i]*jacmod[j,i]
+	    actderiv[1,j,i] = actderiv[1,j,i]/jacmod[j,i]
 	  end
-	end
+	end 
 
 
 	di = 1
