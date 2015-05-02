@@ -138,11 +138,11 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
 #  println("h = \n", h)
 
 #  println("typeof(operator_ptr) = ", typeof(operator_ptr))
-  println("operator_ptr = ", operator_ptr)
+#  println("operator_ptr = ", operator_ptr)
   sbp = unsafe_pointer_to_objref(operator_ptr)
 #  sbp = unsafe_load(operator_ptr)
 #  println("typeof(sbp) = ", typeof(sbp))
-  println("sbp.numnodes = ", sbp.numnodes)
+#  println("sbp.numnodes = ", sbp.numnodes)
   # get vertex coords
   coords = zeros(3,1)
   getVertCoords(entity_ptr, coords, 3, 1)
@@ -167,15 +167,17 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
   verts, tmp = getDownward(m_ptr, el_ptr, 0)
 
   # get coordinates
-  coords = zeros(3,3)
-  getFaceCoords(el_ptr, coords, 3, 3)
-  x_coords = coords[1,:]
+  coords = zeros(3,3, 1)
+  sub_coords = sub(coords, :, :, 1)
+  getFaceCoords(el_ptr, sub_coords, 3, 3)
+#  println("coords = ", coords)
+#  x_coords = coords[1,:]
 
   # get solution for vertices
-  u_vals = zeros(4,3)
+  u_vals = zeros(4,3, 1)
   vert_index = 0
   for j=1:3  # get solution value of each node, figure out which vertex is original
-    subarray = sub(u_vals, :, j)
+    subarray = sub(u_vals, :, j, 1)
     retrieveNodeSolution(f_ptr, verts[j], subarray)
 
     if (entity_ptr == verts[j])
@@ -183,6 +185,26 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
     end
   end
 
+#  println("u_vals = ", u_vals)
+  # get mapping jacobian
+  dxi_dx = zeros(2,2,3,1)
+  jac = zeros(3,1)
+  mappingjacobian!(sbp, coords[1:2,:,:], dxi_dx, jac)
+  
+
+  # differentiate (mapping jacobian is constant for an element)
+  u_dxidx = u_vals*dxi_dx[1,1,1,1]
+  u_detadx = u_vals*dxi_dx[2,1,1,1]
+  res = zeros(size(u_vals))
+
+  differentiate!(sbp, 1, u_dxidx, res)
+  differentiate!(sbp, 2, u_detadx, res)
+
+  drho_dx = res[1, vert_index, 1]*jac[vert_index,1]
+#  println("drho_dx = ", drho_dx)
+
+
+#=
   # find max diff
   x_vert = x_coords[vert_index]
   max_diff = [abs(x_coords[1] - x_vert), abs(x_coords[2] - x_vert), abs(x_coords[3] - x_vert)]
@@ -201,6 +223,7 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
 
   drho_dx = u_singlenode[1]  # rho  value
 #  drho_dx = smoothHeavisideder(x)
+=#
 =#
 
   h[1] = abs(0.25/drho_dx)  # make mesh size proportional to 1/drho/dx (larger gradient -> smaller mesh)
@@ -222,7 +245,8 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
   h[3] = 2.0
 
 
-  println("x = ", x, " h = ", h, " drho_dx = ", drho_dx)
+#  println("x = ", x, " h = ", h, " drho_dx = ", drho_dx)
+#  print("\n")
 return nothing
 end
 
