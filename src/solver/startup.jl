@@ -8,7 +8,7 @@ include("../equation/Equation.jl")  # equation types
 include("../rk4/rk4.jl")  # timestepping
 include("./euler/euler.jl")  # solver functions
 include("./euler/ic.jl")  # initial conditions functions
-
+include("./euler/output.jl")  # printing results to files
 
 # timestepping parameters
 delta_t = 0.5
@@ -89,5 +89,7 @@ end  # end evalEuler
 
 
 # call timestepper
-rk4(evalEuler, delta_t, u0, t_max)
-
+u, u_hist = rk4(evalEuler, delta_t, u0, t_max)
+saveSolutionToMesh(mesh, u)
+printSolution(mesh, u)
+printCoordinates(mesh)
