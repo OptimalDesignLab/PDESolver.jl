@@ -40,11 +40,12 @@ ICZero(mesh, sbp, eqn, u0)
 
 
 # more test code
+#=
 coords = [2, 1.5]
 sol = zeros(4)
 calcIsentropicVortex(coords, eqn, sol)
 println("at (2, 1.5), sol = ", sol)
-
+=#
 # test code, please ignore
 #=
 # test getF1
@@ -88,5 +89,5 @@ end  # end evalEuler
 
 
 # call timestepper
-#rk4(evalEuler, delta_t, u0, t_max)
+rk4(evalEuler, delta_t, u0, t_max)
 
