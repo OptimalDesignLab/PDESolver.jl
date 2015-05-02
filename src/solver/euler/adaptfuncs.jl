@@ -124,7 +124,7 @@ function shockRefine{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr)
 return nothing
 end
 
-function shockRefine2{T, T2}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, operator_ptr::Ptr{T2})
+function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, operator_ptr)
 # an anisotropic function
 # populates h with the desired mesh size in all three dimension
 # f_ptr is a pointer to a solution field (apf::Field)
@@ -138,10 +138,11 @@ function shockRefine2{T, T2}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, o
 #  println("h = \n", h)
 
 #  println("typeof(operator_ptr) = ", typeof(operator_ptr))
-#  sbp = unsafe_pointer_to_objref(operator_ptr)
+  println("operator_ptr = ", operator_ptr)
+  sbp = unsafe_pointer_to_objref(operator_ptr)
 #  sbp = unsafe_load(operator_ptr)
 #  println("typeof(sbp) = ", typeof(sbp))
-
+  println("sbp.numnodes = ", sbp.numnodes)
   # get vertex coords
   coords = zeros(3,1)
   getVertCoords(entity_ptr, coords, 3, 1)

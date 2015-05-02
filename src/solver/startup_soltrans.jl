@@ -19,6 +19,32 @@ t_max = 1.00
 sbp = TriSBP{Float64}()  # create linear sbp operator
 println("sbp.numnodes = ", sbp.numnodes)
 
+
+function checkPtr(sbp)
+  println("in main script")
+  nnodes_before = sbp.numnodes
+  sbp_ptr = pointer_from_objref(sbp)
+  println("typeof(sbp_ptr) = ", sbp_ptr)
+  println("sizeof(sbp_ptr) = ", sizeof(sbp_ptr))
+  println("sbp_ptr = ", sbp_ptr)
+  sbp2 = unsafe_pointer_to_objref(sbp_ptr)
+  nnodes_after= sbp2.numnodes
+  println("nnodes_before = ", nnodes_before, " nnodes_after = ", nnodes_after)
+end
+
+
+
+#=
+nnodes_before = sbp.numnodes
+sbp_ptr = pointer_from_objref(sbp)
+println("typeof(sbp_ptr) = ", sbp_ptr)
+sbp2 = unsafe_pointer_to_objref(sbp_ptr)
+nnodes_after= sbp2.numnodes
+
+println("nnodes_before = ", nnodes_before, " nnodes_after = ", nnodes_after)
+=#
+
+
 # create mesh
 dmg_name = ".null"
 #smb_name = "tri2l.smb"
@@ -39,6 +65,7 @@ u0 = zeros(mesh.numDof)  # solution at previous timestep
 u = zeros(mesh.numDof) # solution at current timestep
 
 
+
 # populate u0 with initial condition
 #ICLinear(mesh, sbp, eqn, u0) # change this
 ICsmoothHeaviside(mesh, sbp, eqn, u0)
@@ -49,6 +76,7 @@ cfunc3 = cfunction(shockRefine2, Void, (Ptr{Void}, Ptr{Float64}, Ptr{Float64}, P
 
 createAnisoFunc(mesh.m_ptr, cfunc3, mesh.f_ptr, sbp)
 writeVtkFiles("output_pre", mesh.m_ptr)
+checkPtr(sbp)
 
   runAnisoAdapt(mesh.m_ptr)
 
@@ -103,3 +131,14 @@ end  # end evalEuler
 # call timestepper
 rk4(evalEuler, delta_t, u0, t_max)
 =#
+
+function checkPtr(sbp)
+  nnodes_before = sbp.numnodes
+  sbp_ptr = pointer_from_objref(sbp)
+  println("typeof(sbp_ptr) = ", sbp_ptr)
+  sbp2 = unsafe_pointer_to_objref(sbp_ptr)
+  nnodes_after= sbp2.numnodes
+  println("nnodes_before = ", nnodes_before, " nnodes_after = ", nnodes_after)
+end
+
+
