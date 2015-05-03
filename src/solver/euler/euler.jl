@@ -97,9 +97,10 @@ for i=1:3  # loop over nodes
   println("u_vals = \n", u_vals)
 
   # calculate pressure
-  internal_energy = u_vals[4]/u_vals[1] - 0.5*(u_vals[2]^2 + u_vals[3]^2)/(u_vals[1]^2)
-  pressure = u_vals[1]*eqn.R*internal_energy/eqn.cv
-  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+#  internal_energy = u_vals[4]/u_vals[1] - 0.5*(u_vals[2]^2 + u_vals[3]^2)/(u_vals[1]^2)
+#  pressure = u_vals[1]*eqn.R*internal_energy/eqn.cv
+#  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+  pressure = calcPressure(u_vals, eqn)
 
   # calculate F1 for this node
   start_index = 4*(i-1) + 1
@@ -136,9 +137,10 @@ for i=1:3  # loop over nodes
   println("u_vals = \n", u_vals)
 
   # calculate pressure
-  internal_energy = u_vals[4]/u_vals[1] - 0.5*(u_vals[2]^2 + u_vals[3]^2)/(u_vals[1]^2)
-  pressure = u_vals[1]*eqn.R*internal_energy/eqn.cv
-  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+#  internal_energy = u_vals[4]/u_vals[1] - 0.5*(u_vals[2]^2 + u_vals[3]^2)/(u_vals[1]^2)
+#  pressure = u_vals[1]*eqn.R*internal_energy/eqn.cv
+#  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+  pressure = calcPressure(u_vals, eqn)
 
   # calculate F1 for this node
   start_index = 4*(i-1) + 1
@@ -155,6 +157,19 @@ println("F2 = \n", f2)
 return nothing
 
 end
+
+function calcPressure(u_vals::AbstractVector, eqn::EulerEquation)
+  # calculate pressure for a node
+  # u is a vector of length 4
+
+  internal_energy = u_vals[4]/u_vals[1] - 0.5*(u_vals[2]^2 + u_vals[3]^2)/(u_vals[1]^2)
+  pressure = u_vals[1]*eqn.R*internal_energy/eqn.cv
+  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+
+  return pressure
+end
+
+
 
 function assembleU(vec::AbstractVector, element::Integer, u::AbstractVector)
 # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
