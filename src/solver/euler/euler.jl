@@ -30,6 +30,26 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::E
 
 
 # do calculations here
+ICZero(mesh, sbp, eqn, u0)
+x = zeros(Float64,(2,sbp.numnodes,getNumEl(mesh))); # nodal Coordinates of the marix
+for i = 1:getNumEl(mesh)
+  vtxcoord = getElementVertCoords(mesh, [i]);
+  vtxcoord = squeeze(vtxcoord,3);
+  vtxcoord = vtxcoord[1:2,:]
+  vtxcoord = vtxcoord'
+  x[:,:,i] = calcnodes(sbp, vtxcoord);
+end
+
+dxidx = zeros(Float64, (2,2,sbp.numnodes,getNumEl(mesh))); # Jacobian Matrix
+jac = zeros(Float64, (sbp.numnodes,getNumEl(mesh))); # Determinant of the Jacobian Matrix
+mappingjacobian!(sbp, x, dxidx, jac) # Get the Jocabian for transformation between actual and iso-parametric space
+
+# Get The boundary faces
+
+F1 = zeros(Float64, 2,sbp.numnodes,getNumEl(mesh))
+F2 = zeros(Float64, 2,sbp.numnodes,getNumEl(mesh))
+F3 = zeros(Float64, 2,sbp.numnodes,getNumEl(mesh))
+F4 = zeros(Float64, 2,sbp.numnodes,getNumEl(mesh))
 
 return nothing
 
