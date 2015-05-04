@@ -11,76 +11,67 @@ function evalVolumeIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::Eul
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
 
-println("Evaluating volume integrals")
-
-numEl = getNumEl(mesh)
-
-p = 1           # linear elements
-
-u = zeros(Float64,mesh.numDof)
-# u_el1 = zeros(Float64,2,
-
-for element = 1:numEl
-
-#   sbp = TriSBP{Float64}(degree=p)
+  println("Evaluating volume integrals")
   
-  mappingjacobian!(sbp, x, dxidx, jac)
-
-  dxi_dx = dxidx[1,1]
-  dxi_dy = dxidx[1,2]
-  deta_dx = dxidx[2,1]
-  deta_dy = dxidx[2,2]
-
-  getF1(mesh, sbp, eqn, u0, element, F1)
-  getF2(mesh, sbp, eqn, u0, element, F2)
-
-  # du/dt = inv(M)*(volumeintegrate!(f1/jac) + volumeintegrate!(f2/jac)
-
-#   for node_ix = 1:numNodes
-
-  src = 0
-  # f's need 2 indices for 2D, and 3 entries corresponding to the vertices of a tri element
-  f1 = zeros(3,1)
-  f2 = zeros(3,1)
-  f3 = zeros(3,1)
-  f4 = zeros(3,1)
-
-  # volumeintegrate! only does += to the result, so no need for res1, res2, etc
-  # it is assumed that `u` is a rank-2 array, with the first dimension for the local-node index, and the second dimension for the element index.
-  volumeintegrate!(sbp, f1/jac, res)
-  volumeintegrate!(sbp, f2/jac, res)
-  volumeintegrate!(sbp, f3/jac, res)
-  volumeintegrate!(sbp, f4/jac, res)
-
-#   u_el1 = volumeintegrate!(f1/jac) + volumeintegrate!(f2/jac) + volumeintegrate!(f3/jac) + volumeintegrate!(f4/jac)
-  u_el1 = res
-
-#   u_el2 = transpose(sbp.Q)*(F1*dxi_dx + F2*dxi_dy) + transpose(sbp.Q)*(F1*deta_dx + F2*deta_dy)
-  u_el2 = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
-
-  u_el = u_el1 + u_el2
-
-  assembleU(u_el, element, u)
-
-end
-
-# function assembleU(vec::AbstractVector, element::Integer, u::AbstractVector)
-# assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
-# element specifies which element number the number in vec belong to
-
-
-
+  numEl = getNumEl(mesh)
   
-
+  p = 1           # linear elements
+  
+  u = zeros(Float64,mesh.numDof)
+  # u_el1 = zeros(Float64,2,
+  
+  for element = 1:numEl
+  
+  #   sbp = TriSBP{Float64}(degree=p)
     
-
-
-
-#------------------------------------------
-
-return nothing 
+    mappingjacobian!(sbp, x, dxidx, jac)
+  
+    dxi_dx = dxidx[1,1]
+    dxi_dy = dxidx[1,2]
+    deta_dx = dxidx[2,1]
+    deta_dy = dxidx[2,2]
+  
+    getF1(mesh, sbp, eqn, u0, element, F1)
+    getF2(mesh, sbp, eqn, u0, element, F2)
+  
+    # du/dt = inv(M)*(volumeintegrate!(f1/jac) + volumeintegrate!(f2/jac)
+  
+  #   for node_ix = 1:numNodes
+  
+    src = 0
+    # f's need 2 indices for 2D, and 3 entries corresponding to the vertices of a tri element
+    f1 = zeros(3,1)
+    f2 = zeros(3,1)
+    f3 = zeros(3,1)
+    f4 = zeros(3,1)
+  
+    # volumeintegrate! only does += to the result, so no need for res1, res2, etc
+    # it is assumed that `u` is a rank-2 array, with the first dimension for the local-node index, and the second dimension for the element index.
+    volumeintegrate!(sbp, f1/jac, res)
+    volumeintegrate!(sbp, f2/jac, res)
+    volumeintegrate!(sbp, f3/jac, res)
+    volumeintegrate!(sbp, f4/jac, res)
+  
+  #   u_el1 = volumeintegrate!(f1/jac) + volumeintegrate!(f2/jac) + volumeintegrate!(f3/jac) + volumeintegrate!(f4/jac)
+    u_el1 = res
+  
+  #   u_el2 = transpose(sbp.Q)*(F1*dxi_dx + F2*dxi_dy) + transpose(sbp.Q)*(F1*deta_dx + F2*deta_dy)
+    u_el2 = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
+  
+    u_el = u_el1 + u_el2
+  
+    # function assembleU(vec::AbstractVector, element::Integer, u::AbstractVector)
+    # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
+    # element specifies which element number the number in vec belong to
+    assembleU(u_el, element, u)
+  
+  end
+  
+  return nothing 
 
 end
+#------------- end of evalVolumeIntegrals
+
 
 function evalBoundaryIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 # evaluate all the integrals over the boundary
@@ -98,6 +89,8 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::E
 return nothing
 
 end
+
+
 
 function applyMassMatrixInverse(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 # apply the inverse of the mass matrix to the entire solution vector
