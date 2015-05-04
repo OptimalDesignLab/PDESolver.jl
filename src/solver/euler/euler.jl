@@ -93,7 +93,14 @@ end
 
 function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 
-  edgestabilize!(sbp, 
+  # alpha calculated like in edgestabilize! documentation
+  # stabscale (U+a)*gamma*h^2 where U=u*n, where u is the velocity 
+  #   (remember to scale by rho) and n is the unit normal vector, from nrm->dxidx, then scaled by length
+  # ifaces needs to be calculated
+  # x needs to be passed
+  # need to clarify u vs res. maybe change the u variable name to semilinear 
+  edgestabilize!(sbp, ifaces, u, x, dxidx, jac, alpha, stabscale, res)
+
 
 
   return nothing
