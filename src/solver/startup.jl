@@ -1,6 +1,6 @@
 # startup script for solving an equation
 
-push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
+push!(LOAD_PATH, "../../../PUMI")
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
