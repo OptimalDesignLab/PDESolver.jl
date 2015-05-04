@@ -3,7 +3,7 @@ using PDESolver
 using FactCheck
 
 include("test_empty.jl")
-include("test_simplemesh.jl")
+# include("test_simplemesh.jl")
 
 FactCheck.exitstatus()
 
