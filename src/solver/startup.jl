@@ -1,6 +1,6 @@
 # startup script for solving an equation
 
-push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
+push!(LOAD_PATH, "../../../PUMI")
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -19,7 +19,7 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "tri2l.smb"
+smb_name = "tri8l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -81,6 +81,7 @@ function evalEuler(t, x)
 u[:] = 0.0  # zero out u before starting
 evalVolumeIntegrals(mesh, sbp, eqn, u, x)
 evalBoundaryIntegrals(mesh, sbp, eqn, u, x)
+addEdgeStabilize(mesh, sbp, eqn, u, x)
 applyMassMatrixInverse(mesh, sbp, eqn, u, x)
 
 return u
