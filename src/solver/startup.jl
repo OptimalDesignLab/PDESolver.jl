@@ -81,6 +81,7 @@ function evalEuler(t, x)
 u[:] = 0.0  # zero out u before starting
 evalVolumeIntegrals(mesh, sbp, eqn, u, x)
 evalBoundaryIntegrals(mesh, sbp, eqn, u, x)
+addEdgeStabilize(mesh, sbp, eqn, u, x)
 applyMassMatrixInverse(mesh, sbp, eqn, u, x)
 
 return u

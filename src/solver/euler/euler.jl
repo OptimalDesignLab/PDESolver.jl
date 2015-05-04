@@ -1,24 +1,79 @@
 # this file contains the functions to evaluate the right hand side of the weak form in the pdf
 
-function evalVolumeIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
-# evaluate all the integrals over the element (but not the boundary)
+function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+# evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
-# operator : an SBP operator, used to get stiffness matricies and stuff
+# sbp : an SBP operator, used to get stiffness matricies and stuff
 # eqn : a type that holds some constants needed to evaluate the equation
 #	: also used for multiple dispatch
 # u : solution vector to be populated (mesh.numDof entries)
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
 
-# do calculations here
-
-
-return nothing 
+  println("Evaluating volume integrals")
+  
+  numEl = getNumEl(mesh)
+  
+  p = 1           # linear elements
+  
+  u = zeros(Float64,mesh.numDof)
+  # u_el1 = zeros(Float64,2,
+  
+  for element = 1:numEl
+  
+  #   sbp = TriSBP{Float64}(degree=p)
+    
+    mappingjacobian!(sbp, x, dxidx, jac)
+  
+    dxi_dx = dxidx[1,1]
+    dxi_dy = dxidx[1,2]
+    deta_dx = dxidx[2,1]
+    deta_dy = dxidx[2,2]
+  
+    getF1(mesh, sbp, eqn, u0, element, F1)
+    getF2(mesh, sbp, eqn, u0, element, F2)
+  
+    # du/dt = inv(M)*(volumeintegrate!(f1/jac) + volumeintegrate!(f2/jac)
+  
+  #   for node_ix = 1:numNodes
+  
+    src = 0
+    # f's need 2 indices for 2D, and 3 entries corresponding to the vertices of a tri element
+    f1 = zeros(3,1)
+    f2 = zeros(3,1)
+    f3 = zeros(3,1)
+    f4 = zeros(3,1)
+  
+    # volumeintegrate! only does += to the result, so no need for res1, res2, etc
+    # it is assumed that `u` is a rank-2 array, with the first dimension for the local-node index, and the second dimension for the element index.
+    volumeintegrate!(sbp, f1/jac, res)
+    volumeintegrate!(sbp, f2/jac, res)
+    volumeintegrate!(sbp, f3/jac, res)
+    volumeintegrate!(sbp, f4/jac, res)
+  
+  #   u_el1 = volumeintegrate!(f1/jac) + volumeintegrate!(f2/jac) + volumeintegrate!(f3/jac) + volumeintegrate!(f4/jac)
+    u_el1 = res
+  
+  #   u_el2 = transpose(sbp.Q)*(F1*dxi_dx + F2*dxi_dy) + transpose(sbp.Q)*(F1*deta_dx + F2*deta_dy)
+    u_el2 = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
+  
+    u_el = u_el1 + u_el2
+  
+    # function assembleU(vec::AbstractVector, element::Integer, u::AbstractVector)
+    # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
+    # element specifies which element number the number in vec belong to
+    assembleU(u_el, element, u)
+  
+  end
+  
+  return nothing 
 
 end
+#------------- end of evalVolumeIntegrals
 
-function evalBoundaryIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+
+function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 # evaluate all the integrals over the boundary
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -54,13 +109,32 @@ F4 = zeros(Float64, 2,sbp.numnodes,getNumEl(mesh))
 return nothing
 
 end
+#------------- end of evalBoundaryIntegrals
 
-function applyMassMatrixInverse(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+
+  # alpha calculated like in edgestabilize! documentation
+  # stabscale (U+a)*gamma*h^2 where U=u*n, where u is the velocity 
+  #   (remember to scale by rho) and n is the unit normal vector, from nrm->dxidx, then scaled by length
+  # ifaces needs to be calculated
+  # x needs to be passed
+  # need to clarify u vs res. maybe change the u variable name to semilinear 
+  edgestabilize!(sbp, ifaces, u, x, dxidx, jac, alpha, stabscale, res)
+
+
+
+  return nothing
+
+end
+
+
+
+function applyMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 # apply the inverse of the mass matrix to the entire solution vector
 # this is a good, memory efficient implimentation
 
 numEl = getNumEl(mesh)
-nnodes = operator.numnodes
+nnodes = sbp.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
@@ -78,7 +152,7 @@ end
 
 # some helper functions
 
-function getF1(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f1::AbstractVector)
+function getF1(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f1::AbstractVector)
 # gets the vector F1 (see weak form derivation) for a particular element
 # for linear triangles, the size of F1 is 3 nodes * 4 dof per node = 12 entries
 # element : number of element to fetch F1 for
@@ -118,7 +192,7 @@ return nothing
 
 end
 
-function getF2(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f2::AbstractVector)
+function getF2(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f2::AbstractVector)
 # gets the vector F2 (see weak form derivation) for a particular element
 # for linear triangles, the size of F2 is 3 nodes * 4 dof per node = 12 entries
 # element : number of element to fetch F2 for
