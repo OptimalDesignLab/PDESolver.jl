@@ -127,22 +127,26 @@ end
 function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, operator_ptr)
 # an anisotropic function
 # populates h with the desired mesh size in all three dimension
+# entity_ptr is a pointer to a vertex
+# r_ptr is a pointer to an array of doubles that specifiy the orthonormal
+# coordinate system to use
+# h_ptr is the desired mesh size in each direction of r
+# m_ptr is the mesh pointer
 # f_ptr is a pointer to a solution field (apf::Field)
 # operator_ptr = pointer to SBP operator
 
 #  println("entered func3")
+
   # load arrays from C pointers
   r = pointer_to_array(r_, (3,3))  # REMEMBER: r is transposed when it is passed back to C
 #  println("r = \n", r)
+
   h = pointer_to_array(h_, 3)
 #  println("h = \n", h)
 
-#  println("typeof(operator_ptr) = ", typeof(operator_ptr))
 #  println("operator_ptr = ", operator_ptr)
   sbp = unsafe_pointer_to_objref(operator_ptr)
-#  sbp = unsafe_load(operator_ptr)
-#  println("typeof(sbp) = ", typeof(sbp))
-#  println("sbp.numnodes = ", sbp.numnodes)
+
   # get vertex coords
   coords = zeros(3,1)
   getVertCoords(entity_ptr, coords, 3, 1)
@@ -157,8 +161,7 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
 
 #  println("in julia, r = ", r)
 
-  u_node = zeros(4,3)
-  
+  # get the elements this vertex is part of
   num_elements = countAdjacent(m_ptr, entity_ptr, 2)  # get adjacnet elements
   elements = getAdjacent(num_elements)
 
@@ -170,10 +173,8 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
   coords = zeros(3,3, 1)
   sub_coords = sub(coords, :, :, 1)
   getFaceCoords(el_ptr, sub_coords, 3, 3)
-#  println("coords = ", coords)
-#  x_coords = coords[1,:]
 
-  # get solution for vertices
+  # get solution at vertices, find out the local index of the vertex
   u_vals = zeros(4,3, 1)
   vert_index = 0
   for j=1:3  # get solution value of each node, figure out which vertex is original
@@ -185,7 +186,6 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
     end
   end
 
-#  println("u_vals = ", u_vals)
   # get mapping jacobian
   dxi_dx = zeros(2,2,3,1)
   jac = zeros(3,1)
@@ -204,30 +204,8 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
 #  println("drho_dx = ", drho_dx)
 
 
-#=
-  # find max diff
-  x_vert = x_coords[vert_index]
-  max_diff = [abs(x_coords[1] - x_vert), abs(x_coords[2] - x_vert), abs(x_coords[3] - x_vert)]
-  p = sortperm(max_diff)  # sort in ascending order
-  max_index = p[3]  # index of maximum difference in x_coords
-
-  rho_1 = u_vals[1, vert_index]
-  rho_2 = u_vals[1, max_index]
-  x_max = x_coords[max_index]
-
-  drho_dx = abs( (rho_1 - rho_2)/(x_vert - x_max))
-#=
-  u_singlenode = zeros(4)
-  retrieveNodeSolution(f_ptr, entity_ptr, u_singlenode)
-  # calculate derivative of rho here
-
-  drho_dx = u_singlenode[1]  # rho  value
-#  drho_dx = smoothHeavisideder(x)
-=#
-=#
-
-  h[1] = abs(0.25/drho_dx)  # make mesh size proportional to 1/drho/dx (larger gradient -> smaller mesh)
-     # 2 is an emperical things with weird units
+  # make mesh size proportional to 1/ drhodx
+  h[1] = abs(0.25/drho_dx) 
 
 
   ubound = 0.50
@@ -241,7 +219,7 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
 
 
 #  h[1] = 0.5
-  h[2] = h[1]
+  h[2] = h[1]  # make mesh square
   h[3] = 2.0
 
 
