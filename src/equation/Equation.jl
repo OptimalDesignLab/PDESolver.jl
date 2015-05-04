@@ -13,6 +13,7 @@ abstract AbstractEquation
 type EulerEquation <: AbstractEquation  # hold any constants needed for euler equation
   cv::Float64  # specific heat constant
   R::Float64  # gas constant used in ideal gas law
+  gamma::Float64 # ratio of specific heats
   bigQT_xi::Array{Float64, 2}  # big parent element stiffness matrix transposed (Q_zi double under bar transposed
   bigQT_eta::Array{Float64,2}  # big parent element stiffness matrix transposed (Q_eta double under  bar transposed
 
@@ -41,7 +42,7 @@ gamma = 1.4
 R = 287.058  # specific gas constant (unit J/(kg * K)
 cv = R/(gamma - 1)
 
-return EulerEquation(cv, R, bigQT_xi, bigQT_eta)
+return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta)
 
 end
 

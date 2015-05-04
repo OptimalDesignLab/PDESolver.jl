@@ -50,6 +50,6 @@ function rk4(f, h, x_ic, t_max)
 
   writedlm("rk4_output.dat",x,",")
 #   writecsv("rk4_output.dat",x," ")
-  return x
+  return x[:, t_steps+1], x
 
 end
