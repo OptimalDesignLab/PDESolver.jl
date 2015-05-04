@@ -39,6 +39,7 @@ for element = 1:numEl
 #   for node_ix = 1:numNodes
 
   src = 0
+  # f's need 2 indices for 2D, and 3 entries corresponding to the vertices of a tri element
   f1 = zeros(3,1)
   f2 = zeros(3,1)
   f3 = zeros(3,1)
@@ -46,10 +47,10 @@ for element = 1:numEl
 
   # volumeintegrate! only does += to the result, so no need for res1, res2, etc
   # it is assumed that `u` is a rank-2 array, with the first dimension for the local-node index, and the second dimension for the element index.
-  volumeintegrate!(sbp, f1/jac, res);
-  volumeintegrate!(sbp, f2/jac, res);
-  volumeintegrate!(sbp, f3/jac, res);
-  volumeintegrate!(sbp, f4/jac, res);
+  volumeintegrate!(sbp, f1/jac, res)
+  volumeintegrate!(sbp, f2/jac, res)
+  volumeintegrate!(sbp, f3/jac, res)
+  volumeintegrate!(sbp, f4/jac, res)
 
 #   u_el1 = volumeintegrate!(f1/jac) + volumeintegrate!(f2/jac) + volumeintegrate!(f3/jac) + volumeintegrate!(f4/jac)
   u_el1 = res
