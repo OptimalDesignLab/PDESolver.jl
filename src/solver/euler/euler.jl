@@ -1,10 +1,10 @@
 # this file contains the functions to evaluate the right hand side of the weak form in the pdf
 
-function evalVolumeIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
-# operator : an SBP operator, used to get stiffness matricies and stuff
+# sbp : an SBP operator, used to get stiffness matricies and stuff
 # eqn : a type that holds some constants needed to evaluate the equation
 #	: also used for multiple dispatch
 # u : solution vector to be populated (mesh.numDof entries)
@@ -73,7 +73,7 @@ end
 #------------- end of evalVolumeIntegrals
 
 
-function evalBoundaryIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 # evaluate all the integrals over the boundary
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -89,15 +89,25 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, operator::SBPOperator, eqn::E
 return nothing
 
 end
+#------------- end of evalBoundaryIntegrals
+
+function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+
+  edgestabilize!(sbp, 
+
+
+  return nothing
+
+end
 
 
 
-function applyMassMatrixInverse(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+function applyMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
 # apply the inverse of the mass matrix to the entire solution vector
 # this is a good, memory efficient implimentation
 
 numEl = getNumEl(mesh)
-nnodes = operator.numnodes
+nnodes = sbp.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
@@ -115,7 +125,7 @@ end
 
 # some helper functions
 
-function getF1(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f1::AbstractVector)
+function getF1(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f1::AbstractVector)
 # gets the vector F1 (see weak form derivation) for a particular element
 # for linear triangles, the size of F1 is 3 nodes * 4 dof per node = 12 entries
 # element : number of element to fetch F1 for
@@ -155,7 +165,7 @@ return nothing
 
 end
 
-function getF2(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f2::AbstractVector)
+function getF2(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u0::AbstractVector, element::Integer, f2::AbstractVector)
 # gets the vector F2 (see weak form derivation) for a particular element
 # for linear triangles, the size of F2 is 3 nodes * 4 dof per node = 12 entries
 # element : number of element to fetch F2 for
