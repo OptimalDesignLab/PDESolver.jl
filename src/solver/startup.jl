@@ -10,6 +10,7 @@ include("../rk4/rk4.jl")  # timestepping
 include("./euler/euler.jl")  # solver functions
 include("./euler/ic.jl")  # initial conditions functions
 include("./euler/output.jl")  # printing results to files
+# include("./euler/addEdgeStabilize.jl")  # printing results to files
 
 # timestepping parameters
 delta_t = 0.5
@@ -20,7 +21,7 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "tri8l.smb"
+smb_name = "tri2l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -41,7 +42,6 @@ ICZero(mesh, sbp, eqn, SL0)
 ICLinear(mesh, sbp, eqn, SL0)
 
 println("SL0 = ", SL0)
-
 
 # more test code
 #=
@@ -101,6 +101,10 @@ println("at end of rk4, size(u) = ", size(u))
 return SL
 
 end  # end evalEuler
+
+# These two calls are for TESTING ONLY, delete in production code
+evalVolumeIntegrals(mesh, sbp, eqn, u, u0)
+addEdgeStabilize(mesh, sbp, eqn, u, u0)
 
 
 # call timestepper
