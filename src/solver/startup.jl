@@ -9,6 +9,7 @@ include("../rk4/rk4.jl")  # timestepping
 include("./euler/euler.jl")  # solver functions
 include("./euler/ic.jl")  # initial conditions functions
 include("./euler/output.jl")  # printing results to files
+# include("./euler/addEdgeStabilize.jl")  # printing results to files
 
 # timestepping parameters
 delta_t = 0.5
@@ -88,7 +89,9 @@ return u
 
 end  # end evalEuler
 
+# These two calls are for TESTING ONLY, delete in production code
 evalVolumeIntegrals(mesh, sbp, eqn, u, u0)
+addEdgeStabilize(mesh, sbp, eqn, u, u0)
 
 
 # call timestepper
