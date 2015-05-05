@@ -1,5 +1,6 @@
 # startup script for solving an equation
 
+push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
 push!(LOAD_PATH, "../../../PUMI")
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
@@ -31,12 +32,15 @@ println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
 
 
 # create vectors to hold solution at current, previous timestep
-u0 = zeros(mesh.numDof)  # solution at previous timestep
-u = zeros(mesh.numDof) # solution at current timestep
+SL0 = zeros(mesh.numDof)  # solution at previous timestep
+SL = zeros(mesh.numDof) # solution at current timestep
 
 
 # populate u0 with initial condition
-ICZero(mesh, sbp, eqn, u0)
+ICZero(mesh, sbp, eqn, SL0)
+ICLinear(mesh, sbp, eqn, SL0)
+
+println("SL0 = ", SL0)
 
 
 # more test code
@@ -71,26 +75,36 @@ println("edgenum_local = ", edgenum_local)
 =#
 
 
-function evalEuler(t, x)
+function evalEuler(t, SL0)
 # this function is called by time stepping algorithm
 # t is the current time
 # x is the solution value at the previous timestep
 # u = output, the function value at the current timestep
 # u is declared outside this function to avoid reallocating memory
 
-u[:] = 0.0  # zero out u before starting
-evalVolumeIntegrals(mesh, sbp, eqn, u, x)
-evalBoundaryIntegrals(mesh, sbp, eqn, u, x)
-addEdgeStabilize(mesh, sbp, eqn, u, x)
-applyMassMatrixInverse(mesh, sbp, eqn, u, x)
+SL[:] = 0.0  # zero out u before starting
+println("SL0 = ", SL0)
+u, x, dxidx, jac, res, interface = dataPrep(mesh, sbp, eqn, SL, SL0)
+println("u = ", u)
+println("x = ", x)
+println("dxidx = ", dxidx)
+println("jac = ", jac)
+println("res = ", res)
+println("interface = ", interface)
+evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
+evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
+addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
+applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
 
-return u
+
+println("at end of rk4, size(u) = ", size(u))
+return SL
 
 end  # end evalEuler
 
 
 # call timestepper
-u, u_hist = rk4(evalEuler, delta_t, u0, t_max)
-saveSolutionToMesh(mesh, u)
-printSolution(mesh, u)
+SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
+saveSolutionToMesh(mesh, SL)
+printSolution(mesh, SL)
 printCoordinates(mesh)

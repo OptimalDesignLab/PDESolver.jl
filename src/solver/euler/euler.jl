@@ -1,6 +1,107 @@
 # this file contains the functions to evaluate the right hand side of the weak form in the pdf
 # SL stands for semi-linear form, contents inside the inv(M)(...) parenthesis on pg. 7 of Jared's derivation
 
+
+using SummationByParts
+using PdePumiInterface
+
+
+function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
+# gather up all the data needed to do vectorized operatinos on the mesh
+# linear elements only
+
+# need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
+
+u = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
+x = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
+dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
+jac = Array(Float64, sbp.numnodes, mesh.numEl)
+res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
+
+# reused loop variables
+dofnums = zeros(mesh.numDofPerNode, sbp.numnodes)
+
+for i=1:mesh.numEl  # loop over elements
+  dofnums = getGlobalNodeNumbers(mesh, i)
+  u[:, :, i] = SL0[dofnums]
+
+  x[:,:,i] = getElementVertCoords(mesh, [i])[1:2, :, :]
+
+end
+
+# get dxidx, jac using x
+mappingjacobian!(sbp, x, dxidx, jac)  
+
+# only need internal boundaries (not external)
+num_ext_edges = size(getBoundaryEdgeNums(mesh))[1]  # bad memory efficiency
+num_int_edges = getNumEdges(mesh) - num_ext_edges
+
+new_bndry = Boundary(2, 3)
+println("new_bndry = ", new_bndry)
+
+new_interface = Interface(1, 2, 3, 4)
+println("new_interface = ", new_interface)
+
+println("num_int_edges = ", num_int_edges)
+
+interfaces = Array(typeof(new_interface), num_int_edges)
+
+pos = 1 # current position in interfaces
+for i=1:getNumEdges(mesh)
+  println("i = ", i)
+  println("pos = ", pos)
+  # get number of elements using the edge
+  adjacent_nums, num_adjacent = getAdjacentEntityNums(mesh, i, 1, 2)
+  println("num_adjacent = ", num_adjacent)
+  println("adjacent_nums = ", adjacent_nums)
+  if num_adjacent > 1  # internal edge
+    println("this is an internal edge")
+    element1 = adjacent_nums[1]
+    element2 = adjacent_nums[2]
+
+    coords_1 = x[:, :, element1]
+    coords_2 = x[:, :, element2]
+
+    # calculate centroid
+    centroid1 = sum(coords_1, 2)
+    centroid2 = sum(coords_2, 2)
+
+    if abs(centroid1[1] - centroid2[2]) < 1e-10  # if big enough difference
+      if centroid1[1] < centroid2[1]
+	elementL = element1
+	elementR = element2
+      else
+	elementL = element2
+	elementR = element1
+      end
+    else  # use y coordinate to decide
+      if centroid1[2] < centroid2[2]
+	elementL = element1
+	elementR = element2
+      else
+	elementL = element2
+	elementR = element1
+      end
+    end
+
+    edgeL = getEdgeLocalNum(mesh, i, elementL)
+    edgeR = getEdgeLocalNum(mesh, i, elementR)
+
+    interfaces[pos] = Interface(elementL, elementR, edgeL, edgeR)
+    println("updating pos")
+    pos += 1
+
+#    print("\n")
+
+  end  # end if internal edge
+
+  print("\n")
+end  # end loop over edges
+
+return u, x, dxidx, jac, res, interfaces
+
+end # end function dataPrep
+
 function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
