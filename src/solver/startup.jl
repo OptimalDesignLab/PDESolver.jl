@@ -38,8 +38,9 @@ SL = zeros(mesh.numDof) # solution at current timestep
 
 
 # populate u0 with initial condition
-ICZero(mesh, sbp, eqn, SL0)
-ICLinear(mesh, sbp, eqn, SL0)
+# ICZero(mesh, sbp, eqn, SL0)
+# ICLinear(mesh, sbp, eqn, SL0)
+ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 println("SL0 = ", SL0)
 
@@ -84,27 +85,27 @@ function evalEuler(t, SL0)
 
 SL[:] = 0.0  # zero out u before starting
 println("SL0 = ", SL0)
-u, x, dxidx, jac, res, interface = dataPrep(mesh, sbp, eqn, SL, SL0)
-println("u = ", u)
-println("x = ", x)
-println("dxidx = ", dxidx)
-println("jac = ", jac)
-println("res = ", res)
-println("interface = ", interface)
+# u, x, dxidx, jac, res, interface = dataPrep(mesh, sbp, eqn, SL, SL0)
+# println("u = ", u)
+# println("x = ", x)
+# println("dxidx = ", dxidx)
+# println("jac = ", jac)
+# println("res = ", res)
+# println("interface = ", interface)
 evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
 evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
 addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
 applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
 
 
-println("at end of rk4, size(u) = ", size(u))
 return SL
 
 end  # end evalEuler
 
 # These two calls are for TESTING ONLY, delete in production code
-evalVolumeIntegrals(mesh, sbp, eqn, u, u0)
-addEdgeStabilize(mesh, sbp, eqn, u, u0)
+evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
+evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
+addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
 
 
 # call timestepper

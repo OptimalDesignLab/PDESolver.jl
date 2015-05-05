@@ -443,6 +443,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
   numEl = getNumEl(mesh)
 
+  alpha = zeros(Float64,2,2,sbp.numnodes,numEl)
+
   # calculating alpha, required by edgestabilize!
   for k = 1:numEl
     for i = 1:sbp.numnodes                                                                              

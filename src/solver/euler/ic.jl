@@ -175,7 +175,7 @@ for i=1:numEl
 
       # coordinates of this node (must be a vertex)
       coords_j = coords[:,j]
-      calcIsentropicVortex(coords_i, eqn, sol)
+      calcIsentropicVortex(coords_j, eqn, sol)
 
       # apply initial conditions here
       u0[dofnums_i[:,j]] = sol
