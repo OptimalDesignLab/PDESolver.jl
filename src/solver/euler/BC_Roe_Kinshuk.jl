@@ -2,6 +2,8 @@
 function getEulerFlux(u_vals::AbstractArray, nx, ny)
   include("./euler.jl")  # solver functions
   eqn = EulerEquation(sbp)
+  f1 = zeros(Float64, 4)
+  f2 = zeros(f1)
 
   pressure = calcPressure(u_vals, eqn)
   f1[1] = u_vals[2]
@@ -19,21 +21,6 @@ function getEulerFlux(u_vals::AbstractArray, nx, ny)
 end
 
 function isentropicVortexBC(q, x, dxidx, nrm)
-  #sgn::Int, tau::double, dxidx::AbstractArray{T,4}, q::Float64, qg::Float64, sat::AbstractArray{T,1})
-  
-  # Variable Specification
-  # SAT : simultaneous approximation term
-
-  # Call jared calcisentropicvotex get qexact
-  # 
-
-  #= nx::Float64; ny::Float64; nz::Float64; dA::Float64; uL::Float64;
-  vL::Float64; wL::Float64; HL::Float64; uR::Float64; vR::Float64;
-  wR::Float64; HR::Float64; sqL::Float64; sqR::Float64; phi::Float64;
-  u::Float64; v::Float64; w::Float64; H::Float64; a::Float64; Un::Float64
-  lambda1::Float64; lambda2::Float64; lambda3::Float64; rhoA::Float64
-  dq1::Float64; dq2::Float64; dq3::Float64; dq4::Float64; dq5::Float64
-  tmp1::Float64; tmp2::Float64; tmp3::Float64; fac::Float64; =#
 
   E1dq = zeros(Float64, 4)
   E2dq = zeros(Float64, 4)
@@ -42,11 +29,14 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   qg = zeros(Float64, 4)
   calcIsentropicVortex(x, eqn, qg)
 
-  # viscFac
-  # mu
+  # Declaring constants 
   d1_0 = 1.0
   d0_0 = 0.0
-  gami = 1.4 - 1
+  d0_5 = 0.5
+  tau = 1.0
+  sgn = 1.0
+  gamma = 1.4
+  gami = gamma - 1
   sat_Vn = 0.025
   sat_Vl = 0.025
 
@@ -54,19 +44,18 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
-  # nx = dxidx[1]; ny = dxidx[2]; # nz = dxidx[3]
-  # dA = sqrt(nx*nx + ny*ny + nz*nz)
   dA = sqrt(nx*nx + ny*ny)
   
   fac = d1_0/q[1]
-  uL = q[2]*fac; vL = q[3]*fac; # wL = q[4]*fac
-  # phi = d0_5*(uL*uL + vL*vL + wL*wL)
+  println(typeof(fac))
+  println(typeof(q[4]))
+  uL = q[2]*fac; vL = q[3]*fac;
   phi = d0_5*(uL*uL + vL*vL)
+
   HL = gamma*q[4]*fac - gami*phi
   
   fac = d1_0/qg[1]
-  uR = qg[2]*fac; vR = qg[3]*fac; # wR = qg[4]*fac
-  # phi = d0_5*(uR*uR + vR*vR + wR*wR)
+  uR = qg[2]*fac; vR = qg[3]*fac;
   phi = d0_5*(uR*uR + vR*vR)
   HR = gamma*qg[4]*fac - gami*phi
 
@@ -74,14 +63,11 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   fac = d1_0/(sqL + sqR)
   u = (sqL*uL + sqR*uR)*fac
   v = (sqL*vL + sqR*vR)*fac
-  # w = (sqL*wL + sqR*wR)*fac
   
   H = (sqL*HL + sqR*HR)*fac
-  # phi = d0_5*(u*u + v*v + w*w)
   phi = d0_5*(u*u + v*v)
   
   a = sqrt(gami*(H - phi))
-  # Un = u*nx + v*ny + w*nz
   Un = u*nx + v*ny
 
   lambda1 = Un + dA*a
@@ -96,29 +82,24 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   dq2 = q[2] - qg[2]
   dq3 = q[3] - qg[3]
   dq4 = q[4] - qg[4]
-  # dq5 = q[5] - qg[5]
 
   #-- diagonal matrix multiply
+  sat = zeros(Float64, 4)
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
-  # sat[5] = lambda3*dq5
 
   #-- get E1*dq
-  # E1dq[1] = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
   E1dq[2] = E1dq[1]*u
   E1dq[3] = E1dq[1]*v
-  # E1dq[4] = E1dq[1]*w
-  # E1dq[5] = E1dq[1]*H
   E1dq[4] = E1dq[1]*H
 
   #-- get E2*dq
   E2dq[1] = d0_0
-  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3
   E2dq[3] = E2dq[2]*ny
-  # E2dq[4] = E2dq[2]*nz
   E2dq[4] = E2dq[2]*Un
   E2dq[2] = E2dq[2]*nx
 
@@ -129,17 +110,15 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   sat[:] = sat[:] + tmp1*(tmp2*E1dq[:] + tmp3*E2dq[:])
   
   #-- get E3*dq
-  E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
   E1dq[2] = E1dq[1]*u
   E1dq[3] = E1dq[1]*v
-  # E1dq[4] = E1dq[1]*w
   E1dq[4] = E1dq[1]*H
 
   #-- get E4*dq
   E2dq[1] = d0_0
-  E2dq[2] = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
+  E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
   E2dq[3] = E2dq[2]*ny
-  # E2dq[4] = E2dq[2]*nz
   E2dq[4] = E2dq[2]*Un
   E2dq[2] = E2dq[2]*nx
 
@@ -147,5 +126,5 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
   
-  return sat + eulerflux(q, nx, ny)
+  return sat + getEulerFlux(q, nx, ny)
 end # ends the function eulerRoeSAT
