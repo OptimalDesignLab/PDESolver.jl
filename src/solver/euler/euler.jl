@@ -12,93 +12,93 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 
 # need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
 
-u = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
-x = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
-dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
-jac = Array(Float64, sbp.numnodes, mesh.numEl)
-res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
+  u = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
+  x = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
+  dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
+  jac = Array(Float64, sbp.numnodes, mesh.numEl)
+  res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
 
-# reused loop variables
-dofnums = zeros(mesh.numDofPerNode, sbp.numnodes)
+  # reused loop variables
+  dofnums = zeros(mesh.numDofPerNode, sbp.numnodes)
 
-for i=1:mesh.numEl  # loop over elements
-  dofnums = getGlobalNodeNumbers(mesh, i)
-  u[:, :, i] = SL0[dofnums]
+  for i=1:mesh.numEl  # loop over elements
+    dofnums = getGlobalNodeNumbers(mesh, i)
+    u[:, :, i] = SL0[dofnums]
 
-  x[:,:,i] = getElementVertCoords(mesh, [i])[1:2, :, :]
+    x[:,:,i] = getElementVertCoords(mesh, [i])[1:2, :, :]
 
-end
+  end
 
-# get dxidx, jac using x
-mappingjacobian!(sbp, x, dxidx, jac)  
+  # get dxidx, jac using x
+  mappingjacobian!(sbp, x, dxidx, jac)  
 
-# only need internal boundaries (not external)
-num_ext_edges = size(getBoundaryEdgeNums(mesh))[1]  # bad memory efficiency
-num_int_edges = getNumEdges(mesh) - num_ext_edges
+  # only need internal boundaries (not external)
+  num_ext_edges = size(getBoundaryEdgeNums(mesh))[1]  # bad memory efficiency
+  num_int_edges = getNumEdges(mesh) - num_ext_edges
 
-new_bndry = Boundary(2, 3)
-println("new_bndry = ", new_bndry)
+  new_bndry = Boundary(2, 3)
+  println("new_bndry = ", new_bndry)
 
-new_interface = Interface(1, 2, 3, 4)
-println("new_interface = ", new_interface)
+  new_interface = Interface(1, 2, 3, 4)
+  println("new_interface = ", new_interface)
 
-println("num_int_edges = ", num_int_edges)
+  println("num_int_edges = ", num_int_edges)
 
-interfaces = Array(typeof(new_interface), num_int_edges)
+  interfaces = Array(typeof(new_interface), num_int_edges)
 
-pos = 1 # current position in interfaces
-for i=1:getNumEdges(mesh)
-  println("i = ", i)
-  println("pos = ", pos)
-  # get number of elements using the edge
-  adjacent_nums, num_adjacent = getAdjacentEntityNums(mesh, i, 1, 2)
-  println("num_adjacent = ", num_adjacent)
-  println("adjacent_nums = ", adjacent_nums)
-  if num_adjacent > 1  # internal edge
-    println("this is an internal edge")
-    element1 = adjacent_nums[1]
-    element2 = adjacent_nums[2]
+  pos = 1 # current position in interfaces
+  for i=1:getNumEdges(mesh)
+    println("i = ", i)
+    println("pos = ", pos)
+    # get number of elements using the edge
+    adjacent_nums, num_adjacent = getAdjacentEntityNums(mesh, i, 1, 2)
+    println("num_adjacent = ", num_adjacent)
+    println("adjacent_nums = ", adjacent_nums)
+    if num_adjacent > 1  # internal edge
+      println("this is an internal edge")
+      element1 = adjacent_nums[1]
+      element2 = adjacent_nums[2]
 
-    coords_1 = x[:, :, element1]
-    coords_2 = x[:, :, element2]
+      coords_1 = x[:, :, element1]
+      coords_2 = x[:, :, element2]
 
-    # calculate centroid
-    centroid1 = sum(coords_1, 2)
-    centroid2 = sum(coords_2, 2)
+      # calculate centroid
+      centroid1 = sum(coords_1, 2)
+      centroid2 = sum(coords_2, 2)
 
-    if abs(centroid1[1] - centroid2[2]) < 1e-10  # if big enough difference
-      if centroid1[1] < centroid2[1]
-	elementL = element1
-	elementR = element2
-      else
-	elementL = element2
-	elementR = element1
+      if abs(centroid1[1] - centroid2[2]) < 1e-10  # if big enough difference
+        if centroid1[1] < centroid2[1]
+    elementL = element1
+    elementR = element2
+        else
+    elementL = element2
+    elementR = element1
+        end
+      else  # use y coordinate to decide
+        if centroid1[2] < centroid2[2]
+    elementL = element1
+    elementR = element2
+        else
+    elementL = element2
+    elementR = element1
+        end
       end
-    else  # use y coordinate to decide
-      if centroid1[2] < centroid2[2]
-	elementL = element1
-	elementR = element2
-      else
-	elementL = element2
-	elementR = element1
-      end
-    end
 
-    edgeL = getEdgeLocalNum(mesh, i, elementL)
-    edgeR = getEdgeLocalNum(mesh, i, elementR)
+      edgeL = getEdgeLocalNum(mesh, i, elementL)
+      edgeR = getEdgeLocalNum(mesh, i, elementR)
 
-    interfaces[pos] = Interface(elementL, elementR, edgeL, edgeR)
-    println("updating pos")
-    pos += 1
+      interfaces[pos] = Interface(elementL, elementR, edgeL, edgeR)
+      println("updating pos")
+      pos += 1
 
-#    print("\n")
+  #    print("\n")
 
-  end  # end if internal edge
+    end  # end if internal edge
 
-  print("\n")
-end  # end loop over edges
+    print("\n")
+  end  # end loop over edges
 
-return u, x, dxidx, jac, res, interfaces
+  return u, x, dxidx, jac, res, interfaces
 
 end # end function dataPrep
 
@@ -153,6 +153,11 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     mappingjacobian!(sbp, x, dxidx, jac)
   
     # cheating a little, constant across all nodes since linear, so use node #1 for all
+    # dxidx dimensions:
+    #   1: ref coord
+    #   2: phys coord
+    #   3: node
+    #   4: elem
     dxi_dx = dxidx[1,1,1,1]
     dxi_dy = dxidx[1,2,1,1]
     deta_dx = dxidx[2,1,1,1]
@@ -427,8 +432,27 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   # x needs to be passed
   # need to clarify u vs res. maybe change the u variable name to semilinear 
 
-  # u argument here is SL in a different format
-#   edgestabilize!(sbp, ifaces, u, x, dxidx, jac, alpha, stabscale, res)
+  
+
+    # dxidx dimensions:
+    #   1: ref coord
+    #   2: phys coord
+    #   3: node
+    #   4: elem
+
+  u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
+  numEl = getNumEl(mesh)
+
+  # calculating alpha, required by edgestabilize!
+  for k = 1:numEl
+    for i = 1:sbp.numnodes                                                                              
+      for di1 = 1:2                                                                                     
+        for di2 = 1:2                                                                                   
+          alpha[di1,di2,i,k] = (dxidx[di1,1,i,k].*dxidx[di2,1,i,k] + dxidx[di1,2,i,k].*dxidx[di2,2,i,k])*jac[i,k]
+        end                                                                                             
+      end                                                                                               
+    end                                                                                                 
+  end     
 
   function stabscale(u, dxidx, nrm)
 
@@ -476,19 +500,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
 
   end
 
-
-#   println("rho: ",SL0[:,1])
-  
-#   for k = 1:mesh.numelem                                                                                
-#     for i = 1:sbp.numnodes                                                                              
-#       for di1 = 1:2                                                                                     
-#         for di2 = 1:2                                                                                   
-#           alpha[di1,di2,i,k] = (dxidx[di1,1,i,k].*dxidx[di2,1,i,k] + dxidx[di1,2,i,k].*dxidx[di2,2,i,k])*jac[i,k]
-#         end                                                                                             
-#       end                                                                                               
-#     end                                                                                                 
-#   end     
-
+  # u argument here is SL in a different format
+  edgestabilize!(sbp, interfaces, u, x, dxidx, jac, alpha, stabscale, result)
 
   return nothing
 
@@ -502,20 +515,20 @@ function applyMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::Euler
 # apply the inverse of the mass matrix to the entire solution vector
 # this is a good, memory efficient implimentation
 
-numEl = getNumEl(mesh)
-nnodes = sbp.numnodes
-dofpernode = getNumDofPerNode(mesh)
-for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  for j=1:nnodes
-    for k=1:dofpernode
-      dofnum_k = dofnums_i[k,j]
-      SL[dofnum_k] /= sbp.w[j]
+  numEl = getNumEl(mesh)
+  nnodes = sbp.numnodes
+  dofpernode = getNumDofPerNode(mesh)
+  for i=1:numEl
+    dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
+    for j=1:nnodes
+      for k=1:dofpernode
+        dofnum_k = dofnums_i[k,j]
+        SL[dofnum_k] /= sbp.w[j]
+      end
     end
   end
-end
-  
-return nothing 
+    
+  return nothing 
 
 end
 
@@ -527,37 +540,37 @@ function getF1(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::Ab
 # element : number of element to fetch F1 for
 # f1 : vector (of length 12) to populate with F1.  This vector is overwritten
 
-println("entered getF1")
-println("element number = ", element)
+  println("entered getF1")
+  println("element number = ", element)
 
-dofnums = getGlobalNodeNumbers(mesh, element)
-println("dofnums = \n", dofnums)
-SL_vals = zeros(4)  # hold SL0 values for a single node
+  dofnums = getGlobalNodeNumbers(mesh, element)
+  println("dofnums = \n", dofnums)
+  SL_vals = zeros(4)  # hold SL0 values for a single node
 
-for i=1:3  # loop over nodes
-  println("at node ", i)
-  SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
-  println("SL_vals = \n", SL_vals)
+  for i=1:3  # loop over nodes
+    println("at node ", i)
+    SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
+    println("SL_vals = \n", SL_vals)
 
-  # calculate pressure
-#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
-#  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
-  pressure = calcPressure(SL_vals, eqn)
+    # calculate pressure
+  #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
+  #  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+  #  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+    pressure = calcPressure(SL_vals, eqn)
 
-  # calculate F1 for this node
-  start_index = 4*(i-1) + 1
-  f1[start_index] = SL_vals[2]  # f1_1 (density equation)
-  f1[start_index + 1] = (SL_vals[2]^2)/SL_vals[1] + pressure  # f1_2 (momentum-x equation)
-  f1[start_index + 2] = (SL_vals[2]*SL_vals[3])/SL_vals[1]  # f1_3 (momentum-y equation)
-  f1[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[2]/SL_vals[1] # f1_4 (energy equation)
+    # calculate F1 for this node
+    start_index = 4*(i-1) + 1
+    f1[start_index] = SL_vals[2]  # f1_1 (density equation)
+    f1[start_index + 1] = (SL_vals[2]^2)/SL_vals[1] + pressure  # f1_2 (momentum-x equation)
+    f1[start_index + 2] = (SL_vals[2]*SL_vals[3])/SL_vals[1]  # f1_3 (momentum-y equation)
+    f1[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[2]/SL_vals[1] # f1_4 (energy equation)
 
-  print("\n")
-end
+    print("\n")
+  end
 
-println("F1 = \n", f1)
+  println("F1 = \n", f1)
 
-return nothing
+  return nothing
 
 end
 
@@ -567,37 +580,37 @@ function getF2(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::Ab
 # element : number of element to fetch F2 for
 # f2 : vector (of length 12) to populate with F2.  This vector is overwritten
 
-println("entered getF2")
-println("element number = ", element)
+  println("entered getF2")
+  println("element number = ", element)
 
-dofnums = getGlobalNodeNumbers(mesh, element)
-println("dofnums = \n", dofnums)
-SL_vals = zeros(4)  # hold SL0 values for a single node
+  dofnums = getGlobalNodeNumbers(mesh, element)
+  println("dofnums = \n", dofnums)
+  SL_vals = zeros(4)  # hold SL0 values for a single node
 
-for i=1:3  # loop over nodes
-  println("at node ", i)
-  SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
-  println("SL_vals = \n", SL_vals)
+  for i=1:3  # loop over nodes
+    println("at node ", i)
+    SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
+    println("SL_vals = \n", SL_vals)
 
-  # calculate pressure
-#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
-#  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
-  pressure = calcPressure(SL_vals, eqn)
+    # calculate pressure
+  #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
+  #  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+  #  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+    pressure = calcPressure(SL_vals, eqn)
 
-  # calculate F1 for this node
-  start_index = 4*(i-1) + 1
-  f2[start_index] = SL_vals[3]  # f2_1 (density equation)
-  f2[start_index + 1] = (SL_vals[2]*SL_vals[3])/SL_vals[1] # f2_2 (momentum-x equation)
-  f2[start_index + 2] = (SL_vals[3]^2)/SL_vals[1] + pressure  # f2_3 (momentum-y equation)
-  f2[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[3]/SL_vals[1] # f2_4 (energy equation)
+    # calculate F1 for this node
+    start_index = 4*(i-1) + 1
+    f2[start_index] = SL_vals[3]  # f2_1 (density equation)
+    f2[start_index + 1] = (SL_vals[2]*SL_vals[3])/SL_vals[1] # f2_2 (momentum-x equation)
+    f2[start_index + 2] = (SL_vals[3]^2)/SL_vals[1] + pressure  # f2_3 (momentum-y equation)
+    f2[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[3]/SL_vals[1] # f2_4 (energy equation)
 
-  print("\n")
-end
+    print("\n")
+  end
 
-println("F2 = \n", f2)
+  println("F2 = \n", f2)
 
-return nothing
+  return nothing
 
 end
 
@@ -610,6 +623,7 @@ function calcPressure(SL_vals::AbstractVector, eqn::EulerEquation)
   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
 
   return pressure
+
 end
 
 
@@ -617,21 +631,21 @@ end
 function assembleSL(vec::AbstractVector, element::Integer, SL::AbstractVector)
 # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector SL
 # element specifies which element number the number in vec belong to
-println("entered assembleU")
-println("element = ", element)
-println("vec = \n", vec)
-dofnums = getGlobalNodeNumbers(mesh, element)
+  println("entered assembleU")
+  println("element = ", element)
+  println("vec = \n", vec)
+  dofnums = getGlobalNodeNumbers(mesh, element)
 
-for i=1:3  # loop over nodes
-  dofnums_i = dofnums[:,i]
-  start_index = 4*(i-1) + 1
-  
-  SL[dofnums_i] += vec[start_index:(start_index+3)]
-end
+  for i=1:3  # loop over nodes
+    dofnums_i = dofnums[:,i]
+    start_index = 4*(i-1) + 1
+    
+    SL[dofnums_i] += vec[start_index:(start_index+3)]
+  end
 
-println("SL = \n", SL)
+  println("SL = \n", SL)
 
-return nothing
+  return nothing
 
 end
 
@@ -640,18 +654,18 @@ function assembleSL(vec::AbstractVector, element::Integer, component::Integer, S
 # element specifies which element number the numbers in vec belong to
 #  component specifies which dof of each node (1,2,3, or 4)
 
-println("entered assembleU")
-println("element = ", element)
-println("component = ", component)
-println("vec = \n", vec)
-dofnums = getGlobalNodeNumbers(mesh, element)
-println("dofnums = ", dofnums)
+  println("entered assembleU")
+  println("element = ", element)
+  println("component = ", component)
+  println("vec = \n", vec)
+  dofnums = getGlobalNodeNumbers(mesh, element)
+  println("dofnums = ", dofnums)
 
-dofnums_comp = dofnums[component,:]
-SL[dofnums_comp.'] += vec
+  dofnums_comp = dofnums[component,:]
+  SL[dofnums_comp.'] += vec
 
-println("SL = \n", SL)
+  println("SL = \n", SL)
 
-return nothing
+  return nothing
 
 end
