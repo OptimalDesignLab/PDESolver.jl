@@ -29,10 +29,10 @@ bigQT_eta = ones(4*operator.numnodes,4*operator.numnodes)
 
 for i=1:3
   i_i = 4*(i-1) + 1
-  println("i_i = ", i_i)
+#   println("i_i = ", i_i)
   for j=1:3
     j_j = 4(j-1) + 1
-    println("j_j = ", j_j)
+#     println("j_j = ", j_j)
     bigQT_xi[i_i:(i_i+3), j_j:(j_j+3)] *= operator.Q[j,i,1]
     bigQT_eta[i_i:(i_i+3), j_j:(j_j+3)] *= operator.Q[j,i,2]
   end

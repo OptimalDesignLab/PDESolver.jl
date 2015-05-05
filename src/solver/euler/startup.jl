@@ -1,19 +1,19 @@
 # startup script for solving an equation
 
-push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
-push!(LOAD_PATH, "../../../PUMI")
+# push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
+push!(LOAD_PATH, "../../../../PUMI")
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
-include("../equation/Equation.jl")  # equation types
-include("../rk4/rk4.jl")  # timestepping
-include("./euler/euler.jl")  # solver functions
-include("./euler/ic.jl")  # initial conditions functions
-include("./euler/output.jl")  # printing results to files
+include("../../equation/Equation.jl")  # equation types
+include("../../rk4/rk4.jl")  # timestepping
+include("./euler.jl")  # solver functions
+include("./ic.jl")  # initial conditions functions
+include("./output.jl")  # printing results to files
 # include("./euler/addEdgeStabilize.jl")  # printing results to files
 
 # timestepping parameters
-delta_t = 0.5
+delta_t = 0.02
 t_max = 1.00
 
 # create operator
@@ -21,15 +21,15 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "tri18l.smb"
+smb_name = "../../mesh_files/tri2l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
 eqn = EulerEquation(sbp)
-println("eqn.bigQT_xi = \n", eqn.bigQT_xi)
-println("eqn.bigQT_eta = \n", eqn.bigQT_eta)
-println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
-println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
+# println("eqn.bigQT_xi = \n", eqn.bigQT_xi)
+# println("eqn.bigQT_eta = \n", eqn.bigQT_eta)
+# println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
+# println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
 
 
 # create vectors to hold solution at current, previous timestep
@@ -40,9 +40,8 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # populate u0 with initial condition
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
-ICIsentropicVortex(mesh, sbp, eqn, SL0)
-
-println("SL0 = ", SL0)
+# ICIsentropicVortex(mesh, sbp, eqn, SL0)
+ICRho1E2(mesh, sbp, eqn, SL0)
 
 # more test code
 #=
@@ -102,14 +101,32 @@ return SL
 
 end  # end evalEuler
 
+#=
 # These two calls are for TESTING ONLY, delete in production code
+println("SL0 = ", SL0,"\n\n")
+println("SL = ", SL)
+print("\n")
+println("Running evalVolumeIntegrals")
 evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
+print("\n")
+println("SL0 = ", SL0,"\n\n")
+println("SL = ", SL)
+print("\n")
+println("Running evalBoundaryIntegrals")
 evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
+print("\n")
+println("SL0 = ", SL0,"\n\n")
+println("SL = ", SL)
+print("\n")
+println("Running addEdgeStabilize")
 addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
-
+print("\n")
+println("at end: SL0 = ", SL0,"\n\n")
+println("at end: SL = ", SL)
+=#
 
 # call timestepper
-# SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
+SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
 saveSolutionToMesh(mesh, SL)
 printSolution(mesh, SL)
 printCoordinates(mesh)

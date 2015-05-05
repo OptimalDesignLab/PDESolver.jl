@@ -37,25 +37,25 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
   num_int_edges = getNumEdges(mesh) - num_ext_edges
 
   new_bndry = Boundary(2, 3)
-  println("new_bndry = ", new_bndry)
+#   println("new_bndry = ", new_bndry)
 
   new_interface = Interface(1, 2, 3, 4)
-  println("new_interface = ", new_interface)
+#   println("new_interface = ", new_interface)
 
-  println("num_int_edges = ", num_int_edges)
+#   println("num_int_edges = ", num_int_edges)
 
   interfaces = Array(typeof(new_interface), num_int_edges)
 
   pos = 1 # current position in interfaces
   for i=1:getNumEdges(mesh)
-    println("i = ", i)
-    println("pos = ", pos)
+#     println("i = ", i)
+#     println("pos = ", pos)
     # get number of elements using the edge
     adjacent_nums, num_adjacent = getAdjacentEntityNums(mesh, i, 1, 2)
-    println("num_adjacent = ", num_adjacent)
-    println("adjacent_nums = ", adjacent_nums)
+#     println("num_adjacent = ", num_adjacent)
+#     println("adjacent_nums = ", adjacent_nums)
     if num_adjacent > 1  # internal edge
-      println("this is an internal edge")
+#       println("this is an internal edge")
       element1 = adjacent_nums[1]
       element2 = adjacent_nums[2]
 
@@ -88,14 +88,14 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
       edgeR = getEdgeLocalNum(mesh, i, elementR)
 
       interfaces[pos] = Interface(elementL, elementR, edgeL, edgeR)
-      println("updating pos")
+#       println("updating pos")
       pos += 1
 
   #    print("\n")
 
     end  # end if internal edge
 
-    print("\n")
+#     print("\n")
   end  # end loop over edges
 
   return u, x, dxidx, jac, res, interfaces
@@ -112,15 +112,14 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 # SL : solution vector to be populated (mesh.numDof entries)
 # SL0 : solution vector at previous timesteps (mesh.numDof entries)
 
-
-  println("Evaluating volume integrals")
-  
   numEl = getNumEl(mesh)
   
   p = 1           # linear elements
   
   # this is commented out because it gets zeroed out earlier, and we don't want to throw out other work
 #   SL = zeros(Float64,mesh.numDof)
+
+  println("==== in evalVolumeIntegrals ====")
   
   for element = 1:numEl
   
@@ -219,8 +218,8 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 
     println("F1hat: \n",F1)
     println("F2hat: \n",F2)
-    println("bigQT_xi: \n",eqn.bigQT_xi)
-    println("bigQT_eta: \n",eqn.bigQT_eta)
+#     println("bigQT_xi: \n",eqn.bigQT_xi)
+#     println("bigQT_eta: \n",eqn.bigQT_eta)
     println("dofnums: \n",dofnums)
     println("dxi_dx: \n",dxi_dx)
     println("dxi_dy: \n",dxi_dy)
@@ -231,14 +230,20 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     F2 = zeros(Float64, 12)
   
     SL_el = source_result + flux_result
+    println("source_result: ",source_result)
+    println("flux_result: ",flux_result)
   
     # function assembleU(vec::AbstractVector, element::Integer, u::AbstractVector)
     # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
     # element specifies which element number the number in vec belong to
+
+    println("SL_el: ",SL_el)
+
     assembleSL(SL_el, element, SL)
   
   end
   
+  println("==== end of evalVolumeIntegrals ====")
   return nothing 
 
 end
@@ -266,6 +271,132 @@ function getEulerFlux(u_vals::AbstractArray, nx, ny)
   return eulerflux
 
 end
+
+
+function rho1Energy2BC(q, x, dxidx, nrm)
+
+  E1dq = zeros(Float64, 4)
+  E2dq = zeros(Float64, 4)
+
+  #=
+  println("q: ",q)
+  println("x: ",x)
+  println("dxidx: ",dxidx)
+  println("nrm: ",nrm)
+  =#
+
+  # getting qg
+  qg = zeros(Float64, 4)
+  calcRho1Energy2(x, eqn, qg)
+  
+  println("qg: ",qg)
+
+  # Declaring constants 
+  d1_0 = 1.0
+  d0_0 = 0.0
+  d0_5 = 0.5
+  tau = 1.0
+  sgn = 1.0
+  gamma = 1.4
+  gami = gamma - 1
+  sat_Vn = 0.025
+  sat_Vl = 0.025
+
+  # Begin main executuion
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+  dA = sqrt(nx*nx + ny*ny)
+  
+  fac = d1_0/q[1]
+#   println(typeof(fac))
+#   println(typeof(q[4]))
+  uL = q[2]*fac; vL = q[3]*fac;
+  phi = d0_5*(uL*uL + vL*vL)
+
+  HL = gamma*q[4]*fac - gami*phi
+  
+  fac = d1_0/qg[1]
+  uR = qg[2]*fac; vR = qg[3]*fac;
+  phi = d0_5*(uR*uR + vR*vR)
+  HR = gamma*qg[4]*fac - gami*phi
+
+  sqL = sqrt(q[1]); sqR = sqrt(qg[1])
+  fac = d1_0/(sqL + sqR)
+  u = (sqL*uL + sqR*uR)*fac
+  v = (sqL*vL + sqR*vR)*fac
+  
+  H = (sqL*HL + sqR*HR)*fac
+  phi = d0_5*(u*u + v*v)
+  
+  a = sqrt(gami*(H - phi))
+  Un = u*nx + v*ny
+
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+  rhoA = abs(Un) + dA*a
+  lambda1 = d0_5*(tau*max(abs(lambda1),sat_Vn *rhoA) + sgn*lambda1)
+  lambda2 = d0_5*(tau*max(abs(lambda2),sat_Vn *rhoA) + sgn*lambda2)
+  lambda3 = d0_5*(tau*max(abs(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+
+  dq1 = q[1] - qg[1] 
+  dq2 = q[2] - qg[2]
+  dq3 = q[3] - qg[3]
+  dq4 = q[4] - qg[4]
+
+  #-- diagonal matrix multiply
+  sat = zeros(Float64, 4)
+  sat[1] = lambda3*dq1
+  sat[2] = lambda3*dq2
+  sat[3] = lambda3*dq3
+  sat[4] = lambda3*dq4
+
+  println("sat 1: ",sat)
+
+  #-- get E1*dq
+  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*H
+
+  #-- get E2*dq
+  E2dq[1] = d0_0
+  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+  #-- add to sat
+  tmp1 = d0_5*(lambda1 + lambda2) - lambda3
+  tmp2 = gami/(a*a)
+  tmp3 = d1_0/(dA*dA)
+  sat[:] = sat[:] + tmp1*(tmp2*E1dq[:] + tmp3*E2dq[:])
+  println("sat 2: ",sat)
+  
+  #-- get E3*dq
+  E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*H
+
+  #-- get E4*dq
+  E2dq[1] = d0_0
+  E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+  #-- add to sat
+  tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
+  sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
+  println("sat 3: ",sat)
+  
+  returnval = sat + getEulerFlux(q, nx, ny)
+  println("returnval: ", returnval)
+  return returnval
+
+end # ends the function eulerRoeSAT
 
 # Euler Roe Solver for boundary integrate
 function isentropicVortexBC(q, x, dxidx, nrm)
@@ -295,8 +426,8 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   dA = sqrt(nx*nx + ny*ny)
   
   fac = d1_0/q[1]
-  println(typeof(fac))
-  println(typeof(q[4]))
+#   println(typeof(fac))
+#   println(typeof(q[4]))
   uL = q[2]*fac; vL = q[3]*fac;
   phi = d0_5*(uL*uL + vL*vL)
 
@@ -379,7 +510,7 @@ function isentropicVortexBC(q, x, dxidx, nrm)
 end # ends the function eulerRoeSAT
 
 
-function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, u::AbstractVector, u0::AbstractVector)
+function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 # evaluate all the integrals over the boundary
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -389,7 +520,7 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 # u : solution vector to be populated (mesh.numDof entries), partially populated by evalVolumeIntegrals
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
-  println("====== evalBoundaryIntegrals ======")
+#   println("====== evalBoundaryIntegrals ======")
 
 # Nodal Coordinates
 x = zeros(Float64,(2,sbp.numnodes,getNumEl(mesh))); # nodal Coordinates of the marix
@@ -415,21 +546,36 @@ numBoundaryElements = getNumBoundaryElements(mesh)
 numEl = getNumEl(mesh)
 
 # Calculate the intital condition
-# u0 = ones(Float64, 4, sbp.numnodes, mesh.numBoundaryEdges)
-u0 = ones(Float64, 4, sbp.numnodes, numEl)
+# u0 = ones(Float64, 4, sbp.numnodes, numEl)      # FOR TESTING
+
+# res dimensions
+#   1: num dofs
+#   2: num nodes
+#   3: num elem
+# res = zeros(SL0) # stores the result of boundary integrate
 
 
-# res = zeros(Float64, 4,sbp.numnodes,mesh.numBoundaryEdges) # stores the result of boundary integrate
-res = zeros(u0)
+u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
 
-println("type of u0: ", typeof(u0))
+println("type of SL0: ", typeof(SL0))
 println("size of dxidx: ", size(dxidx,4))
-println("size of u0: ", size(u0,3))
-println("size of res: ", size(res,3))
+println("size of SL0: ", size(SL0,3))
+println("size of result: ", size(result,3))
 println("size of x: ", size(x,3))
-boundaryintegrate!(sbp, bndryfaces, u0, x, dxidx, isentropicVortexBC, res)
 
-return res
+boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
+
+result = (-1)*result
+
+# assembling into global SL vector
+for element = 1:numEl
+  for node = 1:sbp.numnodes
+    vec = result[:,node,element]
+    assembleSLNode(vec, element, node, SL)
+  end
+end
+
+  return nothing
 
 end
 #------------- end of evalBoundaryIntegrals
@@ -444,7 +590,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   # x needs to be passed
   # need to clarify u vs res. maybe change the u variable name to semilinear 
 
-  println("====== Entering edge stabilize ======")
+#   println("====== Entering edge stabilize ======")
   
 
     # dxidx dimensions:
@@ -471,7 +617,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
 
   function stabscale(u, dxidx, nrm)
 
-    println("==== entering stabscale ====")
+#     println("==== entering stabscale ====")
 
     # grabbing conserved variables
     rho = u[1]
@@ -489,6 +635,9 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     # gamma stored in EulerEquation type
     gamma = eqn.gamma
 
+    println("pressure: ",pressure)
+    println("gamma: ",gamma)
+    println("rho: ",rho)
     # ideal gas law
     speed_sound = sqrt((gamma*pressure)/rho)
 
@@ -555,17 +704,17 @@ function getF1(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::Ab
 # element : number of element to fetch F1 for
 # f1 : vector (of length 12) to populate with F1.  This vector is overwritten
 
-  println("entered getF1")
-  println("element number = ", element)
+#   println("entered getF1")
+#   println("element number = ", element)
 
   dofnums = getGlobalNodeNumbers(mesh, element)
-  println("dofnums = \n", dofnums)
+#   println("dofnums = \n", dofnums)
   SL_vals = zeros(4)  # hold SL0 values for a single node
 
   for i=1:3  # loop over nodes
-    println("at node ", i)
+#     println("at node ", i)
     SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
-    println("SL_vals = \n", SL_vals)
+#     println("SL_vals = \n", SL_vals)
 
     # calculate pressure
   #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
@@ -580,10 +729,10 @@ function getF1(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::Ab
     f1[start_index + 2] = (SL_vals[2]*SL_vals[3])/SL_vals[1]  # f1_3 (momentum-y equation)
     f1[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[2]/SL_vals[1] # f1_4 (energy equation)
 
-    print("\n")
+#     print("\n")
   end
 
-  println("F1 = \n", f1)
+#   println("F1 = \n", f1)
 
   return nothing
 
@@ -595,17 +744,17 @@ function getF2(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::Ab
 # element : number of element to fetch F2 for
 # f2 : vector (of length 12) to populate with F2.  This vector is overwritten
 
-  println("entered getF2")
-  println("element number = ", element)
+#   println("entered getF2")
+#   println("element number = ", element)
 
   dofnums = getGlobalNodeNumbers(mesh, element)
-  println("dofnums = \n", dofnums)
+#   println("dofnums = \n", dofnums)
   SL_vals = zeros(4)  # hold SL0 values for a single node
 
   for i=1:3  # loop over nodes
-    println("at node ", i)
+#     println("at node ", i)
     SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
-    println("SL_vals = \n", SL_vals)
+#     println("SL_vals = \n", SL_vals)
 
     # calculate pressure
   #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
@@ -620,10 +769,10 @@ function getF2(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::Ab
     f2[start_index + 2] = (SL_vals[3]^2)/SL_vals[1] + pressure  # f2_3 (momentum-y equation)
     f2[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[3]/SL_vals[1] # f2_4 (energy equation)
 
-    print("\n")
+#     print("\n")
   end
 
-  println("F2 = \n", f2)
+#   println("F2 = \n", f2)
 
   return nothing
 
@@ -646,9 +795,9 @@ end
 function assembleSL(vec::AbstractVector, element::Integer, SL::AbstractVector)
 # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector SL
 # element specifies which element number the number in vec belong to
-  println("entered assembleU")
-  println("element = ", element)
-  println("vec = \n", vec)
+#   println("entered assembleU")
+#   println("element = ", element)
+#   println("vec = \n", vec)
   dofnums = getGlobalNodeNumbers(mesh, element)
 
   for i=1:3  # loop over nodes
@@ -658,7 +807,7 @@ function assembleSL(vec::AbstractVector, element::Integer, SL::AbstractVector)
     SL[dofnums_i] += vec[start_index:(start_index+3)]
   end
 
-  println("SL = \n", SL)
+#   println("SL = \n", SL)
 
   return nothing
 
@@ -669,17 +818,17 @@ function assembleSL(vec::AbstractVector, element::Integer, component::Integer, S
 # element specifies which element number the numbers in vec belong to
 #  component specifies which dof of each node (1,2,3, or 4)
 
-  println("entered assembleU")
-  println("element = ", element)
-  println("component = ", component)
-  println("vec = \n", vec)
+#   println("entered assembleU")
+#   println("element = ", element)
+#   println("component = ", component)
+#   println("vec = \n", vec)
   dofnums = getGlobalNodeNumbers(mesh, element)
-  println("dofnums = ", dofnums)
+#   println("dofnums = ", dofnums)
 
   dofnums_comp = dofnums[component,:]
   SL[dofnums_comp.'] += vec
 
-  println("SL = \n", SL)
+#   println("SL = \n", SL)
 
   return nothing
 

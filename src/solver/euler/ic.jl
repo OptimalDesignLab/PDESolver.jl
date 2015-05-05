@@ -35,6 +35,41 @@ return nothing
 
 end  # end function
 
+function ICRho1E2(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+numEl = getNumEl(mesh)
+nnodes = operator.numnodes
+dofpernode = getNumDofPerNode(mesh)
+for i=1:numEl
+  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
+  coords = getElementVertCoords(mesh, [i])
+
+  for j=1:nnodes
+      # get dof numbers for each variable
+      dofnum_rho = dofnums_i[1,j]
+      dofnum_rhou = dofnums_i[2,j]
+      dofnum_rhov = dofnums_i[3,j]
+      dofnum_e = dofnums_i[4,j]
+
+      # coordinates of this node (must be a vertex)
+      x = coords[1,j]
+      y = coords[2,j]
+      z = coords[3,j]
+
+      # apply initial conditions here
+      u0[dofnum_rho] = 1.0
+      u0[dofnum_rhou] = 0.0
+      u0[dofnum_rhov] = 0.0
+      u0[dofnum_e] = 2.0
+  end
+end
+
+return nothing
+
+end  # end function
+
 
 function ICLinear(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
 # populate u0 with initial values
@@ -214,7 +249,7 @@ p_in =  1/gamma
 # calculate r, theta coordinates from x,y
 r = sqrt(x*x + y*y)
 theta = atan2(y,x)  # angle in radians
-println("theta = ", theta)
+# println("theta = ", theta)
 
 # calculate values at inner radius
 a_in = sqrt(gamma*p_in/rho_in)  # speed of sound
@@ -222,15 +257,15 @@ u_norm_in = M_in*a_in  # magnitude of velocity
 
 # calculate values at r
 rho_r = rho_in*(1 + (gamma-1)*M_in*M_in*(1 - (r_in*r_in)/(r*r))/2)^(1/(gamma-1))
-println("rho_r = ", rho_r)
+# println("rho_r = ", rho_r)
 p_r = p_in*( (rho_r/rho_in)^gamma)  # isentropic relation
 a_r = sqrt(gamma*p_r/rho_r)
 u_norm_r = M_in*a_r  # M_in is constant
-println("u_norm_r = ", u_norm_r)
+# println("u_norm_r = ", u_norm_r)
 u_r = -u_norm_r*sin(theta)
 v_r = u_norm_r*cos(theta)
 
-println("u_r = ", u_r, " v_r = ", v_r)
+# println("u_r = ", u_r, " v_r = ", v_r)
 
 T_r = p_r/(rho_r*R)  # ideal gas law
 E_r = rho_r*cv*T_r + 0.5*M_in*M_in*gamma*p_r
@@ -243,6 +278,15 @@ sol[4] = E_r
 
 return nothing
 
+end
+
+function calcRho1Energy2(coords::AbstractVector, eqn::EulerEquation, sol::AbstractVector)
+  # for square test case with rho = 1, everything else  = 0
+
+  sol[1] = 1.0
+  sol[4] = 2.0
+
+  return nothing
 end
 
 

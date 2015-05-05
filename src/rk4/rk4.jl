@@ -43,7 +43,7 @@ function rk4(f, h, x_ic, t_max)
     k4 = f(t + h, x_old + h*k3)
 
     x[:,iter] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
-#     println(x[:,iter])
+    println("==== RK4: ==== x[:,iter]: ",x[:,iter])
     t = t + h
 
   end
