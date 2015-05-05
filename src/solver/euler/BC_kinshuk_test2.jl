@@ -48,7 +48,15 @@ bndryfaces = getBoundaryArray(mesh)
 
 # Calculate the intital condition
 u0 = ones(Float64, 4, sbp.numnodes, mesh.numBoundaryEdges)
+# u0 = ones(Float64, 4, sbp.numnodes, 2)
 
+# res = zeros(Float64, 4,sbp.numnodes,mesh.numBoundaryEdges)
+res = zeros(u0)
 
-res = zeros(Float64, 4,sbp.numnodes,mesh.numBoundaryEdges)
+println("type of u0: ", typeof(u0))
+println("size of dxidx: ", size(dxidx,4))
+println("size of u0: ", size(u0,3))
+println("size of res: ", size(res,3))
+println("size of x: ", size(x,3))
+
 boundaryintegrate!(sbp, bndryfaces, u0, x, dxidx, isentropicVortexBC, res)
