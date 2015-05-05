@@ -23,6 +23,8 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
   
   for element = 1:numEl
   
+    dofnums = getGlobalNodeNumbers(mesh, element)
+
   #   sbp = TriSBP{Float64}(degree=p)
 
     # From PUMI, PdePumiInterface.jl, line ~142
@@ -108,6 +110,19 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     end
      
     flux_result = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
+
+    println("F1hat: \n",F1)
+    println("F2hat: \n",F2)
+    println("bigQT_xi: \n",eqn.bigQT_xi)
+    println("bigQT_eta: \n",eqn.bigQT_eta)
+    println("dofnums: \n",dofnums)
+    println("dxi_dx: \n",dxi_dx)
+    println("dxi_dy: \n",dxi_dy)
+    println("deta_dx: \n",deta_dx)
+    println("deta_dy: \n",deta_dy)
+  
+    F1 = zeros(Float64, 12)
+    F2 = zeros(Float64, 12)
   
     SL_el = source_result + flux_result
   

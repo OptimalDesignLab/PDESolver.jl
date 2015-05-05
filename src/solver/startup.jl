@@ -19,7 +19,7 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "tri8l.smb"
+smb_name = "tri2l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -36,7 +36,7 @@ u = zeros(mesh.numDof) # solution at current timestep
 
 
 # populate u0 with initial condition
-ICZero(mesh, sbp, eqn, u0)
+ICLinear(mesh, sbp, eqn, u0)
 
 
 # more test code
@@ -88,9 +88,11 @@ return u
 
 end  # end evalEuler
 
+evalVolumeIntegrals(mesh, sbp, eqn, u, u0)
+
 
 # call timestepper
-u, u_hist = rk4(evalEuler, delta_t, u0, t_max)
+# u, u_hist = rk4(evalEuler, delta_t, u0, t_max)
 saveSolutionToMesh(mesh, u)
 printSolution(mesh, u)
 printCoordinates(mesh)
