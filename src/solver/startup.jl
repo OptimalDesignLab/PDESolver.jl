@@ -109,7 +109,7 @@ addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
 
 
 # call timestepper
-SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
+# SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
 saveSolutionToMesh(mesh, SL)
 printSolution(mesh, SL)
 printCoordinates(mesh)

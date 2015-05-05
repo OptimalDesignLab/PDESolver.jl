@@ -389,6 +389,7 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 # u : solution vector to be populated (mesh.numDof entries), partially populated by evalVolumeIntegrals
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
+  println("====== evalBoundaryIntegrals ======")
 
 # Nodal Coordinates
 x = zeros(Float64,(2,sbp.numnodes,getNumEl(mesh))); # nodal Coordinates of the marix
@@ -410,11 +411,22 @@ mappingjacobian!(sbp, x, dxidx, jac) # Get the Jocabian for transformation betwe
 bndryfaces = Array(Boundary, mesh.numBoundaryEdges)
 bndryfaces = getBoundaryArray(mesh)
 
+numBoundaryElements = getNumBoundaryElements(mesh)
+numEl = getNumEl(mesh)
+
 # Calculate the intital condition
-u0 = ones(Float64, 4, sbp.numnodes, mesh.numBoundaryEdges)
+# u0 = ones(Float64, 4, sbp.numnodes, mesh.numBoundaryEdges)
+u0 = ones(Float64, 4, sbp.numnodes, numEl)
 
 
-res = zeros(Float64, 4,sbp.numnodes,mesh.numBoundaryEdges) # stores the result of boundary integrate
+# res = zeros(Float64, 4,sbp.numnodes,mesh.numBoundaryEdges) # stores the result of boundary integrate
+res = zeros(u0)
+
+println("type of u0: ", typeof(u0))
+println("size of dxidx: ", size(dxidx,4))
+println("size of u0: ", size(u0,3))
+println("size of res: ", size(res,3))
+println("size of x: ", size(x,3))
 boundaryintegrate!(sbp, bndryfaces, u0, x, dxidx, isentropicVortexBC, res)
 
 return res
@@ -432,6 +444,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   # x needs to be passed
   # need to clarify u vs res. maybe change the u variable name to semilinear 
 
+  println("====== Entering edge stabilize ======")
   
 
     # dxidx dimensions:
