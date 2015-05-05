@@ -684,3 +684,20 @@ function assembleSL(vec::AbstractVector, element::Integer, component::Integer, S
   return nothing
 
 end
+
+function assembleSLNode(vec::AbstractVector, element::Integer, node::Integer, SL::Vector)
+# vec is vector of length 4 (conservative variables for a single node
+# element is the element number that the node belongs to
+# node is the node on the element (1, 2 or 3 for linear triangles)
+# SL is global solution vector
+
+  dofnums = getGlobalNodeNumbers(mesh, element)
+  dofnums_n = dofnums[:, node]
+
+  SL[dofnums_n] = vec
+  
+  return nothing
+
+end  # end function
+
+
