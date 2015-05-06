@@ -247,7 +247,7 @@ for i=1:numEl
 
       # apply initial conditions here
 #       u0[dofnums_i[:,j]] = sol
-      u0[dofnums_i[:,j]] = sol+0.01*rand(4)
+      u0[dofnums_i[:,j]] = sol+0.1*rand(4)
   end
 end
 
