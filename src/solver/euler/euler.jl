@@ -216,6 +216,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
      
     flux_result = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
 
+    #=
     println("F1hat: \n",F1)
     println("F2hat: \n",F2)
 #     println("bigQT_xi: \n",eqn.bigQT_xi)
@@ -225,6 +226,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     println("dxi_dy: \n",dxi_dy)
     println("deta_dx: \n",deta_dx)
     println("deta_dy: \n",deta_dy)
+    =#
   
     F1 = zeros(Float64, 12)
     F2 = zeros(Float64, 12)
@@ -237,7 +239,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
     # element specifies which element number the number in vec belong to
 
-    println("SL_el: ",SL_el)
+    println("- element #: ",element,"   SL_el: ",SL_el)
 
     assembleSL(SL_el, element, SL)
   
@@ -289,7 +291,7 @@ function rho1Energy2BC(q, x, dxidx, nrm)
   qg = zeros(Float64, 4)
   calcRho1Energy2(x, eqn, qg)
   
-  println("qg: ",qg)
+#   println("qg: ",qg)
 
   # Declaring constants 
   d1_0 = 1.0
@@ -352,7 +354,7 @@ function rho1Energy2BC(q, x, dxidx, nrm)
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
 
-  println("sat 1: ",sat)
+#   println("sat 1: ",sat)
 
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
@@ -372,7 +374,7 @@ function rho1Energy2BC(q, x, dxidx, nrm)
   tmp2 = gami/(a*a)
   tmp3 = d1_0/(dA*dA)
   sat[:] = sat[:] + tmp1*(tmp2*E1dq[:] + tmp3*E2dq[:])
-  println("sat 2: ",sat)
+#   println("sat 2: ",sat)
   
   #-- get E3*dq
   E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
@@ -390,10 +392,10 @@ function rho1Energy2BC(q, x, dxidx, nrm)
   #-- add to sat
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
-  println("sat 3: ",sat)
+#   println("sat 3: ",sat)
   
   returnval = sat + getEulerFlux(q, nx, ny)
-  println("returnval: ", returnval)
+#   println("returnval: ", returnval)
   return returnval
 
 end # ends the function eulerRoeSAT
@@ -520,7 +522,7 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 # u : solution vector to be populated (mesh.numDof entries), partially populated by evalVolumeIntegrals
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
-#   println("====== evalBoundaryIntegrals ======")
+  println("====== start of evalBoundaryIntegrals ======")
 
 # Nodal Coordinates
 x = zeros(Float64,(2,sbp.numnodes,getNumEl(mesh))); # nodal Coordinates of the marix
@@ -557,11 +559,13 @@ numEl = getNumEl(mesh)
 
 u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
 
+#=
 println("type of SL0: ", typeof(SL0))
 println("size of dxidx: ", size(dxidx,4))
 println("size of SL0: ", size(SL0,3))
 println("size of result: ", size(result,3))
 println("size of x: ", size(x,3))
+=#
 
 boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
@@ -573,7 +577,11 @@ for element = 1:numEl
     vec = result[:,node,element]
     assembleSLNode(vec, element, node, SL)
   end
+  println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
 end
+
+  println("==== end of evalBoundaryIntegrals ====")
+
 
   return nothing
 
@@ -583,6 +591,7 @@ end
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 
+  println("==== start of addEdgeStabilize ====")
   # alpha calculated like in edgestabilize! documentation
   # stabscale (U+a)*gamma*h^2 where U=u*n, where u is the velocity 
   #   (remember to scale by rho) and n is the unit normal vector, from nrm->dxidx, then scaled by length
@@ -666,6 +675,20 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
 
   # u argument here is SL in a different format
   edgestabilize!(sbp, interfaces, u, x, dxidx, jac, alpha, stabscale, result)
+
+  # assembling into global SL vector
+  for element = 1:numEl
+    for node = 1:sbp.numnodes
+      vec = result[:,node,element]
+      assembleSLNode(vec, element, node, SL)
+    end
+    println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
+  end
+  println("==== end of addEdgeStabilize ====")
+
+
+#   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
+#   println("==== end of evalBoundaryIntegrals ====")
 
   return nothing
 
