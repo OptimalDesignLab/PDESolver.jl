@@ -21,17 +21,17 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-#smb_name = "../../mesh_files/quarter_vortex8l.smb"
-smb_name = "../../mesh_files/quarter_vortex3l.smb"
-#smb_name = "../../mesh_files/tri8l.smb"
+# smb_name = "../../mesh_files/quarter_vortex3l.smb"
+# smb_name = "../../mesh_files/quarter_vortex8l.smb"
+smb_name = "../../mesh_files/tri2l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
 eqn = EulerEquation(sbp)
 # println("eqn.bigQT_xi = \n", eqn.bigQT_xi)
 # println("eqn.bigQT_eta = \n", eqn.bigQT_eta)
-# println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
-# println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
+println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
+println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
 
 
 # create vectors to hold solution at current, previous timestep
@@ -43,12 +43,12 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
-# ICRho1E2(mesh, sbp, eqn, SL0)
-ICIsentropicVortex(mesh, sbp, eqn, SL0)
+ICRho1E2(mesh, sbp, eqn, SL0)
+# ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 SL_exact = deepcopy(SL0)
 
-ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
+# ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
 
 # more test code
 #=
@@ -83,6 +83,7 @@ println("edgenum_local = ", edgenum_local)
 
 
 function evalEuler(t, SL0)
+  println("\n\n")
 # this function is called by time stepping algorithm
 # t is the current time
 # x is the solution value at the previous timestep
@@ -101,9 +102,18 @@ println("SL0 = ", SL0)
 # println("interface = ", interface)
 
 evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
+println("VOLVOLVOL SL = ", SL)
 evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
-addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
+println("BCBCBCBC SL = ", SL)
+SL_sum = sum(SL)
+println("BCBCBCBC SL_sum: ",SL_sum)
+
+
+
+# addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
+# println("STABSTABSTAB SL = ", SL)
 applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
+println("MASSMASSMASS SL = ", SL)
 
 #=
 # These two calls are for TESTING ONLY, delete in production code

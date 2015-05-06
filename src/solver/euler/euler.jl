@@ -214,19 +214,19 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
       i = i+4
     end
      
+#     flux_result = transpose(eqn.bigQT_xi)*(F1*dxi_dx + F2*dxi_dy) + transpose(eqn.bigQT_eta)*(F1*deta_dx + F2*deta_dy)
     flux_result = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
 
-    #=
+    println("\nelement: ",element)
     println("F1hat: \n",F1)
     println("F2hat: \n",F2)
 #     println("bigQT_xi: \n",eqn.bigQT_xi)
 #     println("bigQT_eta: \n",eqn.bigQT_eta)
-    println("dofnums: \n",dofnums)
+#     println("dofnums: \n",dofnums)
     println("dxi_dx: \n",dxi_dx)
     println("dxi_dy: \n",dxi_dy)
     println("deta_dx: \n",deta_dx)
     println("deta_dy: \n",deta_dy)
-    =#
   
     F1 = zeros(Float64, 12)
     F2 = zeros(Float64, 12)
@@ -239,7 +239,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
     # element specifies which element number the number in vec belong to
 
-    println("- element #: ",element,"   SL_el: ",SL_el)
+#     println("- element #: ",element,"   SL_el: ",SL_el)
 
     assembleSL(SL_el, element, SL)
   
@@ -357,7 +357,7 @@ function rho1Energy2BC(q, x, dxidx, nrm)
 #   println("sat 1: ",sat)
 
   #-- get E1*dq
-  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq3
   E1dq[2] = E1dq[1]*u
   E1dq[3] = E1dq[1]*v
   E1dq[4] = E1dq[1]*H
@@ -559,6 +559,13 @@ numEl = getNumEl(mesh)
 
 u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
 
+for elix = 1:length(bndryfaces)
+  println("elix: ",elix)
+  println("bndryfaces[elix].element: ",bndryfaces[elix].element)
+  println("bndryfaces[elix].face: ",bndryfaces[elix].face)
+end
+
+
 #=
 println("type of SL0: ", typeof(SL0))
 println("size of dxidx: ", size(dxidx,4))
@@ -567,10 +574,12 @@ println("size of result: ", size(result,3))
 println("size of x: ", size(x,3))
 =#
 
-boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
-# boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
+# boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
+boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
 result = (-1)*result
+
+println("BC result: ",result)
 
 # assembling into global SL vector
 for element = 1:numEl
@@ -578,7 +587,7 @@ for element = 1:numEl
     vec = result[:,node,element]
     assembleSLNode(vec, element, node, SL)
   end
-  println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
+#   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
 end
 
   println("==== end of evalBoundaryIntegrals ====")
@@ -645,9 +654,9 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     # gamma stored in EulerEquation type
     gamma = eqn.gamma
 
-    println("pressure: ",pressure)
-    println("gamma: ",gamma)
-    println("rho: ",rho)
+#     println("pressure: ",pressure)
+#     println("gamma: ",gamma)
+#     println("rho: ",rho)
     # ideal gas law
     speed_sound = sqrt((gamma*pressure)/rho)
 
@@ -658,8 +667,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
     #     it by an order of magnitude at at time until RK is stable.  
     #     Once you find a value that works, try increasing it slowly.
-#     edge_stab_gamma = 0.01  # default
-    edge_stab_gamma = 0.0 
+    edge_stab_gamma = 0.01  # default
+#     edge_stab_gamma = 0.0 
 #     edge_stab_gamma = 0.00001
 
     # edge lengths component wise
@@ -685,7 +694,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
       vec = result[:,node,element]
       assembleSLNode(vec, element, node, SL)
     end
-    println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
+#     println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
   end
   println("==== end of addEdgeStabilize ====")
 
@@ -810,7 +819,7 @@ function calcPressure(SL_vals::AbstractVector, eqn::EulerEquation)
 
   internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
   pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
-  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+#   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
 
   return pressure
 
@@ -869,7 +878,7 @@ function assembleSLNode(vec::AbstractVector, element::Integer, node::Integer, SL
   dofnums = getGlobalNodeNumbers(mesh, element)
   dofnums_n = dofnums[:, node]
 
-  SL[dofnums_n] = vec
+  SL[dofnums_n] += vec
   
   return nothing
 
