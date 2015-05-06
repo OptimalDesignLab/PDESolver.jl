@@ -215,25 +215,58 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     end
      
 #     flux_result = transpose(eqn.bigQT_xi)*(F1*dxi_dx + F2*dxi_dy) + transpose(eqn.bigQT_eta)*(F1*deta_dx + F2*deta_dy)
-    flux_result = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
+#     flux_result = eqn.bigQT_xi*(F1*dxi_dx + F2*dxi_dy) + eqn.bigQT_eta*(F1*deta_dx + F2*deta_dy)
+
+    F_xi_sbp = zeros(Float64, 4, 3, 1)
+    F_eta_sbp = zeros(Float64, 4, 3, 1)
+
+    i = 1
+    for node_ix = 1:sbp.numnodes
+      F_xi_sbp[:, node_ix, 1] = F1[i:i+3]*dxi_dx + F2[i:i+3]*dxi_dy
+      F_eta_sbp[:, node_ix, 1] = F1[i:i+3]*deta_dx + F2[i:i+3]*deta_dy
+      i = i+4
+    end
+
+    result = zeros(F_xi_sbp)
+
+#     trans = true
+
+    weakdifferentiate!(sbp, 1, F_xi_sbp, result, trans=true)
+    weakdifferentiate!(sbp, 1, F_eta_sbp, result, trans=true)
+
+
+    for node = 1:sbp.numnodes
+      # SOURCE NOT BEING ASSEMBLED
+      vec = result[:,node,1]
+      assembleSLNode(vec, element, node, SL)
+    end
 
     println("\nelement: ",element)
     println("F1hat: \n",F1)
     println("F2hat: \n",F2)
-#     println("bigQT_xi: \n",eqn.bigQT_xi)
-#     println("bigQT_eta: \n",eqn.bigQT_eta)
+#     println("\n")
+#     println("bigQT_xi: \n",round(eqn.bigQT_xi,4))
+#     println("bigQT_eta: \n",round(eqn.bigQT_eta,4))
+#     println("\n")
+#     println("sbp.Q_xi: ",transpose(round(sbp.Q[:,:,1],4)))
+#     println("sbp.Q_eta: ",transpose(round(sbp.Q[:,:,2],4)))
+    println("\n")
+    println("result: ",round(result, 4))
+    println("\n")
+
 #     println("dofnums: \n",dofnums)
-    println("dxi_dx: \n",dxi_dx)
-    println("dxi_dy: \n",dxi_dy)
-    println("deta_dx: \n",deta_dx)
-    println("deta_dy: \n",deta_dy)
+#     println("dxi_dx: \n",dxi_dx)
+#     println("dxi_dy: \n",dxi_dy)
+#     println("deta_dx: \n",deta_dx)
+#     println("deta_dy: \n",deta_dy)
   
     F1 = zeros(Float64, 12)
     F2 = zeros(Float64, 12)
   
-    SL_el = source_result + flux_result
+#     SL_el = source_result + result
+#     SL_el = source_result + flux_result
     println("source_result: ",source_result)
-    println("flux_result: ",flux_result)
+#     println("flux_result: ",round(flux_result,4))
   
     # function assembleU(vec::AbstractVector, element::Integer, u::AbstractVector)
     # assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector u
@@ -241,7 +274,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 
 #     println("- element #: ",element,"   SL_el: ",SL_el)
 
-    assembleSL(SL_el, element, SL)
+#     assembleSL(SL_el, element, SL)
   
   end
   
@@ -307,6 +340,10 @@ function rho1Energy2BC(q, x, dxidx, nrm)
   # Begin main executuion
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+  println("nrm: ",nrm)
+  println("nx: ",nx)
+  println("ny: ",ny)
 
   dA = sqrt(nx*nx + ny*ny)
   
@@ -559,11 +596,11 @@ numEl = getNumEl(mesh)
 
 u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
 
-for elix = 1:length(bndryfaces)
-  println("elix: ",elix)
-  println("bndryfaces[elix].element: ",bndryfaces[elix].element)
-  println("bndryfaces[elix].face: ",bndryfaces[elix].face)
-end
+# for elix = 1:length(bndryfaces)
+#   println("elix: ",elix)
+#   println("bndryfaces[elix].element: ",bndryfaces[elix].element)
+#   println("bndryfaces[elix].face: ",bndryfaces[elix].face)
+# end
 
 
 #=

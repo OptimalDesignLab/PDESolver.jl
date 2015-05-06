@@ -14,7 +14,7 @@ include("./output.jl")  # printing results to files
 
 # timestepping parameters
 delta_t = 0.01
-t_max = 22.0
+t_max = 1.0
 
 # create operator
 sbp = TriSBP{Float64}()  # create linear sbp operator
