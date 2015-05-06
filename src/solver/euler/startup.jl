@@ -43,12 +43,12 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
-#ICRho1E2(mesh, sbp, eqn, SL0)
+# ICRho1E2(mesh, sbp, eqn, SL0)
 ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 SL_exact = deepcopy(SL0)
 
- ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
+ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
 
 # more test code
 #=
@@ -89,7 +89,8 @@ function evalEuler(t, SL0)
 # u = output, the function value at the current timestep
 # u is declared outside this function to avoid reallocating memory
 
-SL[:] = 0.0  # zero out u before starting
+# SL[:] = 0.0  # zero out u before starting
+SL = zeros(SL0)
 println("SL0 = ", SL0)
 # u, x, dxidx, jac, res, interface = dataPrep(mesh, sbp, eqn, SL, SL0)
 # println("u = ", u)
@@ -98,11 +99,37 @@ println("SL0 = ", SL0)
 # println("jac = ", jac)
 # println("res = ", res)
 # println("interface = ", interface)
+
 evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
 evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
 addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
 applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
 
+#=
+# These two calls are for TESTING ONLY, delete in production code
+println("SL0 = ", SL0,"\n\n")
+println("SL = ", SL)
+print("\n")
+println("Running evalVolumeIntegrals")
+evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
+print("\n")
+println("SL0 = ", SL0,"\n\n")
+println("SL = ", SL)
+print("\n")
+println("Running evalBoundaryIntegrals")
+evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
+print("\n")
+println("SL0 = ", SL0,"\n\n")
+println("SL = ", SL)
+print("\n")
+println("Running addEdgeStabilize")
+addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
+print("\n")
+println("at end: SL0 = ", SL0,"\n\n")
+println("at end: SL = ", SL)
+=#
+
+println("+++++++++ SL +++++++++:\n",SL)
 
 return SL
 
