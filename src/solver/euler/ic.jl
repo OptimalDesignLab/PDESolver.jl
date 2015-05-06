@@ -1,4 +1,11 @@
 # functions that populate the initial conditions
+# List of functions:
+#   ICZero (all zeros)
+#   ICRho1E2 (all zeros, except rho = 1, E = 2)
+#   ICLinear
+#   ICsmoothHeavisideder
+#   ICsmoothHeaviside
+#   ICIsentropicVortex
 
 function ICZero(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
 # populate u0 with initial values
@@ -264,6 +271,7 @@ u_norm_r = M_in*a_r  # M_in is constant
 # println("u_norm_r = ", u_norm_r)
 u_r = -u_norm_r*sin(theta)
 v_r = u_norm_r*cos(theta)
+# println("============================================ U_R: ",u_r,"  V_R: ",v_r)
 
 # println("u_r = ", u_r, " v_r = ", v_r)
 

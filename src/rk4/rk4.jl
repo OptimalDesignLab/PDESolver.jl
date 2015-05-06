@@ -30,6 +30,8 @@ function rk4(f, h, x_ic, t_max)
 
   for i=2:(t_steps + 1)
 
+    update_msg = string("RK4 i: ",i,"\n")
+    write(STDERR,update_msg)
 #     println("iter: ",iter)
     iter += 1
     println("in rk4, iter = ", iter)

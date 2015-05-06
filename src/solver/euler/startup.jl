@@ -13,15 +13,15 @@ include("./output.jl")  # printing results to files
 # include("./euler/addEdgeStabilize.jl")  # printing results to files
 
 # timestepping parameters
-delta_t = 0.02
-t_max = 1.00
+delta_t = 0.01
+t_max = 1.0
 
 # create operator
 sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "../../mesh_files/tri18l.smb"
+smb_name = "../../mesh_files/quarter_vortex8l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -41,7 +41,8 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
-ICRho1E2(mesh, sbp, eqn, SL0)
+# ICRho1E2(mesh, sbp, eqn, SL0)
+ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 # more test code
 #=
@@ -130,3 +131,5 @@ SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
 saveSolutionToMesh(mesh, SL)
 printSolution(mesh, SL)
 printCoordinates(mesh)
+writeVtkFiles("solution_done",mesh.m_ptr)
+
