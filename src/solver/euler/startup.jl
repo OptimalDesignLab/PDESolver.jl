@@ -21,7 +21,8 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "../../mesh_files/quarter_vortex8l.smb"
+# smb_name = "../../mesh_files/quarter_vortex8l.smb"
+smb_name = "../../mesh_files/tri8l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -41,8 +42,12 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
-# ICRho1E2(mesh, sbp, eqn, SL0)
-ICIsentropicVortex(mesh, sbp, eqn, SL0)
+ICRho1E2(mesh, sbp, eqn, SL0)
+# ICIsentropicVortex(mesh, sbp, eqn, SL0)
+
+SL_exact = deepcopy(SL0)
+
+# ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
 
 # more test code
 #=
@@ -128,6 +133,17 @@ println("at end: SL = ", SL)
 
 # call timestepper
 SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
+
+SL_diff = SL - SL_exact
+SL_norm = norm(SL_diff)
+SL_side_by_side = [SL_exact ; SL]
+
+println("\n\n\n")
+println("SL_diff: \n",SL_diff,"\n")
+println("SL_side_by_side: \n",SL_side_by_side,"\n")
+println("SL_norm: \n",SL_norm,"\n")
+
+
 saveSolutionToMesh(mesh, SL)
 printSolution(mesh, SL)
 printCoordinates(mesh)
