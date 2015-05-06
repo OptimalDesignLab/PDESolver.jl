@@ -1,6 +1,6 @@
 # startup script for solving an equation
 
-# push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
+ push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
 push!(LOAD_PATH, "../../../../PUMI")
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
@@ -14,15 +14,16 @@ include("./output.jl")  # printing results to files
 
 # timestepping parameters
 delta_t = 0.01
-t_max = 1.0
+t_max = 22.0
 
 # create operator
 sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-# smb_name = "../../mesh_files/quarter_vortex8l.smb"
-smb_name = "../../mesh_files/tri8l.smb"
+#smb_name = "../../mesh_files/quarter_vortex8l.smb"
+smb_name = "../../mesh_files/quarter_vortex3l.smb"
+#smb_name = "../../mesh_files/tri8l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -42,12 +43,12 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
-ICRho1E2(mesh, sbp, eqn, SL0)
-# ICIsentropicVortex(mesh, sbp, eqn, SL0)
+#ICRho1E2(mesh, sbp, eqn, SL0)
+ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 SL_exact = deepcopy(SL0)
 
-# ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
+ ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
 
 # more test code
 #=
@@ -135,7 +136,7 @@ println("at end: SL = ", SL)
 SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
 
 SL_diff = SL - SL_exact
-SL_norm = norm(SL_diff)
+SL_norm = norm(SL_diff)/mesh.numDof
 SL_side_by_side = [SL_exact ; SL]
 
 println("\n\n\n")
