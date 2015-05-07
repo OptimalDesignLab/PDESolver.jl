@@ -232,7 +232,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 #     trans = true
 
     weakdifferentiate!(sbp, 1, F_xi_sbp, result, trans=true)
-    weakdifferentiate!(sbp, 1, F_eta_sbp, result, trans=true)
+    weakdifferentiate!(sbp, 2, F_eta_sbp, result, trans=true)
 
 
     for node = 1:sbp.numnodes
@@ -254,6 +254,8 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
     println("result: ",round(result, 4))
     println("\n")
 
+    println("F_xi_sbp = ", F_xi_sbp)
+    println("F_eta_sbp = ", F_eta_sbp)
 #     println("dofnums: \n",dofnums)
 #     println("dxi_dx: \n",dxi_dx)
 #     println("dxi_dy: \n",dxi_dy)
@@ -611,7 +613,7 @@ println("size of result: ", size(result,3))
 println("size of x: ", size(x,3))
 =#
 
-# boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
+#boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
 boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
 result = (-1)*result
