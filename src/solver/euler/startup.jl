@@ -105,15 +105,27 @@ evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
 println("VOLVOLVOL SL = ", SL)
 evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
 println("BCBCBCBC SL = ", SL)
+for i=1:size(SL)[1]
+  println(i, " ", SL[i])
+end
 SL_sum = sum(SL)
 println("BCBCBCBC SL_sum: ",SL_sum)
 
 
 
 addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
+println("EDGEEDGEEDGE SL: ")
+for i=1:size(SL)[1]
+  println(i, " ", SL[i])
+end
+
 # println("STABSTABSTAB SL = ", SL)
 applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
 println("MASSMASSMASS SL = ", SL)
+for i=1:size(SL)[1]
+  println(i, " ", SL[i])
+end
+
 
 #=
 # These two calls are for TESTING ONLY, delete in production code
