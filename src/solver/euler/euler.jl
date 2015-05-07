@@ -718,7 +718,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     h = sqrt(h_x^2 + h_y^2)
 
     # scaled velocity scalar
-    U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
+#     U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
+    U = vel_x*(h_x/h) + vel_y*(h_y/h)
 
     return (U + speed_sound)*edge_stab_gamma*h^2
 
