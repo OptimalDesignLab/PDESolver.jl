@@ -721,7 +721,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
 #     U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
     U = vel_x*(h_x/h) + vel_y*(h_y/h)
 
-    return (U + speed_sound)*edge_stab_gamma*h^2
+#     return (U + speed_sound)*edge_stab_gamma*h^2
+    return (abs(U) + speed_sound)*edge_stab_gamma*h^2
 
   end
 
