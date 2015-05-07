@@ -706,7 +706,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
     #     it by an order of magnitude at at time until RK is stable.  
     #     Once you find a value that works, try increasing it slowly.
-    edge_stab_gamma = 0.01  # default
+    edge_stab_gamma = -0.01  # default
 #     edge_stab_gamma = 0.0 
 #     edge_stab_gamma = 0.00001
 

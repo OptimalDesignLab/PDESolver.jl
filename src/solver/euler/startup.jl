@@ -23,7 +23,7 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 dmg_name = ".null"
 #smb_name = "../../mesh_files/quarter_vortex3l.smb"
 # smb_name = "../../mesh_files/quarter_vortex8l.smb"
-smb_name = "../../mesh_files/tri2l.smb"
+smb_name = "../../mesh_files/tri8l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
