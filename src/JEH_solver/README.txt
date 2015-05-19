@@ -1,3 +1,8 @@
+How to run Prof. Hicken's euler code
+====================================
+
+julia environment:
+
 push!(LOAD_PATH, "/users/ashlea/.julia/v0.4/PUMI")
 using PumiInterface
 using PdePumiInterface
