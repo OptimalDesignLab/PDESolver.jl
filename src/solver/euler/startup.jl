@@ -9,6 +9,7 @@ include("../../equation/Equation.jl")  # equation types
 include("../../rk4/rk4.jl")  # timestepping
 include("./euler.jl")  # solver functions
 include("./ic.jl")  # initial conditions functions
+include("./bc.jl")  # boundary conditions
 include("./output.jl")  # printing results to files
 # include("./euler/addEdgeStabilize.jl")  # printing results to files
 
@@ -17,7 +18,7 @@ include("./output.jl")  # printing results to files
 
 # timestepping parameters
 delta_t = 0.005
-t_max = 1.00
+t_max = 5.00
 #t_max = 1.0
 
 # create operator
@@ -25,9 +26,9 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-#smb_name = "../../mesh_files/quarter_vortex3l.smb"
-# smb_name = "../../mesh_files/quarter_vortex8l.smb"
-smb_name = "../../mesh_files/tri30l.smb"
+smb_name = "../../mesh_files/quarter_vortex3l.smb"
+#smb_name = "../../mesh_files/quarter_vortex8l.smb"
+#smb_name = "../../mesh_files/tri30l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
@@ -46,9 +47,9 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # populate u0 with initial condition
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
-# ICIsentropicVortex(mesh, sbp, eqn, SL0)
+ ICIsentropicVortex(mesh, sbp, eqn, SL0)
 #ICRho1E2(mesh, sbp, eqn, SL0)
-ICRho1E2U3(mesh, sbp, eqn, SL0)
+#ICRho1E2U3(mesh, sbp, eqn, SL0)
 
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
