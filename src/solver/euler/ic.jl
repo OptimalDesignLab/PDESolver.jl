@@ -78,6 +78,93 @@ return nothing
 end  # end function
 
 
+function ICRho1E2U3(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+numEl = getNumEl(mesh)
+nnodes = operator.numnodes
+dofpernode = getNumDofPerNode(mesh)
+sol = zeros(4)
+for i=1:numEl
+  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
+  coords = getElementVertCoords(mesh, [i])
+
+  for j=1:nnodes
+      # get dof numbers for each variable
+      dofnum_rho = dofnums_i[1,j]
+      dofnum_rhou = dofnums_i[2,j]
+      dofnum_rhov = dofnums_i[3,j]
+      dofnum_e = dofnums_i[4,j]
+
+      # coordinates of this node (must be a vertex)
+      x = coords[1,j]
+      y = coords[2,j]
+      z = coords[3,j]
+
+      calcRho1Energy2U3(coords[:,j], eqn, sol)
+
+
+      # apply initial conditions here
+#      u0[dofnum_rho] = 1.0
+#      u0[dofnum_rhou] = 3.0
+#      u0[dofnum_rhov] = 0.0
+#      u0[dofnum_e] = 2.0
+
+      u0[dofnums_i[:,j]] = sol
+  end
+end
+
+return nothing
+
+end  # end function
+
+
+
+function ICVortex(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+numEl = getNumEl(mesh)
+nnodes = operator.numnodes
+dofpernode = getNumDofPerNode(mesh)
+sol = zeros(4)
+for i=1:numEl
+  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
+  coords = getElementVertCoords(mesh, [i])
+
+  for j=1:nnodes
+      # get dof numbers for each variable
+      dofnum_rho = dofnums_i[1,j]
+      dofnum_rhou = dofnums_i[2,j]
+      dofnum_rhov = dofnums_i[3,j]
+      dofnum_e = dofnums_i[4,j]
+
+      # coordinates of this node (must be a vertex)
+      x = coords[1,j]
+      y = coords[2,j]
+      z = coords[3,j]
+
+      calcVortex(coords[:,j], eqn, sol)
+
+
+      # apply initial conditions here
+#      u0[dofnum_rho] = 1.0
+#      u0[dofnum_rhou] = 3.0
+#      u0[dofnum_rhov] = 0.0
+#      u0[dofnum_e] = 2.0
+
+      u0[dofnums_i[:,j]] = sol
+  end
+end
+
+return nothing
+
+end  # end function
+
+
+
+
 function ICLinear(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -296,8 +383,8 @@ p_r = p_in*( (rho_r/rho_in)^gamma)  # isentropic relation
 a_r = sqrt(gamma*p_r/rho_r)
 u_norm_r = M_in*a_r  # M_in is constant
 # println("u_norm_r = ", u_norm_r)
-u_r = -u_norm_r*sin(theta)
-v_r = u_norm_r*cos(theta)
+u_r = u_norm_r*sin(theta)
+v_r = -u_norm_r*cos(theta)
 # println("============================================ U_R: ",u_r,"  V_R: ",v_r)
 
 # println("u_r = ", u_r, " v_r = ", v_r)
@@ -325,6 +412,45 @@ function calcRho1Energy2(coords::AbstractVector, eqn::EulerEquation, sol::Abstra
 end
 
 
+function calcRho1Energy2U3(coords::AbstractVector, eqn::EulerEquation, sol::AbstractVector)
+  # for square test case with rho = 1, everything else  = 0
+
+  sol[1] = 1.0
+  sol[2] = 0.49
+  sol[3] = 0.49
+  sol[4] = 2.0
+
+  return nothing
+end
+
+
+function calcVortex(coords::AbstractVector, eqn::EulerEquation, sol::AbstractVector)
+# solid body rotation
+  x = coords[1]
+  y = coords[2]
+
+#  r = sqrt(x*x + y*y)
+#  theta = atan2(y, x)
+
+  omega = 0.5
+
+  u_norm = omega*r
+
+#  u = -u_norm*sin(theta)
+#  v = u_norm*cos(theta)
+  u0 = 0.1
+
+
+  rho = 1.0
+  E = 2.0
+
+  sol[1] = rho
+  sol[2] = rho*u0*x
+  sol[3] = 0.0
+  sol[4] = E
+
+  return nothing
+end
 
 
 

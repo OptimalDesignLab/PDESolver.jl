@@ -1,7 +1,7 @@
 # startup script for solving an equation
 
-# push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
-push!(LOAD_PATH, "../../../../PUMI")
+ push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
+#push!(LOAD_PATH, "../../../../PUMI")
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -12,9 +12,13 @@ include("./ic.jl")  # initial conditions functions
 include("./output.jl")  # printing results to files
 # include("./euler/addEdgeStabilize.jl")  # printing results to files
 
+# added a new comment
+# another new comment
+
 # timestepping parameters
-delta_t = 0.01
-t_max = 20.0
+delta_t = 0.005
+t_max = 1.00
+#t_max = 1.0
 
 # create operator
 sbp = TriSBP{Float64}()  # create linear sbp operator
@@ -23,15 +27,15 @@ sbp = TriSBP{Float64}()  # create linear sbp operator
 dmg_name = ".null"
 #smb_name = "../../mesh_files/quarter_vortex3l.smb"
 # smb_name = "../../mesh_files/quarter_vortex8l.smb"
-smb_name = "../../mesh_files/tri8l.smb"
+smb_name = "../../mesh_files/tri30l.smb"
 mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
 eqn = EulerEquation(sbp)
 # println("eqn.bigQT_xi = \n", eqn.bigQT_xi)
 # println("eqn.bigQT_eta = \n", eqn.bigQT_eta)
-println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
-println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
+#println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
+#println("sbp.QT_eta' = \n", sbp.Q[:,:,2].')
 
 
 # create vectors to hold solution at current, previous timestep
@@ -43,12 +47,20 @@ SL = zeros(mesh.numDof) # solution at current timestep
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
-ICRho1E2(mesh, sbp, eqn, SL0)
+#ICRho1E2(mesh, sbp, eqn, SL0)
+ICRho1E2U3(mesh, sbp, eqn, SL0)
+
+#ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 SL_exact = deepcopy(SL0)
 
 # ICIsentropicVortexWithNoise(mesh, sbp, eqn, SL0)
+
+saveSolutionToMesh(mesh, SL0)
+
+writeVtkFiles("solution_ic",mesh.m_ptr)
+
 
 # more test code
 #=
@@ -82,8 +94,11 @@ println("edgenum_local = ", edgenum_local)
 =#
 
 
+
+cntr = 1
+
 function evalEuler(t, SL0)
-  println("\n\n")
+#  println("\n")
 # this function is called by time stepping algorithm
 # t is the current time
 # x is the solution value at the previous timestep
@@ -92,7 +107,7 @@ function evalEuler(t, SL0)
 
 # SL[:] = 0.0  # zero out u before starting
 SL = zeros(SL0)
-println("SL0 = ", SL0)
+#println("SL0 = ", SL0)
 # u, x, dxidx, jac, res, interface = dataPrep(mesh, sbp, eqn, SL, SL0)
 # println("u = ", u)
 # println("x = ", x)
@@ -102,29 +117,32 @@ println("SL0 = ", SL0)
 # println("interface = ", interface)
 
 evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
-println("VOLVOLVOL SL = ", SL)
+#println("VOLVOLVOL SL = ", SL)
 evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
-println("BCBCBCBC SL = ", SL)
-for i=1:size(SL)[1]
-  println(i, " ", SL[i])
-end
+#println("BCBCBCBC SL = ", SL)
+#for i=1:size(SL)[1]
+#  println(i, " ", SL[i])
+#end
 SL_sum = sum(SL)
-println("BCBCBCBC SL_sum: ",SL_sum)
+#println("BCBCBCBC SL_sum: ",SL_sum)
 
 
 
 addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
-println("EDGEEDGEEDGE SL: ")
-for i=1:size(SL)[1]
-  println(i, " ", SL[i])
-end
+#println("EDGEEDGEEDGE SL: ")
+#for i=1:size(SL)[1]
+#  println(i, " ", SL[i])
+#end
 
 # println("STABSTABSTAB SL = ", SL)
 applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
-println("MASSMASSMASS SL = ", SL)
-for i=1:size(SL)[1]
-  println(i, " ", SL[i])
-end
+#println("MASSMASSMASS SL = ", SL)
+#for i=1:size(SL)[1]
+#  println(i, " ", SL[i])
+#end
+
+#applyDissipation(mesh, sbp, eqn, SL, SL0)
+
 
 
 #=
@@ -151,8 +169,15 @@ println("at end: SL0 = ", SL0,"\n\n")
 println("at end: SL = ", SL)
 =#
 
-println("+++++++++ SL +++++++++:\n",SL)
+#println("+++++++++ SL +++++++++:\n",SL)
+cntr = 100
+if (mod(cntr, 100) == 0)
+  err_norm = norm(SL)/mesh.numDof
+#  err_norm_string = string(err_norm)
+  print(" ", err_norm)
+end
 
+cntr += 1
 return SL
 
 end  # end evalEuler
@@ -182,7 +207,7 @@ println("at end: SL = ", SL)
 =#
 
 # call timestepper
-SL, SL_hist = rk4(evalEuler, delta_t, SL0, t_max)
+SL = rk4(evalEuler, delta_t, SL0, t_max)
 
 SL_diff = SL - SL_exact
 SL_norm = norm(SL_diff)/mesh.numDof
@@ -195,7 +220,7 @@ for i=1:size(SL_diff)[1]
 end
 println("SL_side_by_side: \n")
 for i=1:size(SL_side_by_side)[1]
-  println(SL_side_by_side[i,:])
+  println(i, " ", SL_side_by_side[i,:])
 end
 println("SL_norm: \n",SL_norm,"\n")
 

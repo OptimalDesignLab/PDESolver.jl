@@ -119,7 +119,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
   # this is commented out because it gets zeroed out earlier, and we don't want to throw out other work
 #   SL = zeros(Float64,mesh.numDof)
 
-  println("==== in evalVolumeIntegrals ====")
+#  println("==== in evalVolumeIntegrals ====")
   
   for element = 1:numEl
   
@@ -241,21 +241,21 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
       assembleSLNode(vec, element, node, SL)
     end
 
-    println("\nelement: ",element)
-    println("F1hat: \n",F1)
-    println("F2hat: \n",F2)
+#    println("\nelement: ",element)
+#    println("F1hat: \n",F1)
+#    println("F2hat: \n",F2)
 #     println("\n")
 #     println("bigQT_xi: \n",round(eqn.bigQT_xi,4))
 #     println("bigQT_eta: \n",round(eqn.bigQT_eta,4))
 #     println("\n")
 #     println("sbp.Q_xi: ",transpose(round(sbp.Q[:,:,1],4)))
 #     println("sbp.Q_eta: ",transpose(round(sbp.Q[:,:,2],4)))
-    println("\n")
-    println("result: ",round(result, 4))
-    println("\n")
+#    println("\n")
+#    println("result: ",round(result, 4))
+#    println("\n")
 
-    println("F_xi_sbp = ", F_xi_sbp)
-    println("F_eta_sbp = ", F_eta_sbp)
+#    println("F_xi_sbp = ", F_xi_sbp)
+#    println("F_eta_sbp = ", F_eta_sbp)
 #     println("dofnums: \n",dofnums)
 #     println("dxi_dx: \n",dxi_dx)
 #     println("dxi_dy: \n",dxi_dy)
@@ -267,7 +267,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
   
 #     SL_el = source_result + result
 #     SL_el = source_result + flux_result
-    println("source_result: ",source_result)
+#    println("source_result: ",source_result)
 #     println("flux_result: ",round(flux_result,4))
   
     # function assembleU(vec::AbstractVector, element::Integer, u::AbstractVector)
@@ -280,7 +280,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
   
   end
   
-  println("==== end of evalVolumeIntegrals ====")
+#  println("==== end of evalVolumeIntegrals ====")
   return nothing 
 
 end
@@ -324,7 +324,8 @@ function rho1Energy2BC(q, x, dxidx, nrm)
 
   # getting qg
   qg = zeros(Float64, 4)
-  calcRho1Energy2(x, eqn, qg)
+#  calcRho1Energy2(x, eqn, qg)
+   calcRho1Energy2U3(x, eqn, qg)
   
 #   println("qg: ",qg)
 
@@ -343,9 +344,9 @@ function rho1Energy2BC(q, x, dxidx, nrm)
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
-  println("nrm: ",nrm)
-  println("nx: ",nx)
-  println("ny: ",ny)
+#  println("nrm: ",nrm)
+#  println("nx: ",nx)
+#  println("ny: ",ny)
 
   dA = sqrt(nx*nx + ny*ny)
   
@@ -448,13 +449,14 @@ function isentropicVortexBC(q, x, dxidx, nrm)
   # getting qg
   qg = zeros(Float64, 4)
   calcIsentropicVortex(x, eqn, qg)
+#  calcVortex(x, eqn, qg)
 
   # Declaring constants 
   d1_0 = 1.0
   d0_0 = 0.0
   d0_5 = 0.5
   tau = 1.0
-  sgn = 1.0
+  sgn = -1.0
   gamma = 1.4
   gami = gamma - 1
   sat_Vn = 0.025
@@ -561,7 +563,7 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 # u : solution vector to be populated (mesh.numDof entries), partially populated by evalVolumeIntegrals
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
-  println("====== start of evalBoundaryIntegrals ======")
+#  println("====== start of evalBoundaryIntegrals ======")
 
 # Nodal Coordinates
 x = zeros(Float64,(2,sbp.numnodes,getNumEl(mesh))); # nodal Coordinates of the marix
@@ -614,11 +616,13 @@ println("size of x: ", size(x,3))
 =#
 
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
+
+#boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
 boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
 result = (-1)*result
 
-println("BC result: ",result)
+#println("BC result: ",result)
 
 # assembling into global SL vector
 for element = 1:numEl
@@ -629,7 +633,7 @@ for element = 1:numEl
 #   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
 end
 
-  println("==== end of evalBoundaryIntegrals ====")
+#  println("==== end of evalBoundaryIntegrals ====")
 
 
   return nothing
@@ -640,7 +644,7 @@ end
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 
-  println("==== start of addEdgeStabilize ====")
+#  println("==== start of addEdgeStabilize ====")
   # alpha calculated like in edgestabilize! documentation
   # stabscale (U+a)*gamma*h^2 where U=u*n, where u is the velocity 
   #   (remember to scale by rho) and n is the unit normal vector, from nrm->dxidx, then scaled by length
@@ -737,7 +741,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     end
 #     println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
   end
-  println("==== end of addEdgeStabilize ====")
+#  println("==== end of addEdgeStabilize ====")
 
 
 #   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
@@ -746,6 +750,74 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   return nothing
 
 end
+
+
+
+
+function applyDissipation(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
+# apply sketchy dissipation scheme
+
+  # get some data
+  u, x, dxidx, jac, res_xi, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
+
+  res2_xi = zeros(res_xi)
+
+
+  res_eta= zeros(res_xi)
+  res2_eta = zeros(res_xi)
+
+  weakdifferentiate!(sbp, 1, u, res_xi)
+
+  mass_matrix = sbp.w
+
+  # apply inverse mass matrix twice
+  res_xi[:, 1, :] /= mass_matrix[1]*mass_matrix[1]
+  res_xi[:, 2, :] /= mass_matrix[2]*mass_matrix[2]
+  res_xi[:, 3, :] /= mass_matrix[3]*mass_matrix[3]
+ 
+
+   weakdifferentiate!(sbp, 1, res_xi, res2_xi; trans=true)
+
+   # assemble
+for element = 1:mesh.numEl
+  for node = 1:sbp.numnodes
+    vec = -res2_xi[:,node,element]
+    assembleSLNode(vec, element, node, SL)
+  end
+#   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
+end
+
+
+  # now do it in the eta direction
+
+ weakdifferentiate!(sbp, 2, u, res_eta)
+
+  mass_matrix = sbp.w
+
+  # apply inverse mass matrix twice
+  res_eta[:, 1, :] /= mass_matrix[1]*mass_matrix[1]
+  res_eta[:, 2, :] /= mass_matrix[2]*mass_matrix[2]
+  res_eta[:, 3, :] /= mass_matrix[3]*mass_matrix[3]
+ 
+   weakdifferentiate!(sbp, 2, res_eta, res2_eta; trans=true)
+
+   # assemble
+for element = 1:mesh.numEl
+  for node = 1:sbp.numnodes
+    vec = -res2_eta[:,node,element]
+    assembleSLNode(vec, element, node, SL)
+  end
+#   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
+end
+
+
+
+
+  return nothing
+
+end
+
+
 
 
 
