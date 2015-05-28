@@ -111,6 +111,8 @@ function calcIsentropicVortex!{T}(coords::Array{T}, sol::Array{T})
   x = coords[1]
   y = coords[2]
 
+#  println("for points ($x, $y)")
+
   gamma = γ
   gami = gamma-1.0
 
@@ -121,6 +123,9 @@ function calcIsentropicVortex!{T}(coords::Array{T}, sol::Array{T})
 
   rinv = ri/sqrt(x*x + y*y)
   rho = rhoi*(1.0 + 0.5*gami*Mai*Mai*(1.0 - rinv*rinv))^(1.0/gami)
+
+#  println("rho = ", rho)
+
   Ma = sqrt((2.0/gami)*( ( (rhoi/rho)^(gami) ) * 
                          (1.0 + 0.5*gami*Mai*Mai) - 1.0 ) )
   theta = atan2(y,x)

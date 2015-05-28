@@ -14,6 +14,14 @@ function runtest(;degree::Int=1, Nx::Int=2, Ny::Int=2, cfl::Float64=0.5,
   u[2,:] = 0.5
   u[3,:] = 0.5
 
+#  println("coords = ", solver.mesh.x)
+
+  (numrow, numcol) = size(solver.mesh.x)
+  println("size(mesh.x) = ", size(solver.mesh.x))
+  for i=1:numcol
+    println(i, "| ", solver.mesh.x[:,i])
+  end
+
   dt = cfl # approximation!
 
   # set the initial condition to be the exact solution
@@ -25,7 +33,7 @@ function runtest(;degree::Int=1, Nx::Int=2, Ny::Int=2, cfl::Float64=0.5,
 
   resnorm = Solver.timemarchRK!(solver, u, dt)  
   iter = 0
-  while resnorm > 1e-10
+  while resnorm > 1e-5
     resnorm = Solver.timemarchRK!(solver, u, dt)
     if mod(iter, 1) == 0
       println("iter ",iter,": res. norm = ", resnorm)

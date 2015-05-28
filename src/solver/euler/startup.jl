@@ -1,11 +1,13 @@
 # startup script for solving an equation
 
  push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
+ push!(LOAD_PATH, "../../equation")
 #push!(LOAD_PATH, "../../../../PUMI")
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
-include("../../equation/Equation.jl")  # equation types
+#include("../../equation/Equation.jl")  # equation types
+using Equation
 include("../../rk4/rk4.jl")  # timestepping
 include("./euler.jl")  # solver functions
 include("./ic.jl")  # initial conditions functions

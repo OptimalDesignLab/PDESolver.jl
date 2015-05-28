@@ -4,7 +4,7 @@
 
 using SummationByParts
 using PdePumiInterface
-
+using Equation
 
 function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 # gather up all the data needed to do vectorized operatinos on the mesh
@@ -13,25 +13,53 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 # need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
 
   u = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
+  F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in xi direction of each element
+  F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in eta direction of each element
   x = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
   dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
   jac = Array(Float64, sbp.numnodes, mesh.numEl)
   res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
+#  F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+#  F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
   # reused loop variables
   dofnums = zeros(mesh.numDofPerNode, sbp.numnodes)
 
+  coords_i = zeros(3,3)
+  coords_it = zeros(3,2)
   for i=1:mesh.numEl  # loop over elements
     dofnums = getGlobalNodeNumbers(mesh, i)
     u[:, :, i] = SL0[dofnums]
 
-    x[:,:,i] = getElementVertCoords(mesh, [i])[1:2, :, :]
+    # get node coordinates
+    # 
+    getElementVertCoords(mesh, i, coords_i)
+    coords_it[:,:] = coords_i[1:2, :].'
+    x[:,:,i] = calcnodes(sbp, coords_it)
 
   end
 
   # get dxidx, jac using x
   mappingjacobian!(sbp, x, dxidx, jac)  
 
+  # calculate fluxes
+  getEulerFlux(eqn, u, dxidx, F_xi, F_eta)
+#  println("getEulerFlux @time printed above")
+#=  
+  # should vectorize this
+  for i=1:mesh.numEl
+    for j=1:sbp.numnodes
+      # create subarrays
+      subF_xi = sub(F_xi, :, j, i)
+      subF_eta = sub(F_eta, :, j, i)
+      subq = sub(u, :, j, i)
+      dir_xi = sub(dxidx, 1, :, j, i)
+      dir_eta = sub(dxidx, 2, :, j, i)
+      getEulerFlux(eqn, subq, dir_xi,  subF_xi)
+      getEulerFlux(eqn, subq, dir_eta,  subF_eta)
+    end
+  end
+=#
 
 
   # get the edges on the exterior of the mesh
@@ -594,6 +622,79 @@ end
 
 # some helper functions
 
+function getEulerFlux{T}(eqn::EulerEquation, q::AbstractArray{T,1}, dir::AbstractArray{T,1},  F::AbstractArray{T,1})
+# calculates the Euler flux in a particular direction at a point
+# eqn is the equation type
+# q is the vector (of length 4), of the conservative variables at the point
+# dir is a vector of length 2 that specifies the direction
+# F is populated with the flux (is a vector of length 4)
+
+# once the Julia developers fix slice notation and speed up subarrays, we can make a faster
+# vectorized version of this
+
+  press = calcPressure(q, eqn)
+  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+  F[1] = q[1]*U
+  F[2] = q[2]*U + dir[1]*press
+  F[3] = q[3]*U + dir[2]*press
+  F[4] = (q[4] + press)*U
+ 
+  return nothing
+
+end
+
+
+function getEulerFlux{T}(eqn::EulerEquation, q::AbstractArray{T,3}, dxidx::AbstractArray{T,4},  F_xi::AbstractArray{T,3}, F_eta::AbstractArray{T,3})
+# calculates the Euler flux for every node in the xi and eta directions
+# eqn is the equation type
+# q is the 3D array (4 by nnodes per element by nel), of the conservative variables
+# dxidx is the 4D array (2 by 2 x nnodes per element by nel) that specifies the direction of xi and eta in each element (output from mappingjacobian!)
+# F_xi is populated with the flux in xi direction (same shape as q)
+# F_eta is populated with flux in eta direction
+
+# once the Julia developers fix slice notation and speed up subarrays, we won't have to 
+# vectorize like this (can calculate flux one node at a time inside a dedicated function
+
+(ncomp, nnodes, nel) = size(q)  # get sizes of things
+
+  for i=1:nel  # loop over elements
+    for j=1:nnodes  # loop over nodes within element
+      # get direction vector components (xi direction)
+      nx = dxidx[1, 1, j, i]
+      ny = dxidx[1, 2, j, i]
+      # calculate pressure 
+      press = (eqn.gamma-1)*(q[4, j, i] - 0.5*(q[2, j, i]^2 + q[3, j, i]^2)/q[1, j, i])
+
+      # calculate flux in xi direction
+      # hopefully elements of q get stored in a register for reuse in eta direction
+      U = (q[2, j, i]*nx + q[3, j, i]*ny)/q[1, j, i]
+      F_xi[1, j, i] = q[1, j, i]*U
+      F_xi[2, j, i] = q[2, j, i]*U + nx*press
+      F_xi[3, j, i] = q[3, j, i]*U + ny*press
+      F_xi[4, j, i] = (q[4, j, i] + press)*U
+
+      # get direction vector components (eta direction)
+      nx = dxidx[2, 1, j, i]
+      ny = dxidx[2, 2, j, i]
+
+      # calculate xi flux
+      U = (q[2, j, i]*nx + q[3, j, i]*ny)/q[1, j, i]
+      F_eta[1, j, i] = q[1, j, i]*U
+      F_eta[2, j, i] = q[2, j, i]*U + nx*press
+      F_eta[3, j, i] = q[3, j, i]*U + ny*press
+      F_eta[4, j, i] = (q[4, j, i] + press)*U
+    end
+  end
+
+
+ 
+  return nothing
+
+end
+
+
+
+
 function getF1(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::AbstractVector, element::Integer, f1::AbstractVector)
 # gets the vector F1 (see weak form derivation) for a particular element
 # for linear triangles, the size of F1 is 3 nodes * 4 dof per node = 12 entries
@@ -674,15 +775,17 @@ function getF2(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::Ab
 
 end
 
-function calcPressure(SL_vals::AbstractVector, eqn::EulerEquation)
+function calcPressure(q::AbstractVector, eqn::EulerEquation)
   # calculate pressure for a node
-  # SL is a vector of length 4
+  # q is a vector of length 4 of the conservative variables
 
-  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
+#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+
+  return  (eqn.gamma-1)*(q[4] - 0.5*(q[2]^2 + q[3]^2)/q[1])
+  
 #   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
 
-  return pressure
 
 end
 

@@ -74,11 +74,11 @@ function buildrectanglemesh{T}(Nx::Int, Ny::Int, sbp::TriSBP{T}, lengthx::T=1.0,
     numnodes += 2*Nx*Ny
   elseif p == 3
     # add 2 edge nodes and 3 bubble nodes
-    numnodes += 2*(Nx*(Ny+1) + 2*Ny*(Nx+1) + Nx*Ny)
+    numnodes += 2*(Nx*(Ny+1) + Ny*(Nx+1) + Nx*Ny)
     numnodes += 6*Nx*Ny
   elseif p == 4
     # add 3 edge nodes and 6 bubble nodes
-    numnodes += 3*(Nx*(Ny+1) + 2*Ny*(Nx+1) + Nx*Ny)
+    numnodes += 3*(Nx*(Ny+1) + Ny*(Nx+1) + Nx*Ny)
     numnodes += 12*Nx*Ny
   end
 
