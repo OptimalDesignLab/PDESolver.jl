@@ -1,0 +1,152 @@
+==== done loading everything ====
+ 
+=================================
+Start time: 
+Tue 26 May 2015 06:37:25 PM EDT
+=================================
+TestSolver.runtest(degree=1, Nx=10, Ny=10, cfl=0.1, output=true, energyhist=true, matrix=false)
+iter 0: res. norm = 0.45744861225022376
+iter 1: res. norm = 0.4173754001218665
+iter 2: res. norm = 0.41672117430607486
+iter 3: res. norm = 0.4232205282798728
+iter 4: res. norm = 0.43409120576147936
+iter 5: res. norm = 0.4494224042163606
+iter 6: res. norm = 0.4689743886501426
+iter 7: res. norm = 0.49202636717765846
+iter 8: res. norm = 0.5177886537474838
+iter 9: res. norm = 0.5457439065431303
+iter 10: res. norm = 0.5757370143335139
+iter 11: res. norm = 0.6078688659333372
+iter 12: res. norm = 0.6423271745516049
+iter 13: res. norm = 0.6792618735867064
+iter 14: res. norm = 0.718747192287988
+iter 15: res. norm = 0.7608127596657186
+iter 16: res. norm = 0.8054980314295943
+iter 17: res. norm = 0.8528917921843175
+iter 18: res. norm = 0.9031410558834256
+iter 19: res. norm = 0.9564348560424696
+iter 20: res. norm = 1.0129783230438032
+iter 21: res. norm = 1.0729715342905044
+iter 22: res. norm = 1.1366001496053277
+iter 23: res. norm = 1.2040370165228478
+iter 24: res. norm = 1.2754494760715744
+iter 25: res. norm = 1.3510067390334197
+iter 26: res. norm = 1.4308840255083461
+iter 27: res. norm = 1.5152629021788675
+iter 28: res. norm = 1.6043289545595256
+iter 29: res. norm = 1.6982691417309166
+iter 30: res. norm = 1.7972653918005936
+iter 31: res. norm = 1.9015004947331196
+iter 32: res. norm = 2.011155693476008
+iter 33: res. norm = 2.126409941110437
+iter 34: res. norm = 2.2474391997535266
+iter 35: res. norm = 2.374414839694147
+iter 36: res. norm = 2.5075012197678577
+iter 37: res. norm = 2.6468520134040374
+iter 38: res. norm = 2.792606201425213
+iter 39: res. norm = 2.944883403647278
+iter 40: res. norm = 3.1037787591329287
+iter 41: res. norm = 3.26935742486218
+iter 42: res. norm = 3.4416487955109516
+iter 43: res. norm = 3.6206407488934857
+iter 44: res. norm = 3.8062735555178344
+iter 45: res. norm = 3.9984331206195747
+iter 46: res. norm = 4.196944443426585
+iter 47: res. norm = 4.401565901994276
+iter 48: res. norm = 4.61198328026104
+iter 49: res. norm = 4.827811697969927
+iter 50: res. norm = 5.048584165483717
+iter 51: res. norm = 5.273737827342416
+iter 52: res. norm = 5.502617686466349
+iter 53: res. norm = 5.734473639009805
+iter 54: res. norm = 5.968459394216179
+iter 55: res. norm = 6.203631390828279
+iter 56: res. norm = 6.438950747233976
+iter 57: res. norm = 6.673287655272264
+iter 58: res. norm = 6.905428282305717
+iter 59: res. norm = 7.134121575778409
+iter 60: res. norm = 7.358059948790474
+iter 61: res. norm = 7.575856327053035
+iter 62: res. norm = 7.786084444351213
+iter 63: res. norm = 7.987306915120786
+iter 64: res. norm = 8.178096651697269
+iter 65: res. norm = 8.357059130865084
+iter 66: res. norm = 8.522854785927201
+iter 67: res. norm = 8.674220633144984
+iter 68: res. norm = 8.809990213129103
+iter 69: res. norm = 8.929110979473771
+iter 70: res. norm = 9.030658412726371
+iter 71: res. norm = 9.113846256972607
+iter 72: res. norm = 9.178032654573448
+iter 73: res. norm = 9.222722148111385
+iter 74: res. norm = 9.247563794875472
+iter 75: res. norm = 9.252345925937147
+iter 76: res. norm = 9.236988283943216
+iter 77: res. norm = 9.201532425346587
+iter 78: res. norm = 9.146131358725624
+iter 79: res. norm = 9.071039414812219
+iter 80: res. norm = 8.97660331752863
+iter 81: res. norm = 8.863255365995276
+iter 82: res. norm = 8.731509565237456
+iter 83: res. norm = 8.581961478601297
+iter 84: res. norm = 8.41529253640149
+iter 85: res. norm = 8.232279538760983
+iter 86: res. norm = 8.03381014775057
+iter 87: res. norm = 7.820905281606548
+iter 88: res. norm = 7.594749501615593
+iter 89: res. norm = 7.356730706806878
+iter 90: res. norm = 7.108491182119376
+iter 91: res. norm = 6.851989838089271
+iter 92: res. norm = 6.589579525759685
+iter 93: res. norm = 6.324100170506387
+iter 94: res. norm = 6.058985373897348
+iter 95: res. norm = 5.798378902311306
+iter 96: res. norm = 5.547248685869244
+iter 97: res. norm = 5.311473666779903
+iter 98: res. norm = 5.09786047172661
+iter 99: res. norm = 4.9140255794644725
+iter 100: res. norm = 4.7680654643659155
+iter 101: res. norm = 4.667954490183137
+iter 102: res. norm = 4.620684104848443
+iter 103: res. norm = 4.631287513759093
+iter 104: res. norm = 4.702020206115216
+iter 105: res. norm = 4.8319746068680045
+iter 106: res. norm = 5.017290258248074
+iter 107: res. norm = 5.251794921957525
+iter 108: res. norm = 5.527856296013197
+iter 109: res. norm = 5.83717583957979
+iter 110: res. norm = 6.171381649653075
+iter 111: res. norm = 6.52239665047821
+iter 112: res. norm = 6.882627482622417
+iter 113: res. norm = 7.245038300321698
+iter 114: res. norm = 7.603164710063045
+iter 115: res. norm = 7.951104211745797
+iter 116: res. norm = 8.283507731933701
+iter 117: res. norm = 8.595581360680535
+iter 118: res. norm = 8.88310276240143
+iter 119: res. norm = 9.142453338130657
+iter 120: res. norm = 9.370665967568794
+iter 121: res. norm = 9.565489478380853
+iter 122: res. norm = 9.72548041669757
+iter 123: res. norm = 9.850120514772518
+iter 124: res. norm = 9.940002694524203
+iter 125: res. norm = 9.997178757118101
+iter 126: res. norm = 10.025839385446806
+iter 127: res. norm = 10.033845244686054
+iter 128: res. norm = 10.018631482920423
+iter 129: res. norm = 9.88182292449848
+iter 130: res. norm = 9.414415461658082
+iter 131: res. norm = 8.802599351369746
+ERROR: LoadError: DomainError:
+
+ in isentropicVortexBC at /users/ashlea/.julia/v0.4/PDESolver/src/JEH_solver/solver.jl:181
+ in boundaryintegrate! at /users/ashlea/.julia/v0.4/SummationByParts/src/useoperators.jl:456
+ in calcweakresidual! at /users/ashlea/.julia/v0.4/PDESolver/src/JEH_solver/solver.jl:293
+ in timemarchRK! at /users/ashlea/.julia/v0.4/PDESolver/src/JEH_solver/solver.jl:357
+ in runtest at /users/ashlea/.julia/v0.4/PDESolver/src/JEH_solver/test_solver.jl:29
+ in include at ./boot.jl:250
+ in include_from_node1 at loading.jl:129
+ in process_options at ./client.jl:305
+ in _start at ./client.jl:389
+while loading /users/ashlea/.julia/v0.4/PDESolver/src/JEH_solver/run_test.jl, in expression starting on line 23
+
