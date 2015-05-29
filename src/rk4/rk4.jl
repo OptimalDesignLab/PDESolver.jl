@@ -21,39 +21,44 @@ function rk4(f, h, x_ic, t_max)
 
   (m,) = size(x_ic)
 #   x = Array(Float64,3,t_steps+2)
-  x = Array(Float64,m,t_steps+1)
+#  x = Array(Float64,m,t_steps+1)
 
   iter = 1
 
-  x[:,1] = x_ic
+#  x[:,1] = x_ic
 
+  x_old = x_ic
 
   for i=2:(t_steps + 1)
 
-    update_msg = string("RK4 i: ",i,"\n")
-    write(STDERR,update_msg)
+#    update_msg = string("RK4 i: ",i,"\n")
+#    write(STDERR,update_msg)
+    print("\nRK4 i : ", i)
 #     println("iter: ",iter)
     iter += 1
-    println("in rk4, iter = ", iter)
-    println("in rk4, t = ", t)
+#    println("in rk4, iter = ", iter)
+#    println("in rk4, t = ", t)
 
-    x_old = x[:,iter-1]
+#    x_old = x[:,iter-1]
 
     k1 = f(t,x_old)
     k2 = f(t + h/2, x_old + (h/2)*k1)
     k3 = f(t + h/2, x_old + (h/2)*k2)
     k4 = f(t + h, x_old + h*k3)
+    
+    x_old = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
 
-    x[:,iter] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
-    println("==== RK4 ==== i: ",i)
+#    x[:,iter] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+#    println("==== RK4 ==== i: ",i)
 #     println("x[:,iter]: ",x[:,iter])
-    println("k1: ",k1)
+#    println("k1: ",k1)
     t = t + h
 
   end
 
-  writedlm("rk4_output.dat",x,",")
+#  writedlm("rk4_output.dat",x,",")
 #   writecsv("rk4_output.dat",x," ")
-  return x[:, t_steps+1], x
+#  return x[:, t_steps+1], x
+  return x_old
 
 end
