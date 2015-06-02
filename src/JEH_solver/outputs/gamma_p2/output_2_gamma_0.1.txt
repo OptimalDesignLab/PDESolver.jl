@@ -1,0 +1,23 @@
+==== done loading everything ====
+ 
+=================================
+Start time: 
+Mon 01 Jun 2015 09:23:27 PM EDT
+=================================
+TestSolver.runtest(degree=2, Nx=10, Ny=10, cfl=0.05, output=true, energyhist=true, matrix=false)
+iter 0: res. norm = 1.308403481920832
+iter 1: res. norm = 1.6731229858383831
+iter 2: res. norm = 2.226450634383152
+iter 3: res. norm = 3.018872329341186
+iter 4: res. norm = 4.132253409658141
+iter 5: res. norm = 5.6891299943461755
+iter 6: res. norm = 7.865658981056895
+iter 7: res. norm = 10.912982714695831
+iter 8: res. norm = 15.190946608508828
+iter 9: res. norm = 21.219228096039508
+iter 10: res. norm = 29.753495839268307
+iter 11: res. norm = 41.89777384073865
+iter 12: res. norm = 59.25733102661546
+iter 13: res. norm = 84.04515279790071
+iter 14: res. norm = 118.82060383581475
+
