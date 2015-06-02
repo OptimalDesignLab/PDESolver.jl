@@ -2,7 +2,7 @@
  
 =================================
 Start time: 
-Tue 26 May 2015 02:54:13 PM EDT
+Tue 26 May 2015 05:53:53 PM EDT
 =================================
 TestSolver.runtest(degree=1, Nx=10, Ny=10, cfl=0.1, output=true, energyhist=true, matrix=false)
 iter 0: res. norm = 0.17545493252781524
@@ -1212,5 +1212,5 @@ iter 1203: res. norm = 9.959146987758724e-11
 L2err = 0.03510875290822569
 =================================
 End time: 
-Tue 26 May 2015 03:20:34 PM EDT
+Tue 26 May 2015 05:56:17 PM EDT
 =================================

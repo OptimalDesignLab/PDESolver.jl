@@ -259,7 +259,8 @@ function calcweakresidual!{T}(solver::EulerSolver{T}, u::Array{T}, res::Array{T}
 
   function stabscale(u, dξdx, nrm)
     h = 1.0/solver.mesh.Nx # <--- this is not general
-    return 0.01*h^(solver.sbp.degree+1)
+#     return 0.01*h^(solver.sbp.degree+1)
+    return 0.025*h^(solver.sbp.degree+1)
   end
 
   # gather u onto elements

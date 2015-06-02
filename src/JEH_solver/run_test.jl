@@ -19,8 +19,8 @@ timestr = Libc.strftime(time())
 println(timestr)
 println("=================================")
 
-println("TestSolver.runtest(degree=3, Nx=20, Ny=20, cfl=0.005, output=true, energyhist=true, matrix=false)")
-TestSolver.runtest(degree=3, Nx=20, Ny=20, cfl=0.005, output=true, energyhist=true, matrix=false)
+println("TestSolver.runtest(degree=2, Nx=10, Ny=10, cfl=0.05, output=true, energyhist=true, matrix=false)")
+TestSolver.runtest(degree=2, Nx=10, Ny=10, cfl=0.05, output=true, energyhist=true, matrix=false)
 
 # println("TestSolver.runtest(degree=1, Nx=10, Ny=10, cfl=0.1, output=true, energyhist=true, matrix=false)")
 # TestSolver.runtest(degree=1, Nx=10, Ny=10, cfl=0.1, output=true, energyhist=true, matrix=false)
