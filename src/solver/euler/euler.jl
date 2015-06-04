@@ -365,7 +365,7 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
 #  println("====== start of evalBoundaryIntegrals ======")
-
+#=
 # Nodal Coordinates
 x = zeros(Float64,(2,sbp.numnodes,getNumEl(mesh))); # nodal Coordinates of the marix
 for i = 1:getNumEl(mesh)
@@ -416,7 +416,7 @@ println("size of SL0: ", size(SL0,3))
 println("size of result: ", size(result,3))
 println("size of x: ", size(x,3))
 =#
-
+=#
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
 
 boundaryintegrate!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res)
@@ -428,6 +428,7 @@ fill!(eqn.res, 0.0)
 
 #println("BC result: ",result)
 
+#=
 # assembling into global SL vector
 for element = 1:numEl
   for node = 1:sbp.numnodes
@@ -436,7 +437,7 @@ for element = 1:numEl
   end
 #   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
 end
-
+=#
 #  println("==== end of evalBoundaryIntegrals ====")
 
 
@@ -465,10 +466,12 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     #   3: node
     #   4: elem
 
-  u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
+#  u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
   numEl = getNumEl(mesh)
 
   alpha = zeros(Float64,2,2,sbp.numnodes,numEl)
+  dxidx = mesh.dxidx # referency only, for code compatability
+  jac = mesh.jac  # reference only
 
   # calculating alpha, required by edgestabilize!
   for k = 1:numEl
@@ -539,7 +542,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
 
   assembleSolution(mesh, eqn, SL)
   fill!(eqn.res, 0.0)
-
+#=
   # assembling into global SL vector
   for element = 1:numEl
     for node = 1:sbp.numnodes
@@ -548,6 +551,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     end
 #     println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
   end
+=#
 #  println("==== end of addEdgeStabilize ====")
 
 
