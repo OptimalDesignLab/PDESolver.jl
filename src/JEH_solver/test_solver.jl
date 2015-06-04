@@ -33,7 +33,7 @@ function runtest(;degree::Int=1, Nx::Int=2, Ny::Int=2, cfl::Float64=0.5,
 
   resnorm = Solver.timemarchRK!(solver, u, dt)  
   iter = 0
-  while resnorm > 1e-5
+  while resnorm > 1e-10
     resnorm = Solver.timemarchRK!(solver, u, dt)
     if mod(iter, 1) == 0
       println("iter ",iter,": res. norm = ", resnorm)

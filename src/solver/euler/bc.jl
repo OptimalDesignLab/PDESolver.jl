@@ -1,11 +1,11 @@
 # Euler flux calculator used by isentropicVortexBC ONLY!!
 function getEulerFlux(u_vals::AbstractArray, nx, ny)
 
-  eqn = EulerEquation(sbp)
+#  eqn = EulerEquation(sbp)
   f1 = zeros(Float64, 4)
   f2 = zeros(f1)
 
-  pressure = calcPressure(u_vals, eqn)
+  pressure = calcPressure(u_vals, eqn)  # this only works because eqn is global
   f1[1] = u_vals[2]
   f1[2] = (u_vals[2]^2)/u_vals[1] + pressure
   f1[3] = (u_vals[2]*u_vals[3])/u_vals[1]

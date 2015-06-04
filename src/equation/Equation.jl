@@ -28,6 +28,7 @@ immutable EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed f
   q::AbstractArray{T,3}  # holds conservative variables for all nodes
   F_xi::AbstractArray{T,3}  # flux in xi direction
   F_eta::AbstractArray{T,3} # flux in eta direction
+  res::AbstractArray{T,3}  # result of computation
   x::AbstractArray{T,3}  # coordinates
   dxidx::AbstractArray{T,4}  # scaled jacobian
   jac::AbstractArray{T,3}  # determinant of non-scaled jacobian
@@ -40,6 +41,7 @@ end
 function EulerEquation(operator::SBPOperator)
 # construct bigQ_zi and bigA_eta
 # this only works for first order
+
 
 bigQT_xi = ones(4*operator.numnodes, 4*operator.numnodes)
 bigQT_eta = ones(4*operator.numnodes,4*operator.numnodes)
@@ -59,8 +61,9 @@ gamma = 1.4
 R = 287.058  # specific gas constant (unit J/(kg * K)
 cv = R/(gamma - 1)
 
+#println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
 type_of_sbp = typeof(operator.Q[1])  # a little hackish
-return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0,0), Array(type_of_sbp, 0,0,0))
+return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp,0,0,0),  Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0,0), Array(type_of_sbp, 0,0,0))
 #return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta)
 end
 

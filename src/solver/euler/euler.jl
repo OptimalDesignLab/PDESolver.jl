@@ -63,18 +63,19 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 
 
   # get the edges on the exterior of the mesh
-  bndryfaces = Array(Boundary, mesh.numBoundaryEdges)
-  getBoundaryArray(mesh, bndryfaces)
-
+#  bndryfaces = Array(Boundary, mesh.numBoundaryEdges)
+#  getBoundaryArray(mesh, bndryfaces)
+  bndryfaces = mesh.bndryfaces
 
 
 #  bnd_edges = getBoundaryEdgeNums(mesh)
   # only need internal boundaries (not external)
-  num_ext_edges = mesh.numBoundaryEdges  # bad memory efficiency
-  num_int_edges = getNumEdges(mesh) - num_ext_edges
+#  num_ext_edges = mesh.numBoundaryEdges  # bad memory efficiency
+#  num_int_edges = getNumEdges(mesh) - num_ext_edges
 
-  interfaces = Array(Interface, num_int_edges)
-  getInterfaceArray(mesh, interfaces)
+#  interfaces = Array(Interface, num_int_edges)
+#  getInterfaceArray(mesh, interfaces)
+   interfaces = mesh. interfaces
 
 #=
 
@@ -358,8 +359,9 @@ jac = zeros(Float64, (sbp.numnodes,getNumEl(mesh))); # Determinant of the Jacobi
 
 mappingjacobian!(sbp, x, dxidx, jac) # Get the Jocabian for transformation between actual and iso-parametric space
 
-bndryfaces = Array(Boundary, mesh.numBoundaryEdges)
- getBoundaryArray(mesh, bndryfaces)
+#bndryfaces = Array(Boundary, mesh.numBoundaryEdges)
+# getBoundaryArray(mesh, bndryfaces)
+bndryfaces = mesh.bndryfaces
 
 numBoundaryElements = getNumBoundaryElements(mesh)
 numEl = getNumEl(mesh)
