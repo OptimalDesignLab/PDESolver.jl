@@ -32,10 +32,10 @@ dmg_name = ".null"
 smb_name = "../../mesh_files/quarter_vortex3l.smb"
 #smb_name = "../../mesh_files/quarter_vortex8l.smb"
 #smb_name = "../../mesh_files/tri30l.smb"
-mesh = PumiMesh2(dmg_name, smb_name, 1; dofpernode=4)  #create linear mesh with 1 dof per node
+mesh = PumiMesh2(dmg_name, smb_name, 1, sbp; dofpernode=4)  #create linear mesh with 1 dof per node
 
 # create euler equation
-eqn = EulerEquation(sbp)
+eqn = EulerEquation(mesh, sbp)
 # println("eqn.bigQT_xi = \n", eqn.bigQT_xi)
 # println("eqn.bigQT_eta = \n", eqn.bigQT_eta)
 #println("sbp.QT_xi' = \n", sbp.Q[:,:,1].')
@@ -138,8 +138,13 @@ addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
 #  println(i, " ", SL[i])
 #end
 
+
+assembleSolution(mesh, eqn, SL)
+#fill!(eqn.res, 0)
+
 # println("STABSTABSTAB SL = ", SL)
-applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
+#applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
+applyMassMatrixInverse(eqn, SL)
 #println("MASSMASSMASS SL = ", SL)
 #for i=1:size(SL)[1]
 #  println(i, " ", SL[i])

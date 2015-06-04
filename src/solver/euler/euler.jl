@@ -14,22 +14,22 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 
 #println("Entered dataPrep()")
 
-  eqn.q = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
+#  eqn.q = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
   u = eqn.q
-  eqn.F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in xi direction of each element
+#  eqn.F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in xi direction of each element
   F_xi = eqn.F_xi
 
 #  println("size(eqn.F_xi) = ", size(eqn.F_xi))
-  eqn.F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in eta direction of each element
+#  eqn.F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in eta direction of each element
   F_eta = eqn.F_eta
-  mesh.coords = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
-  x = mesh.coords
-  mesh.dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
-  dxidx = mesh.dxidx
-  mesh.jac = Array(Float64, sbp.numnodes, mesh.numEl)
-  jac = mesh.jac
-  eqn.res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
-  res = eqn.res
+#  mesh.coords = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
+#  x = mesh.coords
+#  mesh.dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
+#  dxidx = mesh.dxidx
+#  mesh.jac = Array(Float64, sbp.numnodes, mesh.numEl)
+#  jac = mesh.jac
+#  eqn.res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
+  fill!(eqn.res, 0.0)
 #  F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 #  F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
@@ -44,17 +44,17 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 
     # get node coordinates
     # 
-    getElementVertCoords(mesh, i, coords_i)
-    coords_it[:,:] = coords_i[1:2, :].'
-    x[:,:,i] = calcnodes(sbp, coords_it)
+#    getElementVertCoords(mesh, i, coords_i)
+#    coords_it[:,:] = coords_i[1:2, :].'
+#    x[:,:,i] = calcnodes(sbp, coords_it)
 
   end
 
   # get dxidx, jac using x
-  mappingjacobian!(sbp, x, dxidx, jac)  
+#  mappingjacobian!(sbp, x, dxidx, jac)  
 
   # calculate fluxes
-  getEulerFlux(eqn, u, dxidx, F_xi, F_eta)
+  getEulerFlux(eqn, eqn.q, mesh.dxidx, F_xi, F_eta)
 #  println("getEulerFlux @time printed above")
 #=  
   # should vectorize this
@@ -154,8 +154,8 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 =#
 
 #  println("finished dataPrep()")
-  return u, x, dxidx, jac, res, interfaces
-
+#  return u, x, dxidx, jac, res, interfaces
+  return nothing
 end # end function dataPrep
 
 function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
@@ -171,9 +171,9 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 #  println("size eqn.F_xi = ", size(eqn.F_xi), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   weakdifferentiate!(sbp, 1, eqn.F_xi, eqn.res, trans=true)
   weakdifferentiate!(sbp, 2, eqn.F_eta, eqn.res, trans=true)
-  assembleSolution(mesh, eqn, SL)
+#  assembleSolution(mesh, eqn, SL)
 
-  fill!(eqn.res, 0.0)  # zero out res (TEMPORARY)
+#  fill!(eqn.res, 0.0)  # zero out res (TEMPORARY)
 
 
   # need source term here
@@ -419,12 +419,12 @@ println("size of x: ", size(x,3))
 =#
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
 
-boundaryintegrate!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res)
+boundaryintegrate2!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res)
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
-eqn.res = (-1)*eqn.res
-assembleSolution(mesh, eqn, SL)
-fill!(eqn.res, 0.0)
+#eqn.res = (-1)*eqn.res
+#assembleSolution(mesh, eqn, SL)
+#fill!(eqn.res, 0.0)
 
 #println("BC result: ",result)
 
@@ -540,8 +540,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   # u argument here is SL in a different format
   edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, alpha, stabscale, eqn.res)
 
-  assembleSolution(mesh, eqn, SL)
-  fill!(eqn.res, 0.0)
+#  assembleSolution(mesh, eqn, SL)
+#  fill!(eqn.res, 0.0)
 #=
   # assembling into global SL vector
   for element = 1:numEl
@@ -630,8 +630,43 @@ end
 
 
 
+#=
+function calcMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation )
+# calculate the inverse mass matrix so it can be applied to the entire solution vector
+
+  eqn.Minv = Array(Float64, mesh.numDof)
+
+  for i=1:mesh.numEl
+    dofnums_i =  getGlobalNodeNumbers(mesh, i)
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+	dofnum_k = dofnums_i[k,j]
+	# multiplication is faster than division, so do the divions here
+	# and then multiply solution vector times Minv
+	eqn.Minv[dofnums_k] += 1/sbp.w[j]
+      end
+    end
+  end
+
+  return nothing
+
+end
+=#
 
 
+function applyMassMatrixInverse(eqn::EulerEquation, SL::AbstractVector)
+# apply the inverse mass matrix stored eqn to SL
+
+#  SL .*= eqn.Minv  # this gives wrong answer
+
+
+  ndof = length(SL)
+  for i=1:ndof
+    SL[i] *= eqn.Minv[i]
+  end
+
+  return nothing
+end
 
 
 function applyMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
@@ -829,11 +864,13 @@ function assembleSolution(mesh::AbstractMesh, eqn::EulerEquation, SL::AbstractVe
 
 
 for i=1:mesh.numEl  # loop over elements
-  dofnums = getGlobalNodeNumbers(mesh, i)
+#  dofnums = getGlobalNodeNumbers(mesh, i)
 
   for j=1:mesh.numNodesPerElement
     for k=1:4  # loop over dofs on the node
-      SL[dofnums[k, j]] += eqn.res[k, j, i]
+      dofnum_k = mesh.dofs[k, j, i]
+      SL[dofnum_k] += eqn.res[k,j,i]
+#      SL[dofnums[k, j]] += eqn.res[k, j, i]
     end
   end
 end
