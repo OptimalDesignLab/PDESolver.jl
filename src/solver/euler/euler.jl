@@ -12,13 +12,24 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 
 # need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
 
-  u = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
-  F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in xi direction of each element
-  F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in eta direction of each element
-  x = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
-  dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
-  jac = Array(Float64, sbp.numnodes, mesh.numEl)
-  res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
+#println("Entered dataPrep()")
+
+  eqn.q = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold previous timestep solution
+  u = eqn.q
+  eqn.F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in xi direction of each element
+  F_xi = eqn.F_xi
+
+#  println("size(eqn.F_xi) = ", size(eqn.F_xi))
+  eqn.F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl) # hold previous timestep flux in eta direction of each element
+  F_eta = eqn.F_eta
+  mesh.coords = Array(Float64, 2, sbp.numnodes, mesh.numEl)  # hold x y coordinates of nodes
+  x = mesh.coords
+  mesh.dxidx = Array(Float64, 2, 2, sbp.numnodes, mesh.numEl)  
+  dxidx = mesh.dxidx
+  mesh.jac = Array(Float64, sbp.numnodes, mesh.numEl)
+  jac = mesh.jac
+  eqn.res = zeros(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)  # hold result of computation
+  res = eqn.res
 #  F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 #  F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
@@ -141,6 +152,8 @@ function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::
 #     print("\n")
   end  # end loop over edges
 =#
+
+#  println("finished dataPrep()")
   return u, x, dxidx, jac, res, interfaces
 
 end # end function dataPrep
@@ -155,6 +168,17 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 # SL : solution vector to be populated (mesh.numDof entries)
 # SL0 : solution vector at previous timesteps (mesh.numDof entries)
 
+#  println("size eqn.F_xi = ", size(eqn.F_xi), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
+  weakdifferentiate!(sbp, 1, eqn.F_xi, eqn.res, trans=true)
+  weakdifferentiate!(sbp, 2, eqn.F_eta, eqn.res, trans=true)
+  assembleSolution(mesh, eqn, SL)
+
+  fill!(eqn.res, 0.0)  # zero out res (TEMPORARY)
+
+
+  # need source term here
+
+#=
   numEl = getNumEl(mesh)
   
   p = 1           # linear elements
@@ -274,8 +298,8 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 
 #     trans = true
 
-    weakdifferentiate!(sbp, 1, F_xi_sbp, result, trans=true)
-    weakdifferentiate!(sbp, 2, F_eta_sbp, result, trans=true)
+#    weakdifferentiate!(sbp, 1, F_xi_sbp, result, trans=true)
+#    weakdifferentiate!(sbp, 2, F_eta_sbp, result, trans=true)
 
 
     for node = 1:sbp.numnodes
@@ -322,7 +346,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEqu
 #     assembleSL(SL_el, element, SL)
   
   end
-  
+=#  
 #  println("==== end of evalVolumeIntegrals ====")
   return nothing 
 
@@ -395,10 +419,12 @@ println("size of x: ", size(x,3))
 
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
 
-boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
+boundaryintegrate!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res)
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
-result = (-1)*result
+eqn.res = (-1)*eqn.res
+assembleSolution(mesh, eqn, SL)
+fill!(eqn.res, 0.0)
 
 #println("BC result: ",result)
 
@@ -406,7 +432,7 @@ result = (-1)*result
 for element = 1:numEl
   for node = 1:sbp.numnodes
     vec = result[:,node,element]
-    assembleSLNode(vec, element, node, SL)
+#    assembleSLNode(vec, element, node, SL)
   end
 #   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
 end
@@ -791,6 +817,24 @@ function calcPressure(q::AbstractVector, eqn::EulerEquation)
 
 end
 
+
+function assembleSolution(mesh::AbstractMesh, eqn::EulerEquation, SL::AbstractVector)
+
+
+for i=1:mesh.numEl  # loop over elements
+  dofnums = getGlobalNodeNumbers(mesh, i)
+
+  for j=1:mesh.numNodesPerElement
+    for k=1:4  # loop over dofs on the node
+      SL[dofnums[k, j]] += eqn.res[k, j, i]
+    end
+  end
+end
+ 
+
+
+  return nothing
+end
 
 
 function assembleSL(vec::AbstractVector, element::Integer, SL::AbstractVector)

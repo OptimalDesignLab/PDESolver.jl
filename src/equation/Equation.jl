@@ -15,7 +15,7 @@ abstract AbstractEquation{T <: FloatingPoint}
 # solver for that equation
 
 # use this type to leverage multiple disbatch
-immutable EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
   cv::Float64  # specific heat constant
@@ -29,9 +29,6 @@ immutable EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed f
   F_xi::AbstractArray{T,3}  # flux in xi direction
   F_eta::AbstractArray{T,3} # flux in eta direction
   res::AbstractArray{T,3}  # result of computation
-  x::AbstractArray{T,3}  # coordinates
-  dxidx::AbstractArray{T,4}  # scaled jacobian
-  jac::AbstractArray{T,3}  # determinant of non-scaled jacobian
 
 
 
@@ -63,7 +60,7 @@ cv = R/(gamma - 1)
 
 #println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
 type_of_sbp = typeof(operator.Q[1])  # a little hackish
-return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp,0,0,0),  Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0,0), Array(type_of_sbp, 0,0,0))
+return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp,0,0,0))
 #return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta)
 end
 

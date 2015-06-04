@@ -119,7 +119,7 @@ SL = zeros(SL0)
 # println("jac = ", jac)
 # println("res = ", res)
 # println("interface = ", interface)
-
+dataPrep(mesh, sbp, eqn, SL, SL0)
 evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
 #println("VOLVOLVOL SL = ", SL)
 evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
