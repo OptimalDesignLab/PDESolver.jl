@@ -127,7 +127,7 @@ evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
 #for i=1:size(SL)[1]
 #  println(i, " ", SL[i])
 #end
-SL_sum = sum(SL)
+#SL_sum = sum(SL)
 #println("BCBCBCBC SL_sum: ",SL_sum)
 
 
@@ -179,6 +179,7 @@ println("at end: SL = ", SL)
 =#
 
 #println("+++++++++ SL +++++++++:\n",SL)
+
 cntr = 100
 if (mod(cntr, 100) == 0)
   err_norm = norm(SL)/mesh.numDof
@@ -187,6 +188,7 @@ if (mod(cntr, 100) == 0)
 end
 
 cntr += 1
+
 return SL
 
 end  # end evalEuler
