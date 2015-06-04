@@ -535,13 +535,16 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   end
 
   # u argument here is SL in a different format
-  edgestabilize!(sbp, interfaces, u, x, dxidx, jac, alpha, stabscale, result)
+  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, alpha, stabscale, eqn.res)
+
+  assembleSolution(mesh, eqn, SL)
+  fill!(eqn.res, 0.0)
 
   # assembling into global SL vector
   for element = 1:numEl
     for node = 1:sbp.numnodes
       vec = result[:,node,element]
-      assembleSLNode(vec, element, node, SL)
+#      assembleSLNode(vec, element, node, SL)
     end
 #     println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
   end
@@ -557,7 +560,7 @@ end
 
 
 
-
+# this function is deprecated
 function applyDissipation(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 # apply sketchy dissipation scheme
 
