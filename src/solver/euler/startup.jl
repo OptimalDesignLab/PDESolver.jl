@@ -19,10 +19,11 @@ include("./output.jl")  # printing results to files
 # another new comment
 # a third new comment
 
+function runtest()
 # timestepping parameters
 delta_t = 0.005
-t_max = 0.025
-#t_max = 5.00
+#t_max = 0.025
+t_max = 5.00
 #t_max = 1.0
 
 # create operator
@@ -247,4 +248,6 @@ saveSolutionToMesh(mesh, SL)
 printSolution(mesh, SL)
 printCoordinates(mesh)
 writeVtkFiles("solution_done",mesh.m_ptr)
+end
 
+runtest()

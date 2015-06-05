@@ -4,7 +4,7 @@ using SummationByParts
 using PdePumiInterface
 # make this a module?
 
-export EulerEquation
+export EulerEquation, AbstractEquation
 
 abstract AbstractEquation
 
@@ -32,28 +32,9 @@ type EulerEquation <: AbstractEquation  # hold any constants needed for euler eq
 
   Minv::AbstractArray{Float64, 1}  # invese mass matrix
   function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator)
-  # construct bigQ_zi and bigA_eta
-  # this only works for first order
 
   eqn = new()  # incomplete initilization
-  #=
-  bigQT_xi = ones(4*operator.numnodes, 4*operator.numnodes)
-  bigQT_eta = ones(4*operator.numnodes,4*operator.numnodes)
 
-  for i=1:3
-    i_i = 4*(i-1) + 1
-  #   println("i_i = ", i_i)
-    for j=1:3
-      j_j = 4(j-1) + 1
-  #     println("j_j = ", j_j)
-      bigQT_xi[i_i:(i_i+3), j_j:(j_j+3)] *= operator.Q[j,i,1]
-      bigQT_eta[i_i:(i_i+3), j_j:(j_j+3)] *= operator.Q[j,i,2]
-    end
-  end
-  =#
-
-#bigQT_xi = Array(Float64, 0, 0)
-#bigQT_eta = Array(Float64, 0, 0)
 eqn.gamma = 1.4
 eqn.R = 287.058  # specific gas constant (unit J/(kg * K)
 eqn.cv = eqn.R/(eqn.gamma - 1)
@@ -79,41 +60,6 @@ end  # end of constructor
 
 
 end  # end of type declaration
-
-
-#=
-function EulerEquation(operator::SBPOperator)
-# construct bigQ_zi and bigA_eta
-# this only works for first order
-
-#=
-bigQT_xi = ones(4*operator.numnodes, 4*operator.numnodes)
-bigQT_eta = ones(4*operator.numnodes,4*operator.numnodes)
-
-for i=1:3
-  i_i = 4*(i-1) + 1
-#   println("i_i = ", i_i)
-  for j=1:3
-    j_j = 4(j-1) + 1
-#     println("j_j = ", j_j)
-    bigQT_xi[i_i:(i_i+3), j_j:(j_j+3)] *= operator.Q[j,i,1]
-    bigQT_eta[i_i:(i_i+3), j_j:(j_j+3)] *= operator.Q[j,i,2]
-  end
-end
-=#
-
-bigQT_xi = Array(Float64, 0, 0)
-bigQT_eta = Array(Float64, 0, 0)
-gamma = 1.4
-R = 287.058  # specific gas constant (unit J/(kg * K)
-cv = R/(gamma - 1)
-
-#println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
-type_of_sbp = typeof(operator.Q[1])  # a little hackish
-return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp,0,0,0))
-#return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta)
-end
-=#
 
 
 

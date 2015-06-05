@@ -5,7 +5,8 @@
 using SummationByParts
 using PdePumiInterface
 using Equation
-
+include("sbp_interface.jl")
+include("stabilization.jl")
 function dataPrep(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # linear elements only
@@ -79,7 +80,7 @@ function evalBoundaryIntegrals(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 #  println("====== start of evalBoundaryIntegrals ======")
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
 
-boundaryintegrate2!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res)
+boundaryintegrate2!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res, mesh, eqn)
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
 
@@ -111,83 +112,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     #   3: node
     #   4: elem
 
-#  u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
-
-#=
-  numEl = getNumEl(mesh)
-
-  alpha = zeros(Float64,2,2,sbp.numnodes,numEl)
-  dxidx = mesh.dxidx # referency only, for code compatability
-  jac = mesh.jac  # reference only
-
-  # calculating alpha, required by edgestabilize!
-  # this canbe compuated apriori
-  for k = 1:numEl
-    for i = 1:sbp.numnodes                                                                              
-      for di1 = 1:2                                                                                     
-        for di2 = 1:2                                                                                   
-          alpha[di1,di2,i,k] = (dxidx[di1,1,i,k].*dxidx[di2,1,i,k] + dxidx[di1,2,i,k].*dxidx[di2,2,i,k])*jac[i,k]
-        end                                                                                             
-      end                                                                                               
-    end                                                                                                 
-  end
-=#
-
-  function stabscale(u, dxidx, nrm)
-
-#     println("==== entering stabscale ====")
-
-    # grabbing conserved variables
-    rho = u[1]
-    vel_x = u[2]/rho
-    vel_y = u[3]/rho
-    Energy = u[4]
-
-    # from JC's code below, eqn should still be in scope
-    pressure = calcPressure(u, eqn)
-
-    # solved eqn for e: E = rho*e + (1/2)*rho*u^2
-    vel_squared = vel_x^2 + vel_y^2
-    energy = Energy/rho - (1/2)*vel_squared
-
-    # gamma stored in EulerEquation type
-    gamma = eqn.gamma
-
-#     println("pressure: ",pressure)
-#     println("gamma: ",gamma)
-#     println("rho: ",rho)
-    # ideal gas law
-    speed_sound = sqrt((gamma*pressure)/rho)
-
-    # choice for edge stabilization constant: 
-    #   refer to email from JH, 20150504:
-    #   Anthony: there is little guidance in the literature regarding 
-    #     gamma for the Euler equations.  I suggest starting with 
-    #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
-    #     it by an order of magnitude at at time until RK is stable.  
-    #     Once you find a value that works, try increasing it slowly.
-    edge_stab_gamma = -0.01  # default
-#     edge_stab_gamma = 0.0 
-#     edge_stab_gamma = 0.00001
-
-    # edge lengths component wise
-    h_x = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-    h_y = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-    # edge length
-    h = sqrt(h_x^2 + h_y^2)
-
-    # scaled velocity scalar
-#     U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
-    U = vel_x*(h_x/h) + vel_y*(h_y/h)
-
-#     return (U + speed_sound)*edge_stab_gamma*h^2
-    return (abs(U) + speed_sound)*edge_stab_gamma*h^2
-
-  end
-
   # u argument here is SL in a different format
-  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res)
+  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
 
 #  println("==== end of addEdgeStabilize ====")
 

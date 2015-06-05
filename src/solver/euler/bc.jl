@@ -1,5 +1,5 @@
 # Euler flux calculator used by isentropicVortexBC ONLY!!
-function getEulerFlux(u_vals::AbstractArray, nx, ny)
+function getEulerFlux(u_vals::AbstractArray, nx, ny, eqn)
 
 #  eqn = EulerEquation(sbp)
   f1 = zeros(Float64, 4)
@@ -153,7 +153,7 @@ function rho1Energy2BC(q, x, dxidx, nrm)
 end # ends the function eulerRoeSAT
 
 # Euler Roe Solver for boundary integrate
-function isentropicVortexBC{T}(q::AbstractArray{T,1}, x::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, flux::AbstractArray{T, 1})
+function isentropicVortexBC{T}(q::AbstractArray{T,1}, x::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, flux::AbstractArray{T, 1}, mesh::AbstractMesh, eqn::EulerEquation)
 
   E1dq = zeros(Float64, 4)
   E2dq = zeros(Float64, 4)
@@ -260,7 +260,7 @@ function isentropicVortexBC{T}(q::AbstractArray{T,1}, x::AbstractArray{T,1}, dxi
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
-  flux[:] = sat + getEulerFlux(q, nx, ny)
+  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
   
 #  return sat + getEulerFlux(q, nx, ny)
    return nothing

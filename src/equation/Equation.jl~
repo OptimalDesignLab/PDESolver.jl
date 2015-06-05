@@ -4,7 +4,7 @@ using SummationByParts
 using PdePumiInterface
 # make this a module?
 
-export EulerEquation
+export EulerEquation, AbstractEquation
 
 abstract AbstractEquation
 
@@ -145,6 +145,8 @@ function calcEdgeStabAlpha(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquat
   numEl = getNumEl(mesh)
 
   eqn.edgestab_alpha = Array(Float64,2,2,sbp.numnodes,numEl)
+  dxidx = mesh.dxidx
+  jac = mesh.jac
 
   # calculating alpha, required by edgestabilize!
   # this canbe compuated apriori
