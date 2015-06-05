@@ -21,14 +21,14 @@ type EulerEquation <: AbstractEquation  # hold any constants needed for euler eq
   cv::Float64  # specific heat constant
   R::Float64  # gas constant used in ideal gas law
   gamma::Float64 # ratio of specific heats
-  bigQT_xi::Array{Float64, 2}  # big parent element stiffness matrix transposed (Q_zi double under bar transposed
-  bigQT_eta::Array{Float64,2}  # big parent element stiffness matrix transposed (Q_eta double under  bar transposed
 
   # the following arrays hold data for all nodes
   q::AbstractArray{Float64,3}  # holds conservative variables for all nodes
   F_xi::AbstractArray{Float64,3}  # flux in xi direction
   F_eta::AbstractArray{Float64,3} # flux in eta direction
   res::AbstractArray{Float64,3}  # result of computation
+
+  edgestab_alpha::AbstractArray{Float64, 4} # alpha needed by edgestabilization
 
   Minv::AbstractArray{Float64, 1}  # invese mass matrix
   function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator)
@@ -59,7 +59,7 @@ eqn.R = 287.058  # specific gas constant (unit J/(kg * K)
 eqn.cv = eqn.R/(eqn.gamma - 1)
 
 calcMassMatrixInverse(mesh, sbp, eqn)
-
+calcEdgeStabAlpha(mesh, sbp, eqn)
 # these variables get overwritten every iteration, so its safe to 
 # leave them without values
 eqn.q = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
@@ -137,6 +137,30 @@ function calcMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
   return nothing
 
 end
+
+
+function calcEdgeStabAlpha(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation)
+# calculate alpha, needed by edge stabilization
+
+  numEl = getNumEl(mesh)
+
+  eqn.edgestab_alpha = Array(Float64,2,2,sbp.numnodes,numEl)
+
+  # calculating alpha, required by edgestabilize!
+  # this canbe compuated apriori
+  for k = 1:numEl
+    for i = 1:sbp.numnodes
+      for di1 = 1:2
+        for di2 = 1:2
+          eqn.edgestab_alpha[di1,di2,i,k] = (dxidx[di1,1,i,k].*dxidx[di2,1,i,k] + dxidx[di1,2,i,k].*dxidx[di2,2,i,k])*jac[i,k]
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
 
 
 

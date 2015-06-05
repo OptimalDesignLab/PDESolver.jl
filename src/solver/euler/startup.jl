@@ -21,7 +21,8 @@ include("./output.jl")  # printing results to files
 
 # timestepping parameters
 delta_t = 0.005
-t_max = 5.00
+t_max = 0.025
+#t_max = 5.00
 #t_max = 1.0
 
 # create operator
@@ -119,10 +120,13 @@ SL = zeros(SL0)
 # println("jac = ", jac)
 # println("res = ", res)
 # println("interface = ", interface)
-dataPrep(mesh, sbp, eqn, SL, SL0)
-evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
+@time dataPrep(mesh, sbp, eqn, SL, SL0)
+println("dataPrep @time printed above")
+@time evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
+println("volume integral @time printed above")
 #println("VOLVOLVOL SL = ", SL)
-evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
+@time evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
+println("boundary integral @time printed above")
 #println("BCBCBCBC SL = ", SL)
 #for i=1:size(SL)[1]
 #  println(i, " ", SL[i])
@@ -132,19 +136,22 @@ evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
 
 
 
-addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
+@time addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
+println("edge stabilizing @time printed above")
 #println("EDGEEDGEEDGE SL: ")
 #for i=1:size(SL)[1]
 #  println(i, " ", SL[i])
 #end
 
 
-assembleSolution(mesh, eqn, SL)
+@time assembleSolution(mesh, eqn, SL)
+println("assembly @time printed above")
 #fill!(eqn.res, 0)
 
 # println("STABSTABSTAB SL = ", SL)
 #applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
-applyMassMatrixInverse(eqn, SL)
+@time applyMassMatrixInverse(eqn, SL)
+println("Minv @time printed above")
 #println("MASSMASSMASS SL = ", SL)
 #for i=1:size(SL)[1]
 #  println(i, " ", SL[i])

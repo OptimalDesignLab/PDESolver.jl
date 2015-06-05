@@ -112,6 +112,8 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
     #   4: elem
 
 #  u, x, dxidx, jac, result, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
+
+#=
   numEl = getNumEl(mesh)
 
   alpha = zeros(Float64,2,2,sbp.numnodes,numEl)
@@ -129,7 +131,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
       end                                                                                               
     end                                                                                                 
   end
-
+=#
 
   function stabscale(u, dxidx, nrm)
 
@@ -185,7 +187,7 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   end
 
   # u argument here is SL in a different format
-  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, alpha, stabscale, eqn.res)
+  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res)
 
 #  println("==== end of addEdgeStabilize ====")
 
