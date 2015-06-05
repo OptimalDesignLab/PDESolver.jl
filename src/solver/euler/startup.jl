@@ -2,16 +2,18 @@
 
  push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
  push!(LOAD_PATH, "../../equation")
+ push!(LOAD_PATH, "../../common")
 #push!(LOAD_PATH, "../../../../PUMI")
+using CommonTypes
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 #include("../../equation/Equation.jl")  # equation types
-using Equation
+using EulerEquationMod
 include("../../rk4/rk4.jl")  # timestepping
-include("./euler.jl")  # solver functions
-include("./ic.jl")  # initial conditions functions
-include("./bc.jl")  # boundary conditions
+#include("./euler.jl")  # solver functions
+#include("./ic.jl")  # initial conditions functions
+#include("./bc.jl")  # boundary conditions
 include("./output.jl")  # printing results to files
 # include("./euler/addEdgeStabilize.jl")  # printing results to files
 
@@ -101,105 +103,6 @@ println("edgenum_local = ", edgenum_local)
 
 
 
-cntr = 1
-
-function evalEuler(t, SL0)
-#  println("\n")
-# this function is called by time stepping algorithm
-# t is the current time
-# x is the solution value at the previous timestep
-# u = output, the function value at the current timestep
-# u is declared outside this function to avoid reallocating memory
-
-# SL[:] = 0.0  # zero out u before starting
-SL = zeros(SL0)
-#println("SL0 = ", SL0)
-# u, x, dxidx, jac, res, interface = dataPrep(mesh, sbp, eqn, SL, SL0)
-# println("u = ", u)
-# println("x = ", x)
-# println("dxidx = ", dxidx)
-# println("jac = ", jac)
-# println("res = ", res)
-# println("interface = ", interface)
-@time dataPrep(mesh, sbp, eqn, SL, SL0)
-println("dataPrep @time printed above")
-@time evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
-println("volume integral @time printed above")
-#println("VOLVOLVOL SL = ", SL)
-@time evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
-println("boundary integral @time printed above")
-#println("BCBCBCBC SL = ", SL)
-#for i=1:size(SL)[1]
-#  println(i, " ", SL[i])
-#end
-#SL_sum = sum(SL)
-#println("BCBCBCBC SL_sum: ",SL_sum)
-
-
-
-@time addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
-println("edge stabilizing @time printed above")
-#println("EDGEEDGEEDGE SL: ")
-#for i=1:size(SL)[1]
-#  println(i, " ", SL[i])
-#end
-
-
-@time assembleSolution(mesh, eqn, SL)
-println("assembly @time printed above")
-#fill!(eqn.res, 0)
-
-# println("STABSTABSTAB SL = ", SL)
-#applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
-@time applyMassMatrixInverse(eqn, SL)
-println("Minv @time printed above")
-#println("MASSMASSMASS SL = ", SL)
-#for i=1:size(SL)[1]
-#  println(i, " ", SL[i])
-#end
-
-#applyDissipation(mesh, sbp, eqn, SL, SL0)
-
-
-
-#=
-# These two calls are for TESTING ONLY, delete in production code
-println("SL0 = ", SL0,"\n\n")
-println("SL = ", SL)
-print("\n")
-println("Running evalVolumeIntegrals")
-evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
-print("\n")
-println("SL0 = ", SL0,"\n\n")
-println("SL = ", SL)
-print("\n")
-println("Running evalBoundaryIntegrals")
-evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
-print("\n")
-println("SL0 = ", SL0,"\n\n")
-println("SL = ", SL)
-print("\n")
-println("Running addEdgeStabilize")
-addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
-print("\n")
-println("at end: SL0 = ", SL0,"\n\n")
-println("at end: SL = ", SL)
-=#
-
-#println("+++++++++ SL +++++++++:\n",SL)
-
-cntr = 100
-if (mod(cntr, 100) == 0)
-  err_norm = norm(SL)/mesh.numDof
-#  err_norm_string = string(err_norm)
-  print(" ", err_norm)
-end
-
-cntr += 1
-
-return SL
-
-end  # end evalEuler
 
 #=
 # These two calls are for TESTING ONLY, delete in production code
@@ -226,7 +129,11 @@ println("at end: SL = ", SL)
 =#
 
 # call timestepper
-SL = rk4(evalEuler, delta_t, SL0, t_max)
+
+extra_args = (mesh, sbp, eqn)
+
+@time SL = rk4(evalEuler, delta_t,SL,  SL0, t_max, extra_args)
+println("rk4 @time printed above")
 
 SL_diff = SL - SL_exact
 SL_norm = norm(SL_diff)/mesh.numDof

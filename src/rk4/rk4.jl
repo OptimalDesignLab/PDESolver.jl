@@ -6,14 +6,14 @@
 # dxdt = f(t,x)
 
 # Inputs:
-#   f:      function, that accepts input: (scalar t, vector x)
+#   f:      function, that accepts input: (scalar t, vector x_old, vector x_new)
 #   h:      delta t
 #   x_ic:   initial condition for x
 #   t_max:  length of time to step through
 # Outputs:
 #   x:      solved x at t_max
 
-function rk4(f, h, x_ic, t_max)
+function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   t = 0
   t_steps = int(floor(t_max/h))
@@ -28,6 +28,14 @@ function rk4(f, h, x_ic, t_max)
 #  x[:,1] = x_ic
 
   x_old = x_ic
+  k1 = zeros(x_old)
+  k2 = zeros(x_old)
+  k3 = zeros(x_old)
+  k4 = zeros(x_old)
+
+  x2 = zeros(x_old)
+  x3 = zeros(x_old)
+  x4 = zeros(x_old)
 
   for i=2:(t_steps + 1)
 
@@ -41,12 +49,22 @@ function rk4(f, h, x_ic, t_max)
 
 #    x_old = x[:,iter-1]
 
-    k1 = f(t,x_old)
-    k2 = f(t + h/2, x_old + (h/2)*k1)
-    k3 = f(t + h/2, x_old + (h/2)*k2)
-    k4 = f(t + h, x_old + h*k3)
+    f(t,x_old, k1, extra_args)
+    x2[:] = x_old + (h/2)*k1
+
+    f(t + h/2, x2, k2, extra_args)
+    x3[:] = x_old + (h/2)*k2
+
+    f(t + h/2, x3, k3, extra_args)
+    x4[:] = x_old + h*k3
+
+    f(t + h, x4, k4, extra_args)
     
     x_old = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+    fill!(k1, 0.0)
+    fill!(k2, 0.0)
+    fill!(k3, 0.0)
+    fill!(k4, 0.0)
 
 #    x[:,iter] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
 #    println("==== RK4 ==== i: ",i)

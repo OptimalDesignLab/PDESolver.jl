@@ -1,4 +1,7 @@
 # Euler flux calculator used by isentropicVortexBC ONLY!!
+
+export rho1Energy2BC, isentropicVortexBC
+
 function getEulerFlux(u_vals::AbstractArray, nx, ny, eqn)
 
 #  eqn = EulerEquation(sbp)

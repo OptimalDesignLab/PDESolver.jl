@@ -1,0 +1,7 @@
+module CommonTypes
+
+abstract AbstractEquation{T}
+abstract AbstractMesh
+
+
+end # end module

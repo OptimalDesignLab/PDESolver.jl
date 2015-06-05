@@ -3,8 +3,10 @@
 # more arguments than SBP allows
 
 using SummationByParts
-using Equation
+#using Equation
+#include("abstract_types.jl")
 using PdePumiInterface
+using CommonTypes
 
 
 import SummationByParts.boundaryintegrate2!

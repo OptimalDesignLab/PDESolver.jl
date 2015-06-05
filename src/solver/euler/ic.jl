@@ -7,6 +7,8 @@
 #   ICsmoothHeaviside
 #   ICIsentropicVortex
 
+export ICZero, ICRho1E2, ICLinear, ICsmoothHeavisideder, ICsmoothHeaviside, ICIsentropicVortex
+
 function ICZero(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
 # populate u0 with initial values
 # this is a template for all other initial conditions
