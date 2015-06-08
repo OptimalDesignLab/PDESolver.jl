@@ -2,29 +2,8 @@
 
 export rho1Energy2BC, isentropicVortexBC
 
-function getEulerFlux(u_vals::AbstractArray, nx, ny, eqn)
 
-#  eqn = EulerEquation(sbp)
-  f1 = zeros(Float64, 4)
-  f2 = zeros(f1)
-
-  pressure = calcPressure(u_vals, eqn)  # this only works because eqn is global
-  f1[1] = u_vals[2]
-  f1[2] = (u_vals[2]^2)/u_vals[1] + pressure
-  f1[3] = (u_vals[2]*u_vals[3])/u_vals[1]
-  f1[4] = (u_vals[4] + pressure)*u_vals[2]/u_vals[1]
-
-  f2[1] = u_vals[3]
-  f2[2] = (u_vals[2]*u_vals[3])/u_vals[1]
-  f2[3] = (u_vals[3]^2)/u_vals[1] + pressure
-  f2[4] = (u_vals[4] + pressure)*u_vals[3]/u_vals[1]
-
-  eulerflux = f1*nx + f2*ny
-  return eulerflux
-
-end
-
-
+# this function no longer works
 function rho1Energy2BC(q, x, dxidx, nrm)
 
   E1dq = zeros(Float64, 4)
@@ -263,8 +242,12 @@ function isentropicVortexBC{T}(q::AbstractArray{T,1}, x::AbstractArray{T,1}, dxi
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
-  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
-  
+  euler_flux = zeros(4)
+  getEulerFlux(eqn, q, [nx, ny], euler_flux)
+
+#  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
+  flux[:] = sat + euler_flux
+ 
 #  return sat + getEulerFlux(q, nx, ny)
    return nothing
 

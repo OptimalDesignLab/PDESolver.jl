@@ -11,6 +11,7 @@ using CommonTypes
 
 import SummationByParts.boundaryintegrate2!
 import SummationByParts.edgestabilize!
+
 # any function passed into this interface should take all the same arguments
 # required by SBP, plus an AbstractMesh and and AbstractEquation as the last two
 
@@ -24,6 +25,8 @@ function boundaryintegrate2!{T}(sbp::SBPOperator{T}, bndryfaces::Array{Boundary}
   function bndryflux_wrapper{T}(q::AbstractArray{T,1}, x::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, flux::AbstractArray{T,1})
     # call the boundary flux function with all the arguments
     bndryflux(q, x, dxidx, nrm, flux, mesh, eqn)
+
+
 
     return nothing
 

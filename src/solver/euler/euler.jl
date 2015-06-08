@@ -2,128 +2,54 @@
 # SL stands for semi-linear form, contents inside the inv(M)(...) parenthesis on pg. 7 of Jared's derivation
 
 
-using SummationByParts
-using PdePumiInterface
-include("sbp_interface.jl")
+#using SummationByParts
+#using PdePumiInterface
+#include("sbp_interface.jl")
 #include("stabilization.jl")
 
 export evalEuler
 
 
-function evalEulerWrapper(t, SL0)
-
-
-
-
-end  # end function
-
-
-cntr = 1
+# this function is what the timestepper calls
 function evalEuler(t, SL0, SL, extra_args)
 # SL is popualted with du/dt
-# SL0 is u at previous timestep
+# SL0 is q at previous timestep
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-#  println("\n")
-# this function is called by time stepping algorithm
-# t is the current time
-# x is the solution value at the previous timestep
-# u = output, the function value at the current timestep
-# u is declared outside this function to avoid reallocating memory
 
 mesh = extra_args[1]
 sbp = extra_args[2]
 eqn = extra_args[3]
 
-SL  
-SL0
 
-# SL[:] = 0.0  # zero out u before starting
-#SL = zeros(SL0)
-#println("SL0 = ", SL0)
-# u, x, dxidx, jac, res, interface = dataPrep(mesh, sbp, eqn, SL, SL0)
-# println("u = ", u)
-# println("x = ", x)
-# println("dxidx = ", dxidx)
-# println("jac = ", jac)
-# println("res = ", res)
-# println("interface = ", interface)
 @time dataPrep(mesh, sbp, eqn, SL, SL0)
 println("dataPrep @time printed above")
 @time evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
 println("volume integral @time printed above")
-#println("VOLVOLVOL SL = ", SL)
 @time evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
 println("boundary integral @time printed above")
-#println("BCBCBCBC SL = ", SL)
-#for i=1:size(SL)[1]
-#  println(i, " ", SL[i])
-#end
-#SL_sum = sum(SL)
-#println("BCBCBCBC SL_sum: ",SL_sum)
 
 
 
 @time addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
 println("edge stabilizing @time printed above")
-#println("EDGEEDGEEDGE SL: ")
-#for i=1:size(SL)[1]
-#  println(i, " ", SL[i])
-#end
 
 
 @time assembleSolution(mesh, eqn, SL)
 println("assembly @time printed above")
-#fill!(eqn.res, 0)
 
-# println("STABSTABSTAB SL = ", SL)
-#applyMassMatrixInverse(mesh, sbp, eqn, SL, SL0)
 @time applyMassMatrixInverse(eqn, SL)
 println("Minv @time printed above")
-#println("MASSMASSMASS SL = ", SL)
-#for i=1:size(SL)[1]
-#  println(i, " ", SL[i])
-#end
 
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
 
 
 
-#=
-# These two calls are for TESTING ONLY, delete in production code
-println("SL0 = ", SL0,"\n\n")
-println("SL = ", SL)
-print("\n")
-println("Running evalVolumeIntegrals")
-evalVolumeIntegrals(mesh, sbp, eqn, SL, SL0)
-print("\n")
-println("SL0 = ", SL0,"\n\n")
-println("SL = ", SL)
-print("\n")
-println("Running evalBoundaryIntegrals")
-evalBoundaryIntegrals(mesh, sbp, eqn, SL, SL0)
-print("\n")
-println("SL0 = ", SL0,"\n\n")
-println("SL = ", SL)
-print("\n")
-println("Running addEdgeStabilize")
-addEdgeStabilize(mesh, sbp, eqn, SL, SL0)
-print("\n")
-println("at end: SL0 = ", SL0,"\n\n")
-println("at end: SL = ", SL)
-=#
+#print current error
+err_norm = norm(SL)/mesh.numDof
+print(" ", err_norm)
 
-#println("+++++++++ SL +++++++++:\n",SL)
-
-cntr = 100
-if (mod(cntr, 100) == 0)
-  err_norm = norm(SL)/mesh.numDof
-#  err_norm_string = string(err_norm)
-  print(" ", err_norm)
-end
-
-cntr += 1
 
 return nothing
 #return SL
@@ -227,16 +153,10 @@ function addEdgeStabilize(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquati
   #   (remember to scale by rho) and n is the unit normal vector, from nrm->dxidx, then scaled by length
   # ifaces needs to be calculated
   # x needs to be passed
-  # need to clarify u vs res. maybe change the u variable name to semilinear 
 
 #   println("====== Entering edge stabilize ======")
   
 
-    # dxidx dimensions:
-    #   1: ref coord
-    #   2: phys coord
-    #   3: node
-    #   4: elem
 
   # u argument here is SL in a different format
   edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
@@ -254,9 +174,16 @@ end
 # this function is deprecated
 function applyDissipation(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
 # apply sketchy dissipation scheme
+# this doesn't work now that the code has been reorganized
 
   # get some data
-  u, x, dxidx, jac, res_xi, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
+#  u, x, dxidx, jac, res_xi, interfaces = dataPrep(mesh, sbp, eqn, SL, SL0)
+
+  u = mesh.q
+  x = mesh.coords
+  dxidx = mesh.dxidx
+  jac = mesh.jac
+  res_xi = zeros(eqn.res)
 
   res2_xi = zeros(res_xi)
 
@@ -308,9 +235,6 @@ for element = 1:mesh.numEl
 #   println("- element #: ",element,"   result[:,:,element]:",result[:,:,element])
 end
 
-
-
-
   return nothing
 
 end
@@ -333,28 +257,6 @@ function applyMassMatrixInverse(eqn::EulerEquation, SL::AbstractVector)
   return nothing
 end
 
-#=
-function applyMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL::AbstractVector, SL0::AbstractVector)
-# apply the inverse of the mass matrix to the entire solution vector
-# this is a good, memory efficient implimentation
-
-  numEl = getNumEl(mesh)
-  nnodes = sbp.numnodes
-  dofpernode = getNumDofPerNode(mesh)
-  for i=1:numEl
-    dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-    for j=1:nnodes
-      for k=1:dofpernode
-        dofnum_k = dofnums_i[k,j]
-        SL[dofnum_k] /= sbp.w[j]
-      end
-    end
-  end
-    
-  return nothing 
-
-end
-=#
 # some helper functions
 
 function getEulerFlux{T}(eqn::EulerEquation, q::AbstractArray{T,1}, dir::AbstractArray{T,1},  F::AbstractArray{T,1})
@@ -429,87 +331,6 @@ end
 
 
 
-#=
-function getF1(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::AbstractVector, element::Integer, f1::AbstractVector)
-# gets the vector F1 (see weak form derivation) for a particular element
-# for linear triangles, the size of F1 is 3 nodes * 4 dof per node = 12 entries
-# element : number of element to fetch F1 for
-# f1 : vector (of length 12) to populate with F1.  This vector is overwritten
-
-#   println("entered getF1")
-#   println("element number = ", element)
-
-  dofnums = getGlobalNodeNumbers(mesh, element)
-#   println("dofnums = \n", dofnums)
-  SL_vals = zeros(4)  # hold SL0 values for a single node
-
-  for i=1:3  # loop over nodes
-#     println("at node ", i)
-    SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
-#     println("SL_vals = \n", SL_vals)
-
-    # calculate pressure
-  #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-  #  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
-  #  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
-    pressure = calcPressure(SL_vals, eqn)
-
-    # calculate F1 for this node
-    start_index = 4*(i-1) + 1
-    f1[start_index] = SL_vals[2]  # f1_1 (density equation)
-    f1[start_index + 1] = (SL_vals[2]^2)/SL_vals[1] + pressure  # f1_2 (momentum-x equation)
-    f1[start_index + 2] = (SL_vals[2]*SL_vals[3])/SL_vals[1]  # f1_3 (momentum-y equation)
-    f1[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[2]/SL_vals[1] # f1_4 (energy equation)
-
-#     print("\n")
-  end
-
-#   println("F1 = \n", f1)
-
-  return nothing
-
-end
-
-function getF2(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, SL0::AbstractVector, element::Integer, f2::AbstractVector)
-# gets the vector F2 (see weak form derivation) for a particular element
-# for linear triangles, the size of F2 is 3 nodes * 4 dof per node = 12 entries
-# element : number of element to fetch F2 for
-# f2 : vector (of length 12) to populate with F2.  This vector is overwritten
-
-#   println("entered getF2")
-#   println("element number = ", element)
-
-  dofnums = getGlobalNodeNumbers(mesh, element)
-#   println("dofnums = \n", dofnums)
-  SL_vals = zeros(4)  # hold SL0 values for a single node
-
-  for i=1:3  # loop over nodes
-#     println("at node ", i)
-    SL_vals = SL0[dofnums[:,i]]  # get the SL0 values
-#     println("SL_vals = \n", SL_vals)
-
-    # calculate pressure
-  #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-  #  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
-  #  println("internal_energy = ", internal_energy, " , pressure = ", pressure)
-    pressure = calcPressure(SL_vals, eqn)
-
-    # calculate F1 for this node
-    start_index = 4*(i-1) + 1
-    f2[start_index] = SL_vals[3]  # f2_1 (density equation)
-    f2[start_index + 1] = (SL_vals[2]*SL_vals[3])/SL_vals[1] # f2_2 (momentum-x equation)
-    f2[start_index + 2] = (SL_vals[3]^2)/SL_vals[1] + pressure  # f2_3 (momentum-y equation)
-    f2[start_index + 3] = (SL_vals[4] + pressure)*SL_vals[3]/SL_vals[1] # f2_4 (energy equation)
-
-#     print("\n")
-  end
-
-#   println("F2 = \n", f2)
-
-  return nothing
-
-end
-=#
 function calcPressure(q::AbstractVector, eqn::EulerEquation)
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
@@ -528,90 +349,17 @@ end
 function assembleSolution(mesh::AbstractMesh, eqn::EulerEquation, SL::AbstractVector)
 
 
-for i=1:mesh.numEl  # loop over elements
-#  dofnums = getGlobalNodeNumbers(mesh, i)
-
-  for j=1:mesh.numNodesPerElement
-    for k=1:4  # loop over dofs on the node
-      dofnum_k = mesh.dofs[k, j, i]
-      SL[dofnum_k] += eqn.res[k,j,i]
-#      SL[dofnums[k, j]] += eqn.res[k, j, i]
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      for k=1:4  # loop over dofs on the node
+	dofnum_k = mesh.dofs[k, j, i]
+	SL[dofnum_k] += eqn.res[k,j,i]
+      end
     end
   end
-end
- 
-
-
+   
   return nothing
 end
 
-#=
-function assembleSL(vec::AbstractVector, element::Integer, SL::AbstractVector)
-# assembles a vector vec (of size 12, coresponding to solution values for an element), into the global solution vector SL
-# element specifies which element number the number in vec belong to
-#   println("entered assembleU")
-#   println("element = ", element)
-#   println("vec = \n", vec)
-  dofnums = getGlobalNodeNumbers(mesh, element)
 
-  start_index = 1
-  for i=1:3  # loop over nodes
-#    dofnums_i = dofnums[:,i]
-#    start_index = 4*(i-1) + 1
- 
-    for j=1:4
-      SL[j,i] += vec[start_index]
-    end
-  end
-
-#   println("SL = \n", SL)
-
-  return nothing
-
-end
-
-function assembleSL(vec::AbstractVector, element::Integer, component::Integer, SL::AbstractVector)
-# assembles a vector vec (of size 3, corresponding to the solution for one degree of freedom at each node) into the global solution vector SL
-# element specifies which element number the numbers in vec belong to
-#  component specifies which dof of each node (1,2,3, or 4)
-
-#   println("entered assembleU")
-#   println("element = ", element)
-#   println("component = ", component)
-#   println("vec = \n", vec)
-  dofnums = getGlobalNodeNumbers(mesh, element)
-#   println("dofnums = ", dofnums)
-
-#  dofnums_comp = dofnums[component,:]
-#  SL[dofnums_comp.'] += vec
-
-  for i=1:3
-    SL[dofnums[component, i]] = vec[i]
-  end
-
-#   println("SL = \n", SL)
-
-  return nothing
-
-end
-
-function assembleSLNode(vec::AbstractVector, element::Integer, node::Integer, SL::Vector)
-# vec is vector of length 4 (conservative variables for a single node
-# element is the element number that the node belongs to
-# node is the node on the element (1, 2 or 3 for linear triangles)
-# SL is global solution vector
-
-  dofnums = getGlobalNodeNumbers(mesh, element)
-#  dofnums_n = dofnums[:, node]
-
-#  SL[dofnums_n] += vec
-
-  for i=1:4
-    SL[dofnums[i, node]] += vec[i]
-  end
-  
-  return nothing
-
-end  # end function
-=#
 

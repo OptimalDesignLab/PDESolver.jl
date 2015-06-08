@@ -3,6 +3,7 @@
  push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
  push!(LOAD_PATH, "../../equation")
  push!(LOAD_PATH, "../../common")
+ push!(LOAD_PATH, "/users/creanj/.julia/v0.4/PDESolver/src/solver/euler")
 #push!(LOAD_PATH, "../../../../PUMI")
 using CommonTypes
 using PumiInterface # pumi interface
