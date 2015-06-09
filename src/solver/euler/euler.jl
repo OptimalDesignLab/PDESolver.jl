@@ -28,24 +28,24 @@ sbp = extra_args[2]
 eqn = extra_args[3]
 
 
-@time dataPrep(mesh, sbp, eqn, SL0)
-println("dataPrep @time printed above")
-@time evalVolumeIntegrals(mesh, sbp, eqn)
-println("volume integral @time printed above")
-@time evalBoundaryIntegrals(mesh, sbp, eqn)
-println("boundary integral @time printed above")
+dataPrep(mesh, sbp, eqn, SL0)
+#println("dataPrep @time printed above")
+evalVolumeIntegrals(mesh, sbp, eqn)
+#println("volume integral @time printed above")
+evalBoundaryIntegrals(mesh, sbp, eqn)
+#println("boundary integral @time printed above")
 
 
 
-@time addEdgeStabilize(mesh, sbp, eqn)
-println("edge stabilizing @time printed above")
+addEdgeStabilize(mesh, sbp, eqn)
+#println("edge stabilizing @time printed above")
 
 
-@time assembleSolution(mesh, eqn, SL)
-println("assembly @time printed above")
+assembleSolution(mesh, eqn, SL)
+#println("assembly @time printed above")
 
-@time applyMassMatrixInverse(eqn, SL)
-println("Minv @time printed above")
+applyMassMatrixInverse(eqn, SL)
+#println("Minv @time printed above")
 
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
 

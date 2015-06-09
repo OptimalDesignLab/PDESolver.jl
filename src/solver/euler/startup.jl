@@ -38,7 +38,8 @@ mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, 1, sbp; dofpernode=4)  #create linear
 
 
 # create euler equation
-eqn = EulerEquation{Tsol}(mesh, sbp)
+eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
+eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
 
 SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep

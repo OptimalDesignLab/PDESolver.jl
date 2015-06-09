@@ -18,6 +18,8 @@ export EulerEquation
 # for the Euler equations, this includes the conservative variables q, the fluxes in the xi and eta direction, and the result of the calculation
 # the inverse mass matrix is stored here as well (not sure if that fits better here or in the mesh object)
 # things like the coordinate field, the jacobian etc. are stored in the mesh objec
+
+
 type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
@@ -26,10 +28,10 @@ type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for eu
   gamma::T # ratio of specific heats
 
   # the following arrays hold data for all nodes
-  q::AbstractArray{T,3}  # holds conservative variables for all nodes
+  q::AbstractArray  # holds conservative variables for all nodes
   F_xi::AbstractArray{T,3}  # flux in xi direction
   F_eta::AbstractArray{T,3} # flux in eta direction
-  res::AbstractArray{T,3}  # result of computation
+  res::AbstractArray  # result of computation
 
   edgestab_alpha::AbstractArray{Float64, 4} # alpha needed by edgestabilization
   bndryflux::AbstractArray{T, 3}  # boundary flux
@@ -38,7 +40,8 @@ type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for eu
   Minv::AbstractArray{Float64, 1}  # invese mass matrix
 
   # inner constructor
-  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator)
+#  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
+  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
 
     eqn = new()  # incomplete initilization
 
@@ -50,10 +53,12 @@ type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for eu
     calcEdgeStabAlpha(mesh, sbp, eqn)
     # these variables get overwritten every iteration, so its safe to 
     # leave them without values
-    eqn.q = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.q = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.F_xi = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.F_eta = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.res = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+  #  eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+
     eqn.bndryflux = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numBoundaryEdges)
     eqn.stabscale = Array(T, sbp.numnodes, mesh.numInterfaces)
 
