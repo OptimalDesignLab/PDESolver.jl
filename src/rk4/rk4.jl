@@ -41,7 +41,7 @@ function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
 #    update_msg = string("RK4 i: ",i,"\n")
 #    write(STDERR,update_msg)
-    print("\nRK4 i : ", i)
+#    print("\nRK4 i : ", i)
 #     println("iter: ",iter)
     iter += 1
 #    println("in rk4, iter = ", iter)

@@ -6,7 +6,7 @@ using SummationByParts
 #using Equation
 #include("abstract_types.jl")
 using PdePumiInterface
-using CommonTypes
+using PDESolverCommon
 
 
 import SummationByParts.boundaryintegrate2!
@@ -32,7 +32,7 @@ function boundaryintegrate2!{T}(sbp::SBPOperator{T}, bndryfaces::Array{Boundary}
 
   end
   # call the SBP boundaryintegrate! with bndryflux_wrapper
-  boundaryintegrate2!(sbp, bndryfaces, u, x, dxidx, bndryflux_wrapper, res)
+  boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, bndryflux_wrapper, res)
 
   return nothing
 end

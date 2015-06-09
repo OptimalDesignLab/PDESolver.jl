@@ -1,6 +1,7 @@
 module EulerEquationMod
 
-using CommonTypes
+using ArrayViews
+using PDESolverCommon
 using SummationByParts
 using PdePumiInterface
 
@@ -17,20 +18,22 @@ export EulerEquation
 # for the Euler equations, this includes the conservative variables q, the fluxes in the xi and eta direction, and the result of the calculation
 # the inverse mass matrix is stored here as well (not sure if that fits better here or in the mesh object)
 # things like the coordinate field, the jacobian etc. are stored in the mesh objec
-type EulerEquation <: AbstractEquation  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
-  cv::Float64  # specific heat constant
-  R::Float64  # gas constant used in ideal gas law
-  gamma::Float64 # ratio of specific heats
+  cv::T  # specific heat constant
+  R::T  # gas constant used in ideal gas law
+  gamma::T # ratio of specific heats
 
   # the following arrays hold data for all nodes
-  q::AbstractArray{Float64,3}  # holds conservative variables for all nodes
-  F_xi::AbstractArray{Float64,3}  # flux in xi direction
-  F_eta::AbstractArray{Float64,3} # flux in eta direction
-  res::AbstractArray{Float64,3}  # result of computation
+  q::AbstractArray{T,3}  # holds conservative variables for all nodes
+  F_xi::AbstractArray{T,3}  # flux in xi direction
+  F_eta::AbstractArray{T,3} # flux in eta direction
+  res::AbstractArray{T,3}  # result of computation
 
   edgestab_alpha::AbstractArray{Float64, 4} # alpha needed by edgestabilization
+  bndryflux::AbstractArray{T, 3}  # boundary flux
+  stabscale::AbstractArray{T, 2}  # stabilization scale factor
 
   Minv::AbstractArray{Float64, 1}  # invese mass matrix
 
@@ -47,10 +50,12 @@ type EulerEquation <: AbstractEquation  # hold any constants needed for euler eq
     calcEdgeStabAlpha(mesh, sbp, eqn)
     # these variables get overwritten every iteration, so its safe to 
     # leave them without values
-    eqn.q = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.F_xi = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.F_eta = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.res = Array(Float64, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.q = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.F_xi = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.F_eta = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.res = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.bndryflux = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numBoundaryEdges)
+    eqn.stabscale = Array(T, sbp.numnodes, mesh.numInterfaces)
 
     #println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
     #type_of_sbp = typeof(operator.Q[1])  # a little hackish

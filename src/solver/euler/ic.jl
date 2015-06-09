@@ -9,7 +9,7 @@
 
 export ICZero, ICRho1E2, ICLinear, ICsmoothHeavisideder, ICsmoothHeaviside, ICIsentropicVortex
 
-function ICZero(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -44,7 +44,7 @@ return nothing
 
 end  # end function
 
-function ICRho1E2(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -80,14 +80,14 @@ return nothing
 end  # end function
 
 
-function ICRho1E2U3(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
 numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
-sol = zeros(4)
+sol = zeros(Tsol, 4)
 for i=1:numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
   coords = getElementVertCoords(mesh, [i])
@@ -122,15 +122,15 @@ return nothing
 end  # end function
 
 
-
-function ICVortex(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+# what is this? how is it different than ICIsentropic Vortex?
+function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
 numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
-sol = zeros(4)
+sol = zeros(Tsol, 4)
 for i=1:numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
   coords = getElementVertCoords(mesh, [i])
@@ -167,13 +167,13 @@ end  # end function
 
 
 
-function ICLinear(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICLinear{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractArray{Tsol,1})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
-dofnums_i = zeros(dofpernode)
+dofnums_i = zeros(Int, dofpernode)
 
 cntr = 1
 for i=1:mesh.numVert
@@ -201,7 +201,7 @@ return nothing
 end  # end function
 
 
-function ICsmoothHeavisideder(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
 # calculate the value of the smooth heaviside function derivative at a location x
 # x0 is specified within this function
 
@@ -245,7 +245,7 @@ return nothing
 
 end
 
-function ICsmoothHeaviside(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICsmoothHeaviside{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractArray{Tsol, 1})
 # calculate the value of the smooth heaviside function at a location x
 # x0 is specified within this function
 
@@ -289,14 +289,14 @@ return nothing
 
 end
 
-function ICIsentropicVortex(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractArray{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
 numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
-sol = zeros(4)
+sol = zeros(Tsol, 4)
 for i=1:numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
   coords = getElementVertCoords(mesh, [i])
@@ -316,14 +316,14 @@ return nothing
 
 end  # end function
 
-function ICIsentropicVortexWithNoise(mesh::AbstractMesh, operator::SBPOperator, eqn::EulerEquation, u0::AbstractVector)
+function ICIsentropicVortexWithNoise{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
 numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
-sol = zeros(4)
+sol = zeros(Tsol, 4)
 for i=1:numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
   coords = getElementVertCoords(mesh, [i])
