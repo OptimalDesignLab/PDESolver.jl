@@ -15,7 +15,7 @@
 
 function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
-  t = 0
+  t = 0.0
   t_steps = int(floor(t_max/h))
   println("t_steps: ",t_steps)
 

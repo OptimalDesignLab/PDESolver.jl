@@ -8,7 +8,7 @@ using PdePumiInterface
 # the AbstractEquation type is declared in CommonTypes
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
-export EulerEquation
+export EulerEquation, EulerEquation1
 
 
 
@@ -19,8 +19,9 @@ export EulerEquation
 # the inverse mass matrix is stored here as well (not sure if that fits better here or in the mesh object)
 # things like the coordinate field, the jacobian etc. are stored in the mesh objec
 
+abstract EulerEquation{T} <: AbstractEquation{T}
 
-type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+type EulerEquation1{T, T2} <: EulerEquation{T}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
   cv::T  # specific heat constant
@@ -28,20 +29,20 @@ type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for eu
   gamma::T # ratio of specific heats
 
   # the following arrays hold data for all nodes
-  q::AbstractArray  # holds conservative variables for all nodes
-  F_xi::AbstractArray{T,3}  # flux in xi direction
-  F_eta::AbstractArray{T,3} # flux in eta direction
-  res::AbstractArray  # result of computation
+  q::Array{T,3}  # holds conservative variables for all nodes
+  F_xi::Array{T,3}  # flux in xi direction
+  F_eta::Array{T,3} # flux in eta direction
+  res::Array{T2, 3}  # result of computation
 
-  edgestab_alpha::AbstractArray{Float64, 4} # alpha needed by edgestabilization
-  bndryflux::AbstractArray{T, 3}  # boundary flux
-  stabscale::AbstractArray{T, 2}  # stabilization scale factor
+  edgestab_alpha::Array{Float64, 4} # alpha needed by edgestabilization
+  bndryflux::Array{T, 3}  # boundary flux
+  stabscale::Array{T, 2}  # stabilization scale factor
 
-  Minv::AbstractArray{Float64, 1}  # invese mass matrix
+  Minv::Array{Float64, 1}  # invese mass matrix
 
   # inner constructor
 #  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
-  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
+  function EulerEquation1(mesh::PumiMesh2, sbp::SBPOperator)
 
     eqn = new()  # incomplete initilization
 
@@ -53,7 +54,7 @@ type EulerEquation{T} <: AbstractEquation{T}  # hold any constants needed for eu
     calcEdgeStabAlpha(mesh, sbp, eqn)
     # these variables get overwritten every iteration, so its safe to 
     # leave them without values
-    eqn.q = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.q = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.F_xi = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.F_eta = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
   #  eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)

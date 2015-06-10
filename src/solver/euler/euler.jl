@@ -2,6 +2,27 @@
 # SL stands for semi-linear form, contents inside the inv(M)(...) parenthesis on pg. 7 of Jared's derivation
 
 
+# Rules: 
+# 1. function that take a composite type with abstract fields *cannot* use those
+# fields directly (they can pass those fields to other functions however
+# This leads directly to a two level structure for the code: high level function
+# that take in composite types and low level function that take in arrays and
+# perform calculations on them
+
+# at this time, no composite types have abstract fields (all AbstractArrays
+# were turned into arrays)
+
+# the reason for this is that the compiler is unable to specialize functions based
+# on the types of the fields of a composite type. Passing the fields of the typ
+# e to other functions fixes this problem because the fields are now arguments,
+# so the compiler can specialize the code
+
+# 2.  Arrays should not be returned from functions.  The caller should allocate
+# and array and pass it into the function
+
+# this prevents repeatedly allocating new arrays
+
+
 #using SummationByParts
 #using PdePumiInterface
 #include("sbp_interface.jl")
@@ -28,8 +49,8 @@ sbp = extra_args[2]
 eqn = extra_args[3]
 
 
-dataPrep(mesh, sbp, eqn, SL0)
-#println("dataPrep @time printed above")
+@time dataPrep(mesh, sbp, eqn, SL0)
+println("dataPrep @time printed above")
 evalVolumeIntegrals(mesh, sbp, eqn)
 #println("volume integral @time printed above")
 evalBoundaryIntegrals(mesh, sbp, eqn)
@@ -80,7 +101,7 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   F_eta = eqn.F_eta
   fill!(eqn.res, 0.0)
 
-  # disassemble SL0 into eqn.q
+  # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:sbp.numnodes
       for k=1:4
@@ -89,6 +110,9 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
       end
     end
   end
+
+  # disassmble SL0 into eqn.q
+#  disassembleSolution(mesh, mesh.dofs, eqn.q, SL0)
 
 
 
@@ -353,6 +377,22 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol})
 #   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
 
 
+end
+
+
+function disassembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, dofs::AbstractArray{Int, 3}, u::AbstractArray{Tsol,3}, SL0::AbstractArray{Tsol, 1})
+
+  # disassemble SL0 into eqn.
+  for i=1:mesh.numEl  # loop over elements
+    for j = 1:mesh.numNodesPerElement
+      for k=1:4
+	dofnum_k = dofs[k, j, i]
+	u[k, j, i] = SL0[dofnum_k]
+      end
+    end
+  end
+
+  return nothing
 end
 
 

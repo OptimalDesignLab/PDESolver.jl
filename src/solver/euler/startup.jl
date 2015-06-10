@@ -10,9 +10,27 @@ using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
+using ForwardDiff
 include("../../rk4/rk4.jl")  # timestepping
 include("./output.jl")  # printing results to files
 
+
+function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
+# figure out what type eqn.res needs to be, taking into account
+# algorithmic differentiation of the different arguments
+# to support reverse mode, will need to consider the type of Tres as an input
+  if Tsol <: DualNumbers.Dual # differentiating wrt eqn.q
+    Tres = Tsol
+  elseif  Tmsh <: DualNumbers.Dual  # differentiating wrt mesh.coords
+    Tres = Tmsh
+    Tsol = Tmsh  # derivative of coordinates will end up in eqn.q
+  else  # no algorithmic differntiation
+    Tres = Tsol
+  end
+
+  return Tres
+
+end
 
 function runtest()
 # timestepping parameters
@@ -37,9 +55,16 @@ smb_name = "../../mesh_files/quarter_vortex3l.smb"
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, 1, sbp; dofpernode=4)  #create linear mesh with 4 dof per node
 
 
+Tmsh = Float64
+Tsbp = Float64
+Tsol = Float64
+Tres = getResType(Tmsh, Tsbp, Tsol)
+
+
+
 # create euler equation
-eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
-eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
+eqn = EulerEquation1{Tsol, Tres}(mesh, sbp)
+#eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
 
 SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
@@ -70,6 +95,7 @@ writeVtkFiles("solution_ic",mesh.m_ptr)
 extra_args = (mesh, sbp, eqn)
 
 SL = rk4(evalEuler, delta_t,SL,  SL0, t_max, extra_args)
+
 #println("rk4 @time printed above")
 
 SL_diff = SL - SL_exact
