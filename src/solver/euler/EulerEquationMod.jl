@@ -4,7 +4,7 @@ using ArrayViews
 using PDESolverCommon
 using SummationByParts
 using PdePumiInterface
-
+using ForwardDiff
 # the AbstractEquation type is declared in CommonTypes
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
@@ -19,24 +19,28 @@ export EulerEquation, EulerEquation1
 # the inverse mass matrix is stored here as well (not sure if that fits better here or in the mesh object)
 # things like the coordinate field, the jacobian etc. are stored in the mesh objec
 
-abstract EulerEquation{T} <: AbstractEquation{T}
+abstract EulerEquation{Tsol} <: AbstractEquation{Tsol}
 
-type EulerEquation1{T, T2} <: EulerEquation{T}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+type EulerEquation1{Tsol, Tres} <: EulerEquation{Tsol}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
-  cv::T  # specific heat constant
-  R::T  # gas constant used in ideal gas law
-  gamma::T # ratio of specific heats
+  cv::Float64  # specific heat constant
+  R::Float64  # gas constant used in ideal gas law
+  gamma::Float64 # ratio of specific heats
+  res_type::DataType  # type of res
 
   # the following arrays hold data for all nodes
-  q::Array{T,3}  # holds conservative variables for all nodes
-  F_xi::Array{T,3}  # flux in xi direction
-  F_eta::Array{T,3} # flux in eta direction
-  res::Array{T2, 3}  # result of computation
+  q::Array{Tsol,3}  # holds conservative variables for all nodes
+  F_xi::Array{Tsol,3}  # flux in xi direction
+  F_eta::Array{Tsol,3} # flux in eta direction
+  res::Array{Tres, 3}  # result of computation
+  SL::Array{Tres, 1}  # result of computation in vector form
+  SL0::Array{Tres,1}  # initial condition in vector form
+
 
   edgestab_alpha::Array{Float64, 4} # alpha needed by edgestabilization
-  bndryflux::Array{T, 3}  # boundary flux
-  stabscale::Array{T, 2}  # stabilization scale factor
+  bndryflux::Array{Tsol, 3}  # boundary flux
+  stabscale::Array{Tsol, 2}  # stabilization scale factor
 
   Minv::Array{Float64, 1}  # invese mass matrix
 
@@ -49,19 +53,22 @@ type EulerEquation1{T, T2} <: EulerEquation{T}  # hold any constants needed for 
     eqn.gamma = 1.4
     eqn.R = 287.058  # specific gas constant (unit J/(kg * K)
     eqn.cv = eqn.R/(eqn.gamma - 1)
+    eqn.res_type = Tres
 
     calcMassMatrixInverse(mesh, sbp, eqn)
     calcEdgeStabAlpha(mesh, sbp, eqn)
     # these variables get overwritten every iteration, so its safe to 
     # leave them without values
-    eqn.q = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.F_xi = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.F_eta = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.q = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.F_xi = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.F_eta = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
   #  eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.res = Array(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.SL = Array(Tres, mesh.numDof)
+    eqn.SL0 = Array(Tres, mesh.numDof)
 
-    eqn.bndryflux = Array(T, mesh.numDofPerNode, sbp.numnodes, mesh.numBoundaryEdges)
-    eqn.stabscale = Array(T, sbp.numnodes, mesh.numInterfaces)
+    eqn.bndryflux = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numBoundaryEdges)
+    eqn.stabscale = Array(Tsol, sbp.numnodes, mesh.numInterfaces)
 
     #println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
     #type_of_sbp = typeof(operator.Q[1])  # a little hackish
@@ -69,6 +76,7 @@ type EulerEquation1{T, T2} <: EulerEquation{T}  # hold any constants needed for 
     #return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta)
 
     println("eq.gamma = ", eqn.gamma, " eqn.R = ", eqn.R, " eqn.cv = ", eqn.cv)
+    println("eqn.res_type = ", eqn.res_type)
     return eqn
   end  # end of constructor
 

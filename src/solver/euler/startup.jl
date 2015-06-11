@@ -32,7 +32,8 @@ function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
 
 end
 
-function runtest()
+function runtest(flag::Int)
+# flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
 delta_t = 0.005
 #t_max = 0.025
@@ -40,9 +41,23 @@ t_max = 5.00
 #t_max = 1.0
 
 # types of the mesh, SBP, Equation objects
-Tmsh= Float64
-Tsbp = Float64
-Tsol = Float64
+if flag == 1  # normal run
+  Tmsh = Float64
+  Tsbp = Float64
+  Tsol = Float64
+  Tres = Float64
+elseif flag == 2  # calculate dR/du
+  Tmsh = Float64
+  Tsbp = Float64
+  Tsol = Dual{Float64}
+  Tres = Dual{Float64}
+elseif flag == 3  # calcualte dR/dx using forward mode
+  Tmsh = Dual{Float64}
+  Tsbp = Float64
+  Tsol = Dual{Float64}
+  Tres = Dual{Float64}
+end
+
 
 # create operator
 sbp = TriSBP{Tsbp}()  # create linear sbp operator
@@ -55,10 +70,6 @@ smb_name = "../../mesh_files/quarter_vortex3l.smb"
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, 1, sbp; dofpernode=4)  #create linear mesh with 4 dof per node
 
 
-Tmsh = Float64
-Tsbp = Float64
-Tsol = Float64
-Tres = getResType(Tmsh, Tsbp, Tsol)
 
 
 
@@ -67,9 +78,10 @@ eqn = EulerEquation1{Tsol, Tres}(mesh, sbp)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
 
-SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
-SL = zeros(Tsol, mesh.numDof) # solution at current timestep
-
+#SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
+#SL = zeros(Tsol, mesh.numDof) # solution at current timestep
+SL = eqn.SL
+SL0 = eqn.SL0
 
 # populate u0 with initial condition
 # ICZero(mesh, sbp, eqn, SL0)
@@ -91,37 +103,64 @@ writeVtkFiles("solution_ic",mesh.m_ptr)
 
 
 # call timestepper
+if flag == 1 # normal run
+ rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn)
+# println("rk4 @time printed above")
+elseif flag == 2 # forward diff dR/du
 
-extra_args = (mesh, sbp, eqn)
+  # define nested function
+  function dRdu_rk4_wrapper(u_vals::AbstractVector, SL::AbstractVector)
+    eqn.SL0 = u_vals
+    eqn.SL0 = SL
+    rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn)
+    return nothing
+  end
 
-SL = rk4(evalEuler, delta_t,SL,  SL0, t_max, extra_args)
+  # use ForwardDiff package to generate function that calculate jacobian
+  calcdRdu! = forwarddiff_jacobian!(drDu_rk4_wrapper, Float64, fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
 
-#println("rk4 @time printed above")
+  jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
+  calcdRdu!(eqn.SL0, jac)
 
-SL_diff = SL - SL_exact
-SL_norm = norm(SL_diff)/mesh.numDof
-#SL_side_by_side = [SL_exact  SL]
+elseif flag == 3 # calculate dRdx
 
-#=
-println("\n\n\n")
-println("SL_diff: \n")
-for i=1:size(SL_diff)[1]
-  println(SL_diff[i,:])
-end
-println("SL_side_by_side: \n")
-for i=1:size(SL_side_by_side)[1]
-  println(i, " ", SL_side_by_side[i,:])
-end
-=#
-println("SL_norm: \n",SL_norm,"\n")
-
-
-saveSolutionToMesh(mesh, SL)
-printSolution(mesh, SL)
-printCoordinates(mesh)
-writeVtkFiles("solution_done",mesh.m_ptr)
+  # dRdx here
 
 end
 
 
-runtest()
+
+
+
+
+
+if flag == 1
+
+
+    SL_diff = SL - SL_exact
+    SL_norm = norm(SL_diff)/mesh.numDof
+    #SL_side_by_side = [SL_exact  SL]
+
+    #=
+    println("\n\n\n")
+    println("SL_diff: \n")
+    for i=1:size(SL_diff)[1]
+      println(SL_diff[i,:])
+    end
+    println("SL_side_by_side: \n")
+    for i=1:size(SL_side_by_side)[1]
+      println(i, " ", SL_side_by_side[i,:])
+    end
+    =#
+    println("SL_norm: \n",SL_norm,"\n")
+
+
+    saveSolutionToMesh(mesh, SL0)
+    printSolution(mesh, SL0)
+    printCoordinates(mesh)
+    writeVtkFiles("solution_done",mesh.m_ptr)
+end
+end
+
+
+runtest(1)

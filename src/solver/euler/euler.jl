@@ -37,16 +37,11 @@ export evalEuler
 
 
 # this function is what the timestepper calls
-function evalEuler(t, SL0, SL, extra_args)
+function evalEuler(t, mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL0, SL)
 # SL is popualted with du/dt
 # SL0 is q at previous timestep
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
-
-
-mesh = extra_args[1]
-sbp = extra_args[2]
-eqn = extra_args[3]
 
 
 @time dataPrep(mesh, sbp, eqn, SL0)
@@ -293,6 +288,21 @@ end
 
 # some helper functions
 
+
+function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
+  dir = [1.0, 0.0]
+#  F = zeros(T, 4)
+  sbp = TriSBP{Float64}()
+  mesh = PumiMesh2{Float64}(".null", "../../mesh_files/quarter_vortex3l.smb", 1, sbp; dofpernode=4)
+  eqn = EulerEquation1{T, T}(mesh, sbp)
+
+  @time getEulerFlux(eqn, q, dir, F)
+
+  return F
+
+end
+
+
 function getEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh,1},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
@@ -313,6 +323,8 @@ function getEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol}, q::AbstractArray{Tso
   return nothing
 
 end
+
+
 
 
 function getEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol}, q::AbstractArray{Tsol,3}, dxidx::AbstractArray{Tmsh,4},  F_xi::AbstractArray{Tsol,3}, F_eta::AbstractArray{Tsol,3})
@@ -362,6 +374,8 @@ function getEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol}, q::AbstractArray{Tso
   return nothing
 
 end
+
+fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
 
 
 
