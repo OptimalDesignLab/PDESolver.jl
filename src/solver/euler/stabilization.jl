@@ -50,8 +50,9 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 #     U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
     U = vel_x*(h_x/h) + vel_y*(h_y/h)
 
+    order = mesh.order
 #     return (U + speed_sound)*edge_stab_gamma*h^2
-    return (abs(U) + speed_sound)*edge_stab_gamma*h^2
+    return (abs(U) + speed_sound)*edge_stab_gamma*h^(order+1)
 
   end
 

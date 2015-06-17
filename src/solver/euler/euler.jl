@@ -12,7 +12,8 @@
 # at this time, no composite types have abstract fields (all AbstractArrays
 # were turned into arrays)
 
-# the reason for this is that the compiler is unable to specialize functions based
+# the reason for this is that the compiler does not compile new version of the 
+# function based
 # on the types of the fields of a composite type. Passing the fields of the typ
 # e to other functions fixes this problem because the fields are now arguments,
 # so the compiler can specialize the code
@@ -47,6 +48,7 @@ function evalEuler(t, mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, 
 @time dataPrep(mesh, sbp, eqn, SL0)
 println("dataPrep @time printed above")
 evalVolumeIntegrals(mesh, sbp, eqn)
+#println("after evalVolumeIntegrals, isnan: ", isnan(eqn.res))
 #println("volume integral @time printed above")
 evalBoundaryIntegrals(mesh, sbp, eqn)
 #println("boundary integral @time printed above")
@@ -79,7 +81,6 @@ end  # end evalEuler
 
 
 
-
 function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, SL0::AbstractVector{Tsol})
 # gather up all the data needed to do vectorized operatinos on the mesh
 # linear elements only
@@ -89,6 +90,8 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
 # need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
 
 #println("Entered dataPrep()")
+
+#  println("eqn.q = ", eqn.q)
 
   u = eqn.q
   F_xi = eqn.F_xi
@@ -412,6 +415,10 @@ end
 
 function assembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tmsh}, SL::AbstractArray{Tsol,1})
 
+  println("in assembleSolution")
+
+#  println("size(mesh.dofs) = ", size(mesh.dofs))
+#  println("size(eqn.res = ", size(eqn.res))
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement

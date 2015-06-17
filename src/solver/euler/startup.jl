@@ -32,6 +32,9 @@ function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
 
 end
 
+
+
+
 function runtest(flag::Int)
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
@@ -39,6 +42,10 @@ delta_t = 0.005
 #t_max = 0.025
 t_max = 5.00
 #t_max = 1.0
+order = 2  # order of accuracy
+
+
+
 
 # types of the mesh, SBP, Equation objects
 if flag == 1  # normal run
@@ -60,14 +67,14 @@ end
 
 
 # create operator
-sbp = TriSBP{Tsbp}()  # create linear sbp operator
+sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "../../mesh_files/quarter_vortex3l.smb"
+smb_name = "../../mesh_files/quarter_vortex3q.smb"
 #smb_name = "../../mesh_files/quarter_vortex8l.smb"
 #smb_name = "../../mesh_files/tri30l.smb"
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, 1, sbp; dofpernode=4)  #create linear mesh with 4 dof per node
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp; dofpernode=4)  #create linear mesh with 4 dof per node
 
 
 

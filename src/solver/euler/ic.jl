@@ -293,19 +293,25 @@ function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
+println("entered ICIsentropicVortex")
+
 numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
+#  println("i = ", i)
   dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+#  coords = getElementVertCoords(mesh, [i])
 
   for j=1:nnodes
 
       # coordinates of this node (must be a vertex)
-      coords_j = coords[:,j]
+#      coords_j = coords[:,j]
+      coords_j = mesh.coords[:,j, i]
       calcIsentropicVortex(coords_j, eqn, sol)
+
+#      println( "  j = ", j, " sol = ", sol, " coords_j = ", coords_j)
 
       # apply initial conditions here
       u0[dofnums_i[:,j]] = sol
