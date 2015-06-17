@@ -8,7 +8,7 @@ using ForwardDiff
 # the AbstractEquation type is declared in CommonTypes
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
-export AbstractEulerEquation, EulerEquation, ConcreteEulerEquation
+export AbstractEulerEquation, EulerEquation, EulerEquation1
 
 
 
@@ -20,14 +20,9 @@ export AbstractEulerEquation, EulerEquation, ConcreteEulerEquation
 # things like the coordinate field, the jacobian etc. are stored in the mesh objec
 
 abstract AbstractEulerEquation{Tsol} <: AbstractEquation{Tsol}
-abstract EulerEquation{Tsol, Tdim} <: AbstractEulerEquation{Tsol}
+abstract EulerEquation {Tsol, Tdim} <: AbstractEulerEquation{Tsol}
 
-# use AbstractEulerEquation for high level functions
-# use EulerEquation for mid level functions
-# don't use ConcreteEulerEquation (unless you really need to dispatch based on Tres)
-
-
-type ConcreteEulerEquation{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
 # Tsol is solution conservative variable data type, Tres is solution data type
@@ -39,9 +34,9 @@ type ConcreteEulerEquation{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hol
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
-  # flux in all directions
-  # [ndof per node by nnodes per element by numelements by num dimensions]
-  F_xi::Array{Tsol,4}
+  # hold fluxes in all directions
+  # [ndof per node by nnodes per element by num element by num dimensions]
+  F_xi::Array{Tsol,4}  # flux in xi direction
 #  F_eta::Array{Tsol,3} # flux in eta direction
   res::Array{Tres, 3}  # result of computation
   SL::Array{Tres, 1}  # result of computation in vector form

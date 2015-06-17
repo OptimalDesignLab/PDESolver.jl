@@ -111,7 +111,6 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
     end
   end
 =#
-
   disassembleSolution(mesh, eqn)
   # disassmble SL0 into eqn.q
 #  disassembleSolution(mesh, mesh.dofs, eqn.q, SL0)
@@ -146,9 +145,8 @@ function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, s
 #  println("size eqn.F_xi = ", size(eqn.F_xi), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
 
   for i=1:Tdim
-    weakdifferentiate!(sbp, 1, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
+    weakdifferentiate!(sbp, i, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
   end
-#  weakdifferentiate!(sbp, 2, eqn.F_eta, eqn.res, trans=true)
 
 
   # need source term here
@@ -409,10 +407,9 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 2
 
 end
 
-# rewrite this to be a mid level function
+
 #function disassembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, dofs::AbstractArray{Int, 3}, u::AbstractArray{Tsol,3}, SL0::AbstractArray{Tsol, 1})
 function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
-
   # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
