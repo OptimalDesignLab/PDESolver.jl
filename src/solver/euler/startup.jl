@@ -35,7 +35,8 @@ end
 
 
 
-function runtest(flag::Int)
+#function runtest(flag::Int)
+flag = 1
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
 delta_t = 0.005
@@ -167,7 +168,7 @@ if flag == 1
     printCoordinates(mesh)
     writeVtkFiles("solution_done",mesh.m_ptr)
 end
-end
+#end
 
 
-runtest(1)
+#runtest(1)

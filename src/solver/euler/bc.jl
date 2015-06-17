@@ -244,7 +244,7 @@ function isentropicVortexBC{T}(q::AbstractArray{T,1}, x::AbstractArray{T,1}, dxi
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
   euler_flux = zeros(4)
-  getEulerFlux(eqn, q, [nx, ny], euler_flux)
+  calcEulerFlux(eqn, q, [nx, ny], euler_flux)
 
 #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
   flux[:] = -(sat + euler_flux)
@@ -387,9 +387,9 @@ function isentropicVortexBC{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBP
       tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
       sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
-      getEulerFlux(eqn, q, [nx, ny], euler_flux)
+      calcEulerFlux(eqn, q, [nx, ny], euler_flux)
 
-    #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)a
+    #  flux[:] = sat + calcEulerFlux(q, nx, ny, eqn)a
       # make flux negative until boundaryintegrate! supports -=
       flux = -(sat + euler_flux)
     end

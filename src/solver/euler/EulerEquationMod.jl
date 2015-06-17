@@ -22,6 +22,15 @@ export AbstractEulerEquation, EulerEquation, EulerEquation1
 abstract AbstractEulerEquation{Tsol} <: AbstractEquation{Tsol}
 abstract EulerEquation {Tsol, Tdim} <: AbstractEulerEquation{Tsol}
 
+# high level functions should take in an AbstractEulerEquation, remaining
+# agnostic to the dimensionality of the equation
+# Mid level function should take in an EulerEquation{Tsol, Tdim}, so they
+# know the dimensionality of the equation, but have a single method that
+# can handle all dimensions
+
+# low level functions should take in EulerEquation{Tsol, 2} or EulerEquation{Tsol, 3}
+# this allows them to have different methods for different dimension equations.
+
 type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not

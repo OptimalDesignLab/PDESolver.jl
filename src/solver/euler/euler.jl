@@ -1,6 +1,24 @@
 # this file contains the functions to evaluate the right hand side of the weak form in the pdf
 # SL stands for semi-linear form, contents inside the inv(M)(...) parenthesis on pg. 7 of Jared's derivation
 
+# Organization:
+# The code is organized into 3 levels of functions.  High level functions
+# only call mid level functions, passing the Mesh, Equation, and SBP objects
+# to them.  At this point, there shouldn't be any need for more high level
+# functions.
+#
+# The mid level functions either call SBP functions or have loops over
+# the arrays stored in the Equation, calling low level functions
+# to calculate quantities at each node.  Use the ArrayViews package to pass
+# portions of a larger array to the low level functions.
+#
+# Low level functions calculate quantities for a single node.  Although
+# these functions will likely take in an ArrayView, their argument
+# types should be AbstractArrays{T, N}, specifying T according to 
+# what type the original array is (from either the Equation or Mesh object)
+
+# The proper order for arguments is (mesh, sbp, eqn).
+
 
 # Rules: 
 # 1. function that take a composite type with abstract fields *cannot* use those
@@ -10,7 +28,7 @@
 # perform calculations on them
 
 # at this time, no composite types have abstract fields (all AbstractArrays
-# were turned into arrays)
+# were turned into arrays), so this is a non-issue
 
 # the reason for this is that the compiler does not compile new version of the 
 # function based
@@ -21,13 +39,10 @@
 # 2.  Arrays should not be returned from functions.  The caller should allocate
 # and array and pass it into the function
 
-# this prevents repeatedly allocating new arrays
+# this allows reusing the same array during a loop (rather than 
+# allocating a new array)
 
 
-#using SummationByParts
-#using PdePumiInterface
-#include("sbp_interface.jl")
-#include("stabilization.jl")
 
 export evalEuler
 
@@ -38,12 +53,12 @@ export evalEuler
 
 
 # this function is what the timestepper calls
-function evalEuler(t, mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL0, SL)
+# high level function
+function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL0, SL, t=0.0)
 # SL is popualted with du/dt
 # SL0 is q at previous timestep
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
-
 
 @time dataPrep(mesh, sbp, eqn, SL0)
 println("dataPrep @time printed above")
@@ -80,10 +95,9 @@ return nothing
 end  # end evalEuler
 
 
-
+# high level functions
 function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerEquation{Tsol}, SL0::AbstractVector{Tsol})
 # gather up all the data needed to do vectorized operatinos on the mesh
-# linear elements only
 # disassembles SL0 into eqn.q
 # calculates all mesh wide quantities in eqn
 
@@ -96,27 +110,18 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   u = eqn.q
   F_xi = eqn.F_xi
 
-#  F_eta = eqn.F_eta
+  # zero out res
   fill!(eqn.res, 0.0)
-#=
-  # disassemble SL0 into eqn.
-  for i=1:mesh.numEl  # loop over elements
-    for j = 1:sbp.numnodes
-      for k=1:4
-	dofnum_k = mesh.dofs[k, j, i]
-	u[k, j, i] = SL0[dofnum_k]
-      end
-    end
-  end
-=#
+  
+  # disassemble SL0 into eqn.q
   disassembleSolution(mesh, eqn)
   # disassmble SL0 into eqn.q
-#  disassembleSolution(mesh, mesh.dofs, eqn.q, SL0)
 
 
 
   # calculate fluxes
-  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
+#  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
+  getEulerFlux(mesh, eqn)
   isentropicVortexBC(mesh, sbp, eqn)
   stabscale(mesh, sbp, eqn)
 #  println("getEulerFlux @time printed above")
@@ -128,6 +133,7 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   return nothing
 end # end function dataPrep
 
+# mid level function
 function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
@@ -153,15 +159,12 @@ end
 #------------- end of evalVolumeIntegrals
 
 
-function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
 # evaluate all the integrals over the boundary
-# does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
-# operator : an SBP operator, used to get stiffness matricies and stuff
+# sbp : an SBP operator, used to get stiffness matricies and stuff
 # eqn : a type that holds some constants needed to evaluate the equation
 #	: also used for multiple dispatch
-# u : solution vector to be populated (mesh.numDof entries), partially populated by evalVolumeIntegrals
-# u0 : solution vector at previous timesteps (mesh.numDof entries)
 
 
 #  println("====== start of evalBoundaryIntegrals ======")
@@ -180,6 +183,7 @@ end
 #------------- end of evalBoundaryIntegrals
 
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
+# mid level function
 function addEdgeStabilize{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
 
 #  println("==== start of addEdgeStabilize ====")
@@ -277,21 +281,6 @@ end
 
 
 
-
-function applyMassMatrixInverse{Tsol}(eqn::EulerEquation{Tsol}, SL::AbstractVector{Tsol})
-# apply the inverse mass matrix stored eqn to SL
-
-#  SL .*= eqn.Minv  # this gives wrong answer
-
-
-  ndof = length(SL)
-  for i=1:ndof
-    SL[i] *= eqn.Minv[i]
-  end
-
-  return nothing
-end
-
 # some helper functions
 
 
@@ -309,31 +298,34 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 end
 
 
-function getEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh,1},  F::AbstractArray{Tsol,1})
-# calculates the Euler flux in a particular direction at a point
-# eqn is the equation type
-# q is the vector (of length 4), of the conservative variables at the point
-# dir is a vector of length 2 that specifies the direction
-# F is populated with the flux (is a vector of length 4)
 
-# once the Julia developers fix slice notation and speed up subarrays, we can make a faster
-# vectorized version of this
+# mid level function
+function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
+# calculate Euler flux in parametric coordinate directions, stores it in eqn.F_xi
 
-  press = calcPressure(q, eqn)
-  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
-  F[1] = q[1]*U
-  F[2] = q[2]*U + dir[1]*press
-  F[3] = q[3]*U + dir[2]*press
-  F[4] = (q[4] + press)*U
- 
+  nrm = zeros(Tmsh, 2)
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement  # loop over nodes on current element
+      q_vals = unsafe_view(eqn.q, :, j, i)
+      # put this loop here (rather than outside) to we don't have to fetch
+      # q_vals twice, even though writing to the flux vector is slower
+      # it might be worth copying the normal vector rather than
+      # doing an unsafe_view
+      for k=1:Tdim  # loop over dimensions  
+	# this will disbatch to the proper calcEulerFlux
+	nrm[1] = mesh.dxidx[k, 1, j, i]
+	nrm[2] = mesh.dxidx[k, 2, j, i]
+#        nrm = unsafe_view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
+        calcEulerFlux(eqn, q_vals, nrm, unsafe_view(eqn.F_xi, :, j, i, k))
+      end
+    end
+  end
+
   return nothing
-
 end
 
-
-
-
-function getEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol}, q::AbstractArray{Tsol,3}, dxidx::AbstractArray{Tmsh,4},  F_xi::AbstractArray{Tsol,3}, F_eta::AbstractArray{Tsol,3})
+# this function is deprecated in factor of getEulerFlux()
+function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol})
 # calculates the Euler flux for every node in the xi and eta directions
 # eqn is the equation type
 # q is the 3D array (4 by nnodes per element by nel), of the conservative variables
@@ -343,6 +335,11 @@ function getEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol}, q::AbstractArray{Tso
 
 # once the Julia developers fix slice notation and speed up subarrays, we won't have to 
 # vectorize like this (can calculate flux one node at a time inside a dedicated function
+
+q = eqn.q
+dxidx = mesh.dxidx
+F_xi = view(eqn.F_xi, :, :, :, 1)
+F_eta = view(eqn.F_xi, :, :, :, 2)
 
 (ncomp, nnodes, nel) = size(q)  # get sizes of things
 
@@ -385,22 +382,26 @@ fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4
 
 
 
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol})
-  # calculate pressure for a node
-  # q is a vector of length 4 of the conservative variables
+# mid level function (although it doesn't really need to Tdim)
+function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerEquation{Tsol, Tdim}, SL::AbstractVector{Tsol})
+# apply the inverse mass matrix stored eqn to SL
 
-#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
-
-  return  (eqn.gamma-1)*(q[4] - 0.5*(q[2]^2 + q[3]^2)/q[1])
-  
-#   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+#  SL .*= eqn.Minv  # this gives wrong answer
 
 
+  ndof = length(SL)
+  for i=1:ndof
+    SL[i] *= eqn.Minv[i]
+  end
+
+  return nothing
 end
 
 
-#function disassembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, dofs::AbstractArray{Int, 3}, u::AbstractArray{Tsol,3}, SL0::AbstractArray{Tsol, 1})
+
+
+
+# mid level function (although it doesn't need Tdim)
 function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
   # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
@@ -415,10 +416,10 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::Eu
   return nothing
 end
 
-
+# mid level function (although it doesn't need Tdim)
 function assembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tmsh}, SL::AbstractArray{Tsol,1})
 
-  println("in assembleSolution")
+#  println("in assembleSolution")
 
 #  println("size(mesh.dofs) = ", size(mesh.dofs))
 #  println("size(eqn.res = ", size(eqn.res))
@@ -435,5 +436,43 @@ function assembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquati
   return nothing
 end
 
+
+# low level function
+function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 2}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+# calculates the Euler flux in a particular direction at a point
+# eqn is the equation type
+# q is the vector (of length 4), of the conservative variables at the point
+# dir is a vector of length 2 that specifies the direction
+# F is populated with the flux (is a vector of length 4)
+# 2D  only
+
+# once the Julia developers fix slice notation and speed up subarrays, we can make a faster
+# vectorized version of this
+
+  press = calcPressure(q, eqn)
+  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+  F[1] = q[1]*U
+  F[2] = q[2]*U + dir[1]*press
+  F[3] = q[3]*U + dir[2]*press
+  F[4] = (q[4] + press)*U
+ 
+  return nothing
+
+end
+
+# low level function
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 2})
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
+#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+
+  return  (eqn.gamma-1)*(q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])
+  
+#   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+
+
+end
 
 

@@ -136,16 +136,16 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 
 #    x_old = x[:,iter-1]
 
-    f(t, mesh, sbp, eqn, x_old, k1)
+    f( mesh, sbp, eqn, x_old, k1, t)
     x2[:] = x_old + (h/2)*k1
 
-    f(t + h/2, mesh, sbp, eqn,  x2, k2)
+    f( mesh, sbp, eqn,  x2, k2, t + h/2)
     x3[:] = x_old + (h/2)*k2
 
-    f(t + h/2, mesh, sbp, eqn,  x3, k3)
+    f( mesh, sbp, eqn,  x3, k3, t + h/2)
     x4[:] = x_old + h*k3
 
-    f(t + h, mesh, sbp, eqn,  x4, k4)
+    f( mesh, sbp, eqn,  x4, k4, t + h)
     
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     fill!(k1, 0.0)
