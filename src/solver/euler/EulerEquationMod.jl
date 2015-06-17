@@ -8,7 +8,7 @@ using ForwardDiff
 # the AbstractEquation type is declared in CommonTypes
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
-export EulerEquation, EulerEquation1
+export AbstractEulerEquation, EulerEquation, ConcreteEulerEquation
 
 
 
@@ -19,11 +19,19 @@ export EulerEquation, EulerEquation1
 # the inverse mass matrix is stored here as well (not sure if that fits better here or in the mesh object)
 # things like the coordinate field, the jacobian etc. are stored in the mesh objec
 
-abstract EulerEquation{Tsol} <: AbstractEquation{Tsol}
+abstract AbstractEulerEquation{Tsol} <: AbstractEquation{Tsol}
+abstract EulerEquation{Tsol, Tdim} <: AbstractEulerEquation{Tsol}
 
-type EulerEquation1{Tsol, Tres} <: EulerEquation{Tsol}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+# use AbstractEulerEquation for high level functions
+# use EulerEquation for mid level functions
+# don't use ConcreteEulerEquation (unless you really need to dispatch based on Tres)
+
+
+type ConcreteEulerEquation{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
+# Tsol is solution conservative variable data type, Tres is solution data type
+# Tdim is dimensionality of the equation
   cv::Float64  # specific heat constant
   R::Float64  # gas constant used in ideal gas law
   gamma::Float64 # ratio of specific heats
@@ -31,8 +39,10 @@ type EulerEquation1{Tsol, Tres} <: EulerEquation{Tsol}  # hold any constants nee
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
-  F_xi::Array{Tsol,3}  # flux in xi direction
-  F_eta::Array{Tsol,3} # flux in eta direction
+  # flux in all directions
+  # [ndof per node by nnodes per element by numelements by num dimensions]
+  F_xi::Array{Tsol,4}
+#  F_eta::Array{Tsol,3} # flux in eta direction
   res::Array{Tres, 3}  # result of computation
   SL::Array{Tres, 1}  # result of computation in vector form
   SL0::Array{Tres,1}  # initial condition in vector form
@@ -46,7 +56,7 @@ type EulerEquation1{Tsol, Tres} <: EulerEquation{Tsol}  # hold any constants nee
 
   # inner constructor
 #  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
-  function EulerEquation1(mesh::PumiMesh2, sbp::SBPOperator)
+  function ConcreteEulerEquation(mesh::PumiMesh2, sbp::SBPOperator)
 
     eqn = new()  # incomplete initilization
 
@@ -60,8 +70,8 @@ type EulerEquation1{Tsol, Tres} <: EulerEquation{Tsol}  # hold any constants nee
     # these variables get overwritten every iteration, so its safe to 
     # leave them without values
     eqn.q = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.F_xi = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.F_eta = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.F_xi = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, Tdim)
+#    eqn.F_eta = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
   #  eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.res = Array(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.SL = Array(Tres, mesh.numDof)

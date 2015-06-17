@@ -38,7 +38,7 @@ export evalEuler
 
 
 # this function is what the timestepper calls
-function evalEuler(t, mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL0, SL)
+function evalEuler(t, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEulerEquation,  SL0, SL)
 # SL is popualted with du/dt
 # SL0 is q at previous timestep
 # t is current timestep
@@ -81,11 +81,13 @@ end  # end evalEuler
 
 
 
-function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, SL0::AbstractVector{Tsol})
+function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerEquation{Tsol}, SL0::AbstractVector{Tsol})
 # gather up all the data needed to do vectorized operatinos on the mesh
 # linear elements only
 # disassembles SL0 into eqn.q
 # calculates all mesh wide quantities in eqn
+# this is a high level function
+
 
 # need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
 
@@ -96,9 +98,9 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   u = eqn.q
   F_xi = eqn.F_xi
 
-  F_eta = eqn.F_eta
+#  F_eta = eqn.F_eta
   fill!(eqn.res, 0.0)
-
+#=
   # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:sbp.numnodes
@@ -108,14 +110,16 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
       end
     end
   end
+=#
 
+  disassembleSolution(mesh, eqn)
   # disassmble SL0 into eqn.q
 #  disassembleSolution(mesh, mesh.dofs, eqn.q, SL0)
 
 
 
   # calculate fluxes
-  getEulerFlux(eqn, eqn.q, mesh.dxidx, F_xi, F_eta)
+  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
   isentropicVortexBC(mesh, sbp, eqn)
   stabscale(mesh, sbp, eqn)
 #  println("getEulerFlux @time printed above")
@@ -127,7 +131,7 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   return nothing
 end # end function dataPrep
 
-function evalVolumeIntegrals{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -136,10 +140,15 @@ function evalVolumeIntegrals{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SB
 #	: also used for multiple dispatch
 # SL : solution vector to be populated (mesh.numDof entries)
 # SL0 : solution vector at previous timesteps (mesh.numDof entries)
+# this is a middle level function
+
 
 #  println("size eqn.F_xi = ", size(eqn.F_xi), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
-  weakdifferentiate!(sbp, 1, eqn.F_xi, eqn.res, trans=true)
-  weakdifferentiate!(sbp, 2, eqn.F_eta, eqn.res, trans=true)
+
+  for i=1:Tdim
+    weakdifferentiate!(sbp, 1, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
+  end
+#  weakdifferentiate!(sbp, 2, eqn.F_eta, eqn.res, trans=true)
 
 
   # need source term here
@@ -150,7 +159,7 @@ end
 #------------- end of evalVolumeIntegrals
 
 
-function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
 # evaluate all the integrals over the boundary
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -160,6 +169,7 @@ function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::
 # u : solution vector to be populated (mesh.numDof entries), partially populated by evalVolumeIntegrals
 # u0 : solution vector at previous timesteps (mesh.numDof entries)
 
+# middle level function
 
 #  println("====== start of evalBoundaryIntegrals ======")
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
@@ -177,7 +187,9 @@ end
 #------------- end of evalBoundaryIntegrals
 
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
-function addEdgeStabilize{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function addEdgeStabilize{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
+# mid level function
+
 
 #  println("==== start of addEdgeStabilize ====")
   # alpha calculated like in edgestabilize! documentation
@@ -275,9 +287,9 @@ end
 
 
 
-function applyMassMatrixInverse{Tsol}(eqn::EulerEquation{Tsol}, SL::AbstractVector{Tsol})
+function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerEquation{Tsol, Tdim}, SL::AbstractVector{Tsol})
 # apply the inverse mass matrix stored eqn to SL
-
+# this is a mid level function (although it doesn't need the dimension)
 #  SL .*= eqn.Minv  # this gives wrong answer
 
 
@@ -382,9 +394,10 @@ fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4
 
 
 
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol})
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 2})
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
+  # this is a low level function
 
 #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
 #  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
@@ -396,15 +409,16 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol})
 
 end
 
-
-function disassembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, dofs::AbstractArray{Int, 3}, u::AbstractArray{Tsol,3}, SL0::AbstractArray{Tsol, 1})
+# rewrite this to be a mid level function
+#function disassembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, dofs::AbstractArray{Int, 3}, u::AbstractArray{Tsol,3}, SL0::AbstractArray{Tsol, 1})
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
 
   # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
-      for k=1:4
-	dofnum_k = dofs[k, j, i]
-	u[k, j, i] = SL0[dofnum_k]
+      for k=1:(Tdim+2)
+	dofnum_k = mesh.dofs[k, j, i]
+	eqn.q[k, j, i] = eqn.SL0[dofnum_k]
       end
     end
   end
@@ -413,6 +427,7 @@ function disassembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, dofs::Abstrac
 end
 
 
+# rewrite this to be a mid level function
 function assembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tmsh}, SL::AbstractArray{Tsol,1})
 
   println("in assembleSolution")
