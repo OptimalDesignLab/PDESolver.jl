@@ -25,8 +25,6 @@ abstract EulerEquation {Tsol, Tdim} <: AbstractEulerEquation{Tsol}
 type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
-# Tsol is solution conservative variable data type, Tres is solution data type
-# Tdim is dimensionality of the equation
   cv::Float64  # specific heat constant
   R::Float64  # gas constant used in ideal gas law
   gamma::Float64 # ratio of specific heats
@@ -51,7 +49,7 @@ type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any c
 
   # inner constructor
 #  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
-  function ConcreteEulerEquation(mesh::PumiMesh2, sbp::SBPOperator)
+  function EulerEquation1(mesh::PumiMesh2, sbp::SBPOperator)
 
     eqn = new()  # incomplete initilization
 
