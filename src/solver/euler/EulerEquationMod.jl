@@ -35,8 +35,9 @@ type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any c
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
   cv::Float64  # specific heat constant
-  R::Float64  # gas constant used in ideal gas law
+  R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
+  gamma_1::Float64 # = gamma - 1
   res_type::DataType  # type of res
 
   # the following arrays hold data for all nodes
@@ -63,8 +64,10 @@ type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any c
     eqn = new()  # incomplete initilization
 
     eqn.gamma = 1.4
+    eqn.gamma_1 = eqn.gamma - 1
     eqn.R = 287.058  # specific gas constant (unit J/(kg * K)
     eqn.cv = eqn.R/(eqn.gamma - 1)
+
     eqn.res_type = Tres
 
     calcMassMatrixInverse(mesh, sbp, eqn)
@@ -93,6 +96,8 @@ type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any c
   end  # end of constructor
 
 end  # end of type declaration
+
+
 
 
 # now that EulerEquation is defined, include other files that use it

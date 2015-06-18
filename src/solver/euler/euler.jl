@@ -461,6 +461,33 @@ function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 2}, q::AbstractArray
 end
 
 # low level function
+function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 3}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+# calculates the Euler flux in a particular direction at a point
+# eqn is the equation type
+# q is the vector (of length 5), of the conservative variables at the point
+# dir is a vector of length 3 that specifies the direction
+# F is populated with the flux (is a vector of length 5)
+# 3D  only
+
+# once the Julia developers fix slice notation and speed up subarrays, we can make a faster
+# vectorized version of this
+
+  press = calcPressure(q, eqn)
+  U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  F[1] = q[1]*U
+  F[2] = q[2]*U + dir[1]*press
+  F[3] = q[3]*U + dir[2]*press
+  F[4] = q[4]*U + dir[3]*press
+  F[5] = (q[5] + press)*U
+ 
+  return nothing
+
+end
+
+
+
+
+# low level function
 function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 2})
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
@@ -468,7 +495,22 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 2
 #  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
 #  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
 
-  return  (eqn.gamma-1)*(q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])
+  return  (eqn.gamma_1)*(q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])
+  
+#   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
+
+
+end
+
+# low level function
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 3})
+  # calculate pressure for a node
+  # q is a vector of length 5 of the conservative variables
+
+#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
+#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+
+  return  (eqn.gamma_1)*(q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1])
   
 #   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
 
