@@ -82,7 +82,7 @@ type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any c
     eqn.SL = Array(Tres, mesh.numDof)
     eqn.SL0 = Array(Tres, mesh.numDof)
 
-    eqn.bndryflux = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numBoundaryEdges)
+    eqn.bndryflux = Array(Tsol, mesh.numDofPerNode, sbp.numfacenodes, mesh.numBoundaryEdges)
     eqn.stabscale = Array(Tsol, sbp.numnodes, mesh.numInterfaces)
 
     #println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
@@ -134,6 +134,7 @@ function calcMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 
 end
 
+#=
 # used by EulerEQuation Constructor
 function calcEdgeStabAlpha(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation)
 # calculate alpha, needed by edge stabilization
@@ -162,4 +163,5 @@ end
 
 
 
+=#
 end # end module

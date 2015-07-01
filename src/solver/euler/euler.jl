@@ -70,7 +70,7 @@ evalBoundaryIntegrals(mesh, sbp, eqn)
 
 
 
-addEdgeStabilize(mesh, sbp, eqn)
+addStabilization(mesh, sbp, eqn)
 #println("edge stabilizing @time printed above")
 
 
@@ -122,7 +122,8 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
   getEulerFlux(mesh, eqn)
-  isentropicVortexBC(mesh, sbp, eqn)
+  getIsentropicVortexBoundaryFlux(mesh, sbp, eqn)
+#  isentropicVortexBC(mesh, sbp, eqn)
   stabscale(mesh, sbp, eqn)
 #  println("getEulerFlux @time printed above")
 
@@ -170,7 +171,9 @@ function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 #  println("====== start of evalBoundaryIntegrals ======")
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
 
-boundaryintegrate2!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res, mesh, eqn)
+#boundaryintegrate2!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res, mesh, eqn)
+
+boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
 
@@ -184,23 +187,24 @@ end
 
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
-function addEdgeStabilize{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function addStabilization{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
 
-#  println("==== start of addEdgeStabilize ====")
+#  println("==== start of addStabilization ====")
   # alpha calculated like in edgestabilize! documentation
   # stabscale (U+a)*gamma*h^2 where U=u*n, where u is the velocity 
   #   (remember to scale by rho) and n is the unit normal vector, from nrm->dxidx, then scaled by length
   # ifaces needs to be calculated
   # x needs to be passed
 
-#   println("====== Entering edge stabilize ======")
   
 
 
   # u argument here is SL in a different format
-  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
+#  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
 
-#  println("==== end of addEdgeStabilize ====")
+  edgestabilize!
+
+#  println("==== end of addStabilization ====")
 
 
 
@@ -312,7 +316,7 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEqua
       # it might be worth copying the normal vector rather than
       # doing an unsafe_view
       for k=1:Tdim  # loop over dimensions  
-	# this will disbatch to the proper calcEulerFlux
+	# this will dispatch to the proper calcEulerFlux
 	nrm[1] = mesh.dxidx[k, 1, j, i]
 	nrm[2] = mesh.dxidx[k, 2, j, i]
 #        nrm = unsafe_view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
@@ -325,6 +329,7 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEqua
 end
 
 # this function is deprecated in factor of getEulerFlux()
+# useful for benchmarking purposes
 function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol})
 # calculates the Euler flux for every node in the xi and eta directions
 # eqn is the equation type
@@ -446,8 +451,6 @@ function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 2}, q::AbstractArray
 # F is populated with the flux (is a vector of length 4)
 # 2D  only
 
-# once the Julia developers fix slice notation and speed up subarrays, we can make a faster
-# vectorized version of this
 
   press = calcPressure(q, eqn)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
