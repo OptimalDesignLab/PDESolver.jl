@@ -430,10 +430,10 @@ end
 
 
 # low level function
-function isentropicVortexBC{Tmsh, Tsol}(q::AbstractArray{Tsol,1}, x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tsol, 1}, eqn::EulerEquation{Tsol, 2})
+function isentropicVortexBC{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, eqn::EulerEquation{Tsol, 2})
 
-  E1dq = zeros(Float64, 4)
-  E2dq = zeros(Float64, 4)
+  E1dq = zeros(Tres, 4)
+  E2dq = zeros(Tres, 4)
 
   # getting qg
   qg = zeros(Float64, 4)
@@ -495,7 +495,7 @@ function isentropicVortexBC{Tmsh, Tsol}(q::AbstractArray{Tsol,1}, x::AbstractArr
   dq4 = q[4] - qg[4]
 
   #-- diagonal matrix multiply
-  sat = zeros(Float64, 4)
+  sat = zeros(Tres, 4)
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3

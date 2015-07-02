@@ -72,7 +72,9 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-smb_name = "../../mesh_files/quarter_vortex3l.smb"
+#smb_name = "../../mesh_files/quarter_vortex3l.smb"
+
+smb_name = "../../mesh_files/quarter_vortex1000l.smb"
 #smb_name = "../../mesh_files/quarter_vortex8l.smb"
 #smb_name = "../../mesh_files/tri30l.smb"
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp; dofpernode=4)  #create linear mesh with 4 dof per node

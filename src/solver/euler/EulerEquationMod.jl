@@ -102,7 +102,7 @@ end  # end of type declaration
 
 # now that EulerEquation is defined, include other files that use it
 include("common_funcs.jl")
-include("sbp_interface.jl")
+#include("sbp_interface.jl")
 include("euler.jl")
 include("ic.jl")
 include("bc.jl")
@@ -112,11 +112,12 @@ include("stabilization.jl")
 
 
 # used by EulerEquation Constructor
-function calcMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation )
+# mid level functions
+function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim} )
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 
-  eqn.Minv = ones(Float64, mesh.numDof)
+  eqn.Minv = ones(Tmsh, mesh.numDof)
 
   for i=1:mesh.numEl
     dofnums_i =  getGlobalNodeNumbers(mesh, i)
@@ -134,34 +135,5 @@ function calcMassMatrixInverse(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerE
 
 end
 
-#=
-# used by EulerEQuation Constructor
-function calcEdgeStabAlpha(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation)
-# calculate alpha, needed by edge stabilization
 
-  numEl = getNumEl(mesh)
-
-  eqn.edgestab_alpha = Array(Float64,2,2,sbp.numnodes,numEl)
-  dxidx = mesh.dxidx
-  jac = mesh.jac
-
-  # calculating alpha, required by edgestabilize!
-  # this canbe compuated apriori
-  for k = 1:numEl
-    for i = 1:sbp.numnodes
-      for di1 = 1:2
-        for di2 = 1:2
-          eqn.edgestab_alpha[di1,di2,i,k] = (dxidx[di1,1,i,k].*dxidx[di2,1,i,k] + dxidx[di1,2,i,k].*dxidx[di2,2,i,k])*jac[i,k]
-        end
-      end
-    end
-  end
-
-  return nothing
-end
-
-
-
-
-=#
 end # end module

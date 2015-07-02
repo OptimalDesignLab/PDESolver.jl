@@ -191,6 +191,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
                            dξdx::AbstractArray{T,4}, jac::AbstractArray{T,2},
                            α::AbstractArray{T,4},stabscale::AbstractArray{T,2},
                            res::AbstractArray{T,3})
+
   @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dξdx,3) == size(x,2) 
           == size(α,3) )
   @assert( size(dξdx,4) == size(α,4) == size(u,3) == size(res,3) == size(x,3) )
@@ -208,6 +209,8 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
   tmpR = zero(Dn)
   EDn = zeros(T, (size(u,1),sbp.numfacenodes) )
   for (facenum, face) in enumerate(ifaces)
+#   for facenum = 1:length(ifaces)
+#    face = ifaces[facenum]
     fill!(EDn, zero(T))
     for i = 1:sbp.numfacenodes
       # iL = element-local index for ith node on left element face
