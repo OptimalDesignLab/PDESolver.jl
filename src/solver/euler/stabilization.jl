@@ -189,7 +189,7 @@ end
 function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
                            u::AbstractArray{T,3}, x::AbstractArray{T,3},
                            dξdx::AbstractArray{T,4}, jac::AbstractArray{T,2},
-                           α::AbstractArray{T,4}, stabscale::Function,
+                           α::AbstractArray{T,4},stabscale::AbstractArray{T,2},
                            res::AbstractArray{T,3})
   @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dξdx,3) == size(x,2) 
           == size(α,3) )
@@ -207,7 +207,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
   tmpL = zero(Dn)
   tmpR = zero(Dn)
   EDn = zeros(T, (size(u,1),sbp.numfacenodes) )
-  for face in ifaces
+  for (facenum, face) in enumerate(ifaces)
     fill!(EDn, zero(T))
     for i = 1:sbp.numfacenodes
       # iL = element-local index for ith node on left element face
@@ -227,8 +227,9 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
       ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
                               view(dξdx,:,:,iL,face.elementL), workvec)::T      
       # apply the scaling function
-      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
-                         view(sbp.facenormal,:,face.faceL))::T./ds # note that u[iL] = u[iR]
+      scale = stabscale[i, facenum]
+#      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
+#                         view(sbp.facenormal,:,face.faceL))::T./ds # note that u[iL] = u[iR]
       for field = 1:size(u,1)
         Dn[field] *= scale
       end
@@ -261,6 +262,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
       end
     end
   end
+
 end
 
 

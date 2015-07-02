@@ -62,23 +62,23 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL
 
 @time dataPrep(mesh, sbp, eqn, SL0)
 println("dataPrep @time printed above")
-evalVolumeIntegrals(mesh, sbp, eqn)
+@time evalVolumeIntegrals(mesh, sbp, eqn)
 #println("after evalVolumeIntegrals, isnan: ", isnan(eqn.res))
-#println("volume integral @time printed above")
-evalBoundaryIntegrals(mesh, sbp, eqn)
-#println("boundary integral @time printed above")
+println("volume integral @time printed above")
+@time evalBoundaryIntegrals(mesh, sbp, eqn)
+println("boundary integral @time printed above")
 
 
 
-addStabilization(mesh, sbp, eqn)
-#println("edge stabilizing @time printed above")
+@time addStabilization(mesh, sbp, eqn)
+println("edge stabilizing @time printed above")
 
 
-assembleSolution(mesh, eqn, SL)
-#println("assembly @time printed above")
+@time assembleSolution(mesh, eqn, SL)
+println("assembly @time printed above")
 
-applyMassMatrixInverse(eqn, SL)
-#println("Minv @time printed above")
+@time applyMassMatrixInverse(eqn, SL)
+println("Minv @time printed above")
 
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
 
@@ -88,6 +88,8 @@ applyMassMatrixInverse(eqn, SL)
 #err_norm = norm(SL)/mesh.numDof
 #print(" ", err_norm)
 
+
+print("\n")
 
 return nothing
 #return SL
@@ -202,7 +204,7 @@ function addStabilization{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
   # u argument here is SL in a different format
 #  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
 
-  edgestabilize!
+  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
 
 #  println("==== end of addStabilization ====")
 
