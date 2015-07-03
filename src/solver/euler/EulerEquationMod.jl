@@ -127,6 +127,8 @@ function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 	# multiplication is faster than division, so do the divions here
 	# and then multiply solution vector times Minv
 	eqn.Minv[dofnum_k] *= 1/(sbp.w[j]*mesh.jac[j,i])
+
+#	eqn.Minv[dofnum_k] *= 1/(sbp.w[j])
       end
     end
   end

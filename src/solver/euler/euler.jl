@@ -60,25 +60,25 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-@time dataPrep(mesh, sbp, eqn, SL0)
-println("dataPrep @time printed above")
-@time evalVolumeIntegrals(mesh, sbp, eqn)
+dataPrep(mesh, sbp, eqn, SL0)
+#println("dataPrep @time printed above")
+evalVolumeIntegrals(mesh, sbp, eqn)
 #println("after evalVolumeIntegrals, isnan: ", isnan(eqn.res))
-println("volume integral @time printed above")
-@time evalBoundaryIntegrals(mesh, sbp, eqn)
-println("boundary integral @time printed above")
+#println("volume integral @time printed above")
+evalBoundaryIntegrals(mesh, sbp, eqn)
+#println("boundary integral @time printed above")
 
 
 
-@time addStabilization(mesh, sbp, eqn)
-println("edge stabilizing @time printed above")
+addStabilization(mesh, sbp, eqn)
+#println("edge stabilizing @time printed above")
 
 
-@time assembleSolution(mesh, eqn, SL)
-println("assembly @time printed above")
+assembleSolution(mesh, eqn, SL)
+#println("assembly @time printed above")
 
-@time applyMassMatrixInverse(eqn, SL)
-println("Minv @time printed above")
+applyMassMatrixInverse(eqn, SL)
+#println("Minv @time printed above")
 
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
 
@@ -89,7 +89,7 @@ println("Minv @time printed above")
 #print(" ", err_norm)
 
 
-print("\n")
+#print("\n")
 
 return nothing
 #return SL

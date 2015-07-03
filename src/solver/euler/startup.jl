@@ -11,7 +11,9 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
 using ForwardDiff
-include("../../rk4/rk4.jl")  # timestepping
+include("../../nl_solvers/rk4.jl")  # timestepping
+
+include("../../nl_solvers/newton_fd.jl")  # timestepping
 include("./output.jl")  # printing results to files
 
 
@@ -36,12 +38,12 @@ end
 
 
 #function runtest(flag::Int)
-flag = 1
+flag = 4
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
 delta_t = 0.005
 #t_max = 0.025
-t_max = 5.00
+t_max = 50.00
 #t_max = 1.0
 order = 1  # order of accuracy
 
@@ -64,6 +66,11 @@ elseif flag == 3  # calcualte dR/dx using forward mode
   Tsbp = Float64
   Tsol = Dual{Float64}
   Tres = Dual{Float64}
+elseif flag == 4  # use Newton method using finite difference
+  Tmsh = Float64
+  Tsbp = Float64
+  Tsol = Float64
+  Tres = Float64
 end
 
 
@@ -72,9 +79,9 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 
 # create mesh
 dmg_name = ".null"
-#smb_name = "../../mesh_files/quarter_vortex3l.smb"
+smb_name = "../../mesh_files/quarter_vortex3l.smb"
 
-smb_name = "../../mesh_files/quarter_vortex1000l.smb"
+#smb_name = "../../mesh_files/quarter_vortex1000l.smb"
 #smb_name = "../../mesh_files/quarter_vortex8l.smb"
 #smb_name = "../../mesh_files/tri30l.smb"
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp; dofpernode=4)  #create linear mesh with 4 dof per node
@@ -136,6 +143,9 @@ elseif flag == 3 # calculate dRdx
 
   # dRdx here
 
+elseif flag == 4
+  newton_fd(evalEuler, mesh, sbp, eqn)
+
 end
 
 
@@ -144,7 +154,7 @@ end
 
 
 
-if flag == 1
+if flag == 1 && flag == 4
 
 
     SL_diff = SL - SL_exact
