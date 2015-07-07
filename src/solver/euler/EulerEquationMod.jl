@@ -1,10 +1,12 @@
 module EulerEquationMod
 
+include("complexify.jl")
 using ArrayViews
 using PDESolverCommon
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+
 # the AbstractEquation type is declared in CommonTypes
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
@@ -31,7 +33,7 @@ abstract EulerEquation {Tsol, Tdim} <: AbstractEulerEquation{Tsol}
 # low level functions should take in EulerEquation{Tsol, 2} or EulerEquation{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
 
-type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+type EulerEquation1{Tsol, Tres, Tdim, Tmsh} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
   cv::Float64  # specific heat constant
@@ -51,7 +53,7 @@ type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any c
   SL0::Array{Tres,1}  # initial condition in vector form
 
 
-  edgestab_alpha::Array{Float64, 4} # alpha needed by edgestabilization
+  edgestab_alpha::Array{Tmsh, 4} # alpha needed by edgestabilization
   bndryflux::Array{Tsol, 3}  # boundary flux
   stabscale::Array{Tsol, 2}  # stabilization scale factor
 
@@ -79,11 +81,11 @@ type EulerEquation1{Tsol, Tres, Tdim} <: EulerEquation{Tsol, Tdim}  # hold any c
 #    eqn.F_eta = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
   #  eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.res = Array(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.SL = Array(Tres, mesh.numDof)
-    eqn.SL0 = Array(Tres, mesh.numDof)
+    eqn.SL = zeros(Tres, mesh.numDof)
+    eqn.SL0 = zeros(Tres, mesh.numDof)
 
     eqn.bndryflux = Array(Tsol, mesh.numDofPerNode, sbp.numfacenodes, mesh.numBoundaryEdges)
-    eqn.stabscale = Array(Tsol, sbp.numnodes, mesh.numInterfaces)
+    eqn.stabscale = Array(Tres, sbp.numnodes, mesh.numInterfaces)
 
     #println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
     #type_of_sbp = typeof(operator.Q[1])  # a little hackish

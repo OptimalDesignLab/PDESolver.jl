@@ -5,12 +5,14 @@
  push!(LOAD_PATH, "../../common")
  push!(LOAD_PATH, "/users/creanj/.julia/v0.4/PDESolver/src/solver/euler")
 #push!(LOAD_PATH, "../../../../PUMI")
+#include("complexify.jl")
 using PDESolverCommon
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
 using ForwardDiff
+
 include("../../nl_solvers/rk4.jl")  # timestepping
 
 include("../../nl_solvers/newton_fd.jl")  # timestepping
@@ -38,15 +40,14 @@ end
 
 
 #function runtest(flag::Int)
-flag = 4
+flag = 1
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
 delta_t = 0.005
 #t_max = 0.025
-t_max = 50.00
+t_max = 500000.00
 #t_max = 1.0
 order = 1  # order of accuracy
-
 
 
 
@@ -71,6 +72,11 @@ elseif flag == 4  # use Newton method using finite difference
   Tsbp = Float64
   Tsol = Float64
   Tres = Float64
+elseif flag == 5  # use complex step dR/du
+  Tmsh = Float64
+  Tsbp = Float64
+  Tsol = Complex128
+  Tres = Complex128
 end
 
 
@@ -91,7 +97,7 @@ mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp; dofpernode=4)  #create li
 
 
 # create euler equation
-eqn = EulerEquation1{Tsol, Tres, 2}(mesh, sbp)
+eqn = EulerEquation1{Tsol, Tres, 2, Tmsh}(mesh, sbp)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
 
@@ -121,7 +127,9 @@ writeVtkFiles("solution_ic",mesh.m_ptr)
 
 # call timestepper
 if flag == 1 # normal run
- rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn)
+ rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, res_tol=1e-7)
+ println("finish rk4")
+ printSolution("rk4_solution.dat", eqn.SL)
 # println("rk4 @time printed above")
 elseif flag == 2 # forward diff dR/du
 
@@ -145,19 +153,23 @@ elseif flag == 3 # calculate dRdx
 
 elseif flag == 4
   newton_fd(evalEuler, mesh, sbp, eqn)
+  printSolution("newton_solution.dat", eqn.SL)
 
+elseif flag == 5
+  newton_complex(evalEuler, mesh, sbp, eqn)
 end
 
 
 
 
 
-
-
-if flag == 1 && flag == 4
+if flag == 1
 
 
     SL_diff = SL - SL_exact
+    step = SL0 - SL_exact
+    step_norm = norm(step)/mesh.numDof
+    println("step_norm = ", step_norm)
     SL_norm = norm(SL_diff)/mesh.numDof
     #SL_side_by_side = [SL_exact  SL]
 

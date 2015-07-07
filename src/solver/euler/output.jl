@@ -51,5 +51,18 @@ return nothing
 end
 
 
+function printSolution(name::AbstractString, u::AbstractVector)
+
+  f = open(name, "a+")
+
+  for i=1:length(u)
+    write(f, string(u[i], "\n"))
+  end
+
+  close(f)
+
+  return nothing
+end
+
 
 

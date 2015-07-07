@@ -186,11 +186,11 @@ end
 
 
 # for vector equations
-function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
-                           u::AbstractArray{T,3}, x::AbstractArray{T,3},
-                           dξdx::AbstractArray{T,4}, jac::AbstractArray{T,2},
-                           α::AbstractArray{T,4},stabscale::AbstractArray{T,2},
-                           res::AbstractArray{T,3})
+function edgestabilize!{Tmsh, Tsbp, Tsol, Tres}(sbp::SBPOperator{Tsbp}, ifaces::Array{Interface},
+                           u::AbstractArray{Tsol,3}, x::AbstractArray{Tmsh,3},
+                           dξdx::AbstractArray{Tmsh,4}, jac::AbstractArray{Tmsh,2},
+                           α::AbstractArray{Tmsh,4},stabscale::AbstractArray{Tres,2},
+                           res::AbstractArray{Tres,3})
 
   @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dξdx,3) == size(x,2) 
           == size(α,3) )
@@ -201,17 +201,17 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
   # JEH: temporary, until nbrnodeindex is part of sbp type
   nbrnodeindex = Array(sbp.numfacenodes:-1:1)
 
-  Dn = zeros(T, size(u,1))
-  dirL = zeros(T, (dim))
-  dirR = zeros(T, (dim))
-  workvec = zeros(T, (dim))
+  Dn = zeros(Tsol, size(u,1))
+  dirL = zeros(Tmsh, (dim))
+  dirR = zeros(Tmsh, (dim))
+  workvec = zeros(Tmsh, (dim))
   tmpL = zero(Dn)
   tmpR = zero(Dn)
-  EDn = zeros(T, (size(u,1),sbp.numfacenodes) )
+  EDn = zeros(Tres, (size(u,1),sbp.numfacenodes) )
   for (facenum, face) in enumerate(ifaces)
 #   for facenum = 1:length(ifaces)
 #    face = ifaces[facenum]
-    fill!(EDn, zero(T))
+    fill!(EDn, zero(Tres))
     for i = 1:sbp.numfacenodes
       # iL = element-local index for ith node on left element face
       # iR = element-local index for ith node on right element face
@@ -220,7 +220,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
       iR = sbp.facenodes[nbrnodeindex[i], face.faceR]::Int
       # apply the normal-derivative difference operator along the face
       getdir!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
-      fill!(Dn, zero(T))
+      fill!(Dn, zero(Tres))
       directionaldifferentiate!(sbp, dirL, view(u,:,:,face.elementL), iL, Dn)
       getdir!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
       directionaldifferentiate!(sbp, dirR, view(u,:,:,face.elementR), iR, Dn)
@@ -228,7 +228,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
       # below) to get unit normals, and then need ds for integration, so net
       # result is 1/ds
       ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
-                              view(dξdx,:,:,iL,face.elementL), workvec)::T      
+                              view(dξdx,:,:,iL,face.elementL), workvec)::Tsbp  # this assumes Tsbp is a lower type than the others
       # apply the scaling function
       scale = stabscale[i, facenum]
 #      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),

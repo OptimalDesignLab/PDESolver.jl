@@ -71,10 +71,10 @@ function rho1Energy2BC(q, x, dxidx, nrm)
   lambda1 = Un + dA*a
   lambda2 = Un - dA*a
   lambda3 = Un
-  rhoA = abs(Un) + dA*a
-  lambda1 = d0_5*(tau*max(abs(lambda1),sat_Vn *rhoA) + sgn*lambda1)
-  lambda2 = d0_5*(tau*max(abs(lambda2),sat_Vn *rhoA) + sgn*lambda2)
-  lambda3 = d0_5*(tau*max(abs(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+  rhoA = absvalue(Un) + dA*a
+  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
+  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
+  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
 
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
@@ -190,10 +190,10 @@ function isentropicVortexBC{T}(q::AbstractArray{T,1}, x::AbstractArray{T,1}, dxi
   lambda1 = Un + dA*a
   lambda2 = Un - dA*a
   lambda3 = Un
-  rhoA = abs(Un) + dA*a
-  lambda1 = d0_5*(tau*max(abs(lambda1),sat_Vn *rhoA) + sgn*lambda1)
-  lambda2 = d0_5*(tau*max(abs(lambda2),sat_Vn *rhoA) + sgn*lambda2)
-  lambda3 = d0_5*(tau*max(abs(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+  rhoA = absvalue(Un) + dA*a
+  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
+  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
+  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
 
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
@@ -335,10 +335,10 @@ function isentropicVortexBC{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBP
       lambda1 = Un + dA*a
       lambda2 = Un - dA*a
       lambda3 = Un
-      rhoA = abs(Un) + dA*a
-      lambda1 = d0_5*(tau*max(abs(lambda1),sat_Vn *rhoA) + sgn*lambda1)
-      lambda2 = d0_5*(tau*max(abs(lambda2),sat_Vn *rhoA) + sgn*lambda2)
-      lambda3 = d0_5*(tau*max(abs(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+      rhoA = absvalue(Un) + dA*a
+      lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
+      lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
+      lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
 
       dq1 = q[1] - qg[1] 
       dq2 = q[2] - qg[2]
@@ -435,8 +435,11 @@ function isentropicVortexBC{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, x::Abstr
   E1dq = zeros(Tres, 4)
   E2dq = zeros(Tres, 4)
 
+#  println("entered isentropicOvrtexBC (low level)")
+#  println("Tsol = ", Tsol)
+
   # getting qg
-  qg = zeros(Float64, 4)
+  qg = zeros(Tsol, 4)
   calcIsentropicVortex(x, eqn, qg)
 #  calcVortex(x, eqn, qg)
 
@@ -448,8 +451,8 @@ function isentropicVortexBC{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, x::Abstr
   sgn = -1.0
   gamma = 1.4
   gami = gamma - 1
-  sat_Vn = 0.025
-  sat_Vl = 0.025
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
 
   # Begin main executuion
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -484,10 +487,14 @@ function isentropicVortexBC{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, x::Abstr
   lambda1 = Un + dA*a
   lambda2 = Un - dA*a
   lambda3 = Un
-  rhoA = abs(Un) + dA*a
-  lambda1 = d0_5*(tau*max(abs(lambda1),sat_Vn *rhoA) + sgn*lambda1)
-  lambda2 = d0_5*(tau*max(abs(lambda2),sat_Vn *rhoA) + sgn*lambda2)
-  lambda3 = d0_5*(tau*max(abs(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+  rhoA = absvalue(Un) + dA*a
+
+#  println("sat_Vn = ", sat_Vn)
+#  println("lambda1 = ", lambda1)
+#  println("absvalue(lambda1) = ", absvalue(lambda1))
+  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
+  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
+  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
 
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
@@ -537,7 +544,7 @@ function isentropicVortexBC{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, x::Abstr
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
-  euler_flux = zeros(4)
+  euler_flux = zeros(Tsol, 4)
   calcEulerFlux(eqn, q, [nx, ny], euler_flux)
 
 #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)

@@ -116,7 +116,7 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   fill!(eqn.res, 0.0)
   
   # disassemble SL0 into eqn.q
-  disassembleSolution(mesh, eqn)
+  disassembleSolution(mesh, eqn, SL0)
   # disassmble SL0 into eqn.q
 
 
@@ -409,13 +409,13 @@ end
 
 
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim}, SL0::AbstractArray{Tsol, 1})
   # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       for k=1:(Tdim+2)
 	dofnum_k = mesh.dofs[k, j, i]
-	eqn.q[k, j, i] = eqn.SL0[dofnum_k]
+	eqn.q[k, j, i] = SL0[dofnum_k]
       end
     end
   end
@@ -424,7 +424,7 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::Eu
 end
 
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tmsh}, SL::AbstractArray{Tsol,1})
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol}, SL::AbstractArray{Tres,1})
 
 #  println("in assembleSolution")
 

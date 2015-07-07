@@ -94,10 +94,10 @@ end
 #   x:      solved x at t_max
 
 
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEquation) 
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEquation; res_tol = -1.0) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
-
+# res_tol is alternative stopping criteria
   SL0 = eqn.SL0
   SL = eqn.SL
 #  extra_args = (mesh, sbp, eqn)
@@ -116,7 +116,9 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 
 #  x[:,1] = x_ic
 
-  x_old = SL0
+#  x_old = SL0
+  x_old = zeros(SL0)
+  x_old[:] = SL0
   k1 = zeros(x_old)
   k2 = zeros(x_old)
   k3 = zeros(x_old)
@@ -125,6 +127,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
   x2 = zeros(x_old)
   x3 = zeros(x_old)
   x4 = zeros(x_old)
+  
 
   for i=2:(t_steps + 1)
 
@@ -139,21 +142,45 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 
 #    x_old = x[:,iter-1]
 
-    f( mesh, sbp, eqn, x_old, k1, t)
+#    println("eqn.SL0 = ", eqn.SL0)
+
+ #   eqn.SL0 = x_old
+    eqn.SL[:] = 0.0
+    f( mesh, sbp, eqn, eqn.SL0, eqn.SL, t)
+
+    k1[:] = eqn.SL
     x2[:] = x_old + (h/2)*k1
 
-    f( mesh, sbp, eqn,  x2, k2, t + h/2)
+    sol_norm = norm(eqn.SL)
+    if (sol_norm < res_tol)
+      println("breaking due to res_tol")
+      break
+    end
+
+
+    eqn.SL0[:] = x2
+    eqn.SL[:] = k2
+    f( mesh, sbp, eqn,  eqn.SL0, eqn.SL, t + h/2)
+
+    k2[:] = eqn.SL
     x3[:] = x_old + (h/2)*k2
 
-    f( mesh, sbp, eqn,  x3, k3, t + h/2)
+    eqn.SL0[:] = x3
+    eqn.SL[:] = k3
+    f( mesh, sbp, eqn,  eqn.SL0, eqn.SL, t + h/2)
+
+    k3[:] = eqn.SL
     x4[:] = x_old + h*k3
 
-    f( mesh, sbp, eqn,  x4, k4, t + h)
-    
+    eqn.SL0[:] = x4
+    eqn.SL[:] = k4
+    f( mesh, sbp, eqn,  eqn.SL0, eqn.SL, t + h)
+    k4 = eqn.SL[:]
+
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+    eqn.SL0[:] = x_old
 
-
-    write(f1, string(i, "   ", norm(k1), "\n"))
+    write(f1, string(i, "   ", norm(eqn.SL)/mesh.numDof, "\n"))
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)
@@ -170,10 +197,16 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
   end
 
   close(f1)
+#=
   # final result needs to be returned in a different variable for AD
+  println("coping x_old to SL")
+  println("x_old = ", x_old)
   for i = 1:length(x_old)
     SL[i] = x_old[i]
   end
+=#
+#  println("eqn.SL = ", eqn.SL)
+#  println("SL = ", SL)
 
 #  writedlm("rk4_output.dat",x,",")
 #   writecsv("rk4_output.dat",x," ")
