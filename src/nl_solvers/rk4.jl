@@ -60,7 +60,7 @@ function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
     f(t + h, x4, k4, extra_args)
     
-    x_old = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+    x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     fill!(k1, 0.0)
     fill!(k2, 0.0)
     fill!(k3, 0.0)

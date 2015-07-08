@@ -74,18 +74,21 @@ type EulerEquation1{Tsol, Tres, Tdim, Tmsh} <: EulerEquation{Tsol, Tdim}  # hold
 
     calcMassMatrixInverse(mesh, sbp, eqn)
     calcEdgeStabAlpha(mesh, sbp, eqn)
-    # these variables get overwritten every iteration, so its safe to 
-    # leave them without values
-    eqn.q = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.F_xi = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, Tdim)
+    
+    # must initialize them because some datatypes (BigFloat) 
+    # don't automatically initializes them
+    # taking a view(A,...) of undefined values is illegal
+    # I think its a bug that Array(Float64, ...) initailizes values
+    eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.F_xi = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, Tdim)
 #    eqn.F_eta = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
   #  eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.res = Array(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.SL = zeros(Tres, mesh.numDof)
     eqn.SL0 = zeros(Tres, mesh.numDof)
 
-    eqn.bndryflux = Array(Tsol, mesh.numDofPerNode, sbp.numfacenodes, mesh.numBoundaryEdges)
-    eqn.stabscale = Array(Tres, sbp.numnodes, mesh.numInterfaces)
+    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, sbp.numfacenodes, mesh.numBoundaryEdges)
+    eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
 
     #println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
     #type_of_sbp = typeof(operator.Q[1])  # a little hackish

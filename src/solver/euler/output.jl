@@ -65,4 +65,24 @@ function printSolution(name::AbstractString, u::AbstractVector)
 end
 
 
+function printMatrix(name::AbstractString, u::AbstractArray{Float64, 2})
+# print a matrix to a file, in a readable format
+
+(m,n) = size(u)
+
+f = open(name, "a+")
+
+for i=1:m
+  for j=1:n
+    str = @sprintf("%16.15e ", u[i,j])
+    print(f, str)
+  end
+
+  print(f, "\n")
+end
+
+close(f)
+return nothing
+
+end
 

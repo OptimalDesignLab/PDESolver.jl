@@ -63,8 +63,8 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL
 dataPrep(mesh, sbp, eqn, SL0)
 #println("dataPrep @time printed above")
 evalVolumeIntegrals(mesh, sbp, eqn)
-#println("after evalVolumeIntegrals, isnan: ", isnan(eqn.res))
 #println("volume integral @time printed above")
+
 evalBoundaryIntegrals(mesh, sbp, eqn)
 #println("boundary integral @time printed above")
 
@@ -120,6 +120,11 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   # disassmble SL0 into eqn.q
 
 
+  checkDensity(eqn)
+#  println("checkDensity @time printed above")
+
+  checkPressure(eqn)
+#  println("checkPressure @time printed above")
 
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
@@ -135,6 +140,40 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
 #  println("finished dataPrep()")
   return nothing
 end # end function dataPrep
+
+
+function checkDensity(eqn::EulerEquation)
+# check that density is positive
+
+(ndof, nnodes, numel) = size(eqn.q)
+
+for i=1:numel
+  for j=1:nnodes
+    @assert( real(eqn.q[1, j, i]) > 0.0)
+  end
+end
+
+return nothing
+
+end
+
+function checkPressure(eqn::EulerEquation)
+# check that density is positive
+
+(ndof, nnodes, numel) = size(eqn.q)
+
+for i=1:numel
+  for j=1:nnodes
+    q_vals = view(eqn.q, :, j, i)
+    press = calcPressure(q_vals, eqn)
+    @assert( press > 0.0)
+  end
+end
+
+return nothing
+
+end
+
 
 # mid level function
 function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})

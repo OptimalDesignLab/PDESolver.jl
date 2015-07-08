@@ -40,17 +40,17 @@ end
 
 
 #function runtest(flag::Int)
-flag = 1
+flag = 4
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
 delta_t = 0.005
 #t_max = 0.025
-t_max = 500000.00
+t_max = 5.00
 #t_max = 1.0
 order = 1  # order of accuracy
 
 
-
+set_bigfloat_precision(80)  # use 128 bit floats
 # types of the mesh, SBP, Equation objects
 if flag == 1  # normal run
   Tmsh = Float64
@@ -72,11 +72,20 @@ elseif flag == 4  # use Newton method using finite difference
   Tsbp = Float64
   Tsol = Float64
   Tres = Float64
+
+#  Tsol = BigFloat
+#  Tres = BigFloat
 elseif flag == 5  # use complex step dR/du
+#=
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Complex128
   Tres = Complex128
+=#
+  Tmsh = Float64
+  Tsbp = Float64
+  Tsol = Complex{BigFloat}
+  Tres = Complex{BigFloat}
 end
 
 
@@ -87,6 +96,7 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 dmg_name = ".null"
 smb_name = "../../mesh_files/quarter_vortex3l.smb"
 
+#smb_name = "../../mesh_files/quarter_vortex33l.smb"
 #smb_name = "../../mesh_files/quarter_vortex1000l.smb"
 #smb_name = "../../mesh_files/quarter_vortex8l.smb"
 #smb_name = "../../mesh_files/tri30l.smb"
@@ -152,11 +162,11 @@ elseif flag == 3 # calculate dRdx
   # dRdx here
 
 elseif flag == 4
-  newton_fd(evalEuler, mesh, sbp, eqn)
+  newton_fd(evalEuler, mesh, sbp, eqn, itermax=20, step_tol=1e-6, res_tol=1e-6)
   printSolution("newton_solution.dat", eqn.SL)
 
 elseif flag == 5
-  newton_complex(evalEuler, mesh, sbp, eqn)
+  newton_complex(evalEuler, mesh, sbp, eqn, itermax=200, step_tol=1e-6, res_tol=1e-8)
 end
 
 
