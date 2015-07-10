@@ -341,9 +341,9 @@ function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{
     for j=1:sbp.numfacenodes
       iL = sbp.facenodes[j, face_i.faceL]
       iR = sbp.facenodes[nbrnodeindex[j], face_i.faceR]
-      q = unsafe_view(eqn.q, :, iL, face_i.elementL)
-      dxidx = unsafe_view(mesh.dxidx, :, :, iL, face_i.elementL)
-      nrm = unsafe_view(sbp.facenormal, :, face_i.faceL)
+      q = view(eqn.q, :, iL, face_i.elementL)
+      dxidx = view(mesh.dxidx, :, :, iL, face_i.elementL)
+      nrm = view(sbp.facenormal, :, face_i.faceL)
       
       eqn.stabscale[j,i] = stabscale(q, dxidx, nrm, eqn)
     end

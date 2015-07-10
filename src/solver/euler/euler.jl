@@ -61,24 +61,24 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL
 # extra_args is unpacked into object needed to evaluation equation
 
 dataPrep(mesh, sbp, eqn, SL0)
-#println("dataPrep @time printed above")
+println("dataPrep @time printed above")
 evalVolumeIntegrals(mesh, sbp, eqn)
-#println("volume integral @time printed above")
+println("volume integral @time printed above")
 
 evalBoundaryIntegrals(mesh, sbp, eqn)
-#println("boundary integral @time printed above")
+println("boundary integral @time printed above")
 
 
 
 addStabilization(mesh, sbp, eqn)
-#println("edge stabilizing @time printed above")
+println("edge stabilizing @time printed above")
 
 
 assembleSolution(mesh, eqn, SL)
-#println("assembly @time printed above")
+println("assembly @time printed above")
 
 applyMassMatrixInverse(eqn, SL)
-#println("Minv @time printed above")
+println("Minv @time printed above")
 
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
 
@@ -351,17 +351,17 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEqua
   nrm = zeros(Tmsh, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement  # loop over nodes on current element
-      q_vals = unsafe_view(eqn.q, :, j, i)
+      q_vals = view(eqn.q, :, j, i)
       # put this loop here (rather than outside) to we don't have to fetch
       # q_vals twice, even though writing to the flux vector is slower
       # it might be worth copying the normal vector rather than
-      # doing an unsafe_view
+      # doing an view
       for k=1:Tdim  # loop over dimensions  
 	# this will dispatch to the proper calcEulerFlux
 	nrm[1] = mesh.dxidx[k, 1, j, i]
 	nrm[2] = mesh.dxidx[k, 2, j, i]
-#        nrm = unsafe_view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
-        calcEulerFlux(eqn, q_vals, nrm, unsafe_view(eqn.F_xi, :, j, i, k))
+#        nrm = view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
+        calcEulerFlux(eqn, q_vals, nrm, view(eqn.F_xi, :, j, i, k))
       end
     end
   end

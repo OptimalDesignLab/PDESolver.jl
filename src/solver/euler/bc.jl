@@ -292,12 +292,12 @@ function isentropicVortexBC{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBP
     for j = 1:sbp.numfacenodes
       k = sbp.facenodes[j, bndry_i.face]
 
-      q = unsafe_view(eqn.q, :, k, bndry_i.element)
-      x = unsafe_view(mesh.coords, :, k, bndry_i.element)
-      dxidx = unsafe_view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = unsafe_view(sbp.facenormal, :, bndry_i.face)
+      q = view(eqn.q, :, k, bndry_i.element)
+      x = view(mesh.coords, :, k, bndry_i.element)
+      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
-      flux = unsafe_view(eqn.bndryflux, :, i, j)
+      flux = view(eqn.bndryflux, :, i, j)
 
       # Begin main executuion
       # get qg
@@ -412,12 +412,12 @@ function getIsentropicVortexBoundaryFlux{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tm
       k = sbp.facenodes[j, bndry_i.face]
 
       # get components
-      q = unsafe_view(eqn.q, :, k, bndry_i.element)
-      x = unsafe_view(mesh.coords, :, k, bndry_i.element)
-      dxidx = unsafe_view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = unsafe_view(sbp.facenormal, :, bndry_i.face)
+      q = view(eqn.q, :, k, bndry_i.element)
+      x = view(mesh.coords, :, k, bndry_i.element)
+      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
-      flux = unsafe_view(eqn.bndryflux, :, j, i)
+      flux = view(eqn.bndryflux, :, j, i)
 
       isentropicVortexBC(q, x, dxidx, nrm, flux, eqn)
     end

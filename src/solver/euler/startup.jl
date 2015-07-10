@@ -162,7 +162,7 @@ elseif flag == 3 # calculate dRdx
   # dRdx here
 
 elseif flag == 4
-  newton_fd(evalEuler, mesh, sbp, eqn, itermax=20, step_tol=1e-6, res_tol=1e-6)
+  newton_fd(evalEuler, mesh, sbp, eqn, itermax=1, step_tol=1e-6, res_tol=1e-6)
   printSolution("newton_solution.dat", eqn.SL)
 
 elseif flag == 5
