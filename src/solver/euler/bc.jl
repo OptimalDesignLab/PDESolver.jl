@@ -402,7 +402,41 @@ end # ends the function eulerRoeSAT
 
 =#
 
+
+
 # mid level function
+function getBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Int,1}, flux::AbstractArray{Tres, 3})
+# calculate the boundary flux for the boundary condition evaluated by the functor
+
+  nfaces = length(bndry_facenums)
+
+  for i=1:n  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    for j = 1:sbp.numfacenodes
+      k = sbp.facenodes[j, bndry_i.face]
+
+      # get components
+      q = view(eqn.q, :, k, bndry_i.element)
+      x = view(mesh.coords, :, k, bndry_i.element)
+      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
+      #println("eqn.bndryflux = ", eqn.bndryflux)
+      flux = view(flux, :, j, i)
+
+      functor(q, x, dxidx, nrm, flux, eqn)
+    end
+  end
+
+
+  return nothing
+end
+
+
+
+
+
+# mid level function
+# no longer needed
 function getIsentropicVortexBoundaryFlux{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
 
 
@@ -429,8 +463,11 @@ end
 
 
 
+type isentropicVortexBC <: BCType
+end
+
 # low level function
-function isentropicVortexBC{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, eqn::EulerEquation{Tsol, 2})
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1}, x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, eqn::EulerEquation{Tsol, 2})
 
   E1dq = zeros(Tres, 4)
   E2dq = zeros(Tres, 4)

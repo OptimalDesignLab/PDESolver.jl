@@ -17,7 +17,7 @@ include("../../nl_solvers/rk4.jl")  # timestepping
 
 include("../../nl_solvers/newton_fd.jl")  # timestepping
 include("./output.jl")  # printing results to files
-
+include("../input/read_inpu.jl")  # get arg_dict from file
 
 function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
 # figure out what type eqn.res needs to be, taking into account
@@ -100,7 +100,7 @@ smb_name = "../../mesh_files/quarter_vortex3l.smb"
 #smb_name = "../../mesh_files/quarter_vortex1000l.smb"
 #smb_name = "../../mesh_files/quarter_vortex8l.smb"
 #smb_name = "../../mesh_files/tri30l.smb"
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp; dofpernode=4)  #create linear mesh with 4 dof per node
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=4)  #create linear mesh with 4 dof per node
 
 
 

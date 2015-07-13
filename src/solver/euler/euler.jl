@@ -142,6 +142,25 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
 end # end function dataPrep
 
 
+function getBCFluxes(mesh, sbp, eqn)
+# get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+
+for i=1:length(mesh.bndry_funcs)
+
+  functor_i = mesh.bndry_funcs[i]
+  start_index = mesh.bndry_offsets[i]
+  end_index = mesh.bndry_offsets[i+1]
+  bndry_facenums_i = view(mesh.bndryfaces, start_index:end_index)
+  flux_i = view(eqn.bndryflux, :, :, start_index:end_index)
+  calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, flux_i)
+
+
+
+return nothing
+
+end
+
+
 function checkDensity(eqn::EulerEquation)
 # check that density is positive
 
