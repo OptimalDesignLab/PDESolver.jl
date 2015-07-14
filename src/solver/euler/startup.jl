@@ -17,7 +17,7 @@ include("../../nl_solvers/rk4.jl")  # timestepping
 
 include("../../nl_solvers/newton_fd.jl")  # timestepping
 include("./output.jl")  # printing results to files
-include("../input/read_inpu.jl")  # get arg_dict from file
+include("../../input/read_input.jl")
 
 function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
 # figure out what type eqn.res needs to be, taking into account
@@ -40,7 +40,10 @@ end
 
 
 #function runtest(flag::Int)
-flag = 4
+
+opts = read_input()
+
+flag = 1
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
 delta_t = 0.005
@@ -125,6 +128,10 @@ SL0 = eqn.SL0
 
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
+
+
+# get BC functors
+getBCFunctors(mesh, sbp, eqn, opts)
 
 SL_exact = deepcopy(SL0)
 

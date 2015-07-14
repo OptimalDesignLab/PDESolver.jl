@@ -1,3 +1,6 @@
+export getBCFunctors
+
+
 # Euler flux calculator used by isentropicVortexBC ONLY!!
 
 #export rho1Energy2BC, isentropicVortexBC
@@ -405,7 +408,7 @@ end # ends the function eulerRoeSAT
 
 
 # mid level function
-function getBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Int,1}, flux::AbstractArray{Tres, 3})
+function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Int,1}, flux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
   nfaces = length(bndry_facenums)
@@ -437,6 +440,7 @@ end
 
 # mid level function
 # no longer needed
+#=
 function getIsentropicVortexBoundaryFlux{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
 
 
@@ -459,7 +463,7 @@ function getIsentropicVortexBoundaryFlux{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tm
 
   return nothing
 end
-
+=#
 
 
 
@@ -595,4 +599,30 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1
 
 end # ends the function eulerRoeSAT
 
+
+
+# every time a new boundary condition is created,
+# add it to the dictionary
+const isentropicVortexBC_ = isentropicVortexBC()
+global const BCDict = Dict{ASCIIString, BCType} (
+"isentropicVortexBC" => isentropicVortexBC_
+)
+
+
+function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerEquation, opts)
+# populate the array mesh.bndry_funcs with the functors for the boundary condition types
+
+println("Entered getBCFunctors")
+println("BCDict = ", BCDict)
+
+for i=1:mesh.numBC
+  key_i = string("BC", i, "_name")
+  val = opts[key_i]
+  println("BCDict[val] = ", BCDict[val])
+  mesh.bndry_funcs[i] = BCDict[val]
+end
+
+return nothing
+
+end
 
