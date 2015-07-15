@@ -43,7 +43,7 @@ end
 
 opts = read_input()
 
-flag = 1
+flag = 4
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
 delta_t = 0.005

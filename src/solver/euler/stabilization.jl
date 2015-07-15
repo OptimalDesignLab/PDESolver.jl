@@ -219,7 +219,7 @@ function edgestabilize!{Tmsh, Tsbp, Tsol, Tres}(sbp::SBPOperator{Tsbp}, ifaces::
       #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
       iR = sbp.facenodes[nbrnodeindex[i], face.faceR]::Int
       # apply the normal-derivative difference operator along the face
-      getdir!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
+      getdir!(view(α,:,:,iL,face.elementL),view(sbp.facenormal,:,face.faceL), dirL)
       fill!(Dn, zero(Tres))
       directionaldifferentiate!(sbp, dirL, view(u,:,:,face.elementL), iL, Dn)
       getdir!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)

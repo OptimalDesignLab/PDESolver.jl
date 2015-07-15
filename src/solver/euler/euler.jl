@@ -60,24 +60,24 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-dataPrep(mesh, sbp, eqn, SL0)
+@time dataPrep(mesh, sbp, eqn, SL0)
 println("dataPrep @time printed above")
-evalVolumeIntegrals(mesh, sbp, eqn)
+@time evalVolumeIntegrals(mesh, sbp, eqn)
 println("volume integral @time printed above")
 
-evalBoundaryIntegrals(mesh, sbp, eqn)
+@time evalBoundaryIntegrals(mesh, sbp, eqn)
 println("boundary integral @time printed above")
 
 
 
-addStabilization(mesh, sbp, eqn)
+@time addStabilization(mesh, sbp, eqn)
 println("edge stabilizing @time printed above")
 
 
-assembleSolution(mesh, eqn, SL)
+@time assembleSolution(mesh, eqn, SL)
 println("assembly @time printed above")
 
-applyMassMatrixInverse(eqn, SL)
+@time applyMassMatrixInverse(eqn, SL)
 println("Minv @time printed above")
 
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
@@ -89,7 +89,7 @@ println("Minv @time printed above")
 #print(" ", err_norm)
 
 
-#print("\n")
+print("\n")
 
 return nothing
 #return SL
@@ -119,21 +119,26 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   disassembleSolution(mesh, eqn, SL0)
   # disassmble SL0 into eqn.q
 
+  @time getAuxVars(mesh, eqn)
+  println("getAuxVars @time printed above")
 
-  checkDensity(eqn)
-#  println("checkDensity @time printed above")
 
-  checkPressure(eqn)
-#  println("checkPressure @time printed above")
+  @time checkDensity(eqn)
+  println("checkDensity @time printed above")
+
+  @time checkPressure(eqn)
+  println("checkPressure @time printed above")
 
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
   getEulerFlux(mesh, eqn)
+#  println("getEulerFlux @time printed above")
 #  getIsentropicVortexBoundaryFlux(mesh, sbp, eqn)
    getBCFluxes(mesh, sbp, eqn)
+#   println("getBCFluxes @time printed above")
 #  isentropicVortexBC(mesh, sbp, eqn)
   stabscale(mesh, sbp, eqn)
-#  println("getEulerFlux @time printed above")
+#  println("stabscale @time printed above")
 
 
 
@@ -151,8 +156,8 @@ for i=1:mesh.numBC
   functor_i = mesh.bndry_funcs[i]
   start_index = mesh.bndry_offsets[i]
   end_index = mesh.bndry_offsets[i+1]
-  bndry_facenums_i = view(mesh.bndryfaces, start_index:end_index)
-  flux_i = view(eqn.bndryflux, :, :, start_index:end_index)
+  bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
+  flux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
   
   calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, flux_i)
 
@@ -185,8 +190,11 @@ function checkPressure(eqn::EulerEquation)
 
 for i=1:numel
   for j=1:nnodes
-    q_vals = view(eqn.q, :, j, i)
-    press = calcPressure(q_vals, eqn)
+#    q_vals = view(eqn.q, :, j, i)
+#    press = calcPressure(q_vals, eqn)
+    aux_vars = view(eqn.aux_vars,:, j, i)
+    press = @getPressure(aux_vars)
+#    println("press = ", press)
     @assert( press > 0.0)
   end
 end
@@ -364,6 +372,21 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 end
 
 
+function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
+# calculate all auxiliary variables
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_vals = view(eqn.q, :, j, i)
+
+      # calculate pressure
+      press = calcPressure(q_vals, eqn)
+      @setPressure(eqn.aux_vars, j, i, press)
+    end
+  end
+
+  return nothing
+end
 
 # mid level function
 function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
@@ -373,6 +396,7 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEqua
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement  # loop over nodes on current element
       q_vals = view(eqn.q, :, j, i)
+      aux_vars = view(eqn.aux_vars, :, j, i)
       # put this loop here (rather than outside) to we don't have to fetch
       # q_vals twice, even though writing to the flux vector is slower
       # it might be worth copying the normal vector rather than
@@ -382,7 +406,8 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEqua
 	nrm[1] = mesh.dxidx[k, 1, j, i]
 	nrm[2] = mesh.dxidx[k, 2, j, i]
 #        nrm = view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
-        calcEulerFlux(eqn, q_vals, nrm, view(eqn.F_xi, :, j, i, k))
+        calcEulerFlux(eqn, q_vals, aux_vars, nrm, view(eqn.F_xi, :, j, i, k))
+
       end
     end
   end
@@ -505,16 +530,18 @@ end
 
 
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 2}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
+# aux_vars is the vector of auxiliary variables at the point
 # dir is a vector of length 2 that specifies the direction
 # F is populated with the flux (is a vector of length 4)
 # 2D  only
 
 
-  press = calcPressure(q, eqn)
+#  press = calcPressure(q, eqn)
+  press = @getPressure(aux_vars)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
   F[1] = q[1]*U
   F[2] = q[2]*U + dir[1]*press
