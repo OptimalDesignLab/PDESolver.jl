@@ -600,6 +600,23 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1
 end # ends the function eulerRoeSAT
 
 
+type noPenetrationBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, eqn::EulerEquation{Tsol, 2})
+
+qg = zeros(q)
+for i=1:4
+  qg[i] = q[i]
+end
+
+# call Roe solver here
+
+return nothing
+
+end
+
 
 # every time a new boundary condition is created,
 # add it to the dictionary
