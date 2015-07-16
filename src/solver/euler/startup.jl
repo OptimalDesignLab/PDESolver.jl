@@ -52,7 +52,8 @@ delta_t = opts["delta_t"]
 #t_max = 5.00
 t_max = opts["t_max"]
 #t_max = 1.0
-order = 1  # order of accuracy
+#order = 1  # order of accuracy
+order = opts["order"]
 
 
 #set_bigfloat_precision(80)  # use 128 bit floats
@@ -152,7 +153,7 @@ writeVtkFiles("solution_ic",mesh.m_ptr)
 
 # call timestepper
 if flag == 1 # normal run
- rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=1e-8)
+ rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_tol"])
  println("finish rk4")
  printSolution("rk4_solution.dat", eqn.SL)
 # println("rk4 @time printed above")
@@ -177,7 +178,7 @@ elseif flag == 3 # calculate dRdx
   # dRdx here
 
 elseif flag == 4
-  newton_fd(evalEuler, mesh, sbp, eqn, opts, itermax=10, step_tol=1e-6, res_tol=1e-10)
+  newton_fd(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
   printSolution("newton_solution.dat", eqn.SL)
 
 elseif flag == 5
