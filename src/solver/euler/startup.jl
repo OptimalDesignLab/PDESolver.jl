@@ -41,19 +41,21 @@ end
 
 #function runtest(flag::Int)
 
-opts = read_input()
+opts = read_input("input_vals.jl")
 
-flag = 4
+flag = opts["run_type"]
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 # timestepping parameters
-delta_t = 0.005
+#delta_t = 0.005
+delta_t = opts["delta_t"]
 #t_max = 0.025
-t_max = 5.00
+#t_max = 5.00
+t_max = opts["t_max"]
 #t_max = 1.0
 order = 1  # order of accuracy
 
 
-set_bigfloat_precision(80)  # use 128 bit floats
+#set_bigfloat_precision(80)  # use 128 bit floats
 # types of the mesh, SBP, Equation objects
 if flag == 1  # normal run
   Tmsh = Float64
@@ -96,8 +98,14 @@ end
 sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 
 # create mesh
-dmg_name = ".null"
-smb_name = "../../mesh_files/quarter_vortex3l.smb"
+#dmg_name = ".null"
+#smb_name = "../../mesh_files/quarter_vortex10l.smb"
+
+#dmg_name = "../../mesh_files/vortex.dmg"
+#smb_name = "../../mesh_files/vortex.smb"
+
+dmg_name = opts["dmg_name"]
+smb_name = opts["smb_name"]
 
 #smb_name = "../../mesh_files/quarter_vortex33l.smb"
 #smb_name = "../../mesh_files/quarter_vortex1000l.smb"
@@ -144,7 +152,7 @@ writeVtkFiles("solution_ic",mesh.m_ptr)
 
 # call timestepper
 if flag == 1 # normal run
- rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, res_tol=1e-7)
+ rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=1e-8)
  println("finish rk4")
  printSolution("rk4_solution.dat", eqn.SL)
 # println("rk4 @time printed above")
@@ -169,11 +177,11 @@ elseif flag == 3 # calculate dRdx
   # dRdx here
 
 elseif flag == 4
-  newton_fd(evalEuler, mesh, sbp, eqn, itermax=1, step_tol=1e-6, res_tol=1e-6)
+  newton_fd(evalEuler, mesh, sbp, eqn, opts, itermax=10, step_tol=1e-6, res_tol=1e-10)
   printSolution("newton_solution.dat", eqn.SL)
 
 elseif flag == 5
-  newton_complex(evalEuler, mesh, sbp, eqn, itermax=200, step_tol=1e-6, res_tol=1e-8)
+  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
 end
 
 

@@ -351,3 +351,8 @@ return nothing
 end  # end function
 
 
+
+# declare a const dictionary here that maps strings to function (used for input arguments)
+
+
+

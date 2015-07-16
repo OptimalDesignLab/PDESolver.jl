@@ -1,7 +1,10 @@
-include("new_file2.jl")  # creates arg_dict
+#include("new_file2.jl")  # creates arg_dict
 
 
-function read_input()
+function read_input(fname::AbstractString)
+
+include(fname)
+
 # take action based on the dictionary
 
 if haskey(arg_dict, "var1")

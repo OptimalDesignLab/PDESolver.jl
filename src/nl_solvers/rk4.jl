@@ -13,6 +13,7 @@
 # Outputs:
 #   x:      solved x at t_max
 
+# deprectated, probably doesn't work any more
 function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   t = 0.0
@@ -94,7 +95,7 @@ end
 #   x:      solved x at t_max
 
 
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEquation; res_tol = -1.0) 
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEquation, opts; res_tol = -1.0) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
 # res_tol is alternative stopping criteria
@@ -146,7 +147,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 
  #   eqn.SL0 = x_old
     eqn.SL[:] = 0.0
-    f( mesh, sbp, eqn, eqn.SL0, eqn.SL, t)
+    f( mesh, sbp, eqn, opts, eqn.SL0, eqn.SL, t)
 
     k1[:] = eqn.SL
     x2[:] = x_old + (h/2)*k1
@@ -160,21 +161,21 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 
     eqn.SL0[:] = x2
     eqn.SL[:] = k2
-    f( mesh, sbp, eqn,  eqn.SL0, eqn.SL, t + h/2)
+    f( mesh, sbp, eqn, opts,  eqn.SL0, eqn.SL, t + h/2)
 
     k2[:] = eqn.SL
     x3[:] = x_old + (h/2)*k2
 
     eqn.SL0[:] = x3
     eqn.SL[:] = k3
-    f( mesh, sbp, eqn,  eqn.SL0, eqn.SL, t + h/2)
+    f( mesh, sbp, eqn, opts, eqn.SL0, eqn.SL, t + h/2)
 
     k3[:] = eqn.SL
     x4[:] = x_old + h*k3
 
     eqn.SL0[:] = x4
     eqn.SL[:] = k4
-    f( mesh, sbp, eqn,  eqn.SL0, eqn.SL, t + h)
+    f( mesh, sbp, eqn, opts, eqn.SL0, eqn.SL, t + h)
     k4 = eqn.SL[:]
 
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)

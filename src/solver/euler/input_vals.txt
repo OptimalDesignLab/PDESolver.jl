@@ -1,0 +1,28 @@
+# The following keys are used for the options dictionary in input_vals.jl
+
+"run_type"  : what type of run, 1 = rk4, 4 = Newton finite difference, 5 = Newton complex step (integer)
+
+"order" : order of accuracy of elements, 1-4 will be supported eventually (integer)
+
+
+"delta_t" = timestep for rk4 (floating point)
+"t_max" = maximum time for rk4 (floating point)
+
+"smb_name" : name of smb file if using Pumi (string)
+"dmg_name" : name of dmg file if using Pumi (string)
+
+"IC_name" : initial condition function name (string)
+
+"res_tol" : stopping tolerance for residual, used by rk4 and Newton methods
+"step_tol" : step size tolerance for Newton methods (floating point)
+"itermax" : maximum number of iterations for Newton methods (integer)
+
+# boundary condition specification
+"numBC" : number of boundary condtions used
+
+# for each boundary condition there must be:
+"BCi" : model edges (for 2d) where the boundary condition is applied
+"BCi_name" : name of boundary condition to apply
+
+# where i is the index of the boundary condition
+# i must have values 1 through numBC

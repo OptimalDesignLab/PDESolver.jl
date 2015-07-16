@@ -2,12 +2,17 @@ using ArrayViews
 using Debug
 
 
-function newton_fd(func, mesh, sbp, eqn; itermax=200, step_tol=1e-6, res_tol =1e-6)
+function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol =1e-6)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
   # the initial condition is stored in eqn.SL0
   # itermax is the maximum number of iterations
+
+  println("\nEntered newton_fd")
+  println("step_tol = ", step_tol)
+  println("res_tol = ", res_tol)
+  println("itermax = ", itermax)
 
   step_fac = 0.5  # step size limiter
   m = length(eqn.SL)
@@ -21,7 +26,7 @@ function newton_fd(func, mesh, sbp, eqn; itermax=200, step_tol=1e-6, res_tol =1e
   for i=1:itermax
   println("Newton iteration: ", i)
   # compute residual at initial condition
-  func(mesh, sbp, eqn, eqn.SL0, eqn.SL)
+  func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
   res_0[:] = eqn.SL
   res_0_norm = norm(eqn.SL)/m
   println("residual norm = ", res_0_norm)
@@ -35,6 +40,7 @@ function newton_fd(func, mesh, sbp, eqn; itermax=200, step_tol=1e-6, res_tol =1e
     epsilon = 1e-6  # finite difference perturbation
     # calculate jacobian
     for j=1:m
+      println("  jacobian iteration ", j)
       if j==1
 	eqn.SL0[j] +=  epsilon
       else
@@ -44,13 +50,17 @@ function newton_fd(func, mesh, sbp, eqn; itermax=200, step_tol=1e-6, res_tol =1e
 
       # evaluate residual
       fill!(eqn.SL, 0.0)
-      func(mesh, sbp, eqn, eqn.SL0, eqn.SL)
+      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
  #     println("column ", j, " of jacobian, SL = ", eqn.SL)
       calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
       
     end
 
+
+    # jacobian is complete
+    jac_cond = cond(jac)  # get condition number
+    println("  jacobian condition number = ", jac_cond)
 
 #    println("first row of jacobian is: ")
 #    for j=1:m
@@ -123,7 +133,7 @@ end
 
 
 
-@debug function newton_complex(func, mesh, sbp, eqn; itermax=200, step_tol=1e-6, res_tol=1e-6)
+@debug function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=1e-6)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -145,7 +155,7 @@ end
   println("Newton iteration: ", i)
   println("step_fac = ", step_fac)
   # compute residual at initial condition
-  func(mesh, sbp, eqn, eqn.SL0, eqn.SL)
+  func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
   println("evaluated residual")
   res_0[:] = real(eqn.SL)  # is there an unnecessary copy here?
 
@@ -176,7 +186,7 @@ end
 
       # evaluate residual
       fill!(eqn.SL, zero(Tsol))
-      func(mesh, sbp, eqn, eqn.SL0, eqn.SL)
+      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
  #     println("column ", j, " of jacobian, SL = ", eqn.SL)
       calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)

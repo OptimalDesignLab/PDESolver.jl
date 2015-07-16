@@ -54,13 +54,13 @@ export evalEuler
 
 # this function is what the timestepper calls
 # high level function
-function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation,  SL0, SL, t=0.0)
+function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, opts,  SL0, SL, t=0.0)
 # SL is popualted with du/dt
 # SL0 is q at previous timestep
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-@time dataPrep(mesh, sbp, eqn, SL0)
+@time dataPrep(mesh, sbp, eqn, SL0, opts)
 println("dataPrep @time printed above")
 @time evalVolumeIntegrals(mesh, sbp, eqn)
 println("volume integral @time printed above")
@@ -98,7 +98,7 @@ end  # end evalEuler
 
 
 # high level functions
-function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerEquation{Tsol}, SL0::AbstractVector{Tsol})
+function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerEquation{Tsol}, SL0::AbstractVector{Tsol}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # disassembles SL0 into eqn.q
 # calculates all mesh wide quantities in eqn
@@ -134,7 +134,7 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   getEulerFlux(mesh, eqn)
 #  println("getEulerFlux @time printed above")
 #  getIsentropicVortexBoundaryFlux(mesh, sbp, eqn)
-   getBCFluxes(mesh, sbp, eqn)
+   getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
 #  isentropicVortexBC(mesh, sbp, eqn)
   stabscale(mesh, sbp, eqn)
@@ -148,18 +148,21 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
 end # end function dataPrep
 
 
-function getBCFluxes(mesh, sbp, eqn)
+function getBCFluxes(mesh, sbp, eqn, opts)
 # get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+
+#println("mesh.bndry_funcs = ", mesh.bndry_funcs)
 
 for i=1:mesh.numBC
 
+#  println("computing flux for boundary condition ", i)
   functor_i = mesh.bndry_funcs[i]
   start_index = mesh.bndry_offsets[i]
   end_index = mesh.bndry_offsets[i+1]
   bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
-  flux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+  bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
   
-  calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, flux_i)
+  calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
 
 end
 
@@ -193,7 +196,8 @@ for i=1:numel
 #    q_vals = view(eqn.q, :, j, i)
 #    press = calcPressure(q_vals, eqn)
     aux_vars = view(eqn.aux_vars,:, j, i)
-    press = @getPressure(aux_vars)
+#    press = @getPressure(aux_vars)
+    press = getPressure(aux_vars)
 #    println("press = ", press)
     @assert( press > 0.0)
   end
