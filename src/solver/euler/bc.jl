@@ -34,7 +34,7 @@ function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp
       bndryflux_i = view(bndryflux, :, j, i)
 
 
-      functor(q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn)
+      functor(q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
     end
   end
 
@@ -48,7 +48,7 @@ type isentropicVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, eqn::EulerData{Tsol, 2})
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -56,10 +56,10 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1
 
   # getting qg
   qg = zeros(Tsol, 4)
-  calcIsentropicVortex(x, eqn, qg)
+  calcIsentropicVortex(x, params, qg)
 #  calcVortex(x, eqn, qg)
 
-  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, eqn)
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   return nothing
 
@@ -71,7 +71,7 @@ type noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, eqn::EulerData{Tsol, 2})
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 # a clever optimizing compiler will clean this up
 
 
@@ -92,7 +92,7 @@ qg[3] *= tngt[2]
 
 
 # call Roe solver
-RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, eqn)
+RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
 return nothing
 

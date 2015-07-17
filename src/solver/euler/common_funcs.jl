@@ -1,5 +1,5 @@
 
-function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, eqn::EulerData{Tsol}, sol::AbstractVector{Tsol})
+function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractVector{Tsol})
 # calculates the solution at a point of the isentripic vortex
 # 2D only
 # coords contains xy coordinates
@@ -12,9 +12,9 @@ x = coords[1]
 y = coords[2]
 
 # get some values out of eqn
-cv = eqn.cv
-R = eqn.R
-gamma = eqn.gamma
+cv = params.cv
+R = params.R
+gamma = params.gamma
 
 # the (hard coded) parameters are
 r_in = 1  # inner radius of sector of circle
@@ -58,7 +58,7 @@ return nothing
 
 end
 
-function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, eqn::EulerData{Tsol}, sol::AbstractArray{Tsol,1})
+function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol,1})
   # for square test case with rho = 1, everything else  = 0
 
   sol[1] = 1.0
@@ -68,7 +68,7 @@ function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, eqn::EulerD
 end
 
 
-function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, eqn::EulerData{Tsol}, sol::AbstractArray{Tsol, 1})
+function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
   # for square test case with rho = 1, everything else  = 0
 
   sol[1] = 1.0
@@ -80,7 +80,7 @@ function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, eqn::EulerDa
 end
 
 
-function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, eqn::EulerData{Tsol}, sol::AbstractArray{Tsol,1})
+function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, params::ParamType{2}, sol::AbstractArray{Tsol,1})
 # solid body rotation
   x = coords[1]
   y = coords[2]

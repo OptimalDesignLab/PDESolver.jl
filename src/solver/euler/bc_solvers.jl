@@ -1,7 +1,7 @@
 
 # this file contains all the flux solvers for weakly imposed boundary conditions
 
-function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, aux_vars::AbstractArray{Tsol, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, eqn::EulerData{Tsol, 2})
+function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, aux_vars::AbstractArray{Tsol, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   E1dq = zeros(Tres, 4)
   E2dq = zeros(Tres, 4)
@@ -111,7 +111,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
   euler_flux = zeros(Tsol, 4)
-  calcEulerFlux(eqn, q, aux_vars, [nx, ny], euler_flux)
+  calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
 
 #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
 #  flux[:] = -(sat + euler_flux)

@@ -99,7 +99,7 @@ for i=1:numEl
       y = coords[2,j]
       z = coords[3,j]
 
-      calcRho1Energy2U3(coords[:,j], eqn, sol)
+      calcRho1Energy2U3(coords[:,j], eqn.params, sol)
 
 
       # apply initial conditions here
@@ -142,7 +142,7 @@ for i=1:numEl
       y = coords[2,j]
       z = coords[3,j]
 
-      calcVortex(coords[:,j], eqn, sol)
+      calcVortex(coords[:,j], eqn.params, sol)
 
 
       # apply initial conditions here
@@ -304,7 +304,7 @@ for i=1:numEl
       # coordinates of this node (must be a vertex)
 #      coords_j = coords[:,j]
       coords_j = mesh.coords[:,j, i]
-      calcIsentropicVortex(coords_j, eqn, sol)
+      calcIsentropicVortex(coords_j, eqn.params, sol)
 
 #      println( "  j = ", j, " sol = ", sol, " coords_j = ", coords_j)
 
@@ -333,7 +333,7 @@ for i=1:numEl
 
       # coordinates of this node (must be a vertex)
       coords_j = coords[:,j]
-      calcIsentropicVortex(coords_j, eqn, sol)
+      calcIsentropicVortex(coords_j, eqn.params, sol)
 
       # apply initial conditions here
 #       u0[dofnums_i[:,j]] = sol

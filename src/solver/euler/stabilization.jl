@@ -2,7 +2,8 @@
 # edge stabilization is is executed from euler.jl
 
 # this function is going to be deprecated soon
-function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, mesh::AbstractMesh, eqn::EulerData)
+# low level function
+function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, mesh::AbstractMesh, params::ParamType{2})
 
 #     println("==== entering stabscale ====")
 
@@ -13,7 +14,7 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
     Energy = u[4]
 
     # from JC's code below, eqn should still be in scope
-    pressure = calcPressure(u, eqn)
+    pressure = calcPressure(u, eqn.params)
 
     # solved eqn for e: E = rho*e + (1/2)*rho*u^2
     vel_squared = vel_x^2 + vel_y^2
@@ -274,7 +275,7 @@ end
 
 
 # low level function
-function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tsbp,1}, eqn::EulerData{Tsol, 2} )
+function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tsbp,1}, params::ParamType{2} )
 # calculate stabscale for a single node
 
 #     println("==== entering stabscale ====")
@@ -286,14 +287,14 @@ function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractAr
     Energy = u[4]
 
     # from JC's code below, eqn should still be in scope
-    pressure = calcPressure(u, eqn)
+    pressure = calcPressure(u, params)
 
     # solved eqn for e: E = rho*e + (1/2)*rho*u^2
     vel_squared = vel_x^2 + vel_y^2
     energy = Energy/rho - (1/2)*vel_squared
 
     # gamma stored in EulerData type
-    gamma = eqn.gamma
+    gamma = params.gamma
 
 #     println("pressure: ",pressure)
 #     println("gamma: ",gamma)
@@ -345,7 +346,7 @@ function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{
       dxidx = view(mesh.dxidx, :, :, iL, face_i.elementL)
       nrm = view(sbp.facenormal, :, face_i.faceL)
       
-      eqn.stabscale[j,i] = stabscale(q, dxidx, nrm, eqn)
+      eqn.stabscale[j,i] = stabscale(q, dxidx, nrm, eqn.params)
     end
   end
 
@@ -357,9 +358,9 @@ end
 function calcEdgeStabAlpha{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
 # calculate alpha, needed by edge stabilization
 
-  numEl = getNumEl(mesh)
 
-  eqn.edgestab_alpha = Array(Float64,2,2,sbp.numnodes,numEl)
+  numEl = mesh.numEl
+  eqn.edgestab_alpha = Array(Tmsh,2,2,sbp.numnodes,numEl)
   dxidx = mesh.dxidx
   jac = mesh.jac
 

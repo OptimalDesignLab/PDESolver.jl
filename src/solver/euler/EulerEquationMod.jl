@@ -35,6 +35,63 @@ export AbstractEulerData, EulerData, EulerData_
 # if it is variable sized then macros give the advantage of doing location lookup
 # at compile time
 
+@doc """
+### EulerEquationMod.ParamType
+
+  This type holds the values of any constants or paramters needed during the
+  computation.  These paramters can be specified in the opts dictionary or
+  have default values set here.  If there is no reasonable default, values
+  are initialized to -1
+
+  gamma and R are the independent themodynamic variables
+
+  Whether this type should be immutable or not is an open question
+
+  This type is paramaterized on the dimension of the equation for purposes
+  of multiple dispatch
+
+  **Fields**
+    # these fields have defaults:
+    * cv  : specific heat constant
+    * R : specific gas constant (J/(Kg*K))
+    * gamma : ratio of specific heats
+    * gamma_1 : gamma - 1
+    # these fields do not have defaults:
+    * Ma  : free stream Mach number
+    * Re  : free stream Reynolds number
+    * aoa : angle of attack (radians)
+ 
+"""->
+immutable ParamType{Tdim} 
+  cv::Float64  # specific heat constant
+  R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
+  gamma::Float64 # ratio of specific heats
+  gamma_1::Float64 # = gamma - 1
+
+  Ma::Float64  # free stream Mach number
+  Re::Float64  # free stream Reynolds number
+  aoa::Float64  # angle of attack
+
+  function ParamType(opts)
+  # create values, apply defaults
+
+    # get() = get(dictionary, key, default)
+    gamma = get(opts, "gamma", 1.4)
+    gamma_1 = gamma - 1
+    R = get(opts, "R", 287.058)
+    cv = R/gamma_1
+
+    Ma = get(opts, "Ma", -1.0)
+    Re = get(opts, "Re", -1.0)
+    aoa = get(opts, "aoa", -1.0)*pi/180  # convert to radians
+
+    return new(cv, R, gamma, gamma_1, Ma, Re, aoa)
+
+  end
+
+end  # end type declaration
+
+ 
 
 # add a layer of abstraction - although this migh be unnecessary
 abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
@@ -47,11 +104,7 @@ abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
   conservative variables q, and Tdim, the dimension of the equation
 
   **Fields**
-    * cv  : specific heat constant
-    * R : specific gas constant (J/(Kg*K))
-    * gamma : ratio of specific heats
-    * gamma_1 : gamma - 1
-    * res_type : datatype of residual (depreciated)
+   * res_type : datatype of residual (depreciated)
     * q  : 3D array holding conservative variables
     * aux_vars : 3D array holding auxiliary variables
     * F_xi : 4D array [ndof per node, nnodes per element, nelements, Tdim]
@@ -78,10 +131,8 @@ abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
 type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
-  cv::Float64  # specific heat constant
-  R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
-  gamma::Float64 # ratio of specific heats
-  gamma_1::Float64 # = gamma - 1
+
+  params::ParamType{Tdim}
   res_type::DataType  # type of res
 
   # the following arrays hold data for all nodes
@@ -104,15 +155,17 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
 
   # inner constructor
 #  function EulerData(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
-  function EulerData_(mesh::PumiMesh2, sbp::SBPOperator)
+  function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
 
     eqn = new()  # incomplete initilization
 
+    eqn.params = ParamType{Tdim}(opts)
+#=
     eqn.gamma = 1.4
     eqn.gamma_1 = eqn.gamma - 1
     eqn.R = 287.058  # specific gas constant (unit J/(kg * K)
     eqn.cv = eqn.R/(eqn.gamma - 1)
-
+=#
     eqn.res_type = Tres
 
     calcMassMatrixInverse(mesh, sbp, eqn)
@@ -139,7 +192,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
     #return EulerData(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp,0,0,0))
     #return EulerData(cv, R, gamma, bigQT_xi, bigQT_eta)
 
-    println("eq.gamma = ", eqn.gamma, " eqn.R = ", eqn.R, " eqn.cv = ", eqn.cv)
     println("eqn.res_type = ", eqn.res_type)
     return eqn
   end  # end of constructor
