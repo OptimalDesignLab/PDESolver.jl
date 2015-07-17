@@ -129,9 +129,12 @@ SL = eqn.SL
 SL0 = eqn.SL0
 
 # populate u0 with initial condition
+ICfunc_name = opts["IC_name"]
+ICfunc = ICDict[ICfunc_name]
+ICfunc(mesh, sbp, eqn, SL0)
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
- ICIsentropicVortex(mesh, sbp, eqn, SL0)
+# ICIsentropicVortex(mesh, sbp, eqn, SL0)
 #ICRho1E2(mesh, sbp, eqn, SL0)
 #ICRho1E2U3(mesh, sbp, eqn, SL0)
 

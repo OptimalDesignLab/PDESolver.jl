@@ -8,6 +8,7 @@
 #   ICIsentropicVortex
 
 export ICZero, ICRho1E2, ICLinear, ICsmoothHeavisideder, ICsmoothHeaviside, ICIsentropicVortex
+export ICDict
 
 function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
@@ -354,5 +355,16 @@ end  # end function
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
 
+global const ICDict = Dict{Any, Function} (
+"ICZero" => ICZero,
+"ICRho1E2" => ICRho1E2,
+"ICRho1E2U3" => ICRho1E2U3,
+"ICVortex" => ICVortex,
+"ICLinear" => ICLinear,
+"ICsmoothHeavisideder" => ICsmoothHeavisideder,
+"ICsmoothHeaviside" => ICsmoothHeaviside,
+"ICIsentropicVortex" => ICIsentropicVortex,
+"ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise
+)
 
 

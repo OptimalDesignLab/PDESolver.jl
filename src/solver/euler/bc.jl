@@ -546,11 +546,11 @@ end
 const isentropicVortexBC_ = isentropicVortexBC()
 const noPenetrationBC_ = noPenetrationBC()
 global const BCDict = Dict{ASCIIString, BCType} (
-"isentropicVortexBC" => isentropicVortexBC_,
-"noPenetrationBC" => noPenetrationBC_
+"isentropicVortexBC" => isentropicVortexBC(),
+"noPenetrationBC" => noPenetrationBC()
 )
 
-
+# use this function to populate access the needed values in BCDict
 function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerEquation, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
