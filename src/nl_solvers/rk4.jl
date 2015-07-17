@@ -14,7 +14,21 @@
 # Outputs:
 #   x:      solved x at t_max
 
+@doc """
+rk4
 
+  This function does 4th order Runge Kutta time stepping
+
+  Arguments:
+    * f  : function to call
+    * h  : time step size
+    * t_max : time value to stop time stepping (time starts at 0)
+    * mesh : AbstractMesh
+    * sbp : SBPOperator 
+    * eqn : AbstractSolutionData
+    * opts : options dictionary
+    * res_tol : keyword arg, residual topping tolerance
+"""->
 function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractSolutionData, opts; res_tol = -1.0) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 

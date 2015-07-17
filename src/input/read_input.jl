@@ -1,6 +1,15 @@
 #include("new_file2.jl")  # creates arg_dict
 
+@doc """
+### read_input
 
+  This function reads a file which must declare a dictionary of options.
+  See the documention on input variables for valid keywords.  This function
+  returns the dictionary after doing some sanity checks
+
+  Arguments:
+    * fname : name of file to read
+"""->
 function read_input(fname::AbstractString)
 
 include(fname)

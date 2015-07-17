@@ -2,6 +2,25 @@ using ArrayViews
 using Debug
 
 
+@doc """
+### newton_fd
+
+  This function uses Newton's method to reduce the residual.  The Jacobian
+  is calculated using finite differences.
+
+  Arguments:
+    * func  : function that evalutes the residual
+    * mesh : mesh to use in evaluating the residual
+    * sbp : sbp operator to be used to evaluate the residual
+    * eqn : EulerData to use to evaluate the residual
+
+    Optional Arguments
+    * itermax : maximum number of Newton iterations
+    * step_tol : step size stopping tolerance
+    * res_tol : residual stopping tolerance
+
+    func must have the signature func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL) 
+"""->
 function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol =1e-6)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
@@ -133,6 +152,13 @@ end
 
 
 
+
+@doc """
+### newton_complex
+
+  Uses the complex step method to calculate the Jacobian.  See newton_fd.
+
+"""->
 @debug function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=1e-6)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
