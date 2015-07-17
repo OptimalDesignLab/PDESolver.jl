@@ -1,6 +1,22 @@
 # this file contains all functions related to performing edge stabilization
 # edge stabilization is is executed from euler.jl
 
+
+@doc """
+### EulerEquationMod.stabscale
+
+  This function calculates the edge stabilization scaling paramater at a 
+  node and returns it
+
+  Inputs:
+    * u  : vector of conservative variables
+    * dxidx : jacobian of xi wrt x coordinates at the node
+    * nrm  : normal vector in xi space
+    * mesh : AbstractMesh (only needed for order)
+    * params : ParamType{2}
+
+  This is a low level function
+"""->
 # this function is going to be deprecated soon
 # low level function
 function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, mesh::AbstractMesh, params::ParamType{2})
@@ -59,7 +75,7 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 
 
 @doc """
-### SummationByParts.edgestabilize!
+### EulerEquationMod.edgestabilize!
 
 Adds edge-stabilization (see Burman and Hansbo, doi:10.1016/j.cma.2003.12.032)
 to a given residual.  Different methods are available depending on the rank of
@@ -273,7 +289,20 @@ end
 
 
 
+@doc """
+### EulerEquationMod.stabscale
 
+  This function calculates the edge stabilization scalaing parameter at a node
+  and returns it. Linear elements only.
+
+   Inputs:
+    * u : vector of conservative variables
+    * dxidx : jacobian of xi wrt x coordinates at the node
+    * nrm : normal vector in xi space
+    * params : ParamType{2}
+
+    This is a low level function
+"""->
 # low level function
 function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tsbp,1}, params::ParamType{2} )
 # calculate stabscale for a single node
@@ -330,7 +359,14 @@ function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractAr
   end
 
 
+@doc """
+### EulerEquationMod.stabscale
 
+  This function calculate the stabilization scaling parameter across the
+  entire mesh by calling the low level method.
+
+  This is a mid level function
+"""->
 # mid level function
 function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
 # calculate stabscale for entire mesh
@@ -352,7 +388,16 @@ function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{
 
   return nothing
 end
-      
+
+
+@doc """
+### EulerEquationMod.caclEdgeStabAlpha
+
+  This function calculates the edge stabilization paramter alpha across the
+  entire mesh.
+
+  This is a mid level function.
+"""
 # used by EulerData Constructor - not that that matters for any reason
 # mid level function
 function calcEdgeStabAlpha{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})

@@ -58,6 +58,31 @@ return nothing
 
 end
 
+function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
+# calculate the free stream conditions using the fields of params
+
+  
+  rho = sol[1] = params.rho_free
+  E = sol[4] = params.E_free
+
+  cv = params.cv
+  gamma = params.gamma
+  R = params.R
+  Ma = params.Ma
+
+  num = gamma*R*E/(rho*cv)
+  denom = 1/(Ma*Ma) + gamma*R/(2*cv)
+
+  u_norm = sqrt(num/denom)  # magnitude of free stream velocity
+
+  sol[2] = rho*u_norm*cos(params.aoa)
+  sol[3] = -rho*u_norm*sin(params.aoa)
+
+  return nothing
+end
+
+
+
 function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol,1})
   # for square test case with rho = 1, everything else  = 0
 

@@ -71,6 +71,8 @@ immutable ParamType{Tdim}
   Ma::Float64  # free stream Mach number
   Re::Float64  # free stream Reynolds number
   aoa::Float64  # angle of attack
+  rho_free::Float64  # free stream density
+  E_free::Float64 # free stream energy (4th conservative variable)
 
   function ParamType(opts)
   # create values, apply defaults
@@ -84,8 +86,10 @@ immutable ParamType{Tdim}
     Ma = get(opts, "Ma", -1.0)
     Re = get(opts, "Re", -1.0)
     aoa = get(opts, "aoa", -1.0)*pi/180  # convert to radians
+    rho_free = get(opts, "rho_free", -1)
+    E_free = get(opts, "E_free", -1)
 
-    return new(cv, R, gamma, gamma_1, Ma, Re, aoa)
+    return new(cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free)
 
   end
 
@@ -100,7 +104,9 @@ abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
 ### EulerEquationMod.EulerData
 
   This type, although abstract, is the type functions should use for their
-  input arguments.  It is paramaterized on the types Tsol, the type of the
+  input arguments.  It stores all data used in evaluting the Euler Equations.
+  
+  It is paramaterized on the types Tsol, the type of the
   conservative variables q, and Tdim, the dimension of the equation
 
   **Fields**
@@ -128,6 +134,18 @@ abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
 # low level functions should take in EulerData{Tsol, 2} or EulerData{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
 
+@doc """
+### EulerEquationMod.EulerData_
+
+  This type is an implimentation of the abstract EulerData.  It is
+  paramterized by the residual type Tres and the mesh type Tmsh
+  because it stores some arrays of those types.  Tres is the 'maximum' type of
+  Tsol and Tmsh, where Tsol is the type of the conservative variables.
+
+  Eventually there will be additional implimentation of EulerData,
+  specifically a 3D one.
+
+"""->
 type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
@@ -214,6 +232,17 @@ include("stabilization.jl")
 
 
 
+
+@doc """
+### EulerEquationMod.calcMassMatrixInverse
+
+  This function calculates the inverse mass matrix and stores it in eqn.Minv.
+  Because we use SBP operators, the mass matrix is diagonal, so it is stored
+  in a vector.  mesh.dofs is used to put the components of the inverse
+  mass matrix in the same place as the corresponding values in eqn.SL
+
+
+"""->
 # used by EulerData Constructor
 # mid level functions
 function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim} )
@@ -223,10 +252,11 @@ function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
   eqn.Minv = ones(Tmsh, mesh.numDof)
 
   for i=1:mesh.numEl
-    dofnums_i =  getGlobalNodeNumbers(mesh, i)
+#    dofnums_i =  getGlobalNodeNumbers(mesh, i)
     for j=1:sbp.numnodes
       for k=1:mesh.numDofPerNode
-	dofnum_k = dofnums_i[k,j]
+#	dofnum_k = dofnums_i[k,j]
+        dofnum_k = mesh.dofs[k,j,i]
 	# multiplication is faster than division, so do the divions here
 	# and then multiply solution vector times Minv
 	eqn.Minv[dofnum_k] *= 1/(sbp.w[j]*mesh.jac[j,i])

@@ -26,3 +26,10 @@
 
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
+
+# paramters used by boundary and initial condiitions
+"Ma" : free stream Mach number (floating point)
+"Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
+"aoa" : angle of attack in degrees (floating point)
+"rho_free" : free stream density
+"E_free" : free stream energy

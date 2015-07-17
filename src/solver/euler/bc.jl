@@ -2,6 +2,30 @@ export getBCFunctors
 
 include("bc_solvers.jl")
 
+@doc """
+### EulerEquationMod.calcBoundaryFlux
+
+  This function calculates the boundary flux for the portion of the boundary
+  with a particular boundary condition.
+
+  Inputs:
+  mesh : AbstractMesh
+  sbp : SBPOperator
+  eqn : EulerEquation
+  functor : a callable object that calculates the boundary flux at a node
+  bndry_facenums:  An array with elements of type Boundary that tell which
+                   element faces have the boundary condition
+  Outputs:
+  bndryflux : the array to store the boundary flux, corresponds to 
+              bndry_facenums
+
+  The functor must have the signature
+  functor( q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+
+  where all arguments (except params) are vectors of values at a node.
+
+  This is a mid level function.
+"""->
 # mid level function
 function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Boundary,1}, bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
@@ -43,7 +67,16 @@ function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp
 end
 
 
+@doc """
+### EulerEquationMod.isentropicVortexBC <: BCTypes
 
+  This type and the associated call method define a functor to calculate
+  the flux using the Roe Solver using the exact InsentropicVortex solution
+  as boundary state.  See calcBoundaryFlux for the arguments all functors
+  must support.
+
+  This is a low level functor.
+"""->
 type isentropicVortexBC <: BCType
 end
 
@@ -66,7 +99,14 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1
 end # ends the function isentropicVortex BC
 
 
+@doc """
+### EulerEquationMod.noPenetrationBC <: BCTypes
 
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where the fluid velocity is projected into the wall.
+
+  This is a low level functor
+"""
 type noPenetrationBC <: BCType
 end
 
@@ -106,13 +146,21 @@ end
 
 # every time a new boundary condition is created,
 # add it to the dictionary
-const isentropicVortexBC_ = isentropicVortexBC()
-const noPenetrationBC_ = noPenetrationBC()
+#const isentropicVortexBC_ = isentropicVortexBC()
+#const noPenetrationBC_ = noPenetrationBC()
 global const BCDict = Dict{ASCIIString, BCType} (
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC()
 )
 
+@doc """
+### EulerEquationMod.getBCFunctors
+
+  This function uses the opts dictionary to populatemesh.bndry_funcs with
+  the the functors
+
+  This is a high level function.
+"""->
 # use this function to populate access the needed values in BCDict
 function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types

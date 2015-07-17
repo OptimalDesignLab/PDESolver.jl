@@ -42,8 +42,23 @@
 # this allows reusing the same array during a loop (rather than 
 # allocating a new array)
 
+@doc """
+This module is organized into 3 levels of functions: high, middle, and low.
+The high level functions take the mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, and opts (options dictionary), They do not know the types their 
+arguments are paramaterized on. There is only one method for each high level function.  All they do is call mid level functions.
 
+Mid level functions take the same arguments as high level functions but know
+the types they are paramaterized on and do the right thing for all paramters.
+There is only one method for each mid level function.  Mid level functions
+typically pass pieces of the large arrays stored in the eqn and mesh objects
+to low level functions that actually do computation.
 
+Low level functions usually take in vectors of whatever values they need, do
+a computation, and store the result in an argument vector.  These function 
+are usually passed an ArrayView, so writing to the argument vector writes 
+directly to the large array stored in the eqn object.  Thus there is no 
+loss of efficiency by using low level functions.
+"""
 export evalEuler
 
 # Rules for paramaterization:
@@ -52,6 +67,25 @@ export evalEuler
 # Tsol = equation, SL, SL0 data type
 
 
+@doc """
+### EulerEquationMod.evalEuler
+
+  This function drives the evaluation of the EulerEquations.
+  It is agnostic to the dimension of the equation. and the types the arguments
+  are paramaterized on.
+
+  The function calls only high level functions, all of which take the same
+  four arguments.  Mid level function also take the same arguments.
+
+  Arguments:
+    * mesh  : a mesh object
+    * sbp   : SBP operator object
+    * eqn   : an EulerData object
+    * opts  : options dictionary
+
+  The optional time argument is used for unsteady equations
+
+"""->
 # this function is what the timestepper calls
 # high level function
 function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,  SL0, SL, t=0.0)
@@ -96,8 +130,16 @@ return nothing
 
 end  # end evalEuler
 
+@doc """
+### EulerEquationMod.dataPrep
 
-# high level functions
+  This function calculates all the quantities that are stored over the entire 
+  mesh, and performs a few sanity check such as ensuring density and pressure
+  are positive.
+
+  This is a high level function
+"""
+# high level function
 function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerData{Tsol}, SL0::AbstractVector{Tsol}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # disassembles SL0 into eqn.q
@@ -148,6 +190,15 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
 end # end function dataPrep
 
 
+@doc """
+### EulerEquationMod.getBCFluxes
+
+  This function calls other functions to calculate the boundary fluxes, passing
+  them pieces of the array needed.  This populates eqn.bndryflux.
+
+  This is a mid level function
+"""->
+# this is a mid level function
 function getBCFluxes(mesh, sbp, eqn, opts)
 # get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
@@ -171,6 +222,19 @@ return nothing
 end
 
 
+@doc """
+### EulerEquationMod.checkDensity
+
+  This function checks that the density is positive. If not, an error is thrown.
+  Because density is stored in the eqn.q array, performing this check takes 
+  very little time.
+
+  Arguments:
+    * EulerData
+
+  This is a low level function.
+"""->
+# low level function
 function checkDensity(eqn::EulerData)
 # check that density is positive
 
@@ -186,6 +250,19 @@ return nothing
 
 end
 
+
+@doc """
+### EulerEquationMod.checkPressure
+
+  This function checks that pressure is positive.  If not, an error is thrown.
+  Because pressure is stored in the auxiliary variables array, this check 
+  takes very little time
+
+  Arguments:
+    * EulerData
+
+  This is a low level function
+"""->
 function checkPressure(eqn::EulerData)
 # check that density is positive
 
@@ -207,7 +284,16 @@ return nothing
 
 end
 
+@doc """
+### EulerEquationMod.evalVolumeIntegrals
 
+  This function evaluates the volume integrals of the Euler equations by
+  calling the appropriate SBP function on the Euler flux stores in eqn.
+  This function knows the dimension of the equation but does the right
+  thing for all dimensions.  eqn.res is updated with the result
+
+  This is a mid level function.
+"""
 # mid level function
 function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the elements (but not the boundary)
@@ -233,7 +319,15 @@ function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, s
 end
 #------------- end of evalVolumeIntegrals
 
+@doc """
+  This function evaluates the boundary integrals in the Euler equations by 
+  calling the appropriate SBP function on eqn.bndryflux, which must be populated
+  before calling this function.  eqn.res is updated with the result
 
+  This is a mid level function
+
+"""->
+# mid level function
 function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the boundary
 # mesh : a mesh type, used to access information about the mesh
@@ -259,6 +353,16 @@ boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 end
 #------------- end of evalBoundaryIntegrals
 
+
+@doc """
+### EulerEquationMod.addStabilization
+
+  This function add whatever form of stabilization opts specifies by calling
+  the appropriate function.  Some arrays may need to be populated before 
+  calling this function, depending on the type of stabilization used.
+
+  This is a mid level function
+"""->
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
 function addStabilization{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
@@ -376,6 +480,15 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 end
 
 
+@doc """
+### EulerEquationMod.getAuxVars
+
+  This function calculates any extra variables that are stored across the mesh
+  using the conservative variables eqn.q.
+
+  Thi is a mid level function
+"""->
+# mid level function
 function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim})
 # calculate all auxiliary variables
 
@@ -392,6 +505,15 @@ function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{T
   return nothing
 end
 
+@doc """ 
+### EulerEquationMod.getEulerFlux
+
+  This function calculates the Euler flux across the entire mesh by passing
+  pieces of the eqn.q, eqn.aux_vars, eqn.f_xi and eqn.params to a low level
+  function.
+
+  This is a mid level function
+"""->
 # mid level function
 function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim})
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.F_xi
@@ -419,6 +541,15 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData
   return nothing
 end
 
+@doc """
+### EulerEquationMod.getEulerFlux2
+
+  This function calcules the euler flux over the entire mesh directly (ie.
+  does not call a low level function.  This function is deprecated, although
+  useful for benchmarking purposes.  2D only.
+
+  This is a mid level function
+"""->
 # this function is deprecated in factor of getEulerFlux()
 # useful for benchmarking purposes
 function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol})
@@ -477,7 +608,16 @@ end
 fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
 
 
+@doc """
+### EulerEquationMod.applyMassMatrixInverse
 
+  This function multiplies eqn.SL (the residual in vector form  by eqn.Minv,
+  the diagonal mass matrix.  This is a very fast function because all values
+  are precomputed and stores linearly in memory.
+
+  This is a mid level function, and does the correct thing regardless of the
+  dimension of the equation.
+"""->
 # mid level function (although it doesn't really need to Tdim)
 function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, SL::AbstractVector{Tsol})
 # apply the inverse mass matrix stored eqn to SL
@@ -496,7 +636,16 @@ end
 
 
 
+@doc """
+### EulerEquationMod.dissassembleSolution
 
+  This takes eqn.SL0 (the initial state), and disassembles it into eqn.q, the
+  3 dimensional array of conservative variables.  This function uses mesh.dofs
+  to speed the process.
+
+  This is a mid level function, and does the right thing regardless of equation
+  dimension.
+"""->
 # mid level function (although it doesn't need Tdim)
 function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim}, SL0::AbstractArray{Tsol, 1})
   # disassemble SL0 into eqn.
@@ -512,6 +661,18 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::Eu
   return nothing
 end
 
+
+@doc """
+### EulerEquationMod.assembleSolution
+
+  This function takes the 3D array of conservative variables eqn.res and 
+  reassmbles is into eqn.SL (the residual in vector form).  Note that
+  This is a reduction operation and requires eqn.SL to be zerod before
+  calling this function.
+
+  This is a mid level function, and does the right thing regardless of
+  equation dimension
+"""->
 # mid level function (although it doesn't need Tdim)
 function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol}, SL::AbstractArray{Tres,1})
 
@@ -532,7 +693,26 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::Euler
   return nothing
 end
 
+@doc """
+### EulerEquationMod.calcEulerFlux
 
+   This function calculates the Euler flux from the conservative variables at
+   a single node in a particular direction.  2D only.
+
+   Inputs:
+   params  : ParamaterType{2}
+   q  : vector of conservative variables
+   aux_vars : vector of auxiliary variables
+   dir :  unit vector in direction to calculate the flux
+
+   Inputs/Outputs:
+   F  : vector to populate with the flux
+
+   The Tdim paramater of params determine whether this method or the 3D 
+   version is called.
+
+   This is a low level function
+"""->
 # low level function
 function calcEulerFlux{Tmsh, Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
@@ -556,6 +736,10 @@ function calcEulerFlux{Tmsh, Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1
 
 end
 
+@doc """
+### EulerEquationMod.calcEulerFlux
+  This is the 3D method.  All arguments are same as the 2D version.
+"""->
 # low level function
 function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
@@ -582,7 +766,20 @@ end
 
 
 
+@doc """
+### EulerEquationMod.calcPressure
 
+  This function calculates the pressure from the conservative variables at a
+  node in 2D.  It returns a single value.
+
+  Inputs:
+    q  : vector of conservative variables
+    params : ParamType{2}
+
+  The paramater of params determines whether the 2D or 3D method is dispatched.
+
+  This is a low level function.
+"""->
 # low level function
 function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2})
   # calculate pressure for a node
@@ -598,6 +795,11 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2})
 
 end
 
+@doc """
+### EulerEquationMod.calcPressure
+
+  3D method.  See 2D method documentation
+"""->
 # low level function
 function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3})
   # calculate pressure for a node
