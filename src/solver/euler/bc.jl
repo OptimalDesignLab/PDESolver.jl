@@ -409,7 +409,7 @@ end # ends the function eulerRoeSAT
 
 
 # mid level function
-function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Boundary,1}, bndryflux::AbstractArray{Tres, 3})
+function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Boundary,1}, bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
 #  println("enterted calcBoundaryFlux")
@@ -455,7 +455,7 @@ end
 # mid level function
 # no longer needed
 #=
-function getIsentropicVortexBoundaryFlux{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function getIsentropicVortexBoundaryFlux{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
 
 
   for i=1:mesh.numBoundaryEdges
@@ -485,7 +485,7 @@ type isentropicVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, eqn::EulerEquation{Tsol, 2})
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, eqn::EulerData{Tsol, 2})
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -508,7 +508,7 @@ type noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, eqn::EulerEquation{Tsol, 2})
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, eqn::EulerData{Tsol, 2})
 # a clever optimizing compiler will clean this up
 
 
@@ -551,7 +551,7 @@ global const BCDict = Dict{ASCIIString, BCType} (
 )
 
 # use this function to populate access the needed values in BCDict
-function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerEquation, opts)
+function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
 println("Entered getBCFunctors")

@@ -2,7 +2,7 @@
 # edge stabilization is is executed from euler.jl
 
 # this function is going to be deprecated soon
-function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, mesh::AbstractMesh, eqn::EulerEquation)
+function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, mesh::AbstractMesh, eqn::EulerData)
 
 #     println("==== entering stabscale ====")
 
@@ -19,7 +19,7 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
     vel_squared = vel_x^2 + vel_y^2
     energy = Energy/rho - (1/2)*vel_squared
 
-    # gamma stored in EulerEquation type
+    # gamma stored in EulerData type
     gamma = eqn.gamma
 
 #     println("pressure: ",pressure)
@@ -274,7 +274,7 @@ end
 
 
 # low level function
-function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tsbp,1}, eqn::EulerEquation{Tsol, 2} )
+function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tsbp,1}, eqn::EulerData{Tsol, 2} )
 # calculate stabscale for a single node
 
 #     println("==== entering stabscale ====")
@@ -292,7 +292,7 @@ function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractAr
     vel_squared = vel_x^2 + vel_y^2
     energy = Energy/rho - (1/2)*vel_squared
 
-    # gamma stored in EulerEquation type
+    # gamma stored in EulerData type
     gamma = eqn.gamma
 
 #     println("pressure: ",pressure)
@@ -331,7 +331,7 @@ function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractAr
 
 
 # mid level function
-function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
 # calculate stabscale for entire mesh
 
  nbrnodeindex = Array(sbp.numfacenodes:-1:1)
@@ -352,9 +352,9 @@ function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{
   return nothing
 end
       
-# used by EulerEquation Constructor - not that that matters for any reason
+# used by EulerData Constructor - not that that matters for any reason
 # mid level function
-function calcEdgeStabAlpha{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
+function calcEdgeStabAlpha{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
 # calculate alpha, needed by edge stabilization
 
   numEl = getNumEl(mesh)

@@ -119,7 +119,7 @@ mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=4) 
 
 
 # create euler equation
-eqn = EulerEquation1{Tsol, Tres, 2, Tmsh}(mesh, sbp)
+eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
 

@@ -10,7 +10,7 @@
 export ICZero, ICRho1E2, ICLinear, ICsmoothHeavisideder, ICsmoothHeaviside, ICIsentropicVortex
 export ICDict
 
-function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
+function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -45,7 +45,7 @@ return nothing
 
 end  # end function
 
-function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
+function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -81,7 +81,7 @@ return nothing
 end  # end function
 
 
-function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
+function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -124,7 +124,7 @@ end  # end function
 
 
 # what is this? how is it different than ICIsentropic Vortex?
-function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
+function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -168,7 +168,7 @@ end  # end function
 
 
 
-function ICLinear{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractArray{Tsol,1})
+function ICLinear{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractArray{Tsol,1})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -202,7 +202,7 @@ return nothing
 end  # end function
 
 
-function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
+function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractVector{Tsol})
 # calculate the value of the smooth heaviside function derivative at a location x
 # x0 is specified within this function
 
@@ -246,7 +246,7 @@ return nothing
 
 end
 
-function ICsmoothHeaviside{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractArray{Tsol, 1})
+function ICsmoothHeaviside{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractArray{Tsol, 1})
 # calculate the value of the smooth heaviside function at a location x
 # x0 is specified within this function
 
@@ -290,7 +290,7 @@ return nothing
 
 end
 
-function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractArray{Tsol})
+function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractArray{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -323,7 +323,7 @@ return nothing
 
 end  # end function
 
-function ICIsentropicVortexWithNoise{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol}, u0::AbstractVector{Tsol})
+function ICIsentropicVortexWithNoise{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 

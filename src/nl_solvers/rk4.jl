@@ -95,7 +95,7 @@ end
 #   x:      solved x at t_max
 
 
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEquation, opts; res_tol = -1.0) 
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractSolutionData, opts; res_tol = -1.0) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
 # res_tol is alternative stopping criteria

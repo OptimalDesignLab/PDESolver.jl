@@ -10,7 +10,7 @@ using ForwardDiff
 # the AbstractEquation type is declared in CommonTypes
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
-export AbstractEulerEquation, EulerEquation, EulerEquation1
+export AbstractEulerData, EulerData, EulerData_
 
 
 
@@ -36,20 +36,46 @@ export AbstractEulerEquation, EulerEquation, EulerEquation1
 # at compile time
 
 
+# add a layer of abstraction - although this migh be unnecessary
+abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
 
-abstract AbstractEulerEquation{Tsol} <: AbstractEquation{Tsol}
-abstract EulerEquation {Tsol, Tdim} <: AbstractEulerEquation{Tsol}
+@doc """
+### EulerEquationMod.EulerData
 
-# high level functions should take in an AbstractEulerEquation, remaining
+  This type, although abstract, is the type functions should use for their
+  input arguments.  It is paramaterized on the types Tsol, the type of the
+  conservative variables q, and Tdim, the dimension of the equation
+
+  **Fields**
+    * cv  : specific heat constant
+    * R : specific gas constant (J/(Kg*K))
+    * gamma : ratio of specific heats
+    * gamma_1 : gamma - 1
+    * res_type : datatype of residual (depreciated)
+    * q  : 3D array holding conservative variables
+    * aux_vars : 3D array holding auxiliary variables
+    * F_xi : 4D array [ndof per node, nnodes per element, nelements, Tdim]
+             holding the Euler flux in the xi and eta directions
+    * res  : 3D array holding residual
+    * SL   : vector form of res
+    * SL0  : initial condition vector
+    * edgestab_alpha : paramater used for edge stabilization, 4d array
+    * bndryflux : 3D array holding boundary flux data
+    * stabscale : 2D array holding edge stabilization scale factor
+    * Minv :  vector holding inverse mass matrix
+"""->
+abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
+
+# high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
-# Mid level function should take in an EulerEquation{Tsol, Tdim}, so they
+# Mid level function should take in an EulerData{Tsol, Tdim}, so they
 # know the dimensionality of the equation, but have a single method that
 # can handle all dimensions
 
-# low level functions should take in EulerEquation{Tsol, 2} or EulerEquation{Tsol, 3}
+# low level functions should take in EulerData{Tsol, 2} or EulerData{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
 
-type EulerEquation1{Tsol, Tres, Tdim, Tmsh} <: EulerEquation{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
+type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
 # formats of all arrays are documented in SBP
 # only the constants are initilized here, the arrays are not
   cv::Float64  # specific heat constant
@@ -77,8 +103,8 @@ type EulerEquation1{Tsol, Tres, Tdim, Tmsh} <: EulerEquation{Tsol, Tdim}  # hold
   Minv::Array{Float64, 1}  # invese mass matrix
 
   # inner constructor
-#  function EulerEquation(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
-  function EulerEquation1(mesh::PumiMesh2, sbp::SBPOperator)
+#  function EulerData(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
+  function EulerData_(mesh::PumiMesh2, sbp::SBPOperator)
 
     eqn = new()  # incomplete initilization
 
@@ -110,8 +136,8 @@ type EulerEquation1{Tsol, Tres, Tdim, Tmsh} <: EulerEquation{Tsol, Tdim}  # hold
 
     #println("typeof(operator.Q[1]) = ", typeof(operator.Q[1]))
     #type_of_sbp = typeof(operator.Q[1])  # a little hackish
-    #return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp,0,0,0))
-    #return EulerEquation(cv, R, gamma, bigQT_xi, bigQT_eta)
+    #return EulerData(cv, R, gamma, bigQT_xi, bigQT_eta, Array(type_of_sbp,0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp, 0,0,0), Array(type_of_sbp,0,0,0))
+    #return EulerData(cv, R, gamma, bigQT_xi, bigQT_eta)
 
     println("eq.gamma = ", eqn.gamma, " eqn.R = ", eqn.R, " eqn.cv = ", eqn.cv)
     println("eqn.res_type = ", eqn.res_type)
@@ -123,7 +149,7 @@ end  # end of type declaration
 
 
 
-# now that EulerEquation is defined, include other files that use it
+# now that EulerData is defined, include other files that use it
 
 include("euler_macros.jl")
 include("common_funcs.jl")
@@ -136,9 +162,9 @@ include("stabilization.jl")
 
 
 
-# used by EulerEquation Constructor
+# used by EulerData Constructor
 # mid level functions
-function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim} )
+function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim} )
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 

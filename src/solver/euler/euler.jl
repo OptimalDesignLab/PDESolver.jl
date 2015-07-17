@@ -54,7 +54,7 @@ export evalEuler
 
 # this function is what the timestepper calls
 # high level function
-function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, opts,  SL0, SL, t=0.0)
+function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,  SL0, SL, t=0.0)
 # SL is popualted with du/dt
 # SL0 is q at previous timestep
 # t is current timestep
@@ -98,7 +98,7 @@ end  # end evalEuler
 
 
 # high level functions
-function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerEquation{Tsol}, SL0::AbstractVector{Tsol}, opts)
+function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerData{Tsol}, SL0::AbstractVector{Tsol}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # disassembles SL0 into eqn.q
 # calculates all mesh wide quantities in eqn
@@ -171,7 +171,7 @@ return nothing
 end
 
 
-function checkDensity(eqn::EulerEquation)
+function checkDensity(eqn::EulerData)
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -186,7 +186,7 @@ return nothing
 
 end
 
-function checkPressure(eqn::EulerEquation)
+function checkPressure(eqn::EulerData)
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -209,7 +209,7 @@ end
 
 
 # mid level function
-function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
+function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -234,7 +234,7 @@ end
 #------------- end of evalVolumeIntegrals
 
 
-function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol, Tdim})
+function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the boundary
 # mesh : a mesh type, used to access information about the mesh
 # sbp : an SBP operator, used to get stiffness matricies and stuff
@@ -261,7 +261,7 @@ end
 
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
-function addStabilization{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerEquation{Tsol})
+function addStabilization{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
 
 #  println("==== start of addStabilization ====")
   # alpha calculated like in edgestabilize! documentation
@@ -289,7 +289,7 @@ end
 
 
 # this function is deprecated
-function applyDissipation(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation)
+function applyDissipation(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData)
 # apply sketchy dissipation scheme
 # this doesn't work now that the code has been reorganized
 
@@ -367,7 +367,7 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 #  F = zeros(T, 4)
   sbp = TriSBP{Float64}()
   mesh = PumiMesh2{Float64}(".null", "../../mesh_files/quarter_vortex3l.smb", 1, sbp; dofpernode=4)
-  eqn = EulerEquation1{T, T}(mesh, sbp)
+  eqn = EulerData1{T, T}(mesh, sbp)
 
   @time getEulerFlux(eqn, q, dir, F)
 
@@ -376,7 +376,7 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 end
 
 
-function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
+function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim})
 # calculate all auxiliary variables
 
   for i=1:mesh.numEl
@@ -393,7 +393,7 @@ function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquati
 end
 
 # mid level function
-function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim})
+function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim})
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.F_xi
 
   nrm = zeros(Tmsh, 2)
@@ -421,7 +421,7 @@ end
 
 # this function is deprecated in factor of getEulerFlux()
 # useful for benchmarking purposes
-function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol})
+function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol})
 # calculates the Euler flux for every node in the xi and eta directions
 # eqn is the equation type
 # q is the 3D array (4 by nnodes per element by nel), of the conservative variables
@@ -479,7 +479,7 @@ fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4
 
 
 # mid level function (although it doesn't really need to Tdim)
-function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerEquation{Tsol, Tdim}, SL::AbstractVector{Tsol})
+function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, SL::AbstractVector{Tsol})
 # apply the inverse mass matrix stored eqn to SL
 
 #  SL .*= eqn.Minv  # this gives wrong answer
@@ -498,7 +498,7 @@ end
 
 
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol, Tdim}, SL0::AbstractArray{Tsol, 1})
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim}, SL0::AbstractArray{Tsol, 1})
   # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -513,7 +513,7 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::Eu
 end
 
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerEquation{Tsol}, SL::AbstractArray{Tres,1})
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol}, SL::AbstractArray{Tres,1})
 
 #  println("in assembleSolution")
 
@@ -534,7 +534,7 @@ end
 
 
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol}(eqn::EulerData{Tsol, 2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
@@ -557,7 +557,7 @@ function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 2}, q::AbstractArray
 end
 
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(eqn::EulerEquation{Tsol, 3}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol}(eqn::EulerData{Tsol, 3}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 5), of the conservative variables at the point
@@ -584,7 +584,7 @@ end
 
 
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 2})
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerData{Tsol, 2})
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
@@ -599,7 +599,7 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 2
 end
 
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerEquation{Tsol, 3})
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, eqn::EulerData{Tsol, 3})
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
 
