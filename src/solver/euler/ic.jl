@@ -1,11 +1,5 @@
 # functions that populate the initial conditions
 # List of functions:
-#   ICZero (all zeros)
-#   ICRho1E2 (all zeros, except rho = 1, E = 2)
-#   ICLinear
-#   ICsmoothHeavisideder
-#   ICsmoothHeaviside
-#   ICIsentropicVortex
 
 export ICZero, ICRho1E2, ICLinear, ICsmoothHeavisideder, ICsmoothHeaviside, ICIsentropicVortex
 export ICDict
