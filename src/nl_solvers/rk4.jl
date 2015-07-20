@@ -115,7 +115,9 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     eqn.SL0[:] = x_old
 
-    write(f1, string(i, "   ", norm(eqn.SL)/mesh.numDof, "\n"))
+    if iter % 100 == 0
+      write(f1, string(i, "   ", norm(eqn.SL)/mesh.numDof, "\n"))
+    end
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)

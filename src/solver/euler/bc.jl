@@ -139,6 +139,36 @@ return nothing
 
 end
 
+@doc """
+### EulerEquationMod.Rho1E2U3BC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where the fluid density is 1, energy = 2, and x velocity = 0.5
+
+  This is a low level functor
+"""
+type Rho1E2U3BC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+# a clever optimizing compiler will clean this up
+
+
+
+qg = zeros(Tsol, 4)
+
+calcRho1Energy2U3(x, params, qg)
+
+
+# call Roe solver
+RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+
+return nothing
+
+
+end
+
 
 
 
@@ -150,7 +180,8 @@ end
 #const noPenetrationBC_ = noPenetrationBC()
 global const BCDict = Dict{ASCIIString, BCType} (
 "isentropicVortexBC" => isentropicVortexBC(),
-"noPenetrationBC" => noPenetrationBC()
+"noPenetrationBC" => noPenetrationBC(),
+"Rho1E2U3BC" => Rho1E2U3BC()
 )
 
 @doc """

@@ -94,25 +94,25 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,  
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-@time dataPrep(mesh, sbp, eqn, SL0, opts)
-println("dataPrep @time printed above")
-@time evalVolumeIntegrals(mesh, sbp, eqn)
-println("volume integral @time printed above")
+ dataPrep(mesh, sbp, eqn, SL0, opts)
+#println("dataPrep @time printed above")
+evalVolumeIntegrals(mesh, sbp, eqn)
+#println("volume integral @time printed above")
 
-@time evalBoundaryIntegrals(mesh, sbp, eqn)
-println("boundary integral @time printed above")
-
-
-
-@time addStabilization(mesh, sbp, eqn)
-println("edge stabilizing @time printed above")
+evalBoundaryIntegrals(mesh, sbp, eqn)
+#println("boundary integral @time printed above")
 
 
-@time assembleSolution(mesh, eqn, SL)
-println("assembly @time printed above")
 
-@time applyMassMatrixInverse(eqn, SL)
-println("Minv @time printed above")
+addStabilization(mesh, sbp, eqn)
+#println("edge stabilizing @time printed above")
+
+
+assembleSolution(mesh, eqn, SL)
+#println("assembly @time printed above")
+
+applyMassMatrixInverse(eqn, SL)
+#println("Minv @time printed above")
 
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
 
@@ -123,7 +123,7 @@ println("Minv @time printed above")
 #print(" ", err_norm)
 
 
-print("\n")
+#print("\n")
 
 return nothing
 #return SL
@@ -161,15 +161,15 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   disassembleSolution(mesh, eqn, SL0)
   # disassmble SL0 into eqn.q
 
-  @time getAuxVars(mesh, eqn)
-  println("getAuxVars @time printed above")
+  getAuxVars(mesh, eqn)
+#  println("getAuxVars @time printed above")
 
 
-  @time checkDensity(eqn)
-  println("checkDensity @time printed above")
+  checkDensity(eqn)
+#  println("checkDensity @time printed above")
 
-  @time checkPressure(eqn)
-  println("checkPressure @time printed above")
+  checkPressure(eqn)
+#  println("checkPressure @time printed above")
 
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
@@ -273,8 +273,8 @@ for i=1:numel
 #    q_vals = view(eqn.q, :, j, i)
 #    press = calcPressure(q_vals, eqn)
     aux_vars = view(eqn.aux_vars,:, j, i)
-#    press = @getPressure(aux_vars)
-    press = getPressure(aux_vars)
+    press = @getPressure(aux_vars)
+#    press = getPressure(aux_vars)
 #    println("press = ", press)
     @assert( press > 0.0)
   end

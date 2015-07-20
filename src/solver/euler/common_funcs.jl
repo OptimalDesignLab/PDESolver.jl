@@ -97,8 +97,8 @@ function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::Para
   # for square test case with rho = 1, everything else  = 0
 
   sol[1] = 1.0
-  sol[2] = 0.49
-  sol[3] = 0.49
+  sol[2] = 0.5
+  sol[3] = 0.0
   sol[4] = 2.0
 
   return nothing

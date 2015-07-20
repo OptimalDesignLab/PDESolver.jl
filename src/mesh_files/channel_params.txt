@@ -1,0 +1,9 @@
+
+edge 4 : left edge
+edge 7 : bottom edge
+edge 10 : right
+edge 13 : top
+
+Mesh Paramaters:
+Mesh Size: Relative 0.5 on Face 1
+

@@ -101,6 +101,8 @@ for i=1:numEl
 
       calcRho1Energy2U3(coords[:,j], eqn.params, sol)
 
+      sol[2] += 0*sin(x)  # add a perturbation
+
 
       # apply initial conditions here
 #      u0[dofnum_rho] = 1.0

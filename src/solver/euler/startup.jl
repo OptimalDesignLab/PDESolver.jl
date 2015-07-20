@@ -41,7 +41,8 @@ end
 
 #function runtest(flag::Int)
 
-opts = read_input("input_vals.jl")
+#opts = read_input("input_vals.jl")
+opts = read_input("input_vals_channel.jl")
 
 flag = opts["run_type"]
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
