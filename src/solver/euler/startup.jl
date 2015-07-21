@@ -1,10 +1,13 @@
 # startup script for solving an equation
 
- push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
- push!(LOAD_PATH, "../../equation")
- push!(LOAD_PATH, "../../common")
- push!(LOAD_PATH, "/users/creanj/.julia/v0.4/PDESolver/src/solver/euler")
+# push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl/src")
+# push!(LOAD_PATH, "../../equation")
+# push!(LOAD_PATH, "../../common")
+# push!(LOAD_PATH, "/users/creanj/.julia/v0.4/PDESolver/src/solver/euler")
 #push!(LOAD_PATH, "../../../../PUMI")
+
+push!(LOAD_PATH, "../../../../PumiInterface/src")
+
 #include("complexify.jl")
 using PDESolverCommon
 using PumiInterface # pumi interface
@@ -93,6 +96,12 @@ elseif flag == 5  # use complex step dR/du
   Tsbp = Float64
   Tsol = Complex{BigFloat}
   Tres = Complex{BigFloat}
+elseif flag == 6  # evaluate residual error and print to paraview
+  Tmsh = Float64
+  Tsbp = Float64
+  Tsol = Complex128
+  Tres = Complex128
+
 end
 
 
@@ -187,6 +196,15 @@ elseif flag == 4
 
 elseif flag == 5
   newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
+
+elseif flag == 6
+  newton_check(evalEuler, mesh, sbp, eqn, opts)
+
+  vals = abs(real(eqn.SL))  # remove unneded imaginary part
+  saveSolutionToMesh(mesh, vals)
+  writeVtkFiles("solution_error", mesh.m_ptr)
+  printBoundaryEdgeNums(mesh)
+  printSolution(mesh, vals)
 end
 
 

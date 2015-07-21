@@ -276,7 +276,7 @@ for i=1:numel
     press = @getPressure(aux_vars)
 #    press = getPressure(aux_vars)
 #    println("press = ", press)
-    @assert( press > 0.0)
+    @assert( real(press) > 0.0)
   end
 end
 
@@ -341,7 +341,10 @@ function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 
 #boundaryintegrate2!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res, mesh, eqn)
 
+#println("eqn.bndryflux = ")
+#println(eqn.bndryflux)
 boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
 
 

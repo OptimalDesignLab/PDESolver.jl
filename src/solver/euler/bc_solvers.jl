@@ -131,7 +131,12 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
     println("euler_flux[i] = ", euler_flux[i])
 =#
     flux[i] = -(sat[i] + euler_flux[i])
+#     flux[i] = euler_flux[i]
   end
+
+#  println("sat = ", sat)
+#  println("euler = ", euler_flux)
+#  println("Roe flux = ", flux)
  
 #  return sat + getEulerFlux(q, nx, ny)
    return nothing

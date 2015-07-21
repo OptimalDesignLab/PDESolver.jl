@@ -302,4 +302,92 @@ return nothing
 
 end
 
+@doc """
+### newton_complex
+
+  Uses the complex step method to calculate the Jacobian.  See newton_fd.
+
+"""->
+function newton_check(func, mesh, sbp, eqn, opts)
+  # this function drives the non-linear residual to some specified tolerance
+  # using Newton's Method
+  # the jacobian is formed using finite differences
+  # the initial condition is stored in eqn.SL0
+  # itermax is the maximum number of iterations
+
+  step_fac = 0.5  # step size limiter
+  m = length(eqn.SL)
+  Tsol = typeof(eqn.SL[1])
+  Tjac = typeof(real(eqn.SL[1]))  # type of jacobian, residual
+  jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
+  direction_der = zeros(mesh.numDof)
+  v = rand(mesh.numDof)
+
+  epsilon = 1e-20  # complex step perturbation
+
+  # compute directional derivative
+  for i=1:mesh.numDof
+    eqn.SL0[i] += complex(0, epsilon*v[i])  # apply perturbation
+  end
+
+  func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+  println("evaluated directional derivative")
+
+  # calculate derivative
+  for i=1:mesh.numDof
+    direction_der[i] = imag(eqn.SL[i])/epsilon
+    eqn.SL0[i] -= epsilon*v[i]  # undo perturbation
+  end
+
+
+
+    println("Calculating Jacobian")
+
+    # calculate jacobian
+    for j=1:m
+      if j==1
+	eqn.SL0[j] +=  complex(0, epsilon)
+      else
+	eqn.SL0[j-1] -= complex(0, epsilon) # undo previous iteration pertubation
+	eqn.SL0[j] += complex(0, epsilon)
+      end
+
+      # evaluate residual
+      fill!(eqn.SL, zero(Tsol))
+      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+ #     println("column ", j, " of jacobian, SL = ", eqn.SL)
+      calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
+#      println("SL norm = ", norm(SL)/m)
+      
+    end  # end loop over rows of jacobian
+    
+    # now jac is complete
+
+    fname = string("jacobian", ".dat")
+    printMatrix(fname, jac)
+    println("finished printing jacobian")
+
+    cond_j = cond(jac)
+    println("Condition number of jacobian = ", cond_j)
+
+    jac_mult = jac*v
+
+    # copy difference between directional derivative and
+    # jacobian multiplication into SL for return
+
+    for i=1:mesh.numDof
+      eqn.SL[i] = direction_der[i] - jac_mult[i]
+    end
+
+    err_norm = norm(eqn.SL)/mesh.numDof
+    println("step_norm = ", err_norm)
+#    println("jac = ", jac)
+
+    print("\n")
+
+    println("finished newton_check")
+  return nothing
+end
+
+
 
