@@ -336,7 +336,7 @@ function newton_check(func, mesh, sbp, eqn, opts)
   # calculate derivative
   for i=1:mesh.numDof
     direction_der[i] = imag(eqn.SL[i])/epsilon
-    eqn.SL0[i] -= epsilon*v[i]  # undo perturbation
+    eqn.SL0[i] -= complex(0, epsilon*v[i])  # undo perturbation
   end
 
 

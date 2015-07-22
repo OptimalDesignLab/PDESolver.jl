@@ -130,9 +130,16 @@ qg = copy(q)
 qg[2] *= tngt[1]
 qg[3] *= tngt[2]
 
-
+#println("q = ", q)
+#println("qg = ", qg)
+#diff = q -qg
+#println("diff = ", diff)
 # call Roe solver
-RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+#RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+calcEulerFlux(params, qg, aux_vars, tngt, bndryflux)
+
+#println("bndryflux = ", bndryflux)
+#print("\n")
 
 return nothing
 
