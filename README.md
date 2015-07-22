@@ -4,8 +4,11 @@
 The obtain this package, do `Pkg.clone(url)`, then `Pkg.build("PDESolver")`.  This will install all dependences, including those not listed in Metadata.
 
 The dependencies not listed in Metadata are:
+
 PDESolverCommon
+
 SummationByParts
+
 PumiInterface
 
 PumiInterface is the only package with non-trivial installation requirements.  
