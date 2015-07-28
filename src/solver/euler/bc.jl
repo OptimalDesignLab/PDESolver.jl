@@ -113,22 +113,31 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 # a clever optimizing compiler will clean this up
-
+# there might be a way to do this with fewer flops using the tangent vector
 
 # calculate normal vector in xy space
-xy_nrm = Array(Tmsh, 2)  # normal vector
+nx = zero(Tmsh)
+ny = zero(Tmsh)
+#xy_nrm = Array(Tmsh, 2)  # normal vector
 tngt = Array(Tmsh, 2)  # tangent vector
-xy_nrm[1] = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-xy_nrm[2] = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+fac = 1.0/(sqrt(nx*nx + ny*ny))
+# normalize normal vector
+nx *= fac  
+ny *= fac
 
-tngt[1] =  1.0 - xy_nrm[1]
-tngt[2] =  1.0 - xy_nrm[2]
+Unrm = nx*q[2] + ny*q[3]
+
+
+#tngt[1] =  1.0 - xy_nrm[1]
+#tngt[2] =  1.0 - xy_nrm[2]
 
 qg = copy(q)
 
 # calculate normal velocity
-qg[2] *= tngt[1]
-qg[3] *= tngt[2]
+qg[2] -= nx*Unrm
+qg[3] -= ny*Unrm
 
 #println("q = ", q)
 #println("qg = ", qg)
@@ -136,8 +145,16 @@ qg[3] *= tngt[2]
 #println("diff = ", diff)
 # call Roe solver
 #RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
-calcEulerFlux(params, qg, aux_vars, tngt, bndryflux)
+nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
+#println("q = ", q)
+#println("qg = ", qg)
+#println("nscl = ", [nx, ny])
+#println("normal vector = ", [nx2, ny2])
+calcEulerFlux(params, qg, aux_vars, [nx2, ny2], bndryflux)
+
+#println("bndryflux = ", bndryflux)
 #println("bndryflux = ", bndryflux)
 #print("\n")
 
@@ -159,14 +176,13 @@ end
 
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
-# a clever optimizing compiler will clean this up
 
 
 
+#println("in Rho1E2U3Bc")
 qg = zeros(Tsol, 4)
 
 calcRho1Energy2U3(x, params, qg)
-
 
 # call Roe solver
 RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)

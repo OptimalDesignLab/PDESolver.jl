@@ -112,11 +112,41 @@ f = open(name, "a+")
 
 for i=1:m
   for j=1:n
-    str = @sprintf("%16.15e ", u[i,j])
+    str = @sprintf("%16.15e", u[i,j])
     print(f, str)
+    if j < n  # don't put space at end of line
+      print(f, " ")
+    end
   end
 
   print(f, "\n")
+end
+
+close(f)
+return nothing
+
+end
+
+function printMatrix{T}(name::AbstractString, u::AbstractArray{T, 3})
+# print a matrix to a file, in a quasireadable format
+
+#println("printing 3d matrix")
+(tmp, m,n) = size(u)
+#println("numel = ", n)
+#println("nnodes = ", m)
+
+f = open(name, "a+")
+
+for i=1:n  # loop over elements
+  for j=1:m  # loop over nodes on element
+#    str = @sprintf("%16.15e", u[i,j])
+    println(f, "el ", i, " node ", j, " flux = ", u[:, j, i] )
+#    if j < n  # don't put space at end of line
+#      print(f, " ")
+#    end
+  end
+
+#  print(f, "\n")
 end
 
 close(f)

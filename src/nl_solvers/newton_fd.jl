@@ -42,6 +42,9 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
   step_norm = zero(Tsol)  # norm of newton update
   step_norm_1 = zero(Tsol) # norm of previous newton update
 
+
+  fconv = open("convergence.dat", "a+")
+
   for i=1:itermax
   println("Newton iteration: ", i)
   # compute residual at initial condition
@@ -53,13 +56,16 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
 
    if res_0_norm < res_tol
      println("Newton iteration converged with residual norm ", res_0_norm)
+     println("writing to convergence.dat")
+     println(fconv, i, " ", res_0_norm, " ", step_norm_1)
+     close(fconv)
      return nothing
    end
 
     epsilon = 1e-6  # finite difference perturbation
     # calculate jacobian
     for j=1:m
-      println("  jacobian iteration ", j)
+#      println("  jacobian iteration ", j)
       if j==1
 	eqn.SL0[j] +=  epsilon
       else
@@ -86,6 +92,10 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
 #      println(j, "   ", jac[1,i])
 #    end
 
+    fname = string("jacobian_fd", i, ".dat")
+    printMatrix(fname, jac)
+    println("finished printing jacobian")
+
 
 
 #    @bp
@@ -103,6 +113,8 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
       println(i, "   ", delta_SL[i])
     end
 =#
+
+    println(fconv, i, " ", res_0_norm, " ", step_norm)
     println("step_norm = ", step_norm)
 #    println("jac = ", jac)
 
@@ -114,6 +126,8 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
 
       # compute residual at final SL0
       func(mesh, sbp, eqn, eqn.SL0, eqn.SL)
+
+      close(fconv)
       return nothing
     end
 
@@ -132,6 +146,8 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
 
   println("Warning: Newton iteration did not converge in ", itermax, " iterations")
   println("  Final step size: ", step_norm)
+
+  close(fconv)
   return nothing
 end
 
@@ -159,14 +175,14 @@ end
   Uses the complex step method to calculate the Jacobian.  See newton_fd.
 
 """->
-@debug function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=1e-6)
+function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=1e-6)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
   # the initial condition is stored in eqn.SL0
   # itermax is the maximum number of iterations
 
-  step_fac = 0.5  # step size limiter
+  step_fac = 1.0 # step size limiter
   m = length(eqn.SL)
   Tsol = typeof(eqn.SL[1])
   Tjac = typeof(real(eqn.SL[1]))  # type of jacobian, residual
@@ -176,6 +192,8 @@ end
   delta_SL = zeros(Tjac, m)  # newton update
   step_norm = zero(Tjac)  # norm of newton update
   step_norm_1 = zero(Tjac) # norm of previous newton update
+
+  fconv = open("convergence.dat", "a+")
 
   for i=1:itermax
   println("Newton iteration: ", i)
@@ -194,6 +212,10 @@ end
 
    if res_0_norm < res_tol
      println("Newton iteration converged with residual norm ", res_0_norm)
+     println("writing to convergence.dat")
+     println(fconv, i, " ", res_0_norm, " ", step_norm_1)
+ 
+     close(fconv)
      return nothing
    end
 
@@ -238,8 +260,15 @@ end
     delta_SL[:] = jac\(-res_0)  #  calculate Newton update
     eqn.SL0[:] += step_fac*delta_SL  # update SL0
 
+    vals = abs(real(eqn.SL0))  # remove unneded imaginary part
+    saveSolutionToMesh(mesh, vals)
+    fname = string("solution_newton", i)
+    writeVtkFiles(fname, mesh.m_ptr)
+ 
+
     step_norm = norm(delta_SL)/m
 
+    println(fconv, i, " ", res_0_norm, " ", step_norm)
 
 #    println("delta_SL = ", delta_SL)
 #=
@@ -260,6 +289,7 @@ end
       # compute residual at final SL0
       func(mesh, sbp, eqn, eqn.SL0, eqn.SL)
       # do some cleanup here to provide real residual?
+      close(fconv)
       return nothing
     end
 
@@ -283,6 +313,7 @@ end
   println("Warning: Newton iteration did not converge in ", itermax, " iterations")
   println("  Final step size: ", step_norm)
   println("  Final residual: ", res_0_norm)
+  close(fconv)
   return nothing
 end
 
@@ -321,10 +352,11 @@ function newton_check(func, mesh, sbp, eqn, opts)
   Tjac = typeof(real(eqn.SL[1]))  # type of jacobian, residual
   jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   direction_der = zeros(mesh.numDof)
-  v = rand(mesh.numDof)
+#  v = rand(mesh.numDof)
+   v = readdlm("randvec.txt")
 
   epsilon = 1e-20  # complex step perturbation
-
+  fill!(eqn.SL, 0.0)  # zero out SL
   # compute directional derivative
   for i=1:mesh.numDof
     eqn.SL0[i] += complex(0, epsilon*v[i])  # apply perturbation
@@ -345,6 +377,7 @@ function newton_check(func, mesh, sbp, eqn, opts)
 
     # calculate jacobian
     for j=1:m
+      println("\ncalculating column ", j, " of the jacobian")
       if j==1
 	eqn.SL0[j] +=  complex(0, epsilon)
       else
@@ -369,6 +402,8 @@ function newton_check(func, mesh, sbp, eqn, opts)
 
     cond_j = cond(jac)
     println("Condition number of jacobian = ", cond_j)
+    svals = svdvals(jac)
+    println("svdvals = \n", svals)
 
     jac_mult = jac*v
 
@@ -391,3 +426,25 @@ end
 
 
 
+
+
+function newton_check(func, mesh, sbp, eqn, opts, j)
+# calculate a single column of hte jacobian
+    
+      jac_col = zeros(Float64, mesh.numDof)
+      println("\ncalculating column ", j, " of the jacobian")
+
+      epsilon = 1e-20
+
+      eqn.SL0[j] += complex(0, epsilon)
+
+      # evaluate residual
+      fill!(eqn.SL, zero(Tsol))
+      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+ #     println("column ", j, " of jacobian, SL = ", eqn.SL)
+      calcJacRow(jac_col, eqn.SL, epsilon)
+#      println("SL norm = ", norm(SL)/m)
+
+      return jac_col
+end 
+ 

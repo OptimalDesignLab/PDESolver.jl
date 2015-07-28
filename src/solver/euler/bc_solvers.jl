@@ -24,6 +24,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
+#  println("nx, ny = ", nx, ", ", ny)
   dA = sqrt(nx*nx + ny*ny)
   
   fac = d1_0/q[1]
@@ -61,6 +62,10 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
   lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
   lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+
+#  println("lambda1 = ", lambda1)
+#  println("lambda2 = ", lambda2)
+#  println("lambda3 = ", lambda3)
 
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
@@ -113,6 +118,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   euler_flux = zeros(Tsol, 4)
   calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
 
+#  println("euler_flux = ", euler_flux)
 #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
 #  flux[:] = -(sat + euler_flux)
   for i=1:4  # ArrayViews does not support flux[:] = .
@@ -131,13 +137,29 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
     println("euler_flux[i] = ", euler_flux[i])
 =#
     flux[i] = -(sat[i] + euler_flux[i])
+#=
+if nx < 0.0  # inlet
+       flux[1] = qg[1]
+       flux[2] = qg[2]
+       flux[3] = qg[3]
+       flux[4] = q[4]
+     else
+       flux[1] = q[1]
+       flux[2] = q[2] 
+       flux[3] = q[3]
+       flux[4] = qg[4]
+     end
+=#
 #     flux[i] = euler_flux[i]
   end
 
 #  println("sat = ", sat)
 #  println("euler = ", euler_flux)
 #  println("Roe flux = ", flux)
- 
+
+#  println("flux = ", flux)
+#  print("\n")
+
 #  return sat + getEulerFlux(q, nx, ny)
    return nothing
 

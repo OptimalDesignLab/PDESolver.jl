@@ -86,16 +86,17 @@ elseif flag == 4  # use Newton method using finite difference
 #  Tsol = BigFloat
 #  Tres = BigFloat
 elseif flag == 5  # use complex step dR/du
-#=
+
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Complex128
   Tres = Complex128
-=#
+#=
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Complex{BigFloat}
   Tres = Complex{BigFloat}
+=#
 elseif flag == 6  # evaluate residual error and print to paraview
   Tmsh = Float64
   Tsbp = Float64
@@ -151,6 +152,9 @@ ICfunc(mesh, sbp, eqn, SL0)
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
+for i=1:mesh.numDof
+  SL0[i] += 0.10*rand()
+end
 
 # get BC functors
 getBCFunctors(mesh, sbp, eqn, opts)
@@ -195,8 +199,9 @@ elseif flag == 4
   printSolution("newton_solution.dat", eqn.SL)
 
 elseif flag == 5
-  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
+#  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
 
+  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
 elseif flag == 6
   newton_check(evalEuler, mesh, sbp, eqn, opts)
 

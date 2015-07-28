@@ -111,9 +111,11 @@ addStabilization(mesh, sbp, eqn)
 assembleSolution(mesh, eqn, SL)
 #println("assembly @time printed above")
 
-applyMassMatrixInverse(eqn, SL)
+#applyMassMatrixInverse(eqn, SL)
 #println("Minv @time printed above")
 
+#println("after Minv, sum(res) = ", sum(eqn.res))
+#println("    sum(SL) = ", sum(SL))
 #applyDissipation(mesh, sbp, eqn, SL, SL0)
 
 
@@ -343,6 +345,44 @@ function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 
 #println("eqn.bndryflux = ")
 #println(eqn.bndryflux)
+
+
+#idx = mesh.bndry_offsets[2]
+#el = mesh.bndryfaces[idx].element
+#println("bndry element = ", el)
+#println("boundary flux = ", eqn.bndryflux[:, :, el])
+
+#=
+if isfile("boundaryfaces.txt")
+  rm("boundaryfaces.txt")
+end
+
+if isfile("boundaryflux.txt")
+  rm("boundaryflux.txt")
+end
+
+
+
+f = open("boundaryfaces.txt", "a+")
+for i=1:length(mesh.bndryfaces)
+  println(f, mesh.bndryfaces[i])
+end
+close(f)
+
+f = open("boundaryflux.txt", "a+")
+for i=1:mesh.numBoundaryEdges
+  el = mesh.bndryfaces[i].element
+  face = mesh.bndryfaces[i].face
+  for j=1:sbp.numfacenodes
+    jb = sbp.facenodes[j, face]
+    println(f, "el ", el, ", node_index ", jb, ", flux = ", real(eqn.bndryflux[:, j, i]))
+  end
+end
+close(f)
+=#
+
+
+
 boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 
 #boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
@@ -534,12 +574,25 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData
 	# this will dispatch to the proper calcEulerFlux
 	nrm[1] = mesh.dxidx[k, 1, j, i]
 	nrm[2] = mesh.dxidx[k, 2, j, i]
+#	nrm_mag = sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2])
+#	nrm[1] /= nrm_mag
+#	nrm[2] /= nrm_mag
 #        nrm = view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
-        calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, view(eqn.F_xi, :, j, i, k))
-
+        flux = view(eqn.F_xi, :, j, i, k)
+        calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
+  
       end
     end
   end
+
+#=
+  for k=1:Tdim
+    if isfile("eulerflux$k.dat")
+      rm("eulerflux$k.dat")
+    end
+    printMatrix("eulerflux$k.dat", real(view(eqn.F_xi, :, :, :, k)))
+  end
+=#
 
   return nothing
 end
@@ -684,15 +737,28 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::Euler
 #  println("size(mesh.dofs) = ", size(mesh.dofs))
 #  println("size(eqn.res = ", size(eqn.res))
 
+
+#  println("before assembly, sum(res) = ", sum(eqn.res))
+#  println("    sum(SL) = ", sum(SL))
+
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
       for k=1:4  # loop over dofs on the node
 	dofnum_k = mesh.dofs[k, j, i]
+
+	if dofnum_k == 21
+#	  println("element = ", i, " , node = ", j, " , dof = ", k)
+#	  println("res = ", eqn.res[k, j, i])
+	end
 	SL[dofnum_k] += eqn.res[k,j,i]
       end
     end
   end
-   
+  
+
+#  println("after assembly, sum(res) = ", sum(eqn.res))
+#  println("    sum(SL) = ", sum(SL))
+
   return nothing
 end
 
@@ -727,8 +793,8 @@ function calcEulerFlux{Tmsh, Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1
 # 2D  only
 
 
-#  press = calcPressure(q, eqn)
-  press = @getPressure(aux_vars)
+  press = calcPressure(q, params)
+#  press = @getPressure(aux_vars)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
   F[1] = q[1]*U
   F[2] = q[2]*U + dir[1]*press
