@@ -183,7 +183,7 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1}, aux_v
 qg = zeros(Tsol, 4)
 
 calcRho1Energy2U3(x, params, qg)
-
+#println("qg = ", qg)
 # call Roe solver
 RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 

@@ -62,7 +62,7 @@ order = opts["order"]
 
 #set_bigfloat_precision(80)  # use 128 bit floats
 # types of the mesh, SBP, Equation objects
-if flag == 1  # normal run
+if flag == 1 || flag == 8  # normal run
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Float64
@@ -97,7 +97,7 @@ elseif flag == 5  # use complex step dR/du
   Tsol = Complex{BigFloat}
   Tres = Complex{BigFloat}
 =#
-elseif flag == 6  # evaluate residual error and print to paraview
+elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Complex128
@@ -142,7 +142,8 @@ SL0 = eqn.SL0
 # populate u0 with initial condition
 ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
-ICfunc(mesh, sbp, eqn, SL0)
+println("ICfunc = ", ICfunc)
+ICfunc(mesh, sbp, eqn, opts, SL0)
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
@@ -152,9 +153,12 @@ ICfunc(mesh, sbp, eqn, SL0)
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
+
+randvec = readdlm("randvec.txt")
 for i=1:mesh.numDof
-  SL0[i] += 0.10*rand()
+  SL0[i] += 0.05*randvec[i]
 end
+
 
 # get BC functors
 getBCFunctors(mesh, sbp, eqn, opts)
@@ -210,7 +214,16 @@ elseif flag == 6
   writeVtkFiles("solution_error", mesh.m_ptr)
   printBoundaryEdgeNums(mesh)
   printSolution(mesh, vals)
+elseif flag == 7
+  jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
+  writedlm("solution.dat", jac_col)
+elseif flag == 8
+  jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
+  writedlm("solution.dat", jac_col)
+
 end
+
+
 
 
 

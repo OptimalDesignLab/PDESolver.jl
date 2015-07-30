@@ -163,6 +163,15 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   disassembleSolution(mesh, eqn, SL0)
   # disassmble SL0 into eqn.q
 
+#=
+  if Tsol <: Complex
+    fname = "q.dat"
+  else
+    fname = "q_fd.dat"
+  end
+  writedlm(fname, real(eqn.q))
+=#
+
   getAuxVars(mesh, eqn)
 #  println("getAuxVars @time printed above")
 
@@ -177,6 +186,9 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
   getEulerFlux(mesh, eqn)
 #  println("getEulerFlux @time printed above")
+
+
+
 #  getIsentropicVortexBoundaryFlux(mesh, sbp, eqn)
    getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
@@ -218,6 +230,49 @@ for i=1:mesh.numBC
   calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
 
 end
+
+#=
+if typeof(eqn.q[1]) <: Complex
+  face_name = "boundaryfaces.txt"
+  flux_name = "boundaryflux.txt"
+  flux_dlm = "boundaryflux2.txt"
+else
+  face_name = "boundaryfaces_fd.txt"
+  flux_name = "boundaryflux_fd.txt"
+  flux_dlm = "boundaryflux_fd2.txt"
+end
+
+if isfile(face_name)
+  rm(face_name)
+end
+
+
+if isfile(flux_name)
+  rm(flux_name)
+end
+
+
+
+f = open(face_name, "a+")
+for i=1:length(mesh.bndryfaces)
+  println(f, mesh.bndryfaces[i])
+end
+close(f)
+
+f = open(flux_name, "a+")
+for i=1:mesh.numBoundaryEdges
+  el = mesh.bndryfaces[i].element
+  face = mesh.bndryfaces[i].face
+  for j=1:sbp.numfacenodes
+    jb = sbp.facenodes[j, face]
+    println(f, "el ", el, ", node_index ", jb, ", flux = ", real(eqn.bndryflux[:, j, i]))
+  end
+end
+close(f)
+
+writedlm(flux_dlm, real(eqn.bndryflux))
+=#
+
 
 return nothing
 
@@ -351,36 +406,6 @@ function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 #el = mesh.bndryfaces[idx].element
 #println("bndry element = ", el)
 #println("boundary flux = ", eqn.bndryflux[:, :, el])
-
-#=
-if isfile("boundaryfaces.txt")
-  rm("boundaryfaces.txt")
-end
-
-if isfile("boundaryflux.txt")
-  rm("boundaryflux.txt")
-end
-
-
-
-f = open("boundaryfaces.txt", "a+")
-for i=1:length(mesh.bndryfaces)
-  println(f, mesh.bndryfaces[i])
-end
-close(f)
-
-f = open("boundaryflux.txt", "a+")
-for i=1:mesh.numBoundaryEdges
-  el = mesh.bndryfaces[i].element
-  face = mesh.bndryfaces[i].face
-  for j=1:sbp.numfacenodes
-    jb = sbp.facenodes[j, face]
-    println(f, "el ", el, ", node_index ", jb, ", flux = ", real(eqn.bndryflux[:, j, i]))
-  end
-end
-close(f)
-=#
-
 
 
 boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
@@ -592,7 +617,16 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData
     end
     printMatrix("eulerflux$k.dat", real(view(eqn.F_xi, :, :, :, k)))
   end
+
+
+if Tsol <: Complex
+    fname = "Fxi.dat"
+  else
+    fname = "Fxi_fd.dat"
+  end
+writedlm(fname, real(eqn.F_xi))
 =#
+
 
   return nothing
 end

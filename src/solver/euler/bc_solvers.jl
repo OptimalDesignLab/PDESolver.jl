@@ -26,9 +26,11 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
 
 #  println("nx, ny = ", nx, ", ", ny)
   dA = sqrt(nx*nx + ny*ny)
-  
+ 
+  #   println("dA = ",  (dA))
+
   fac = d1_0/q[1]
-#   println(typeof(fac))
+#   #   println(typeof(fac))
 #   println(typeof(q[4]))
   uL = q[2]*fac; vL = q[3]*fac;
   phi = d0_5*(uL*uL + vL*vL)
@@ -56,12 +58,30 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
 
+  #   println("before selection")
+  #   println("lambda1 = ",  (lambda1))
+  #   println("lambda2 = ",  (lambda2))
+  #   println("lambda3 = ",  (lambda3))
+
+  #   println("tau = ",  (tau))
+  #   println("sat_Vn = ",  (sat_Vn))
+  #   println("sat_Vl = ",  (sat_Vl))
+  #   println("rhoA = ",  (rhoA))
+  #   println("sgn = ",  (sgn))
+
 #  println("sat_Vn = ", sat_Vn)
 #  println("lambda1 = ", lambda1)
 #  println("absvalue(lambda1) = ", absvalue(lambda1))
   lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
   lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
   lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+
+  #   println("after selection")
+  #   println("lambda1 = ",  (lambda1))
+  #   println("lambda2 = ",  (lambda2))
+  #   println("lambda3 = ",  (lambda3))
+
+
 
 #  println("lambda1 = ", lambda1)
 #  println("lambda2 = ", lambda2)
@@ -111,13 +131,20 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   E2dq[4] = E2dq[2]*Un
   E2dq[2] = E2dq[2]*nx
 
+  #   println("E1dq = ",  (E1dq))
+  #   println("E2dq = ",  (E2dq))
+
   #-- add to sat
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
+  #   println("sat = ",  (sat))
+
   euler_flux = zeros(Tsol, 4)
   calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
 
+  #   println("euler_flux = ",  (euler_flux))
+  
 #  println("euler_flux = ", euler_flux)
 #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
 #  flux[:] = -(sat + euler_flux)
