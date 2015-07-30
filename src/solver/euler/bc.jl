@@ -154,6 +154,11 @@ ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 #println("normal vector = ", [nx2, ny2])
 calcEulerFlux(params, qg, aux_vars, [nx2, ny2], bndryflux)
 
+for i=1:4
+  bndryflux[i] *= -1
+end
+
+#bndryflux *= -1  # make it negative because all fluxes are negative
 #println("bndryflux = ", bndryflux)
 #println("bndryflux = ", bndryflux)
 #print("\n")

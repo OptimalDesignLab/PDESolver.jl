@@ -231,7 +231,7 @@ for i=1:mesh.numBC
 
 end
 
-#=
+
 if typeof(eqn.q[1]) <: Complex
   face_name = "boundaryfaces.txt"
   flux_name = "boundaryflux.txt"
@@ -271,7 +271,7 @@ end
 close(f)
 
 writedlm(flux_dlm, real(eqn.bndryflux))
-=#
+
 
 
 return nothing

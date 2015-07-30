@@ -257,6 +257,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
 #  println("SL0 = ", res_0)
 
 
+#   return  # return early for testing purposes
 
    if res_0_norm < res_tol
      println("Newton iteration converged with residual norm ", res_0_norm)
@@ -267,7 +268,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
      return nothing
    end
 
- 
+
 
 
     epsilon = 1e-20  # complex step perturbation
