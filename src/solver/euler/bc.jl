@@ -59,8 +59,10 @@ function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp
 
 
       functor(q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+
     end
-  end
+
+ end
 
 
   return nothing
@@ -90,7 +92,11 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1
   # getting qg
   qg = zeros(Tsol, 4)
   calcIsentropicVortex(x, params, qg)
+#  println("qg = ", qg)
 #  calcVortex(x, eqn, qg)
+
+
+
 
   RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 

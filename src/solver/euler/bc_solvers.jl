@@ -58,17 +58,18 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
 
-  #   println("before selection")
-  #   println("lambda1 = ",  (lambda1))
-  #   println("lambda2 = ",  (lambda2))
-  #   println("lambda3 = ",  (lambda3))
+#=
+     println("before selection")
+     println("lambda1 = ",  (lambda1))
+     println("lambda2 = ",  (lambda2))
+     println("lambda3 = ",  (lambda3))
 
-  #   println("tau = ",  (tau))
-  #   println("sat_Vn = ",  (sat_Vn))
-  #   println("sat_Vl = ",  (sat_Vl))
-  #   println("rhoA = ",  (rhoA))
-  #   println("sgn = ",  (sgn))
-
+     println("tau = ",  (tau))
+     println("sat_Vn = ",  (sat_Vn))
+     println("sat_Vl = ",  (sat_Vl))
+     println("rhoA = ",  (rhoA))
+     println("sgn = ",  (sgn))
+=#
 #  println("sat_Vn = ", sat_Vn)
 #  println("lambda1 = ", lambda1)
 #  println("absvalue(lambda1) = ", absvalue(lambda1))
@@ -76,11 +77,12 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
   lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
 
-  #   println("after selection")
-  #   println("lambda1 = ",  (lambda1))
-  #   println("lambda2 = ",  (lambda2))
-  #   println("lambda3 = ",  (lambda3))
-
+#=
+     println("after selection")
+     println("lambda1 = ",  (lambda1))
+     println("lambda2 = ",  (lambda2))
+     println("lambda3 = ",  (lambda3))
+=#
 
 
 #  println("lambda1 = ", lambda1)
@@ -143,7 +145,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   euler_flux = zeros(Tsol, 4)
   calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
 
-  #   println("euler_flux = ",  (euler_flux))
+ #    println("euler_flux = ",  (euler_flux))
   
 #  println("euler_flux = ", euler_flux)
 #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)

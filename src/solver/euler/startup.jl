@@ -44,8 +44,8 @@ end
 
 #function runtest(flag::Int)
 
-#opts = read_input("input_vals.jl")
-opts = read_input("input_vals_channel.jl")
+opts = read_input("input_vals_vortex2.jl")
+#opts = read_input("input_vals_channel2.jl")
 
 flag = opts["run_type"]
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
@@ -153,12 +153,12 @@ ICfunc(mesh, sbp, eqn, opts, SL0)
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
-
-randvec = readdlm("randvec.txt")
+#=
+#randvec = readdlm("randvec.txt")
 for i=1:mesh.numDof
-  SL0[i] += 0.05*randvec[i]
+  SL0[i] += 0.05*rand()
 end
-
+=#
 
 # get BC functors
 getBCFunctors(mesh, sbp, eqn, opts)
@@ -236,7 +236,7 @@ if flag == 1
     step = SL0 - SL_exact
     step_norm = norm(step)/mesh.numDof
     println("step_norm = ", step_norm)
-    SL_norm = norm(SL_diff)/mesh.numDof
+    SL_norm = norm(SL)/mesh.numDof
     #SL_side_by_side = [SL_exact  SL]
 
     #=
