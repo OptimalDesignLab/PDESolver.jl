@@ -26,7 +26,7 @@ arg_dict = Dict{Any, Any} (
 "t_max" => 5000.000,
 "smb_name" => "../../mesh_files/quarter_vortex3l.smb",
 "dmg_name" => ".null",
-"res_tol" => 1e-5,
+"res_tol" => 1e-8,
 "step_tol" => 1e-9,
 "itermax" => 20,
 )

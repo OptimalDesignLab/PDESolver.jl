@@ -145,7 +145,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   euler_flux = zeros(Tsol, 4)
   euler_flux2 = zeros(Tsol, 4)
   calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
-  calcEulerFlux(params, qg, aux_vars, [nx, ny], euler_flux2)
+#  calcEulerFlux(params, qg, aux_vars, [nx, ny], euler_flux2)
 
  #    println("euler_flux = ",  (euler_flux))
   
