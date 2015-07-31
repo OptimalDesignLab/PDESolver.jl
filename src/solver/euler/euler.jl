@@ -111,7 +111,7 @@ addStabilization(mesh, sbp, eqn)
 assembleSolution(mesh, eqn, SL)
 #println("assembly @time printed above")
 
-applyMassMatrixInverse(eqn, SL)
+#applyMassMatrixInverse(eqn, SL)
 #println("Minv @time printed above")
 
 #println("after Minv, sum(res) = ", sum(eqn.res))

@@ -331,7 +331,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
     step_norm = norm(delta_SL)/m
 
     println(fconv, i, " ", res_0_norm, " ", step_norm)
-
+    flush(fconv)
 #    println("delta_SL = ", delta_SL)
 #=
     println("delta_sl = ")

@@ -167,8 +167,8 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
     println("sat[i] = ", sat[i])
     println("euler_flux[i] = ", euler_flux[i])
 =#
-    flux[i] = -(sat_fac*sat[i] + 0.5*euler_flux[i] + 0.5*euler_flux2[i])
-#    flux[i] = -(sat_fac*sat[i] + euler_flux[i])
+#    flux[i] = -(sat_fac*sat[i] + 0.5*euler_flux[i] + 0.5*euler_flux2[i])
+    flux[i] = -(sat_fac*sat[i] + euler_flux[i])
 #=
 if nx < 0.0  # inlet
        flux[1] = qg[1]

@@ -105,6 +105,8 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
     end
 
     if iter % 1000 == 0
+
+      saveSolutionToMesh(mesh, SL0)
       writeVtkFiles("solution_rk$iter", mesh.m_ptr)
     end
 
