@@ -97,11 +97,15 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
       write(f1, string(i, "   ", sol_norm, "\n"))
     end
 
-    if iter % 10000 == 0
+    if iter % 1000 == 0
       println("flushing convergence.dat to disk")
 #      close(f1)
 #      f1 = open("convergence.dat", "a+")
       flush(f1)
+    end
+
+    if iter % 1000 == 0
+      writeVtkFiles("solution_rk$iter", mesh.m_ptr)
     end
 
 

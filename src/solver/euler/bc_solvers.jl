@@ -19,7 +19,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   gami = gamma - 1
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
-
+  sat_fac = 1  # multiplier for SAT term
   # Begin main executuion
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
@@ -143,7 +143,9 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   #   println("sat = ",  (sat))
 
   euler_flux = zeros(Tsol, 4)
+  euler_flux2 = zeros(Tsol, 4)
   calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
+  calcEulerFlux(params, qg, aux_vars, [nx, ny], euler_flux2)
 
  #    println("euler_flux = ",  (euler_flux))
   
@@ -165,7 +167,8 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
     println("sat[i] = ", sat[i])
     println("euler_flux[i] = ", euler_flux[i])
 =#
-    flux[i] = -(sat[i] + euler_flux[i])
+    flux[i] = -(sat_fac*sat[i] + 0.5*euler_flux[i] + 0.5*euler_flux2[i])
+#    flux[i] = -(sat_fac*sat[i] + euler_flux[i])
 #=
 if nx < 0.0  # inlet
        flux[1] = qg[1]

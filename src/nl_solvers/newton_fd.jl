@@ -218,7 +218,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
   # the initial condition is stored in eqn.SL0
   # itermax is the maximum number of iterations
 
-  step_fac = 0.1 # step size limiter
+  step_fac = 1.0 # step size limiter
   m = length(eqn.SL)
   Tsol = typeof(eqn.SL[1])
   Tjac = typeof(real(eqn.SL[1]))  # type of jacobian, residual
@@ -260,7 +260,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
 #  println("SL0 = ", res_0)
 
 
-   return  # return early for testing purposes
+#   return  # return early for testing purposes
 
    if res_0_norm < res_tol
      println("Newton iteration converged with residual norm ", res_0_norm)
@@ -358,6 +358,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
       return nothing
     end
 
+#=
     # adjust step size limiter
     if (step_norm < step_norm_1)  # decreasing step size
       step_fac *= 1.2
@@ -366,7 +367,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
 	step_fac = 1.0
       end
     end
-
+=#
 #    if (step_norm > step_norm_1)
 #      step_fac /= 1.1
 #    end
