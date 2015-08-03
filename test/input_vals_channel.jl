@@ -24,9 +24,12 @@ arg_dict = Dict{Any, Any} (
 "BC2_name" => "Rho1E2U3BC",
 "delta_t" => 0.005,
 "t_max" => 500.000,
-"smb_name" => "../../mesh_files/channel.smb",
-"dmg_name" => "../../mesh_files/channel.dmg",
+#"smb_name" => "../../mesh_files/channel.smb",
+#"dmg_name" => "../../mesh_files/channel.dmg",
+"smb_name" => "/users/creanj/.julia/v0.4/PDESolver/src/mesh_files/channel.smb",
+"dmg_name" => "/users/creanj/.julia/v0.4/PDESolver/src/mesh_files/channel.dmg",
 "res_tol" => 1e-12,
 "step_tol" => 1e-9,
 "itermax" => 20,
+"solve" => false
 )

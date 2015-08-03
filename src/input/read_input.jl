@@ -1,5 +1,5 @@
 #include("new_file2.jl")  # creates arg_dict
-
+include("../tools/misc.jl")
 @doc """
 ### read_input
 
@@ -12,7 +12,9 @@
 """->
 function read_input(fname::AbstractString)
 
-include(fname)
+println("pwd = ", pwd())
+
+include(joinpath(pwd(), fname))  # include file in the users pwd()
 
 # take action based on the dictionary
 
@@ -21,6 +23,9 @@ if haskey(arg_dict, "var1")
 else
   global DB_LEVEL = 0
 end
+
+# record fname in dictionary
+arg_dict["fname"] = fname
 
 # supply default values if not given 
 # get() = get!(dictionary, key, default)
@@ -46,6 +51,20 @@ get!(arg_dict, "write_face_vertnums", false)
 get!(arg_dict, "write_boundarynums", false)
 get!(arg_dict, "write_dxidx", false)
 get!(arg_dict, "write_coords", false)
+
+# testing options
+get!(arg_dict, "solve", true)
+
+# write complete dictionary to file
+fname = "arg_dict_output.txt"
+rmfile(fname)
+f = open(fname, "a+")
+arg_keys = keys(arg_dict)
+
+for key_i in arg_keys
+  println(f, key_i, " => ", arg_dict[key_i])
+end
+close(f)
 
 
 # do some sanity checks here

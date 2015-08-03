@@ -6,8 +6,10 @@
 # push!(LOAD_PATH, "/users/creanj/.julia/v0.4/PDESolver/src/solver/euler")
 #push!(LOAD_PATH, "../../../../PUMI")
 
-push!(LOAD_PATH, "../../../../PumiInterface/src")
 
+
+push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 #include("complexify.jl")
 using PDESolverCommon
 using PumiInterface # pumi interface
@@ -16,11 +18,12 @@ using SummationByParts  # SBP operators
 using EulerEquationMod
 using ForwardDiff
 
-include("../../nl_solvers/rk4.jl")  # timestepping
+include(joinpath(Pkg.dir("PDESolver"),"src/nl_solvers/rk4.jl"))  # timestepping
 
-include("../../nl_solvers/newton_fd.jl")  # timestepping
-include("./output.jl")  # printing results to files
-include("../../input/read_input.jl")
+include(joinpath(Pkg.dir("PDESolver"), "src/nl_solvers/newton_fd.jl"))  # timestepping
+include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
+include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+
 
 function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
 # figure out what type eqn.res needs to be, taking into account
@@ -44,7 +47,7 @@ end
 
 #function runtest(flag::Int)
 
-opts = read_input("input_vals_vortex.jl")
+opts = read_input(ARGS[1])
 #opts = read_input("input_vals_channel2.jl")
 
 flag = opts["run_type"]
@@ -173,93 +176,97 @@ writeVtkFiles("solution_ic",mesh.m_ptr)
 
 
 # call timestepper
-if flag == 1 # normal run
- rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_tol"])
- println("finish rk4")
- printSolution("rk4_solution.dat", eqn.SL)
-# println("rk4 @time printed above")
-elseif flag == 2 # forward diff dR/du
+if opts["solve"]
+  
+  if flag == 1 # normal run
+   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_tol"])
+   println("finish rk4")
+   printSolution("rk4_solution.dat", eqn.SL)
+  # println("rk4 @time printed above")
+  elseif flag == 2 # forward diff dR/du
 
-  # define nested function
-  function dRdu_rk4_wrapper(u_vals::AbstractVector, SL::AbstractVector)
-    eqn.SL0 = u_vals
-    eqn.SL0 = SL
-    rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn)
-    return nothing
+    # define nested function
+    function dRdu_rk4_wrapper(u_vals::AbstractVector, SL::AbstractVector)
+      eqn.SL0 = u_vals
+      eqn.SL0 = SL
+      rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn)
+      return nothing
+    end
+
+    # use ForwardDiff package to generate function that calculate jacobian
+    calcdRdu! = forwarddiff_jacobian!(drDu_rk4_wrapper, Float64, fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
+
+    jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
+    calcdRdu!(eqn.SL0, jac)
+
+  elseif flag == 3 # calculate dRdx
+
+    # dRdx here
+
+  elseif flag == 4
+    newton_fd(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+    printSolution("newton_solution.dat", eqn.SL)
+
+  elseif flag == 5
+  #  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
+
+    newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+  elseif flag == 6
+    newton_check(evalEuler, mesh, sbp, eqn, opts)
+
+    vals = abs(real(eqn.SL))  # remove unneded imaginary part
+    saveSolutionToMesh(mesh, vals)
+    writeVtkFiles("solution_error", mesh.m_ptr)
+    printBoundaryEdgeNums(mesh)
+    printSolution(mesh, vals)
+  elseif flag == 7
+    jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
+    writedlm("solution.dat", jac_col)
+  elseif flag == 8
+    jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
+    writedlm("solution.dat", jac_col)
+
   end
 
-  # use ForwardDiff package to generate function that calculate jacobian
-  calcdRdu! = forwarddiff_jacobian!(drDu_rk4_wrapper, Float64, fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
-
-  jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
-  calcdRdu!(eqn.SL0, jac)
-
-elseif flag == 3 # calculate dRdx
-
-  # dRdx here
-
-elseif flag == 4
-  newton_fd(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
-  printSolution("newton_solution.dat", eqn.SL)
-
-elseif flag == 5
-#  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
-
-  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
-elseif flag == 6
-  newton_check(evalEuler, mesh, sbp, eqn, opts)
-
-  vals = abs(real(eqn.SL))  # remove unneded imaginary part
-  saveSolutionToMesh(mesh, vals)
-  writeVtkFiles("solution_error", mesh.m_ptr)
-  printBoundaryEdgeNums(mesh)
-  printSolution(mesh, vals)
-elseif flag == 7
-  jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
-  writedlm("solution.dat", jac_col)
-elseif flag == 8
-  jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
-  writedlm("solution.dat", jac_col)
-
-end
 
 
 
 
 
 
-
-if flag == 1
-
-
-    SL_diff = SL - SL_exact
-    step = SL0 - SL_exact
-    step_norm = norm(step)/mesh.numDof
-    println("step_norm = ", step_norm)
-    SL_norm = norm(SL)/mesh.numDof
-    #SL_side_by_side = [SL_exact  SL]
-
-    #=
-    println("\n\n\n")
-    println("SL_diff: \n")
-    for i=1:size(SL_diff)[1]
-      println(SL_diff[i,:])
-    end
-    println("SL_side_by_side: \n")
-    for i=1:size(SL_side_by_side)[1]
-      println(i, " ", SL_side_by_side[i,:])
-    end
-    =#
-    println("SL_norm: \n",SL_norm,"\n")
+  if flag == 1
 
 
-end
+      SL_diff = SL - SL_exact
+      step = SL0 - SL_exact
+      step_norm = norm(step)/mesh.numDof
+      println("step_norm = ", step_norm)
+      SL_norm = norm(SL)/mesh.numDof
+      #SL_side_by_side = [SL_exact  SL]
 
-    saveSolutionToMesh(mesh, real(SL0))
-    printSolution(mesh, real(SL0))
-    printCoordinates(mesh)
-    writeVtkFiles("solution_done",mesh.m_ptr)
-#end
+      #=
+      println("\n\n\n")
+      println("SL_diff: \n")
+      for i=1:size(SL_diff)[1]
+	println(SL_diff[i,:])
+      end
+      println("SL_side_by_side: \n")
+      for i=1:size(SL_side_by_side)[1]
+	println(i, " ", SL_side_by_side[i,:])
+      end
+      =#
+      println("SL_norm: \n",SL_norm,"\n")
+
+
+  end
+
+      saveSolutionToMesh(mesh, real(SL0))
+      printSolution(mesh, real(SL0))
+      printCoordinates(mesh)
+      writeVtkFiles("solution_done",mesh.m_ptr)
+
+end  # end if (opts[solve])
+  #end
 
 
 #runtest(1)
