@@ -70,7 +70,11 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 #    update_msg = string("RK4 i: ",i,"\n")
 #    write(STDERR,update_msg)
 #    print("\nRK4 i : ", i)
+   if iter % 100 == 0
      println("iter: ",i)
+  end
+
+
     iter += 1
 #    println("in rk4, iter = ", iter)
 #    println("in rk4, t = ", t)
@@ -86,7 +90,28 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
     k1[:] = eqn.SL
     x2[:] = x_old + (h/2)*k1
 
-    sol_norm = norm(eqn.SL)
+    sol_norm = norm(eqn.SL)/mesh.numDof
+
+    if iter % 100 == 0
+      println("writing to convergence.dat")
+      write(f1, string(i, "   ", sol_norm, "\n"))
+    end
+
+    if iter % 1000 == 0
+      println("flushing convergence.dat to disk")
+#      close(f1)
+#      f1 = open("convergence.dat", "a+")
+      flush(f1)
+    end
+
+    if iter % 1000 == 0
+
+      saveSolutionToMesh(mesh, SL0)
+      writeVtkFiles("solution_rk$iter", mesh.m_ptr)
+    end
+
+
+
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
       break
@@ -114,10 +139,6 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     eqn.SL0[:] = x_old
-
-    if iter % 100 == 0
-      write(f1, string(i, "   ", norm(eqn.SL)/mesh.numDof, "\n"))
-    end
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)

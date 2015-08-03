@@ -29,6 +29,7 @@ end
 # for each boundary condition there must be keys BCi and BCi_name for i=1:numBC
 numBC = arg_dict["numBC"]
 
+#=
 # sort all the BC arrays
 for i=1:numBC
   key_i = string("BC", i)
@@ -75,7 +76,7 @@ for i=1:numBC
  end
 end
 
-
+=#
 
 return arg_dict
 

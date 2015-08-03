@@ -222,13 +222,14 @@ end  # end of type declaration
 # now that EulerData is defined, include other files that use it
 
 include("euler_macros.jl")
+include("output.jl")
 include("common_funcs.jl")
 #include("sbp_interface.jl")
 include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
-
+include("constant_diff.jl")
 
 
 
@@ -249,7 +250,7 @@ function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 
-  eqn.Minv = ones(Tmsh, mesh.numDof)
+  eqn.Minv = zeros(Tmsh, mesh.numDof)
 
   for i=1:mesh.numEl
 #    dofnums_i =  getGlobalNodeNumbers(mesh, i)
@@ -259,7 +260,7 @@ function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
         dofnum_k = mesh.dofs[k,j,i]
 	# multiplication is faster than division, so do the divions here
 	# and then multiply solution vector times Minv
-	eqn.Minv[dofnum_k] *= 1/(sbp.w[j]*mesh.jac[j,i])
+	eqn.Minv[dofnum_k] += 1/(sbp.w[j]*mesh.jac[j,i])
 
 #	eqn.Minv[dofnum_k] *= 1/(sbp.w[j])
       end

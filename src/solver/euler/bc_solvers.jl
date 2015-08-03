@@ -19,15 +19,18 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   gami = gamma - 1
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
-
+  sat_fac = 1  # multiplier for SAT term
   # Begin main executuion
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
+#  println("nx, ny = ", nx, ", ", ny)
   dA = sqrt(nx*nx + ny*ny)
-  
+ 
+  #   println("dA = ",  (dA))
+
   fac = d1_0/q[1]
-#   println(typeof(fac))
+#   #   println(typeof(fac))
 #   println(typeof(q[4]))
   uL = q[2]*fac; vL = q[3]*fac;
   phi = d0_5*(uL*uL + vL*vL)
@@ -55,12 +58,36 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
 
+#=
+     println("before selection")
+     println("lambda1 = ",  (lambda1))
+     println("lambda2 = ",  (lambda2))
+     println("lambda3 = ",  (lambda3))
+
+     println("tau = ",  (tau))
+     println("sat_Vn = ",  (sat_Vn))
+     println("sat_Vl = ",  (sat_Vl))
+     println("rhoA = ",  (rhoA))
+     println("sgn = ",  (sgn))
+=#
 #  println("sat_Vn = ", sat_Vn)
 #  println("lambda1 = ", lambda1)
 #  println("absvalue(lambda1) = ", absvalue(lambda1))
   lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
   lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
   lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+
+#=
+     println("after selection")
+     println("lambda1 = ",  (lambda1))
+     println("lambda2 = ",  (lambda2))
+     println("lambda3 = ",  (lambda3))
+=#
+
+
+#  println("lambda1 = ", lambda1)
+#  println("lambda2 = ", lambda2)
+#  println("lambda3 = ", lambda3)
 
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
@@ -106,13 +133,23 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   E2dq[4] = E2dq[2]*Un
   E2dq[2] = E2dq[2]*nx
 
+  #   println("E1dq = ",  (E1dq))
+  #   println("E2dq = ",  (E2dq))
+
   #-- add to sat
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
-  euler_flux = zeros(Tsol, 4)
-  calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
+  #   println("sat = ",  (sat))
 
+  euler_flux = zeros(Tsol, 4)
+  euler_flux2 = zeros(Tsol, 4)
+  calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
+#  calcEulerFlux(params, qg, aux_vars, [nx, ny], euler_flux2)
+
+ #    println("euler_flux = ",  (euler_flux))
+  
+#  println("euler_flux = ", euler_flux)
 #  flux[:] = sat + getEulerFlux(q, nx, ny, eqn)
 #  flux[:] = -(sat + euler_flux)
   for i=1:4  # ArrayViews does not support flux[:] = .
@@ -130,9 +167,31 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
     println("sat[i] = ", sat[i])
     println("euler_flux[i] = ", euler_flux[i])
 =#
-    flux[i] = -(sat[i] + euler_flux[i])
+#    flux[i] = -(sat_fac*sat[i] + 0.5*euler_flux[i] + 0.5*euler_flux2[i])
+    flux[i] = -(sat_fac*sat[i] + euler_flux[i])
+#=
+if nx < 0.0  # inlet
+       flux[1] = qg[1]
+       flux[2] = qg[2]
+       flux[3] = qg[3]
+       flux[4] = q[4]
+     else
+       flux[1] = q[1]
+       flux[2] = q[2] 
+       flux[3] = q[3]
+       flux[4] = qg[4]
+     end
+=#
+#     flux[i] = euler_flux[i]
   end
- 
+
+#  println("sat = ", sat)
+#  println("euler = ", euler_flux)
+#  println("Roe flux = ", flux)
+
+#  println("flux = ", flux)
+#  print("\n")
+
 #  return sat + getEulerFlux(q, nx, ny)
    return nothing
 

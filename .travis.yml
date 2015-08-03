@@ -1,4 +1,5 @@
 language: julia
+sudo: required
 os:
   - linux
   - osx
@@ -8,6 +9,7 @@ julia:
 notifications:
   email: true
 script:
+  -  if [[ -a .git/shallow ]]; then git fetch --unshallow; fi 
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd()); Pkg.build("PDESolver"); Pkg.test("PDESolver"; coverage=true)'
 after_success:
   - julia -e 'cd(Pkg.dir("PDESolver")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
