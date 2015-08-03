@@ -33,3 +33,13 @@
 "aoa" : angle of attack in degrees (floating point)
 "rho_free" : free stream density
 "E_free" : free stream energy
+
+# debugging options
+"writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function (bool), default false
+"writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
+"writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
+"write_edge_vertnums"  : writes the vertex numbers of every edge to edge_vertnusm.dat (Bool), default false
+"write_face_vertnums" : writes vertex number of every face to face_vertnums.dat, (Bool), default false
+"write_boundarynums"  : writes the elements  number, global face number of each face with a boundary condition, one per line, (Bool), default false
+"write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
+"write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false

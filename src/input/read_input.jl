@@ -22,8 +22,33 @@ else
   global DB_LEVEL = 0
 end
 
+# supply default values if not given 
+# get() = get!(dictionary, key, default)
+gamma = get!(arg_dict, "gamma", 1.4)
+gamma_1 = gamma - 1
+R = get!(arg_dict, "R", 287.058)
+cv = R/gamma_1
+
+Ma = get!(arg_dict, "Ma", -1.0)
+Re = get!(arg_dict, "Re", -1.0)
+aoa = get!(arg_dict, "aoa", -1.0)*pi/180
+arg_dict["aoa"] = aoa*pi/180  # convert to radians
+rho_free = get!(arg_dict, "rho_free", -1)
+E_free = get!(arg_dict, "E_free", -1)
 
 
+# debugging options
+writeflux = get!(arg_dict, "writeflux", false)
+writeboundary = get!(arg_dict, "writeboundary", false)
+get!(arg_dict, "writeq", false)
+get!(arg_dict, "write_edge_vertnums", false)
+get!(arg_dict, "write_face_vertnums", false)
+get!(arg_dict, "write_boundarynums", false)
+get!(arg_dict, "write_dxidx", false)
+get!(arg_dict, "write_coords", false)
+
+
+# do some sanity checks here
 # deal with boundary conditions
 # "numBC" must be dictionary key whose value is the number of boundary conditions
 # for each boundary condition there must be keys BCi and BCi_name for i=1:numBC

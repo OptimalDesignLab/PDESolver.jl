@@ -74,22 +74,32 @@ immutable ParamType{Tdim}
   rho_free::Float64  # free stream density
   E_free::Float64 # free stream energy (4th conservative variable)
 
+  # debugging options
+  writeflux::Bool  # write Euler flux
+  writeboundary::Bool  # write boundary data
+  writeq::Bool # write solution variables
   function ParamType(opts)
   # create values, apply defaults
 
     # get() = get(dictionary, key, default)
-    gamma = get(opts, "gamma", 1.4)
+    gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
-    R = get(opts, "R", 287.058)
+    R = opts[ "R"]
     cv = R/gamma_1
 
-    Ma = get(opts, "Ma", -1.0)
-    Re = get(opts, "Re", -1.0)
-    aoa = get(opts, "aoa", -1.0)*pi/180  # convert to radians
-    rho_free = get(opts, "rho_free", -1)
-    E_free = get(opts, "E_free", -1)
+    Ma = opts[ "Ma"]
+    Re = opts[ "Re"]
+    aoa = opts[ "aoa"]
+    rho_free = opts[ "rho_free"]
+    E_free = opts[ "E_free"]
 
-    return new(cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free)
+
+    # debugging options
+    writeflux = opts[ "writeflux"]
+    writeboundary = opts[ "writeboundary"]
+    writeq = opts["writeq"]
+
+    return new(cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, writeflux, writeboundary, writeq)
 
   end
 

@@ -160,17 +160,8 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
   fill!(eqn.res, 0.0)
   
   # disassemble SL0 into eqn.q
-  disassembleSolution(mesh, eqn, SL0)
+  disassembleSolution(mesh, sbp, eqn, opts, SL0)
   # disassmble SL0 into eqn.q
-
-#=
-  if Tsol <: Complex
-    fname = "q.dat"
-  else
-    fname = "q_fd.dat"
-  end
-  writedlm(fname, real(eqn.q))
-=#
 
   getAuxVars(mesh, eqn)
 #  println("getAuxVars @time printed above")
@@ -184,7 +175,7 @@ function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{T
 
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
-  getEulerFlux(mesh, eqn)
+  getEulerFlux(mesh, sbp,  eqn, opts)
 #  println("getEulerFlux @time printed above")
 
 
@@ -208,7 +199,8 @@ end # end function dataPrep
 ### EulerEquationMod.getBCFluxes
 
   This function calls other functions to calculate the boundary fluxes, passing
-  them pieces of the array needed.  This populates eqn.bndryflux.
+  them pieces of the array needed.  This populates eqn.bndryflux.  It also
+  calles writeBoundary()
 
   This is a mid level function
 """->
@@ -231,52 +223,68 @@ for i=1:mesh.numBC
 
 end
 
-#=
-if typeof(eqn.q[1]) <: Complex
-  face_name = "boundaryfaces.txt"
-  flux_name = "boundaryflux.txt"
-  flux_dlm = "boundaryflux2.txt"
-else
-  face_name = "boundaryfaces_fd.txt"
-  flux_name = "boundaryflux_fd.txt"
-  flux_dlm = "boundaryflux_fd2.txt"
-end
-
-if isfile(face_name)
-  rm(face_name)
-end
-
-
-if isfile(flux_name)
-  rm(flux_name)
-end
-
-
-
-f = open(face_name, "a+")
-for i=1:length(mesh.bndryfaces)
-  println(f, mesh.bndryfaces[i])
-end
-close(f)
-
-f = open(flux_name, "a+")
-for i=1:mesh.numBoundaryEdges
-  el = mesh.bndryfaces[i].element
-  face = mesh.bndryfaces[i].face
-  for j=1:sbp.numfacenodes
-    jb = sbp.facenodes[j, face]
-    println(f, "el ", el, ", node_index ", jb, ", flux = ", real(eqn.bndryflux[:, j, i]))
-  end
-end
-close(f)
-
-writedlm(flux_dlm, real(eqn.bndryflux))
-=#
-
+writeBoundary(mesh, sbp, eqn, opts)
 
 return nothing
 
 end
+
+@doc """
+### EulerEquationMod.writeBoundary 
+
+  This function writes information about the boundary faces and fluxes to files.
+  It is controlled by the input argument writeboundary, of type Bool.
+
+  It generates the files:
+    * boundaryfaces.dat : writes mesh.bndryfaces, an array with eltype Boundary
+                          to a file, one element per line
+    * boundaryflux.dat  : writes the element, local node number and boundary 
+                          flux to a line in a human readable format
+    * boundaryflux2.dat : writes the real part ofmesh.bndryflux to space 
+                          delimited file
+
+   This is a high level function.
+"""->
+function writeBoundary(mesh, sbp, eqn, opts)
+
+  if !eqn.params.writeboundary
+    return nothing
+  end
+
+    face_name = "boundaryfaces.dat"
+    flux_name = "boundaryflux.dat"
+    flux_dlm = "boundaryflux2.dat"
+
+    rmfile(face_name)
+    rmfile(flux_name)
+    rmfile_(flux_dlm)
+
+
+  # write boundaryfaces.dat
+  f = open(face_name, "a+")
+  for i=1:length(mesh.bndryfaces)
+    println(f, mesh.bndryfaces[i])
+  end
+  close(f)
+
+  # write boundaryflux.dat
+  f = open(flux_name, "a+")
+  for i=1:mesh.numBoundaryEdges
+    el = mesh.bndryfaces[i].element
+    face = mesh.bndryfaces[i].face
+    for j=1:sbp.numfacenodes
+      jb = sbp.facenodes[j, face]
+      println(f, "el ", el, ", node_index ", jb, ", flux = ", real(eqn.bndryflux[:, j, i]))
+    end
+  end
+  close(f)
+
+  # write boundaryflux2.dat
+  writedlm(flux_dlm, real(eqn.bndryflux))
+  
+  return nothing
+end
+
 
 
 @doc """
@@ -583,7 +591,7 @@ end
   This is a mid level function
 """->
 # mid level function
-function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim})
+function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,  eqn::EulerData{Tsol, Tdim}, opts)
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.F_xi
 
   nrm = zeros(Tmsh, 2)
@@ -610,26 +618,32 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData
     end
   end
 
-#=
-  for k=1:Tdim
-    if isfile("eulerflux$k.dat")
-      rm("eulerflux$k.dat")
-    end
-    printMatrix("eulerflux$k.dat", real(view(eqn.F_xi, :, :, :, k)))
-  end
 
-
-if Tsol <: Complex
-    fname = "Fxi.dat"
-  else
-    fname = "Fxi_fd.dat"
-  end
-writedlm(fname, real(eqn.F_xi))
-=#
-
+  writeFlux(mesh, sbp, eqn, opts)
 
   return nothing
 end
+
+@doc """
+### EulerEquationMod.writeFlux
+
+  This function writes the real part of Euler flux to a file named Fxi.dat, space delimited, controlled by the input options writeflux, of type Bool.
+
+  This is a high level function.
+"""->
+function writeFlux(mesh, sbp, eqn, opts)
+
+   if !eqn.params.writeflux
+     return nothing
+   end
+ 
+   fname = "Fxi.dat"
+   rmfile(fname)
+   writedlm(fname, real(eqn.F_xi))
+
+   return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.getEulerFlux2
@@ -642,7 +656,7 @@ end
 """->
 # this function is deprecated in factor of getEulerFlux()
 # useful for benchmarking purposes
-function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol})
+function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,  eqn::EulerData{Tsol}, opts)
 # calculates the Euler flux for every node in the xi and eta directions
 # eqn is the equation type
 # q is the 3D array (4 by nnodes per element by nel), of the conservative variables
@@ -727,7 +741,7 @@ end
 
 
 @doc """
-### EulerEquationMod.dissassembleSolution
+### EulerEquationMod.disassembleSolution
 
   This takes eqn.SL0 (the initial state), and disassembles it into eqn.q, the
   3 dimensional array of conservative variables.  This function uses mesh.dofs
@@ -737,7 +751,7 @@ end
   dimension.
 """->
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim}, SL0::AbstractArray{Tsol, 1})
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, SL0::AbstractArray{Tsol, 1})
   # disassemble SL0 into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -748,8 +762,32 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::Eu
     end
   end
 
+  writeQ(mesh, sbp, eqn, opts)
+
   return nothing
 end
+
+@doc """
+### EulerEquationMod.writeQ
+
+  This function writes the real part of the solution variables eqn.q to a space 
+  delimited file called q.dat, controlled by the input options writeq, of type bool
+
+  This is a high level function.
+"""->
+function writeQ(mesh, sbp, eqn, opts)
+
+  if !eqn.params.writeq
+    return nothing
+  end
+
+  fname = "q.dat"
+  rmfile(fname)
+  writedlm(fname, real(eqn.q))
+
+  return nothing
+end
+
 
 
 @doc """
