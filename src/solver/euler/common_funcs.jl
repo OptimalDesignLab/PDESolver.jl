@@ -1,4 +1,4 @@
-
+#=
 function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractVector{Tsol})
 # calculates the solution at a point of the isentripic vortex
 # 2D only
@@ -57,6 +57,71 @@ sol[4] = E_r
 return nothing
 
 end
+=#
+
+function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractVector{Tsol})
+# calculates the solution at a point of the isentripic vortex
+# 2D only
+# coords contains xy coordinates
+# sol is a vector to be populated with the solution at the point
+
+#sol = zeros(4)  # storage for solution
+
+# unpack arguments
+x = coords[1]
+y = coords[2]
+
+# get some values out of eqn
+cv = params.cv
+R = params.R
+gamma = params.gamma
+
+# the (hard coded) parameters are
+r_in = 1  # inner radius of sector of circle
+rho_in = 2 # density at inner radius
+M_in = 0.95  # Mach number
+p_in =  1/gamma
+
+
+# calculate r, theta coordinates from x,y
+r = sqrt(x*x + y*y)
+theta = atan2(y,x)  # angle in radians
+# println("theta = ", theta)
+
+#println("r = ", r)
+#println("theta = ", theta)
+
+tmp1 = ((gamma-1)/2)*M_in*M_in
+#println("tmp1 = ", tmp1)
+
+# calculate values at r radius
+rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
+#println("rho_r = ", rho_r)
+
+p_r = p_in*(rho_r/rho_in)^gamma
+#println("p_r = ", p_r)
+
+a_r = sqrt( gamma*p_r/rho_r )
+
+M_r = sqrt( (2/(gamma-1))*((rho_in/rho_r)^(gamma-1))*(1 + tmp1) - 2/(gamma-1) )
+U_r = M_r*a_r  # velocity magnitude
+
+u_r = U_r*sin(theta)
+v_r = -U_r*cos(theta)
+e_r = cv*p_r/(rho_r*R)
+E_r = rho_r*e_r + 0.5*rho_r*U_r*U_r
+
+# save solution to sol
+sol[1] = rho_r
+sol[2] = rho_r*u_r
+sol[3] = rho_r*v_r
+sol[4] = E_r
+
+return nothing
+
+end
+
+
 
 function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 # calculate the free stream conditions using the fields of params

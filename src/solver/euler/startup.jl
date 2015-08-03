@@ -253,11 +253,12 @@ if flag == 1
     println("SL_norm: \n",SL_norm,"\n")
 
 
-    saveSolutionToMesh(mesh, SL0)
-    printSolution(mesh, SL0)
+end
+
+    saveSolutionToMesh(mesh, real(SL0))
+    printSolution(mesh, real(SL0))
     printCoordinates(mesh)
     writeVtkFiles("solution_done",mesh.m_ptr)
-end
 #end
 
 
