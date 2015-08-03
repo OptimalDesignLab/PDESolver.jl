@@ -44,7 +44,7 @@ end
 
 #function runtest(flag::Int)
 
-opts = read_input("input_vals_vortex2.jl")
+opts = read_input("input_vals_vortex.jl")
 #opts = read_input("input_vals_channel2.jl")
 
 flag = opts["run_type"]
