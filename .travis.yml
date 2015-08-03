@@ -14,13 +14,10 @@ before_install:
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
   - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
   - sudo apt-get install -y libblas-dev libblas-doc libblas3gf
-install:
-  - julia -e 'Pkg.clone("https://github.com/OptimalDesignLab/PumiInterface.jl.git")'
-  - julia -e 'Pkg.build("PumiInterface")'
-  - source ~/.julia/v0.4/PumiInterface/src/evars.sh
 script:
   -  if [[ -a .git/shallow ]]; then git fetch --unshallow; fi 
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd()); Pkg.build("PDESolver")'
+  - source ~/.julia/v0.4/PumiInterface/src/evars.sh
   - cd ~/.julia/v0.4/PDESolver/test
   - julia --check-bounds=yes -e 'Pkg.test("PDESolver"; coverage=true)' "input_vals_channel.jl"
 after_success:
