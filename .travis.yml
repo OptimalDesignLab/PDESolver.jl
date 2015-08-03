@@ -15,7 +15,7 @@ before_install:
   - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
   - sudo apt-get install -y libblas-dev libblas-doc libblas3gf
 install:
-  - julia -e 'Pkg.clone(https://github.com/OptimalDesignLab/PumiInterface.jl.git")'
+  - julia -e 'Pkg.clone("https://github.com/OptimalDesignLab/PumiInterface.jl.git")'
   - julia -e 'Pkg.build("PumiInterface")'
   - source ~/.julia/v0.4/PumiInterface/evars.sh
 script:
