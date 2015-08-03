@@ -17,7 +17,7 @@ before_install:
 install:
   - julia -e 'Pkg.clone("https://github.com/OptimalDesignLab/PumiInterface.jl.git")'
   - julia -e 'Pkg.build("PumiInterface")'
-  - source ~/.julia/v0.4/PumiInterface/evars.sh
+  - source ~/.julia/v0.4/PumiInterface/src/evars.sh
 script:
   -  if [[ -a .git/shallow ]]; then git fetch --unshallow; fi 
   - cd ~/.julia/v0.4/PDESolver/test
