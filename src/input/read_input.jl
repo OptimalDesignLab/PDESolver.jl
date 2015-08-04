@@ -59,6 +59,15 @@ get!(arg_dict, "write_jac", false)
 get!(arg_dict, "print_cond", false)
 get!(arg_dict, "write_sol", false)
 get!(arg_dict, "write_vis", false)
+  
+  # figure out Newtons method type
+run_type = arg_dict["run_type"]
+if run_type == 4
+  arg_dict["jac_method"] = 1  # finite difference
+elseif run_type == 5
+  arg_dict["jac_method"] = 2
+end
+
 
 # testing options
 get!(arg_dict, "solve", true)

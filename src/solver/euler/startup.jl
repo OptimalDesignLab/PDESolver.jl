@@ -204,14 +204,15 @@ if opts["solve"]
 
     # dRdx here
 
-  elseif flag == 4
-    newton_fd(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+  elseif flag == 4 || flag == 5
+    newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
     printSolution("newton_solution.dat", eqn.SL)
-
+#=
   elseif flag == 5
   #  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
 
     newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+=#
   elseif flag == 6
     newton_check(evalEuler, mesh, sbp, eqn, opts)
 

@@ -1,7 +1,7 @@
 using ArrayViews
 using Debug
 
-
+#=
 @doc """
 ### newton_fd
 
@@ -188,65 +188,31 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
   close(fconv)
   return nothing
 end
-
-
-
-function calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
-# calculate the jacobian using finite difference
-
-  (m,n) = size(jac)
-  epsilon = 1e-6  # finite difference perturbation
-  # calculate jacobian
-  for j=1:m
-#      println("  jacobian iteration ", j)
-    if j==1
-      eqn.SL0[j] +=  epsilon
-    else
-      eqn.SL0[j-1] -= epsilon # undo previous iteration pertubation
-      eqn.SL0[j] += epsilon
-    end
-
-    # evaluate residual
-    fill!(eqn.SL, 0.0)
-    func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
-#     println("column ", j, " of jacobian, SL = ", eqn.SL)
-    calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
-#      println("SL norm = ", norm(SL)/m)
-    
-  end
-
-  # undo final perturbation
-  eqn.SL0[m] -= epsilon
-
-  return nothing
-end
-
-
-
-function calcJacRow{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
-# calculate a row of the jacobian from res_0, the function evaluated 
-# at the original point, and res, the function evaluated at a perturbed point
-
-m = length(res_0)
-
-for i=1:m
-  jac_row[i] = (res[i] - res_0[i])/epsilon
-end
-
-return nothing
-
-end
+=#
 
 
 
 
 @doc """
-### newton_complex
+  This function uses Newton's method to reduce the residual.  The Jacobian
+  is calculated using one of several available methods.
 
-  Uses the complex step method to calculate the Jacobian.  See newton_fd.
+  Arguments:
+    * func  : function that evalutes the residual
+    * mesh : mesh to use in evaluating the residual
+    * sbp : sbp operator to be used to evaluate the residual
+    * eqn : EulerData to use to evaluate the residual
+    * opts : options dictonary
+
+    Optional Arguments
+    * itermax : maximum number of Newton iterations
+    * step_tol : step size stopping tolerance
+    * res_tol : residual stopping tolerance
+
+    func must have the signature func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL) 
 
 """->
-function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=1e-6)
+function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=1e-6)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -255,11 +221,12 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
 
 
   # options
-  write_rhs = opts["write_rhs"]
-  write_jac = opts["write_jac"]
-  print_cond = opts["print_cond"]
-  write_sol = opts["write_sol"]
-  write_vis = opts["write_vis"]
+  write_rhs = opts["write_rhs"]::Bool
+  write_jac = opts["write_jac"]::Bool
+  print_cond = opts["print_cond"]::Bool
+  write_sol = opts["write_sol"]::Bool
+  write_vis = opts["write_vis"]::Bool
+  jac_method = opts["jac_method"]::Int
 
   step_fac = 1.0 # step size limiter
   m = length(eqn.SL)
@@ -305,7 +272,15 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
     println("Newton iteration: ", i)
     println("step_fac = ", step_fac)
 
-    calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+    # calculate jacobian using selected method
+    if jac_method == 1
+#      println("calculating finite difference jacobian")
+      calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
+
+    elseif jac_method == 2
+#      println("calculating complex step jacobian")
+      calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+    end
 
     # print as determined by options
     if write_jac
@@ -418,16 +393,73 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
  return res_0_norm
 end
 
+
+function calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
+# calculate the jacobian using finite difference
+
+  (m,n) = size(jac)
+  entry_orig = zero(eltype(eqn.SL0))
+  epsilon = 1e-6  # finite difference perturbation
+  # calculate jacobian
+  for j=1:m
+#      println("  jacobian iteration ", j)
+    if j==1
+      entry_orig = eqn.SL0[j]
+      eqn.SL0[j] +=  epsilon
+    else
+      eqn.SL0[j-1] = entry_orig # undo previous iteration pertubation
+      entry_orig = eqn.SL0[j]
+      eqn.SL0[j] += epsilon
+    end
+
+    # evaluate residual
+    fill!(eqn.SL, 0.0)
+    func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+#     println("column ", j, " of jacobian, SL = ", eqn.SL)
+    calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
+#      println("SL norm = ", norm(SL)/m)
+    
+  end
+
+  # undo final perturbation
+  eqn.SL0[m] = entry_orig
+
+  return nothing
+end
+
+
+
+function calcJacRow{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
+# calculate a row of the jacobian from res_0, the function evaluated 
+# at the original point, and res, the function evaluated at a perturbed point
+
+m = length(res_0)
+
+for i=1:m
+  jac_row[i] = (res[i] - res_0[i])/epsilon
+end
+
+return nothing
+
+end
+
+
+
+
+
 function calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
 
   epsilon = 1e-20  # complex step perturbation
+  entry_orig = zero(eltype(eqn.SL0))
   (m,n) = size(jac)
   # calculate jacobian
   for j=1:m
     if j==1
+      entry_orig = eqn.SL0[j]
       eqn.SL0[j] +=  complex(0, epsilon)
     else
-      eqn.SL0[j-1] -= complex(0, epsilon) # undo previous iteration pertubation
+      eqn.SL0[j-1] = entry_orig # undo previous iteration pertubation
+      entry_orig = eqn.SL0[j]
       eqn.SL0[j] += complex(0, epsilon)
     end
 
@@ -442,7 +474,7 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
 
 
   # undo final perturbation
-  eqn.SL0[m] -= complex(0, epsilon)
+  eqn.SL0[m] = entry_orig
 #
 
   return nothing
@@ -464,9 +496,9 @@ return nothing
 end
 
 @doc """
-### newton_complex
+### newton_check
 
-  Uses the complex step method to calculate the Jacobian.  See newton_fd.
+  Uses complex step to compare jacobian vector product to directional derivative.
 
 """->
 function newton_check(func, mesh, sbp, eqn, opts)
@@ -559,8 +591,11 @@ end
 
 
 
+@doc """
+### newton_check
 
-
+  This method calculates a single column of the jacobian with the complex step method.
+"""->
 function newton_check(func, mesh, sbp, eqn, opts, j)
 # calculate a single column of hte jacobian
     
@@ -581,7 +616,12 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       return jac_col
 end 
 
+@doc """
+### newton_check_fd
 
+  This method calcualtes a single column of the jacobian with the finite difference method.
+
+"""->
 function newton_check_fd(func, mesh, sbp, eqn, opts, j)
 # calculate a single column of hte jacobian
     
