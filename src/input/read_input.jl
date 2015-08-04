@@ -52,6 +52,14 @@ get!(arg_dict, "write_boundarynums", false)
 get!(arg_dict, "write_dxidx", false)
 get!(arg_dict, "write_coords", false)
 
+
+# Newton's Method options
+get!(arg_dict, "write_rhs", false)
+get!(arg_dict, "write_jac", false)
+get!(arg_dict, "print_cond", false)
+get!(arg_dict, "write_sol", false)
+get!(arg_dict, "write_vis", false)
+
 # testing options
 get!(arg_dict, "solve", true)
 

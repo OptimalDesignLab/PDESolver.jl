@@ -79,9 +79,11 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
      return nothing
    end
 
-   return   # return early for testing purposes
+#   return   # return early for testing purposes
 
 
+    calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
+#=
     epsilon = 1e-6  # finite difference perturbation
     # calculate jacobian
     for j=1:m
@@ -104,7 +106,7 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
 
     # undo final perturbation
     eqn.SL0[m] -= epsilon
-
+=#
     # jacobian is complete
     jac_cond = cond(jac)  # get condition number
     println("  jacobian condition number = ", jac_cond)
@@ -188,6 +190,39 @@ function newton_fd(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_t
 end
 
 
+
+function calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
+# calculate the jacobian using finite difference
+
+  (m,n) = size(jac)
+  epsilon = 1e-6  # finite difference perturbation
+  # calculate jacobian
+  for j=1:m
+#      println("  jacobian iteration ", j)
+    if j==1
+      eqn.SL0[j] +=  epsilon
+    else
+      eqn.SL0[j-1] -= epsilon # undo previous iteration pertubation
+      eqn.SL0[j] += epsilon
+    end
+
+    # evaluate residual
+    fill!(eqn.SL, 0.0)
+    func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+#     println("column ", j, " of jacobian, SL = ", eqn.SL)
+    calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
+#      println("SL norm = ", norm(SL)/m)
+    
+  end
+
+  # undo final perturbation
+  eqn.SL0[m] -= epsilon
+
+  return nothing
+end
+
+
+
 function calcJacRow{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
@@ -218,6 +253,14 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
   # the initial condition is stored in eqn.SL0
   # itermax is the maximum number of iterations
 
+
+  # options
+  write_rhs = opts["write_rhs"]
+  write_jac = opts["write_jac"]
+  print_cond = opts["print_cond"]
+  write_sol = opts["write_sol"]
+  write_vis = opts["write_vis"]
+
   step_fac = 1.0 # step size limiter
   m = length(eqn.SL)
   Tsol = typeof(eqn.SL[1])
@@ -229,132 +272,103 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
   step_norm = zero(Tjac)  # norm of newton update
   step_norm_1 = zero(Tjac) # norm of previous newton update
 
-  # write initial condition to file
-  writedlm("IC.dat", real(eqn.SL0))
 
+  # open file to write convergence data to
+  # append to be on the safe side
   fconv = open("convergence.dat", "a+")
 
-  for i=1:itermax
-  println("Newton iteration: ", i)
-  println("step_fac = ", step_fac)
-  # compute residual at initial condition
 
-  fill!(eqn.SL, zero(Tsol))
-  func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
-  println("evaluated residual")
-#  res_0[:] = real(eqn.SL)  # is there an unnecessary copy here?
+  # evaluating residual at initial condition
+  println("evaluating residual at initial condition")
+  res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
-  for j=1:m
-    res_0[j] = real(eqn.SL[j])
+  # write rhs to file
+  if write_rhs
+    writedlm("rhs1.dat", res_0)
   end
 
-  # write res_0 right afte rit is calculated
-  writedlm("res0_$i.dat", res_0)
+  if res_0_norm < res_tol
+   println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
+   println("writing to convergence.dat")
+   println(fconv, i, " ", res_0_norm, " ", 0.0)
+
+   close(fconv)
+   return nothing
+ end
 
 
-#
-#  println("SL0 = ", res_0)
-
-  res_0_norm = norm(eqn.SL)/m
-  println("residual norm = ", res_0_norm)
-#  println("SL0 = ", res_0)
+  # do Newton's method if not converged
+  print("\n")
 
 
-#   return  # return early for testing purposes
+  for i=1:itermax
+    println("Newton iteration: ", i)
+    println("step_fac = ", step_fac)
+
+    calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+
+    # print as determined by options
+    if write_jac
+      fname = string("jacobian", i, ".dat")
+      printMatrix(fname, jac)
+      println("finished printing jacobian")
+    end
+
+    # calculate Jacobian condition number
+    if print_cond
+      cond_j = cond(jac)
+      println("Condition number of jacobian = ", cond_j)
+    end
+
+    # calculate Newton step
+    delta_SL[:] = jac\(-res_0)  #  calculate Newton update
+    step_norm = norm(delta_SL)/m
+    println("step_norm = ", step_norm)
+
+    # perform Newton update
+    eqn.SL0[:] += step_fac*delta_SL  # update SL0
+
+    # write starting values for next iteration to file
+    if write_sol
+      writedlm("SL0$i.dat", eqn.SL0)
+    end
+
+    # write paraview files
+    if write_vis
+      vals = abs(real(eqn.SL0))  # remove unneded imaginary part
+      saveSolutionToMesh(mesh, vals)
+      fname = string("solution_newton", i)
+      writeVtkFiles(fname, mesh.m_ptr)
+    end
+ 
+
+    # write to convergence file
+    println(fconv, i, " ", res_0_norm, " ", step_norm)
+    flush(fconv)
+
+    # calculate residual at updated location, used for next iteration rhs
+    res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+
+    # write rhs to file
+    if write_rhs
+      tmp = i+1
+      writedlm("rhs$tmp.dat", res_0)
+    end
+
+
 
    if res_0_norm < res_tol
      println("Newton iteration converged with residual norm ", res_0_norm)
-     println("writing to convergence.dat")
-     println(fconv, i, " ", res_0_norm, " ", step_norm_1)
- 
      close(fconv)
+
      return nothing
    end
 
-
-
-
-    epsilon = 1e-20  # complex step perturbation
-    # calculate jacobian
-    for j=1:m
-      if j==1
-	eqn.SL0[j] +=  complex(0, epsilon)
-      else
-	eqn.SL0[j-1] -= complex(0, epsilon) # undo previous iteration pertubation
-	eqn.SL0[j] += complex(0, epsilon)
-      end
-
-      # evaluate residual
-      fill!(eqn.SL, zero(Tsol))
-      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
- #     println("column ", j, " of jacobian, SL = ", eqn.SL)
-      calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
-#      println("SL norm = ", norm(SL)/m)
-      
-    end  # end loop over rows of jacobian
-
-
-    # undo final perturbation
-    eqn.SL0[m] -= complex(0, epsilon)
-#    println("first row of jacobian is: ")
-#    for j=1:m
-#      println(j, "   ", jac[1,i])
-#    end
-
-#    @bp
-    # now jac is complete
-
-    fname = string("jacobian", i, ".dat")
-    printMatrix(fname, jac)
-    println("finished printing jacobian")
-
-    cond_j = cond(jac)
-    println("Condition number of jacobian = ", cond_j)
-
-
-    # write rhs to file just  before it is used
-    writedlm("rhs$i.dat", res_0)
-
-    delta_SL[:] = jac\(-res_0)  #  calculate Newton update
-    eqn.SL0[:] += step_fac*delta_SL  # update SL0
-
-
-    # write starting values for next iteration to file
-    writedlm("SL0$i.dat", eqn.SL0)
-
-    vals = abs(real(eqn.SL0))  # remove unneded imaginary part
-    saveSolutionToMesh(mesh, vals)
-    fname = string("solution_newton", i)
-    writeVtkFiles(fname, mesh.m_ptr)
- 
-
-    step_norm = norm(delta_SL)/m
-
-    println(fconv, i, " ", res_0_norm, " ", step_norm)
-    flush(fconv)
-#    println("delta_SL = ", delta_SL)
-#=
-    println("delta_sl = ")
-    for i=1:m
-      println(i, "   ", delta_SL[i])
-    end
-=#
-    println("step_norm = ", step_norm)
-#    println("jac = ", jac)
-
-    print("\n")
-
-    # check stopping criteria
     if (step_norm < step_tol)
-
-      # compute residual at final SL0
-      fill!(eqn.SL, zero(Tsol))
-      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
-      res_0_norm = norm(eqn.SL)/m
-      #
       println("Newton iteration converged with step_norm = ", step_norm)
       println("Final residual = ", res_0_norm)
       close(fconv)
+
       return nothing
     end
 
@@ -373,6 +387,7 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
 #    end
 
 
+    print("\n")
     step_norm_1 = step_norm
   end  # end loop over newton iterations
 
@@ -383,6 +398,55 @@ function newton_complex(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, 
   return nothing
 end
 
+
+function calcResidual(mesh, sbp, eqn, opts, func, res_0)
+# calculate the residual and its norm
+
+  m = length(res_0)
+
+  fill!(eqn.SL, zero(Tsol))
+  func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+#  res_0[:] = real(eqn.SL)  # is there an unnecessary copy here?
+
+  for j=1:m
+    res_0[j] = real(eqn.SL[j])
+  end
+
+  res_0_norm = norm(eqn.SL)/m
+  println("residual norm = ", res_0_norm)
+
+ return res_0_norm
+end
+
+function calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+
+  epsilon = 1e-20  # complex step perturbation
+  (m,n) = size(jac)
+  # calculate jacobian
+  for j=1:m
+    if j==1
+      eqn.SL0[j] +=  complex(0, epsilon)
+    else
+      eqn.SL0[j-1] -= complex(0, epsilon) # undo previous iteration pertubation
+      eqn.SL0[j] += complex(0, epsilon)
+    end
+
+    # evaluate residual
+    fill!(eqn.SL, zero(Tsol))
+    func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+#     println("column ", j, " of jacobian, SL = ", eqn.SL)
+    calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
+#      println("SL norm = ", norm(SL)/m)
+    
+  end  # end loop over rows of jacobian
+
+
+  # undo final perturbation
+  eqn.SL0[m] -= complex(0, epsilon)
+#
+
+  return nothing
+end
 
 
 function calcJacRow{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)

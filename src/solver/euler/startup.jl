@@ -23,7 +23,7 @@ include(joinpath(Pkg.dir("PDESolver"),"src/nl_solvers/rk4.jl"))  # timestepping
 include(joinpath(Pkg.dir("PDESolver"), "src/nl_solvers/newton_fd.jl"))  # timestepping
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
-
+include(joinpath(Pkg.dir("PDESolver"), "src/tools/misc.jl"))  # assorted utilities
 
 function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
 # figure out what type eqn.res needs to be, taking into account
@@ -168,7 +168,8 @@ getBCFunctors(mesh, sbp, eqn, opts)
 
 SL_exact = deepcopy(SL0)
 
-
+rmfile("IC.dat")
+writedlm("IC.dat", real(SL0))
 saveSolutionToMesh(mesh, SL0)
 
 writeVtkFiles("solution_ic",mesh.m_ptr)
