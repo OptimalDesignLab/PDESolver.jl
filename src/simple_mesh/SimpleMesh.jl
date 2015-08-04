@@ -4,7 +4,7 @@ include("SimpleMeshFunction2.jl")
 
 # include("../../../SummationByParts/src/useoperators.jl")
 
-export simpleMesh, Boundary, Interface
+export simpleMesh #, Boundary, Interface
 
 @doc """
 ### SimpleMesh
