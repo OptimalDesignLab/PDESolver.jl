@@ -1,10 +1,11 @@
 module SimpleMesh
 
 include("SimpleMeshFunction2.jl")
+include("../../../SummationByParts/src/SummationByParts.jl")
 
-# include("../../../SummationByParts/src/useoperators.jl")
+using SummationByParts
 
-export simpleMesh, Boundary, Interface
+export simpleMesh
 
 @doc """
 ### SimpleMesh
@@ -89,48 +90,4 @@ type simpleMesh{T <: FloatingPoint}
   end # Ends the function simpleMesh
 end # Ends the type simpleMesh
 
-
-
-#=
-function getElementVertCoords(mesh::simpleMesh)
-  vtx_coord = zeros(Float64, 2, 3, mesh.numEl)
-  for i = 1:mesh.numEl
-    # coords[1:2,:,i] = mesh.vtxCoord[mesh.ien[1:3,i],i]
-    # coords[1,1,i] = mesh.vtxCoord[1,]
-    vtx_coord[:,:,i] = mesh.vtxCoord[:,mesh.ien[1:3,i]]
-  end
-  return vtx_coord
-end
-
-function getShapeFunctionOrder(mesh::simpleMesh)
-  order::Int = mesh.nnpe - 1
-  return order
-end
-
-function getGlobalNodeNumber(mesh::simpleMesh, el_num::Integer, local_node_num::Integer)
-  return mesh.ien[local_node_num,el_num]
-end
-
-function getNumEl(mesh::simpleMesh)
-  return mesh.numEl
-end
-
-function numEdges(mesh::simpleMesh)
-  return mesh.numEdge
-end
-
-function getNumVerts(mesh::simpleMesh)
-  return mesh.numVert
-end
-
-function getNumNodes(mesh::simpleMesh)
-  return mesh.nnp
-end
-
-function getBoundaryEdge(mesh::simpleMesh)
-  return mesh.HBedges, mesh.VBedges 
-end
-
-# end # Ends the abstract type abstractMesh
-=#
 end # Ends the module
