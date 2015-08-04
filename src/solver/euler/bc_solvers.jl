@@ -140,7 +140,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
-  #   println("sat = ",  (sat))
+     println("sat = ",  (sat))
 
   euler_flux = zeros(Tsol, 4)
   euler_flux2 = zeros(Tsol, 4)
