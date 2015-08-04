@@ -32,6 +32,28 @@ function printbacktrace()
 end
 
 
+function smallmatvec!{T, T2, T3}(A::AbstractArray{T,2}, x::AbstractArray{T2,1}, b::AbstractArray{T3, 1})
+# performs matrix vector multiplication for small matrices
+# b gets overwritten
+# multiplication is expressed as linear combination of columns of A
+# optimized for column major format
+# does that matter if all operands fit in cache?
+(m,n) = size(A)
+
+# overwrite b, first column only
+for i=1:m
+  b[i] = x[1]*A[i, 1]
+end
+
+for i=2:n  # loop across columns
+  for j=1:m  # loop down columns
+    b[j] += A[j,i]*x[i]
+  end
+end
+
+  return nothing
+end
+
 function checkZeroRows{T <: Number}(A::AbstractArray{T,2}, tol::FloatingPoint)
 # checks each row of a matrix for zeros 
 # 2d matrices only

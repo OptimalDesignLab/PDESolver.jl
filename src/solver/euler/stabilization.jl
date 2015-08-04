@@ -163,10 +163,10 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
       #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i)::Int, face.faceR]::Int
       iR = sbp.facenodes[nbrnodeindex[i], face.faceR]::Int
       # apply the normal-derivative difference operator along the face
-      getdir!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
+      smallmatvec!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
       Dn = zero(T)
       Dn = directionaldifferentiate!(sbp, dirL, view(u,:,face.elementL), iL)
-      getdir!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
       Dn += directionaldifferentiate!(sbp, dirR, view(u,:,face.elementR), iR)
       # get differential area element: need 1/ds for each Dn term (here and loop
       # below)to get unit normal, and then need ds for integration, so net
@@ -187,8 +187,8 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
       iL = sbp.facenodes[i, face.faceL]::Int
       #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]::Int
       iR = sbp.facenodes[nbrnodeindex[i], face.faceR]::Int
-      getdir!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
-      getdir!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      smallmatvec!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
       for di = 1:dim
         tmpL = dirL[di]*EDn[i]/sbp.w[iL]
         tmpR = dirR[di]*EDn[i]/sbp.w[iR]
@@ -232,20 +232,20 @@ function edgestabilize!{Tmsh, Tsbp, Tsol, Tres}(sbp::SBPOperator{Tsbp}, ifaces::
     for i = 1:sbp.numfacenodes
       # iL = element-local index for ith node on left element face
       # iR = element-local index for ith node on right element face
-      iL = sbp.facenodes[i, face.faceL]::Int
+      iL = sbp.facenodes[i, face.faceL]
       #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
-      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]::Int
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
       # apply the normal-derivative difference operator along the face
-      getdir!(view(α,:,:,iL,face.elementL),view(sbp.facenormal,:,face.faceL), dirL)
+      smallmatvec!(view(α,:,:,iL,face.elementL),view(sbp.facenormal,:,face.faceL), dirL)
       fill!(Dn, zero(Tres))
       directionaldifferentiate!(sbp, dirL, view(u,:,:,face.elementL), iL, Dn)
-      getdir!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
       directionaldifferentiate!(sbp, dirR, view(u,:,:,face.elementR), iR, Dn)
       # get differential area element: need 1/ds for each Dn term (here and loop
       # below) to get unit normals, and then need ds for integration, so net
       # result is 1/ds
       ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
-                              view(dξdx,:,:,iL,face.elementL), workvec)::Tsbp  # this assumes Tsbp is a lower type than the others
+                              view(dξdx,:,:,iL,face.elementL), workvec)  # this assumes Tsbp is a lower type than the other
       # apply the scaling function
       scale = stabscale[i, facenum]
 #      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
@@ -261,11 +261,11 @@ function edgestabilize!{Tmsh, Tsbp, Tsol, Tres}(sbp::SBPOperator{Tsbp}, ifaces::
       end
     end
     for i = 1:sbp.numfacenodes
-      iL = sbp.facenodes[i, face.faceL]::Int
+      iL = sbp.facenodes[i, face.faceL]
       #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
-      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]::Int
-      getdir!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
-      getdir!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
+      smallmatvec!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
       # here we use hand-coded reverse-mode to apply the transposed
       # normal-derivative difference operator
       for di = 1:size(sbp.Q, 3)
