@@ -865,8 +865,8 @@ function calcEulerFlux{Tmsh, Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1
 # 2D  only
 
 
-  press = calcPressure(q, params)
-#  press = @getPressure(aux_vars)
+#  press = calcPressure(q, params)
+  press = @getPressure(aux_vars)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
   F[1] = q[1]*U
   F[2] = q[2]*U + dir[1]*press

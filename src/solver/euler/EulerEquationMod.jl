@@ -170,7 +170,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
   q::Array{Tsol,3}  # holds conservative variables for all nodes
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
-  aux_vars::Array{Tsol, 3}  # storage for auxiliary variables 
+  aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
   F_xi::Array{Tsol,4}  # flux in xi direction
 #  F_eta::Array{Tsol,3} # flux in eta direction
   res::Array{Tres, 3}  # result of computation
