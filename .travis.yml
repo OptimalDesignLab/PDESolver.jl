@@ -19,7 +19,7 @@ script:
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd()); Pkg.build("PDESolver")'
   - source ~/.julia/v0.4/PumiInterface/src/evars.sh
   - cd ~/.julia/v0.4/PDESolver/test
-  - julia --check-bounds=yes -e 'Pkg.test("PDESolver"; coverage=true)' "input_vals_channel.jl"
+  - julia --check-bounds=yes -e 'Pkg.test("PDESolver"; coverage=true)'
 after_success:
   - julia -e 'cd(Pkg.dir("PDESolver")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
 
