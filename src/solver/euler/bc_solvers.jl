@@ -22,7 +22,7 @@
 
 
 """->
-function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, F_xi::AbstractArray{Tres}, aux_vars::AbstractArray{Tsol, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
+function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, F_xi::AbstractArray{Tres}, aux_vars::AbstractArray{Tres, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   E1dq = zeros(Tres, 4)
   E2dq = zeros(Tres, 4)
