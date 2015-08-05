@@ -4,8 +4,8 @@ using FactCheck
 
 include("test_empty.jl")
 include("test_tools.jl")
-#include("test_lowlevel.jl")
-# include("test_simplemesh.jl")
+include("test_lowlevel.jl")
+include("test_simplemesh.jl")
 
 FactCheck.exitstatus()
 
