@@ -94,22 +94,22 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,  
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-@time dataPrep(mesh, sbp, eqn, SL0, opts)
-println("dataPrep @time printed above")
-@time evalVolumeIntegrals(mesh, sbp, eqn)
-println("volume integral @time printed above")
+dataPrep(mesh, sbp, eqn, SL0, opts)
+#println("dataPrep @time printed above")
+evalVolumeIntegrals(mesh, sbp, eqn)
+#println("volume integral @time printed above")
 
-@time evalBoundaryIntegrals(mesh, sbp, eqn)
-println("boundary integral @time printed above")
-
-
-
-@time addStabilization(mesh, sbp, eqn)
-println("edge stabilizing @time printed above")
+evalBoundaryIntegrals(mesh, sbp, eqn)
+#println("boundary integral @time printed above")
 
 
-@time assembleSolution(mesh, eqn, SL)
-println("assembly @time printed above")
+
+addStabilization(mesh, sbp, eqn)
+#println("edge stabilizing @time printed above")
+
+
+assembleSolution(mesh, eqn, SL)
+#println("assembly @time printed above")
 
 #applyMassMatrixInverse(eqn, SL)
 #println("Minv @time printed above")
@@ -125,7 +125,7 @@ println("assembly @time printed above")
 #print(" ", err_norm)
 
 
-print("\n")
+#print("\n")
 
 return nothing
 #return SL
@@ -858,7 +858,7 @@ end
    This is a low level function
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
