@@ -46,7 +46,8 @@ end
 
 
 #function runtest(flag::Int)
-
+println("ARGS = ", ARGS)
+println("size(ARGS) = ", size(ARGS))
 opts = read_input(ARGS[1])
 #opts = read_input("input_vals_channel2.jl")
 
