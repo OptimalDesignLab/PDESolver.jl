@@ -94,22 +94,22 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,  
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-dataPrep(mesh, sbp, eqn, SL0, opts)
-#println("dataPrep @time printed above")
-evalVolumeIntegrals(mesh, sbp, eqn)
-#println("volume integral @time printed above")
+@time dataPrep(mesh, sbp, eqn, SL0, opts)
+println("dataPrep @time printed above")
+@time evalVolumeIntegrals(mesh, sbp, eqn)
+println("volume integral @time printed above")
 
-evalBoundaryIntegrals(mesh, sbp, eqn)
-#println("boundary integral @time printed above")
-
-
-
-addStabilization(mesh, sbp, eqn)
-#println("edge stabilizing @time printed above")
+@time evalBoundaryIntegrals(mesh, sbp, eqn)
+println("boundary integral @time printed above")
 
 
-assembleSolution(mesh, eqn, SL)
-#println("assembly @time printed above")
+
+@time addStabilization(mesh, sbp, eqn)
+println("edge stabilizing @time printed above")
+
+
+@time assembleSolution(mesh, eqn, SL)
+println("assembly @time printed above")
 
 #applyMassMatrixInverse(eqn, SL)
 #println("Minv @time printed above")
@@ -125,7 +125,7 @@ assembleSolution(mesh, eqn, SL)
 #print(" ", err_norm)
 
 
-#print("\n")
+print("\n")
 
 return nothing
 #return SL
@@ -586,7 +586,10 @@ end
 
   This function calculates the Euler flux across the entire mesh by passing
   pieces of the eqn.q, eqn.aux_vars, eqn.f_xi and eqn.params to a low level
-  function.
+  function.  The flux is calculated in the xi and eta directions, scaled (mulitiplied)
+  by the Jacobian (so that when performing the integral we don't have to explictly
+  divide by the jacobian, it just cancels out with the jacobian factor introduced
+  here.
 
   This is a mid level function
 """->

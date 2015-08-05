@@ -1,7 +1,28 @@
 
 # this file contains all the flux solvers for weakly imposed boundary conditions
+@doc """
+### EulerEquationMod.RoeSolver
+  This calculates the Roe flux for boundary conditions at a node
 
-function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, aux_vars::AbstractArray{Tsol, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
+  Inputs:
+  q  : conservative variables of the fluid a
+  qg : conservative variables of the boundary
+  F_xi : (scaled) Euler flux in the xi and eta directions
+  aux_vars : vector of all auxiliary variables at this node
+  dxidx : dxidx matrix at the node
+  nrm : sbp face normal vector
+  params :: parameter structure
+
+  Outputs:
+    flux : vector to populate with solution
+
+  F_xi is accessed using *linear* indexing only.  The first 4 entries must be
+  the xi direction flux, the next 4 must be the eta direction flux.  This
+  makes it possible to pass view(F_xi, :, j, i :) and have it work correctly
+
+
+"""->
+function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, F_xi::AbstractArray{Tres}, aux_vars::AbstractArray{Tsol, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   E1dq = zeros(Tres, 4)
   E2dq = zeros(Tres, 4)
@@ -144,8 +165,15 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
 
   euler_flux = zeros(Tsol, 4)
   euler_flux2 = zeros(Tsol, 4)
+
+
   calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
-#  calcEulerFlux(params, qg, aux_vars, [nx, ny], euler_flux2)
+
+  # calculate Euler flux in wall normal directiona
+#  for i=1:4
+#    euler_flux[i] = F_xi[i]*nrm[1] + F_xi[i+4]*nrm[2]
+#  end
+
 
  #    println("euler_flux = ",  (euler_flux))
   
