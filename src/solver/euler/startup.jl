@@ -10,6 +10,7 @@
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/nl_solvers"))
 #include("complexify.jl")
 using PDESolverCommon
 using PumiInterface # pumi interface
@@ -17,10 +18,11 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
 using ForwardDiff
+using nl_solvers   # non-linear solvers
 
-include(joinpath(Pkg.dir("PDESolver"),"src/nl_solvers/rk4.jl"))  # timestepping
+#include(joinpath(Pkg.dir("PDESolver"),"src/nl_solvers/rk4.jl"))  # timestepping
 
-include(joinpath(Pkg.dir("PDESolver"), "src/nl_solvers/newton_fd.jl"))  # timestepping
+#include(joinpath(Pkg.dir("PDESolver"), "src/nl_solvers/newton_fd.jl"))  # timestepping
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 #include(joinpath(Pkg.dir("PDESolver"), "src/tools/misc.jl"))  # assorted utilities
@@ -173,7 +175,7 @@ rmfile("IC.dat")
 writedlm("IC.dat", real(SL0))
 saveSolutionToMesh(mesh, SL0)
 
-writeVtkFiles("solution_ic",mesh.m_ptr)
+writeVisFiles(mesh, "solution_ic")
 
 
 
@@ -219,7 +221,7 @@ if opts["solve"]
 
     vals = abs(real(eqn.SL))  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
-    writeVtkFiles("solution_error", mesh.m_ptr)
+    writeVisFiles(mesh, "solution_error")
     printBoundaryEdgeNums(mesh)
     printSolution(mesh, vals)
   elseif flag == 7
@@ -266,7 +268,7 @@ if opts["solve"]
       saveSolutionToMesh(mesh, real(SL0))
       printSolution(mesh, real(SL0))
       printCoordinates(mesh)
-      writeVtkFiles("solution_done",mesh.m_ptr)
+      writeVisFiles(mesh, "solution_done")
 
 end  # end if (opts[solve])
   #end

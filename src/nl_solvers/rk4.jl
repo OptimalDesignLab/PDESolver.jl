@@ -3,8 +3,12 @@
 # Anthony Ashley
 
 
+export rk4
+
 # base RK4 method:
 # dxdt = f(t,x)
+
+
 
 # Inputs:
 #   f:      function, that accepts input: (scalar t, vector x_old, vector x_new)
@@ -29,7 +33,7 @@ rk4
     * opts : options dictionary
     * res_tol : keyword arg, residual topping tolerance
 """->
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractSolutionData, opts; res_tol = -1.0) 
+function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
 # res_tol is alternative stopping criteria
@@ -107,7 +111,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
     if iter % 1000 == 0
 
       saveSolutionToMesh(mesh, SL0)
-      writeVtkFiles("solution_rk$iter", mesh.m_ptr)
+      writeVisFiles(mesh, "solution_rk$iter")
     end
 
 
