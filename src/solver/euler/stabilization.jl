@@ -218,7 +218,7 @@ function getdiffelementarea{T, T2, T3}(nrm::AbstractArray{T,1}, dxidx::AbstractA
 
 
 # for vector equations
-function edgestabilize!{Tmsh, Tsbp, Tsol, Tres}(sbp::SBPOperator{Tsbp}, ifaces::Array{Interface},
+function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Interface},
                            u::AbstractArray{Tsol,3}, x::AbstractArray{Tmsh,3},
                            dξdx::AbstractArray{Tmsh,4}, jac::AbstractArray{Tmsh,2},
                            α::AbstractArray{Tmsh,4},stabscale::AbstractArray{Tres,2},
@@ -321,7 +321,7 @@ end
     This is a low level function
 """->
 # low level function
-function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tsbp,1}, params::ParamType{2} )
+function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, params::ParamType{2} )
 # calculate stabscale for a single node
 
 #     println("==== entering stabscale ====")
@@ -385,7 +385,7 @@ function stabscale{Tmsh, Tsbp, Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractAr
   This is a mid level function
 """->
 # mid level function
-function stabscale{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
+function stabscale{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol})
 # calculate stabscale for entire mesh
 
  nbrnodeindex = Array(sbp.numfacenodes:-1:1)
@@ -417,7 +417,7 @@ end
 """
 # used by EulerData Constructor - not that that matters for any reason
 # mid level function
-function calcEdgeStabAlpha{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
+function calcEdgeStabAlpha{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
 # calculate alpha, needed by edge stabilization
 
 

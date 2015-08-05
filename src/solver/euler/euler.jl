@@ -142,7 +142,7 @@ end  # end evalEuler
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerData{Tsol}, SL0::AbstractVector{Tsol}, opts)
+function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, SL0::AbstractVector{Tsol}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # disassembles SL0 into eqn.q
 # calculates all mesh wide quantities in eqn
@@ -360,7 +360,7 @@ end
   This is a mid level function.
 """
 # mid level function
-function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
+function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -393,7 +393,7 @@ end
 
 """->
 # mid level function
-function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
+function evalBoundaryIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the boundary
 # mesh : a mesh type, used to access information about the mesh
 # sbp : an SBP operator, used to get stiffness matricies and stuff
@@ -441,7 +441,7 @@ end
 """->
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
-function addStabilization{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
+function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol})
 
 #  println("==== start of addStabilization ====")
   # alpha calculated like in edgestabilize! documentation

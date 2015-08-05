@@ -27,7 +27,7 @@ include("bc_solvers.jl")
   This is a mid level function.
 """->
 # mid level function
-function calcBoundaryFlux{Tmsh, Tsbp, Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Boundary,1}, bndryflux::AbstractArray{Tres, 3})
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Boundary,1}, bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
 #  println("enterted calcBoundaryFlux")
