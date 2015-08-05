@@ -15,8 +15,8 @@ where input_file_name.jl is in your current directory.
 "delta_t" = timestep for rk4 (floating point)
 "t_max" = maximum time for rk4 (floating point)
 
-"smb_name" : name of smb file if using Pumi (string)
-"dmg_name" : name of dmg file if using Pumi (string)
+"smb_name" : name of smb file if using Pumi (string), if it appears to be a relative path (ie. does not begin with a "/"), it is relative to the installation directory of PDESolver.  If it appears to be an absolute path, it is treated as such
+"dmg_name" : name of dmg file if using Pumi (string), same behavior as "smb_name", default ".null" (you must omit this key if you are using the null geometric model)
 
 "IC_name" : initial condition function name (string)
 

@@ -42,6 +42,17 @@ rho_free = get!(arg_dict, "rho_free", -1)
 E_free = get!(arg_dict, "E_free", -1)
 
 
+# deal with file names
+smb_name = arg_dict["smb_name"]
+arg_dict["smb_name"] = joinpath(Pkg.dir("PDESolver"), smb_name)
+
+if haskey(arg_dict, "dmg_name")
+  dmg_name = arg_dict["dmg_name"]
+  arg_dict["dmg_name"] = joinpath(Pkg.dir("PDESolver"), dmg_name)
+else  # no dmg_name specified
+  arg_dict["dmg_name"] = ".null"
+end
+
 # debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
