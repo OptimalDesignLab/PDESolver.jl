@@ -2,3 +2,4 @@ julia 0.4-
 FactCheck 0.2.5
 ArrayViews
 Debug
+ForwardDiff
