@@ -1,4 +1,4 @@
-# Launching a Simulation
+# Launching a simulation
 To solver the Euler equations, do
 
 julia /path/to/startup.jl "input_file_name.jl"
