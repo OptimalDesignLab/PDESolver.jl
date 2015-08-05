@@ -104,7 +104,7 @@ evalBoundaryIntegrals(mesh, sbp, eqn)
 
 
 
- addStabilization(mesh, sbp, eqn)
+addStabilization(mesh, sbp, eqn)
 #println("edge stabilizing @time printed above")
 
 

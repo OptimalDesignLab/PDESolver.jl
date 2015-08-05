@@ -144,6 +144,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
   @assert( length(u) == length(res) )
   dim = size(sbp.Q, 3)
 
+
   # JEH: temporary, until nbrnodeindex is part of sbp type
   nbrnodeindex = Array(sbp.numfacenodes:-1:1)
 
@@ -202,6 +203,20 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
 end
 
 
+
+function getdiffelementarea{T, T2, T3}(nrm::AbstractArray{T,1}, dxidx::AbstractArray{T2,2},
+                                 workvec::AbstractArray{T3,1})
+				   fill!(workvec, zero(T3))
+				     for di1 = 1:size(nrm,1)
+				           for di2 = 1:size(nrm,1)
+					           workvec[di2] += nrm[di1]*dxidx[di1,di2]
+						       end
+						         end
+							   return norm(workvec)
+							 end
+
+
+
 # for vector equations
 function edgestabilize!{Tmsh, Tsbp, Tsol, Tres}(sbp::SBPOperator{Tsbp}, ifaces::Array{Interface},
                            u::AbstractArray{Tsol,3}, x::AbstractArray{Tmsh,3},
@@ -214,6 +229,8 @@ function edgestabilize!{Tmsh, Tsbp, Tsol, Tres}(sbp::SBPOperator{Tsbp}, ifaces::
   @assert( size(dξdx,4) == size(α,4) == size(u,3) == size(res,3) == size(x,3) )
   @assert( length(u) == length(res) )
   dim = size(sbp.Q, 3)
+
+
 
   # JEH: temporary, until nbrnodeindex is part of sbp type
   nbrnodeindex = Array(sbp.numfacenodes:-1:1)

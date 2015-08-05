@@ -55,7 +55,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
  q = [1.0, 2.0, 3.0, 7.0]
  qg = deepcopy(q)
- aux_vars = [0.0]
+ aux_vars = [EulerEquationMod.calcPressure(q, eqn.params)]
  dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
  dir = [1.0, 0.0]
  F = zeros(4)
