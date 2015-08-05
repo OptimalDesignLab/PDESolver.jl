@@ -61,6 +61,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
  F = zeros(4)
  coords = [1.0,  0.0]
 
+ F_xi = zeros(4,2)
 
  context("--- Testing calc functions ---") do
 
@@ -78,8 +79,15 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
 
+   # calc Euler fluxs needed by Roe solver
    F_roe = zeros(4)
-   EulerEquationMod.RoeSolver(q, qg, aux_vars, dxidx, dir, F_roe, eqn.params)
+
+   nrm1 = [dxidx[1,1], dxidx[1,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(F_xi, :, 1))
+   nrm2 = [dxidx[2,1], dxidx[2,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(F_xi, :, 2))
+
+   EulerEquationMod.RoeSolver(q, qg, F_xi, aux_vars, dxidx, dir, F_roe, eqn.params)
    @fact F_roe => roughly(-F) 
 
 
@@ -87,19 +95,19 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, q)
 
    func1 = EulerEquationMod.isentropicVortexBC()
-   func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, F_xi, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    @fact F_roe => roughly(-F) 
 
    q[3] = 0  # make flow parallel to wall
    func1 = EulerEquationMod.noPenetrationBC()
-   func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, F_xi, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    @fact F_roe => roughly(-F) 
 
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
    func1 = EulerEquationMod.Rho1E2U3BC()
-   func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, F_xi, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    @fact F_roe => roughly(-F) 
 
