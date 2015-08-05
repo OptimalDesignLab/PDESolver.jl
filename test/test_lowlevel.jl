@@ -118,17 +118,17 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    fill!(F, 0.0)
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, F)
-   @fact F[1] => roughly(1.0)
-   @fact F[2] => roughly(0.35355)
-   @fact F[3] => roughly(0.35355)
-   @fact F[4] => roughly(2.0)
+   @fact F[1] => roughly(1.0, atol=1e-4)
+   @fact F[2] => roughly(0.35355, atol=1e-4)
+   @fact F[3] => roughly(0.35355, atol=1e-4)
+   @fact F[4] => roughly(2.0, atol=1e-4)
 
    fill!(F, 0.0)
    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, F)
-   @fact F[1] => roughly(2.000)
-   @fact F[2] => roughly(0.000)
-   @fact F[3] => roughly(-1.3435)
-   @fact F[4] => roughly(2.236960)
+   @fact F[1] => roughly(2.000, atol=1e-4)
+   @fact F[2] => roughly(0.000, atol=1e-4)
+   @fact F[3] => roughly(-1.3435, atol=1e-4)
+   @fact F[4] => roughly(2.236960, atol=1e-4)
 
 
 
