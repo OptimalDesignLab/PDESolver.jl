@@ -376,6 +376,8 @@ function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, s
     weakdifferentiate!(sbp, i, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
   end
 
+  artificialViscosity(mesh, sbp, eqn)
+
 
   # need source term here
 

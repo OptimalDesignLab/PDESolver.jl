@@ -240,6 +240,7 @@ include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
 include("constant_diff.jl")
+include("artificialViscosity.jl")
 
 
 
