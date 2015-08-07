@@ -10,7 +10,7 @@ arg_dict = Dict{Any, Any} (
 "var3" => 3.5,
 "var4" => [1,2,3],
 "var3" => 4,
-"run_type" => 1,
+"run_type" => 5,
 "order" => 1,
 "IC_name" => "ICIsentropicVortex",
 "numBC" => 2,
@@ -26,4 +26,7 @@ arg_dict = Dict{Any, Any} (
 "res_tol" => 1e-9,
 "step_tol" => 1e-10,
 "itermax" => 20,
+"write_sparsity" => true,
+"write_jac" => true,
+"write_edge_vertnums" => true,
 )

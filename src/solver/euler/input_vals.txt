@@ -50,6 +50,7 @@ where input_file_name.jl is in your current directory.
 "write_boundarynums"  : writes the elements  number, global face number of each face with a boundary condition, one per line, (Bool), default false
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
+"write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false
 
 # Newton's Method debugging options
 "write_rhs"  : write rhs (residual) to a file (rhs$i.dat) each iteration, (Bool), default false

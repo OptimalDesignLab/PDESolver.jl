@@ -62,7 +62,7 @@ get!(arg_dict, "write_face_vertnums", false)
 get!(arg_dict, "write_boundarynums", false)
 get!(arg_dict, "write_dxidx", false)
 get!(arg_dict, "write_coords", false)
-
+get!(arg_dict, "write_sparsity", false)
 
 # Newton's Method options
 get!(arg_dict, "write_rhs", false)
