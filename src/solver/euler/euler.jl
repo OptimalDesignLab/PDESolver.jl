@@ -94,7 +94,7 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,  
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
- dataPrep(mesh, sbp, eqn, SL0, opts)
+dataPrep(mesh, sbp, eqn, SL0, opts)
 #println("dataPrep @time printed above")
 evalVolumeIntegrals(mesh, sbp, eqn)
 #println("volume integral @time printed above")
@@ -142,7 +142,7 @@ end  # end evalEuler
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::AbstractEulerData{Tsol}, SL0::AbstractVector{Tsol}, opts)
+function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, SL0::AbstractVector{Tsol}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # disassembles SL0 into eqn.q
 # calculates all mesh wide quantities in eqn
@@ -360,7 +360,7 @@ end
   This is a mid level function.
 """
 # mid level function
-function evalVolumeIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
+function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -395,7 +395,7 @@ end
 
 """->
 # mid level function
-function evalBoundaryIntegrals{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim})
+function evalBoundaryIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
 # evaluate all the integrals over the boundary
 # mesh : a mesh type, used to access information about the mesh
 # sbp : an SBP operator, used to get stiffness matricies and stuff
@@ -443,7 +443,7 @@ end
 """->
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
-function addStabilization{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol})
+function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol})
 
 #  println("==== start of addStabilization ====")
   # alpha calculated like in edgestabilize! documentation
@@ -588,7 +588,10 @@ end
 
   This function calculates the Euler flux across the entire mesh by passing
   pieces of the eqn.q, eqn.aux_vars, eqn.f_xi and eqn.params to a low level
-  function.
+  function.  The flux is calculated in the xi and eta directions, scaled (mulitiplied)
+  by the Jacobian (so that when performing the integral we don't have to explictly
+  divide by the jacobian, it just cancels out with the jacobian factor introduced
+  here.
 
   This is a mid level function
 """->
@@ -857,7 +860,7 @@ end
    This is a low level function
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
@@ -867,8 +870,8 @@ function calcEulerFlux{Tmsh, Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1
 # 2D  only
 
 
-  press = calcPressure(q, params)
-#  press = @getPressure(aux_vars)
+#  press = calcPressure(q, params)
+  press = @getPressure(aux_vars)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
   F[1] = q[1]*U
   F[2] = q[2]*U + dir[1]*press

@@ -22,9 +22,9 @@ end
   a node.  The user should use this function to access pressure rather 
   than accessing the vector of auxiliary variables directly
 """->
-macro getPressure(aux_vars)
+macro getPressure(vars)
   pressure_index = 1
-  return :($aux_vars[$pressure_index])
+  return :($vars[$pressure_index])
 end
 
 #=

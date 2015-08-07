@@ -1,5 +1,5 @@
 #include("new_file2.jl")  # creates arg_dict
-include("../tools/misc.jl")
+#include("../tools/misc.jl")
 @doc """
 ### read_input
 
@@ -42,6 +42,17 @@ rho_free = get!(arg_dict, "rho_free", -1)
 E_free = get!(arg_dict, "E_free", -1)
 
 
+# deal with file names
+smb_name = arg_dict["smb_name"]
+arg_dict["smb_name"] = joinpath(Pkg.dir("PDESolver"), smb_name)
+
+if haskey(arg_dict, "dmg_name")
+  dmg_name = arg_dict["dmg_name"]
+  arg_dict["dmg_name"] = joinpath(Pkg.dir("PDESolver"), dmg_name)
+else  # no dmg_name specified
+  arg_dict["dmg_name"] = ".null"
+end
+
 # debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
@@ -51,6 +62,23 @@ get!(arg_dict, "write_face_vertnums", false)
 get!(arg_dict, "write_boundarynums", false)
 get!(arg_dict, "write_dxidx", false)
 get!(arg_dict, "write_coords", false)
+
+
+# Newton's Method options
+get!(arg_dict, "write_rhs", false)
+get!(arg_dict, "write_jac", false)
+get!(arg_dict, "print_cond", false)
+get!(arg_dict, "write_sol", false)
+get!(arg_dict, "write_vis", false)
+  
+  # figure out Newtons method type
+run_type = arg_dict["run_type"]
+if run_type == 4
+  arg_dict["jac_method"] = 1  # finite difference
+elseif run_type == 5
+  arg_dict["jac_method"] = 2
+end
+
 
 # testing options
 get!(arg_dict, "solve", true)

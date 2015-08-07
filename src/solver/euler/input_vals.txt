@@ -1,4 +1,4 @@
-# Launching a Simulation
+# Launching a simulation
 To solver the Euler equations, do
 
 julia /path/to/startup.jl "input_file_name.jl"
@@ -15,8 +15,8 @@ where input_file_name.jl is in your current directory.
 "delta_t" = timestep for rk4 (floating point)
 "t_max" = maximum time for rk4 (floating point)
 
-"smb_name" : name of smb file if using Pumi (string)
-"dmg_name" : name of dmg file if using Pumi (string)
+"smb_name" : name of smb file if using Pumi (string), if it appears to be a relative path (ie. does not begin with a "/"), it is relative to the installation directory of PDESolver.  If it appears to be an absolute path, it is treated as such
+"dmg_name" : name of dmg file if using Pumi (string), same behavior as "smb_name", default ".null" (you must omit this key if you are using the null geometric model)
 
 "IC_name" : initial condition function name (string)
 
@@ -41,7 +41,7 @@ where input_file_name.jl is in your current directory.
 "rho_free" : free stream density
 "E_free" : free stream energy
 
-# debugging options
+# solver debugging options
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
@@ -50,6 +50,13 @@ where input_file_name.jl is in your current directory.
 "write_boundarynums"  : writes the elements  number, global face number of each face with a boundary condition, one per line, (Bool), default false
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
+
+# Newton's Method debugging options
+"write_rhs"  : write rhs (residual) to a file (rhs$i.dat) each iteration, (Bool), default false
+"write_jac"  : write the Jacobian to a file (jacobian$i.dat) each iteration, (Bool), default false
+"print_cond" : calculate and print Jacobian condition number each iteration, (Bool), default false
+"write_sol"  : write the solution to a file (SL$i.dat) each iteration, (Bool), default false
+"write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
 
 # testing options
 "solve" : call the solver specified by run_type, (Bool), default true

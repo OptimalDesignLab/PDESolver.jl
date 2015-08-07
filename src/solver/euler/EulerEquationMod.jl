@@ -1,11 +1,14 @@
 module EulerEquationMod
 
 include("complexify.jl")
+
 using ArrayViews
 using PDESolverCommon
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+
+#include(joinpath(Pkg.dir("PDESolver"), "src/tools/misc.jl"))
 
 # the AbstractEquation type is declared in CommonTypes
 # every equation will have to declare a new type that is a subtype of AbstractEquation
@@ -167,7 +170,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
   q::Array{Tsol,3}  # holds conservative variables for all nodes
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
-  aux_vars::Array{Tsol, 3}  # storage for auxiliary variables 
+  aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
   F_xi::Array{Tsol,4}  # flux in xi direction
 #  F_eta::Array{Tsol,3} # flux in eta direction
   res::Array{Tres, 3}  # result of computation
@@ -239,7 +242,6 @@ include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
-include("constant_diff.jl")
 include("artificialViscosity.jl")
 
 
@@ -257,7 +259,7 @@ include("artificialViscosity.jl")
 """->
 # used by EulerData Constructor
 # mid level functions
-function calcMassMatrixInverse{Tmsh, Tsbp, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator{Tsbp}, eqn::EulerData{Tsol, Tdim} )
+function calcMassMatrixInverse{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim} )
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 
