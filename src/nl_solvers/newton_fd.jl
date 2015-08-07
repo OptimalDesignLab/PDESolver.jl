@@ -91,8 +91,9 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
     # print as determined by options
     if write_jac
-      fname = string("jacobian", i, ".dat")
-      printMatrix(fname, jac)
+#      fname = string("jacobian", i, ".dat")
+#      printMatrix(fname, jac)
+      writedlm("jacobian$i.dat", jac)
       println("finished printing jacobian")
     end
 
