@@ -86,7 +86,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
     elseif jac_method == 2
 #      println("calculating complex step jacobian")
-      calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+      @time calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+      println("jacobian calculate @time printed above")
     end
 
     # print as determined by options
@@ -104,7 +105,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     end
 
     # calculate Newton step
-    delta_SL[:] = jac\(-res_0)  #  calculate Newton update
+    @time delta_SL[:] = jac\(-res_0)  #  calculate Newton update
+    println("matrix solve @time prined above")
     step_norm = norm(delta_SL)/m
     println("step_norm = ", step_norm)
 
@@ -187,9 +189,12 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
   m = length(res_0)
 
-  fill!(eqn.SL, 0.0)
-  func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+  func(mesh, sbp, eqn, opts)
 #  res_0[:] = real(eqn.SL)  # is there an unnecessary copy here?
+
+  fill!(eqn.SL, 0.0)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
 
   for j=1:m
     res_0[j] = real(eqn.SL[j])
@@ -220,10 +225,14 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
       eqn.SL0[j] += epsilon
     end
 
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
     # evaluate residual
-    fill!(eqn.SL, 0.0)
-    func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+    func(mesh, sbp, eqn, opts)
 #     println("column ", j, " of jacobian, SL = ", eqn.SL)
+
+
+    fill!(eqn.SL, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
     calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
     
@@ -231,6 +240,7 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
 
   # undo final perturbation
   eqn.SL0[m] = entry_orig
+
 
   return nothing
 end
@@ -271,9 +281,12 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
       eqn.SL0[j] += complex(0, epsilon)
     end
 
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
     # evaluate residual
+    func(mesh, sbp, eqn, opts)
+
     fill!(eqn.SL, 0.0)
-    func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
 #     println("column ", j, " of jacobian, SL = ", eqn.SL)
     calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
@@ -289,6 +302,101 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
 end
 
 
+function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
+
+  epsilon = 1e-20  # complex step perturbation
+  pert = eltype(eqn.q)(0, epsilon)
+  (m,n) = size(jac)
+
+  # for each color, store the perturbed element corresponding to each element
+  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
+
+  for color=1:mesh.numColors  # loop over colors
+    getPertNeighbors(mesh, color, perturbed_els)
+    for j=1:mesh.numNodesPerElement  # loop over nodes 
+      for i=1:mesh.numDofPerNode  # loop over dofs on each node
+        # do perturbation for each residual here:
+
+	# apply perturbation to q
+        applyPerturbation(eqn.q, mesh.color_masks[color], pert, i, j)
+	# evaluate residual
+        func(mesh, sbp, eqn, opts)
+
+	# assemble res into jac
+
+	for k=1:mesh.numEl  # loop over elements in residual
+	  el_pert = perturbed_els[k] # get perturbed element
+          if el_pert != 0   # if element was actually perturbed for this color
+
+	    for j_j = 1:mesh.numNodesPerElement
+	      for i_i = 1:mesh.numDofPerNode
+		row_idx = mesh.dofs[i_i, j_j, k]
+		col_idx = mesh.dofs[i_i, j_j, el_pert]
+
+	        jac[row_idx, col_idx] = imag(eqn.res[i,j,k])/epsilon
+	     end
+	   end
+	 end  # end if el_pert != 0
+       end  # end loop over k
+
+      # undo perturbation
+      # is this the best way to undo the perturbation?
+      # faster to just take the real part of every element?
+      applyPerturbation(eqn.q, mesh.color_masks[color], -pert, i, j)
+
+      end  # end loop i
+    end  # end loop j
+  end  # end loop over colors
+
+  # now jac is complete
+
+  return nothing
+
+end
+
+function getPertNeighbors(mesh, color, arr)
+# populate the array with the element that is perturbed for each element
+# element number == 0 if no perturbation
+
+  num_neigh = size(mesh.neighbor_colors, 1)
+#  fill!(arr, 0)
+  for i=1:mesh.numEl
+    
+    # find out if current element or its neighbors have the current color
+    pos = 0
+    for j=1:num_neigh
+      if color == mesh.neighbor_colors[j, i]
+	pos = j
+	break
+      end
+    end
+
+    arr[i] = mesh.neighbor_nums[pos, i]
+  end
+
+  return nothing
+end
+
+function applyPerturbation(arr, mask, pert, i, j)
+  # applys perturbation puert to array arr according to mask mask
+  # i, j specify the dof, node number within arr
+  # the length of mask must equal the third dimension of arr
+
+  @assert size(arr,3) == length(mask)
+  @assert i <= size(arr, 1)
+  @assert j <= size(arr, 2)
+
+  (ndof, nnodes, numel) = size(arr)
+
+  for k=1:numel
+    arr[i, j, k] += pert*mask[k]
+  end
+
+  return nothing
+end
+
+
+ 
 function calcJacRow{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
@@ -303,6 +411,14 @@ return nothing
 
 end
 
+
+
+
+
+function calcJacComplexSparse(mesh, sbp, eqn, opts, func, jac)
+
+return nothing
+end
 @doc """
 ### newton_check
 
@@ -332,7 +448,7 @@ function newton_check(func, mesh, sbp, eqn, opts)
     eqn.SL0[i] += complex(0, epsilon*v[i])  # apply perturbation
   end
 
-  func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+  func(mesh, sbp, eqn, opts)
   println("evaluated directional derivative")
 
   # calculate derivative
@@ -413,10 +529,12 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       epsilon = 1e-20
 
       eqn.SL0[j] += complex(0, epsilon)
-
+      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
       # evaluate residual
-      fill!(eqn.SL, 0.0)
       func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+
+      fill!(eqn.SL, 0.0)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
  #     println("column ", j, " of jacobian, SL = ", eqn.SL)
       calcJacRow(jac_col, eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
@@ -436,16 +554,23 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       jac_col = zeros(Float64, mesh.numDof)
       println("\ncalculating column ", j, " of the jacobian")
 
+     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+     fill!(eqn.SL, 0.0)
+     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
      res_0 = copy(eqn.SL)
 
       epsilon = 1e-6
 
       eqn.SL0[j] += epsilon
 
+      eqn.disassmbleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+
       # evaluate residual
-      fill!(eqn.SL, 0.0)
       func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+
+      fill!(eqn.SL, 0.0)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
  #     println("column ", j, " of jacobian, SL = ", eqn.SL)
 
       calcJacRow(jac_col, res_0, eqn.SL, epsilon)

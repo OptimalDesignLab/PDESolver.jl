@@ -63,6 +63,7 @@ get!(arg_dict, "write_boundarynums", false)
 get!(arg_dict, "write_dxidx", false)
 get!(arg_dict, "write_coords", false)
 get!(arg_dict, "write_sparsity", false)
+get!(arg_dict, "verify_coloring", true)
 
 # Newton's Method options
 get!(arg_dict, "write_rhs", false)

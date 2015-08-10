@@ -17,7 +17,7 @@
 # types should be AbstractArrays{T, N}, specifying T according to 
 # what type the original array is (from either the Equation or Mesh object)
 
-# The proper order for arguments is (mesh, sbp, eqn).
+# The proper order for arguments is (mesh, sbp, eqn, opts).
 
 
 # Rules: 
@@ -77,6 +77,12 @@ export evalEuler
   The function calls only high level functions, all of which take the same
   four arguments.  Mid level function also take the same arguments.
 
+  The input/output variables are eqn.q and eqn.res, respectively.
+  eqn.SL0 and eqn.SL exist as reusable storage
+
+  The function disassembleSolution takes SL0 and puts it into eqn.q
+  The function assembleSolution takes eqn.res and puts it into SL
+
   Arguments:
     * mesh  : a mesh object
     * sbp   : SBP operator object
@@ -88,13 +94,13 @@ export evalEuler
 """->
 # this function is what the timestepper calls
 # high level function
-function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,  SL0, SL, t=0.0)
+function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t=0.0)
 # SL is popualted with du/dt
 # SL0 is q at previous timestep
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-dataPrep(mesh, sbp, eqn, SL0, opts)
+dataPrep(mesh, sbp, eqn, opts)
 #println("dataPrep @time printed above")
 evalVolumeIntegrals(mesh, sbp, eqn)
 #println("volume integral @time printed above")
@@ -108,7 +114,7 @@ addStabilization(mesh, sbp, eqn)
 #println("edge stabilizing @time printed above")
 
 
-assembleSolution(mesh, eqn, SL)
+#assembleSolution(mesh, sbp, eqn, SL)
 #println("assembly @time printed above")
 
 #applyMassMatrixInverse(eqn, SL)
@@ -142,7 +148,7 @@ end  # end evalEuler
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, SL0::AbstractVector{Tsol}, opts)
+function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # disassembles SL0 into eqn.q
 # calculates all mesh wide quantities in eqn
@@ -160,7 +166,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
   fill!(eqn.res, 0.0)
   
   # disassemble SL0 into eqn.q
-  disassembleSolution(mesh, sbp, eqn, opts, SL0)
+#  disassembleSolution(mesh, sbp, eqn, opts, SL0)
   # disassmble SL0 into eqn.q
 
   getAuxVars(mesh, eqn)
@@ -743,6 +749,7 @@ end
 
 
 
+#=
 @doc """
 ### EulerEquationMod.disassembleSolution
 
@@ -753,6 +760,7 @@ end
   This is a mid level function, and does the right thing regardless of equation
   dimension.
 """->
+=#
 # mid level function (although it doesn't need Tdim)
 function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, SL0::AbstractArray{Tsol, 1})
   # disassemble SL0 into eqn.
@@ -805,7 +813,7 @@ end
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol}, SL::AbstractArray{Tres,1})
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, SL::AbstractArray{Tres,1})
 
 #  println("in assembleSolution")
 
@@ -820,11 +828,6 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::Euler
     for j=1:mesh.numNodesPerElement
       for k=1:4  # loop over dofs on the node
 	dofnum_k = mesh.dofs[k, j, i]
-
-	if dofnum_k == 21
-#	  println("element = ", i, " , node = ", j, " , dof = ", k)
-#	  println("res = ", eqn.res[k, j, i])
-	end
 	SL[dofnum_k] += eqn.res[k,j,i]
       end
     end

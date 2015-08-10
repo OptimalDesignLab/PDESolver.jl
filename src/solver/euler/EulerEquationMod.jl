@@ -147,6 +147,21 @@ abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
 # low level functions should take in EulerData{Tsol, 2} or EulerData{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
 
+
+# now that EulerData is declared, include other files that use it
+
+include("euler_macros.jl")
+include("output.jl")
+include("common_funcs.jl")
+#include("sbp_interface.jl")
+include("euler.jl")
+include("ic.jl")
+include("bc.jl")
+include("stabilization.jl")
+#include("constant_diff.jl")
+
+
+
 @doc """
 ### EulerEquationMod.EulerData_
 
@@ -184,6 +199,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
 
   Minv::Array{Float64, 1}  # invese mass matrix
 
+  disassembleSolution::Function # function SL0 -> eqn.q
+  assembleSolution::Function  # function : eqn.res -> SL
+
   # inner constructor
 #  function EulerData(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
   function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
@@ -198,6 +216,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
     eqn.cv = eqn.R/(eqn.gamma - 1)
 =#
     eqn.res_type = Tres
+    eqn.disassembleSolution = disassembleSolution
+    eqn.assembleSolution = assembleSolution
 
     calcMassMatrixInverse(mesh, sbp, eqn)
     calcEdgeStabAlpha(mesh, sbp, eqn)
@@ -231,18 +251,6 @@ end  # end of type declaration
 
 
 
-
-# now that EulerData is defined, include other files that use it
-
-include("euler_macros.jl")
-include("output.jl")
-include("common_funcs.jl")
-#include("sbp_interface.jl")
-include("euler.jl")
-include("ic.jl")
-include("bc.jl")
-include("stabilization.jl")
-#include("constant_diff.jl")
 
 
 
