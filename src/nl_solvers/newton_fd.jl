@@ -86,6 +86,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
     elseif jac_method == 2
 #      println("calculating complex step jacobian")
+#      @time calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
+
       @time calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
       println("jacobian calculate @time printed above")
     end
@@ -308,21 +310,32 @@ function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
   pert = eltype(eqn.q)(0, epsilon)
   (m,n) = size(jac)
 
+  fill!(jac, 0.0)
+
   # for each color, store the perturbed element corresponding to each element
   perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
 
+  # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
     getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
+#      println("node ", j)
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
+#	println("dof ", i)
         # do perturbation for each residual here:
 
 	# apply perturbation to q
+#	println("  applying perturbation")
         applyPerturbation(eqn.q, mesh.color_masks[color], pert, i, j)
-	# evaluate residual
-        func(mesh, sbp, eqn, opts)
+#	println("wrote imag(eqn.q)")
+#	println("size(eqn.q) = ", size(eqn.q))
 
+	# evaluate residual
+#	println("  evaluating residual")
+        func(mesh, sbp, eqn, opts)
+#	
 	# assemble res into jac
+#        println("  assembling jacobian")
 
 	for k=1:mesh.numEl  # loop over elements in residual
 	  el_pert = perturbed_els[k] # get perturbed element
@@ -331,17 +344,20 @@ function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
 	    for j_j = 1:mesh.numNodesPerElement
 	      for i_i = 1:mesh.numDofPerNode
 		row_idx = mesh.dofs[i_i, j_j, k]
-		col_idx = mesh.dofs[i_i, j_j, el_pert]
+		col_idx = mesh.dofs[i, j, el_pert]
 
-	        jac[row_idx, col_idx] = imag(eqn.res[i,j,k])/epsilon
+	        jac[row_idx, col_idx] += imag(eqn.res[i_i,j_j,k])/epsilon
 	     end
 	   end
+
 	 end  # end if el_pert != 0
        end  # end loop over k
 
       # undo perturbation
       # is this the best way to undo the perturbation?
       # faster to just take the real part of every element?
+
+      #      println("  undoing perturbation")
       applyPerturbation(eqn.q, mesh.color_masks[color], -pert, i, j)
 
       end  # end loop i
@@ -358,10 +374,11 @@ function getPertNeighbors(mesh, color, arr)
 # populate the array with the element that is perturbed for each element
 # element number == 0 if no perturbation
 
+#  println("getting neighbor list")
+
   num_neigh = size(mesh.neighbor_colors, 1)
 #  fill!(arr, 0)
   for i=1:mesh.numEl
-    
     # find out if current element or its neighbors have the current color
     pos = 0
     for j=1:num_neigh
@@ -371,7 +388,12 @@ function getPertNeighbors(mesh, color, arr)
       end
     end
 
-    arr[i] = mesh.neighbor_nums[pos, i]
+    if pos != 0
+      arr[i] = mesh.neighbor_nums[pos, i]
+    else
+       arr[i] = 0
+     end
+
   end
 
   return nothing
@@ -528,16 +550,20 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
 
       epsilon = 1e-20
 
-      eqn.SL0[j] += complex(0, epsilon)
+#      eqn.SL0[j] += complex(0, epsilon)
       eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+      eqn.q[1, 2, 5] += complex(0, epsilon)
+      writedlm("check_q.dat", imag(eqn.q))
+#      eqn.q[1,1,1] += complex(0, epsilon)
       # evaluate residual
-      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+      func(mesh, sbp, eqn, opts)
 
       fill!(eqn.SL, 0.0)
       eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
  #     println("column ", j, " of jacobian, SL = ", eqn.SL)
       calcJacRow(jac_col, eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
+      writedlm("check_res.dat", imag(eqn.res))
 
       return jac_col
 end 
