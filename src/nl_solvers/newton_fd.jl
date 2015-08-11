@@ -26,7 +26,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   # the initial condition is stored in eqn.SL0
   # itermax is the maximum number of iterations
   # this function is type unstable for certain variables, but thats ok
-
+  # the dispatch to the backslash solver and possibly the jacobian calculation
+  # function will be runtime dispatched
 
   # options
   write_rhs = opts["write_rhs"]::Bool
@@ -45,11 +46,19 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   end
 
 
-  step_fac = 1.0 # step size limiter
-  m = length(eqn.SL)
-  Tsol = typeof(eqn.SL[1])
   Tjac = typeof(real(eqn.SL[1]))  # type of jacobian, residual
-  jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
+  m = length(eqn.SL)
+#  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
+
+  if jac_type == 1  # dense
+    jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
+  elseif jac_type == 2  # sparse
+    jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
+  end
+
+  step_fac = 1.0 # step size limiter
+  Tsol = typeof(eqn.SL[1])
+#  jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   res_0 = zeros(Tjac, m)  # function evaluated at u0
   res_0_norm = 0.0  # norm of res_0
   delta_SL = zeros(Tjac, m)  # newton update
@@ -94,9 +103,11 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 #      println("calculating finite difference jacobian")
 
       if jac_type == 1  # dense jacobian
-        calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
+	println("calculating dense FD jacobian")
+        @time calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
       elseif jac_type == 2  # sparse jacobian
+	println("calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
@@ -106,9 +117,11 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 #      println("calculating complex step jacobian")
 
       if jac_type == 1  # dense jacobian
+	println("calculating dense complex step jacobian")
         @time calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 
       elseif jac_type == 2  # sparse jacobian 
+	println("calculating sparse complex step jacobian")
         res_dummy = []  # not used, so don't allocation memory
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
       end
@@ -273,7 +286,7 @@ end
 
 
 
-function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac)
+function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::SparseMatrixCSC)
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type
@@ -282,13 +295,14 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac)
   epsilon = norm(pert)  # get magnitude of perturbation
   (m,n) = size(jac)
 
-  fill!(jac, 0.0)
+  fill!(jac.nzval, 0.0)
 
   # for each color, store the perturbed element corresponding to each element
   perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
 
   # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
+#    println("color = ", color)
     getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
 #      println("node ", j)
