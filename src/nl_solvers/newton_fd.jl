@@ -86,9 +86,9 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
     elseif jac_method == 2
 #      println("calculating complex step jacobian")
-#      @time calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
+      @time calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
 
-      @time calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+#      @time calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
       println("jacobian calculate @time printed above")
     end
 
@@ -341,15 +341,8 @@ function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
 	  el_pert = perturbed_els[k] # get perturbed element
           if el_pert != 0   # if element was actually perturbed for this color
 
-	    for j_j = 1:mesh.numNodesPerElement
-	      for i_i = 1:mesh.numDofPerNode
-		row_idx = mesh.dofs[i_i, j_j, k]
-		col_idx = mesh.dofs[i, j, el_pert]
-
-	        jac[row_idx, col_idx] += imag(eqn.res[i_i,j_j,k])/epsilon
-	     end
-	   end
-
+            col_idx = mesh.dofs[i, j, el_pert]
+	    assembleElement(mesh, eqn, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
        end  # end loop over k
 
@@ -369,6 +362,31 @@ function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
   return nothing
 
 end
+
+
+function assembleElement(mesh, eqn, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
+# assemble an element contribution into jacobian
+# making this a separate function enables dispatch on type of jacobian
+# el_res is the element in the residual to assemble
+# el_pert is the element that was perturbed
+# dof_pert is the dof number (global) of the dof that was perturbed
+# typically either el_pert or dof_pert will be needed, not both
+
+for j_j = 1:mesh.numNodesPerElement
+  for i_i = 1:mesh.numDofPerNode
+    row_idx = mesh.dofs[i_i, j_j, el_res]
+#    col_idx = mesh.dofs[i, j, el_pert]
+
+    jac[row_idx, dof_pert] += imag(eqn.res[i_i,j_j, el_res])/epsilon
+  end
+end
+
+return nothing
+
+end
+
+
+
 
 function getPertNeighbors(mesh, color, arr)
 # populate the array with the element that is perturbed for each element
@@ -417,6 +435,7 @@ function applyPerturbation(arr, mask, pert, i, j)
   return nothing
 end
 
+function getDerivative(
 
  
 function calcJacRow{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
