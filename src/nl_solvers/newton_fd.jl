@@ -82,7 +82,9 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     # calculate jacobian using selected method
     if jac_method == 1
 #      println("calculating finite difference jacobian")
-      calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
+      res_copy = copy(eqn.res)  # copy unperturbed residual
+      @time calcJacobianFDSparse(mesh, sbp, eqn, opts, func, res_copy, jac)
+      println("calcJacobianFDSparse @time printed above")
 
     elseif jac_method == 2
 #      println("calculating complex step jacobian")
@@ -249,6 +251,89 @@ end
 
 
 
+function calcJacobianFDSparse(mesh, sbp, eqn, opts, func, res_0, jac)
+
+  epsilon = 1e-6  # finite difference perturbation
+  pert = epsilon
+  (m,n) = size(jac)
+
+  fill!(jac, 0.0)
+
+  # for each color, store the perturbed element corresponding to each element
+  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
+
+  # debugging: do only first color
+  for color=1:mesh.numColors  # loop over colors
+    getPertNeighbors(mesh, color, perturbed_els)
+    for j=1:mesh.numNodesPerElement  # loop over nodes 
+#      println("node ", j)
+      for i=1:mesh.numDofPerNode  # loop over dofs on each node
+#	println("dof ", i)
+        # do perturbation for each residual here:
+
+	# apply perturbation to q
+#	println("  applying perturbation")
+        applyPerturbation(eqn.q, mesh.color_masks[color], pert, i, j)
+#	println("wrote imag(eqn.q)")
+#	println("size(eqn.q) = ", size(eqn.q))
+
+	# evaluate residual
+#	println("  evaluating residual")
+        func(mesh, sbp, eqn, opts)
+#	
+	# assemble res into jac
+#        println("  assembling jacobian")
+
+	for k=1:mesh.numEl  # loop over elements in residual
+	  el_pert = perturbed_els[k] # get perturbed element
+          if el_pert != 0   # if element was actually perturbed for this color
+
+            col_idx = mesh.dofs[i, j, el_pert]
+	    assembleElementFD(mesh, eqn, res_0, k, el_pert, col_idx, epsilon, jac)
+	 end  # end if el_pert != 0
+       end  # end loop over k
+
+      # undo perturbation
+      # is this the best way to undo the perturbation?
+      # faster to just take the real part of every element?
+
+      #      println("  undoing perturbation")
+      applyPerturbation(eqn.q, mesh.color_masks[color], -pert, i, j)
+
+      end  # end loop i
+    end  # end loop j
+  end  # end loop over colors
+
+  # now jac is complete
+
+  return nothing
+
+end
+
+
+function assembleElementFD(mesh, eqn, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
+# assemble an element contribution into jacobian
+# making this a separate function enables dispatch on type of jacobian
+# el_res is the element in the residual to assemble
+# el_pert is the element that was perturbed
+# dof_pert is the dof number (global) of the dof that was perturbed
+# typically either el_pert or dof_pert will be needed, not both
+
+for j_j = 1:mesh.numNodesPerElement
+  for i_i = 1:mesh.numDofPerNode
+    row_idx = mesh.dofs[i_i, j_j, el_res]
+#    col_idx = mesh.dofs[i, j, el_pert]
+
+    jac[row_idx, dof_pert] += (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+  end
+end
+
+return nothing
+
+end
+
+
+
 function calcJacRow{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
@@ -342,7 +427,7 @@ function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
           if el_pert != 0   # if element was actually perturbed for this color
 
             col_idx = mesh.dofs[i, j, el_pert]
-	    assembleElement(mesh, eqn, k, el_pert, col_idx, epsilon, jac)
+	    assembleElementComplex(mesh, eqn, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
        end  # end loop over k
 
@@ -364,7 +449,8 @@ function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
 end
 
 
-function assembleElement(mesh, eqn, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
+# for complex numbers
+function assembleElementComplex(mesh, eqn, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -421,6 +507,7 @@ function applyPerturbation(arr, mask, pert, i, j)
   # applys perturbation puert to array arr according to mask mask
   # i, j specify the dof, node number within arr
   # the length of mask must equal the third dimension of arr
+  # this function is independent of the type of pert
 
   @assert size(arr,3) == length(mask)
   @assert i <= size(arr, 1)
@@ -434,8 +521,6 @@ function applyPerturbation(arr, mask, pert, i, j)
 
   return nothing
 end
-
-function getDerivative(
 
  
 function calcJacRow{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
@@ -456,10 +541,7 @@ end
 
 
 
-function calcJacComplexSparse(mesh, sbp, eqn, opts, func, jac)
 
-return nothing
-end
 @doc """
 ### newton_check
 
