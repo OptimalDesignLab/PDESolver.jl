@@ -414,65 +414,6 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 end
 
 
-function calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
-
-  epsilon = 1e-20  # complex step perturbation
-  pert = eltype(eqn.q)(0, epsilon)
-  (m,n) = size(jac)
-
-  fill!(jac, 0.0)
-
-  # for each color, store the perturbed element corresponding to each element
-  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
-
-  # debugging: do only first color
-  for color=1:mesh.numColors  # loop over colors
-    getPertNeighbors(mesh, color, perturbed_els)
-    for j=1:mesh.numNodesPerElement  # loop over nodes 
-#      println("node ", j)
-      for i=1:mesh.numDofPerNode  # loop over dofs on each node
-#	println("dof ", i)
-        # do perturbation for each residual here:
-
-	# apply perturbation to q
-#	println("  applying perturbation")
-        applyPerturbation(eqn.q, mesh.color_masks[color], pert, i, j)
-#	println("wrote imag(eqn.q)")
-#	println("size(eqn.q) = ", size(eqn.q))
-
-	# evaluate residual
-#	println("  evaluating residual")
-        func(mesh, sbp, eqn, opts)
-#	
-	# assemble res into jac
-#        println("  assembling jacobian")
-
-	for k=1:mesh.numEl  # loop over elements in residual
-	  el_pert = perturbed_els[k] # get perturbed element
-          if el_pert != 0   # if element was actually perturbed for this color
-
-            col_idx = mesh.dofs[i, j, el_pert]
-	    assembleElementComplex(mesh, eqn, k, el_pert, col_idx, epsilon, jac)
-	 end  # end if el_pert != 0
-       end  # end loop over k
-
-      # undo perturbation
-      # is this the best way to undo the perturbation?
-      # faster to just take the real part of every element?
-
-      #      println("  undoing perturbation")
-      applyPerturbation(eqn.q, mesh.color_masks[color], -pert, i, j)
-
-      end  # end loop i
-    end  # end loop j
-  end  # end loop over colors
-
-  # now jac is complete
-
-  return nothing
-
-end
-
 
 # for complex numbers
 function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
