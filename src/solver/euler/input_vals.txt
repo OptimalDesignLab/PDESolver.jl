@@ -60,5 +60,9 @@ where input_file_name.jl is in your current directory.
 "write_sol"  : write the solution to a file (SL$i.dat) each iteration, (Bool), default false
 "write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
 
+# Newton's Method options
+"jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse
+"epsilon"  : perturbation size when calculation Jacobian, (Float64), default 1e-6 for finite difference, 1e-20 to complex step
+
 # testing options
 "solve" : call the solver specified by run_type, (Bool), default true

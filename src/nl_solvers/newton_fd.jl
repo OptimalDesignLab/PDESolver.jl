@@ -25,6 +25,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   # the jacobian is formed using finite differences
   # the initial condition is stored in eqn.SL0
   # itermax is the maximum number of iterations
+  # this function is type unstable for certain variables, but thats ok
 
 
   # options
@@ -33,7 +34,16 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   print_cond = opts["print_cond"]::Bool
   write_sol = opts["write_sol"]::Bool
   write_vis = opts["write_vis"]::Bool
-  jac_method = opts["jac_method"]::Int
+  jac_method = opts["jac_method"]::Int  # finite difference or complex step
+  jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
+  epsilon = opts["epsilon"]::Float64
+
+  if jac_method == 1  # finite difference
+    pert = epsilon
+  elseif jac_method == 2  # complex step
+    pert = complex(0, epsilon)
+  end
+
 
   step_fac = 1.0 # step size limiter
   m = length(eqn.SL)
@@ -82,16 +92,28 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     # calculate jacobian using selected method
     if jac_method == 1
 #      println("calculating finite difference jacobian")
-      res_copy = copy(eqn.res)  # copy unperturbed residual
-      @time calcJacobianFDSparse(mesh, sbp, eqn, opts, func, res_copy, jac)
-      println("calcJacobianFDSparse @time printed above")
+
+      if jac_type == 1  # dense jacobian
+        calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
+
+      elseif jac_type == 2  # sparse jacobian
+        res_copy = copy(eqn.res)  # copy unperturbed residual
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+      end
+      println("FD jacobian calculation @time printed above")
 
     elseif jac_method == 2
 #      println("calculating complex step jacobian")
-      @time calcJacobianComplexSparse(mesh, sbp, eqn, opts, func, jac)
 
-#      @time calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
-      println("jacobian calculate @time printed above")
+      if jac_type == 1  # dense jacobian
+        @time calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
+
+      elseif jac_type == 2  # sparse jacobian 
+        res_dummy = []  # not used, so don't allocation memory
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+      end
+
+      println("complex set jacobian calculate @time printed above")
     end
 
     # print as determined by options
@@ -211,12 +233,12 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 end
 
 
-function calcJacFD(mesh, sbp, eqn, opts, func, res_0, jac)
+function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 # calculate the jacobian using finite difference
 
   (m,n) = size(jac)
   entry_orig = zero(eltype(eqn.SL0))
-  epsilon = 1e-6  # finite difference perturbation
+  epsilon = norm(pert)  # finite difference perturbation
   # calculate jacobian
   for j=1:m
 #      println("  jacobian iteration ", j)
@@ -251,10 +273,13 @@ end
 
 
 
-function calcJacobianFDSparse(mesh, sbp, eqn, opts, func, res_0, jac)
+function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac)
+# res_0 is 3d array of unperturbed residual, only needed for finite difference
+# pert is perturbation to apply
+# this function is independent of perturbation type
 
-  epsilon = 1e-6  # finite difference perturbation
-  pert = epsilon
+#  epsilon = 1e-6  # finite difference perturbation
+  epsilon = norm(pert)  # get magnitude of perturbation
   (m,n) = size(jac)
 
   fill!(jac, 0.0)
@@ -289,7 +314,7 @@ function calcJacobianFDSparse(mesh, sbp, eqn, opts, func, res_0, jac)
           if el_pert != 0   # if element was actually perturbed for this color
 
             col_idx = mesh.dofs[i, j, el_pert]
-	    assembleElementFD(mesh, eqn, res_0, k, el_pert, col_idx, epsilon, jac)
+	    assembleElement(mesh, eqn, res_0, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
        end  # end loop over k
 
@@ -310,8 +335,8 @@ function calcJacobianFDSparse(mesh, sbp, eqn, opts, func, res_0, jac)
 
 end
 
-
-function assembleElementFD(mesh, eqn, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
+# finite difference
+function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -352,20 +377,20 @@ end
 
 
 
-function calcJacobianComplex(mesh, sbp, eqn, opts, func, jac)
+function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 
-  epsilon = 1e-20  # complex step perturbation
+  epsilon = norm(pert)  # complex step perturbation
   entry_orig = zero(eltype(eqn.SL0))
   (m,n) = size(jac)
   # calculate jacobian
   for j=1:m
     if j==1
       entry_orig = eqn.SL0[j]
-      eqn.SL0[j] +=  complex(0, epsilon)
+      eqn.SL0[j] +=  pert
     else
       eqn.SL0[j-1] = entry_orig # undo previous iteration pertubation
       entry_orig = eqn.SL0[j]
-      eqn.SL0[j] += complex(0, epsilon)
+      eqn.SL0[j] += pert
     end
 
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
@@ -450,7 +475,7 @@ end
 
 
 # for complex numbers
-function assembleElementComplex(mesh, eqn, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
+function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
