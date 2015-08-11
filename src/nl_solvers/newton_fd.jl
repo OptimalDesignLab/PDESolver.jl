@@ -50,13 +50,17 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   m = length(eqn.SL)
 #  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
 
+
   if jac_type == 1  # dense
     jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
   end
 
+
+
   step_fac = 1.0 # step size limiter
+#  jac_recal = 0  # number of iterations since jacobian was recalculated
   Tsol = typeof(eqn.SL[1])
 #  jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   res_0 = zeros(Tjac, m)  # function evaluated at u0
@@ -183,6 +187,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
    if res_0_norm < res_tol
      println("Newton iteration converged with residual norm ", res_0_norm)
+     eqn.SL[:] = res_0
      close(fconv)
 
      return nothing
@@ -191,6 +196,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     if (step_norm < step_tol)
       println("Newton iteration converged with step_norm = ", step_norm)
       println("Final residual = ", res_0_norm)
+      eqn.SL[:] = res_0
       close(fconv)
 
       return nothing

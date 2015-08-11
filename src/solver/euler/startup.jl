@@ -208,7 +208,8 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+    println("total solution time printed above")
     printSolution("newton_solution.dat", eqn.SL)
 #=
   elseif flag == 5

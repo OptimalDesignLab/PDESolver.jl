@@ -146,10 +146,11 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
  context("--- Testing dataPrep ---") do
  
-   EulerEquationMod.dataPrep(mesh, sbp, eqn, eqn.SL0, opts)
+   EulerEquationMod.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+   EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
 
-   # test disassembleSolutino
+   # test disassembleSolution
    for i=1:mesh.numEl
      for j=1:mesh.numNodesPerElement
        @fact eqn.q[:, j, i] => roughly([1.0, 0.35355, 0.35355, 2.0], atol=1e-5)
@@ -254,7 +255,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
     fill!(eqn.SL, 0.0)
     fill!(eqn.res, 0.0)
-    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
     for i=1:mesh.numDof
       eqn.SL[i] => roughly(0.0, atol=1e-14)
