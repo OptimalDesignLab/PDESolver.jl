@@ -1,5 +1,4 @@
 export newton, newton_check, newton_check_fd
-using MUMPS
 @doc """
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
