@@ -525,9 +525,6 @@ end
 
 
 
-
-
-
 @doc """
 ### newton_check
 
