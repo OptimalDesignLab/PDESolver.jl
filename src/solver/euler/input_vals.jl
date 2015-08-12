@@ -25,4 +25,5 @@ arg_dict = Dict{Any, Any} (
 "res_tol" => 1e-10,
 "step_tol" => 1e-6,
 "itermax" => 20,
+"writeCounts" => true,
 )

@@ -1,5 +1,5 @@
 export newton, newton_check, newton_check_fd
-
+using MUMPS
 @doc """
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
@@ -147,8 +147,14 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
       println("Condition number of jacobian = ", cond_j)
     end
 
+    # negate res
+    for j=1:m
+      res_0[j] = -res_0[j]
+    end
+    
     # calculate Newton step
-    @time delta_SL[:] = jac\(-res_0)  #  calculate Newton update
+    @time delta_SL[:] = jac\(res_0)  #  calculate Newton update
+#    @time solveMUMPS!(jac, res_0, delta_SL)
     println("matrix solve @time prined above")
     step_norm = norm(delta_SL)/m
     println("step_norm = ", step_norm)
@@ -308,7 +314,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Sparse
 
   # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
-#    println("color = ", color)
+    println("color = ", color)
     getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
 #      println("node ", j)

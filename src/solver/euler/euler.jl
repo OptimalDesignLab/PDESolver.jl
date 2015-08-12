@@ -114,6 +114,7 @@ addStabilization(mesh, sbp, eqn)
 #println("edge stabilizing @time printed above")
 
 
+# no more assembling solution
 #assembleSolution(mesh, sbp, eqn, SL)
 #println("assembly @time printed above")
 

@@ -159,12 +159,13 @@ ICfunc(mesh, sbp, eqn, opts, SL0)
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
-#=
-#randvec = readdlm("randvec.txt")
-for i=1:mesh.numDof
-  SL0[i] += 0.05*rand()
+if opts["perturb_ic"]
+  perturb_mag = opts["perturb_mag"]
+  for i=1:mesh.numDof
+    SL0[i] += perturb_mag*rand()
+  end
 end
-=#
+
 
 # get BC functors
 getBCFunctors(mesh, sbp, eqn, opts)

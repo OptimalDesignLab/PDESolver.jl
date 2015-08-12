@@ -53,6 +53,9 @@ else  # no dmg_name specified
   arg_dict["dmg_name"] = ".null"
 end
 
+get!(arg_dict, "perturb_ic", false)
+get!(arg_dict, "perturb_mag", 0.0)
+
 # debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
@@ -64,6 +67,7 @@ get!(arg_dict, "write_dxidx", false)
 get!(arg_dict, "write_coords", false)
 get!(arg_dict, "write_sparsity", false)
 get!(arg_dict, "verify_coloring", true)
+get!(arg_dict, "write_counts", false)
 
 # Newton's Method options
 get!(arg_dict, "write_rhs", false)
