@@ -1,4 +1,4 @@
-export newton, newton_check, newton_check_fd
+export newton, newton_check, newton_check_fd, initializeTempVariables
 @doc """
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
@@ -54,6 +54,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
+  elseif jac_type == 3  # petsc
+    jac, x, b, ksp = createPetscData(mesh, eqn, opts)
   end
 
 
@@ -89,6 +91,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
    println(fconv, i, " ", res_0_norm, " ", 0.0)
 
    close(fconv)
+
+    if jac_type == 3
+      destroyPetsc(jac, x, b, ksp)
+    end
+
+
    return nothing
  end
 
@@ -109,7 +117,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 	println("calculating dense FD jacobian")
         @time calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
-      elseif jac_type == 2  # sparse jacobian
+      elseif jac_type == 2 || jac_type == 3  # sparse jacobian
 	println("calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
@@ -123,7 +131,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 	println("calculating dense complex step jacobian")
         @time calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 
-      elseif jac_type == 2  # sparse jacobian 
+      elseif jac_type == 2 || jac_type == 3  # sparse jacobian 
 	println("calculating sparse complex step jacobian")
         res_dummy = []  # not used, so don't allocation memory
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
@@ -136,7 +144,14 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     if write_jac
 #      fname = string("jacobian", i, ".dat")
 #      printMatrix(fname, jac)
-      writedlm("jacobian$i.dat", jac)
+
+      if jac_type == 3
+        PetscMatAssemblyBegin(jac, PETSC_MAT_FINAL_ASSEMBLY)
+        PetscMatAssemblyEnd(jac, PETSC_MAT_FINAL_ASSEMBLY)
+      end
+
+
+      writedlm("jacobian$i.dat", full(jac))
       println("finished printing jacobian")
     end
 
@@ -152,8 +167,13 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     end
     
     # calculate Newton step
+    if jac_type == 1 || jac_type == 2  # julia jacobian
     @time delta_SL[:] = jac\(res_0)  #  calculate Newton update
+    fill!(jac.nzval, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_SL)
+    elseif jac_type == 3   # petsc
+      @time petscSolve(jac, x, b, ksp, res_0, delta_SL)
+    end
     println("matrix solve @time prined above")
     step_norm = norm(delta_SL)/m
     println("step_norm = ", step_norm)
@@ -195,6 +215,11 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
      eqn.SL[:] = res_0
      close(fconv)
 
+     if jac_type == 3
+	destroyPetsc(jac, x, b, ksp)
+      end
+
+
      return nothing
    end
 
@@ -203,6 +228,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
       println("Final residual = ", res_0_norm)
       eqn.SL[:] = res_0
       close(fconv)
+      
+      if jac_type == 3
+	destroyPetsc(jac, x, b, ksp)
+      end
 
       return nothing
     end
@@ -230,6 +259,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   println("  Final step size: ", step_norm)
   println("  Final residual: ", res_0_norm)
   close(fconv)
+
+  if jac_type == 3
+    destroyPetsc(jac, x, b, ksp)
+  end
   return nothing
 end
 
@@ -297,23 +330,23 @@ end
 
 
 
-function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::SparseMatrixCSC)
+function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(SparseMatrixCSC, PetscMat))
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type
 
 #  epsilon = 1e-6  # finite difference perturbation
   epsilon = norm(pert)  # get magnitude of perturbation
-  (m,n) = size(jac)
-
-  fill!(jac.nzval, 0.0)
+#  (m,n) = size(jac)
+   m = length(res_0)
+#  fill!(jac.nzval, 0.0)
 
   # for each color, store the perturbed element corresponding to each element
   perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
 
   # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
-    println("color = ", color)
+#    println("color = ", color)
     getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
 #      println("node ", j)
@@ -360,8 +393,66 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Sparse
 
 end
 
+function initializeTempVariables(mesh::AbstractMesh)
+# declare some static work variables
+# this must be called before calling newton(...)
+# this could  be a problem if we do multigrid or something
+# where we solve different equations or orders of accuracy 
+# in a single run
+
+local_size = mesh.numNodesPerElement*mesh.numDofPerNode
+global const vals_tmp = zeros(1, local_size) # values
+global const idx_tmp = zeros(PetscInt, local_size)  # row index
+global const idy_tmp = zeros(PetscInt, 1)  # column indices
+
+return nothing
+
+end
+
+
+
 # finite difference
-function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
+function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
+# assemble an element contribution into jacobian
+# making this a separate function enables dispatch on type of jacobian
+# el_res is the element in the residual to assemble
+# el_pert is the element that was perturbed
+# dof_pert is the dof number (global) of the dof that was perturbed
+# typically either el_pert or dof_pert will be needed, not both
+
+# resize array
+# basically a no-op if array is already the right size
+local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
+
+# get row number
+idy_tmp[1] = dof_pert - 1
+
+pos = 1
+for j_j = 1:mesh.numNodesPerElement
+  for i_i = 1:mesh.numDofPerNode
+    idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
+#    col_idx = mesh.dofs[i, j, el_pert]
+
+    tmp = (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    vals_tmp[pos] = tmp
+    pos += 1
+  end
+end
+
+#println("assembling values ", vals_tmp, " into row ", dof_pert, " columns ", idy_tmp)
+
+#println("idy_tmp = ", idy_tmp)
+PetscMatSetValues(jac, idx_tmp, idy_tmp, vals_tmp, PETSC_ADD_VALUES)
+
+
+
+
+return nothing
+
+end
+
+# finite difference Petsc
+function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -374,13 +465,16 @@ for j_j = 1:mesh.numNodesPerElement
     row_idx = mesh.dofs[i_i, j_j, el_res]
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    jac[row_idx, dof_pert] += (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    tmp = (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    jac[row_idx, dof_pert] += tmp
+
   end
 end
 
 return nothing
 
 end
+
 
 
 
@@ -441,7 +535,43 @@ end
 
 
 # for complex numbers
-function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac)
+function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
+# assemble an element contribution into jacobian
+# making this a separate function enables dispatch on type of jacobian
+# el_res is the element in the residual to assemble
+# el_pert is the element that was perturbed
+# dof_pert is the dof number (global) of the dof that was perturbed
+# typically either el_pert or dof_pert will be needed, not both
+
+# resize array
+# basically a no-op if array is already the right size
+local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
+
+# get row number
+idx_tmp[1] = dof_pert - 1
+
+pos = 1
+for j_j = 1:mesh.numNodesPerElement
+  for i_i = 1:mesh.numDofPerNode
+    idy_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
+#    col_idx = mesh.dofs[i, j, el_pert]
+
+    vals_tmp[pos] = imag(eqn.res[i_i,j_j, el_res])/epsilon
+
+    pos += 1
+  end
+end
+
+PetscMatSetValues(jac, PetscInt(1), idx_tmp, local_size , idy_tmp, vals_tmp, PETSC_ADD_VALUES)
+
+return nothing
+
+end
+
+
+
+
+function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -529,6 +659,138 @@ return nothing
 end
 
 
+
+function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
+# initialize petsc and create Jacobian matrix A, and vectors x, b, and the
+# ksp context
+# serial only
+
+# initialize Petsc
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump"])
+comm = MPI.COMM_WORLD
+
+println("creating b")
+b = PetscVec(comm)
+PetscVecSetType(b, VECMPI)
+PetscVecSetSizes(b, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+
+println("creating x")
+x = PetscVec(comm)
+PetscVecSetType(x, VECMPI)
+PetscVecSetSizes(x, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+
+println("creating A")
+A = PetscMat(comm)
+PetscMatSetType(A, MATMPIAIJ)
+PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+
+println("preallocating A")
+# prellocate matrix
+dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
+onnz = zeros(PetscInt, mesh.numDof)  # there is no off diagonal part for single proc case
+dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
+onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
+bs = PetscInt(1)  # block size
+
+# calculate number of non zeros per row
+for i=1:mesh.numDof
+  max_dof = mesh.sparsity_bnds[2, i]
+  min_dof = mesh.sparsity_bnds[1, i]
+  nnz_i = max_dof - min_dof + 1
+  dnnz[i] = nnz_i
+#  println("row ", i," has ", nnz_i, " non zero entries")
+end
+
+PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
+
+# zero initialize the matrix just in case
+println("zeroing A")
+PetscMatZeroEntries(A)
+
+# create KSP contex
+ksp = KSP(comm)
+KSPSetOperators(ksp, A, A)
+KSPSetFromOptions(ksp)
+
+# set: rtol, abstol, dtol, maxits
+KSPSetTolerances(ksp, 1e-14, 1e-14, 1e5, PetscInt(1000))
+KSPSetUp(ksp)
+
+
+return A, x, b, ksp
+
+end
+
+function destroyPetsc(A::PetscMat, x::PetscVec,  b::PetscVec, ksp::KSP)
+# destory Petsc data structures, finalize Petsc
+
+PetscDestroy(A)
+PetscDestroy(x)
+PetscDestroy(b)
+PetscDestroy(ksp)
+PetscFinalize()
+
+return nothing
+
+end
+
+
+function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::AbstractVector, delta_SL::AbstractVector)
+
+  # solve the system for the newton step, write it to delta_SL
+  # writing it to delta_SL is an unecessary copy, becasue we could
+  # write it directly to eqn.q, but for consistency we do it anyways
+
+  # copy res_0 into b
+  # create the index array
+  numDof = length(delta_SL)
+  println("copying res_0 to b")
+  idx = zeros(PetscInt, numDof)
+  for i=1:numDof
+    idx[i] = i - 1
+  end
+
+  # copy into Petsc and assemble
+  PetscVecSetValues(b, idx, res_0, PETSC_INSERT_VALUES)
+  PetscVecAssemblyBegin(b)
+  PetscVecAssemblyEnd(b)
+
+  #=
+  PetscVecSetValues(x, idx, res_0, PETSC_INSERT_VALUES)
+  PetscVecAssemblyBegin(x)
+  PetscVecAssemblyEnd(x)
+  =#
+
+
+  # assemble matrix
+  # should this be overlapped with the vector assembly?
+  println("assembling A")
+  PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
+
+  matinfo = PetscMatGetInfo(A, MAT_LOCAL)
+  println("number of mallocs = ", matinfo.mallocs)
+
+
+  println("solving system")
+  KSPSolve(ksp, b, x)
+  reason = KSPGetConvergedReason(ksp)
+  println("KSP converged reason = ", KSPConvergedReasonDict[reason])
+  rnorm = KSPGetResidualNorm(ksp)
+  println("Linear residual = ", rnorm)
+
+  # copy solution from x into delta_SL
+  arr, ptr_arr = PetscVecGetArray(x)
+  for i=1:numDof
+    delta_SL[i] = arr[i]
+  end
+
+  PetscVecRestoreArray(x, ptr_arr)
+
+  # zero out the Jacobian for next use
+  PetscMatZeroEntries(A)
+  return nothing
+end
 
 @doc """
 ### newton_check

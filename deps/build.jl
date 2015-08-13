@@ -3,6 +3,7 @@
 sbp_git = "https://github.com/OptimalDesignLab/SummationByParts.jl.git"
 pdesolvercommon_git = "https://github.com/OptimalDesignLab/PDESolverCommon.jl.git"
 pumiinterface_git = "https://github.com/OptimalDesignLab/PumiInterface.jl.git"
+petsc_git = "https://github.com/JaredCrean2/PETSc.jl.git"
 pkg_dict = Pkg.installed()  # get dictionary of installed package names to version numbers
 
 if !haskey(pkg_dict, "PDESolverCommon")
@@ -18,6 +19,11 @@ end
 if !haskey(pkg_dict, "PumiInterface")
   Pkg.clone(pumiinterface_git)
   Pkg.build("PumiInterface")
+end
+
+if !haskey(pkg_dict, "PETSc")
+  Pkg.clone(petsc_git)
+  Pkg.build("PETSc")
 end
 
 

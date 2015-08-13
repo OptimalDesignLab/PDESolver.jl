@@ -178,7 +178,8 @@ saveSolutionToMesh(mesh, SL0)
 
 writeVisFiles(mesh, "solution_ic")
 
-
+# initialize some variables in nl_solvers module
+initializeTempVariables(mesh)
 
 # call timestepper
 if opts["solve"]
