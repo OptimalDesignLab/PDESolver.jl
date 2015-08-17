@@ -169,7 +169,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     # calculate Newton step
     if jac_type == 1 || jac_type == 2  # julia jacobian
     @time delta_SL[:] = jac\(res_0)  #  calculate Newton update
-    fill!(jac.nzval, 0.0)
+    fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_SL)
     elseif jac_type == 3   # petsc
       @time petscSolve(jac, x, b, ksp, res_0, delta_SL)

@@ -100,18 +100,18 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
-@time dataPrep(mesh, sbp, eqn, opts)
-println("dataPrep @time printed above")
-@time evalVolumeIntegrals(mesh, sbp, eqn)
-println("volume integral @time printed above")
+dataPrep(mesh, sbp, eqn, opts)
+#println("dataPrep @time printed above")
+evalVolumeIntegrals(mesh, sbp, eqn)
+#println("volume integral @time printed above")
 
-@time evalBoundaryIntegrals(mesh, sbp, eqn)
-println("boundary integral @time printed above")
+evalBoundaryIntegrals(mesh, sbp, eqn)
+#println("boundary integral @time printed above")
 
 
 
-@time addStabilization(mesh, sbp, eqn)
-println("edge stabilizing @time printed above")
+addStabilization(mesh, sbp, eqn)
+#println("edge stabilizing @time printed above")
 
 
 # no more assembling solution
@@ -132,7 +132,7 @@ println("edge stabilizing @time printed above")
 #print(" ", err_norm)
 
 
-print("\n")
+#print("\n")
 
 return nothing
 #return SL
