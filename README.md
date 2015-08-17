@@ -11,8 +11,15 @@ SummationByParts
 
 PumiInterface
 
-PumiInterface is the only package with non-trivial installation requirements.  
-See that package for details
+Petsc
+
+PumiInterface and Petsc are the only packages with non-trivial installation requirements, although for most cases the defaults will work just fine.
+
+See those packages for details.
+
+## Running the Code
+To run the code, execute `julia /path/to/startup.jl "input_file_name"`, where startup.jl is located in the subdirctory for the physics you are solving.  Each physics has its own startup.jl
+
 
 ## Developer Guide
 The code for evaluating the residual for an equation is in the src/solver directory.  
