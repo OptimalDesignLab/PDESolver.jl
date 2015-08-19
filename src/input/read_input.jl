@@ -40,7 +40,7 @@ aoa = get!(arg_dict, "aoa", -1.0)*pi/180
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
 rho_free = get!(arg_dict, "rho_free", -1)
 E_free = get!(arg_dict, "E_free", -1)
-
+get!(arg_dict, "edgestab_gamma", -0.1)
 
 # deal with file names
 smb_name = arg_dict["smb_name"]
@@ -55,6 +55,8 @@ end
 
 get!(arg_dict, "perturb_ic", false)
 get!(arg_dict, "perturb_mag", 0.0)
+get!(arg_dict, "write_finalsolution", false)
+get!(arg_dict, "write_finalresidual", false)
 
 # debugging options
 writeflux = get!(arg_dict, "writeflux", false)
@@ -74,7 +76,9 @@ get!(arg_dict, "write_rhs", false)
 get!(arg_dict, "write_jac", false)
 get!(arg_dict, "print_cond", false)
 get!(arg_dict, "write_sol", false)
+get!(arg_dict, "write_qic", false)
 get!(arg_dict, "write_vis", false)
+get!(arg_dict, "write_res", false)
 get!(arg_dict, "jac_type", 2)
 
   # figure out Newtons method type

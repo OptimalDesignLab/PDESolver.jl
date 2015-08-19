@@ -66,6 +66,8 @@ export AbstractEulerData, EulerData, EulerData_
  
 """->
 immutable ParamType{Tdim} 
+  order::Int  # accuracy of elements (p=1,2,3...)
+
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -77,11 +79,12 @@ immutable ParamType{Tdim}
   rho_free::Float64  # free stream density
   E_free::Float64 # free stream energy (4th conservative variable)
 
+  edgestab_gamma::Float64  # edge stabilization parameter
   # debugging options
   writeflux::Bool  # write Euler flux
   writeboundary::Bool  # write boundary data
   writeq::Bool # write solution variables
-  function ParamType(opts)
+  function ParamType( opts, order::Integer)
   # create values, apply defaults
 
     # get() = get(dictionary, key, default)
@@ -95,14 +98,14 @@ immutable ParamType{Tdim}
     aoa = opts[ "aoa"]
     rho_free = opts[ "rho_free"]
     E_free = opts[ "E_free"]
-
+    edgestab_gamma = opts["edgestab_gamma"]
 
     # debugging options
     writeflux = opts[ "writeflux"]
     writeboundary = opts[ "writeboundary"]
     writeq = opts["writeq"]
 
-    return new(cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, writeflux, writeboundary, writeq)
+    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq)
 
   end
 
@@ -208,7 +211,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
 
     eqn = new()  # incomplete initilization
 
-    eqn.params = ParamType{Tdim}(opts)
+    eqn.params = ParamType{Tdim}( opts, mesh.order)
 #=
     eqn.gamma = 1.4
     eqn.gamma_1 = eqn.gamma - 1

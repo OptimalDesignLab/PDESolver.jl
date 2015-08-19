@@ -139,6 +139,7 @@ mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=4) 
 eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
+println("size(q) = ", size(eqn.q))
 
 #SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
 #SL = zeros(Tsol, mesh.numDof) # solution at current timestep
@@ -238,7 +239,13 @@ if opts["solve"]
 
 
 
+  if opts["write_finalsolution"]
+    writedlm("solution_final.dat", real(eqn.SL0))
+  end
 
+  if opts["write_finalresidual"]
+    writedlm("residual_final.dat", real(eqn.SL))
+  end
 
 
 

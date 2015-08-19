@@ -34,10 +34,14 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   print_cond = opts["print_cond"]::Bool
   write_sol = opts["write_sol"]::Bool
   write_vis = opts["write_vis"]::Bool
+  write_qic = opts["write_qic"]::Bool
+  write_res = opts["write_res"]::Bool
   jac_method = opts["jac_method"]::Int  # finite difference or complex step
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
   epsilon = opts["epsilon"]::Float64
 
+  println("write_rhs = ", write_rhs)
+  println("write_res = ", write_res)
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
@@ -80,15 +84,29 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   println("evaluating residual at initial condition")
   res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
+  println(fconv, 0, " ", res_0_norm, " ", 0)
+  flush(fconv)
+
+
+
   # write rhs to file
   if write_rhs
     writedlm("rhs1.dat", res_0)
   end
 
+  if write_qic
+    writedlm("qic.dat", eqn.q)
+  end
+
+  if write_res
+    writedlm("res1.dat", eqn.res)
+  end
+
   if res_0_norm < res_tol
    println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
    println("writing to convergence.dat")
-   println(fconv, i, " ", res_0_norm, " ", 0.0)
+#   println(fconv, i, " ", res_0_norm, " ", 0.0)
+   # no need to assemble q into SL0 because it never changed
 
    close(fconv)
 
@@ -195,23 +213,35 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     end
  
 
-    # write to convergence file
-    println(fconv, i, " ", res_0_norm, " ", step_norm)
-    flush(fconv)
-
     # calculate residual at updated location, used for next iteration rhs
     res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
+    # write to convergence file
+    println(fconv, i, " ", res_0_norm, " ", step_norm)
+    println("printed to convergence.dat")
+    flush(fconv)
+
+
+    tmp = i+1
     # write rhs to file
     if write_rhs
-      tmp = i+1
       writedlm("rhs$tmp.dat", res_0)
+    end
+
+    if write_res
+      writedlm("res$tmp.dat", eqn.res)
     end
 
 
 
    if res_0_norm < res_tol
      println("Newton iteration converged with residual norm ", res_0_norm)
+
+     # put solution into SL0
+     fill!(eqn.SL0, 0.0)
+     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+
+     # put residual into eqn.SL
      eqn.SL[:] = res_0
      close(fconv)
 
@@ -226,6 +256,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     if (step_norm < step_tol)
       println("Newton iteration converged with step_norm = ", step_norm)
       println("Final residual = ", res_0_norm)
+
+     # put solution into SL0
+     fill!(eqn.SL0, 0.0)
+     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+
+      # put residual into eqn.SL
       eqn.SL[:] = res_0
       close(fconv)
       
@@ -260,6 +296,15 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   println("  Final residual: ", res_0_norm)
   close(fconv)
 
+
+   # put solution into SL0
+   fill!(eqn.SL0, 0.0)
+   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+
+   # put residual into eqn.SL
+   eqn.SL[:] = res_0
+ 
+
   if jac_type == 3
     destroyPetsc(jac, x, b, ksp)
   end
@@ -277,7 +322,7 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 #  res_0[:] = real(eqn.SL)  # is there an unnecessary copy here?
 
   fill!(eqn.SL, 0.0)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
 
   for j=1:m
     res_0[j] = real(eqn.SL[j])
@@ -315,7 +360,7 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
 
     fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.SL)
     calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
     
@@ -517,7 +562,7 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
     func(mesh, sbp, eqn, opts)
 
     fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
 #     println("column ", j, " of jacobian, SL = ", eqn.SL)
     calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
@@ -910,7 +955,7 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       func(mesh, sbp, eqn, opts)
 
       fill!(eqn.SL, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
  #     println("column ", j, " of jacobian, SL = ", eqn.SL)
       calcJacRow(jac_col, eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
@@ -934,7 +979,7 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
      fill!(eqn.SL, 0.0)
-     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
      res_0 = copy(eqn.SL)
 
       epsilon = 1e-6
@@ -947,7 +992,7 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
 
       fill!(eqn.SL, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
  #     println("column ", j, " of jacobian, SL = ", eqn.SL)
 
       calcJacRow(jac_col, res_0, eqn.SL, epsilon)

@@ -264,7 +264,7 @@ function writeBoundary(mesh, sbp, eqn, opts)
 
     rmfile(face_name)
     rmfile(flux_name)
-    rmfile_(flux_dlm)
+    rmfile(flux_dlm)
 
 
   # write boundaryfaces.dat
@@ -314,7 +314,7 @@ function checkDensity(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
-    @assert( real(eqn.q[1, j, i]) > 0.0)
+    @assert( real(eqn.q[1, j, i]) > 0.0, "element $i, node $j")
   end
 end
 
@@ -805,8 +805,8 @@ end
 @doc """
 ### EulerEquationMod.assembleSolution
 
-  This function takes the 3D array of conservative variables eqn.res and 
-  reassmbles is into eqn.SL (the residual in vector form).  Note that
+  This function takes the 3D array of variables in arr and 
+  reassmbles is into the vector SL.  Note that
   This is a reduction operation and requires eqn.SL to be zerod before
   calling this function.
 
@@ -814,7 +814,8 @@ end
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, SL::AbstractArray{Tres,1})
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, SL::AbstractArray{Tres,1})
+# arr is the array to be assembled into SL
 
 #  println("in assembleSolution")
 
@@ -829,7 +830,7 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
     for j=1:mesh.numNodesPerElement
       for k=1:4  # loop over dofs on the node
 	dofnum_k = mesh.dofs[k, j, i]
-	SL[dofnum_k] += eqn.res[k,j,i]
+	SL[dofnum_k] += arr[k,j,i]
       end
     end
   end

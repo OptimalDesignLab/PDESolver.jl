@@ -92,7 +92,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     f( mesh, sbp, eqn, opts, t)
 
     eqn.SL[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
     k1[:] = eqn.SL
     x2[:] = x_old + (h/2)*k1
 
@@ -120,6 +120,13 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
+     # put solution into SL0
+     fill!(eqn.SL0, 0.0)
+     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+
+      # put residual into eqn.SL
+      eqn.SL[:] = res_0
+ 
       break
     end
 
@@ -129,7 +136,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
     k2[:] = eqn.SL
     x3[:] = x_old + (h/2)*k2
 
@@ -138,7 +145,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+
  
     k3[:] = eqn.SL
     x4[:] = x_old + h*k3
@@ -149,7 +157,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     f( mesh, sbp, eqn, opts, t + h)
 
     fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
  
 
     k4 = eqn.SL[:]
@@ -172,6 +180,14 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   end
 
   close(f1)
+
+  # put solution into SL0
+  fill!(eqn.SL0, 0.0)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+
+  # put residual into eqn.SL
+  eqn.SL[:] = res_0
+ 
 #=
   # final result needs to be returned in a different variable for AD
   println("coping x_old to SL")
