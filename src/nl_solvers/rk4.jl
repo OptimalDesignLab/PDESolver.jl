@@ -125,7 +125,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
 
       # put residual into eqn.SL
-      eqn.SL[:] = res_0
+#      eqn.SL[:] = res_0
  
       break
     end
@@ -181,12 +181,19 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
   close(f1)
 
-  # put solution into SL0
-  fill!(eqn.SL0, 0.0)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+  # put solution into SL0a
+#  fill!(eqn.SL0, 0.0)
+#  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
 
+    # evaluate residual at final q value
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    f( mesh, sbp, eqn, opts, t)
+
+    eqn.SL[:] = 0.0
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+ 
   # put residual into eqn.SL
-  eqn.SL[:] = res_0
+#  eqn.SL[:] = k1
  
 #=
   # final result needs to be returned in a different variable for AD

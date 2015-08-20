@@ -20,10 +20,12 @@ where input_file_name.jl is in your current directory.
 
 "IC_name" : initial condition function name (string)
 
-"res_tol" : stopping tolerance for residual, used by rk4 and Newton methods
+"res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
+"res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
+"res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
 "step_tol" : step size tolerance for Newton methods (floating point)
 "itermax" : maximum number of iterations for Newton methods (integer)
-
+"Reltol_funcs"  : an initial condition function name, the residual of the equation using this as the input is used for the relative residual calculation, (ASCIIString), defualt "none".  Note that this function will override res_reltol0 = -1.0
 # boundary condition specification
 "numBC" : number of boundary condtions used
 

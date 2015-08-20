@@ -146,6 +146,25 @@ println("size(q) = ", size(eqn.q))
 SL = eqn.SL
 SL0 = eqn.SL0
 
+# get BC functors
+getBCFunctors(mesh, sbp, eqn, opts)
+
+# calculate residual of some other function for res_reltol0
+Relfunc_name = opts["Relfunc_name"]
+if haskey(ICDict, Relfunc_name)
+  Relfunc = ICDict[Relfunc_name]
+  println("Relfunc = ", Relfunc)
+  Relfunc(mesh, sbp, eqn, opts, SL0)
+
+  res_real = zeros(mesh.numDof)
+  println("calculating residual for relative residual tolerance")
+  calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+
+  opts["res_reltol0"] = norm(res_real)/mesh.numDof
+end
+
+
+
 # populate u0 with initial condition
 ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
@@ -167,9 +186,6 @@ if opts["perturb_ic"]
   end
 end
 
-
-# get BC functors
-getBCFunctors(mesh, sbp, eqn, opts)
 
 SL_exact = deepcopy(SL0)
 
@@ -211,7 +227,7 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
     println("total solution time printed above")
     printSolution("newton_solution.dat", eqn.SL)
 #=

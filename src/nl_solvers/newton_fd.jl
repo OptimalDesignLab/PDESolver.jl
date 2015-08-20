@@ -1,4 +1,4 @@
-export newton, newton_check, newton_check_fd, initializeTempVariables
+export newton, newton_check, newton_check_fd, initializeTempVariables, calcResidual
 @doc """
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
@@ -18,7 +18,7 @@ export newton, newton_check, newton_check_fd, initializeTempVariables
     func must have the signature func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL) 
 
 """->
-function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=1e-6)
+function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -102,8 +102,15 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     writedlm("res1.dat", eqn.res)
   end
 
-  if res_0_norm < res_tol
-   println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
+  # check if initial residual satisfied absolute or relative tolerances
+  if res_0_norm < res_abstol || (res_reltol0 > 0 && res_0_norm/res_reltol0 < res_reltol)
+
+    if res_0_norm/res_reltol0 < res_reltol
+      println("Initial condition satisfied res_reltol with relative residual ", res_0_norm/res_reltol0)
+      println("Residual ", res_0_norm)
+    else
+     println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
+   end
    println("writing to convergence.dat")
 #   println(fconv, i, " ", res_0_norm, " ", 0.0)
    # no need to assemble q into SL0 because it never changed
@@ -116,6 +123,15 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
 
    return nothing
+ end
+
+ println("res_reltol0 = ", res_reltol0)
+ if res_reltol0 > 0  # use the supplied res_reltol0 value
+   println("using supplied value for relative residual")
+   res_reltol_0 = res_reltol0
+ else
+   println("using initial residual for relative residual")
+   res_reltol_0 = res_0_norm
  end
 
 
@@ -215,6 +231,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
     # calculate residual at updated location, used for next iteration rhs
     res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+    println("relative residual ", res_0_norm/res_reltol_0)
 
     # write to convergence file
     println(fconv, i, " ", res_0_norm, " ", step_norm)
@@ -233,9 +250,13 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
     end
 
 
-
-   if res_0_norm < res_tol
-     println("Newton iteration converged with residual norm ", res_0_norm)
+   if res_0_norm < res_abstol || res_0_norm/res_reltol_0 < res_reltol
+     if res_0_norm < res_abstol 
+       println("Newton iteration converged with residual norm ", res_0_norm)
+     end
+     if res_0_norm/res_reltol_0 < res_reltol
+      println("Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
+    end
 
      # put solution into SL0
      fill!(eqn.SL0, 0.0)
@@ -272,7 +293,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
       return nothing
     end
 
-#=
+
     # adjust step size limiter
     if (step_norm < step_norm_1)  # decreasing step size
       step_fac *= 1.2
@@ -281,11 +302,14 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 	step_fac = 1.0
       end
     end
-=#
-#    if (step_norm > step_norm_1)
-#      step_fac /= 1.1
-#    end
 
+    if (step_norm > step_norm_1)
+      step_fac /= 1.1
+    end
+
+    if step_norm < 0.001
+      step_fac = 1.0
+    end
 
     print("\n")
     step_norm_1 = step_norm
@@ -294,6 +318,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   println("Warning: Newton iteration did not converge in ", itermax, " iterations")
   println("  Final step size: ", step_norm)
   println("  Final residual: ", res_0_norm)
+  println("  Final relative residual: ", res_0_norm/res_reltol_0)
   close(fconv)
 
 

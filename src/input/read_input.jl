@@ -41,6 +41,7 @@ arg_dict["aoa"] = aoa*pi/180  # convert to radians
 rho_free = get!(arg_dict, "rho_free", -1)
 E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "edgestab_gamma", -0.1)
+get!(arg_dict, "Relfunc_name", "none")
 
 # deal with file names
 smb_name = arg_dict["smb_name"]
@@ -80,6 +81,9 @@ get!(arg_dict, "write_qic", false)
 get!(arg_dict, "write_vis", false)
 get!(arg_dict, "write_res", false)
 get!(arg_dict, "jac_type", 2)
+get!(arg_dict, "res_abstol", 1e-6)
+get!(arg_dict, "res_reltol", 1e-6)
+get!(arg_dict, "res_reltol0", -1.0)
 
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
