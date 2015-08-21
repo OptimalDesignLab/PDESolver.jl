@@ -158,9 +158,11 @@ if haskey(ICDict, Relfunc_name)
 
   res_real = zeros(mesh.numDof)
   println("calculating residual for relative residual tolerance")
-  calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 
-  opts["res_reltol0"] = norm(res_real)/mesh.numDof
+  opts["res_reltol0"] = tmp
+  println("res_reltol0 = ", tmp)
+  print("\n")
 end
 
 
@@ -178,6 +180,44 @@ ICfunc(mesh, sbp, eqn, opts, SL0)
 
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
+
+if opts["calc_error"]
+  println("calculating error of file ", opts["calc_error_infname"], " compared to initial condition")
+  vals = readdlm(opts["calc_error_infname"])
+  @assert length(vals) == mesh.numDof
+
+  err_vec = vals - eqn.SL0
+  err = calcNorm(eqn, err_vec)
+#  err = norm(vals - eqn.SL0)/mesh.numDof
+  outname = opts["calc_error_outfname"]
+  println("printint err = ", err, " to file ", outname)
+  f = open(outname, "w")
+  println(f, err)
+  close(f)
+  print("\n")
+end
+
+if opts["calc_trunc_error"]  # calculate truncation error
+
+  res_real = zeros(mesh.numDof)
+  println("calculating residual for truncation error")
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+
+  tmp = 0
+  # calculate a norm
+  for i=1:mesh.numDof
+    tmp = res_real[i]*eqn.Minv[i]*res_real[i]
+  end
+
+  tmp = sqrt(tmp)
+
+  f = open("error_trunc.dat", "w")
+  println(f, tmp)
+  close(f)
+end
+
+
+
 
 if opts["perturb_ic"]
   perturb_mag = opts["perturb_mag"]

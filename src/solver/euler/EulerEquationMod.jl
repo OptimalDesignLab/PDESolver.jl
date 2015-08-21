@@ -201,7 +201,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
   stabscale::Array{Tsol, 2}  # stabilization scale factor
 
   Minv::Array{Float64, 1}  # invese mass matrix
-
+  M::Array{Float64, 1}  # mass matrix
   disassembleSolution::Function # function SL0 -> eqn.q
   assembleSolution::Function  # function : eqn.res -> SL
 
@@ -223,6 +223,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
     eqn.assembleSolution = assembleSolution
 
     calcMassMatrixInverse(mesh, sbp, eqn)
+    eqn.M = calcMassMatrix(mesh, sbp, eqn)
+
     calcEdgeStabAlpha(mesh, sbp, eqn)
     
     # must initialize them because some datatypes (BigFloat) 
@@ -292,6 +294,31 @@ function calcMassMatrixInverse{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp:
   end
 
   return nothing
+
+end
+
+function calcMassMatrix{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim} )
+# calculate the (diagonal) mass matrix as a vector
+# return tehe vector M
+
+  M = zeros(Tmsh, mesh.numDof)
+
+  for i=1:mesh.numEl
+#    dofnums_i =  getGlobalNodeNumbers(mesh, i)
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+#	dofnum_k = dofnums_i[k,j]
+        dofnum_k = mesh.dofs[k,j,i]
+	# multiplication is faster than division, so do the divions here
+	# and then multiply solution vector times M
+	M[dofnum_k] += (sbp.w[j]*mesh.jac[j,i])
+
+#	eqn.M[dofnum_k] *= 1/(sbp.w[j])
+      end
+    end
+  end
+
+  return M
 
 end
 

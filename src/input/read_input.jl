@@ -43,6 +43,13 @@ E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "edgestab_gamma", -0.1)
 get!(arg_dict, "Relfunc_name", "none")
 
+
+# misc options
+get!(arg_dict, "calc_error", false)
+get!(arg_dict, "calc_error_infname", "none")
+get!(arg_dict, "calc_error_outfname", "error_calc.dat")
+
+
 # deal with file names
 smb_name = arg_dict["smb_name"]
 arg_dict["smb_name"] = joinpath(Pkg.dir("PDESolver"), smb_name)

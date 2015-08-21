@@ -36,6 +36,12 @@ where input_file_name.jl is in your current directory.
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
 
+# misc options
+"calc_error"  : calculate error norm of values in a file compared to the initial condition, number of values in the file must equal the number of dofs in the mesh, (Bool), default false
+"calc_error_infname"  : name of file to load, (ASCIIString), 
+"calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat
+"calc_error_trunc"  : calculate truncation error, IC must be exact solution for this to work, writes value to file error_trunc.dat, (Bool), default false
+
 # paramters used by boundary and initial condiitions
 "Ma" : free stream Mach number (floating point)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
