@@ -331,8 +331,8 @@ if opts["solve"]
 
   end
 
-      saveSolutionToMesh(mesh, real(SL0))
-      printSolution(mesh, real(SL0))
+      saveSolutionToMesh(mesh, real(eqn.SL0))
+      printSolution(mesh, real(eqn.SL0))
       printCoordinates(mesh)
       writeVisFiles(mesh, "solution_done")
 

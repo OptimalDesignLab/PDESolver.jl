@@ -49,12 +49,13 @@ get!(arg_dict, "calc_error", false)
 get!(arg_dict, "calc_error_infname", "none")
 get!(arg_dict, "calc_error_outfname", "error_calc.dat")
 
+get!(arg_dict, "calc_trunc_error", false)
 
 # deal with file names
 smb_name = arg_dict["smb_name"]
 arg_dict["smb_name"] = joinpath(Pkg.dir("PDESolver"), smb_name)
 
-if haskey(arg_dict, "dmg_name")
+if haskey(arg_dict, "dmg_name") && arg_dict["dmg_name"] != ".null"
   dmg_name = arg_dict["dmg_name"]
   arg_dict["dmg_name"] = joinpath(Pkg.dir("PDESolver"), dmg_name)
 else  # no dmg_name specified
