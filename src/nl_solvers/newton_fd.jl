@@ -259,8 +259,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     end
 
      # put solution into SL0
-     fill!(eqn.SL0, 0.0)
-     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+#     fill!(eqn.SL0, 0.0)
+#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
 
      # put residual into eqn.SL
      eqn.SL[:] = res_0
@@ -279,8 +279,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Final residual = ", res_0_norm)
 
      # put solution into SL0
-     fill!(eqn.SL0, 0.0)
-     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+#     fill!(eqn.SL0, 0.0)
+#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
 
       # put residual into eqn.SL
       eqn.SL[:] = res_0
@@ -323,8 +323,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
 
    # put solution into SL0
-   fill!(eqn.SL0, 0.0)
-   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+#   fill!(eqn.SL0, 0.0)
+#   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
 
    # put residual into eqn.SL
    eqn.SL[:] = res_0
