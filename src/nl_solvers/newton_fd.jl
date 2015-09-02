@@ -315,6 +315,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     step_norm_1 = step_norm
   end  # end loop over newton iterations
 
+  println(STDERR, "Warning: Newton iteration did not converge")
+
   println("Warning: Newton iteration did not converge in ", itermax, " iterations")
   println("  Final step size: ", step_norm)
   println("  Final residual: ", res_0_norm)
