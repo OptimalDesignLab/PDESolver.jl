@@ -49,7 +49,7 @@ get!(arg_dict, "edgestab_gamma", -0.1)
 get!(arg_dict, "use_filter", false)
 
 if arg_dict["use_filter"]
-  get!(arg_dict, "filter_name", "raisedcosineFilter")
+  get!(arg_dict, "filter_name", "raisedCosineFilter")
   # the raised cosine filter has no paramters
 end
 

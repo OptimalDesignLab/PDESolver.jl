@@ -407,6 +407,9 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 # pert is perturbation to apply
 # this function is independent of perturbation type
 
+  filter_orig = eqn.params.use_filter  # record original filter state
+  eqn.params.use_filter = false  # don't repetatively filter
+
 #  epsilon = 1e-6  # finite difference perturbation
   epsilon = norm(pert)  # get magnitude of perturbation
 #  (m,n) = size(jac)
@@ -460,7 +463,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
   end  # end loop over colors
 
   # now jac is complete
-
+  eqn.params.use_filter = filter_orig # reset filter
   return nothing
 
 end

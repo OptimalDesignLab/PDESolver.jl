@@ -13,7 +13,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/nl_solvers"))
 #include("complexify.jl")
 using PDESolverCommon
-using PumiInterface # pumi interface
+#using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
@@ -140,6 +140,9 @@ eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
 println("size(q) = ", size(eqn.q))
+
+
+init(mesh, sbp, eqn, opts)
 
 #SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
 #SL = zeros(Tsol, mesh.numDof) # solution at current timestep

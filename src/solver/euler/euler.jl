@@ -59,7 +59,7 @@ are usually passed an ArrayView, so writing to the argument vector writes
 directly to the large array stored in the eqn object.  Thus there is no 
 loss of efficiency by using low level functions.
 """
-export evalEuler
+export evalEuler, init
 
 # Rules for paramaterization:
 # Tmsh = mesh data type
@@ -150,7 +150,7 @@ end  # end evalEuler
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol}(mesh::AbstractMehs{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol})
+function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
 
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
@@ -183,7 +183,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 
   # apply filtering to input
   if eqn.params.use_filter
-    apply_filter(mesh, sbp, eqn, opts)
+    applyFilter(mesh, sbp, eqn, opts)
   end
 
 

@@ -65,7 +65,7 @@ export AbstractEulerData, EulerData, EulerData_
     * aoa : angle of attack (radians)
  
 """->
-immutable ParamType{Tdim} 
+type ParamType{Tdim} 
   order::Int  # accuracy of elements (p=1,2,3...)
 
   cv::Float64  # specific heat constant
@@ -89,7 +89,7 @@ immutable ParamType{Tdim}
 
   filter_mat::Array{Float64, 2}  # matrix that performs filtering operation
                                  # includes transformations to/from modal representation
-  function ParamType( opts, order::Integer)
+  function ParamType(sbp, opts, order::Integer)
   # create values, apply defaults
 
     # get() = get(dictionary, key, default)
@@ -113,12 +113,10 @@ immutable ParamType{Tdim}
     use_filter = opts["use_filter"]
 
     if use_filter
-      vand = calcModalTransformationOp(sbp)
       filter_fname = opts["filter_name"]
-      filter_func = filter_dict[filter_fname]
-      filter_mat = filter_func(sbp, vand, opts)
+      filter_mat = calcFilter(sbp, filter_fname, opts)
     else
-      filter_mat = Array(0,0)
+      filter_mat = Array(Float64, 0,0)
     end
 
     return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, use_filter, filter_mat)
@@ -227,7 +225,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
 
     eqn = new()  # incomplete initilization
 
-    eqn.params = ParamType{Tdim}( opts, mesh.order)
+    eqn.params = ParamType{Tdim}(sbp, opts, mesh.order)
 #=
     eqn.gamma = 1.4
     eqn.gamma_1 = eqn.gamma - 1

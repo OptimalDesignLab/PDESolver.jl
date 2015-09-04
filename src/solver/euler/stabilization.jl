@@ -373,7 +373,7 @@ end
 
 
 #####  Functions to for filtering #####
-function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEquation{Tsol}, opts)
+function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol}, opts)
 
   filter_mat = eqn.params.filter_mat
   q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  # holds the filtered q variables
@@ -397,6 +397,47 @@ function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn
 end
 
     
+function calcFilter(sbp::SBPOperator, filter_name::ASCIIString, opts)
+# calc the filter specified by filter_name
+
+
+  filter_func = filter_dict[filter_name]
+  filt_mat = filter_func(sbp, opts)
+
+  # testing only
+#  (m,n) = size(filt_mat)
+#  filt_mat = eye(m)
+
+
+  V = calcModalTransformationOp(sbp)
+  println("filt_mat = \n", filt_mat)
+  println("V = \n", V)
+  println("cond(V) = ", cond(V))
+  # calculate V*filter_mat*inv(V)
+  # which converts from interpolating to modal, applies filter, then 
+  # converts back to interpolating
+  F_t = filt_mat.'
+  V_t = V.'
+  F_ret = (V_t\F_t).'
+  F_ret = V*F_ret
+
+  F_ret = V*filt_mat*inv(V)
+  # for testing, return identity matrix
+#  (m,n) = size(filt_mat)
+#  F_ret = eye(m) 
+
+
+  for i=1:length(F_ret)
+    if abs(F_ret[i]) < 1e-15
+      F_ret[i] = 0
+    end
+  end
+
+  println("F_ret = \n", F_ret)
+  return F_ret
+
+end
+
 
 
 function calcModalTransformationOp(sbp::SBPOperator)
@@ -446,11 +487,10 @@ function calcModalTransformationOp(sbp::SBPOperator)
   # also replace linearly dependent columns here?
 
 
-  return V, Vx, Vy, Q, Qx, Qy, R, Rx, Ry
+  return V_full
 end
 
-
-function calcRaisedCosineFilter(sbp::SBPOperator, vand::AbstractArray{T,2}, opts)
+function calcRaisedCosineFilter(sbp::SBPOperator, opts)
 # calculates the 1D raised cosine filter
 # vand is the Vandermond matrix that converts from the interpolating
 # conservative variables to the modal representation
@@ -464,12 +504,32 @@ function calcRaisedCosineFilter(sbp::SBPOperator, vand::AbstractArray{T,2}, opts
     filt[i, i] = 0.5*(1 + cos(theta_i))
   end
 
+  # decrease the steepness of the filter
+  for i=1:sbp.numnodes
+    diff = 1 - filt[i, i]
+    filt[i, i] += 0.9*diff
+  end
+
   
-  # construct the full operator 
-  # convert nodal to modal, do filter, convert back
-  return V\(F*V)  
+  return filt
 end
 
-global const filter_dict{ASCIIString, Function} (
-"raisedCosineFilter" => calcRaisedCosineFilter
+
+function calcLowPassFilter(sbp::SBPOperator, opts)
+
+  filt = zeros(sbp.numnodes, sbp.numnodes)
+  for i=1:sbp.numnodes
+    filt[i, i] = 1
+  end
+
+  filt[end, end] = 0.99
+
+  
+  return filt
+end
+
+
+global const filter_dict = Dict{ASCIIString, Function} (
+"raisedCosineFilter" => calcRaisedCosineFilter,
+"lowPassFilter" => calcLowPassFilter,
 )
