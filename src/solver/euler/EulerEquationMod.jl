@@ -233,16 +233,17 @@ end  # end of type declaration
 
 
 # now that EulerData is defined, include other files that use it
+#println(Tsol)
 
 include("euler_macros.jl")
 include("output.jl")
 include("common_funcs.jl")
 #include("sbp_interface.jl")
+include("artificialViscosity.jl")
 include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
-include("artificialViscosity.jl")
 
 
 

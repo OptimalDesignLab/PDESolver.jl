@@ -51,6 +51,15 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
   # append to be on the safe side
   fconv = open("convergence.dat", "a+")
 
+  # Storing the initial density value at all the nodes
+  vRho_act = zeros(mesh.numNodes)
+  k = 1
+  for i = 1:4:length(eqn.SL0)
+    vRho_act[k] = eqn.SL0[i]
+    k += 1
+  end
+  println("Actual Density value succesfully extracted")
+
 
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
@@ -110,6 +119,18 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_tol=
 
     # perform Newton update
     eqn.SL0[:] += step_fac*delta_SL  # update SL0
+
+    # Calculate the error in density
+    vRho_calc = zeros(vRho_act)
+    k = 1
+    for i = 1:4:length(eqn.SL0)
+      vRho_calc[k] = eqn.SL0[i]
+      k += 1
+    end
+
+    ErrDensity = norm(vRho_calc - vRho_act)/mesh.numNodes
+    println("DensityErrorNorm = ", ErrDensity)
+
 
     # write starting values for next iteration to file
     if write_sol

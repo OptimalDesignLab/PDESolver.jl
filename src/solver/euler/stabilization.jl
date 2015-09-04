@@ -52,8 +52,10 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
     #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
     #     it by an order of magnitude at at time until RK is stable.  
     #     Once you find a value that works, try increasing it slowly.
-    edge_stab_gamma = -0.01  # default
-#     edge_stab_gamma = 0.0 
+    
+
+     edge_stab_gamma = -0.01  # default
+    #edge_stab_gamma = 0.0 
 #     edge_stab_gamma = 0.00001
 
     # edge lengths component wise
@@ -355,9 +357,9 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
     #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
     #     it by an order of magnitude at at time until RK is stable.  
     #     Once you find a value that works, try increasing it slowly.
-    edge_stab_gamma = -0.1  # default
-#     edge_stab_gamma = 0.0 
-#     edge_stab_gamma = 0.00001
+#   edge_stab_gamma = -0.1  # default
+    edge_stab_gamma = 0.0 
+#   edge_stab_gamma = 0.00001
 
     # edge lengths component wise
     h_x = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
