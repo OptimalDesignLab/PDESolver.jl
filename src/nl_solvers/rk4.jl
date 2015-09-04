@@ -88,9 +88,11 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #    println("eqn.SL0 = ", eqn.SL0)
 
  #   eqn.SL0 = x_old
-    eqn.SL[:] = 0.0
-    f( mesh, sbp, eqn, opts, eqn.SL0, eqn.SL, t)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    f( mesh, sbp, eqn, opts, t)
 
+    eqn.SL[:] = 0.0
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
     k1[:] = eqn.SL
     x2[:] = x_old + (h/2)*k1
 
@@ -118,27 +120,46 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
+     # put solution into SL0
+  #   fill!(eqn.SL0, 0.0)
+  #   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+
+      # put residual into eqn.SL
+#      eqn.SL[:] = res_0
+ 
       break
     end
 
 
     eqn.SL0[:] = x2
-    eqn.SL[:] = k2
-    f( mesh, sbp, eqn, opts,  eqn.SL0, eqn.SL, t + h/2)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    f( mesh, sbp, eqn, opts, t + h/2)
 
+    fill!(eqn.SL, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
     k2[:] = eqn.SL
     x3[:] = x_old + (h/2)*k2
 
     eqn.SL0[:] = x3
-    eqn.SL[:] = k3
-    f( mesh, sbp, eqn, opts, eqn.SL0, eqn.SL, t + h/2)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    f( mesh, sbp, eqn, opts, t + h/2)
 
+    fill!(eqn.SL, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+
+ 
     k3[:] = eqn.SL
     x4[:] = x_old + h*k3
 
     eqn.SL0[:] = x4
-    eqn.SL[:] = k4
-    f( mesh, sbp, eqn, opts, eqn.SL0, eqn.SL, t + h)
+
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    f( mesh, sbp, eqn, opts, t + h)
+
+    fill!(eqn.SL, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+ 
+
     k4 = eqn.SL[:]
 
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
@@ -159,6 +180,21 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   end
 
   close(f1)
+
+  # put solution into SL0a
+#  fill!(eqn.SL0, 0.0)
+#  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+
+    # evaluate residual at final q value
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    f( mesh, sbp, eqn, opts, t)
+
+    eqn.SL[:] = 0.0
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+ 
+  # put residual into eqn.SL
+#  eqn.SL[:] = k1
+ 
 #=
   # final result needs to be returned in a different variable for AD
   println("coping x_old to SL")

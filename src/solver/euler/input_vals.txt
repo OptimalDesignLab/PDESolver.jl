@@ -20,10 +20,12 @@ where input_file_name.jl is in your current directory.
 
 "IC_name" : initial condition function name (string)
 
-"res_tol" : stopping tolerance for residual, used by rk4 and Newton methods
+"res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
+"res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
+"res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
 "step_tol" : step size tolerance for Newton methods (floating point)
 "itermax" : maximum number of iterations for Newton methods (integer)
-
+"Reltol_funcs"  : an initial condition function name, the residual of the equation using this as the input is used for the relative residual calculation, (ASCIIString), defualt "none".  Note that this function will override res_reltol0 = -1.0
 # boundary condition specification
 "numBC" : number of boundary condtions used
 
@@ -34,12 +36,23 @@ where input_file_name.jl is in your current directory.
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
 
+# misc options
+"calc_error"  : calculate error norm of values in a file compared to the initial condition, number of values in the file must equal the number of dofs in the mesh, (Bool), default false
+"calc_error_infname"  : name of file to load, (ASCIIString), 
+"calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat
+"calc_trunc_error"  : calculate truncation error, IC must be exact solution for this to work, writes value to file error_trunc.dat, (Bool), default false
+
 # paramters used by boundary and initial condiitions
 "Ma" : free stream Mach number (floating point)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
 "aoa" : angle of attack in degrees (floating point)
 "rho_free" : free stream density
 "E_free" : free stream energy
+"edgestab_gamma"  : edge stabilization parameter, (floatingpoint), default -0.1
+"perturb_ic" : add random noise to initial condition, (Bool), default false
+"perturb_mag" : magnitude of perturbation (perturbation could be + or -), (Float64), default 0.0
+"write_finalsolution"  : write final solution (in vector form) to file, (Bool), default false
+"write_finalresidual"  : write final residual (in vector form) to file, (Bool), default false
 
 # solver debugging options
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function (bool), default false
@@ -51,13 +64,21 @@ where input_file_name.jl is in your current directory.
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
 "write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false
+"vertify_coloring"  : verify coloring worked correctly, (Bool), default true
+"write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
 
 # Newton's Method debugging options
 "write_rhs"  : write rhs (residual) to a file (rhs$i.dat) each iteration, (Bool), default false
 "write_jac"  : write the Jacobian to a file (jacobian$i.dat) each iteration, (Bool), default false
 "print_cond" : calculate and print Jacobian condition number each iteration, (Bool), default false
 "write_sol"  : write the solution to a file (SL$i.dat) each iteration, (Bool), default false
+"write_res"  : write the residual in 3d form (res$i.dat) each iteration, (Bool), default false
+"write_qic"  : write the initial condition, assembled into 3d array form, to file qic.dat, (Bool), default false
 "write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
+
+# Newton's Method options
+"jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)
+"epsilon"  : perturbation size when calculation Jacobian, (Float64), default 1e-6 for finite difference, 1e-20 to complex step
 
 # testing options
 "solve" : call the solver specified by run_type, (Bool), default true

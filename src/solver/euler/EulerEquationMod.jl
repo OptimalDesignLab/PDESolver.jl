@@ -66,6 +66,8 @@ export AbstractEulerData, EulerData, EulerData_
  
 """->
 immutable ParamType{Tdim} 
+  order::Int  # accuracy of elements (p=1,2,3...)
+
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -77,11 +79,12 @@ immutable ParamType{Tdim}
   rho_free::Float64  # free stream density
   E_free::Float64 # free stream energy (4th conservative variable)
 
+  edgestab_gamma::Float64  # edge stabilization parameter
   # debugging options
   writeflux::Bool  # write Euler flux
   writeboundary::Bool  # write boundary data
   writeq::Bool # write solution variables
-  function ParamType(opts)
+  function ParamType( opts, order::Integer)
   # create values, apply defaults
 
     # get() = get(dictionary, key, default)
@@ -95,14 +98,14 @@ immutable ParamType{Tdim}
     aoa = opts[ "aoa"]
     rho_free = opts[ "rho_free"]
     E_free = opts[ "E_free"]
-
+    edgestab_gamma = opts["edgestab_gamma"]
 
     # debugging options
     writeflux = opts[ "writeflux"]
     writeboundary = opts[ "writeboundary"]
     writeq = opts["writeq"]
 
-    return new(cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, writeflux, writeboundary, writeq)
+    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq)
 
   end
 
@@ -147,6 +150,22 @@ abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
 # low level functions should take in EulerData{Tsol, 2} or EulerData{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
 
+
+# now that EulerData is declared, include other files that use it
+
+include("euler_macros.jl")
+include("output.jl")
+include("common_funcs.jl")
+#include("sbp_interface.jl")
+include("euler.jl")
+include("ic.jl")
+include("bc.jl")
+include("stabilization.jl")
+include("artificialViscosity.jl")
+#include("constant_diff.jl")
+
+
+
 @doc """
 ### EulerEquationMod.EulerData_
 
@@ -183,6 +202,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
   stabscale::Array{Tsol, 2}  # stabilization scale factor
 
   Minv::Array{Float64, 1}  # invese mass matrix
+  M::Array{Float64, 1}  # mass matrix
+  disassembleSolution::Function # function SL0 -> eqn.q
+  assembleSolution::Function  # function : eqn.res -> SL
 
   # inner constructor
 #  function EulerData(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
@@ -190,7 +212,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
 
     eqn = new()  # incomplete initilization
 
-    eqn.params = ParamType{Tdim}(opts)
+    eqn.params = ParamType{Tdim}( opts, mesh.order)
 #=
     eqn.gamma = 1.4
     eqn.gamma_1 = eqn.gamma - 1
@@ -198,8 +220,12 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
     eqn.cv = eqn.R/(eqn.gamma - 1)
 =#
     eqn.res_type = Tres
+    eqn.disassembleSolution = disassembleSolution
+    eqn.assembleSolution = assembleSolution
 
     calcMassMatrixInverse(mesh, sbp, eqn)
+    eqn.M = calcMassMatrix(mesh, sbp, eqn)
+
     calcEdgeStabAlpha(mesh, sbp, eqn)
     
     # must initialize them because some datatypes (BigFloat) 
@@ -232,20 +258,6 @@ end  # end of type declaration
 
 
 
-# now that EulerData is defined, include other files that use it
-#println(Tsol)
-
-include("euler_macros.jl")
-include("output.jl")
-include("common_funcs.jl")
-#include("sbp_interface.jl")
-include("artificialViscosity.jl")
-include("euler.jl")
-include("ic.jl")
-include("bc.jl")
-include("stabilization.jl")
-
-
 
 
 @doc """
@@ -274,14 +286,43 @@ function calcMassMatrixInverse{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp:
         dofnum_k = mesh.dofs[k,j,i]
 	# multiplication is faster than division, so do the divions here
 	# and then multiply solution vector times Minv
-	eqn.Minv[dofnum_k] += 1/(sbp.w[j]*mesh.jac[j,i])
+	eqn.Minv[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
 
 #	eqn.Minv[dofnum_k] *= 1/(sbp.w[j])
       end
     end
   end
 
+  for i=1:mesh.numDof
+    eqn.Minv[i] = 1/eqn.Minv[i]
+  end
+
   return nothing
+
+end
+
+function calcMassMatrix{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim} )
+# calculate the (diagonal) mass matrix as a vector
+# return tehe vector M
+
+  M = zeros(Tmsh, mesh.numDof)
+
+  for i=1:mesh.numEl
+#    dofnums_i =  getGlobalNodeNumbers(mesh, i)
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+#	dofnum_k = dofnums_i[k,j]
+        dofnum_k = mesh.dofs[k,j,i]
+	# multiplication is faster than division, so do the divions here
+	# and then multiply solution vector times M
+	M[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
+
+#	eqn.M[dofnum_k] *= 1/(sbp.w[j])
+      end
+    end
+  end
+
+  return M
 
 end
 
