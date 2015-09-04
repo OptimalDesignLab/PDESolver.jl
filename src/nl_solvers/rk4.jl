@@ -121,8 +121,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
      # put solution into SL0
-     fill!(eqn.SL0, 0.0)
-     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+  #   fill!(eqn.SL0, 0.0)
+  #   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
 
       # put residual into eqn.SL
 #      eqn.SL[:] = res_0
