@@ -84,6 +84,11 @@ immutable ParamType{Tdim}
   writeflux::Bool  # write Euler flux
   writeboundary::Bool  # write boundary data
   writeq::Bool # write solution variables
+  use_edgestab::Bool  # use edge stabilization
+  use_filter::Bool  # use filtering
+
+  filter_mat::Array{Float64, 2}  # matrix that performs filtering operation
+                                 # includes transformations to/from modal representation
   function ParamType( opts, order::Integer)
   # create values, apply defaults
 
@@ -104,8 +109,19 @@ immutable ParamType{Tdim}
     writeflux = opts[ "writeflux"]
     writeboundary = opts[ "writeboundary"]
     writeq = opts["writeq"]
+    use_edgestab = opts["use_edgestab"]
+    use_filter = opts["use_filter"]
 
-    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq)
+    if use_filter
+      vand = calcModalTransformationOp(sbp)
+      filter_fname = opts["filter_name"]
+      filter_func = filter_dict[filter_fname]
+      filter_mat = filter_func(sbp, vand, opts)
+    else
+      filter_mat = Array(0,0)
+    end
+
+    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, use_filter, filter_mat)
 
   end
 

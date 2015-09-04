@@ -40,14 +40,25 @@ aoa = get!(arg_dict, "aoa", -1.0)*pi/180
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
 rho_free = get!(arg_dict, "rho_free", -1)
 E_free = get!(arg_dict, "E_free", -1)
-get!(arg_dict, "edgestab_gamma", -0.1)
 get!(arg_dict, "Relfunc_name", "none")
+
+
+# stabilization options
+get!(arg_dict, "use_edgestab", true)
+get!(arg_dict, "edgestab_gamma", -0.1)
+get!(arg_dict, "use_filter", false)
+
+if arg_dict["use_filter"]
+  get!(arg_dict, "filter_name", "raisedcosineFilter")
+  # the raised cosine filter has no paramters
+end
 
 
 # misc options
 get!(arg_dict, "calc_error", false)
 get!(arg_dict, "calc_error_infname", "none")
 get!(arg_dict, "calc_error_outfname", "error_calc.dat")
+
 
 get!(arg_dict, "calc_trunc_error", false)
 

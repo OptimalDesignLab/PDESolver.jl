@@ -3,78 +3,6 @@
 
 
 @doc """
-### EulerEquationMod.stabscale
-
-  This function calculates the edge stabilization scaling paramater at a 
-  node and returns it
-
-  Inputs:
-    * u  : vector of conservative variables
-    * dxidx : jacobian of xi wrt x coordinates at the node
-    * nrm  : normal vector in xi space
-    * mesh : AbstractMesh (only needed for order)
-    * params : ParamType{2}
-
-  This is a low level function
-"""->
-# this function is going to be deprecated soon
-# low level function
-function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::AbstractArray{T,1}, mesh::AbstractMesh, params::ParamType{2})
-
-#     println("==== entering stabscale ====")
-
-    # grabbing conserved variables
-    rho = u[1]
-    vel_x = u[2]/rho
-    vel_y = u[3]/rho
-    Energy = u[4]
-
-    # from JC's code below, eqn should still be in scope
-    pressure = calcPressure(u, eqn.params)
-
-    # solved eqn for e: E = rho*e + (1/2)*rho*u^2
-    vel_squared = vel_x^2 + vel_y^2
-    energy = Energy/rho - (1/2)*vel_squared
-
-    # gamma stored in EulerData type
-    gamma = eqn.gamma
-
-#     println("pressure: ",pressure)
-#     println("gamma: ",gamma)
-#     println("rho: ",rho)
-    # ideal gas law
-    speed_sound = sqrt((gamma*pressure)/rho)
-
-    # choice for edge stabilization constant: 
-    #   refer to email from JH, 20150504:
-    #   Anthony: there is little guidance in the literature regarding 
-    #     gamma for the Euler equations.  I suggest starting with 
-    #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
-    #     it by an order of magnitude at at time until RK is stable.  
-    #     Once you find a value that works, try increasing it slowly.
-    edge_stab_gamma = -0.01  # default
-#     edge_stab_gamma = 0.0 
-#     edge_stab_gamma = 0.00001
-
-    # edge lengths component wise
-    h_x = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-    h_y = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-    # edge length
-    h = sqrt(h_x^2 + h_y^2)
-
-    # scaled velocity scalar
-#     U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
-    U = vel_x*(h_x/h) + vel_y*(h_y/h)
-
-    order = mesh.order
-#     return (U + speed_sound)*edge_stab_gamma*h^2
-    return (abs(U) + speed_sound)*edge_stab_gamma*h^(order+1)
-
-  end
-
-
-@doc """
 ### EulerEquationMod.edgestabilize!
 
 Adds edge-stabilization (see Burman and Hansbo, doi:10.1016/j.cma.2003.12.032)
@@ -444,4 +372,104 @@ end
 
 
 
+#####  Functions to for filtering #####
+function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEquation{Tsol}, opts)
 
+  filter_mat = eqn.params.filter_mat
+  q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  # holds the filtered q variables
+  len = mesh.numNodesPerElement*mesh.numDofPerNode
+  for i=1:mesh.numEl
+    q_vals = view(eqn.q, :, :, i)  # mesh.numDof x sbp.numnodes
+    # apply filter matrix to q_vals transposed, so it is applied to
+    # all the rho components, then all the x momentum, etc.
+    smallmatmatT!(filter_mat, q_vals, q_filt)
+
+    # copy values back into eqn.q, remembering to transpose q_filt
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+	eqn.q[k, j, i] = q_filt[j, k]
+      end
+    end
+
+  end  # end loop over elements
+
+  return nothing
+end
+
+    
+
+
+function calcModalTransformationOp(sbp::SBPOperator)
+
+  vtx = [0. 0.; 1. 0.; 0. 1.]  # reference element
+  x, y = SummationByParts.SymCubatures.calcnodes(sbp.cub, vtx)
+  # loop over ortho polys up to degree d
+  d = sbp.degree
+  n = convert(Int, (d+1)*(d+2)/2)
+  V = zeros(Float64, (sbp.numnodes, n))
+  Vx = zeros(V)
+  Vy = zeros(V)
+  ptr = 0
+  for r = 0:d
+    for j = 0:r
+      i = r-j
+      V[:,ptr+1] = SummationByParts.OrthoPoly.proriolpoly(x, y, i, j)
+      Vx[:,ptr+1], Vy[:,ptr+1] = SummationByParts.OrthoPoly.diffproriolpoly(x, y, i, j)
+      ptr += 1
+    end
+  end
+
+
+  Q, R = qr(V, thin=false)
+  Qx, Rx = qr(Vx, thin=false)
+  Qy, Ry = qr(Vy, thin=false)
+
+  # make the V matrix square
+  # for this to work, the QR decomposition *cannot* do column pivoting
+  # if it does we will have to do a little more bookkepping
+  V_full = zeros(sbp.numnodes, sbp.numnodes)
+  V_full[:, 1:n] = V
+  V_full[:, (n+1):end] = Q[:, (n+1):end]
+
+  # make Vx, Vy square
+  # also make them full rank by replacing linearly dependend columns with vectors from Q
+
+  Vx_full = zeros(sbp.numnodes, sbp.numnodes)
+  Vy_full = zeros(sbp.numnodes, sbp.numnodes)
+
+  Vx_full[:, 1:n] = Vx
+  Vy_full[:, 1:n] = Vy
+
+  Vx_full[:, (n+1):end] = Qx[:, (n+1):end]
+  Vy_full[:, (n+1):end] = Qy[:, (n+1):end]
+
+  # also replace linearly dependent columns here?
+
+
+  return V, Vx, Vy, Q, Qx, Qy, R, Rx, Ry
+end
+
+
+function calcRaisedCosineFilter(sbp::SBPOperator, vand::AbstractArray{T,2}, opts)
+# calculates the 1D raised cosine filter
+# vand is the Vandermond matrix that converts from the interpolating
+# conservative variables to the modal representation
+# from Spectral Methods for the Euler Equations: Part I - Fourier Methods and
+# shock Capturing
+# Hussaini, Koproiva, Salas, Zang
+
+  filt = zeros(sbp.numnodes, sbp.numnodes)
+  for i=1:sbp.numnodes
+    theta_i = (i-1)/sbp.numnodes
+    filt[i, i] = 0.5*(1 + cos(theta_i))
+  end
+
+  
+  # construct the full operator 
+  # convert nodal to modal, do filter, convert back
+  return V\(F*V)  
+end
+
+global const filter_dict{ASCIIString, Function} (
+"raisedCosineFilter" => calcRaisedCosineFilter
+)

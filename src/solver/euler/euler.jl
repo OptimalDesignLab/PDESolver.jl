@@ -139,6 +139,27 @@ return nothing
 
 end  # end evalEuler
 
+
+
+@doc """
+### EulerEquationMod.init
+
+  This function performs any operations that need to be performed before
+  the first residual evaluation.
+  Any operations that need to be performed at the beginning of *each* 
+  residual evaluation should go in dataPrep
+"""
+# high level functions
+function init{Tmsh, Tsol}(mesh::AbstractMehs{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol})
+
+  # get BC functors
+  getBCFunctors(mesh, sbp, eqn, opts)
+
+
+  return nothing
+end
+
+
 @doc """
 ### EulerEquationMod.dataPrep
 
@@ -159,6 +180,13 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 #println("Entered dataPrep()")
 
 #  println("eqn.q = ", eqn.q)
+
+  # apply filtering to input
+  if eqn.params.use_filter
+    apply_filter(mesh, sbp, eqn, opts)
+  end
+
+
 
   u = eqn.q
   F_xi = eqn.F_xi
@@ -463,7 +491,9 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
   # u argument here is SL in a different format
 #  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
 
-  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+  if eqn.params.use_edgestab
+    edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+  end
 
 #  println("==== end of addStabilization ====")
 

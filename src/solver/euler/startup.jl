@@ -146,9 +146,6 @@ println("size(q) = ", size(eqn.q))
 SL = eqn.SL
 SL0 = eqn.SL0
 
-# get BC functors
-getBCFunctors(mesh, sbp, eqn, opts)
-
 # calculate residual of some other function for res_reltol0
 Relfunc_name = opts["Relfunc_name"]
 if haskey(ICDict, Relfunc_name)
