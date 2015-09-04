@@ -1,0 +1,9 @@
+# paramaters for isentropic vortex2 mesh
+
+Mesh Size: Relative 0.01 face 1
+Mesh Curvature Refinement: Relative 0.001 face 1
+
+edge 4: inner radius
+edge 10: outer radius
+edge 7 : lower inlet/outlet
+edge 13 : upper inlet/outlet

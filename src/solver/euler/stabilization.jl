@@ -355,7 +355,7 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
     #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
     #     it by an order of magnitude at at time until RK is stable.  
     #     Once you find a value that works, try increasing it slowly.
-    edge_stab_gamma = -0.1  # default
+    edge_stab_gamma = params.edgestab_gamma  # default
 #     edge_stab_gamma = 0.0 
 #     edge_stab_gamma = 0.00001
 
@@ -365,13 +365,14 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
 
     # edge length
     h = sqrt(h_x^2 + h_y^2)
+#    println("h = ", h)
 
     # scaled velocity scalar
 #     U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
     U = vel_x*(h_x/h) + vel_y*(h_y/h)
 
 #     return (U + speed_sound)*edge_stab_gamma*h^2
-    return (abs(U) + speed_sound)*edge_stab_gamma*h^2
+    return (abs(U) + speed_sound)*edge_stab_gamma*h^(2)
 
   end
 

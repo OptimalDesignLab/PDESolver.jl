@@ -79,13 +79,13 @@ function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOpe
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
-nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+numEl = mesh.numEl
+nnodes = mesh.numNodesPerElement
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+  dofnums_i = mesh.dofs[:, :, i]
+  coords = mesh.coords[:, :, i]
 
   for j=1:nnodes
       # get dof numbers for each variable
@@ -97,7 +97,7 @@ for i=1:numEl
       # coordinates of this node (must be a vertex)
       x = coords[1,j]
       y = coords[2,j]
-      z = coords[3,j]
+#      z = coords[3,j]
 
       calcRho1Energy2U3(coords[:,j], eqn.params, sol)
 

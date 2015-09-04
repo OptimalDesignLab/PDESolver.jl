@@ -139,11 +139,33 @@ mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=4) 
 eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
+println("size(q) = ", size(eqn.q))
 
 #SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
 #SL = zeros(Tsol, mesh.numDof) # solution at current timestep
 SL = eqn.SL
 SL0 = eqn.SL0
+
+# get BC functors
+getBCFunctors(mesh, sbp, eqn, opts)
+
+# calculate residual of some other function for res_reltol0
+Relfunc_name = opts["Relfunc_name"]
+if haskey(ICDict, Relfunc_name)
+  Relfunc = ICDict[Relfunc_name]
+  println("Relfunc = ", Relfunc)
+  Relfunc(mesh, sbp, eqn, opts, SL0)
+
+  res_real = zeros(mesh.numDof)
+  println("calculating residual for relative residual tolerance")
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+
+  opts["res_reltol0"] = tmp
+  println("res_reltol0 = ", tmp)
+  print("\n")
+end
+
+
 
 # populate u0 with initial condition
 ICfunc_name = opts["IC_name"]
@@ -159,15 +181,51 @@ ICfunc(mesh, sbp, eqn, opts, SL0)
 #ICVortex(mesh, sbp, eqn, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
-#=
-#randvec = readdlm("randvec.txt")
-for i=1:mesh.numDof
-  SL0[i] += 0.05*rand()
-end
-=#
+if opts["calc_error"]
+  println("calculating error of file ", opts["calc_error_infname"], " compared to initial condition")
+  vals = readdlm(opts["calc_error_infname"])
+  @assert length(vals) == mesh.numDof
 
-# get BC functors
-getBCFunctors(mesh, sbp, eqn, opts)
+  err_vec = vals - eqn.SL0
+  err = calcNorm(eqn, err_vec)
+#  err = norm(vals - eqn.SL0)/mesh.numDof
+  outname = opts["calc_error_outfname"]
+  println("printint err = ", err, " to file ", outname)
+  f = open(outname, "w")
+  println(f, err)
+  close(f)
+  print("\n")
+end
+
+if opts["calc_trunc_error"]  # calculate truncation error
+
+  res_real = zeros(mesh.numDof)
+  println("calculating residual for truncation error")
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+
+  tmp = 0
+  # calculate a norm
+  for i=1:mesh.numDof
+    tmp = res_real[i]*eqn.Minv[i]*res_real[i]
+  end
+
+  tmp = sqrt(tmp)
+
+  f = open("error_trunc.dat", "w")
+  println(f, tmp)
+  close(f)
+end
+
+
+
+
+if opts["perturb_ic"]
+  perturb_mag = opts["perturb_mag"]
+  for i=1:mesh.numDof
+    SL0[i] += perturb_mag*rand()
+  end
+end
+
 
 SL_exact = deepcopy(SL0)
 
@@ -177,7 +235,8 @@ saveSolutionToMesh(mesh, SL0)
 
 writeVisFiles(mesh, "solution_ic")
 
-
+# initialize some variables in nl_solvers module
+initializeTempVariables(mesh)
 
 # call timestepper
 if opts["solve"]
@@ -208,7 +267,8 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
+    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+    println("total solution time printed above")
     printSolution("newton_solution.dat", eqn.SL)
 #=
   elseif flag == 5
@@ -235,7 +295,13 @@ if opts["solve"]
 
 
 
+  if opts["write_finalsolution"]
+    writedlm("solution_final.dat", real(eqn.SL0))
+  end
 
+  if opts["write_finalresidual"]
+    writedlm("residual_final.dat", real(eqn.SL))
+  end
 
 
 
@@ -265,8 +331,8 @@ if opts["solve"]
 
   end
 
-      saveSolutionToMesh(mesh, real(SL0))
-      printSolution(mesh, real(SL0))
+      saveSolutionToMesh(mesh, real(eqn.SL0))
+      printSolution(mesh, real(eqn.SL0))
       printCoordinates(mesh)
       writeVisFiles(mesh, "solution_done")
 
