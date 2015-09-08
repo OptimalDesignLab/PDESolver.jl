@@ -442,7 +442,7 @@ end
 
 function calcModalTransformationOp(sbp::SBPOperator)
 
-  vtx = [0. 0.; 1. 0.; 0. 1.]  # reference element
+  vtx = [-1. -1; 1 -1; -1 1]  # reference element
   x, y = SummationByParts.SymCubatures.calcnodes(sbp.cub, vtx)
   # loop over ortho polys up to degree d
   d = sbp.degree
@@ -499,20 +499,50 @@ function calcRaisedCosineFilter(sbp::SBPOperator, opts)
 # Hussaini, Koproiva, Salas, Zang
 
   filt = zeros(sbp.numnodes, sbp.numnodes)
+
+  max_mode = getPascalLevel(sbp.numnodes)
   for i=1:sbp.numnodes
-    theta_i = (i-1)/sbp.numnodes
+    mode_i = getPascalLevel(i)
+    theta_i = (mode_i-1)/max_mode
     filt[i, i] = 0.5*(1 + cos(theta_i))
   end
 
+#=
   # decrease the steepness of the filter
   for i=1:sbp.numnodes
     diff = 1 - filt[i, i]
     filt[i, i] += 0.9*diff
   end
-
+=#
   
   return filt
 end
+
+function getPascalLevel(node::Integer)
+# get the current polynomial order of some entry node in 
+# Pascals triangle
+# this assumes the tree is being traversed in order, from 1 to n
+
+  level = 1
+  for i=1:(node+1) # loop over level of triangles
+            # looping all the way to i is excessive
+    # get the maximum node in current level of triangle
+    println("Level = ", level)
+    max_n = div(level*(1 + level), 2)
+    println("max_n = ", max_n)
+    # break when we are at the right level
+    if  node <= max_n
+      println("breaking")
+      break
+    end
+
+    level += 1  # increment level
+  end
+
+
+  return level
+end
+
 
 
 function calcLowPassFilter(sbp::SBPOperator, opts)

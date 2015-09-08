@@ -6,27 +6,27 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
 
   include("../src/solver/euler/startup.jl")
 
-  @fact norm(eqn.SL)/mesh.numDof => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.SL) => less_than(1e-9)
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex2.jl"
 
   include("../src/solver/euler/startup.jl")
 
-  @fact norm(eqn.SL)/mesh.numDof => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.SL) => less_than(1e-9)
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex3.jl"
 
   include("../src/solver/euler/startup.jl")
 
-  @fact norm(eqn.SL)/mesh.numDof => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.SL) => less_than(1e-9)
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex4.jl"
 
   include("../src/solver/euler/startup.jl")
 
-  @fact norm(eqn.SL)/mesh.numDof => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.SL) => less_than(1e-9)
 
 end

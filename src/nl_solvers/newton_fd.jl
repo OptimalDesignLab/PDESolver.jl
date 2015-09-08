@@ -18,7 +18,7 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
     func must have the signature func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL) 
 
 """->
-function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1)
+function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -28,6 +28,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # the dispatch to the backslash solver and possibly the jacobian calculation
   # function will be runtime dispatched
 
+  println("\n Entered newton")
   # options
   write_rhs = opts["write_rhs"]::Bool
   write_jac = opts["write_jac"]::Bool
@@ -42,6 +43,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
   println("write_rhs = ", write_rhs)
   println("write_res = ", write_res)
+  println("step_tol = ", step_tol)
+  println("res_abstol = ", res_abstol)
+  println("res_reltol0 = ", res_reltol0)
+
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
