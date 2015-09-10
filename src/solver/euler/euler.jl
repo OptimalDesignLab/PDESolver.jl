@@ -110,7 +110,7 @@ evalBoundaryIntegrals(mesh, sbp, eqn)
 
 
 
-addStabilization(mesh, sbp, eqn)
+addStabilization(mesh, sbp, eqn, opts)
 #println("edge stabilizing @time printed above")
 
 
@@ -183,7 +183,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 
   # apply filtering to input
   if eqn.params.use_filter
-    applyFilter(mesh, sbp, eqn, opts)
+    applyFilter(mesh, sbp, eqn, eqn.q, opts)
   end
 
 
@@ -376,7 +376,7 @@ for i=1:numel
     press = @getPressure(aux_vars)
 #    press = getPressure(aux_vars)
 #    println("press = ", press)
-    @assert( real(press) > 0.0)
+    @assert( real(press) > 0.0, "element $i, node $j")
   end
 end
 
@@ -476,7 +476,7 @@ end
 """->
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
-function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol})
+function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts)
 
 #  println("==== start of addStabilization ====")
   # alpha calculated like in edgestabilize! documentation
@@ -493,6 +493,14 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
 
   if eqn.params.use_edgestab
     edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+  end
+
+  if eqn.params.use_res_filter
+    applyFilter(mesh, sbp, eqn, eqn.res, opts, trans=true)
+  end
+
+  if eqn.params.use_dissipation
+    applyDissipation(mesh, sbp, eqn, eqn.q, opts)
   end
 
 #  println("==== end of addStabilization ====")

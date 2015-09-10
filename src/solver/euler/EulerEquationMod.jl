@@ -86,9 +86,13 @@ type ParamType{Tdim}
   writeq::Bool # write solution variables
   use_edgestab::Bool  # use edge stabilization
   use_filter::Bool  # use filtering
+  use_res_filter::Bool # use residual filtering
 
   filter_mat::Array{Float64, 2}  # matrix that performs filtering operation
                                  # includes transformations to/from modal representation
+
+  use_dissipation::Bool  # use artificial dissipation
+  dissipation_const::Float64  # constant used for dissipation filter matrix
   function ParamType(sbp, opts, order::Integer)
   # create values, apply defaults
 
@@ -111,15 +115,18 @@ type ParamType{Tdim}
     writeq = opts["writeq"]
     use_edgestab = opts["use_edgestab"]
     use_filter = opts["use_filter"]
-
-    if use_filter
+    use_res_filter = opts["use_res_filter"]
+    if use_filter || use_res_filter
       filter_fname = opts["filter_name"]
       filter_mat = calcFilter(sbp, filter_fname, opts)
     else
       filter_mat = Array(Float64, 0,0)
     end
 
-    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, use_filter, filter_mat)
+    use_dissipation = opts["use_dissipation"]
+    dissipation_const = opts["dissipation_const"]
+
+    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, use_filter, use_res_filter, filter_mat, use_dissipation,  dissipation_const)
 
   end
 
@@ -214,6 +221,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
   bndryflux::Array{Tsol, 3}  # boundary flux
   stabscale::Array{Tsol, 2}  # stabilization scale factor
 
+  dissipation_mat::Array{Tmsh, 3}  # artificial dissipation operator, a square numnodes x numnodes matrix for every element
   Minv::Array{Float64, 1}  # invese mass matrix
   M::Array{Float64, 1}  # mass matrix
   disassembleSolution::Function # function SL0 -> eqn.q
@@ -240,6 +248,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
 
     calcEdgeStabAlpha(mesh, sbp, eqn)
+
+    if opts["use_dissipation"]
+      dissipation_name = opts["dissipation_name"]
+      eqn.dissipation_mat = calcDissipationOperator(mesh, sbp, eqn, dissipation_name, opts)
+    else
+      eqn.dissipation_mat = Array(Tmsh, 0, 0, 0)
+    end
     
     # must initialize them because some datatypes (BigFloat) 
     # don't automatically initializes them

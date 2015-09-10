@@ -58,9 +58,12 @@ where input_file_name.jl is in your current directory.
 # stabilization options
 "use_edgestab" : use edge stabilization, (Bool), default true
 "edgestab_gamma" edge stabilization paramater gamma, (floatingpoint), default -0.1
-"use_filter" : use a filtering technique, (Bool), default true
+"use_filter" : use a filtering technique, (Bool), default false
+"use_res_filter" : apply the transposed filter to the residual, (Bool), default false
 "filter_name", name of filter to apply, (ASCIIString), default "raisedCosineFilter"
-
+"use_dissipation" : use artificial dissipation, (Bool), default false
+"dissipation_name" : name of artificial dissipation kernel to use, (ASCIIString), default "none"
+"dissipation_const" : constant to multiply dissipation filter by, (Float64), default 0.0
 # solver debugging options
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
