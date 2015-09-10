@@ -113,6 +113,7 @@ end
 
 
 # create operator
+println("\nConstructing SBP Operator")
 sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 
 # create mesh
@@ -139,7 +140,6 @@ mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=4) 
 eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
-println("size(q) = ", size(eqn.q))
 
 
 init(mesh, sbp, eqn, opts)
@@ -152,22 +152,22 @@ SL0 = eqn.SL0
 # calculate residual of some other function for res_reltol0
 Relfunc_name = opts["Relfunc_name"]
 if haskey(ICDict, Relfunc_name)
+  println("\ncalculating residual for relative residual tolerance")
   Relfunc = ICDict[Relfunc_name]
   println("Relfunc = ", Relfunc)
   Relfunc(mesh, sbp, eqn, opts, SL0)
 
   res_real = zeros(mesh.numDof)
-  println("calculating residual for relative residual tolerance")
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 
   opts["res_reltol0"] = tmp
   println("res_reltol0 = ", tmp)
-  print("\n")
 end
 
 
 
 # populate u0 with initial condition
+println("\nEvaluating initial condition")
 ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
@@ -182,7 +182,7 @@ ICfunc(mesh, sbp, eqn, opts, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 if opts["calc_error"]
-  println("calculating error of file ", opts["calc_error_infname"], " compared to initial condition")
+  println("\ncalculating error of file ", opts["calc_error_infname"], " compared to initial condition")
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
 
@@ -194,13 +194,11 @@ if opts["calc_error"]
   f = open(outname, "w")
   println(f, err)
   close(f)
-  print("\n")
 end
 
 if opts["calc_trunc_error"]  # calculate truncation error
-
+  println("\nCalculating residual for truncation error")
   res_real = zeros(mesh.numDof)
-  println("calculating residual for truncation error")
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 
   tmp = 0
@@ -220,6 +218,7 @@ end
 
 
 if opts["perturb_ic"]
+  println("\nPerturbing initial condition")
   perturb_mag = opts["perturb_mag"]
   for i=1:mesh.numDof
     SL0[i] += perturb_mag*rand()
@@ -304,10 +303,9 @@ if opts["solve"]
   end
 
 
-
+##### Do postprocessing ######
+println("\nDoing postprocessing")
   if flag == 1
-
-
       SL_diff = SL - SL_exact
       step = SL0 - SL_exact
       step_norm = norm(step)/mesh.numDof

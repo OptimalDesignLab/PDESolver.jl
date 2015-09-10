@@ -36,6 +36,7 @@ rk4
 function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
+  println("\nEntered rk4")
 # res_tol is alternative stopping criteria
   SL0 = eqn.SL0
   SL = eqn.SL
@@ -110,7 +111,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
       flush(f1)
     end
 
-    if iter % 1000 == 0
+    if iter % 10000 == 0  # this should be an option
 
       saveSolutionToMesh(mesh, SL0)
       writeVisFiles(mesh, "solution_rk$iter")

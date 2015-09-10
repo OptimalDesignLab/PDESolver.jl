@@ -114,8 +114,15 @@ type ParamType{Tdim}
     writeboundary = opts[ "writeboundary"]
     writeq = opts["writeq"]
     use_edgestab = opts["use_edgestab"]
+    if use_edgestab println("edge stabilization enabled") end
+
     use_filter = opts["use_filter"]
+    if use_filter println("solution variables filter enabled") end
+
+
     use_res_filter = opts["use_res_filter"]
+    if use_res_filter println("residual filter enabled") end
+
     if use_filter || use_res_filter
       filter_fname = opts["filter_name"]
       filter_mat = calcFilter(sbp, filter_fname, opts)
@@ -124,6 +131,8 @@ type ParamType{Tdim}
     end
 
     use_dissipation = opts["use_dissipation"]
+    if use_dissipation println("artificial dissipation enabled") end
+
     dissipation_const = opts["dissipation_const"]
 
     return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, use_filter, use_res_filter, filter_mat, use_dissipation,  dissipation_const)
@@ -231,6 +240,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
 #  function EulerData(mesh::PumiMesh2, sbp::SBPOperator, T2::DataType)
   function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
 
+    println("\nConstruction EulerData object")
+    println("  Tsol = ", Tsol)
+    println("  Tres = ", Tres)
+    println("  Tdim = ", Tdim)
+    println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initilization
 
     eqn.params = ParamType{Tdim}(sbp, opts, mesh.order)

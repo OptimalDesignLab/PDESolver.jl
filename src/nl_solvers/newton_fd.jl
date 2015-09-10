@@ -28,7 +28,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # the dispatch to the backslash solver and possibly the jacobian calculation
   # function will be runtime dispatched
 
-  println("\n Entered newton")
+  println("\nEntered Newtons Method")
   # options
   write_rhs = opts["write_rhs"]::Bool
   write_jac = opts["write_jac"]::Bool

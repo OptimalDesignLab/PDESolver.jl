@@ -619,7 +619,6 @@ function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPO
   dissipation_func = dissipation_dict[dissipation_name]
 
   filt = getDissipationFilterOperator(sbp, dissipation_func)  # get the dissipation filter matrix for the reference element
-  println("filt = ", filt)
 
   # store a sbp.numnodes square matrix for each element
   dissipation_mat = zeros(Tmsh, sbp.numnodes, sbp.numnodes, mesh.numEl)

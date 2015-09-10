@@ -152,6 +152,7 @@ end  # end evalEuler
 # high level functions
 function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
 
+  println("\nInitializing Euler module")
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
 
