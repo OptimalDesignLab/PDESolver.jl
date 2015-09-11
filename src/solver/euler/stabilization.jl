@@ -372,7 +372,8 @@ end
 
 
 
-#####  Functions to for filtering #####
+#####  Functions to for filtering ######################################
+
 function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol}, arr, opts; trans=false)
 # applies filter to array arr
 # trans determine whether or not to transpose the filter matrix

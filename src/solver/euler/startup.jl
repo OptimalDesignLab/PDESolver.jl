@@ -241,7 +241,7 @@ initializeTempVariables(mesh)
 if opts["solve"]
   
   if flag == 1 # normal run
-   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_tol"])
+   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"])
    println("finish rk4")
    printSolution("rk4_solution.dat", eqn.SL)
   # println("rk4 @time printed above")

@@ -493,14 +493,17 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
 #  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
 
   if eqn.params.use_edgestab
+#    println("applying edge stabilization")
     edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
   end
 
   if eqn.params.use_res_filter
+#    println("applying residual filter")
     applyFilter(mesh, sbp, eqn, eqn.res, opts, trans=true)
   end
 
   if eqn.params.use_dissipation
+#    println("applying artificial dissipation")
     applyDissipation(mesh, sbp, eqn, eqn.q, opts)
   end
 
