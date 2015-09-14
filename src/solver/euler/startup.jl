@@ -157,11 +157,16 @@ if haskey(ICDict, Relfunc_name)
   println("Relfunc = ", Relfunc)
   Relfunc(mesh, sbp, eqn, opts, SL0)
 
+#  println("eqn.SL0 = ", eqn.SL0)
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
-
+#  println("eqn.SL = ", eqn.SL)
+#  println("res_real = ", res_real)
   opts["res_reltol0"] = tmp
   println("res_reltol0 = ", tmp)
+
+  saveSolutionToMesh(mesh, res_real)
+  writeVisFiles(mesh, "solution_relfunc")
 end
 
 

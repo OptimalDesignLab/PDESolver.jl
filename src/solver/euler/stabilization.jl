@@ -631,17 +631,19 @@ function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPO
   h = diagm(sbp.w)
   for i=1:mesh.numEl
     # modify filter matrix to be in real (non reference) space
+#=    
     for col = 1:sbp.numnodes
       for row = 1:sbp.numnodes
 	filt_i[row, col] = filt[row, col]/mesh.jac[row, i]
       end
     end
-
+=#
     # scale the mass (digonal) mass matrix by jacobian determinent
-    h_jac = sbp.w./mesh.jac[:, i]
+    # then multiply by h = (1/jac)^(1/p)
+    h_jac = sbp.w./(mesh.jac[:, i]).*((mesh.jac[:,i]).^(1/mesh.order))
     h_jac_inv = 1./h_jac
 
-    dissipation_mat[:, :, i] = diagm(h_jac_inv)*epsilon*filt_i.'*diagm(h_jac)*filt_i
+    dissipation_mat[:, :, i] = epsilon*filt.'*diagm(h_jac)*filt
 
   end  # end loop over elements
 
