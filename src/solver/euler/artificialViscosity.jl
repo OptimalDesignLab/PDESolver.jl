@@ -5,7 +5,7 @@ function artificialViscosity{Tmsh,Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
   
   # Create the Artificial Viscosity flux matrix
   F = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-  epsilonHat = 0.001
+  epsilonHat = 0.01
   hi = 1
   h = 1
   

@@ -314,7 +314,7 @@ function checkDensity(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
-    @assert( real(eqn.q[1, j, i]) > 0.0, "element $i, node $j")
+    @assert( real(eqn.q[1, j, i]) > 0.0, "element $i, node $j. Density < 0")
   end
 end
 

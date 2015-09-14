@@ -358,8 +358,8 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
     #     it by an order of magnitude at at time until RK is stable.  
     #     Once you find a value that works, try increasing it slowly.
 
-    edge_stab_gamma = params.edgestab_gamma  # default
-#     edge_stab_gamma = 0.0 
+    #edge_stab_gamma = params.edgestab_gamma  # default
+     edge_stab_gamma = 0.0 
 #     edge_stab_gamma = 0.00001
 
     # edge lengths component wise

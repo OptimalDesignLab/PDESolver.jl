@@ -238,6 +238,37 @@ writeVisFiles(mesh, "solution_ic")
 # initialize some variables in nl_solvers module
 initializeTempVariables(mesh)
 
+# Calculate the recommended delta t
+CFLMax = 1 # Maximum Recommended CFL Value
+Dt = zeros(mesh.numNodesPerElement,mesh.numEl) # Array of all possible delta t
+#println(SL0)
+using ArrayViews
+nsd = 2
+for i=1:mesh.numEl  # loop over elements
+  for j = 1:mesh.numNodesPerElement
+    for k=1:(nsd+2)
+      dofnum_k = mesh.dofs[k, j, i]
+      eqn.q[k, j, i] = SL0[dofnum_k]
+    end
+  end
+end
+for i = 1:mesh.numEl
+  for j = 1:mesh.numNodesPerElement
+    h = 1/sqrt(mesh.jac[j,i])
+    velocities = zeros(2) # Nodal velocities
+    velocities[1] = eqn.q[2,j,i]/eqn.q[1,j,i]
+    velocities[2] = eqn.q[3,j,i]/eqn.q[1,j,i] 
+    vmax = norm(velocities)
+    q = view(eqn.q,:,j,i)
+    T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
+    c = sqrt(eqn.params.gamma*eqn.params.R*T) # Speed of sound
+    Dt[j,i] = CFLMax*h/(vmax + c)
+  end
+end
+RecommendedDT = minimum(Dt)
+println("Recommended delta t = ", RecommendedDT)
+
+
 # call timestepper
 if opts["solve"]
   
