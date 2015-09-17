@@ -45,6 +45,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   println("write_res = ", write_res)
   println("step_tol = ", step_tol)
   println("res_abstol = ", res_abstol)
+  println("res_reltol = ", res_reltol)
   println("res_reltol0 = ", res_reltol0)
 
   if jac_method == 1  # finite difference

@@ -105,7 +105,7 @@ dataPrep(mesh, sbp, eqn, opts)
 evalVolumeIntegrals(mesh, sbp, eqn)
 #println("volume integral @time printed above")
 
-#evalBoundaryIntegrals(mesh, sbp, eqn)
+evalBoundaryIntegrals(mesh, sbp, eqn)
 #println("boundary integral @time printed above")
 
 

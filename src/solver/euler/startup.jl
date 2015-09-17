@@ -150,6 +150,7 @@ SL = eqn.SL
 SL0 = eqn.SL0
 
 # calculate residual of some other function for res_reltol0
+# add a boolean options here?
 Relfunc_name = opts["Relfunc_name"]
 if haskey(ICDict, Relfunc_name)
   println("\ncalculating residual for relative residual tolerance")
@@ -160,11 +161,14 @@ if haskey(ICDict, Relfunc_name)
 #  println("eqn.SL0 = ", eqn.SL0)
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+#  println("res_real = \n", res_real)
 #  println("eqn.SL = ", eqn.SL)
 #  println("res_real = ", res_real)
   opts["res_reltol0"] = tmp
   println("res_reltol0 = ", tmp)
-
+  
+#  writedlm("relfunc_res.dat", eqn.res)
+#  writedlm("relfunc_resvec.dat", res_real)
   saveSolutionToMesh(mesh, res_real)
   writeVisFiles(mesh, "solution_relfunc")
 end
@@ -206,13 +210,13 @@ if opts["calc_trunc_error"]  # calculate truncation error
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 
-  tmp = 0
+  tmp = 0.0
   # calculate a norm
   for i=1:mesh.numDof
-    tmp = res_real[i]*eqn.Minv[i]*res_real[i]
+    tmp += res_real[i]*eqn.Minv[i]*res_real[i]
   end
 
-  tmp = sqrt(tmp)
+  tmp = sqrt(tmp/mesh.numDof)
 
   f = open("error_trunc.dat", "w")
   println(f, tmp)

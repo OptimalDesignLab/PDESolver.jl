@@ -49,5 +49,5 @@ arg_dict = Dict{Any, Any} (
 "writeboundary" => true,
 "write_res" => true,
 #"write_counts" => true,
-"solve" => false,
+"solve" => true,
 )
