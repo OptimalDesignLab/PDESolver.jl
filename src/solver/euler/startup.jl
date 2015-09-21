@@ -196,8 +196,8 @@ if opts["calc_error"]
   @assert length(vals) == mesh.numDof
 
   err_vec = vals - eqn.SL0
-  err = calcNorm(eqn, err_vec)
-#  err = norm(vals - eqn.SL0)/mesh.numDof
+#  err = calcNorm(eqn, err_vec)
+  err = norm(vals - eqn.SL0)/mesh.numDof
   outname = opts["calc_error_outfname"]
   println("printint err = ", err, " to file ", outname)
   f = open(outname, "w")

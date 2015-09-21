@@ -420,6 +420,19 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 end
 #------------- end of evalVolumeIntegrals
 
+
+#=
+@doc """
+  This function evaluates the advective terms of the strong form.
+  eqn.res is updates with the result
+
+"""->
+function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim}, opts)
+
+  for i=1:Tdim
+    differentiate!(sbp, i, 
+
+=#
 @doc """
   This function evaluates the boundary integrals in the Euler equations by 
   calling the appropriate SBP function on eqn.bndryflux, which must be populated
