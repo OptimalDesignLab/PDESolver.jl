@@ -105,12 +105,12 @@ dataPrep(mesh, sbp, eqn, opts)
 evalVolumeIntegrals(mesh, sbp, eqn)
 #println("volume integral @time printed above")
 
-evalBoundaryIntegrals(mesh, sbp, eqn)
+#evalBoundaryIntegrals(mesh, sbp, eqn)
 #println("boundary integral @time printed above")
 
 
 
-addStabilization(mesh, sbp, eqn)
+#addStabilization(mesh, sbp, eqn)
 #println("edge stabilizing @time printed above")
 
 
@@ -378,12 +378,13 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 # SL0 : solution vector at previous timesteps (mesh.numDof entries)
 
 #  println("size eqn.F_xi = ", size(eqn.F_xi), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
-
+  #=
   for i=1:Tdim
     weakdifferentiate!(sbp, i, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
   end
+  =#
 
-  artificialViscosity(mesh, sbp, eqn)
+  artificialViscosity(mesh, sbp, eqn) 
 
 
   # need source term here

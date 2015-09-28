@@ -231,17 +231,17 @@ global const BCDict = Dict{ASCIIString, BCType} (
 function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
-println("Entered getBCFunctors")
-println("BCDict = ", BCDict)
+  println("Entered getBCFunctors")
+  println("BCDict = ", BCDict)
 
-for i=1:mesh.numBC
-  key_i = string("BC", i, "_name")
-  val = opts[key_i]
-  println("BCDict[val] = ", BCDict[val])
-  mesh.bndry_funcs[i] = BCDict[val]
-end
+  for i=1:mesh.numBC
+    key_i = string("BC", i, "_name")
+    val = opts[key_i]
+    println("BCDict[val] = ", BCDict[val])
+    mesh.bndry_funcs[i] = BCDict[val]
+  end
 
-return nothing
+  return nothing
 
 end
 

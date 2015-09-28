@@ -1,0 +1,40 @@
+PDESolver Roadmap.txt
+
+This file lists all the functions inside of PDESolver by relative path.
+It is to help you find all the functions quickly and easily.
+The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
+
+== bc.jl ==
+
+*  getBCFunctors
+
+== common_funcs.jl ==
+
+*  calcIsentropicVortex
+*  calcFreeStream
+
+== euler.jl ==
+
+*  evalEuler
+
+== ic.jl == 
+
+*  ICZero
+*  ICRho1E2
+*  ICRho1E2U3
+*  ICVortex
+*  ICLinear
+*  ICsmoothHeavisideder
+*  ICsmoothHeaviside
+*  ICIsentropicVortex
+
+== newton_fd.jl ==
+
+*  calcJacFD
+*  calcJacRow
+
+
+== startup.jl ==
+
+*  getResType
+*  

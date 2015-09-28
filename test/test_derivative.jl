@@ -7,11 +7,27 @@ using SummationByParts
 # using using PDESolver
 using SimpleMesh
 
-lengthx = 2
-lengthy = 3
-nedx = 2
-nedy = 2
+lengthx = 1
+lengthy = 1
+nedx = 1
+nedy = 1
+numDofPerNode = 1
+d = 1
 
+m = simpleMesh{Float64}(lengthx,lengthy,nedx,nedy,3,numDofPerNode)
+sbp = TriSBP{Float64}(degree=d)
+node_coord = zeros(Float64, (2,sbp.numnodes,m.numEl))
+jacobian = zeros(Float64, (2,2,sbp.numnodes,m.numEl))
+jacmod = zeros(Float64, (sbp.numnodes,m.numEl))
+func = zeros(Float64, (1,sbp.numnodes,m.numEl))
+actderiv = zeros(func)
+flux = zeros(func)
+flux2 = zeros(func)
+phi = zeros(func)
+dxidx = zeros(func)
+detadx = zeros(func)
+
+#=
 for nnpe = 2:5
 
 d = nnpe - 1 # Degree of the shape function
@@ -95,4 +111,4 @@ for p = 1:d
 	end
 end
 
-end # end nnpe loop
+end # end nnpe loop =#

@@ -1,54 +1,70 @@
 # Artificial Viscosity
+@doc """
+### artificialViscosity
 
+  It is a function that adds an artificial viscosity component to the weak form
+  of the PDE. 
+
+  Variables:
+  *  qbar: Same as q except the last dof at a node is replaced by enthalpy
+  *  epsilonHat: Applied artificial viscosity
+  *  hi : Bounding box dimensions in a particular direction
+  *  h  : aithmetic mean of the components of the bounding box
+  *  Fav : Flux corresponding to artificial viscosity
+
+"""
 function artificialViscosity{Tmsh,Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                             sbp::SBPOperator, eqn::EulerData{Tsol,Tdim})
+                                              sbp::SBPOperator, 
+                                              eqn::EulerData{Tsol,Tdim})
   
   # Create the Artificial Viscosity flux matrix
-  F = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+  qbar = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
   epsilonHat = 0.01
   hi = 1
   h = 1
   
+  # Populate qbar
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  q_vals = view(eqn.q, :, j, i)
-  	  calcArtViscosityFluxComp(eqn.params,q_vals,view(F,:,j,i))
+  	  calcArtViscosityFluxComp(eqn.params,q_vals,view(qbar,:,j,i))
   	end
   end
 
-  # We now need to differentiate the above with xi and eta to get the actual
+  # We now need to differentiate the above with ξ and η to get the actual
   # artificial viscosity fluxes
   
   # Intermediate variables which have been multiplied with mapping jacobian
   Fav = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, Tdim)
-  phi = zeros(Fav)
+  phi = zeros(Fav) # Intermediate variable
 
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
-      phi[:,j,i,1] = mesh.dxidx[1,1,j,i]*F[:,j,i]
-      phi[:,j,i,2] = mesh.dxidx[1,2,j,i]*F[:,j,i]
+      phi[:,j,i,1] = qbar[:,j,i] #abs(mesh.dxidx[1,1,j,i])*qbar[:,j,i] # compute dxi/dx*qbar
+      phi[:,j,i,2] = qbar[:,j,i] #abs(mesh.dxidx[2,1,j,i])*qbar[:,j,i] # compute deta/dx*qbar
     end
   end
 
-  for k = 1:Tdim
-    differentiate!(sbp,k,view(phi,:,:,:,k),view(Fav,:,:,:,1))
+  for k = 1:Tdim # compute dqbar/dx
+    # differentiate! differentiates wrt to ξ and η
+    differentiate!(sbp,k,view(phi,:,:,:,k),view(Fav,:,:,:,1)) 
   end
   
   phi = zeros(Fav)
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      phi[:,j,i,1] = mesh.dxidx[2,1,j,i]*F[:,j,i]
-      phi[:,j,i,2] = mesh.dxidx[2,2,j,i]*F[:,j,i]
+      phi[:,j,i,1] = qbar[:,j,i] #abs(mesh.dxidx[1,2,j,i])*qbar[:,j,i] # compute dxi/dy*qbar
+      phi[:,j,i,2] = qbar[:,j,i] #abs(mesh.dxidx[2,2,j,i])*qbar[:,j,i] # compute deta/dy*qbar
     end
   end
   
-  for k = 1:Tdim
+  for k = 1:Tdim # compute dqbar/dy
     differentiate!(sbp,k,view(phi,:,:,:,k),view(Fav,:,:,:,2))
   end
   
   Fav = epsilonHat*(hi/h)*Fav
 
-  for k = 1:Tdim
+  for k = 1:Tdim # Assemble into the weak form
     weakdifferentiate!(sbp,k, view(Fav,:,:,:,k), eqn.res, trans=true)
   end
 
