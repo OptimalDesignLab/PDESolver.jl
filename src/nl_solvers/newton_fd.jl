@@ -361,7 +361,8 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
     res_0[j] = real(eqn.SL[j])
   end
 
-  res_0_norm = calcNorm(eqn, res_0)
+  strongres = eqn.Minv.*res_0
+  res_0_norm = calcNorm(eqn, strongres)
   println("residual norm = ", res_0_norm)
 
  return res_0_norm

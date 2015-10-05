@@ -196,8 +196,8 @@ if opts["calc_error"]
   @assert length(vals) == mesh.numDof
 
   err_vec = vals - eqn.SL0
-#  err = calcNorm(eqn, err_vec)
-  err = norm(vals - eqn.SL0)/mesh.numDof
+  err = calcNorm(eqn, err_vec)
+#  err = norm(vals - eqn.SL0)/mesh.numDof
   outname = opts["calc_error_outfname"]
   println("printint err = ", err, " to file ", outname)
   f = open(outname, "w")
@@ -210,6 +210,7 @@ if opts["calc_trunc_error"]  # calculate truncation error
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 
+#=
   tmp = 0.0
   # calculate a norm
   for i=1:mesh.numDof
@@ -217,6 +218,7 @@ if opts["calc_trunc_error"]  # calculate truncation error
   end
 
   tmp = sqrt(tmp/mesh.numDof)
+=#
 
   f = open("error_trunc.dat", "w")
   println(f, tmp)
@@ -319,7 +321,7 @@ println("\nDoing postprocessing")
       step = SL0 - SL_exact
       step_norm = norm(step)/mesh.numDof
       println("step_norm = ", step_norm)
-      SL_norm = norm(SL)/mesh.numDof
+      SL_norm = calcNorm(eqn, SL)
       #SL_side_by_side = [SL_exact  SL]
 
       #=
