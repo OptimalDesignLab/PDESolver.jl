@@ -1,6 +1,6 @@
 # Artificial Viscosity
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-using PumiInterface # pumi interface
+#push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
+#using PumiInterface # pumi interface
 
 @doc """
 ### artificialViscosity
