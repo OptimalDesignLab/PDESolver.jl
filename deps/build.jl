@@ -23,6 +23,12 @@ end
 
 if !haskey(pkg_dict, "PETSc")
   Pkg.clone(petsc_git)
+  petsc_dir = Pkg.dir("PETSc")
+  start_dir = pwd()
+  cd(petsc_dir)
+  run(`git checkout 58999c0`)
+  cd(start_dir)
+ 
   Pkg.build("PETSc")
 end
 
