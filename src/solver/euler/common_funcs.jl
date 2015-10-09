@@ -99,17 +99,18 @@ end
 
 function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
   # for square test case with rho = 1, digonal momentum, energy
-#=
+
   sol[1] = 1.0
   sol[2] = 0.35355
   sol[3] = 0.35355
   sol[4] = 2.0
-=#
+
+#=
   sol[1] = 2.0
   sol[2] = 0.2
   sol[3] = 0.2
   sol[4] = 4.0
-
+=#
 
   return nothing
 end

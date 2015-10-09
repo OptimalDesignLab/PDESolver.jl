@@ -206,6 +206,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
       end
     end
     for i = 1:sbp.numfacenodes
+#      println("sbp.facenodes = ", sbp.facenodes)
+
       iL = sbp.facenodes[i, face.faceL]
       #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
       iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
@@ -544,12 +546,12 @@ function getPascalLevel(node::Integer)
   for i=1:(node+1) # loop over level of triangles
             # looping all the way to i is excessive
     # get the maximum node in current level of triangle
-    println("Level = ", level)
+#    println("Level = ", level)
     max_n = div(level*(1 + level), 2)
-    println("max_n = ", max_n)
+#    println("max_n = ", max_n)
     # break when we are at the right level
     if  node <= max_n
-      println("breaking")
+#      println("breaking")
       break
     end
 
