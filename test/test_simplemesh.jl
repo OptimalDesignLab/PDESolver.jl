@@ -3,7 +3,7 @@ push!(LOAD_PATH,"../src/simple_mesh/")
 using PDESolver
 using SimpleMesh
 
-# Using fact check for the frst time
+# Using fact check for the first time
 facts("Testing SimpleMesh type") do
 	# Enter your tests here
 	context("Check if function createMesh() works or not") do

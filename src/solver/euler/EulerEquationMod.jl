@@ -259,6 +259,7 @@ end  # end of type declaration
 
 
 
+
 @doc """
 ### EulerEquationMod.calcMassMatrixInverse
 

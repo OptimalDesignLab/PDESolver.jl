@@ -314,7 +314,7 @@ function checkDensity(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
-    @assert( real(eqn.q[1, j, i]) > 0.0, "element $i, node $j")
+    @assert( real(eqn.q[1, j, i]) > 0.0, "element $i, node $j. Density < 0")
   end
 end
 
@@ -378,14 +378,15 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 # SL0 : solution vector at previous timesteps (mesh.numDof entries)
 
 #  println("size eqn.F_xi = ", size(eqn.F_xi), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
-
+  
   for i=1:Tdim
     weakdifferentiate!(sbp, i, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
   end
+  
+  artificialViscosity(mesh, sbp, eqn) 
 
-  artificialViscosity(mesh, sbp, eqn)
-
-
+  # hAverage = AvgMeshSize(mesh, eqn)
+  # println("Average Mesh Size = ", hAverage)
   # need source term here
 
 
