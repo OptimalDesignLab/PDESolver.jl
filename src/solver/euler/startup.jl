@@ -1,24 +1,18 @@
-# startup script for solving an equation
-
-# push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl/src")
-# push!(LOAD_PATH, "../../equation")
-# push!(LOAD_PATH, "../../common")
-# push!(LOAD_PATH, "/users/creanj/.julia/v0.4/PDESolver/src/solver/euler")
-#push!(LOAD_PATH, "../../../../PUMI")
-
-
+# Name: startup.jl
+# Description: startup script for solving an equation
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/nl_solvers"))
-#include("complexify.jl")
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+
+#include("complexify.jl")   # TODO: include location needs to be reconsidered
+
 using PDESolverCommon
-#using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
 using ForwardDiff
-using nl_solvers   # non-linear solvers
+using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
 #include(joinpath(Pkg.dir("PDESolver"),"src/nl_solvers/rk4.jl"))  # timestepping

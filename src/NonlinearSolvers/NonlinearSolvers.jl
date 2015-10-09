@@ -1,4 +1,4 @@
-module nl_solvers
+module NonlinearSolvers
 
 using ArrayViews
 using Debug
