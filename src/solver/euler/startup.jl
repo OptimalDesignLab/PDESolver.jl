@@ -24,20 +24,14 @@ println("size(ARGS) = ", size(ARGS))
 opts = read_input(ARGS[1])
 #opts = read_input("input_vals_channel2.jl")
 
-flag = opts["run_type"]
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
+flag = opts["run_type"]
+
 # timestepping parameters
-#delta_t = 0.005
-delta_t = opts["delta_t"]
-#t_max = 0.025
-#t_max = 5.00
-t_max = opts["t_max"]
-#t_max = 1.0
-#order = 1  # order of accuracy
-order = opts["order"]
+delta_t = opts["delta_t"]   # delta_t: timestep for RK
+t_max = opts["t_max"]       # t_max: maximum time for RK
+order = opts["order"]       # order of accuracy
 
-
-#set_bigfloat_precision(80)  # use 128 bit floats
 # types of the mesh, SBP, Equation objects
 if flag == 1 || flag == 8  # normal run
   Tmsh = Float64
@@ -59,69 +53,40 @@ elseif flag == 4  # use Newton method using finite difference
   Tsbp = Float64
   Tsol = Float64
   Tres = Float64
-
-#  Tsol = BigFloat
-#  Tres = BigFloat
 elseif flag == 5  # use complex step dR/du
-
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Complex128
   Tres = Complex128
-#=
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Complex{BigFloat}
-  Tres = Complex{BigFloat}
-=#
 elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Complex128
   Tres = Complex128
-
 end
 
-
-# create operator
+# create SBP object
 println("\nConstructing SBP Operator")
 sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
-
-# create mesh
-#dmg_name = ".null"
-#smb_name = "../../mesh_files/quarter_vortex10l.smb"
-
-#dmg_name = "../../mesh_files/vortex.dmg"
-#smb_name = "../../mesh_files/vortex.smb"
 
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 
-#smb_name = "../../mesh_files/quarter_vortex33l.smb"
-#smb_name = "../../mesh_files/quarter_vortex1000l.smb"
-#smb_name = "../../mesh_files/quarter_vortex8l.smb"
-#smb_name = "../../mesh_files/tri30l.smb"
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=4)  #create linear mesh with 4 dof per node
-
-
-
-
+# create linear mesh with 4 dof per node
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4)
+# TODO: input argument for dofpernode
 
 # create euler equation
 eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
-#eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
-
-
+# TODO: needs comment
 init(mesh, sbp, eqn, opts)
 
-#SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
-#SL = zeros(Tsol, mesh.numDof) # solution at current timestep
-SL = eqn.SL
-SL0 = eqn.SL0
+SL = eqn.SL         # solution at previous timestep
+SL0 = eqn.SL0       # solution at current timestep
 
 # calculate residual of some other function for res_reltol0
-# add a boolean options here?
+# TODO: add a boolean options here?
 Relfunc_name = opts["Relfunc_name"]
 if haskey(ICDict, Relfunc_name)
   println("\ncalculating residual for relative residual tolerance")
@@ -144,8 +109,6 @@ if haskey(ICDict, Relfunc_name)
   writeVisFiles(mesh, "solution_relfunc")
 end
 
-
-
 # populate u0 with initial condition
 println("\nEvaluating initial condition")
 ICfunc_name = opts["IC_name"]
@@ -153,15 +116,7 @@ ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, SL0)
 
-
-# ICZero(mesh, sbp, eqn, SL0)
-# ICLinear(mesh, sbp, eqn, SL0)
-# ICIsentropicVortex(mesh, sbp, eqn, SL0)
-#ICRho1E2(mesh, sbp, eqn, SL0)
-#ICRho1E2U3(mesh, sbp, eqn, SL0)
-
-#ICVortex(mesh, sbp, eqn, SL0)
-#ICIsentropicVortex(mesh, sbp, eqn, SL0)
+# TODO: cleanup 20151009 start
 
 if opts["calc_error"]
   println("\ncalculating error of file ", opts["calc_error_infname"], " compared to initial condition")
