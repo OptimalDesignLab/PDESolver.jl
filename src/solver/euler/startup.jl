@@ -13,7 +13,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/nl_solvers"))
 #include("complexify.jl")
 using PDESolverCommon
-using PumiInterface # pumi interface
+#using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
@@ -114,6 +114,7 @@ end
 
 
 # create operator
+println("\nConstructing SBP Operator")
 sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 
 # create mesh
@@ -140,35 +141,43 @@ mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=4) 
 eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 #eqn = EulerEquation{Tsol}(mesh, sbp, Float64)
 
-println("size(q) = ", size(eqn.q))
+
+
+init(mesh, sbp, eqn, opts)
 
 #SL0 = zeros(Tsol, mesh.numDof)  # solution at previous timestep
 #SL = zeros(Tsol, mesh.numDof) # solution at current timestep
 SL = eqn.SL
 SL0 = eqn.SL0
 
-# get BC functors
-getBCFunctors(mesh, sbp, eqn, opts)
-
 # calculate residual of some other function for res_reltol0
+# add a boolean options here?
 Relfunc_name = opts["Relfunc_name"]
 if haskey(ICDict, Relfunc_name)
+  println("\ncalculating residual for relative residual tolerance")
   Relfunc = ICDict[Relfunc_name]
   println("Relfunc = ", Relfunc)
   Relfunc(mesh, sbp, eqn, opts, SL0)
 
+#  println("eqn.SL0 = ", eqn.SL0)
   res_real = zeros(mesh.numDof)
-  println("calculating residual for relative residual tolerance")
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
-
+#  println("res_real = \n", res_real)
+#  println("eqn.SL = ", eqn.SL)
+#  println("res_real = ", res_real)
   opts["res_reltol0"] = tmp
   println("res_reltol0 = ", tmp)
-  print("\n")
+  
+#  writedlm("relfunc_res.dat", eqn.res)
+#  writedlm("relfunc_resvec.dat", res_real)
+  saveSolutionToMesh(mesh, res_real)
+  writeVisFiles(mesh, "solution_relfunc")
 end
 
 
 
 # populate u0 with initial condition
+println("\nEvaluating initial condition")
 ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
@@ -185,7 +194,7 @@ ICfunc(mesh, sbp, eqn, opts, SL0)
 #ICIsentropicVortex(mesh, sbp, eqn, SL0)
 
 if opts["calc_error"]
-  println("calculating error of file ", opts["calc_error_infname"], " compared to initial condition")
+  println("\ncalculating error of file ", opts["calc_error_infname"], " compared to initial condition")
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
 
@@ -197,22 +206,22 @@ if opts["calc_error"]
   f = open(outname, "w")
   println(f, err)
   close(f)
-  print("\n")
 end
 
 if opts["calc_trunc_error"]  # calculate truncation error
-
+  println("\nCalculating residual for truncation error")
   res_real = zeros(mesh.numDof)
-  println("calculating residual for truncation error")
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 
-  tmp = 0
+#=
+  tmp = 0.0
   # calculate a norm
   for i=1:mesh.numDof
-    tmp = res_real[i]*eqn.Minv[i]*res_real[i]
+    tmp += res_real[i]*eqn.Minv[i]*res_real[i]
   end
 
-  tmp = sqrt(tmp)
+  tmp = sqrt(tmp/mesh.numDof)
+=#
 
   f = open("error_trunc.dat", "w")
   println(f, tmp)
@@ -223,6 +232,7 @@ end
 
 
 if opts["perturb_ic"]
+  println("\nPerturbing initial condition")
   perturb_mag = opts["perturb_mag"]
   for i=1:mesh.numDof
     SL0[i] += perturb_mag*rand()
@@ -278,7 +288,7 @@ println("Recommended delta t = ", RecommendedDT)
 if opts["solve"]
   
   if flag == 1 # normal run
-   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_tol"])
+   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"])
    println("finish rk4")
    printSolution("rk4_solution.dat", eqn.SL)
   # println("rk4 @time printed above")
@@ -341,15 +351,14 @@ if opts["solve"]
   end
 
 
-
+##### Do postprocessing ######
+println("\nDoing postprocessing")
   if flag == 1
-
-
       SL_diff = SL - SL_exact
       step = SL0 - SL_exact
       step_norm = norm(step)/mesh.numDof
       println("step_norm = ", step_norm)
-      SL_norm = norm(SL)/mesh.numDof
+      SL_norm = calcNorm(eqn, SL)
       #SL_side_by_side = [SL_exact  SL]
 
       #=

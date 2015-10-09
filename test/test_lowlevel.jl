@@ -139,6 +139,32 @@ facts("--- Testing Euler Low Level Functions --- ") do
    @fact F[4] => roughly(2.236960, atol=1e-4)
 
 
+   level = EulerEquationMod.getPascalLevel(1)
+   @fact level => 1
+
+   for i=2:3
+     level = EulerEquationMod.getPascalLevel(i)
+     @fact level => 2
+   end
+
+   for i=4:6
+     level = EulerEquationMod.getPascalLevel(i)
+     @fact level => 3
+   end
+
+   for i=7:10
+     level = EulerEquationMod.getPascalLevel(i)
+     @fact level => 4
+   end
+
+   for i=11:15
+     level = EulerEquationMod.getPascalLevel(i)
+     @fact level => 5
+   end
+
+
+
+
 
 
  end
@@ -172,7 +198,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    # test calcEulerFlux
    for i=1:mesh.numNodesPerElement
-     println("eq.F_xi[:, $i, 1, 1] = ", eqn.F_xi[:, i, 1, 1])
+#     println("eq.F_xi[:, $i, 1, 1] = ", eqn.F_xi[:, i, 1, 1])
      @fact eqn.F_xi[:, i, 1, 1] => roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
    end
 

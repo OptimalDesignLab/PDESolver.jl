@@ -18,7 +18,7 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
     func must have the signature func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL) 
 
 """->
-function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1)
+function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -28,6 +28,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # the dispatch to the backslash solver and possibly the jacobian calculation
   # function will be runtime dispatched
 
+  println("\nEntered Newtons Method")
   # options
   write_rhs = opts["write_rhs"]::Bool
   write_jac = opts["write_jac"]::Bool
@@ -42,6 +43,11 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
   println("write_rhs = ", write_rhs)
   println("write_res = ", write_res)
+  println("step_tol = ", step_tol)
+  println("res_abstol = ", res_abstol)
+  println("res_reltol = ", res_reltol)
+  println("res_reltol0 = ", res_reltol0)
+
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
@@ -391,7 +397,8 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
     res_0[j] = real(eqn.SL[j])
   end
 
-  res_0_norm = calcNorm(eqn, res_0)
+  strongres = eqn.Minv.*res_0
+  res_0_norm = calcNorm(eqn, strongres)
   println("residual norm = ", res_0_norm)
 
  return res_0_norm
@@ -444,6 +451,9 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type
+
+  filter_orig = eqn.params.use_filter  # record original filter state
+  eqn.params.use_filter = false  # don't repetatively filter
 
 #  epsilon = 1e-6  # finite difference perturbation
   epsilon = norm(pert)  # get magnitude of perturbation
@@ -498,7 +508,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
   end  # end loop over colors
 
   # now jac is complete
-
+  eqn.params.use_filter = filter_orig # reset filter
   return nothing
 
 end

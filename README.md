@@ -93,6 +93,15 @@ them in the mesh object for use by calcBoundaryFlux, which calculates and stores
 The addStabilization function add the stabilization term to the residual.  It calls functions in the stabilization.jl file.
 
 
+
+
+## Visualization
+Paraview is used for visualization.  High order elements (p>2) are automatically
+subtriangulated into a set of linear elements and nodal solutions are copied 
+from the high order mesh to the linear mesh.  The field faceNums_old_1 on the 
+linear mesh shows the the element number of the high order element the linear 
+element was created from.
+
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 [![Coverage Status](https://coveralls.io/repos/OptimalDesignLab/PDESolver.jl/badge.png)](https://coveralls.io/r/OptimalDesignLab/PDESolver.jl)
 [![Documentation Status](https://readthedocs.org/projects/pdesolverjl/badge/?version=latest)](https://readthedocs.org/projects/pdesolverjl/?badge=latest)

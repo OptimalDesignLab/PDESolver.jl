@@ -77,6 +77,8 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 
 
 @doc """
+=======
+>>>>>>> stabilization
 ### EulerEquationMod.edgestabilize!
 
 Adds edge-stabilization (see Burman and Hansbo, doi:10.1016/j.cma.2003.12.032)
@@ -280,6 +282,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
       end
     end
     for i = 1:sbp.numfacenodes
+#      println("sbp.facenodes = ", sbp.facenodes)
+
       iL = sbp.facenodes[i, face.faceL]
       #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
       iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
@@ -447,4 +451,336 @@ end
 
 
 
+#####  Functions to for filtering ######################################
+
+function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol}, arr, opts; trans=false)
+# applies filter to array arr
+# trans determine whether or not to transpose the filter matrix
+
+  if trans
+    filter_mat = eqn.params.filter_mat.'
+  else
+    filter_mat = eqn.params.filter_mat
+  end
+
+  q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  # holds the filtered q variables
+  len = mesh.numNodesPerElement*mesh.numDofPerNode
+  for i=1:mesh.numEl
+    q_vals = view(eqn.q, :, :, i)  # mesh.numDof x sbp.numnodes
+    # apply filter matrix to q_vals transposed, so it is applied to
+    # all the rho components, then all the x momentum, etc.
+    smallmatmatT!(filter_mat, q_vals, q_filt)
+
+    # copy values back into eqn.q, remembering to transpose q_filt
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+	eqn.q[k, j, i] = q_filt[j, k]
+      end
+    end
+
+  end  # end loop over elements
+
+  return nothing
+end
+
+
+
+    
+function calcFilter(sbp::SBPOperator, filter_name::ASCIIString, opts)
+# calc the filter specified by filter_name
+
+
+  filter_func = filter_dict[filter_name]
+  filt_mat = filter_func(sbp, opts)
+
+  # testing only
+#  (m,n) = size(filt_mat)
+#  filt_mat = eye(m)
+
+
+  V = calcModalTransformationOp(sbp)
+  println("filt_mat = \n", filt_mat)
+  println("V = \n", V)
+  println("cond(V) = ", cond(V))
+  # calculate V*filter_mat*inv(V)
+  # which converts from interpolating to modal, applies filter, then 
+  # converts back to interpolating
+  F_t = filt_mat.'
+  V_t = V.'
+  F_ret = (V_t\F_t).'
+  F_ret = V*F_ret
+
+  F_ret = V*filt_mat*inv(V)
+  # for testing, return identity matrix
+#  (m,n) = size(filt_mat)
+#  F_ret = eye(m) 
+
+
+  for i=1:length(F_ret)
+    if abs(F_ret[i]) < 1e-15
+      F_ret[i] = 0
+    end
+  end
+
+  println("F_ret = \n", F_ret)
+  return F_ret
+
+end
+
+
+
+function calcModalTransformationOp(sbp::SBPOperator)
+
+  vtx = [-1. -1; 1 -1; -1 1]  # reference element
+  x, y = SummationByParts.SymCubatures.calcnodes(sbp.cub, vtx)
+  # loop over ortho polys up to degree d
+  d = sbp.degree
+  n = convert(Int, (d+1)*(d+2)/2)
+  V = zeros(Float64, (sbp.numnodes, n))
+  Vx = zeros(V)
+  Vy = zeros(V)
+  ptr = 0
+  for r = 0:d
+    for j = 0:r
+      i = r-j
+      V[:,ptr+1] = SummationByParts.OrthoPoly.proriolpoly(x, y, i, j)
+      Vx[:,ptr+1], Vy[:,ptr+1] = SummationByParts.OrthoPoly.diffproriolpoly(x, y, i, j)
+      ptr += 1
+    end
+  end
+
+
+  Q, R = qr(V, thin=false)
+  Qx, Rx = qr(Vx, thin=false)
+  Qy, Ry = qr(Vy, thin=false)
+
+  # make the V matrix square
+  # for this to work, the QR decomposition *cannot* do column pivoting
+  # if it does we will have to do a little more bookkepping
+  V_full = zeros(sbp.numnodes, sbp.numnodes)
+  V_full[:, 1:n] = V
+  V_full[:, (n+1):end] = Q[:, (n+1):end]
+
+  # make Vx, Vy square
+  # also make them full rank by replacing linearly dependend columns with vectors from Q
+
+  Vx_full = zeros(sbp.numnodes, sbp.numnodes)
+  Vy_full = zeros(sbp.numnodes, sbp.numnodes)
+
+  Vx_full[:, 1:n] = Vx
+  Vy_full[:, 1:n] = Vy
+
+  Vx_full[:, (n+1):end] = Qx[:, (n+1):end]
+  Vy_full[:, (n+1):end] = Qy[:, (n+1):end]
+
+  # also replace linearly dependent columns here?
+
+
+  return V_full
+end
+
+function calcRaisedCosineFilter(sbp::SBPOperator, opts)
+# calculates the 1D raised cosine filter
+# from Spectral Methods for the Euler Equations: Part I - Fourier Methods and
+# shock Capturing
+# Hussaini, Koproiva, Salas, Zang
+
+  filt = zeros(sbp.numnodes, sbp.numnodes)
+
+  max_mode = getPascalLevel(sbp.numnodes)
+  for i=1:sbp.numnodes
+    mode_i = getPascalLevel(i)
+    theta_i = (mode_i-1)/max_mode
+    filt[i, i] = 0.5*(1 + cos(theta_i))
+  end
+
+  # get rid of nullspace component
+  filt[sbp.numnodes, sbp.numnodes] = 0.0
+
+
+  # increase the steepness of the filter
+  for i=1:sbp.numnodes
+    diff =  1 - filt[i, i]
+    filt[i, i] -= 2*diff
+  end
+
+  for i=1:sbp.numnodes
+    if filt[i,i] < 0
+      filt[i,i] = 0
+    end
+  end
+
+  
+  return filt
+end
+
+function getPascalLevel(node::Integer)
+# get the current polynomial order of some entry node in 
+# Pascals triangle
+# this assumes the tree is being traversed in order, from 1 to n
+
+  level = 1
+  for i=1:(node+1) # loop over level of triangles
+            # looping all the way to i is excessive
+    # get the maximum node in current level of triangle
+#    println("Level = ", level)
+    max_n = div(level*(1 + level), 2)
+#    println("max_n = ", max_n)
+    # break when we are at the right level
+    if  node <= max_n
+#      println("breaking")
+      break
+    end
+
+    level += 1  # increment level
+  end
+
+
+  return level
+end
+
+
+
+function calcLowPassFilter(sbp::SBPOperator, opts)
+
+  filt = zeros(sbp.numnodes, sbp.numnodes)
+  for i=1:sbp.numnodes
+    filt[i, i] = 1
+  end
+
+  filt[end, end] = 0.99
+
+  
+  return filt
+end
+
+
+global const filter_dict = Dict{ASCIIString, Function} (
+"raisedCosineFilter" => calcRaisedCosineFilter,
+"lowPassFilter" => calcLowPassFilter,
+)
+
+
+##### Artificial Dissipation Functions ######################################
+
+function applyDissipation{Tmsh, Tsol, T}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol}, arr::AbstractArray{T, 3}, opts)
+# applies the artificial dissipation to the array arr
+# arr must be mesh.numDofPerNode by sbp.numNodesPerElement by mesh.numEl
+# trans determine whether or not to transpose the filter matrix
+
+
+  q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  # holds the filtered q variables
+  len = mesh.numNodesPerElement*mesh.numDofPerNode
+  for i=1:mesh.numEl
+    filt_i = view(eqn.dissipation_mat, :, :, i)
+    q_vals = view(eqn.q, :, :, i)  # mesh.numDof x sbp.numnodes
+    # apply filter matrix to q_vals transposed, so it is applied to
+    # all the rho components, then all the x momentum, etc.
+    smallmatmatT!(filt_i, q_vals, q_filt)
+
+    # update eqn.res, remembering to transpose q_filt
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+	eqn.res[k, j, i] -= q_filt[j, k]
+      end
+    end
+
+  end  # end loop over elements
+
+  return nothing
+end
+
+
+
+function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, dissipation_name::ASCIIString, opts)
+# calculates and returns the artificial dissipation operator array
+
+  epsilon = eqn.params.dissipation_const  # get the dissipation constant
+  dissipation_func = dissipation_dict[dissipation_name]
+
+  filt = getDissipationFilterOperator(sbp, dissipation_func)  # get the dissipation filter matrix for the reference element
+
+  # store a sbp.numnodes square matrix for each element
+  dissipation_mat = zeros(Tmsh, sbp.numnodes, sbp.numnodes, mesh.numEl)
+
+    
+  # filter matrix for a non-reference element
+  filt_i = Array(Tmsh, sbp.numnodes, sbp.numnodes)
+  hinv = inv(diagm(sbp.w))
+  h = diagm(sbp.w)
+  for i=1:mesh.numEl
+    # modify filter matrix to be in real (non reference) space
+#=    
+    for col = 1:sbp.numnodes
+      for row = 1:sbp.numnodes
+	filt_i[row, col] = filt[row, col]/mesh.jac[row, i]
+      end
+    end
+=#
+    # scale the mass (digonal) mass matrix by jacobian determinent
+    # then multiply by h = (1/jac)^(1/p)
+    h_jac = sbp.w./(mesh.jac[:, i].^2.0)
+    h_jac_inv = 1./h_jac
+
+    dissipation_mat[:, :, i] = epsilon*filt.'*diagm(h_jac)*filt
+
+  end  # end loop over elements
+
+
+  return dissipation_mat
+
+end  # end function
+
+
+
+
+
+function getDissipationFilterOperator{T}(sbp::TriSBP{T}, filter::Function)
+# calculate the filter operator (including the conversion to and from
+# the modal basis) used for artificial dissipation
+# the filter function defines the filter kernel
+
+  vtx = [-1. -1.; 1. -1.; -1. 1.]
+  x, y = SummationByParts.SymCubatures.calcnodes(sbp.cub, vtx)
+  # loop over ortho polys up to degree d
+  d = sbp.degree
+  eta_c = (d-1)/(d+1)
+  s = d
+  alpha = 36.0
+
+  V = zeros(T, (sbp.numnodes, div((d+1)*(d+2), 2)) )
+#  V = zeros(T, (sbp.numnodes, convert(Int, (d+1)*(d+2)/2)) )
+  lambda = zeros(T, (sbp.numnodes) )
+  ptr = 0
+  for r = 0:d
+    for j = 0:r
+      i = r-j
+      V[:,ptr+1] = SummationByParts.OrthoPoly.proriolpoly(x, y, i, j)
+      lambda[ptr+1] = 1.0 - filter(r/(d+1), eta_c, alpha, s) 
+      ptr += 1
+    end
+  end
+  lambda[ptr+1:end] = 1.0
+  #println("lambda = ",lambda)
+
+  Z = nullspace(V')
+  Vt = [V Z]
+  F = Vt*diagm(lambda)*inv(Vt)
+  return F
+end
+
+
+function damp1(eta, eta_c, alpha, s)
+  if (eta <= eta_c)
+    return 1.0
+  else
+    return exp(-alpha*((eta-eta_c)/(1-eta_c))^(2*s))
+  end
+end
+
+
+
+global const dissipation_dict = Dict{ASCIIString, Function} (
+"damp1" => damp1
+)
 

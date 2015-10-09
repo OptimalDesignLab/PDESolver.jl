@@ -28,7 +28,10 @@ if !haskey(pkg_dict, "PETSc")
   cd(petsc_dir)
   run(`git checkout 58999c0`)
   cd(start_dir)
+<<<<<<< HEAD
  
+=======
+>>>>>>> stabilization
   Pkg.build("PETSc")
 end
 

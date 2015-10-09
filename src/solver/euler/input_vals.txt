@@ -54,13 +54,23 @@ where input_file_name.jl is in your current directory.
 "write_finalsolution"  : write final solution (in vector form) to file, (Bool), default false
 "write_finalresidual"  : write final residual (in vector form) to file, (Bool), default false
 
+
+# stabilization options
+"use_edgestab" : use edge stabilization, (Bool), default true
+"edgestab_gamma" edge stabilization paramater gamma, (floatingpoint), default -0.1
+"use_filter" : use a filtering technique, (Bool), default false
+"use_res_filter" : apply the transposed filter to the residual, (Bool), default false
+"filter_name", name of filter to apply, (ASCIIString), default "raisedCosineFilter"
+"use_dissipation" : use artificial dissipation, (Bool), default false
+"dissipation_name" : name of artificial dissipation kernel to use, (ASCIIString), default "none"
+"dissipation_const" : constant to multiply dissipation filter by, (Float64), default 0.0
 # solver debugging options
-"writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function (bool), default false
+"writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
 "write_edge_vertnums"  : writes the vertex numbers of every edge to edge_vertnusm.dat (Bool), default false
 "write_face_vertnums" : writes vertex number of every face to face_vertnums.dat, (Bool), default false
-"write_boundarynums"  : writes the elements  number, global face number of each face with a boundary condition, one per line, (Bool), default false
+"write_boundarynums"  : writes the elements  number, global face number of each face with a boundary condition, one per line, to file boundary_nums.dat, (Bool), default false
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
 "write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false

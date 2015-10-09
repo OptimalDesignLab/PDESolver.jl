@@ -59,7 +59,7 @@ are usually passed an ArrayView, so writing to the argument vector writes
 directly to the large array stored in the eqn object.  Thus there is no 
 loss of efficiency by using low level functions.
 """
-export evalEuler
+export evalEuler, init
 
 # Rules for paramaterization:
 # Tmsh = mesh data type
@@ -110,7 +110,7 @@ evalBoundaryIntegrals(mesh, sbp, eqn)
 
 
 
-addStabilization(mesh, sbp, eqn)
+addStabilization(mesh, sbp, eqn, opts)
 #println("edge stabilizing @time printed above")
 
 
@@ -139,6 +139,28 @@ return nothing
 
 end  # end evalEuler
 
+
+
+@doc """
+### EulerEquationMod.init
+
+  This function performs any operations that need to be performed before
+  the first residual evaluation.
+  Any operations that need to be performed at the beginning of *each* 
+  residual evaluation should go in dataPrep
+"""
+# high level functions
+function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
+
+  println("\nInitializing Euler module")
+  # get BC functors
+  getBCFunctors(mesh, sbp, eqn, opts)
+
+
+  return nothing
+end
+
+
 @doc """
 ### EulerEquationMod.dataPrep
 
@@ -159,6 +181,13 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 #println("Entered dataPrep()")
 
 #  println("eqn.q = ", eqn.q)
+
+  # apply filtering to input
+  if eqn.params.use_filter
+    applyFilter(mesh, sbp, eqn, eqn.q, opts)
+  end
+
+
 
   u = eqn.q
   F_xi = eqn.F_xi
@@ -348,7 +377,7 @@ for i=1:numel
     press = @getPressure(aux_vars)
 #    press = getPressure(aux_vars)
 #    println("press = ", press)
-    @assert( real(press) > 0.0)
+    @assert( real(press) > 0.0, "element $i, node $j")
   end
 end
 
@@ -394,6 +423,19 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 end
 #------------- end of evalVolumeIntegrals
 
+
+#=
+@doc """
+  This function evaluates the advective terms of the strong form.
+  eqn.res is updates with the result
+
+"""->
+function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim}, opts)
+
+  for i=1:Tdim
+    differentiate!(sbp, i, 
+
+=#
 @doc """
   This function evaluates the boundary integrals in the Euler equations by 
   calling the appropriate SBP function on eqn.bndryflux, which must be populated
@@ -451,7 +493,7 @@ end
 """->
 # This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
-function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol})
+function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts)
 
 #  println("==== start of addStabilization ====")
   # alpha calculated like in edgestabilize! documentation
@@ -466,7 +508,20 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
   # u argument here is SL in a different format
 #  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
 
-  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+  if eqn.params.use_edgestab
+#    println("applying edge stabilization")
+    edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+  end
+
+  if eqn.params.use_res_filter
+#    println("applying residual filter")
+    applyFilter(mesh, sbp, eqn, eqn.res, opts, trans=true)
+  end
+
+  if eqn.params.use_dissipation
+#    println("applying artificial dissipation")
+    applyDissipation(mesh, sbp, eqn, eqn.q, opts)
+  end
 
 #  println("==== end of addStabilization ====")
 

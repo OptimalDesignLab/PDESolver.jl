@@ -45,6 +45,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   end
   println("Actual Density value succesfully extracted")
 
+  println("\nEntered rk4")
 # res_tol is alternative stopping criteria
   SL0 = eqn.SL0
   SL = eqn.SL
@@ -130,7 +131,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
       flush(f1)
     end
 
-    if iter % 1000 == 0
+    if iter % 10000 == 0  # this should be an option
 
       saveSolutionToMesh(mesh, SL0)
       writeVisFiles(mesh, "solution_rk$iter")
@@ -141,8 +142,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
      # put solution into SL0
-  #   fill!(eqn.SL0, 0.0)
-  #   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+#     fill!(eqn.SL0, 0.0)
+#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
 
       # put residual into eqn.SL
 #      eqn.SL[:] = res_0
