@@ -161,6 +161,7 @@ include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
+include("artificialViscosity.jl")
 #include("constant_diff.jl")
 
 
@@ -253,7 +254,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
   end  # end of constructor
 
 end  # end of type declaration
-
 
 
 

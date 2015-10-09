@@ -24,6 +24,7 @@ p_in =  1/gamma
 
 # calculate r, theta coordinates from x,y
 r = sqrt(x*x + y*y)
+# println("r = ", r)
 theta = atan2(y,x)  # angle in radians
 # println("theta = ", theta)
 
@@ -31,14 +32,14 @@ theta = atan2(y,x)  # angle in radians
 #println("theta = ", theta)
 
 tmp1 = ((gamma-1)/2)*M_in*M_in
-#println("tmp1 = ", tmp1)
+# println("tmp1 = ", tmp1)
 
 # calculate values at r radius
 rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
-#println("rho_r = ", rho_r)
+# println("rho_r = ", rho_r)
 
 p_r = p_in*(rho_r/rho_in)^gamma
-#println("p_r = ", p_r)
+# println("p_r = ", p_r)
 
 a_r = sqrt( gamma*p_r/rho_r )
 

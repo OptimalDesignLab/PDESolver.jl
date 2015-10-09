@@ -37,7 +37,6 @@ simpleMesh is a mesh type which generates a rectangular mesh in 2D with triangul
 
 """->
 
-# type simpleMesh{T} <: abstractMesh{T}
 type simpleMesh{T <: FloatingPoint}
 
 	lengthx::FloatingPoint

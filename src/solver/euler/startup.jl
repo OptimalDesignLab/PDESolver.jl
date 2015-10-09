@@ -19,6 +19,7 @@ using SummationByParts  # SBP operators
 using EulerEquationMod
 using ForwardDiff
 using nl_solvers   # non-linear solvers
+using ArrayViews
 
 #include(joinpath(Pkg.dir("PDESolver"),"src/nl_solvers/rk4.jl"))  # timestepping
 
@@ -76,8 +77,8 @@ if flag == 1 || flag == 8  # normal run
 elseif flag == 2  # calculate dR/du
   Tmsh = Float64
   Tsbp = Float64
-  Tsol = Dual{Float64}
-  Tres = Dual{Float64}
+  Tsol = Float64
+  Tres = Float64
 elseif flag == 3  # calcualte dR/dx using forward mode
   Tmsh = Dual{Float64}
   Tsbp = Float64
@@ -172,6 +173,8 @@ ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, SL0)
+
+
 # ICZero(mesh, sbp, eqn, SL0)
 # ICLinear(mesh, sbp, eqn, SL0)
 # ICIsentropicVortex(mesh, sbp, eqn, SL0)
@@ -238,6 +241,39 @@ writeVisFiles(mesh, "solution_ic")
 # initialize some variables in nl_solvers module
 initializeTempVariables(mesh)
 
+#------------------------------------------------------------------------------
+
+include("checkEigenValues.jl")
+# include("artificialViscosity.jl")
+
+
+# Calculate the recommended delta t
+res_0 = zeros(eqn.SL)
+res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_0)
+CFLMax = 1 # Maximum Recommended CFL Value
+Dt = zeros(mesh.numNodesPerElement,mesh.numEl) # Array of all possible delta t
+
+for i = 1:mesh.numEl
+  for j = 1:mesh.numNodesPerElement
+    h = 1/sqrt(mesh.jac[j,i])
+    velocities = zeros(2) # Nodal velocities
+    velocities[1] = eqn.q[2,j,i]/eqn.q[1,j,i]
+    velocities[2] = eqn.q[3,j,i]/eqn.q[1,j,i] 
+    vmax = norm(velocities)
+    q = view(eqn.q,:,j,i)
+    T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
+    c = sqrt(eqn.params.gamma*eqn.params.R*T) # Speed of sound
+    Dt[j,i] = CFLMax*h/(vmax + c)
+  end
+end
+RecommendedDT = minimum(Dt)
+println("Recommended delta t = ", RecommendedDT)
+
+#elementEigenValues(mesh, sbp, eqn)
+
+
+#------------------------------------------------------------------------------
+
 # call timestepper
 if opts["solve"]
   
@@ -257,7 +293,7 @@ if opts["solve"]
     end
 
     # use ForwardDiff package to generate function that calculate jacobian
-    calcdRdu! = forwarddiff_jacobian!(drDu_rk4_wrapper, Float64, fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
+    calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64, fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
 
     jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
     calcdRdu!(eqn.SL0, jac)
@@ -268,6 +304,7 @@ if opts["solve"]
 
   elseif flag == 4 || flag == 5
     @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+
     println("total solution time printed above")
     printSolution("newton_solution.dat", eqn.SL)
 #=

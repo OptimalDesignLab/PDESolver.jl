@@ -1,0 +1,70 @@
+Mesh: vortex.smb
+Geometry: vortex.dmg
+numEl = 325
+Edge Stab Gamma = 0
+AV Disabled
+DensityError = 0.0016980282859740852
+
+Mesh: vortex.smb
+Geometry: vortex.dmg
+Edge Stab Gamma = -0.1
+AV Disabled
+DensityError = 0.0005854820032782324
+
+Mesh: vortex.smb
+Geometry: vortex.dmg
+Edge Stab Gamma = -0.1
+AV Enabled: epsilonHat = 0.01
+DensityError = 0.0007485143842337243
+
+Mesh: vortex.smb
+Geometry: vortex.dmg
+Edge Stab Gamma = -0.1
+AV Enabled: epsilonHat = 0.001
+DensityError = 0.0005833633561874411
+
+Mesh: vortex.smb
+Geometry: vortex.dmg
+numEl = 325
+Edge Stab Gamma = 0.0
+AV Enabled: epsilonHat = 0.001
+DensityError = 0.0015574551015316307
+
+Mesh: vortex2_1.smb
+Geometry: vortex.dmg
+Edge Stab Gamma = 0.0
+AV Enabled: epsilonHat = 0.001
+DensityError = Fail
+
+Mesh: vortex2_1.smb
+Geometry: vortex.dmg
+Edge Stab Gamma = 0.0
+AV Enabled: epsilonHat = 0.0001
+DensityError = Fail
+
+Mesh: vortex2_2.smb
+Geometry: vortex2_2.dmg
+Edge Stab Gamma = 0.0
+AV Enabled: epsilonHat = 0.001
+DensityError = Fail
+
+Mesh: vortex2_3.smb
+Geometry: vortex2_3.dmg
+Edge Stab Gamma = 0.0
+AV Enabled: epsilonHat = 0.001
+DensityError = Fail
+iter 2 = 0.6626228243165708
+
+Mesh: vortex2_4.smb
+Geometry: vortex2_4.dmg
+Edge Stab Gamma = 0.0
+AV Enabled: epsilonHat = 0.001
+DensityError = Fail
+iter 2 = 0.11656206591723851
+
+Mesh: vortex9.smb
+Geometry: vortex9.dmg
+numEl = 5361
+Edge Stab Gamma = 0.0
+AV Enabled: epsilonHat = 0.001
+DensityError = 6.15634578240096e-5

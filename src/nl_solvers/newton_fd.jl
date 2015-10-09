@@ -79,6 +79,16 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # append to be on the safe side
   fconv = open("convergence.dat", "a+")
 
+  #----------------------------------------------------------------------------
+  # Storing the initial density value at all the nodes
+  vRho_act = zeros(mesh.numNodes)
+  k = 1
+  for i = 1:4:length(eqn.SL0)
+    vRho_act[k] = eqn.SL0[i]
+    k += 1
+  end
+  println("Actual Density value succesfully extracted")
+  #----------------------------------------------------------------------------
 
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
@@ -162,11 +172,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 #      println("calculating complex step jacobian")
 
       if jac_type == 1  # dense jacobian
-	println("calculating dense complex step jacobian")
+	      println("calculating dense complex step jacobian")
         @time calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
-
       elseif jac_type == 2 || jac_type == 3  # sparse jacobian 
-	println("calculating sparse complex step jacobian")
+	      println("calculating sparse complex step jacobian")
         res_dummy = []  # not used, so don't allocation memory
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
       end
@@ -176,19 +185,18 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
     # print as determined by options
     if write_jac
-#      fname = string("jacobian", i, ".dat")
-#      printMatrix(fname, jac)
-
+       # fname = string("jacobian", i, ".dat")
+       # printMatrix(fname, jac)
       if jac_type == 3
         PetscMatAssemblyBegin(jac, PETSC_MAT_FINAL_ASSEMBLY)
         PetscMatAssemblyEnd(jac, PETSC_MAT_FINAL_ASSEMBLY)
       end
-
-
       writedlm("jacobian$i.dat", full(jac))
       println("finished printing jacobian")
     end
+    #println(jac)
 
+    
     # calculate Jacobian condition number
     if print_cond
       cond_j = cond(jac)
@@ -202,19 +210,46 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     
     # calculate Newton step
     if jac_type == 1 || jac_type == 2  # julia jacobian
-    @time delta_SL[:] = jac\(res_0)  #  calculate Newton update
-    fill!(jac, 0.0)
+      @time delta_SL[:] = jac\(res_0)  #  calculate Newton update
+      fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_SL)
     elseif jac_type == 3   # petsc
       @time petscSolve(jac, x, b, ksp, res_0, delta_SL)
     end
+    
     println("matrix solve @time prined above")
     step_norm = norm(delta_SL)/m
     println("step_norm = ", step_norm)
 
     # perform Newton update
     eqn.SL0[:] += step_fac*delta_SL  # update SL0
+    
+    #--------------------------------------------------------------------------
+    # Calculate the error in density
+    vRho_calc = zeros(vRho_act)
+    k = 1
+    for i = 1:4:length(eqn.SL0)
+      vRho_calc[k] = eqn.SL0[i]
+      k += 1
+    end
+    ErrDensityVec = vRho_calc - vRho_act
+    # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
+    # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
+    # println("DensityErrorNormL1 = ", ErrDensity1) 
+    ErrDensity2 = 0.0
+    k = 1
+    for i = 1:length(ErrDensityVec)
+      ErrDensity2 += real(ErrDensityVec[i])*eqn.M[k]*real(ErrDensityVec[i])
+      k += 4
+    end
+    ErrDensity2 = sqrt(ErrDensity2)
+    println("DensityErrorNormL2 = ", ErrDensity2)
+    # println("Discrete density error norm L2 = ", ErrDensity2_discrete)
 
+
+
+    #--------------------------------------------------------------------------
+    
     # write starting values for next iteration to file
     if write_sol
       writedlm("SL0$i.dat", eqn.SL0)
@@ -270,7 +305,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 	destroyPetsc(jac, x, b, ksp)
       end
 
-
+    
      return nothing
    end
 
@@ -313,6 +348,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
     print("\n")
     step_norm_1 = step_norm
+    
   end  # end loop over newton iterations
 
   println(STDERR, "Warning: Newton iteration did not converge")
@@ -364,7 +400,7 @@ end
 
 function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 # calculate the jacobian using finite difference
-
+  #println(res_0)
   (m,n) = size(jac)
   entry_orig = zero(eltype(eqn.SL0))
   epsilon = norm(pert)  # finite difference perturbation
@@ -373,6 +409,7 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 #      println("  jacobian iteration ", j)
     if j==1
       entry_orig = eqn.SL0[j]
+      #println(eqn.SL)
       eqn.SL0[j] +=  epsilon
     else
       eqn.SL0[j-1] = entry_orig # undo previous iteration pertubation
@@ -388,6 +425,7 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
     fill!(eqn.SL, 0.0)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.SL)
+    #println(eqn.SL)
     calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
 #      println("SL norm = ", norm(SL)/m)
     
@@ -555,10 +593,10 @@ function calcJacRow{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
 # at the original point, and res, the function evaluated at a perturbed point
 
 m = length(res_0)
-
 for i=1:m
   jac_row[i] = (res[i] - res_0[i])/epsilon
 end
+#println(jac_row)
 
 return nothing
 
