@@ -198,7 +198,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    # test calcEulerFlux
    for i=1:mesh.numNodesPerElement
-     println("eq.F_xi[:, $i, 1, 1] = ", eqn.F_xi[:, i, 1, 1])
+#     println("eq.F_xi[:, $i, 1, 1] = ", eqn.F_xi[:, i, 1, 1])
      @fact eqn.F_xi[:, i, 1, 1] => roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
    end
 
