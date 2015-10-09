@@ -1,4 +1,7 @@
 # Artificial Viscosity
+push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
+using PumiInterface # pumi interface
+
 @doc """
 ### artificialViscosity
 
@@ -40,8 +43,8 @@ function artificialViscosity{Tmsh,Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
-      phi[:,j,i,1] = qbar[:,j,i] #abs(mesh.dxidx[1,1,j,i])*qbar[:,j,i] # compute dxi/dx*qbar
-      phi[:,j,i,2] = qbar[:,j,i] #abs(mesh.dxidx[2,1,j,i])*qbar[:,j,i] # compute deta/dx*qbar
+      phi[:,j,i,1] = qbar[:,j,i] # abs(mesh.dxidx[1,1,j,i])*qbar[:,j,i] # compute dxi/dx*qbar
+      phi[:,j,i,2] = qbar[:,j,i] # abs(mesh.dxidx[2,1,j,i])*qbar[:,j,i] # compute deta/dx*qbar
     end
   end
 
@@ -53,8 +56,8 @@ function artificialViscosity{Tmsh,Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
   phi = zeros(Fav)
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      phi[:,j,i,1] = qbar[:,j,i] #abs(mesh.dxidx[1,2,j,i])*qbar[:,j,i] # compute dxi/dy*qbar
-      phi[:,j,i,2] = qbar[:,j,i] #abs(mesh.dxidx[2,2,j,i])*qbar[:,j,i] # compute deta/dy*qbar
+      phi[:,j,i,1] = qbar[:,j,i] # abs(mesh.dxidx[1,2,j,i])*qbar[:,j,i] # compute dxi/dy*qbar
+      phi[:,j,i,2] = qbar[:,j,i] # abs(mesh.dxidx[2,2,j,i])*qbar[:,j,i] # compute deta/dy*qbar
     end
   end
   
@@ -62,7 +65,7 @@ function artificialViscosity{Tmsh,Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
     differentiate!(sbp,k,view(phi,:,:,:,k),view(Fav,:,:,:,2))
   end
   
-  Fav = epsilonHat*(hi/h)*Fav
+  Fav = -epsilonHat*(hi/h)*Fav
 
   for k = 1:Tdim # Assemble into the weak form
     weakdifferentiate!(sbp,k, view(Fav,:,:,:,k), eqn.res, trans=true)
@@ -81,7 +84,7 @@ function calcArtViscosityFluxComp{Tsol}(params::ParamType{2}, q::AbstractArray{T
   F[1] = q[1]
   F[2] = q[2]
   F[3] = q[3]
-  F[4] = q[4] + press
+  F[4] = q[4] #+ press
 
 return nothing
 end
@@ -145,17 +148,21 @@ function shockIndicator{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1})
   end
 
 end
+=#
 
-function boundingBox{Tmsh, Tdim}(coord::AbstractArray{Tmsh,2}, h::AbstractArray{Tmsh,1})
+function boundingBox{Tmsh}(coord::AbstractArray{Tmsh,2}, h::AbstractArray{Tmsh,1})
   # It works at the element level. Accepts the vertex coordinates of all the nodes
   # h = zeros(Tmsh,Tdim)  # Stores the dimensions of the bounding box
-  for i = 1:Tdim
+  for i = 1:2
     h[i] = abs(maximum(coord[i,1:3]) - minimum(coord[i,1:3]))
   end
 
 end
 
-function AverageMeshDimen{Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, hBar::AbstractArray{Tmsh,1})
+#=
+function AverageMeshDimen{Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                      hBar::AbstractArray{Tmsh,1},
+                                      eqn::EulerData{Tsol,Tdim})
   # Operates at the element level
   # Reset the face iterator at the beginning of wherever this loop is called
   element = getFace() 
@@ -175,8 +182,26 @@ function AverageMeshDimen{Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, hBar::AbstractAr
     hBar[i] = sum(hArray)/(Tdim*nadjacencies) # Calculate the average mesh metric for the three vertices
   end
 
+end =#
+
+function AvgMeshSize{Tmsh, Tdim, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol,Tdim})
+  
+  hArray = zeros(Tmsh, Tdim,mesh.numEl)  # Array of bounding box of all adjacent elements
+  resetFaceIt() # Reset Iterator over Face
+  for i = 1:mesh.numEl
+    element = getFace()
+    (vertices, nvertices) = getDownward(mesh.m_ptr, element, 0)
+    elemNum = getNumberJ(mesh.el_Nptr, element, 0, 0) # Get the global element number
+    nodal_coordinates = mesh.coords[:,:,elemNum+1]  # get element nodal coordinates
+    boundingBox(nodal_coordinates, view(hArray,:,i)) # Get the bounding box
+    incrementFaceIt() # Increment face iterator
+  end
+  hAverage = sum(hArray)/(Tdim*mesh.numEl)
+
+  return hAverage
 end
 
+#=
 function AVSourceTerm{Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, 
                              sbp::SBPOperator, eqn::EulerData{Tsol,Tdim})
 

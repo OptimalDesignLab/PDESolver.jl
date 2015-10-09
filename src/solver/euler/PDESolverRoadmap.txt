@@ -12,6 +12,9 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 
 *  calcIsentropicVortex
 *  calcFreeStream
+*  calcRho1Energy2
+*  calcRho1Energy2U3
+*  calcVortex
 
 == euler.jl ==
 
@@ -30,6 +33,7 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 
 == newton_fd.jl ==
 
+*  calcResidual
 *  calcJacFD
 *  calcJacRow
 

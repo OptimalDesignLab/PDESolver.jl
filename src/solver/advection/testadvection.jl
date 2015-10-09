@@ -1,6 +1,6 @@
 push!(LOAD_PATH, "/users/creanj/julialib_fork/PUMI.jl")
 using PumiInterface
-using PdePumiInterface
+#using PdePumiInterface
 using SummationByParts
 include("../../rk4/rk4.jl")
 include("euler.jl")

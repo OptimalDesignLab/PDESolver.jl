@@ -79,6 +79,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # append to be on the safe side
   fconv = open("convergence.dat", "a+")
 
+  #----------------------------------------------------------------------------
   # Storing the initial density value at all the nodes
   vRho_act = zeros(mesh.numNodes)
   k = 1
@@ -87,7 +88,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     k += 1
   end
   println("Actual Density value succesfully extracted")
-
+  #----------------------------------------------------------------------------
 
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
@@ -222,7 +223,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
     # perform Newton update
     eqn.SL0[:] += step_fac*delta_SL  # update SL0
-
+    
+    #--------------------------------------------------------------------------
     # Calculate the error in density
     vRho_calc = zeros(vRho_act)
     k = 1
@@ -230,11 +232,24 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       vRho_calc[k] = eqn.SL0[i]
       k += 1
     end
+    ErrDensityVec = vRho_calc - vRho_act
+    # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
+    # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
+    # println("DensityErrorNormL1 = ", ErrDensity1) 
+    ErrDensity2 = 0.0
+    k = 1
+    for i = 1:length(ErrDensityVec)
+      ErrDensity2 += real(ErrDensityVec[i])*eqn.M[k]*real(ErrDensityVec[i])
+      k += 4
+    end
+    ErrDensity2 = sqrt(ErrDensity2)
+    println("DensityErrorNormL2 = ", ErrDensity2)
+    # println("Discrete density error norm L2 = ", ErrDensity2_discrete)
 
-    ErrDensity = norm(vRho_calc - vRho_act)/mesh.numNodes
-    println("DensityErrorNorm = ", ErrDensity) 
 
 
+    #--------------------------------------------------------------------------
+    
     # write starting values for next iteration to file
     if write_sol
       writedlm("SL0$i.dat", eqn.SL0)
