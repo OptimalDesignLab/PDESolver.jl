@@ -52,5 +52,5 @@ arg_dict = Dict{Any, Any} (
 "print_cond" => true,
 #"write_counts" => true,
 "write_vis" => true,
-"solve" => false,
+"solve" => true,
 )
