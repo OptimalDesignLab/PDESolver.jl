@@ -412,7 +412,7 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
     weakdifferentiate!(sbp, i, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
   end
   
-  artificialViscosity(mesh, sbp, eqn) 
+#  artificialViscosity(mesh, sbp, eqn) 
 
   # hAverage = AvgMeshSize(mesh, eqn)
   # println("Average Mesh Size = ", hAverage)
