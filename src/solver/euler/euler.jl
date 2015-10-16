@@ -190,7 +190,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 
 
   u = eqn.q
-  F_xi = eqn.F_xi
+  flux_parametric = eqn.flux_parametric
 
   # zero out res
   fill!(eqn.res, 0.0)
@@ -210,7 +210,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 #  println("checkPressure @time printed above")
 
   # calculate fluxes
-#  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(F_xi, :, :, :, 1), view(F_xi, :, :, :, 2))
+#  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(flux_parametric, :, :, :, 1), view(flux_parametric, :, :, :, 2))
   getEulerFlux(mesh, sbp,  eqn, opts)
 #  println("getEulerFlux @time printed above")
 
@@ -406,10 +406,10 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 # SL : solution vector to be populated (mesh.numDof entries)
 # SL0 : solution vector at previous timesteps (mesh.numDof entries)
 
-#  println("size eqn.F_xi = ", size(eqn.F_xi), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
+#  println("size eqn.flux_parametric = ", size(eqn.flux_parametric), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   
   for i=1:Tdim
-    weakdifferentiate!(sbp, i, view(eqn.F_xi, :, :, :, i), eqn.res, trans=true)
+    weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
   end
   
 #  artificialViscosity(mesh, sbp, eqn) 
@@ -660,7 +660,7 @@ end
 """->
 # mid level function
 function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,  eqn::EulerData{Tsol, Tdim}, opts)
-# calculate Euler flux in parametric coordinate directions, stores it in eqn.F_xi
+# calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
 
   nrm = zeros(Tmsh, 2)
   for i=1:mesh.numEl  # loop over elements
@@ -679,7 +679,7 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperat
 #	nrm[1] /= nrm_mag
 #	nrm[2] /= nrm_mag
 #        nrm = view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
-        flux = view(eqn.F_xi, :, j, i, k)
+        flux = view(eqn.flux_parametric, :, j, i, k)
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
   
       end
@@ -707,7 +707,7 @@ function writeFlux(mesh, sbp, eqn, opts)
  
    fname = "Fxi.dat"
    rmfile(fname)
-   writedlm(fname, real(eqn.F_xi))
+   writedlm(fname, real(eqn.flux_parametric))
 
    return nothing
 end
@@ -729,7 +729,7 @@ function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
 # eqn is the equation type
 # q is the 3D array (4 by nnodes per element by nel), of the conservative variables
 # dxidx is the 4D array (2 by 2 x nnodes per element by nel) that specifies the direction of xi and eta in each element (output from mappingjacobian!)
-# F_xi is populated with the flux in xi direction (same shape as q)
+# flux_parametric is populated with the flux in xi direction (same shape as q)
 # F_eta is populated with flux in eta direction
 
 # once the Julia developers fix slice notation and speed up subarrays, we won't have to 
@@ -737,8 +737,8 @@ function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
 
 q = eqn.q
 dxidx = mesh.dxidx
-F_xi = view(eqn.F_xi, :, :, :, 1)
-F_eta = view(eqn.F_xi, :, :, :, 2)
+flux_parametric = view(eqn.flux_parametric, :, :, :, 1)
+F_eta = view(eqn.flux_parametric, :, :, :, 2)
 
 (ncomp, nnodes, nel) = size(q)  # get sizes of things
 
@@ -753,10 +753,10 @@ F_eta = view(eqn.F_xi, :, :, :, 2)
       # calculate flux in xi direction
       # hopefully elements of q get stored in a register for reuse in eta direction
       U = (q[2, j, i]*nx + q[3, j, i]*ny)/q[1, j, i]
-      F_xi[1, j, i] = q[1, j, i]*U
-      F_xi[2, j, i] = q[2, j, i]*U + nx*press
-      F_xi[3, j, i] = q[3, j, i]*U + ny*press
-      F_xi[4, j, i] = (q[4, j, i] + press)*U
+      flux_parametric[1, j, i] = q[1, j, i]*U
+      flux_parametric[2, j, i] = q[2, j, i]*U + nx*press
+      flux_parametric[3, j, i] = q[3, j, i]*U + ny*press
+      flux_parametric[4, j, i] = (q[4, j, i] + press)*U
 
       # get direction vector components (eta direction)
       nx = dxidx[2, 1, j, i]

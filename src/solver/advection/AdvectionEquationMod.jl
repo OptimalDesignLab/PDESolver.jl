@@ -30,7 +30,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
   u::Array{Tsol, 3}
   res::Array{Tsol, 3}
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
-  F_xi::Array{Tsol,4}  # flux in xi direction
+  flux_parametric::Array{Tsol,4}  # flux in xi direction
   res::Array{Tres, 3}  # result of computation
   SL::Array{Tres, 1}  # result of computation in vector form
   SL0::Array{Tres,1}  # initial condition in vector form

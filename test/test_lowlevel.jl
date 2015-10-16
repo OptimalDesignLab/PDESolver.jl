@@ -61,7 +61,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
  F = zeros(4)
  coords = [1.0,  0.0]
 
- F_xi = zeros(4,2)
+ flux_parametric = zeros(4,2)
 
  context("--- Testing calc functions ---") do
 
@@ -83,11 +83,11 @@ facts("--- Testing Euler Low Level Functions --- ") do
    F_roe = zeros(4)
 
    nrm1 = [dxidx[1,1], dxidx[1,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(F_xi, :, 1))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
    nrm2 = [dxidx[2,1], dxidx[2,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(F_xi, :, 2))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
 
-   EulerEquationMod.RoeSolver(q, qg, F_xi, aux_vars, dxidx, dir, F_roe, eqn.params)
+   EulerEquationMod.RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, dir, F_roe, eqn.params)
    @fact F_roe => roughly(-F) 
 
 
@@ -95,19 +95,19 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, q)
 
    func1 = EulerEquationMod.isentropicVortexBC()
-   func1(q, F_xi, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    @fact F_roe => roughly(-F) 
 
    q[3] = 0  # make flow parallel to wall
    func1 = EulerEquationMod.noPenetrationBC()
-   func1(q, F_xi, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    @fact F_roe => roughly(-F) 
 
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
    func1 = EulerEquationMod.Rho1E2U3BC()
-   func1(q, F_xi, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    @fact F_roe => roughly(-F) 
 
@@ -198,20 +198,20 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    # test calcEulerFlux
    for i=1:mesh.numNodesPerElement
-#     println("eq.F_xi[:, $i, 1, 1] = ", eqn.F_xi[:, i, 1, 1])
-     @fact eqn.F_xi[:, i, 1, 1] => roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
+#     println("eq.flux_parametric[:, $i, 1, 1] = ", eqn.flux_parametric[:, i, 1, 1])
+     @fact eqn.flux_parametric[:, i, 1, 1] => roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.F_xi[:, i, 2, 1] => roughly([0.35355, 0.874999, 0.12499, 0.972263], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 2, 1] => roughly([0.35355, 0.874999, 0.12499, 0.972263], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.F_xi[:, i, 1, 2] => roughly([0.35355, 0.124998, 0.874999, 0.972263], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 1, 2] => roughly([0.35355, 0.124998, 0.874999, 0.972263], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.F_xi[:, i, 2, 2] => roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 2, 2] => roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
    end
 
 

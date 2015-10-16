@@ -48,7 +48,7 @@ println("                          = ", mesh_sum/(8*1024*1024), " megabytes")
 
 q = numDofPerNode*numNodes*numEl*64
 aux_vars = 1*numEl*64
-F_xi = numDofPerNode*numNodes*numEl*2*64
+flux_parametric = numDofPerNode*numNodes*numEl*2*64
 res = numDofPerNode*numNodes*numEl*64
 SL = numDof*64
 SL0 = numDof*64
@@ -57,7 +57,7 @@ bndryflux = numDofPerNode*numFaceNodes*numBoundaryEdges*64
 stabscale = numNodes*numInterfaces*64
 Minv = numDof*64
 
-eqn_sum = q + aux_vars + F_xi + res + SL + SL0 + edgestab_alpha + bndryflux + stabscale + Minv
+eqn_sum = q + aux_vars + flux_parametric + res + SL + SL0 + edgestab_alpha + bndryflux + stabscale + Minv
 
 println("solution data memory usage estimate: ", eqn_sum, " bits")
 println("                                   = ", eqn_sum/8, " bytes")

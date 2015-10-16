@@ -167,7 +167,7 @@ abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
    * res_type : datatype of residual (depreciated)
     * q  : 3D array holding conservative variables
     * aux_vars : 3D array holding auxiliary variables
-    * F_xi : 4D array [ndof per node, nnodes per element, nelements, Tdim]
+    * flux_parametric : 4D array [ndof per node, nnodes per element, nelements, Tdim]
              holding the Euler flux in the xi and eta directions
     * res  : 3D array holding residual
     * SL   : vector form of res
@@ -226,7 +226,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
-  F_xi::Array{Tsol,4}  # flux in xi and eta direction
+  flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   res::Array{Tres, 3}  # result of computation
   SL::Array{Tres, 1}  # result of computation in vector form
   SL0::Array{Tres,1}  # initial condition in vector form
@@ -281,7 +281,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     # I think its a bug that Array(Float64, ...) initailizes values
     eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.aux_vars = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.F_xi = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, Tdim)
+    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, Tdim)
 #    eqn.F_eta = Array(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
   #  eqn.res = Array(T2, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
