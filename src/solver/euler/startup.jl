@@ -119,13 +119,13 @@ ICfunc(mesh, sbp, eqn, opts, SL0)
 # TODO: cleanup 20151009 start
 
 if opts["calc_error"]
-  println("\ncalculating error of file ", opts["calc_error_infname"], " compared to initial condition")
+  println("\ncalculating error of file ", opts["calc_error_infname"], 
+          " compared to initial condition")
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
 
   err_vec = vals - eqn.SL0
   err = calcNorm(eqn, err_vec)
-#  err = norm(vals - eqn.SL0)/mesh.numDof
   outname = opts["calc_error_outfname"]
   println("printint err = ", err, " to file ", outname)
   f = open(outname, "w")
@@ -138,23 +138,10 @@ if opts["calc_trunc_error"]  # calculate truncation error
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 
-#=
-  tmp = 0.0
-  # calculate a norm
-  for i=1:mesh.numDof
-    tmp += res_real[i]*eqn.Minv[i]*res_real[i]
-  end
-
-  tmp = sqrt(tmp/mesh.numDof)
-=#
-
   f = open("error_trunc.dat", "w")
   println(f, tmp)
   close(f)
 end
-
-
-
 
 if opts["perturb_ic"]
   println("\nPerturbing initial condition")
@@ -163,7 +150,6 @@ if opts["perturb_ic"]
     SL0[i] += perturb_mag*rand()
   end
 end
-
 
 SL_exact = deepcopy(SL0)
 
@@ -177,15 +163,13 @@ writeVisFiles(mesh, "solution_ic")
 initializeTempVariables(mesh)
 
 #------------------------------------------------------------------------------
-
 include("checkEigenValues.jl")
 # include("artificialViscosity.jl")
-
 
 # Calculate the recommended delta t
 res_0 = zeros(eqn.SL)
 res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_0)
-CFLMax = 1 # Maximum Recommended CFL Value
+CFLMax = 1      # Maximum Recommended CFL Value
 Dt = zeros(mesh.numNodesPerElement,mesh.numEl) # Array of all possible delta t
 
 for i = 1:mesh.numEl
@@ -206,14 +190,15 @@ println("Recommended delta t = ", RecommendedDT)
 
 #elementEigenValues(mesh, sbp, eqn)
 
-
 #------------------------------------------------------------------------------
 
 # call timestepper
 if opts["solve"]
   
   if flag == 1 # normal run
-   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"])
+   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, 
+       res_tol=opts["res_abstol"])
+
    println("finish rk4")
    printSolution("rk4_solution.dat", eqn.SL)
   # println("rk4 @time printed above")
@@ -228,7 +213,8 @@ if opts["solve"]
     end
 
     # use ForwardDiff package to generate function that calculate jacobian
-    calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64, fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
+    calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64, 
+                fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
 
     jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
     calcdRdu!(eqn.SL0, jac)
@@ -238,34 +224,30 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], 
+                 step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
+                 res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
     println("total solution time printed above")
     printSolution("newton_solution.dat", eqn.SL)
-#=
-  elseif flag == 5
-  #  newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=200, step_tol=1e-6, res_tol=1e-8)
 
-    newton_complex(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], step_tol=opts["step_tol"], res_tol=opts["res_tol"])
-=#
   elseif flag == 6
     newton_check(evalEuler, mesh, sbp, eqn, opts)
-
     vals = abs(real(eqn.SL))  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     writeVisFiles(mesh, "solution_error")
     printBoundaryEdgeNums(mesh)
     printSolution(mesh, vals)
+
   elseif flag == 7
     jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
     writedlm("solution.dat", jac_col)
+
   elseif flag == 8
     jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
     writedlm("solution.dat", jac_col)
 
-  end
-
-
+  end       # end of if/elseif blocks checking flag
 
   if opts["write_finalsolution"]
     writedlm("solution_final.dat", real(eqn.SL0))
@@ -299,7 +281,6 @@ println("\nDoing postprocessing")
       =#
       println("SL_norm: \n",SL_norm,"\n")
 
-
   end
 
       saveSolutionToMesh(mesh, real(eqn.SL0))
@@ -308,7 +289,5 @@ println("\nDoing postprocessing")
       writeVisFiles(mesh, "solution_done")
 
 end  # end if (opts[solve])
-  #end
-
 
 #runtest(1)
