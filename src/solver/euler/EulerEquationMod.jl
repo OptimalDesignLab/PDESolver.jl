@@ -1,3 +1,7 @@
+# Description:
+#   Declare the Euler data object
+#   Includes all the files for the Euler module
+
 module EulerEquationMod
 
 include("complexify.jl")
@@ -8,35 +12,38 @@ using SummationByParts
 using PdePumiInterface
 using ForwardDiff
 
-#include(joinpath(Pkg.dir("PDESolver"), "src/tools/misc.jl"))
-
-# the AbstractEquation type is declared in CommonTypes
+# the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
 export AbstractEulerData, EulerData, EulerData_
 
+#=
+Use this type to leverage multiple dispatch.
+This type holds any data, including large arrays of solution values, 
+  that are specific to the equation for the Euler equations. 
+  This includes the conservative variables q, the fluxes in the xi and eta 
+  direction, and the result of the calculation the inverse mass matrix is 
+  stored here as well (not sure if that fits better here or in the mesh object)
+  things like the coordinate field, the jacobian etc. are stored 
+  in the mesh object
 
+The aux_vars array holds all auxiliary variables that are stored over 
+  the entire mesh.
+Although it can be accessed directly, the preferred method is to use the macros 
+  defined in the euler_macros.jl file.
+These macros return either a scalar or an ArrayView of the specified indices, 
+  depending on if the quantity requested is scalar or vector.
+Every time a new variable is added to the array, the size must be updated 
+  and a new macro must be created.
 
-
-# use this type to leverage multiple disbatch
-# this type holds any data, including large arrays of solution values, that are specific to the equation
-# for the Euler equations, this includes the conservative variables q, the fluxes in the xi and eta direction, and the result of the calculation
-# the inverse mass matrix is stored here as well (not sure if that fits better here or in the mesh object)
-# things like the coordinate field, the jacobian etc. are stored in the mesh objec
-
-# the aux_vars array holds all auxiliary variables that are stored over the entire mesh
-# although it can be accessed directly, the preferred method is to use the macros
-# defined in the euler_macros.jl file
-# these macros return either a scalar or an Array View of the specified indices, depending on if the quantity requested is scalar or vector
-# every time a new variable is added to the array, the size must be updated
-# and a new macro must be created.
-# The uses of aux_vars should mirror that of eqn.q, in that entire columns should be
-# passed to low level functions and the low level functions use the macros to access
-# individual variables
-# the advantages of macros vs functions for access to variables remains unclear
-# if aux_vars is a fixed size
-# if it is variable sized then macros give the advantage of doing location lookup
-# at compile time
+The uses of aux_vars should mirror that of eqn.q, in that entire columns 
+  should be passed to low level functions and the low level functions 
+  use the macros to access individual variables.
+The advantages of macros vs functions for access to variables remains unclear
+  if aux_vars is a fixed size.
+If it is variable sized then macros give the advantage of doing location lookup
+  at compile time
+=#
 
 @doc """
 ### EulerEquationMod.ParamType
@@ -135,13 +142,14 @@ type ParamType{Tdim}
 
     dissipation_const = opts["dissipation_const"]
 
-    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, use_filter, use_res_filter, filter_mat, use_dissipation,  dissipation_const)
+    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
+               edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, 
+               use_filter, use_res_filter, filter_mat, use_dissipation,  
+               dissipation_const)
 
-  end
+    end   # end of ParamType function
 
 end  # end type declaration
-
- 
 
 # add a layer of abstraction - although this migh be unnecessary
 abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
@@ -180,21 +188,17 @@ abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
 # low level functions should take in EulerData{Tsol, 2} or EulerData{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
 
-
 # now that EulerData is declared, include other files that use it
 
 include("euler_macros.jl")
 include("output.jl")
 include("common_funcs.jl")
-#include("sbp_interface.jl")
 include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
 include("artificialViscosity.jl")
 #include("constant_diff.jl")
-
-
 
 @doc """
 ### EulerEquationMod.EulerData_
@@ -208,9 +212,11 @@ include("artificialViscosity.jl")
   specifically a 3D one.
 
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any constants needed for euler equation, as well as solution and data needed to calculate it
-# formats of all arrays are documented in SBP
-# only the constants are initilized here, the arrays are not
+type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  
+# hold any constants needed for euler equation, as well as solution and data 
+#   needed to calculate it
+# Formats of all arrays are documented in SBP.
+# Only the constants are initilized here, the arrays are not.
 
   params::ParamType{Tdim}
   res_type::DataType  # type of res
@@ -220,12 +226,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  # hold any con
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
-  F_xi::Array{Tsol,4}  # flux in xi direction
-#  F_eta::Array{Tsol,3} # flux in eta direction
+  F_xi::Array{Tsol,4}  # flux in xi and eta direction
   res::Array{Tres, 3}  # result of computation
   SL::Array{Tres, 1}  # result of computation in vector form
   SL0::Array{Tres,1}  # initial condition in vector form
-
 
   edgestab_alpha::Array{Tmsh, 4} # alpha needed by edgestabilization
   bndryflux::Array{Tsol, 3}  # boundary flux
