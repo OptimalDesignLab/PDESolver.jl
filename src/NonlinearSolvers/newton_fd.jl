@@ -223,7 +223,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       @time petscSolve(jac, x, b, ksp, res_0, delta_SL)
     end
     
-    println("matrix solve @time prined above")
+    println("matrix solve @time printed above")
     step_norm = norm(delta_SL)/m
     println("step_norm = ", step_norm)
 
