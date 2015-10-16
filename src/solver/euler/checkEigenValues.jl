@@ -33,7 +33,7 @@ function elementEigenValues{Tmsh,Tsol,Tdim}(mesh::AbstractMesh{Tmsh},
                                        sbp::SBPOperator, 
                                        eqn::EulerData{Tsol,Tdim})
 
-  res_0 = zeros(eqn.SL)
+  res_0 = zeros(eqn.res_vec)
   res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_0)
   pert = 1e-6
   numDofPerElement = mesh.numDofPerNode*mesh.numNodesPerElement
@@ -42,57 +42,57 @@ function elementEigenValues{Tmsh,Tsol,Tdim}(mesh::AbstractMesh{Tmsh},
   #=
   for i = 1:mesh.numEl
     elem_jac = zeros(numDofPerElement,numDofPerElement)
-    elemSL = zeros(numDofPerElement) # Element wise residual
-    elemSL0 = zeros(elemSL)  # 1D array containing element wise conservative variables
-    elemRes0 = zeros(elemSL) # Collects the original residual
-    entry_orig = zero(eltype(eqn.SL0)) # stores one element of original SL) at a time
-    orig_SL = copy(eqn.SL)
+    elem_res_vec = zeros(numDofPerElement) # Element wise residual
+    elem_q_vec = zeros(elem_res_vec)  # 1D array containing element wise conservative variables
+    elemRes0 = zeros(elem_res_vec) # Collects the original residual
+    entry_orig = zero(eltype(eqn.q_vec)) # stores one element of original res_vec) at a time
+    orig_res_vec = copy(eqn.res_vec)
 
-    orig_SL0 = copy(eqn.SL)
-    for j = 1:mesh.numNodesPerElement # Populating elemRes0 & elemSL0
+    orig_q_vec = copy(eqn.res_vec)
+    for j = 1:mesh.numNodesPerElement # Populating elemRes0 & elem_q_vec
       for k = 1:mesh.numDofPerNode
         elemRes0[(j-1)*mesh.numDofPerNode + k] = eqn.res[k,j,i]
-        elemSL0[(j-1)*mesh.numDofPerNode + k] = eqn.q[k,j,i]
+        elem_q_vec[(j-1)*mesh.numDofPerNode + k] = eqn.q[k,j,i]
       end
     end
 
-    # println("elemRes0 - eqn.SL = \n", elemRes0 - eqn.SL)
-    # println("elemSL0 - eqn.SL0 = \n", elemSL0 - eqn.SL0)
+    # println("elemRes0 - eqn.res_vec = \n", elemRes0 - eqn.res_vec)
+    # println("elem_q_vec - eqn.q_vec = \n", elem_q_vec - eqn.q_vec)
 
     for j = 1:numDofPerElement # Perturb all dofs in the element  
       if j == 1
-        entry_orig = elemSL0[j]
-        elemSL0[j] += pert  # Perturb the jth element of q
+        entry_orig = elem_q_vec[j]
+        elem_q_vec[j] += pert  # Perturb the jth element of q
       else
-        elemSL0[j-1] = entry_orig
-        entry_orig = elemSL0[j]
-        elemSL0[j] += pert
+        elem_q_vec[j-1] = entry_orig
+        entry_orig = elem_q_vec[j]
+        elem_q_vec[j] += pert
       end
-      #println("elemSL0 - eqn.SL0 = \n", elemSL0 - eqn.SL0)
-      # Disassembling SL0 to q at the element level
+      #println("elem_q_vec - eqn.q_vec = \n", elem_q_vec - eqn.q_vec)
+      # Disassembling q_vec to q at the element level
       for l = 1:mesh.numNodesPerElement
         for k = 1:mesh.numDofPerNode
-          eqn.q[k,l,i] = elemSL0[(l-1)*mesh.numDofPerNode + k]
+          eqn.q[k,l,i] = elem_q_vec[(l-1)*mesh.numDofPerNode + k]
         end
       end
       evalEuler(mesh, sbp, eqn, opts) # Evaluate function with perturbed q
       
-      # Populate elemSL with perturbed residuals
+      # Populate elem_res_vec with perturbed residuals
       for l = 1:mesh.numNodesPerElement
         for k = 1:mesh.numDofPerNode
-          elemSL[(l-1)*mesh.numDofPerNode + k] = eqn.res[k,l,i]
+          elem_res_vec[(l-1)*mesh.numDofPerNode + k] = eqn.res[k,l,i]
         end
       end
       
-      fill!(eqn.SL, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.SL)
-      # println("elemSL - eqn.SL = \n", elemSL - eqn.SL)
-      # println("orig_SL - eqn.SL = \n", orig_SL - eqn.SL)
+      fill!(eqn.res_vec, 0.0)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.res_vec)
+      # println("elem_res_vec - eqn.res_vec = \n", elem_res_vec - eqn.res_vec)
+      # println("orig_res_vec - eqn.res_vec = \n", orig_res_vec - eqn.res_vec)
 
-      nl_solvers.calcJacRow(unsafe_view(elem_jac, :, j), elemRes0, elemSL, pert)
+      nl_solvers.calcJacRow(unsafe_view(elem_jac, :, j), elemRes0, elem_res_vec, pert)
     end  # End for j = = 1:numDofPerElement
     
-    # println("elemSL = \n", elemSL)
+    # println("elem_res_vec = \n", elem_res_vec)
     eqn.q[mesh.numDofPerNode,mesh.numNodesPerElement,i] = entry_orig
     
     elem_eigen_vals = eigvals(elem_jac)
@@ -115,7 +115,7 @@ function elementEigenValues{Tmsh,Tsol,Tdim}(mesh::AbstractMesh{Tmsh},
   =#
   res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_0)
   jac = zeros(Float64, mesh.numDof, mesh.numDof)
-  res_0 = copy(eqn.SL)
+  res_0 = copy(eqn.res_vec)
   nl_solvers.calcJacFD(mesh, sbp, eqn, opts, evalEuler, res_0, pert, jac)
   println("Jacobian successfully computed") 
 

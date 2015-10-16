@@ -1,5 +1,5 @@
 include("../src/solver/euler/startup.jl")  # initialization and construction
-fill!(eqn.SL, 0.0)
+fill!(eqn.res_vec, 0.0)
 using ArrayViews
 facts("--- Testing Mesh --- ") do
 
@@ -172,7 +172,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
  context("--- Testing dataPrep ---") do
  
-   EulerEquationMod.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+   EulerEquationMod.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
 
@@ -279,12 +279,12 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
   context("--- Testing evalEuler --- ")  do
 
-    fill!(eqn.SL, 0.0)
+    fill!(eqn.res_vec, 0.0)
     fill!(eqn.res, 0.0)
     EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
     for i=1:mesh.numDof
-      eqn.SL[i] => roughly(0.0, atol=1e-14)
+      eqn.res_vec[i] => roughly(0.0, atol=1e-14)
     end
 
   end

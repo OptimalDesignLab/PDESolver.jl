@@ -1,5 +1,5 @@
 # this file contains the functions to evaluate the right hand side of the weak form in the pdf
-# SL stands for semi-linear form, contents inside the inv(M)(...) parenthesis on pg. 7 of Jared's derivation
+# res_vec stands for semi-linear form, contents inside the inv(M)(...) parenthesis on pg. 7 of Jared's derivation
 
 # Organization:
 # The code is organized into 3 levels of functions.  High level functions
@@ -64,7 +64,7 @@ export evalEuler, init
 # Rules for paramaterization:
 # Tmsh = mesh data type
 # Tsbp = SBP operator data type
-# Tsol = equation, SL, SL0 data type
+# Tsol = equation, res_vec, q_vec data type
 
 
 @doc """
@@ -78,10 +78,10 @@ export evalEuler, init
   four arguments.  Mid level function also take the same arguments.
 
   The input/output variables are eqn.q and eqn.res, respectively.
-  eqn.SL0 and eqn.SL exist as reusable storage
+  eqn.q_vec and eqn.res_vec exist as reusable storage
 
-  The function disassembleSolution takes SL0 and puts it into eqn.q
-  The function assembleSolution takes eqn.res and puts it into SL
+  The function disassembleSolution takes q_vec and puts it into eqn.q
+  The function assembleSolution takes eqn.res and puts it into res_vec
 
   Arguments:
     * mesh  : a mesh object
@@ -95,8 +95,8 @@ export evalEuler, init
 # this function is what the timestepper calls
 # high level function
 function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t=0.0)
-# SL is popualted with du/dt
-# SL0 is q at previous timestep
+# res_vec is popualted with du/dt
+# q_vec is q at previous timestep
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
@@ -115,27 +115,27 @@ addStabilization(mesh, sbp, eqn, opts)
 
 
 # no more assembling solution
-#assembleSolution(mesh, sbp, eqn, SL)
+#assembleSolution(mesh, sbp, eqn, res_vec)
 #println("assembly @time printed above")
 
-#applyMassMatrixInverse(eqn, SL)
+#applyMassMatrixInverse(eqn, res_vec)
 #println("Minv @time printed above")
 
 #println("after Minv, sum(res) = ", sum(eqn.res))
-#println("    sum(SL) = ", sum(SL))
-#applyDissipation(mesh, sbp, eqn, SL, SL0)
+#println("    sum(res_vec) = ", sum(res_vec))
+#applyDissipation(mesh, sbp, eqn, res_vec, q_vec)
 
 
 
 #print current error
-#err_norm = norm(SL)/mesh.numDof
+#err_norm = norm(res_vec)/mesh.numDof
 #print(" ", err_norm)
 
 
 #print("\n")
 
 return nothing
-#return SL
+#return res_vec
 
 end  # end evalEuler
 
@@ -173,7 +173,7 @@ end
 # high level function
 function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
-# disassembles SL0 into eqn.q
+# disassembles q_vec into eqn.q
 # calculates all mesh wide quantities in eqn
 
 # need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
@@ -195,9 +195,9 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
   # zero out res
   fill!(eqn.res, 0.0)
   
-  # disassemble SL0 into eqn.q
-#  disassembleSolution(mesh, sbp, eqn, opts, SL0)
-  # disassmble SL0 into eqn.q
+  # disassemble q_vec into eqn.q
+#  disassembleSolution(mesh, sbp, eqn, opts, q_vec)
+  # disassmble q_vec into eqn.q
 
   getAuxVars(mesh, eqn)
 #  println("getAuxVars @time printed above")
@@ -403,8 +403,8 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 # sbp : an SBP operator, used to get stiffness matricies and stuff
 # eqn : a type that holds some constants needed to evaluate the equation
 #	: also used for multiple dispatch
-# SL : solution vector to be populated (mesh.numDof entries)
-# SL0 : solution vector at previous timesteps (mesh.numDof entries)
+# res_vec : solution vector to be populated (mesh.numDof entries)
+# q_vec : solution vector at previous timesteps (mesh.numDof entries)
 
 #  println("size eqn.flux_parametric = ", size(eqn.flux_parametric), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   
@@ -505,7 +505,7 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
   
 
 
-  # u argument here is SL in a different format
+  # u argument here is res_vec in a different format
 #  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
 
   if eqn.params.use_edgestab
@@ -716,7 +716,7 @@ fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4
 @doc """
 ### EulerEquationMod.applyMassMatrixInverse
 
-  This function multiplies eqn.SL (the residual in vector form  by eqn.Minv,
+  This function multiplies eqn.res_vec (the residual in vector form  by eqn.Minv,
   the diagonal mass matrix.  This is a very fast function because all values
   are precomputed and stores linearly in memory.
 
@@ -724,15 +724,15 @@ fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4
   dimension of the equation.
 """->
 # mid level function (although it doesn't really need to Tdim)
-function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, SL::AbstractVector{Tsol})
-# apply the inverse mass matrix stored eqn to SL
+function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, res_vec::AbstractVector{Tsol})
+# apply the inverse mass matrix stored eqn to res_vec
 
-#  SL .*= eqn.Minv  # this gives wrong answer
+#  res_vec .*= eqn.Minv  # this gives wrong answer
 
 
-  ndof = length(SL)
+  ndof = length(res_vec)
   for i=1:ndof
-    SL[i] *= eqn.Minv[i]
+    res_vec[i] *= eqn.Minv[i]
   end
 
   return nothing
@@ -745,7 +745,7 @@ end
 @doc """
 ### EulerEquationMod.disassembleSolution
 
-  This takes eqn.SL0 (the initial state), and disassembles it into eqn.q, the
+  This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
   3 dimensional array of conservative variables.  This function uses mesh.dofs
   to speed the process.
 
@@ -754,13 +754,13 @@ end
 """->
 =#
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, SL0::AbstractArray{Tsol, 1})
-  # disassemble SL0 into eqn.
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, q_vec::AbstractArray{Tsol, 1})
+  # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       for k=1:(Tdim+2)
 	dofnum_k = mesh.dofs[k, j, i]
-	eqn.q[k, j, i] = SL0[dofnum_k]
+	eqn.q[k, j, i] = q_vec[dofnum_k]
       end
     end
   end
@@ -797,16 +797,16 @@ end
 ### EulerEquationMod.assembleSolution
 
   This function takes the 3D array of variables in arr and 
-  reassmbles is into the vector SL.  Note that
-  This is a reduction operation and requires eqn.SL to be zerod before
+  reassmbles is into the vector res_vec.  Note that
+  This is a reduction operation and requires eqn.res_vec to be zerod before
   calling this function.
 
   This is a mid level function, and does the right thing regardless of
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, SL::AbstractArray{Tres,1})
-# arr is the array to be assembled into SL
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, res_vec::AbstractArray{Tres,1})
+# arr is the array to be assembled into res_vec
 
 #  println("in assembleSolution")
 
@@ -815,20 +815,20 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
 
 
 #  println("before assembly, sum(res) = ", sum(eqn.res))
-#  println("    sum(SL) = ", sum(SL))
+#  println("    sum(res_vec) = ", sum(res_vec))
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
       for k=1:4  # loop over dofs on the node
 	dofnum_k = mesh.dofs[k, j, i]
-	SL[dofnum_k] += arr[k,j,i]
+	res_vec[dofnum_k] += arr[k,j,i]
       end
     end
   end
   
 
 #  println("after assembly, sum(res) = ", sum(eqn.res))
-#  println("    sum(SL) = ", sum(SL))
+#  println("    sum(res_vec) = ", sum(res_vec))
 
   return nothing
 end
@@ -925,8 +925,8 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2})
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
-#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+#  internal_energy = res_vec_vals[4]/res_vec_vals[1] - 0.5*(res_vec_vals[2]^2 + res_vec_vals[3]^2)/(res_vec_vals[1]^2)
+#  pressure = res_vec_vals[1]*eqn.R*internal_energy/eqn.cv
 
   return  (params.gamma_1)*(q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])
   
@@ -945,8 +945,8 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3})
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
 
-#  internal_energy = SL_vals[4]/SL_vals[1] - 0.5*(SL_vals[2]^2 + SL_vals[3]^2)/(SL_vals[1]^2)
-#  pressure = SL_vals[1]*eqn.R*internal_energy/eqn.cv
+#  internal_energy = res_vec_vals[4]/res_vec_vals[1] - 0.5*(res_vec_vals[2]^2 + res_vec_vals[3]^2)/(res_vec_vals[1]^2)
+#  pressure = res_vec_vals[1]*eqn.R*internal_energy/eqn.cv
 
   return  (params.gamma_1)*(q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1])
   

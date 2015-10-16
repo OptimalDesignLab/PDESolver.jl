@@ -100,7 +100,7 @@ for i = 1:mesh.numEl
     x_j = mesh.coords[1,j,i]
     u_j = sin(x_j)
     dofnum = mesh.dofs[1, j, i]
-    eqn.SL0[dofnum] = u_j
+    eqn.q_vec[dofnum] = u_j
   end # end for j = 1:sbp.numnodes
 end # end for i=1:mesh.numEl
 

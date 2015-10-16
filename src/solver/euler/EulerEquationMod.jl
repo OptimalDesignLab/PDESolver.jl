@@ -170,8 +170,8 @@ abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
     * flux_parametric : 4D array [ndof per node, nnodes per element, nelements, Tdim]
              holding the Euler flux in the xi and eta directions
     * res  : 3D array holding residual
-    * SL   : vector form of res
-    * SL0  : initial condition vector
+    * res_vec   : vector form of res
+    * q_vec  : initial condition vector
     * edgestab_alpha : paramater used for edge stabilization, 4d array
     * bndryflux : 3D array holding boundary flux data
     * stabscale : 2D array holding edge stabilization scale factor
@@ -228,8 +228,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   res::Array{Tres, 3}             # result of computation
-  SL::Array{Tres, 1}              # result of computation in vector form
-  SL0::Array{Tres,1}              # initial condition in vector form
+  res_vec::Array{Tres, 1}              # result of computation in vector form
+  q_vec::Array{Tres,1}              # initial condition in vector form
 
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
   bndryflux::Array{Tsol, 3}       # boundary flux
@@ -241,8 +241,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
 
   Minv::Array{Float64, 1}         # inverse mass matrix
   M::Array{Float64, 1}            # mass matrix
-  disassembleSolution::Function   # function SL0 -> eqn.q
-  assembleSolution::Function      # function : eqn.res -> SL
+  disassembleSolution::Function   # function q_vec -> eqn.q
+  assembleSolution::Function      # function : eqn.res -> res_vec
 
   # inner constructor
   function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
@@ -281,8 +281,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, 
                                 mesh.numEl, Tdim)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.SL = zeros(Tres, mesh.numDof)
-    eqn.SL0 = zeros(Tres, mesh.numDof)
+    eqn.res_vec = zeros(Tres, mesh.numDof)
+    eqn.q_vec = zeros(Tres, mesh.numDof)
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, sbp.numfacenodes, 
                           mesh.numBoundaryEdges)
     eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
@@ -301,7 +301,7 @@ end  # end of type declaration
   This function calculates the inverse mass matrix and stores it in eqn.Minv.
   Because we use SBP operators, the mass matrix is diagonal, so it is stored
   in a vector.  mesh.dofs is used to put the components of the inverse
-  mass matrix in the same place as the corresponding values in eqn.SL
+  mass matrix in the same place as the corresponding values in eqn.res_vec
 
 """->
 # used by EulerData Constructor

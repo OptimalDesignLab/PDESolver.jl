@@ -82,8 +82,8 @@ eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 # TODO: needs comment
 init(mesh, sbp, eqn, opts)
 
-SL = eqn.SL         # solution at previous timestep
-SL0 = eqn.SL0       # solution at current timestep
+res_vec = eqn.res_vec         # solution at previous timestep
+q_vec = eqn.q_vec       # solution at current timestep
 
 # calculate residual of some other function for res_reltol0
 # TODO: add a boolean options here?
@@ -92,13 +92,13 @@ if haskey(ICDict, Relfunc_name)
   println("\ncalculating residual for relative residual tolerance")
   Relfunc = ICDict[Relfunc_name]
   println("Relfunc = ", Relfunc)
-  Relfunc(mesh, sbp, eqn, opts, SL0)
+  Relfunc(mesh, sbp, eqn, opts, q_vec)
 
-#  println("eqn.SL0 = ", eqn.SL0)
+#  println("eqn.q_vec = ", eqn.q_vec)
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
 #  println("res_real = \n", res_real)
-#  println("eqn.SL = ", eqn.SL)
+#  println("eqn.res_vec = ", eqn.res_vec)
 #  println("res_real = ", res_real)
   opts["res_reltol0"] = tmp
   println("res_reltol0 = ", tmp)
@@ -114,7 +114,7 @@ println("\nEvaluating initial condition")
 ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
-ICfunc(mesh, sbp, eqn, opts, SL0)
+ICfunc(mesh, sbp, eqn, opts, q_vec)
 
 # TODO: cleanup 20151009 start
 
@@ -124,7 +124,7 @@ if opts["calc_error"]
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
 
-  err_vec = vals - eqn.SL0
+  err_vec = vals - eqn.q_vec
   err = calcNorm(eqn, err_vec)
   outname = opts["calc_error_outfname"]
   println("printint err = ", err, " to file ", outname)
@@ -147,15 +147,15 @@ if opts["perturb_ic"]
   println("\nPerturbing initial condition")
   perturb_mag = opts["perturb_mag"]
   for i=1:mesh.numDof
-    SL0[i] += perturb_mag*rand()
+    q_vec[i] += perturb_mag*rand()
   end
 end
 
-SL_exact = deepcopy(SL0)
+res_vec_exact = deepcopy(q_vec)
 
 rmfile("IC.dat")
-writedlm("IC.dat", real(SL0))
-saveSolutionToMesh(mesh, SL0)
+writedlm("IC.dat", real(q_vec))
+saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
 
@@ -167,7 +167,7 @@ include("checkEigenValues.jl")
 # include("artificialViscosity.jl")
 
 # Calculate the recommended delta t
-res_0 = zeros(eqn.SL)
+res_0 = zeros(eqn.res_vec)
 res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_0)
 CFLMax = 1      # Maximum Recommended CFL Value
 Dt = zeros(mesh.numNodesPerElement,mesh.numEl) # Array of all possible delta t
@@ -200,14 +200,14 @@ if opts["solve"]
        res_tol=opts["res_abstol"])
 
    println("finish rk4")
-   printSolution("rk4_solution.dat", eqn.SL)
+   printSolution("rk4_solution.dat", eqn.res_vec)
   # println("rk4 @time printed above")
   elseif flag == 2 # forward diff dR/du
 
     # define nested function
-    function dRdu_rk4_wrapper(u_vals::AbstractVector, SL::AbstractVector)
-      eqn.SL0 = u_vals
-      eqn.SL0 = SL
+    function dRdu_rk4_wrapper(u_vals::AbstractVector, res_vec::AbstractVector)
+      eqn.q_vec = u_vals
+      eqn.q_vec = res_vec
       rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn)
       return nothing
     end
@@ -217,7 +217,7 @@ if opts["solve"]
                 fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
 
     jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
-    calcdRdu!(eqn.SL0, jac)
+    calcdRdu!(eqn.q_vec, jac)
 
   elseif flag == 3 # calculate dRdx
 
@@ -229,11 +229,11 @@ if opts["solve"]
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
     println("total solution time printed above")
-    printSolution("newton_solution.dat", eqn.SL)
+    printSolution("newton_solution.dat", eqn.res_vec)
 
   elseif flag == 6
     newton_check(evalEuler, mesh, sbp, eqn, opts)
-    vals = abs(real(eqn.SL))  # remove unneded imaginary part
+    vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     writeVisFiles(mesh, "solution_error")
     printBoundaryEdgeNums(mesh)
@@ -250,41 +250,41 @@ if opts["solve"]
   end       # end of if/elseif blocks checking flag
 
   if opts["write_finalsolution"]
-    writedlm("solution_final.dat", real(eqn.SL0))
+    writedlm("solution_final.dat", real(eqn.q_vec))
   end
 
   if opts["write_finalresidual"]
-    writedlm("residual_final.dat", real(eqn.SL))
+    writedlm("residual_final.dat", real(eqn.res_vec))
   end
 
 
 ##### Do postprocessing ######
 println("\nDoing postprocessing")
   if flag == 1
-      SL_diff = SL - SL_exact
-      step = SL0 - SL_exact
+      res_vec_diff = res_vec - res_vec_exact
+      step = q_vec - res_vec_exact
       step_norm = norm(step)/mesh.numDof
       println("step_norm = ", step_norm)
-      SL_norm = calcNorm(eqn, SL)
-      #SL_side_by_side = [SL_exact  SL]
+      res_vec_norm = calcNorm(eqn, res_vec)
+      #res_vec_side_by_side = [res_vec_exact  res_vec]
 
       #=
       println("\n\n\n")
-      println("SL_diff: \n")
-      for i=1:size(SL_diff)[1]
-	println(SL_diff[i,:])
+      println("res_vec_diff: \n")
+      for i=1:size(res_vec_diff)[1]
+	println(res_vec_diff[i,:])
       end
-      println("SL_side_by_side: \n")
-      for i=1:size(SL_side_by_side)[1]
-	println(i, " ", SL_side_by_side[i,:])
+      println("res_vec_side_by_side: \n")
+      for i=1:size(res_vec_side_by_side)[1]
+	println(i, " ", res_vec_side_by_side[i,:])
       end
       =#
-      println("SL_norm: \n",SL_norm,"\n")
+      println("res_vec_norm: \n",res_vec_norm,"\n")
 
   end
 
-      saveSolutionToMesh(mesh, real(eqn.SL0))
-      printSolution(mesh, real(eqn.SL0))
+      saveSolutionToMesh(mesh, real(eqn.q_vec))
+      printSolution(mesh, real(eqn.q_vec))
       printCoordinates(mesh)
       writeVisFiles(mesh, "solution_done")
 
