@@ -17,6 +17,15 @@ PumiInterface and Petsc are the only packages with non-trivial installation requ
 
 See those packages for details.
 
+## Known issues:
+Need to build PumiInterface every time:
+
+cd ~/.julia/v0.4/PumiInterface/src/
+source use_julialib.sh
+./build_shared.scorec.sh6
+cd PDESolver/tests
+julia runtests.jl
+
 ## Running the Code
 To run the code, execute `julia /path/to/startup.jl "input_file_name"`, where startup.jl is located in the subdirctory for the physics you are solving.  Each physics has its own startup.jl
 
