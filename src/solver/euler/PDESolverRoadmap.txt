@@ -19,6 +19,9 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 == euler.jl ==
 
 *  evalEuler
+*  disassembleSolution
+*  writeQ
+*  assembleSolution
 
 == ic.jl == 
 

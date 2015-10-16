@@ -8,44 +8,53 @@ Pass this function as an input argument to the RK4 solver just like evalEuler.
 
 """->
 
-function evalAdvection(t, x)
+function evalAdvection(mesh::AbstractMesh, sbp::SBPOperator, eqn::AdvectionData, opts, t=0.0)
 
-  u_i_1 = zeros(mesh.numDof)
-  evalSCResidual(mesh, sbp, u_i_1, x, alpha_x, alpha_y)
-  evalBndry(mesh, sbp, u_i_1, x, alpha_x, alpha_y)
+  # u_i_1 = zeros(mesh.numDof)
+  # eqn.SL = fill!(eqn.SL, 0.0)
+  evalSCResidual(mesh, sbp, eqn.SL, eqn.SL0, alpha_x, alpha_y)
+  evalBndry(mesh, sbp, eqn.SL, eqn.SL0, alpha_x, alpha_y)
 
-  u_i_1 = mass_matrix\u_i_1
-  return u_i_1
+  eqn.SL = mass_matrix\eqn.SL
+  # dissamble to eqn.u
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL)
 
+  eqn.res = copy(eqn.u) # transfer eqn.u to eqn.res for assembly in RK
+  # return u_i_1
+  return nothing
 end
 
+@doc """
+### evalSCResidual
+
+Evaluate the residual using summation by parts (not including boundary 
+integrals) this only works for triangular meshes, where are elements are same
+
+* mesh : mesh type
+* operator: what operator to use (SBP, lagrange polynomial ...)
+* u : solution vector (must be ndof by 1) to be populated
+* u0 : solution vector at previous timestep
+* alpha_x and alpha_y : advection velocities in x and y directions
+
+"""->
+
 function evalSCResidual(mesh::AbstractMesh, operator::SBPOperator, 
-	                    u::AbstractVector, u0, alpha_x::FloatingPoint,
-	                    alpha_y::FloatingPoint)
-# evaluate the residual using summation by parts (not including boundary integrals)
-# this only works for triangular meshes, where are elements are same
-# mesh : mesh type
-# operator: what operator to use (SBP, lagrange polynomial ...)
-# u : solution vector (must be ndof by 1) to be populated
-# u0 : solution vector at previous timestep
-# alpha_x and alpha_y : advection velocities in x and y directions
+	                      u::AbstractVector, u0, alpha_x::FloatingPoint,
+	                      alpha_y::FloatingPoint)
 
 # not clear how to do source term using SBP operators
 
 	# initialize
 
-  ndof = getNumNodes(mesh)
-  numEl = getNumEl(mesh)
-
-  # count the number of nodes per element
-  nnodes = operator.numnodes  # BAD: should not directly access fields
-                              # SBP needs to provide access this
+  ndof = mesh.numDof  # Total number of dofs
+  numEl = mesh.numEl  # Total number of elements
+  nnodes = mesh.numNodesPerElement # count the number of nodes per element 
   ub = zeros(nnodes) # holds original solution at for an element
   fluxes = zeros(nnodes, 2)  # jacobian term times advection velocity divided
-                           # by jac
+                             # by jac
 
-  Q_xi = operator.Q[:,:,1]
-  Q_eta = operator.Q[:,:,2]
+  # Q_xi = operator.Q[:,:,1]
+  # Q_eta = operator.Q[:,:,2]
 
   for i=1:numEl  # loop over element
 
@@ -78,21 +87,32 @@ function evalSCResidual(mesh::AbstractMesh, operator::SBPOperator,
   #println("after volume integral, u = \n", u)
 end  # end function
 
-function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector, u0, alpha_x::FloatingPoint, alpha_y::FloatingPoint)
-# evaluate boundary integrals for advection equation
-# mesh : mesh type, must be PumiMesh (need adjacency information
-# operator : SBP operator
-# u : solution vector to be populated, has already has volume integrals done
-# u0 : solution vector at previous timestep
-# alpha_x and alpha_y : advection veocities in x and y directions
+@doc """
+### evalBndry
 
+Evaluate boundary integrals for advection equation
+
+*  mesh : mesh type, must be PumiMesh (need adjacency information
+*  operator : SBP operator
+*  u : solution vector to be populated, has already has volume integrals done
+*  u0 : solution vector at previous timestep
+*  alpha_x and alpha_y : advection veocities in x and y directions
+
+"""->
+
+function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
+                   u0, alpha_x::FloatingPoint, alpha_y::FloatingPoint)
 
   println("entered evalBndry")
 
   # get arguments needed for sbp boundaryintegrate!
 
-  bndry_edges = getBoundaryEdgeNums(mesh)
-  num_bndry_edges = length(bndry_edges)
+  bndry_edges = mesh.bndryfaces
+  num_bndry_edges = mesh.numBoundaryEdges
+
+  if length(mesh.bndryfaces) != mesh.numBoundaryEdges
+    println("Error with Boundary!!!!")
+  end
 
   bndry_faces = Array(Boundary, num_bndry_edges)
   bndry_sign = zeros(Int, num_bndry_edges)
@@ -184,3 +204,7 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector, u0
   end # end for i=1:mesh.numEl
 
 end # end function evalBndry
+#=
+
+
+"""-> =#

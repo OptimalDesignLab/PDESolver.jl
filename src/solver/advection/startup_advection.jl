@@ -1,20 +1,21 @@
-# Startup file for advection equation
+# Startup file for 1 dof advection equation
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/nl_solvers"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 
 using PDESolverCommon
 using PumiInterface # pumi interface
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
-using EulerEquationMod
+using AdvectionEquationMod # Advection equation module
 using ForwardDiff
-using nl_solvers   # non-linear solvers
+using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+include("advectionFunctions.jl")
 
 function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
   # figure out what type eqn.res needs to be, taking into account
@@ -41,9 +42,6 @@ opts = read_input(ARGS[1])
 
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 flag = opts["run_type"]
-
-alpha_x = 1.0
-alpha_y = 0.0
 
 # timestepping parameters
 delta_t = opts["delta_t"]
@@ -89,21 +87,26 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=1)
+eqn = AdvectionData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 
-u_i = zeros(mesh.numDof)  # create u vector (current timestep)
-u_i_1 = zeros(mesh.numDof) # u at next timestep
+alpha_x = 1.0 # advection velocity in x direction
+alpha_y = 0.0 # advection velocity in y direction
 
+# Initialize the advection equation
+# u_i = eqn.u_i  # create u vector (current timestep)
+# u_i_1 = eqn.u_i_1 # u at next timestep
 for i = 1:mesh.numEl
-  for j = 1:sbp.numnodes
-    x_j = coords[1,j,i]
+  for j = 1:mesh.numNodesPerElement
+    x_j = mesh.coords[1,j,i]
     u_j = sin(x_j)
-    dofnum = getGlobalNodeNumber(mesh, i, j)
-    u_i[dofnum] = u_j
+    dofnum = mesh.dofs[1, j, i]
+    eqn.SL0[dofnum] = u_j
   end # end for j = 1:sbp.numnodes
 end # end for i=1:mesh.numEl
 
-mass_matrix = getMass(sbp, mesh)
-println("mass_matrix = ", mass_matrix)
+println("finished initilizing u")
+
 global int_advec = 1
 
-u
+# Now put it into the RK4 solver
+rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"])
