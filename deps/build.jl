@@ -1,14 +1,14 @@
 # download and build all non metadata dependences
 
 sbp_git = "https://github.com/OptimalDesignLab/SummationByParts.jl.git"
-pdesolvercommon_git = "https://github.com/OptimalDesignLab/PDESolverCommon.jl.git"
+pdesolvercommon_git = "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git"
 pumiinterface_git = "https://github.com/OptimalDesignLab/PumiInterface.jl.git"
 petsc_git = "https://github.com/JaredCrean2/PETSc.jl.git"
 pkg_dict = Pkg.installed()  # get dictionary of installed package names to version numbers
 
-if !haskey(pkg_dict, "PDESolverCommon")
+if !haskey(pkg_dict, "ODLCommonTools")
   Pkg.clone(pdesolvercommon_git)
-  Pkg.build("PDESolverCommon")
+  Pkg.build("ODLCommonTools")
 end
 
 if !haskey(pkg_dict, "SummationByParts")
@@ -28,11 +28,6 @@ if !haskey(pkg_dict, "PETSc")
   cd(petsc_dir)
   run(`git checkout 58999c0`)
   cd(start_dir)
-<<<<<<< HEAD
- 
-=======
->>>>>>> stabilization
-  Pkg.build("PETSc")
 end
 
 

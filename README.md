@@ -5,7 +5,7 @@ The obtain this package, do `Pkg.clone(url)`, then `Pkg.build("PDESolver")`.  Th
 
 The dependencies not listed in Metadata are:
 
-PDESolverCommon
+ODLCommonTools
 
 SummationByParts
 

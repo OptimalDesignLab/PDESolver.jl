@@ -7,7 +7,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 
 #include("complexify.jl")   # TODO: include location needs to be reconsidered
 
-using PDESolverCommon
+using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod

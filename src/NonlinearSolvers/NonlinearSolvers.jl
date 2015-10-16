@@ -3,7 +3,7 @@ module NonlinearSolvers
 using ArrayViews
 using Debug
 using PdePumiInterface  # needed to write vtk files
-using PDESolverCommon
+using ODLCommonTools
 import MPI
 using PETSc
 

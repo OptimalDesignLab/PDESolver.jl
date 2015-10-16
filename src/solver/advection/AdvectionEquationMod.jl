@@ -1,7 +1,7 @@
 module AdvectionEquationMod
 
 using ArrayViews
-using PDESolverCommon
+using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
