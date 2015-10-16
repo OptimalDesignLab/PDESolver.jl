@@ -54,7 +54,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.SL = zeros(Tres, mesh.numDof)
     eqn.SL0 = zeros(Tres, mesh.numDof)
-    eqn.bndryflux = zeros(Tsol, sbp.numfacenodes, mesh.numBoundaryEdges)
+    eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
 
     return eqn
   end # ends the constructer AdvectionData_

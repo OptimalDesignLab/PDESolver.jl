@@ -113,7 +113,7 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
   if length(mesh.bndryfaces) != mesh.numBoundaryEdges
     println("Error with Boundary!!!!")
   end
-
+  #=
   bndry_faces = Array(Boundary, num_bndry_edges)
   bndry_sign = zeros(Int, num_bndry_edges)
   bndry_orientation = zeros(Int, num_bndry_edges)
@@ -136,12 +136,12 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
 
     println("after correction, edgenum_local = ", edgenum_local)
     bndry_faces[i] = Boundary(facenum_i, edgenum_local)
-  end  # end for i=1:num_bndry_edges
-
+  end  # end for i=1:num_bndry_edges 
+  
   for i=1:num_bndry_edges
     bndry_i = bndry_faces[i]
   end # end for i=1:num_bndry_edges
-
+  
   # create new u formatted for SBP
   # also get coordinates needed for  mapping jacobian
   u_sbp = zeros(operator.numnodes, mesh.numEl)
@@ -158,42 +158,14 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
   jac = zeros(operator.numnodes, mesh.numEl)
   mappingjacobian!(operator, x, dxi_dx, jac) # populate dxi_dx and jac
   res = zeros(operator.numnodes, mesh.numEl)
+  =#
 
   # define the flux function
   u_bc = sin(-1)  # boundary condition (for all sides)
   cntr = 1  # count number of times flux function is called
   
-  function flux1(u_sbp_, dxi_dx_, nrm)
-    # u_sbp_ is the entry from u_sbp for this node
-    # dxi_dx is the jacobian for this node
-    # nrm is the normal vector
-
-    u_xi = dxi_dx_[1,1]*alpha_x + dxi_dx_[1,2]*alpha_y
-    u_eta = dxi_dx_[2,1]*alpha_x + dxi_dx_[2,2]*alpha_y
-    mag_x = u_xi*nrm[1]  # x flow magnitude
-    mag_y = u_eta*nrm[2]  # y flow magnitude
-    mag = mag_x + mag_y
-
-    # because mag is scalar,not vector, can combine these if statements
-    if mag < 0  # inflow condition, added factor of nrm[2]
-      flx_xi = u_xi*u_bc
-    else
-      flx_xi = u_xi*u_sbp_
-    end
-
-    if mag < 0  # inflow condition, added factor of nrm[1]
-      flx_eta = u_eta*u_bc
-    else
-      flx_eta = u_eta*u_sbp_
-    end
-
-    net_flux = flx_xi*nrm[1] + flx_eta*nrm[2]
-    cntr += 1
-    return net_flux
-  
-  end # end function flux1
-
-  boundaryintegrate!(operator, bndry_faces, u_sbp, dxi_dx, flux1, res)
+  # boundaryintegrate!(operator, bndry_faces, u_sbp, dxi_dx, flux1, res)
+  boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   bndry_contrib = zeros(mesh.numDof)
 
   for i=1:mesh.numEl
