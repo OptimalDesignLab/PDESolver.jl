@@ -68,6 +68,8 @@ where input_file_name.jl is in your current directory.
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
+
+# mesh debugging options
 "write_edge_vertnums"  : writes the vertex numbers of every edge to edge_vertnusm.dat (Bool), default false
 "write_face_vertnums" : writes vertex number of every face to face_vertnums.dat, (Bool), default false
 "write_boundarynums"  : writes the elements  number, global face number of each face with a boundary condition, one per line, to file boundary_nums.dat, (Bool), default false
@@ -76,6 +78,15 @@ where input_file_name.jl is in your current directory.
 "write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false
 "vertify_coloring"  : verify coloring worked correctly, (Bool), default true
 "write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
+
+# mesh options
+"reordering_algorithm" : which node reordering algorithm to use, options are 
+                         "adjacency" for the adjacency based reordering by Zhou 
+                          et.al., or "default" for a more simplistic default
+"reordering_start_coords" : coordinates of a point to start the reordering at.
+                            The highest dof number will be assigned to the vertex
+                            nearest this point.  (Array of length 2), default [0, 0].
+                            Not supported by the default reordering algorithm.
 
 # Newton's Method debugging options
 "write_rhs"  : write rhs (residual) to a file (rhs$i.dat) each iteration, (Bool), default false

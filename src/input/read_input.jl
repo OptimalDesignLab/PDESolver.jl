@@ -82,10 +82,12 @@ get!(arg_dict, "perturb_mag", 0.0)
 get!(arg_dict, "write_finalsolution", false)
 get!(arg_dict, "write_finalresidual", false)
 
-# debugging options
+# solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
 get!(arg_dict, "writeq", false)
+
+# mesh debugging options
 get!(arg_dict, "write_edge_vertnums", false)
 get!(arg_dict, "write_face_vertnums", false)
 get!(arg_dict, "write_boundarynums", false)
@@ -94,6 +96,10 @@ get!(arg_dict, "write_coords", false)
 get!(arg_dict, "write_sparsity", false)
 get!(arg_dict, "verify_coloring", true)
 get!(arg_dict, "write_counts", false)
+
+# mesh options
+get!(arg_dict, "reordering_algorithm", "default")
+get!(arg_dict, "reordering_start_coords", [0.0, 0.0])
 
 # Newton's Method options
 get!(arg_dict, "write_rhs", false)
