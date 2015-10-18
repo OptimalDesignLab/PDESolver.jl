@@ -7,7 +7,7 @@
   Inputs:
   q  : conservative variables of the fluid a
   qg : conservative variables of the boundary
-  F_xi : (scaled) Euler flux in the xi and eta directions
+  flux_parametric : (scaled) Euler flux in the xi and eta directions
   aux_vars : vector of all auxiliary variables at this node
   dxidx : dxidx matrix at the node
   nrm : sbp face normal vector
@@ -16,13 +16,13 @@
   Outputs:
     flux : vector to populate with solution
 
-  F_xi is accessed using *linear* indexing only.  The first 4 entries must be
+  flux_parametric is accessed using *linear* indexing only.  The first 4 entries must be
   the xi direction flux, the next 4 must be the eta direction flux.  This
-  makes it possible to pass view(F_xi, :, j, i :) and have it work correctly
+  makes it possible to pass view(flux_parametric, :, j, i :) and have it work correctly
 
 
 """->
-function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, F_xi::AbstractArray{Tres}, aux_vars::AbstractArray{Tres, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
+function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, flux_parametric::AbstractArray{Tres}, aux_vars::AbstractArray{Tres, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   E1dq = zeros(Tres, 4)
   E2dq = zeros(Tres, 4)
@@ -171,7 +171,7 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
 
   # calculate Euler flux in wall normal directiona
 #  for i=1:4
-#    euler_flux[i] = F_xi[i]*nrm[1] + F_xi[i+4]*nrm[2]
+#    euler_flux[i] = flux_parametric[i]*nrm[1] + flux_parametric[i+4]*nrm[2]
 #  end
 
 

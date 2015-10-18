@@ -4,8 +4,8 @@ change:
 
   mesh file: smb_name
   initial conditions: needs to call a function in ic.jl 
-    example: ICRho1E2(mesh, sbp, eqn, SL0)
-             ICIsentropicVortex(mesh, sbp, eqn, SL0)
+    example: ICRho1E2(mesh, sbp, eqn, q_vec)
+             ICIsentropicVortex(mesh, sbp, eqn, q_vec)
 
 == in euler.jl ==
 

@@ -58,7 +58,7 @@ EulerEquationMod.jl contains the defintion for the EulerData object, which store
 euler.jl contains most of the functions needed to evaluate the equation.
 bc.jl contains the functions that calculate the boundary flux for the supported boundary conditions.
 bc_solvers.jl contains the boundary flux solvers such as the Roe solver.
-ic.jl contains the functions to populate eqn.SL0 with the initial condition
+ic.jl contains the functions to populate eqn.q_vec with the initial condition
 common_funcs.jl contains functions that evaluate different conditions used by initial and boundary conditions.
 stabilization.jl contains the functions to add stabilization.
 euler_macros.jl contains macros to access the values stored in eqn.aux_vars
@@ -71,7 +71,7 @@ EulerData.res stores the non-linear residual, and is the same shape ad EulerData
 The workflow of the solver is to take EulerData.q, do some operation on it, and store the residual in EulerData.res.
 The evalEuler function is the driver function for evaluating the residual for a given EulerData object and mesh.
 The input to the function is the q array, and the output is the res array.
-Functions are provided for to take a column vector, usually EulerData.SL0, and disassmble it into EulerData.q, and conversely, to take EulerData.res and assemble it into a column vector, usually eqn.SL.
+Functions are provided for to take a column vector, usually EulerData.q_vec, and disassmble it into EulerData.q, and conversely, to take EulerData.res and assemble it into a column vector, usually eqn.res_vec.
 
 #### Precalculation of Quantities
 Some quantities are preallocated and stored in the EulerData object.
