@@ -11,13 +11,13 @@ Pass this function as an input argument to the RK4 solver just like evalEuler.
 function evalAdvection(mesh::AbstractMesh, sbp::SBPOperator, eqn::AdvectionData, opts, t=0.0)
 
   # u_i_1 = zeros(mesh.numDof)
-  # eqn.SL = fill!(eqn.SL, 0.0)
-  evalSCResidual(mesh, sbp, eqn.SL, eqn.SL0, alpha_x, alpha_y)
-  evalBndry(mesh, sbp, eqn.SL, eqn.SL0, alpha_x, alpha_y)
+  # eqn.res_vec = fill!(eqn.res_vec, 0.0)
+  evalSCResidual(mesh, sbp, eqn.res_vec, eqn.q_vec, alpha_x, alpha_y)
+  evalBndry(mesh, sbp, eqn.res_vec, eqn.q_vec, alpha_x, alpha_y)
 
-  eqn.SL = mass_matrix\eqn.SL
+  eqn.res_vec = mass_matrix\eqn.res_vec
   # dissamble to eqn.u
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.res_vec)
 
   eqn.res = copy(eqn.u) # transfer eqn.u to eqn.res for assembly in RK
   # return u_i_1

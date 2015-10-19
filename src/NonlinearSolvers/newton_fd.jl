@@ -15,14 +15,14 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
     * step_tol : step size stopping tolerance
     * res_tol : residual stopping tolerance
 
-    func must have the signature func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL) 
+    func must have the signature func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec) 
 
 """->
 function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
-  # the initial condition is stored in eqn.SL0
+  # the initial condition is stored in eqn.q_vec
   # itermax is the maximum number of iterations
   # this function is type unstable for certain variables, but thats ok
   # the dispatch to the backslash solver and possibly the jacobian calculation
@@ -57,8 +57,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   end
 
 
-  Tjac = typeof(real(eqn.SL[1]))  # type of jacobian, residual
-  m = length(eqn.SL)
+  Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
+  m = length(eqn.res_vec)
 #  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
 
 
@@ -74,11 +74,11 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
   step_fac = 1.0 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
-  Tsol = typeof(eqn.SL[1])
+  Tsol = typeof(eqn.res_vec[1])
 #  jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   res_0 = zeros(Tjac, m)  # function evaluated at u0
   res_0_norm = 0.0  # norm of res_0
-  delta_SL = zeros(Tjac, m)  # newton update
+  delta_res_vec = zeros(Tjac, m)  # newton update
   step_norm = zero(Tjac)  # norm of newton update
   step_norm_1 = zero(Tjac) # norm of previous newton update
 
@@ -91,8 +91,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # Storing the initial density value at all the nodes
   vRho_act = zeros(mesh.numNodes)
   k = 1
-  for i = 1:4:length(eqn.SL0)
-    vRho_act[k] = eqn.SL0[i]
+  for i = 1:4:length(eqn.q_vec)
+    vRho_act[k] = eqn.q_vec[i]
     k += 1
   end
   println("Actual Density value succesfully extracted")
@@ -131,7 +131,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
    end
    println("writing to convergence.dat")
 #   println(fconv, i, " ", res_0_norm, " ", 0.0)
-   # no need to assemble q into SL0 because it never changed
+   # no need to assemble q into q_vec because it never changed
 
    close(fconv)
 
@@ -238,26 +238,26 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
     # calculate Newton step
     if jac_type == 1 || jac_type == 2  # julia jacobian
-      @time delta_SL[:] = jac\(res_0)  #  calculate Newton update
+      @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
-#    @time solveMUMPS!(jac, res_0, delta_SL)
+#    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3   # petsc
-      @time petscSolve(jac, x, b, ksp, res_0, delta_SL)
+      @time petscSolve(jac, x, b, ksp, res_0, delta_res_vec)
     end
     
     println("matrix solve @time printed above")
-    step_norm = norm(delta_SL)/m
+    step_norm = norm(delta_res_vec)/m
     println("step_norm = ", step_norm)
 
     # perform Newton update
-    eqn.SL0[:] += step_fac*delta_SL  # update SL0
+    eqn.q_vec[:] += step_fac*delta_res_vec  # update q_vec
     
     #--------------------------------------------------------------------------
     # Calculate the error in density
     vRho_calc = zeros(vRho_act)
     k = 1
-    for i = 1:4:length(eqn.SL0)
-      vRho_calc[k] = eqn.SL0[i]
+    for i = 1:4:length(eqn.q_vec)
+      vRho_calc[k] = eqn.q_vec[i]
       k += 1
     end
     ErrDensityVec = vRho_calc - vRho_act
@@ -280,12 +280,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     
     # write starting values for next iteration to file
     if write_sol
-      writedlm("SL0$i.dat", eqn.SL0)
+      writedlm("q_vec$i.dat", eqn.q_vec)
     end
 
     # write paraview files
     if write_vis
-      vals = abs(real(eqn.SL0))  # remove unneded imaginary part
+      vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_newton", i)
       writeVisFiles(mesh, fname)
@@ -321,12 +321,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
     end
 
-     # put solution into SL0
-#     fill!(eqn.SL0, 0.0)
-#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+     # put solution into q_vec
+#     fill!(eqn.q_vec, 0.0)
+#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-     # put residual into eqn.SL
-     eqn.SL[:] = res_0
+     # put residual into eqn.res_vec
+     eqn.res_vec[:] = res_0
      close(fconv)
 
      if jac_type == 3
@@ -341,12 +341,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Newton iteration converged with step_norm = ", step_norm)
       println("Final residual = ", res_0_norm)
 
-     # put solution into SL0
-#     fill!(eqn.SL0, 0.0)
-#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+     # put solution into q_vec
+#     fill!(eqn.q_vec, 0.0)
+#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-      # put residual into eqn.SL
-      eqn.SL[:] = res_0
+      # put residual into eqn.res_vec
+      eqn.res_vec[:] = res_0
       close(fconv)
       
       if jac_type == 3
@@ -388,12 +388,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   close(fconv)
 
 
-   # put solution into SL0
-#   fill!(eqn.SL0, 0.0)
-#   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+   # put solution into q_vec
+#   fill!(eqn.q_vec, 0.0)
+#   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-   # put residual into eqn.SL
-   eqn.SL[:] = res_0
+   # put residual into eqn.res_vec
+   eqn.res_vec[:] = res_0
  
 
   if jac_type == 3
@@ -408,15 +408,15 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
   m = length(res_0)
 
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   func(mesh, sbp, eqn, opts)
-#  res_0[:] = real(eqn.SL)  # is there an unnecessary copy here?
+#  res_0[:] = real(eqn.res_vec)  # is there an unnecessary copy here?
 
-  fill!(eqn.SL, 0.0)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+  fill!(eqn.res_vec, 0.0)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   for j=1:m
-    res_0[j] = real(eqn.SL[j])
+    res_0[j] = real(eqn.res_vec[j])
   end
 
   strongres = eqn.Minv.*res_0
@@ -431,37 +431,37 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 # calculate the jacobian using finite difference
   #println(res_0)
   (m,n) = size(jac)
-  entry_orig = zero(eltype(eqn.SL0))
+  entry_orig = zero(eltype(eqn.q_vec))
   epsilon = norm(pert)  # finite difference perturbation
   # calculate jacobian
   for j=1:m
 #      println("  jacobian iteration ", j)
     if j==1
-      entry_orig = eqn.SL0[j]
-      #println(eqn.SL)
-      eqn.SL0[j] +=  epsilon
+      entry_orig = eqn.q_vec[j]
+      #println(eqn.res_vec)
+      eqn.q_vec[j] +=  epsilon
     else
-      eqn.SL0[j-1] = entry_orig # undo previous iteration pertubation
-      entry_orig = eqn.SL0[j]
-      eqn.SL0[j] += epsilon
+      eqn.q_vec[j-1] = entry_orig # undo previous iteration pertubation
+      entry_orig = eqn.q_vec[j]
+      eqn.q_vec[j] += epsilon
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
-#     println("column ", j, " of jacobian, SL = ", eqn.SL)
+#     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
 
-    fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.SL)
-    #println(eqn.SL)
-    calcJacRow(unsafe_view(jac, :, j), res_0, eqn.SL, epsilon)
-#      println("SL norm = ", norm(SL)/m)
+    fill!(eqn.res_vec, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.res_vec)
+    #println(eqn.res_vec)
+    calcJacRow(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
+#      println("res_vec norm = ", norm(res_vec)/m)
     
   end
 
   # undo final perturbation
-  eqn.SL0[m] = entry_orig
+  eqn.q_vec[m] = entry_orig
 
 
   return nothing
@@ -641,34 +641,34 @@ end
 function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 
   epsilon = norm(pert)  # complex step perturbation
-  entry_orig = zero(eltype(eqn.SL0))
+  entry_orig = zero(eltype(eqn.q_vec))
   (m,n) = size(jac)
   # calculate jacobian
   for j=1:m
     if j==1
-      entry_orig = eqn.SL0[j]
-      eqn.SL0[j] +=  pert
+      entry_orig = eqn.q_vec[j]
+      eqn.q_vec[j] +=  pert
     else
-      eqn.SL0[j-1] = entry_orig # undo previous iteration pertubation
-      entry_orig = eqn.SL0[j]
-      eqn.SL0[j] += pert
+      eqn.q_vec[j-1] = entry_orig # undo previous iteration pertubation
+      entry_orig = eqn.q_vec[j]
+      eqn.q_vec[j] += pert
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 
-    fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
-#     println("column ", j, " of jacobian, SL = ", eqn.SL)
-    calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
-#      println("SL norm = ", norm(SL)/m)
+    fill!(eqn.res_vec, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
+    calcJacRow(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
+#      println("res_vec norm = ", norm(res_vec)/m)
     
   end  # end loop over rows of jacobian
 
 
   # undo final perturbation
-  eqn.SL0[m] = entry_orig
+  eqn.q_vec[m] = entry_orig
 #
 
   return nothing
@@ -896,15 +896,15 @@ return nothing
 end
 
 
-function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::AbstractVector, delta_SL::AbstractVector)
+function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::AbstractVector, delta_res_vec::AbstractVector)
 
-  # solve the system for the newton step, write it to delta_SL
-  # writing it to delta_SL is an unecessary copy, becasue we could
+  # solve the system for the newton step, write it to delta_res_vec
+  # writing it to delta_res_vec is an unecessary copy, becasue we could
   # write it directly to eqn.q, but for consistency we do it anyways
 
   # copy res_0 into b
   # create the index array
-  numDof = length(delta_SL)
+  numDof = length(delta_res_vec)
   println("copying res_0 to b")
   idx = zeros(PetscInt, numDof)
   for i=1:numDof
@@ -940,10 +940,10 @@ function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::Abst
   rnorm = KSPGetResidualNorm(ksp)
   println("Linear residual = ", rnorm)
 
-  # copy solution from x into delta_SL
+  # copy solution from x into delta_res_vec
   arr, ptr_arr = PetscVecGetArray(x)
   for i=1:numDof
-    delta_SL[i] = arr[i]
+    delta_res_vec[i] = arr[i]
   end
 
   PetscVecRestoreArray(x, ptr_arr)
@@ -963,23 +963,23 @@ function newton_check(func, mesh, sbp, eqn, opts)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
-  # the initial condition is stored in eqn.SL0
+  # the initial condition is stored in eqn.q_vec
   # itermax is the maximum number of iterations
 
   step_fac = 0.5  # step size limiter
-  m = length(eqn.SL)
-  Tsol = typeof(eqn.SL[1])
-  Tjac = typeof(real(eqn.SL[1]))  # type of jacobian, residual
+  m = length(eqn.res_vec)
+  Tsol = typeof(eqn.res_vec[1])
+  Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
   jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   direction_der = zeros(mesh.numDof)
 #  v = rand(mesh.numDof)
    v = readdlm("randvec.txt")
 
   epsilon = 1e-20  # complex step perturbation
-  fill!(eqn.SL, 0.0)  # zero out SL
+  fill!(eqn.res_vec, 0.0)  # zero out res_vec
   # compute directional derivative
   for i=1:mesh.numDof
-    eqn.SL0[i] += complex(0, epsilon*v[i])  # apply perturbation
+    eqn.q_vec[i] += complex(0, epsilon*v[i])  # apply perturbation
   end
 
   func(mesh, sbp, eqn, opts)
@@ -987,8 +987,8 @@ function newton_check(func, mesh, sbp, eqn, opts)
 
   # calculate derivative
   for i=1:mesh.numDof
-    direction_der[i] = imag(eqn.SL[i])/epsilon
-    eqn.SL0[i] -= complex(0, epsilon*v[i])  # undo perturbation
+    direction_der[i] = imag(eqn.res_vec[i])/epsilon
+    eqn.q_vec[i] -= complex(0, epsilon*v[i])  # undo perturbation
   end
 
 
@@ -999,23 +999,23 @@ function newton_check(func, mesh, sbp, eqn, opts)
     for j=1:m
       println("\ncalculating column ", j, " of the jacobian")
       if j==1
-	eqn.SL0[j] +=  complex(0, epsilon)
+	eqn.q_vec[j] +=  complex(0, epsilon)
       else
-	eqn.SL0[j-1] -= complex(0, epsilon) # undo previous iteration pertubation
-	eqn.SL0[j] += complex(0, epsilon)
+	eqn.q_vec[j-1] -= complex(0, epsilon) # undo previous iteration pertubation
+	eqn.q_vec[j] += complex(0, epsilon)
       end
 
       # evaluate residual
-      fill!(eqn.SL, 0.0)
-      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
- #     println("column ", j, " of jacobian, SL = ", eqn.SL)
-      calcJacRow(unsafe_view(jac, :, j), eqn.SL, epsilon)
-#      println("SL norm = ", norm(SL)/m)
+      fill!(eqn.res_vec, 0.0)
+      func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
+ #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
+      calcJacRow(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
+#      println("res_vec norm = ", norm(res_vec)/m)
       
     end  # end loop over rows of jacobian
 
     # undo final perturbation
-    eqn.SL0[m] -= complex(0, epsilon)
+    eqn.q_vec[m] -= complex(0, epsilon)
 
     # now jac is complete
 
@@ -1031,13 +1031,13 @@ function newton_check(func, mesh, sbp, eqn, opts)
     jac_mult = jac*v
 
     # copy difference between directional derivative and
-    # jacobian multiplication into SL for return
+    # jacobian multiplication into res_vec for return
 
     for i=1:mesh.numDof
-      eqn.SL[i] = direction_der[i] - jac_mult[i]
+      eqn.res_vec[i] = direction_der[i] - jac_mult[i]
     end
 
-    err_norm = norm(eqn.SL)/mesh.numDof
+    err_norm = norm(eqn.res_vec)/mesh.numDof
     println("step_norm = ", err_norm)
 #    println("jac = ", jac)
 
@@ -1062,19 +1062,19 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
 
       epsilon = 1e-20
 
-#      eqn.SL0[j] += complex(0, epsilon)
-      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+#      eqn.q_vec[j] += complex(0, epsilon)
+      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
       eqn.q[1, 2, 5] += complex(0, epsilon)
       writedlm("check_q.dat", imag(eqn.q))
 #      eqn.q[1,1,1] += complex(0, epsilon)
       # evaluate residual
       func(mesh, sbp, eqn, opts)
 
-      fill!(eqn.SL, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
- #     println("column ", j, " of jacobian, SL = ", eqn.SL)
-      calcJacRow(jac_col, eqn.SL, epsilon)
-#      println("SL norm = ", norm(SL)/m)
+      fill!(eqn.res_vec, 0.0)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+ #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
+      calcJacRow(jac_col, eqn.res_vec, epsilon)
+#      println("res_vec norm = ", norm(res_vec)/m)
       writedlm("check_res.dat", imag(eqn.res))
 
       return jac_col
@@ -1092,27 +1092,27 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       jac_col = zeros(Float64, mesh.numDof)
       println("\ncalculating column ", j, " of the jacobian")
 
-     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
-     func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
-     fill!(eqn.SL, 0.0)
-     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
-     res_0 = copy(eqn.SL)
+     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+     func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
+     fill!(eqn.res_vec, 0.0)
+     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+     res_0 = copy(eqn.res_vec)
 
       epsilon = 1e-6
 
-      eqn.SL0[j] += epsilon
+      eqn.q_vec[j] += epsilon
 
-      eqn.disassmbleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+      eqn.disassmbleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
 
       # evaluate residual
-      func(mesh, sbp, eqn, opts, eqn.SL0, eqn.SL)
+      func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
 
-      fill!(eqn.SL, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
- #     println("column ", j, " of jacobian, SL = ", eqn.SL)
+      fill!(eqn.res_vec, 0.0)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+ #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
-      calcJacRow(jac_col, res_0, eqn.SL, epsilon)
-#      println("SL norm = ", norm(SL)/m)
+      calcJacRow(jac_col, res_0, eqn.res_vec, epsilon)
+#      println("res_vec norm = ", norm(res_vec)/m)
 
       return jac_col
 end 

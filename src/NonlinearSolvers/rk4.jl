@@ -40,23 +40,23 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   #=
   vRho_act = zeros(mesh.numNodes)
   k = 1
-  for i = 1:mesh.numDofPerNode:length(eqn.SL0)
-    vRho_act[k] = eqn.SL0[i]
+  for i = 1:mesh.numDofPerNode:length(eqn.q_vec)
+    vRho_act[k] = eqn.q_vec[i]
     k += 1
   end
   println("Actual Density value succesfully extracted") =#
 
   println("\nEntered rk4")
 # res_tol is alternative stopping criteria
-  SL0 = eqn.SL0
-  SL = eqn.SL
+  q_vec = eqn.q_vec
+  res_vec = eqn.res_vec
 #  extra_args = (mesh, sbp, eqn)
 
   t = 0.0
   t_steps = round(Int, t_max/h)
   println("t_steps: ",t_steps)
 
-  (m,) = size(SL0)
+  (m,) = size(q_vec)
 #   x = Array(Float64,3,t_steps+2)
 #  x = Array(Float64,m,t_steps+1)
 
@@ -66,9 +66,9 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
 #  x[:,1] = x_ic
 
-#  x_old = SL0
-  x_old = zeros(SL0)
-  x_old[:] = SL0
+#  x_old = q_vec
+  x_old = zeros(q_vec)
+  x_old[:] = q_vec
   k1 = zeros(x_old)
   k2 = zeros(x_old)
   k3 = zeros(x_old)
@@ -96,25 +96,25 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
 #    x_old = x[:,iter-1]
 
-#    println("eqn.SL0 = ", eqn.SL0)
+#    println("eqn.q_vec = ", eqn.q_vec)
 
- #   eqn.SL0 = x_old
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+ #   eqn.q_vec = x_old
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t)
 
-    eqn.SL[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
-    k1[:] = eqn.SL
+    eqn.res_vec[:] = 0.0
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    k1[:] = eqn.res_vec
     x2[:] = x_old + (h/2)*k1
 
-    sol_norm = norm(eqn.SL)/mesh.numDof
+    sol_norm = norm(eqn.res_vec)/mesh.numDof
 
     if iter % 100 == 0
       #= Calculate the error in density
       vRho_calc = zeros(vRho_act)
       k = 1
-      for i = 1:4:length(eqn.SL0)
-        vRho_calc[k] = eqn.SL0[i]
+      for i = 1:4:length(eqn.q_vec)
+        vRho_calc[k] = eqn.q_vec[i]
         k += 1
       end
 
@@ -134,7 +134,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
     if iter % 10000 == 0  # this should be an option
 
-      saveSolutionToMesh(mesh, SL0)
+      saveSolutionToMesh(mesh, q_vec)
       writeVisFiles(mesh, "solution_rk$iter")
     end
 
@@ -142,50 +142,50 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
-     # put solution into SL0
-#     fill!(eqn.SL0, 0.0)
-#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+     # put solution into q_vec
+#     fill!(eqn.q_vec, 0.0)
+#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-      # put residual into eqn.SL
-#      eqn.SL[:] = res_0
+      # put residual into eqn.res_vec
+#      eqn.res_vec[:] = res_0
  
       break
     end
 
 
-    eqn.SL0[:] = x2
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    eqn.q_vec[:] = x2
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h/2)
 
-    fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
-    k2[:] = eqn.SL
+    fill!(eqn.res_vec, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    k2[:] = eqn.res_vec
     x3[:] = x_old + (h/2)*k2
 
-    eqn.SL0[:] = x3
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    eqn.q_vec[:] = x3
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h/2)
 
-    fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+    fill!(eqn.res_vec, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
  
-    k3[:] = eqn.SL
+    k3[:] = eqn.res_vec
     x4[:] = x_old + h*k3
 
-    eqn.SL0[:] = x4
+    eqn.q_vec[:] = x4
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h)
 
-    fill!(eqn.SL, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+    fill!(eqn.res_vec, 0.0)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
  
 
-    k4 = eqn.SL[:]
+    k4 = eqn.res_vec[:]
 
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
-    eqn.SL0[:] = x_old
+    eqn.q_vec[:] = x_old
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)
@@ -203,30 +203,30 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
   close(f1)
 
-  # put solution into SL0a
-#  fill!(eqn.SL0, 0.0)
-#  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.SL0)
+  # put solution into q_veca
+#  fill!(eqn.q_vec, 0.0)
+#  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # evaluate residual at final q value
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.SL0)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t)
 
-    eqn.SL[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.SL)
+    eqn.res_vec[:] = 0.0
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
  
-  # put residual into eqn.SL
-#  eqn.SL[:] = k1
+  # put residual into eqn.res_vec
+#  eqn.res_vec[:] = k1
  
 #=
   # final result needs to be returned in a different variable for AD
-  println("coping x_old to SL")
+  println("coping x_old to res_vec")
   println("x_old = ", x_old)
   for i = 1:length(x_old)
-    SL[i] = x_old[i]
+    res_vec[i] = x_old[i]
   end
 =#
-#  println("eqn.SL = ", eqn.SL)
-#  println("SL = ", SL)
+#  println("eqn.res_vec = ", eqn.res_vec)
+#  println("res_vec = ", res_vec)
 
 #  writedlm("rk4_output.dat",x,",")
 #   writecsv("rk4_output.dat",x," ")

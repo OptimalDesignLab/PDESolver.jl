@@ -8,7 +8,7 @@ using ForwardDiff
 export AdvectionData, AdvectionData_, getMass
 
 # include("advectionFunctions.jl")
-include("getMass.jl")
+# include("getMass.jl")
 
 abstract AbstractAdvectionData{Tsol} <: AbstractSolutionData{Tsol}
 abstract AdvectionData{Tsol, Tdim} <: AbstractAdvectionData{Tsol}
@@ -30,14 +30,14 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
   u::Array{Tsol, 3}
   res::Array{Tsol, 3}
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
-  F_xi::Array{Tsol,4}  # flux in xi direction
+  flux_parametric::Array{Tsol,4}  # flux in xi direction
   res::Array{Tres, 3}  # result of computation
-  SL::Array{Tres, 1}  # result of computation in vector form
-  SL0::Array{Tres,1}  # initial condition in vector form
+  res_vec::Array{Tres, 1}  # result of computation in vector form
+  q_vec::Array{Tres,1}  # initial condition in vector form
   bndryflux::Array{Tsol, 2}  # boundary flux
   M::Array{Float64, 2}  # mass matrix
-  disassembleSolution::Function # function SL0 -> eqn.q
-  assembleSolution::Function  # function : eqn.res -> SL
+  disassembleSolution::Function # function q_vec -> eqn.q
+  assembleSolution::Function  # function : eqn.res -> res_vec
 
   function AdvectionData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
     println("\nConstruction AdvectionData object")
@@ -52,8 +52,8 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
     eqn.M = getMass(sbp, mesh)
     eqn.u = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.SL = zeros(Tres, mesh.numDof)
-    eqn.SL0 = zeros(Tres, mesh.numDof)
+    eqn.res_vec = zeros(Tres, mesh.numDof)
+    eqn.q_vec = zeros(Tres, mesh.numDof)
     eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
 
     return eqn
@@ -65,8 +65,8 @@ end # End type AdvectionData_
 ### AdvectionEquationMod.assembleSolution
 
   This function takes the 2D array of variables in arr and 
-  reassmbles is into the vector SL.  Note that
-  This is a reduction operation and requires eqn.SL to be zerod before
+  reassmbles is into the vector res_vec.  Note that
+  This is a reduction operation and requires eqn.res_vec to be zerod before
   calling this function.
 
   This is a mid level function, and does the right thing regardless of
@@ -76,13 +76,13 @@ end # End type AdvectionData_
 
 function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
                                             sbp::SBPOperator, 
-                                            eqn::AdvectionData{Tsol}, opts, arr,
-                                            SL::AbstractArray{Tres,1})
+                                            eqn::AdvectionData{Tsol}, opts, 
+                                            arr, res_vec::AbstractArray{Tres,1})
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
       dofnum_k = mesh.dofs[1, j, i]
-      SL[dofnum_k] += arr[1,j,i]
+      res_vec[dofnum_k] += arr[1,j,i]
     end
   end
 
@@ -92,7 +92,7 @@ end # end function assembleSolution
 @doc """
 ### AdvectionEquationMod.disassembleSolution
 
-  This takes eqn.SL0 (the initial state), and disassembles it into eqn.q, the
+  This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
   3 dimensional array of conservative variables.  This function uses mesh.dofs
   to speed the process.
 
@@ -104,7 +104,7 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp,
                                                eqn::AdvectionData{Tsol, Tdim},
                                                opts, 
                                                array::AbstractArray{Tsol, 1})
-  # disassemble SL0 into eqn.
+  # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       dofnum_k = mesh.dofs[1, j, i]
@@ -117,5 +117,34 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp,
   return nothing
 end
 
-end # end module
+@doc """
+### getMass
 
+Calculates the masss matrix and given the mesh and SBP operator
+
+*  operator: SBP operator
+*  mesh: Mesh object.
+
+"""-> 
+
+function getMass(sbp::SBPOperator, mesh::PumiMesh2)
+  # assemble mesh
+  numnodes = mesh.numNodes  # number of dofs
+  numdof = numnodes*mesh.numDofPerNode
+  mass_matrix = zeros(numdof, numdof)
+
+  for i=1:mesh.numEl
+    dofnums_i = getGlobalNodeNumbers(mesh, i)
+    nnodes = size(dofnums_i)[2]  # number of nodes
+    for j=1:nnodes
+      for k=1:mesh.numDofPerNode
+        dofnum_k = dofnums_i[k,j]
+        mass_matrix[dofnum_k, dofnum_k] += sbp.w[j]
+      end
+    end
+  end
+
+  return mass_matrix
+end
+
+end # end module
