@@ -34,7 +34,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
   res::Array{Tres, 3}  # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
   q_vec::Array{Tres,1}  # initial condition in vector form
-  bndryflux::Array{Tsol, 2}  # boundary flux
+  bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 2}  # mass matrix
   disassembleSolution::Function # function q_vec -> eqn.q
   assembleSolution::Function  # function : eqn.res -> res_vec

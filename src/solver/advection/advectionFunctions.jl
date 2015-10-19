@@ -8,7 +8,8 @@ Pass this function as an input argument to the RK4 solver just like evalEuler.
 
 """->
 
-function evalAdvection(mesh::AbstractMesh, sbp::SBPOperator, eqn::AdvectionData, opts, t=0.0)
+function evalAdvection(mesh::AbstractMesh, sbp::SBPOperator,
+                       eqn::AdvectionData, opts, t=0.0)
 
   # u_i_1 = zeros(mesh.numDof)
   # eqn.res_vec = fill!(eqn.res_vec, 0.0)
@@ -108,7 +109,7 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
   # get arguments needed for sbp boundaryintegrate!
 
   bndry_edges = mesh.bndryfaces
-  num_bndry_edges = mesh.numBoundaryEdges
+  # num_bndry_edges = mesh.numBoundaryEdges
 
   if length(mesh.bndryfaces) != mesh.numBoundaryEdges
     println("Error with Boundary!!!!")
@@ -162,7 +163,23 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
 
   # define the flux function
   u_bc = sin(-1)  # boundary condition (for all sides)
-  cntr = 1  # count number of times flux function is called
+  # cntr = 1  # count number of times flux function is called
+
+  # Need to fill up bndryflux
+  for i = 1:mesh.numBoundaryEdges
+    bndry_i = mesh.bndryfaces[i]
+    for j = 1:sbp.numfacenodes
+      k = sbp.facenodes[j, bndry_i.face]
+      u = view(eqn.u, :, k, bndry_i.element)
+      x = view(mesh.coords, :, k, bndry_i.element)
+      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
+      bndryflux_i = view(eqn.bndryflux, :, j, i)
+      flux1(u, dxidx, nrm, bndryflux_i)
+    end # for j = 1:sbp.numfacenodes
+  end # end for i = 1:mesh.numBoundaryEdges
+
+
   
   # boundaryintegrate!(operator, bndry_faces, u_sbp, dxi_dx, flux1, res)
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
