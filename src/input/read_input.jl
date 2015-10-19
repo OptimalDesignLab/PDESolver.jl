@@ -113,6 +113,8 @@ get!(arg_dict, "jac_type", 2)
 get!(arg_dict, "res_abstol", 1e-6)
 get!(arg_dict, "res_reltol", 1e-6)
 get!(arg_dict, "res_reltol0", -1.0)
+get!(arg_dict, "print_eigs", false)
+get!(arg_dict, "write_eigs", false)
 
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
