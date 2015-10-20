@@ -175,7 +175,7 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = view(sbp.facenormal, :, bndry_i.face)
       bndryflux_i = view(eqn.bndryflux, :, j, i)
-      flux1(u, dxidx, nrm, bndryflux_i)
+      flux1(u, dxidx, nrm, bndryflux_i) # calculate the boundary flux
     end # for j = 1:sbp.numfacenodes
   end # end for i = 1:mesh.numBoundaryEdges
 

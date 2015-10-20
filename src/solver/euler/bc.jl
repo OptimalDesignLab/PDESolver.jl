@@ -63,7 +63,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBP
 
     end
 
- end
+  end
 
 
   return nothing
@@ -84,7 +84,11 @@ type isentropicVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
+              q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres}, 
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
 
 #  println("entered isentropicOvrtexBC (low level)")

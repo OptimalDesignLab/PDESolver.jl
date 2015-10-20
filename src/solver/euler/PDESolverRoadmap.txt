@@ -6,7 +6,14 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 
 == bc.jl ==
 
+*  calcBoundaryFlux
+*  isentropicVortexBC (Defined as a type, called as a constructor)
 *  getBCFunctors
+
+
+== bc_solvers.jl ==
+
+*  RoeSolver
 
 == common_funcs.jl ==
 
@@ -19,6 +26,8 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 == euler.jl ==
 
 *  evalEuler
+*  dataPrep
+*  getBCFluxes
 *  init
 *  disassembleSolution
 *  writeQ
