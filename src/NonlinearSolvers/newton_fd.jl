@@ -67,7 +67,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
   elseif jac_type == 3  # petsc
-    jac, x, b, ksp = createPetscData(mesh, eqn, opts)
+    jac, jacp, x, b, ksp = createPetscData(mesh, eqn, opts)
   end
 
 
@@ -136,7 +136,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
    close(fconv)
 
     if jac_type == 3
-      destroyPetsc(jac, x, b, ksp)
+      destroyPetsc(jac, jacp, x, b, ksp)
     end
 
 
@@ -169,9 +169,25 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 	println("calculating dense FD jacobian")
         @time calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
-      elseif jac_type == 2 || jac_type == 3  # sparse jacobian
+      elseif jac_type == 2  # Julia sparse jacobian
 	println("calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
+ 
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+      elseif jac_type == 3  # Petsc sparse jacobian
+	println("calculating sparse FD jacobian")
+        res_copy = copy(eqn.res)  # copy unperturbed residual
+        # use artificial dissipation for the preconditioner 
+	use_dissipation_orig = eqn.params.use_dissipation
+	use_edgestab_orig = eqn.params.use_edgestab
+        eqn.params.use_dissipation = true
+	eqn.params.use_edgestab = false
+
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jacp)
+        addDiagonal(mesh, sbp, eqn, jacp)        
+	# use normal stabilization for the real jacobian
+	eqn.params.use_dissipation = use_dissipation_orig
+	eqn.params.use_edgestab = use_edgestab_orig
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
       println("FD jacobian calculation @time printed above")
@@ -182,13 +198,28 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       if jac_type == 1  # dense jacobian
 	      println("calculating dense complex step jacobian")
         @time calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
-      elseif jac_type == 2 || jac_type == 3  # sparse jacobian 
+      elseif jac_type == 2  # Julia sparse jacobian 
 	      println("calculating sparse complex step jacobian")
         res_dummy = []  # not used, so don't allocation memory
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+      elseif jac_type == 3
+        res_dummy = []  # not used, so don't allocation memory
+	use_dissipation_orig = eqn.params.use_dissipation
+	use_edgestab_orig = eqn.params.use_edgestab
+        eqn.params.use_dissipation = true
+	eqn.params.use_edgestab = false
+
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+        
+        addDiagonal(mesh, sbp, eqn, jacp)        
+	# use normal stabilization for the real jacobian
+	eqn.params.use_dissipation = use_dissipation_orig
+	eqn.params.use_edgestab = use_edgestab_orig
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+ 
       end
 
-      println("complex set jacobian calculate @time printed above")
+      println("complex step jacobian calculate @time printed above")
     end
 
     # print as determined by options
@@ -242,7 +273,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3   # petsc
-      @time petscSolve(jac, x, b, ksp, res_0, delta_res_vec)
+      @time petscSolve(jac, jacp, x, b, ksp, res_0, delta_res_vec)
     end
     
     println("matrix solve @time printed above")
@@ -330,7 +361,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
      close(fconv)
 
      if jac_type == 3
-	destroyPetsc(jac, x, b, ksp)
+	destroyPetsc(jac, jacp, x, b, ksp)
       end
 
     
@@ -350,7 +381,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       close(fconv)
       
       if jac_type == 3
-	destroyPetsc(jac, x, b, ksp)
+	destroyPetsc(jac, jacp, x, b, ksp)
       end
 
       return nothing
@@ -397,7 +428,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
  
 
   if jac_type == 3
-    destroyPetsc(jac, x, b, ksp)
+    destroyPetsc(jac, jacp,  x, b, ksp)
   end
   return nothing
 end
@@ -468,6 +499,21 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 end
 
 
+function addDiagonal(mesh, sbp, eqn, jac)
+# add the mass matrix to the jacobian
+
+  for i=1:mesh.numDof
+     idx = PetscInt[i-1]
+     idy = PetscInt[i-1]
+     vals = [100*eqn.M[i]]
+
+#     println("adding ", vals, " to jacobian entry ", i, ",", i)
+     PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
+   end
+
+   return nothing
+
+ end
 
 function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(SparseMatrixCSC, PetscMat))
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
@@ -810,7 +856,7 @@ function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "none","-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 comm = MPI.COMM_WORLD
 
 println("creating b")
@@ -827,6 +873,13 @@ println("creating A")
 A = PetscMat(comm)
 PetscMatSetType(A, MATMPIAIJ)
 PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+
+println("creating Ap")  # used for preconditioner
+Ap = PetscMat(comm)
+PetscMatSetType(Ap, MATMPIAIJ)
+PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+
+
 
 println("preallocating A")
 # prellocate matrix
@@ -846,14 +899,24 @@ for i=1:mesh.numDof
 end
 
 PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
-
+PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
 # zero initialize the matrix just in case
 println("zeroing A")
 PetscMatZeroEntries(A)
+PetscMatZeroEntries(Ap)
+
+
+# set some options
+# MatSetValuesBlocked will interpret the array of values as being column
+# major
+MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+
+
 
 # create KSP contex
 ksp = KSP(comm)
-KSPSetOperators(ksp, A, A)
+KSPSetOperators(ksp, A, Ap)
 KSPSetFromOptions(ksp)
 
 # set: rtol, abstol, dtol, maxits
@@ -881,14 +944,15 @@ end
 
 
 
-return A, x, b, ksp
+return A, Ap, x, b, ksp
 
 end
 
-function destroyPetsc(A::PetscMat, x::PetscVec,  b::PetscVec, ksp::KSP)
+function destroyPetsc(A::PetscMat, Ap::PetscMat, x::PetscVec,  b::PetscVec, ksp::KSP)
 # destory Petsc data structures, finalize Petsc
 
 PetscDestroy(A)
+PetscDestroy(Ap)
 PetscDestroy(x)
 PetscDestroy(b)
 PetscDestroy(ksp)
@@ -899,7 +963,7 @@ return nothing
 end
 
 
-function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::AbstractVector, delta_res_vec::AbstractVector)
+function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::AbstractVector, delta_res_vec::AbstractVector)
 
   # solve the system for the newton step, write it to delta_res_vec
   # writing it to delta_res_vec is an unecessary copy, becasue we could
@@ -932,8 +996,16 @@ function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::Abst
   PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
   PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
 
+  PetscMatAssemblyBegin(Ap, PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(Ap, PETSC_MAT_FINAL_ASSEMBLY)
+
+
   matinfo = PetscMatGetInfo(A, MAT_LOCAL)
-  println("number of mallocs = ", matinfo.mallocs)
+  println("number of mallocs for A = ", matinfo.mallocs)
+
+  matinfo = PetscMatGetInfo(Ap, MAT_LOCAL)
+  println("number of mallocs for Ap = ", matinfo.mallocs)
+
 
 
   println("solving system")
@@ -953,6 +1025,7 @@ function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::Abst
 
   # zero out the Jacobian for next use
   PetscMatZeroEntries(A)
+  PetscMatZeroEntries(Ap)
   return nothing
 end
 
