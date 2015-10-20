@@ -33,6 +33,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   write_rhs = opts["write_rhs"]::Bool
   write_jac = opts["write_jac"]::Bool
   print_cond = opts["print_cond"]::Bool
+  print_eigs = opts["print_eigs"]::Bool
+  write_eigs = opts["write_eigs"]::Bool
   write_sol = opts["write_sol"]::Bool
   write_vis = opts["write_vis"]::Bool
   write_qic = opts["write_qic"]::Bool
@@ -209,11 +211,31 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Condition number of jacobian = ", cond_j)
     end
 
+    # if eigenvalues requested and we can calculate them
+    if (( print_eigs || write_eigs) && (jac_type == 1 || jac_type == 2))
+      eigs_i = reverse(eigvals(jac))
+      if print_eigs
+	println("eigenvalues =")
+	for i=1:length(eigs_i)
+	  println(eigs_i[i])
+	end
+      end
+
+      if write_eigs
+	writedlm("eigs$i.dat", eigs_i)
+      end
+    end
+
+      
+
     # negate res
     for j=1:m
       res_0[j] = -res_0[j]
     end
-    
+   
+    res_discretenorm = norm(res_0)
+    println("Discrete L2 norm of residual = ", res_discretenorm)
+
     # calculate Newton step
     if jac_type == 1 || jac_type == 2  # julia jacobian
       @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
@@ -668,12 +690,12 @@ function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol},
 local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
 
 # get row number
-idx_tmp[1] = dof_pert - 1
+idy_tmp[1] = dof_pert - 1
 
 pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
-    idy_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
+    idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
 #    col_idx = mesh.dofs[i, j, el_pert]
 
     vals_tmp[pos] = imag(eqn.res[i_i,j_j, el_res])/epsilon
@@ -682,7 +704,7 @@ for j_j = 1:mesh.numNodesPerElement
   end
 end
 
-PetscMatSetValues(jac, PetscInt(1), idx_tmp, local_size , idy_tmp, vals_tmp, PETSC_ADD_VALUES)
+PetscMatSetValues(jac, idx_tmp, idy_tmp, vals_tmp, PETSC_ADD_VALUES)
 
 return nothing
 
@@ -786,7 +808,9 @@ function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
 # serial only
 
 # initialize Petsc
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump"])
+#PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
+
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000", "-ksp_compute_eigenvalues_explicitly" ])
 comm = MPI.COMM_WORLD
 
 println("creating b")
@@ -833,8 +857,25 @@ KSPSetOperators(ksp, A, A)
 KSPSetFromOptions(ksp)
 
 # set: rtol, abstol, dtol, maxits
-KSPSetTolerances(ksp, 1e-14, 1e-14, 1e5, PetscInt(1000))
+KSPSetTolerances(ksp, 1e-15, 1e-8, 1e5, PetscInt(1000))
 KSPSetUp(ksp)
+
+
+pc = KSPGetPC(ksp)
+pc_type = PCGetType(pc)
+println("pc_type = ", pc_type)
+n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
+println("n_local = ", n_local, ", first_local = ", first_local)
+println("length(ksp_arr) = ", length(ksp_arr))
+
+sub_ksp = ksp_arr[first_local + 1]
+sub_pc = KSPGetPC(sub_ksp)
+pc_subtype = PCGetType(sub_pc)
+println("pc_subtype = ", pc_subtype)
+
+fill_level = PCFactorGetLevels(sub_pc)
+println("preconditioner using fill level = ", fill_level)
+
 
 
 return A, x, b, ksp
