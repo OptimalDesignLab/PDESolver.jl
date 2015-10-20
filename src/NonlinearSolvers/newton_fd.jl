@@ -810,7 +810,7 @@ function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000", "-ksp_compute_eigenvalues_explicitly" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "none","-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 comm = MPI.COMM_WORLD
 
 println("creating b")
@@ -864,17 +864,20 @@ KSPSetUp(ksp)
 pc = KSPGetPC(ksp)
 pc_type = PCGetType(pc)
 println("pc_type = ", pc_type)
-n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
-println("n_local = ", n_local, ", first_local = ", first_local)
-println("length(ksp_arr) = ", length(ksp_arr))
 
-sub_ksp = ksp_arr[first_local + 1]
-sub_pc = KSPGetPC(sub_ksp)
-pc_subtype = PCGetType(sub_pc)
-println("pc_subtype = ", pc_subtype)
+if pc_type != "none"
+  n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
+  println("n_local = ", n_local, ", first_local = ", first_local)
+  println("length(ksp_arr) = ", length(ksp_arr))
 
-fill_level = PCFactorGetLevels(sub_pc)
-println("preconditioner using fill level = ", fill_level)
+  sub_ksp = ksp_arr[first_local + 1]
+  sub_pc = KSPGetPC(sub_ksp)
+  pc_subtype = PCGetType(sub_pc)
+  println("pc_subtype = ", pc_subtype)
+
+  fill_level = PCFactorGetLevels(sub_pc)
+  println("preconditioner using fill level = ", fill_level)
+end
 
 
 
