@@ -184,7 +184,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 	eqn.params.use_edgestab = false
 
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jacp)
-        addDiagonal(mesh, sbp, eqn, jacp)        
+#        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 	eqn.params.use_dissipation = use_dissipation_orig
 	eqn.params.use_edgestab = use_edgestab_orig
@@ -211,7 +211,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
         
-        addDiagonal(mesh, sbp, eqn, jacp)        
+#        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 	eqn.params.use_dissipation = use_dissipation_orig
 	eqn.params.use_edgestab = use_edgestab_orig
@@ -554,12 +554,12 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 #	
 	# assemble res into jac
 #        println("  assembling jacobian")
-
 	for k=1:mesh.numEl  # loop over elements in residual
 	  el_pert = perturbed_els[k] # get perturbed element
           if el_pert != 0   # if element was actually perturbed for this color
 
             col_idx = mesh.dofs[i, j, el_pert]
+	    #TODO: make an immutable type to hold the bookeeping info
 	    assembleElement(mesh, eqn, res_0, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
        end  # end loop over k
@@ -606,7 +606,10 @@ function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, re
 # el_res is the element in the residual to assemble
 # el_pert is the element that was perturbed
 # dof_pert is the dof number (global) of the dof that was perturbed
+# nodenum_local is the local node number of the perturbed node
+# dof_pert_local is the dofnumber local to the node of the perturbed dof
 # typically either el_pert or dof_pert will be needed, not both
+
 
 # resize array
 # basically a no-op if array is already the right size
@@ -782,7 +785,7 @@ end
 
 
 
-
+#TODO: find a non O(n) way to doing this
 function getPertNeighbors(mesh, color, arr)
 # populate the array with the element that is perturbed for each element
 # element number == 0 if no perturbation
@@ -856,7 +859,8 @@ function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+numDofPerNode = mesh.numDofPerNode
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 comm = MPI.COMM_WORLD
 
 println("creating b")
@@ -871,12 +875,14 @@ PetscVecSetSizes(x, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
 println("creating A")
 A = PetscMat(comm)
-PetscMatSetType(A, MATMPIAIJ)
+PetscMatSetFromOptions(A)
+PetscMatSetType(A, MATMPIBAIJ)
 PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
 println("creating Ap")  # used for preconditioner
 Ap = PetscMat(comm)
-PetscMatSetType(Ap, MATMPIAIJ)
+PetscMatSetFromOptions(Ap)
+PetscMatSetType(Ap, MATMPIBAIJ)
 PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
 
@@ -887,7 +893,7 @@ dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
 onnz = zeros(PetscInt, mesh.numDof)  # there is no off diagonal part for single proc case
 dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
-bs = PetscInt(1)  # block size
+bs = PetscInt(mesh.numDofPerNode)  # block size
 
 # calculate number of non zeros per row
 for i=1:mesh.numDof
@@ -912,7 +918,8 @@ PetscMatZeroEntries(Ap)
 MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
 MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
 
-
+matinfo = PetscMatGetInfo(A, Int32(1))
+println("A block size = ", matinfo.block_size)
 
 # create KSP contex
 ksp = KSP(comm)
@@ -1002,7 +1009,7 @@ function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KS
 
   matinfo = PetscMatGetInfo(A, MAT_LOCAL)
   println("number of mallocs for A = ", matinfo.mallocs)
-
+  println("block size of A = ", matinfo.block_size)
   matinfo = PetscMatGetInfo(Ap, MAT_LOCAL)
   println("number of mallocs for Ap = ", matinfo.mallocs)
 
