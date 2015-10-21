@@ -91,8 +91,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # Storing the initial density value at all the nodes
   vRho_act = zeros(mesh.numNodes)
   k = 1
-  for i = 1:4:length(eqn.q_vec)
-    vRho_act[k] = eqn.q_vec[i]
+  for counter1 = 1:4:length(eqn.q_vec)
+    vRho_act[k] = eqn.q_vec[counter1]
     k += 1
   end
   println("Actual Density value succesfully extracted")
@@ -129,7 +129,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     else
      println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
    end
-   println("writing to convergence.dat")
+#   println("writing to convergence.dat")
 #   println(fconv, i, " ", res_0_norm, " ", 0.0)
    # no need to assemble q into q_vec because it never changed
 
@@ -257,16 +257,11 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       end
     end
 
-      
-
     # negate res
     for j=1:m
       res_0[j] = -res_0[j]
     end
    
-    res_discretenorm = norm(res_0)
-    println("Discrete L2 norm of residual = ", res_discretenorm)
-
     # calculate Newton step
     if jac_type == 1 || jac_type == 2  # julia jacobian
       @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
@@ -287,8 +282,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     # Calculate the error in density
     vRho_calc = zeros(vRho_act)
     k = 1
-    for i = 1:4:length(eqn.q_vec)
-      vRho_calc[k] = eqn.q_vec[i]
+    for counter1 = 1:4:length(eqn.q_vec)
+      vRho_calc[k] = eqn.q_vec[counter1]
       k += 1
     end
     ErrDensityVec = vRho_calc - vRho_act
@@ -297,8 +292,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     # println("DensityErrorNormL1 = ", ErrDensity1) 
     ErrDensity2 = 0.0
     k = 1
-    for i = 1:length(ErrDensityVec)
-      ErrDensity2 += real(ErrDensityVec[i])*eqn.M[k]*real(ErrDensityVec[i])
+    for counter1 = 1:length(ErrDensityVec)
+      ErrDensity2 += real(ErrDensityVec[counter1])*eqn.M[k]*real(ErrDensityVec[counter1])
       k += 4
     end
     ErrDensity2 = sqrt(ErrDensity2)
@@ -327,7 +322,9 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
     println("relative residual ", res_0_norm/res_reltol_0)
 
+
     # write to convergence file
+    println("i = ", i)
     println(fconv, i, " ", res_0_norm, " ", step_norm)
     println("printed to convergence.dat")
     flush(fconv)
