@@ -860,7 +860,7 @@ function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 comm = MPI.COMM_WORLD
 
 println("creating b")
@@ -896,9 +896,9 @@ onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 bs = PetscInt(mesh.numDofPerNode)  # block size
 
 # calculate number of non zeros per row
-for i=1:mesh.numDof
-  max_dof = mesh.sparsity_bnds[2, i]
-  min_dof = mesh.sparsity_bnds[1, i]
+for i=1:mesh.numNodes
+  max_dof = mesh.sparsity_nodebnds[2, i]
+  min_dof = mesh.sparsity_nodebnds[1, i]
   nnz_i = max_dof - min_dof + 1
   dnnz[i] = nnz_i
 #  println("row ", i," has ", nnz_i, " non zero entries")
@@ -923,11 +923,11 @@ println("A block size = ", matinfo.block_size)
 
 # create KSP contex
 ksp = KSP(comm)
-KSPSetOperators(ksp, A, Ap)
+KSPSetOperators(ksp, A, Ap)  # this was A, Ap
 KSPSetFromOptions(ksp)
 
 # set: rtol, abstol, dtol, maxits
-KSPSetTolerances(ksp, 1e-15, 1e-8, 1e5, PetscInt(1000))
+KSPSetTolerances(ksp, 1e-2, 1e-12, 1e5, PetscInt(1000))
 KSPSetUp(ksp)
 
 
@@ -1009,10 +1009,19 @@ function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KS
 
   matinfo = PetscMatGetInfo(A, MAT_LOCAL)
   println("number of mallocs for A = ", matinfo.mallocs)
-  println("block size of A = ", matinfo.block_size)
+  if matinfo.mallocs > 0.5  # if any mallocs
+    println("Caution: non zero number of mallocs for A")
+    println("  number of mallocs = ", matinfo.mallocs)
+  end
   matinfo = PetscMatGetInfo(Ap, MAT_LOCAL)
-  println("number of mallocs for Ap = ", matinfo.mallocs)
 
+  if matinfo.mallocs > 0.5  # if any mallocs
+    println("Caution: non zero number of mallocs for Ap")
+    println("  number of mallocs = ", matinfo.mallocs)
+  end
+
+
+ 
 
 
   println("solving system")
