@@ -243,6 +243,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
   M::Array{Float64, 1}            # mass matrix
   disassembleSolution::Function   # function q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
+  majorIterationCallback::Function # called before every major (Newton/RK) itr
+# minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor
   function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
@@ -258,6 +260,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     eqn.res_type = Tres
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
+    eqn.majorIterationCallback = majorIterationCallback
 
     calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.M = calcMassMatrix(mesh, sbp, eqn)

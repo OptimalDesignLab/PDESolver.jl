@@ -87,16 +87,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # append to be on the safe side
   fconv = open("convergence.dat", "a+")
 
-  #----------------------------------------------------------------------------
-  # Storing the initial density value at all the nodes
-  vRho_act = zeros(mesh.numNodes)
-  k = 1
-  for counter1 = 1:4:length(eqn.q_vec)
-    vRho_act[k] = eqn.q_vec[counter1]
-    k += 1
-  end
-  println("Actual Density value succesfully extracted")
-  #----------------------------------------------------------------------------
+  eqn.majorIterationCallback(0, mesh, sbp, eqn, opts)
 
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
@@ -278,32 +269,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     # perform Newton update
     eqn.q_vec[:] += step_fac*delta_res_vec  # update q_vec
     
-    #--------------------------------------------------------------------------
-    # Calculate the error in density
-    vRho_calc = zeros(vRho_act)
-    k = 1
-    for counter1 = 1:4:length(eqn.q_vec)
-      vRho_calc[k] = eqn.q_vec[counter1]
-      k += 1
-    end
-    ErrDensityVec = vRho_calc - vRho_act
-    # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
-    # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
-    # println("DensityErrorNormL1 = ", ErrDensity1) 
-    ErrDensity2 = 0.0
-    k = 1
-    for counter1 = 1:length(ErrDensityVec)
-      ErrDensity2 += real(ErrDensityVec[counter1])*eqn.M[k]*real(ErrDensityVec[counter1])
-      k += 4
-    end
-    ErrDensity2 = sqrt(ErrDensity2)
-    println("DensityErrorNormL2 = ", ErrDensity2)
-    # println("Discrete density error norm L2 = ", ErrDensity2_discrete)
-
-
-
-    #--------------------------------------------------------------------------
-    
+    eqn.majorIterationCallback(i, mesh, sbp, eqn, opts)
+ 
     # write starting values for next iteration to file
     if write_sol
       writedlm("q_vec$i.dat", eqn.q_vec)
