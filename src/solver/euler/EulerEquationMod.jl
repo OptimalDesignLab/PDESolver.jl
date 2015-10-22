@@ -228,6 +228,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   res::Array{Tres, 3}             # result of computation
+  res_edge::Array{Tres, 4}       # edge based residual used for stabilization
+                                  # numdof per node x nnodes per element x
+				  # numEl x num edges per element
   res_vec::Array{Tres, 1}              # result of computation in vector form
   q_vec::Array{Tres,1}              # initial condition in vector form
 
@@ -241,7 +244,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
 
   Minv::Array{Float64, 1}         # inverse mass matrix
   M::Array{Float64, 1}            # mass matrix
-  disassembleSolution::Function   # function q_vec -> eqn.q
+
+  disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 # minorIterationCallback::Function # called before every residual evaluation
@@ -287,6 +291,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
                                 mesh.numEl, Tdim)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.res_vec = zeros(Tres, mesh.numDof)
+
+    if opts["use_edge_res"]
+      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, mesh.numTypePerElement[2])
+    else
+      eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
+    end
+
     eqn.q_vec = zeros(Tres, mesh.numDof)
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, sbp.numfacenodes, 
                           mesh.numBoundaryEdges)

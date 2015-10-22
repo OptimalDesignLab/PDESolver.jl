@@ -802,7 +802,7 @@ end
 """->
 =#
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, q_vec::AbstractArray{Tsol, 1})
+function disassembleSolution{Tmsh, Tsol, Tdim, T}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, q_arr::AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement

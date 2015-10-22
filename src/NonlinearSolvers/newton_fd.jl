@@ -316,10 +316,6 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
     end
 
-     # put solution into q_vec
-#     fill!(eqn.q_vec, 0.0)
-#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
      # put residual into eqn.res_vec
      eqn.res_vec[:] = res_0
      close(fconv)
@@ -335,10 +331,6 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     if (step_norm < step_tol)
       println("Newton iteration converged with step_norm = ", step_norm)
       println("Final residual = ", res_0_norm)
-
-     # put solution into q_vec
-#     fill!(eqn.q_vec, 0.0)
-#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
       # put residual into eqn.res_vec
       eqn.res_vec[:] = res_0
@@ -383,10 +375,6 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   close(fconv)
 
 
-   # put solution into q_vec
-#   fill!(eqn.q_vec, 0.0)
-#   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
    # put residual into eqn.res_vec
    eqn.res_vec[:] = res_0
  
@@ -398,17 +386,41 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 end
 
 
+function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1})
+# assembles all of the residuals into res_vec
+# no aliaising concerns
+
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
+
+  for i=1:size(eqn.res_edge, 4)
+    assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i), res_vec)
+  end
+
+  return nothing
+end
+
+
+function disassembleSolution{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
+# scatters the q_vec to the 3d array eqn.q
+# no aliasing concerns here
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, q_vec)
+
+  return nothing
+end
+
+
+
 function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 # calculate the residual and its norm
 
   m = length(res_0)
 
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   func(mesh, sbp, eqn, opts)
 #  res_0[:] = real(eqn.res_vec)  # is there an unnecessary copy here?
 
   fill!(eqn.res_vec, 0.0)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
 
   for j=1:m
     res_0[j] = real(eqn.res_vec[j])
@@ -441,14 +453,14 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
       eqn.q_vec[j] += epsilon
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
 
     fill!(eqn.res_vec, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.res_vec)
+    assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
     #println(eqn.res_vec)
     calcJacRow(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
@@ -526,9 +538,29 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 
             col_idx = mesh.dofs[i, j, el_pert]
 	    #TODO: make an immutable type to hold the bookeeping info
-	    assembleElement(mesh, eqn, res_0, k, el_pert, col_idx, epsilon, jac)
+	    assembleElement(mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
        end  # end loop over k
+
+       # now do res_edge, if needed
+       #TODO: consider making eqn.res 4 dimensional, which is the 
+       #      generalization of having multiple residuals 
+        for edge = 1:size(eqn.res_edge, 4)
+	  res_edge = view(eqn.res, :, :, :, edge)
+	  for k=1:mesh.numEl  # loop over elements in residual
+  #	  el_pert = perturbed_els[k] # get perturbed element
+
+	    el_pert = mesh.pertNeighborEls_edge[k, edge] # get perturbed element
+	    if el_pert != 0   # if element was actually perturbed for this color
+
+	      col_idx = mesh.dofs[i, j, el_pert]
+	      #TODO: make an immutable type to hold the bookeeping info
+	      assembleElement(mesh, eqn, res_edge, res_0, k, el_pert, col_idx, epsilon, jac)
+	   end  # end if el_pert != 0
+        end  # end loop over k
+      end  # end loop over local edges
+
+
 
       # undo perturbation
       # is this the best way to undo the perturbation?
@@ -566,7 +598,7 @@ end
 
 
 # finite difference
-function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
+function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -590,7 +622,7 @@ for j_j = 1:mesh.numNodesPerElement
     idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    tmp = (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
     vals_tmp[pos] = tmp
     pos += 1
   end
@@ -609,7 +641,7 @@ return nothing
 end
 
 # finite difference Petsc
-function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
+function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -622,7 +654,7 @@ for j_j = 1:mesh.numNodesPerElement
     row_idx = mesh.dofs[i_i, j_j, el_res]
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    tmp = (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
     jac[row_idx, dof_pert] += tmp
 
   end
@@ -669,12 +701,12 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
       eqn.q_vec[j] += pert
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 
     fill!(eqn.res_vec, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
 #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
     calcJacRow(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
@@ -692,7 +724,7 @@ end
 
 
 # for complex numbers
-function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
+function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -713,7 +745,7 @@ for j_j = 1:mesh.numNodesPerElement
     idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    vals_tmp[pos] = imag(eqn.res[i_i,j_j, el_res])/epsilon
+    vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
 
     pos += 1
   end
@@ -728,7 +760,7 @@ end
 
 
 
-function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
+function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -741,7 +773,7 @@ for j_j = 1:mesh.numNodesPerElement
     row_idx = mesh.dofs[i_i, j_j, el_res]
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    jac[row_idx, dof_pert] += imag(eqn.res[i_i,j_j, el_res])/epsilon
+    jac[row_idx, dof_pert] += imag(res_arr[i_i,j_j, el_res])/epsilon
   end
 end
 
@@ -1091,7 +1123,7 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       epsilon = 1e-20
 
 #      eqn.q_vec[j] += complex(0, epsilon)
-      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+      disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
       eqn.q[1, 2, 5] += complex(0, epsilon)
       writedlm("check_q.dat", imag(eqn.q))
 #      eqn.q[1,1,1] += complex(0, epsilon)
@@ -1099,7 +1131,7 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       func(mesh, sbp, eqn, opts)
 
       fill!(eqn.res_vec, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
       calcJacRow(jac_col, eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
@@ -1120,10 +1152,10 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       jac_col = zeros(Float64, mesh.numDof)
       println("\ncalculating column ", j, " of the jacobian")
 
-     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
      func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
      fill!(eqn.res_vec, 0.0)
-     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
      res_0 = copy(eqn.res_vec)
 
       epsilon = 1e-6
@@ -1136,7 +1168,7 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
 
       fill!(eqn.res_vec, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
       calcJacRow(jac_col, res_0, eqn.res_vec, epsilon)

@@ -142,6 +142,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
                            dξdx::AbstractArray{T,4}, jac::AbstractArray{T,2},
                            α::AbstractArray{T,4}, stabscale::Function,
                            res::AbstractArray{T,2})
+# for scalar equations only!
   @assert( sbp.numnodes == size(u,1) == size(res,1) == size(dξdx,3) == size(x,2) 
           == size(α,3) )
   @assert( size(dξdx,4) == size(α,4) == size(u,2) == size(res,2) == size(x,3) )
@@ -220,6 +221,93 @@ function getdiffelementarea{T, T2, T3}(nrm::AbstractArray{T,1}, dxidx::AbstractA
 							 end
 
 
+
+# for vector equations
+function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Interface},
+                           u::AbstractArray{Tsol,3}, x::AbstractArray{Tmsh,3},
+                           dξdx::AbstractArray{Tmsh,4}, jac::AbstractArray{Tmsh,2},
+                           α::AbstractArray{Tmsh,4},stabscale::AbstractArray{Tres,2},
+                           res::AbstractArray{Tres,3})
+
+  @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dξdx,3) == size(x,2) 
+          == size(α,3) )
+  @assert( size(dξdx,4) == size(α,4) == size(u,3) == size(res,3) == size(x,3) )
+  @assert( length(u) == length(res) )
+  dim = size(sbp.Q, 3)
+
+
+
+  # JEH: temporary, until nbrnodeindex is part of sbp type
+  nbrnodeindex = Array(sbp.numfacenodes:-1:1)
+
+  Dn = zeros(Tsol, size(u,1))
+  dirL = zeros(Tmsh, (dim))
+  dirR = zeros(Tmsh, (dim))
+  workvec = zeros(Tmsh, (dim))
+  tmpL = zero(Dn)
+  tmpR = zero(Dn)
+  EDn = zeros(Tres, (size(u,1),sbp.numfacenodes) )
+  for (facenum, face) in enumerate(ifaces)
+#   for facenum = 1:length(ifaces)
+#    face = ifaces[facenum]
+    fill!(EDn, zero(Tres))
+    for i = 1:sbp.numfacenodes
+      # iL = element-local index for ith node on left element face
+      # iR = element-local index for ith node on right element face
+      iL = sbp.facenodes[i, face.faceL]
+      #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
+      # apply the normal-derivative difference operator along the face
+      smallmatvec!(view(α,:,:,iL,face.elementL),view(sbp.facenormal,:,face.faceL), dirL)
+      fill!(Dn, zero(Tres))
+      directionaldifferentiate!(sbp, dirL, view(u,:,:,face.elementL), iL, Dn)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      directionaldifferentiate!(sbp, dirR, view(u,:,:,face.elementR), iR, Dn)
+      # get differential area element: need 1/ds for each Dn term (here and loop
+      # below) to get unit normals, and then need ds for integration, so net
+      # result is 1/ds
+      ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
+                              view(dξdx,:,:,iL,face.elementL), workvec)  # this assumes Tsbp is a lower type than the other
+      # apply the scaling function
+      scale = stabscale[i, facenum]
+#      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
+#                         view(sbp.facenormal,:,face.faceL))::T./ds # note that u[iL] = u[iR]
+      for field = 1:size(u,1)
+        Dn[field] *= scale
+      end
+      # add the face-mass matrix contribution
+      for j = 1:sbp.numfacenodes
+        for field = 1:size(u,1)
+          EDn[field,j] += sbp.wface[j,i]*Dn[field]
+        end
+      end
+    end
+    for i = 1:sbp.numfacenodes
+#      println("sbp.facenodes = ", sbp.facenodes)
+
+      iL = sbp.facenodes[i, face.faceL]
+      #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
+      smallmatvec!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      # here we use hand-coded reverse-mode to apply the transposed
+      # normal-derivative difference operator
+      for di = 1:size(sbp.Q, 3)
+        for field = 1:size(u,1)
+          tmpL[field] = dirL[di]*EDn[field,i]/sbp.w[iL]
+          tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
+        end
+        for j = 1:sbp.numnodes
+          for field = 1:size(u,1)
+            res[field,j,face.elementL] += sbp.Q[iL,j,di]*tmpL[field]
+            res[field,j,face.elementR] += sbp.Q[iR,j,di]*tmpR[field]
+          end
+        end
+      end
+    end
+  end
+
+end
 
 # for vector equations
 function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Interface},
