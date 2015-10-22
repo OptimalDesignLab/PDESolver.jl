@@ -723,10 +723,10 @@ function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPO
     h_jac_inv = 1./h_jac
 
     # this is the proper artificial dissipation
-#    dissipation_mat[:, :, i] = epsilon*filt.'*diagm(h_jac)*filt
+    dissipation_mat[:, :, i] = epsilon*filt.'*diagm(h_jac)*filt
 
     # this is the used for preconditioning the iterative solver
-    dissipation_mat[:, :, i] = epsilon*filt.'*diagm(sbp.w)*filt
+#    dissipation_mat[:, :, i] = epsilon*filt.'*diagm(sbp.w)*filt
   end  # end loop over elements
 
 

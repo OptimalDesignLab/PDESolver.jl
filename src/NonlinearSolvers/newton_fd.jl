@@ -494,12 +494,12 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 #  fill!(jac.nzval, 0.0)
 
   # for each color, store the perturbed element corresponding to each element
-  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
+#  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
 
   # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
 #    println("color = ", color)
-    getPertNeighbors(mesh, color, perturbed_els)
+#    getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
 #      println("node ", j)
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
@@ -519,7 +519,9 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 	# assemble res into jac
 #        println("  assembling jacobian")
 	for k=1:mesh.numEl  # loop over elements in residual
-	  el_pert = perturbed_els[k] # get perturbed element
+#	  el_pert = perturbed_els[k] # get perturbed element
+
+	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
           if el_pert != 0   # if element was actually perturbed for this color
 
             col_idx = mesh.dofs[i, j, el_pert]
@@ -748,36 +750,6 @@ return nothing
 end
 
 
-
-#TODO: find a non O(n) way to doing this
-function getPertNeighbors(mesh, color, arr)
-# populate the array with the element that is perturbed for each element
-# element number == 0 if no perturbation
-
-#  println("getting neighbor list")
-
-  num_neigh = size(mesh.neighbor_colors, 1)
-#  fill!(arr, 0)
-  for i=1:mesh.numEl
-    # find out if current element or its neighbors have the current color
-    pos = 0
-    for j=1:num_neigh
-      if color == mesh.neighbor_colors[j, i]
-	pos = j
-	break
-      end
-    end
-
-    if pos != 0
-      arr[i] = mesh.neighbor_nums[pos, i]
-    else
-       arr[i] = 0
-     end
-
-  end
-
-  return nothing
-end
 
 function applyPerturbation(arr, mask, pert, i, j)
   # applys perturbation puert to array arr according to mask mask

@@ -64,6 +64,7 @@ where input_file_name.jl is in your current directory.
 "use_dissipation" : use artificial dissipation, (Bool), default false
 "dissipation_name" : name of artificial dissipation kernel to use, (ASCIIString), default "none"
 "dissipation_const" : constant to multiply dissipation filter by, (Float64), default 0.0
+
 # solver debugging options
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
