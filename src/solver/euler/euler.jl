@@ -242,6 +242,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 
   # zero out res
   fill!(eqn.res, 0.0)
+  fill!(eqn.res_edge, 0.0)
   
   # disassemble q_vec into eqn.q
 #  disassembleSolution(mesh, sbp, eqn, opts, q_vec)
@@ -558,7 +559,11 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
 
   if eqn.params.use_edgestab
 #    println("applying edge stabilization")
-    edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+    if opts["use_edge_res"]
+      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res, eqn.res_edge)
+    else
+      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+    end
   end
 
   if eqn.params.use_res_filter

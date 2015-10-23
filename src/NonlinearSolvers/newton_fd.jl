@@ -393,7 +393,7 @@ function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1})
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
 
   for i=1:size(eqn.res_edge, 4)
-    assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i), res_vec)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i), res_vec)
   end
 
   return nothing
@@ -510,13 +510,14 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 
   # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
-#    println("color = ", color)
+    println("color = ", color)
 #    getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
 #      println("node ", j)
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 #	println("dof ", i)
         # do perturbation for each residual here:
+
 
 	# apply perturbation to q
 #	println("  applying perturbation")
@@ -529,14 +530,19 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
         func(mesh, sbp, eqn, opts)
 #	
 	# assemble res into jac
-#        println("  assembling jacobian")
+        println("  assembling jacobian")
+	println("  local dof = ", i, ", local node = ", j)
+	println("  color_mask = ", mesh.color_masks[color])
+	println("  assembling standard residual")
 	for k=1:mesh.numEl  # loop over elements in residual
 #	  el_pert = perturbed_els[k] # get perturbed element
 
 	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
           if el_pert != 0   # if element was actually perturbed for this color
 
+	    println("el_pert = ", el_pert)
             col_idx = mesh.dofs[i, j, el_pert]
+	    println("dof_pert = ", col_idx)
 	    #TODO: make an immutable type to hold the bookeeping info
 	    assembleElement(mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
@@ -546,14 +552,17 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
        #TODO: consider making eqn.res 4 dimensional, which is the 
        #      generalization of having multiple residuals 
         for edge = 1:size(eqn.res_edge, 4)
-	  res_edge = view(eqn.res, :, :, :, edge)
+	  println("assembling edge residual = ", edge)
+	  res_edge = view(eqn.res_edge, :, :, :, edge)
 	  for k=1:mesh.numEl  # loop over elements in residual
   #	  el_pert = perturbed_els[k] # get perturbed element
 
 	    el_pert = mesh.pertNeighborEls_edge[k, edge] # get perturbed element
+	    println("el_pert = ", el_pert)
 	    if el_pert != 0   # if element was actually perturbed for this color
 
 	      col_idx = mesh.dofs[i, j, el_pert]
+	      println("dof_pert = ", col_idx)
 	      #TODO: make an immutable type to hold the bookeeping info
 	      assembleElement(mesh, eqn, res_edge, res_0, k, el_pert, col_idx, epsilon, jac)
 	   end  # end if el_pert != 0
@@ -768,10 +777,20 @@ function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol},
 # dof_pert is the dof number (global) of the dof that was perturbed
 # typically either el_pert or dof_pert will be needed, not both
 
+println(" element $el_res res = ", view(res_arr, :, :, el_res))
+
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     row_idx = mesh.dofs[i_i, j_j, el_res]
 #    col_idx = mesh.dofs[i, j, el_pert]
+
+     if row_idx == 1 && dof_pert == 5
+       println("i_i = ", i_i)
+       println("j_j = ", j_j)
+       println("el_res = ", el_res)
+       println("inserting value ", imag(res_arr[i_i,j_j, el_res])/epsilon, " into jacobian (1,5)")
+     end
+
 
     jac[row_idx, dof_pert] += imag(res_arr[i_i,j_j, el_res])/epsilon
   end
