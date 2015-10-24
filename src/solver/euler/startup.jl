@@ -73,7 +73,7 @@ dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 
 # create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=2)
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=0)
 # TODO: input argument for dofpernode
 
 # create euler equation
