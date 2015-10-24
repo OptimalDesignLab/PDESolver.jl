@@ -560,7 +560,7 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
   if eqn.params.use_edgestab
 #    println("applying edge stabilization")
     if opts["use_edge_res"]
-      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res, eqn.res_edge)
+      edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res, eqn.res_edge)
     else
       edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
     end

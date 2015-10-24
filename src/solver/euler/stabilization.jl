@@ -251,8 +251,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
   for (facenum, face) in enumerate(ifaces)
 #   for facenum = 1:length(ifaces)
 #    face = ifaces[facenum]
-    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
-    println("uL = ", u[:, :, face.elementL], ", uR = ", u[:, :, face.elementR])
+#    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
+#    println("uL = ", u[:, :, face.elementL], ", uR = ", u[:, :, face.elementR])
     fill!(EDn, zero(Tres))
     for i = 1:sbp.numfacenodes
       # iL = element-local index for ith node on left element face
@@ -305,10 +305,10 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
         for j = 1:sbp.numnodes
           for field = 1:size(u,1)
 	    tmp2 =  sbp.Q[iL,j,di]*tmpL[field]
-            println("res[$field, $j, $elementL] += ", tmp2)
+ #           println("res[$field, $j, $elementL] += ", tmp2)
             res[field,j,face.elementL] += sbp.Q[iL,j,di]*tmpL[field]
 	    tmp2 = sbp.Q[iR,j,di]*tmpR[field]
-            println("res[$field, $j, $elementR] += ", tmp2)
+#            println("res[$field, $j, $elementR] += ", tmp2)
             res[field,j,face.elementR] += sbp.Q[iR,j,di]*tmpR[field]
           end
         end
@@ -320,10 +320,11 @@ end
 
 
 # for vector equations
-function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Interface},
+#TODO: cleanup function signature
+function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::SBPOperator, eqn, ifaces::Array{Interface},
                            u::AbstractArray{Tsol,3}, x::AbstractArray{Tmsh,3},
                            dξdx::AbstractArray{Tmsh,4}, jac::AbstractArray{Tmsh,2},
-                           α::AbstractArray{Tmsh,4},stabscale::AbstractArray{Tres,2},
+                           α::AbstractArray{Tmsh,4},stabscal_are::AbstractArray{Tres,2},
                            res::AbstractArray{Tres, 3}, res_edge::AbstractArray{Tres,4})
 
   @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dξdx,3) == size(x,2) 
@@ -337,6 +338,9 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
 # differentiation and use the 2x faster version of this function?
   dim = size(sbp.Q, 3)
 
+#  println("initially:")
+#  println("res = \n", res)
+#  println("res_edge = \n", res_edge)
 
 
   # JEH: temporary, until nbrnodeindex is part of sbp type
@@ -357,8 +361,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
     fill!(EDn, zero(Tres))
     uL = real(view(u, :, :, face.elementL))
     uR = view(u, :, :, face.elementR)
-    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
-    println("uL = ", uL, ", uR = ", uR) 
+#    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
+#    println("uL = ", uL, ", uR = ", uR) 
     for i = 1:sbp.numfacenodes  # consider making this its own function
       # iL = element-local index for ith node on left element face
       # iR = element-local index for ith node on right element face
@@ -377,16 +381,29 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
       ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
                               view(dξdx,:,:,iL,face.elementL), workvec)  # this assumes Tsbp is a lower type than the other
       # apply the scaling function
-      scale = stabscale[i, facenum]
+      # calculate scale
+      #=
+      iL = sbp.facenodes[j, face_i.faceL]
+      iR = sbp.facenodes[nbrnodeindex[j], face_i.faceR]
+      q = view(eqn.q, :, iL, face_i.elementL)
+      dxidx = view(mesh.dxidx, :, :, iL, face_i.elementL)
+      nrm = view(sbp.facenormal, :, face_i.faceL)
+      =#
+      uL_node = real(view(eqn.q, :, iL, face.elementL)) # take real part here?
+      dxidx_node = view(mesh.dxidx, :, :, iL, face.elementL)
+      nrm_node = view(sbp.facenormal, :, face.faceL)
+ 
+      scale = stabscale(uL_node, dxidx_node, nrm_node, eqn.params)
+#      scale = stabscale[i, facenum]
 #      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
 #                         view(sbp.facenormal,:,face.faceL))::T./ds # note that u[iL] = u[iR]
-      println("before scaling, Dn = ", Dn)
-      println("scale = ", scale)
+#      println("before scaling, Dn = ", Dn)
+#      println("scale = ", scale)
       for field = 1:size(u,1)
         Dn[field] *= scale
       end
 
-      println("after scaling Dn = ", Dn)
+#      println("after scaling Dn = ", Dn)
       # add the face-mass matrix contribution
       for j = 1:sbp.numfacenodes
         for field = 1:size(u,1)
@@ -395,7 +412,7 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
       end
     end  # end loop over face nodes
 
-    println("EDn = ", EDn)
+#    println("EDn = ", EDn)
 
     for i = 1:sbp.numfacenodes
 #      println("sbp.facenodes = ", sbp.facenodes)
@@ -405,8 +422,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
       iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
       smallmatvec!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
       smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
-      println("dirL = ", dirL)
-      println("dirR = ", dirR)
+#      println("dirL = ", dirL)
+#      println("dirR = ", dirR)
       # here we use hand-coded reverse-mode to apply the transposed
       # normal-derivative difference operator
       for di = 1:size(sbp.Q, 3)
@@ -415,8 +432,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
           tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
         end
 
-	println("tmpL = ", tmpL)
-	println("tmpR = ", tmpR)
+#	println("tmpL = ", tmpL)
+#	println("tmpR = ", tmpR)
 	elementL = face.elementL
 	elementR = face.elementR
 	faceL = face.faceL
@@ -425,12 +442,12 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
           for field = 1:size(u,1)
 	    # this is elementR affecting elementL
             tmp2 = sbp.Q[iL,j,di]*tmpL[field]
-            println("res_edge[$field, $j, $elementL, $faceL] += ", tmp2)
+#            println("res_edge[$field, $j, $elementL, $faceL] += ", tmp2)
 
             res_edge[field,j,face.elementL, face.faceL] += sbp.Q[iL,j,di]*tmpL[field]
 	    # this is elementR affecting itself
             tmp2 = sbp.Q[iR,j,di]*tmpR[field]
-            println("res[$field, $j, $elementR] += ", tmp2)
+#            println("res[$field, $j, $elementR] += ", tmp2)
 
 
             res[field,j,face.elementR] += sbp.Q[iR,j,di]*tmpR[field]
@@ -440,8 +457,9 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
     end  # end loop over i = 1:sbp.numfacenodes
   end  # end loop over interfaces
 
-
-  println("edgestabilization second calculation")
+#  println("res = \n", res)
+#  println("res_edge = \n", res_edge)
+#  println("edgestabilization second calculation")
   # now consider how elementL affects elementR, and itself
   for (facenum, face) in enumerate(ifaces)
 #   for facenum = 1:length(ifaces)
@@ -449,8 +467,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
     fill!(EDn, zero(Tres))
     uL = view(u, :, :, face.elementL)
     uR = real(view(u, :, :, face.elementR))
-    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
-    println("uL = ", uL, ", uR = ", uR) 
+#    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
+#    println("uL = ", uL, ", uR = ", uR) 
  
     for i = 1:sbp.numfacenodes  # consider making this its own function
       # iL = element-local index for ith node on left element face
@@ -470,7 +488,13 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
       ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
                               view(dξdx,:,:,iL,face.elementL), workvec)  # this assumes Tsbp is a lower type than the other
       # apply the scaling function
-      scale = stabscale[i, facenum]
+      uL_node = view(eqn.q, :, iL, face.elementL)
+      dxidx_node = view(mesh.dxidx, :, :, iL, face.elementL)
+      nrm_node = view(sbp.facenormal, :, face.faceL)
+ 
+      scale = stabscale(uL_node, dxidx_node, nrm_node, eqn.params)
+
+#      scale = stabscale[i, facenum]
 #      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
 #                         view(sbp.facenormal,:,face.faceL))::T./ds # note that u[iL] = u[iR]
 
@@ -511,11 +535,11 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
 	    # this is elementL affecting itself
             tmp2 = sbp.Q[iL,j,di]*tmpL[field]
 
-            println("res[$field, $j, $elementL] += ", tmp2)
+#            println("res[$field, $j, $elementL] += ", tmp2)
 
             res[field,j,face.elementL] += sbp.Q[iL,j,di]*tmpL[field]
             tmp2 = sbp.Q[iR,j,di]*tmpR[field]
-            println("res_edge[$field, $j, $elementR, $faceR] += ", tmp2)
+#            println("res_edge[$field, $j, $elementR, $faceR] += ", tmp2)
 	    # this is elementL affecting elementR
             res_edge[field,j,face.elementR, face.faceR] += sbp.Q[iR,j,di]*tmpR[field]
 	  end  # end loop over fields
@@ -524,6 +548,9 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
     end  # end loop over i = 1:sbp.numfacenodes
   end  # end loop over interfaces
 
+#  println("finished second edge stabilization calculation")
+#  println("res = \n", res)
+#  println("res_edge = \n", res_edge)
 
 end  # end function
 
