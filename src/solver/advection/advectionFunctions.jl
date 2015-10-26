@@ -9,18 +9,29 @@ Pass this function as an input argument to the RK4 solver just like evalEuler.
 """->
 
 function evalAdvection(mesh::AbstractMesh, sbp::SBPOperator,
-                       eqn::AdvectionData, opts, t=0.0)
+                       eqn::AdvectionData, opts, t)
 
   # u_i_1 = zeros(mesh.numDof)
   # eqn.res_vec = fill!(eqn.res_vec, 0.0)
-  evalSCResidual(mesh, sbp, eqn.res_vec, eqn.q_vec, alpha_x, alpha_y)
-  evalBndry(mesh, sbp, eqn.res_vec, eqn.q_vec, alpha_x, alpha_y)
-
-  eqn.res_vec = mass_matrix\eqn.res_vec
-  # dissamble to eqn.u
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.res_vec)
-
-  eqn.res = copy(eqn.u) # transfer eqn.u to eqn.res for assembly in RK
+  const alpha_x = 1.0 # advection velocity in x direction
+  const alpha_y = 0.0 # advection velocity in y direction
+  
+  eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
+  # disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+  # println(eqn.u)
+  
+  evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
+  # assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  # println(eqn.res_vec)
+  # println("evalSCResidual complete")
+  evalBndry(mesh, sbp, eqn, alpha_x, alpha_y)
+  # println("evalBndry complete")
+  # assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  # println(eqn.res_vec)
+  
+  eqn.res_vec = eqn.M\eqn.res_vec
+  
+  # eqn.res = copy(eqn.u) # transfer eqn.u to eqn.res for assembly in RK
   # return u_i_1
   return nothing
 end
@@ -39,12 +50,16 @@ integrals) this only works for triangular meshes, where are elements are same
 
 """->
 
-function evalSCResidual(mesh::AbstractMesh, operator::SBPOperator, 
-	                      u::AbstractVector, u0, alpha_x::FloatingPoint,
-	                      alpha_y::FloatingPoint)
+function evalSCResidual{Tsol, Tdim}(mesh::AbstractMesh, sbp::SBPOperator, 
+                                    eqn::AdvectionData{Tsol, Tdim}, 
+                                    alpha_x::FloatingPoint, 
+                                    alpha_y::FloatingPoint)
 
+	                                  # u::AbstractVector, u0, 
+	                      
 # not clear how to do source term using SBP operators
-
+  # println("alpha_x = ", alpha_x)
+  # println("alpha_y = ", alpha_y)
 	# initialize
 
   ndof = mesh.numDof  # Total number of dofs
@@ -54,38 +69,43 @@ function evalSCResidual(mesh::AbstractMesh, operator::SBPOperator,
   fluxes = zeros(nnodes, 2)  # jacobian term times advection velocity divided
                              # by jac
 
-  # Q_xi = operator.Q[:,:,1]
-  # Q_eta = operator.Q[:,:,2]
-
   for i=1:numEl  # loop over element
 
     dofnums_i = getGlobalNodeNumbers(mesh, i)
-    ub = u0[dofnums_i]  # get original solution values
-    vert_coords = getElementVertCoords(mesh, [i])
-    vert_coords_extract = vert_coords[1:2, :, :]
-    dxi_dx = zeros(2, 2, nnodes, 1)
-    jac = zeros(nnodes, 1)
-    mappingjacobian!(operator, vert_coords_extract, dxi_dx, jac)
+    # ub = u0[dofnums_i]  # get original solution values
+    # vert_coords = getElementVertCoords(mesh, [i])
+    # vert_coords_extract = vert_coords[1:2, :, :]
+    # dxi_dx = zeros(2, 2, nnodes, 1)
+    # jac = zeros(nnodes, 1)
+    # mappingjacobian!(operator, vert_coords_extract, dxi_dx, jac)
     dxi_dxu = zeros(nnodes,2)
-
+    #=
     for j=1:nnodes
       dxi_dxu[j,1] += (dxi_dx[1,1,j,1]*alpha_x + dxi_dx[1,2,j,1]*alpha_y)*ub[j]
       dxi_dxu[j,2] += (dxi_dx[2,1,j,1]*alpha_x + dxi_dx[2,2,j,1]*alpha_y)*ub[j]
     end
+    =#
+    for j=1:nnodes
+      dxi_dxu[j,1] += (mesh.dxidx[1,1,j,i]*alpha_x + mesh.dxidx[1,2,j,i]*alpha_y)*eqn.u[1,j,i]
+      dxi_dxu[j,2] += (mesh.dxidx[2,1,j,i]*alpha_x + mesh.dxidx[2,2,j,i]*alpha_y)*eqn.u[1,j,i]
+    end
 
-    res = zeros(nnodes,1)
- 
     # copy dxi_dxu into column matricies to satisfy SBP
     dxi_dxu_x = zeros(nnodes,1)
     dxi_dxu_x[:] = dxi_dxu[:,1]
     dxi_dxu_y = zeros(nnodes,1)
     dxi_dxu_y[:] = dxi_dxu[:,2]
+
+    # Calculate element wise volume integral
+    res = zeros(nnodes,1)
     weakdifferentiate!(sbp, 1, dxi_dxu_x, res, trans=true)
     weakdifferentiate!(sbp, 2, dxi_dxu_y, res, trans=true)
-    u[dofnums_i.'] += res
+
+    eqn.res[1,:,i] = res[:,1] # Transfer element residual to the eqn object
   end  # end loop over elements
 
-  #println("after volume integral, u = \n", u)
+  # println(eqn.res)
+
 end  # end function
 
 @doc """
@@ -101,10 +121,10 @@ Evaluate boundary integrals for advection equation
 
 """->
 
-function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
-                   u0, alpha_x::FloatingPoint, alpha_y::FloatingPoint)
+function evalBndry{Tsol, Tdim}(mesh::PumiMesh2, sbp::SBPOperator, eqn::AdvectionData{Tsol, Tdim},
+                   alpha_x::FloatingPoint, alpha_y::FloatingPoint)
 
-  println("entered evalBndry")
+  # println("entered evalBndry")
 
   # get arguments needed for sbp boundaryintegrate!
 
@@ -162,12 +182,17 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
   =#
 
   # define the flux function
-  u_bc = sin(-1)  # boundary condition (for all sides)
+  # u_bc = sin(-1)  # boundary condition (for all sides)
+  # println("u_bc = ", u_bc)
   # cntr = 1  # count number of times flux function is called
 
   # Need to fill up bndryflux
+  # println("heehaw 1")
+
   for i = 1:mesh.numBoundaryEdges
+    # println("i = ", i)
     bndry_i = mesh.bndryfaces[i]
+    # println("bndryfaces extracted")
     for j = 1:sbp.numfacenodes
       k = sbp.facenodes[j, bndry_i.face]
       u = view(eqn.u, :, k, bndry_i.element)
@@ -175,14 +200,16 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = view(sbp.facenormal, :, bndry_i.face)
       bndryflux_i = view(eqn.bndryflux, :, j, i)
-      flux1(u, dxidx, nrm, bndryflux_i) # calculate the boundary flux
+      # println("arrayView bndryflux_i created")
+      flux1(u, dxidx, nrm, bndryflux_i, alpha_x, alpha_y) # calculate the boundary flux
     end # for j = 1:sbp.numfacenodes
   end # end for i = 1:mesh.numBoundaryEdges
 
-
+  # println("heehaw 2")
   
   # boundaryintegrate!(operator, bndry_faces, u_sbp, dxi_dx, flux1, res)
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  #=
   bndry_contrib = zeros(mesh.numDof)
 
   for i=1:mesh.numEl
@@ -190,7 +217,7 @@ function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector,
     vals_i = res[:,i]
     u[dofnums_i.'] -= vals_i
     bndry_contrib[dofnums_i.'] -= vals_i
-  end # end for i=1:mesh.numEl
+  end # end for i=1:mesh.numEl =#
 
 end # end function evalBndry
 #=

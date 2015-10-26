@@ -1,6 +1,6 @@
 # boundaryconditions.jl
 
-function flux1(u_sbp_, dxidx, nrm, net_flux)
+function flux1(u_sbp_, dxidx, nrm, net_flux, alpha_x, alpha_y)
   # This function works at the nodal level  
   # u_sbp_ is the entry from u_sbp for this node
   # dxi_dx is the jacobian for this node
@@ -11,6 +11,9 @@ function flux1(u_sbp_, dxidx, nrm, net_flux)
   mag_x = u_xi*nrm[1]  # x flow magnitude
   mag_y = u_eta*nrm[2]  # y flow magnitude
   mag = mag_x + mag_y
+  
+  u_bc = sin(-1)  # boundary condition (for all sides)
+  # println("u_bc = ", u_bc)
 
   # because mag is scalar,not vector, can combine these if statements
   if mag < 0  # inflow condition, added factor of nrm[2]

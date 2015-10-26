@@ -15,24 +15,7 @@ using ArrayViews
 
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
-include("advectionFunctions.jl")
 
-function getResType(Tmsh::DataType, Tsbp::DataType, Tsol::DataType )
-  # figure out what type eqn.res needs to be, taking into account
-  # algorithmic differentiation of the different arguments
-  # to support reverse mode, will need to consider the type of Tres as an input
-  
-  if Tsol <: DualNumbers.Dual # differentiating wrt eqn.q
-    Tres = Tsol
-  elseif  Tmsh <: DualNumbers.Dual  # differentiating wrt mesh.coords
-    Tres = Tmsh
-    Tsol = Tmsh  # derivative of coordinates will end up in eqn.q
-  else  # no algorithmic differntiation
-    Tres = Tsol
-  end
-
-  return Tres
-end
 
 #function runtest(flag::Int)
 println("ARGS = ", ARGS)
@@ -89,9 +72,6 @@ smb_name = opts["smb_name"]
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=1)
 eqn = AdvectionData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 
-alpha_x = 1.0 # advection velocity in x direction
-alpha_y = 0.0 # advection velocity in y direction
-
 # Initialize the advection equation
 # u_i = eqn.u_i  # create u vector (current timestep)
 # u_i_1 = eqn.u_i_1 # u at next timestep
@@ -104,9 +84,27 @@ for i = 1:mesh.numEl
   end # end for j = 1:sbp.numnodes
 end # end for i=1:mesh.numEl
 
-println("finished initilizing u")
+println("finished initializing u")
 
 global int_advec = 1
+
+# Calculate the recommended delta t
+CFLMax = 1      # Maximum Recommended CFL Value
+const alpha_x = 1.0 # advection velocity in x direction
+const alpha_y = 0.0 # advection velocity in y direction
+Dt = zeros(mesh.numNodesPerElement,mesh.numEl) # Array of all possible delta t
+for i = 1:mesh.numEl
+  for j = 1:mesh.numNodesPerElement
+    h = 1/sqrt(mesh.jac[j,i])
+    V = sqrt((alpha_x.^2) + (alpha_y.^2))
+    Dt[j,i] = CFLMax*h/(V)
+  end # end for j = 1:mesh.numNodesPerElement
+end   # end for i = mesh.numEl
+RecommendedDT = minimum(Dt)
+println("Recommended delta t = ", RecommendedDT)
+
+t = 0.0
+# evalAdvection(mesh, sbp, eqn, opts, t)
 
 # Now put it into the RK4 solver
 rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"])

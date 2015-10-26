@@ -32,6 +32,7 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 *  disassembleSolution
 *  writeQ
 *  assembleSolution
+*  calcEulerFlux
 
 == ic.jl == 
 
@@ -53,5 +54,4 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 
 == startup.jl ==
 
-*  getResType
 *  

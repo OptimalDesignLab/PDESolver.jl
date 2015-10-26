@@ -5,10 +5,11 @@ using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
-export AdvectionData, AdvectionData_, getMass
+export AdvectionData, AdvectionData_, getMass, assembleSolution, disassembleSolution, evalAdvection
 
 # include("advectionFunctions.jl")
 # include("getMass.jl")
+
 
 abstract AbstractAdvectionData{Tsol} <: AbstractSolutionData{Tsol}
 abstract AdvectionData{Tsol, Tdim} <: AbstractAdvectionData{Tsol}
@@ -61,6 +62,9 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
 
 end # End type AdvectionData_
 
+include("advectionFunctions.jl")
+include("boundaryconditions.jl")
+
 @doc """
 ### AdvectionEquationMod.assembleSolution
 
@@ -100,7 +104,8 @@ end # end function assembleSolution
   dimension.
 """->
 
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp,
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                               sbp::SBPOperator,
                                                eqn::AdvectionData{Tsol, Tdim},
                                                opts, 
                                                array::AbstractArray{Tsol, 1})
