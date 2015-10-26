@@ -946,7 +946,7 @@ jac_type = opts["jac_type"]::Int
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-pc_type", "bjacobi", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 comm = MPI.COMM_WORLD
 
 println("creating b")
@@ -967,7 +967,7 @@ if jac_type == 3  # explicit sparse jacobian
   println("creating A")
   A = PetscMat(comm)
   PetscMatSetFromOptions(A)
-  PetscMatSetType(A, PETSc.MATSEQBAIJ)
+  PetscMatSetType(A, PETSc.MATMPIBAIJ)
   PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
 elseif jac_type == 4  # jacobian-vector product
@@ -991,7 +991,7 @@ println("type of A = ", MatGetType(A))
 println("creating Ap")  # used for preconditioner
 Ap = PetscMat(comm)
 PetscMatSetFromOptions(Ap)
-PetscMatSetType(Ap, PETSc.MATSEQBAIJ)
+PetscMatSetType(Ap, PETSc.MATMPIBAIJ)
 PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
 println("type of Ap = ", MatGetType(Ap))
@@ -1016,9 +1016,9 @@ end
 
 if jac_type == 3
 
-  MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
   PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
 
+  MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
   PetscMatZeroEntries(A)
   matinfo = PetscMatGetInfo(A, Int32(1))
   println("A block size = ", matinfo.block_size)
@@ -1027,8 +1027,9 @@ if jac_type == 3
   PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
 end
 
-MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
 PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
+
+MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
 matinfo = PetscMatGetInfo(Ap, Int32(1))
 println("Ap block size = ", matinfo.block_size)
 
@@ -1047,18 +1048,19 @@ PetscMatAssemblyEnd(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
 
 # create KSP contex
 ksp = KSP(comm)
-KSPSetOperators(ksp, A, Ap)  # this was A, Ap
+
 KSPSetFromOptions(ksp)
+KSPSetOperators(ksp, A, Ap)  # this was A, Ap
 
 # set: rtol, abstol, dtol, maxits
 KSPSetTolerances(ksp, 1e-2, 1e-12, 1e5, PetscInt(1000))
-KSPSetUp(ksp)
+#KSPSetUp(ksp)
 
 
 pc = KSPGetPC(ksp)
 pc_type = PCGetType(pc)
 println("pc_type = ", pc_type)
-
+#=
 if pc_type == "bjacobi"
   n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
   println("n_local = ", n_local, ", first_local = ", first_local)
@@ -1077,7 +1079,7 @@ if pc_type == "ilu"
   fill_level = PCFactorGetLevels(sub_pc)
   println("preconditioner using fill level = ", fill_level)
 end
-
+=#
 
 
 return A, Ap, x, b, ksp, ctx
@@ -1150,7 +1152,9 @@ function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KS
   end
 
 
- 
+ # only call this first time?
+ # what happens when A and Ap change?
+  KSPSetUp(ksp)
 
 
   println("solving system")
