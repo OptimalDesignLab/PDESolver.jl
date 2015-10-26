@@ -67,8 +67,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
-  elseif jac_type == 3  # petsc
-    jac, jacp, x, b, ksp = createPetscData(mesh, eqn, opts)
+  elseif jac_type == 3 || jac_type == 4 # petsc
+    jac, jacp, x, b, ksp, ctx = createPetscData(mesh, sbp, eqn, opts, func)
   end
 
 
@@ -194,7 +194,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 	      println("calculating sparse complex step jacobian")
         res_dummy = []  # not used, so don't allocation memory
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
-      elseif jac_type == 3
+      elseif jac_type == 3 # Petsc sparse jacobian
         res_dummy = []  # not used, so don't allocation memory
 	use_dissipation_orig = eqn.params.use_dissipation
 	use_edgestab_orig = eqn.params.use_edgestab
@@ -446,6 +446,46 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
  return res_0_norm
 end
+
+
+function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
+# calculate Ax = b
+
+  # get the context
+  # the context is a pointer to a tuple of all objects needed
+  # for a residual evaluation
+  ctx = MatShellGetContext(A)
+  tpl = unsafe_pointer_to_objref(ctx)
+  # unpack the tuple (could use compact syntax)
+  mesh = tpl[1]
+  sbp = tpl[2]
+  eqn = tpl[3]
+  opts = tpl[4]
+  func = tpl[5]
+
+  epsilon =  opts["epsilon"]
+  jac_method = opts["jac_method"]
+
+  # the perturbation had better match the type of the eqn object
+  if jac_method == 1  # finite difference
+    pert = epsilon
+  elseif jac_method == 2  # complex step
+    pert = complex(0, epsilon)
+  end
+
+  # get the arrays underlying x and b
+  x_arr, xptr = PetscVecGetArrayRead(x)  # read only
+  b_arr, bptr = PetscVecGetArray(b)  # writeable
+
+  calcJacVecProd(mesh, sbp, eqn, opts, pert, func, x_arr, b_arr)
+
+  PetscVecRestoreArrayRead(x, xptr)
+  PetscVecRestoreArray(b, bptr)
+
+  return nothing
+end
+
+
 
 
 function calcJacVecProd(mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b::AbstractVector)
@@ -893,14 +933,18 @@ end
 
 
 
-function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
+function createPetscData(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, func)
 # initialize petsc and create Jacobian matrix A, and vectors x, b, and the
 # ksp context
 # serial only
+# func residual evaluation function
+
+jac_type = opts["jac_type"]::Int
 
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
+#PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
 PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 comm = MPI.COMM_WORLD
@@ -915,21 +959,45 @@ x = PetscVec(comm)
 PetscVecSetType(x, VECMPI)
 PetscVecSetSizes(x, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
-println("creating A")
-A = PetscMat(comm)
-PetscMatSetFromOptions(A)
-PetscMatSetType(A, MATMPIBAIJ)
-PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+# tuple of all the objects needed to evaluate the residual
+# only used by Mat Shell
+ctx = (mesh, sbp, eqn, opts, func)  # tuple of all the objects needed to evalute the
+                                    # residual
+if jac_type == 3  # explicit sparse jacobian
+  println("creating A")
+  A = PetscMat(comm)
+  PetscMatSetFromOptions(A)
+  PetscMatSetType(A, PETSc.MATSEQBAIJ)
+  PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+
+elseif jac_type == 4  # jacobian-vector product
+  # create matrix shell
+  ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple
+  A = MatCreateShell(comm, numDofPerNode, numDofPerNode, numDofPerNode, numDofPerNode, ctx_ptr)
+  PetscMatSetFromOptions(A)  # necessary?
+  PetscSetUp(A)
+
+  # give PETSc the function pointer of Jacobian vector product function
+  fptr = cfunction (calcJacVecProd_wrapper, Void, (PetscMat, PetscVec, PetscVec))
+  MatShellSetOperation(A, PETSc.MATOP_MULT, fptr)
+
+else
+  println(STDERR, "Unsupported jacobian type requested")
+  println(STDERR, "jac_type = ", jac_type)
+end
+
+println("type of A = ", MatGetType(A))
 
 println("creating Ap")  # used for preconditioner
 Ap = PetscMat(comm)
 PetscMatSetFromOptions(Ap)
-PetscMatSetType(Ap, MATMPIBAIJ)
+PetscMatSetType(Ap, PETSc.MATSEQBAIJ)
 PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
+println("type of Ap = ", MatGetType(Ap))
 
 
-println("preallocating A")
+println("preallocating Petsc Matrices")
 # prellocate matrix
 dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
 onnz = zeros(PetscInt, mesh.numDof)  # there is no off diagonal part for single proc case
@@ -946,22 +1014,36 @@ for i=1:mesh.numNodes
 #  println("row ", i," has ", nnz_i, " non zero entries")
 end
 
-PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
+if jac_type == 3
+
+  MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+  PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
+
+  PetscMatZeroEntries(A)
+  matinfo = PetscMatGetInfo(A, Int32(1))
+  println("A block size = ", matinfo.block_size)
+
+  PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
+  PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
+end
+
+MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
 PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
+matinfo = PetscMatGetInfo(Ap, Int32(1))
+println("Ap block size = ", matinfo.block_size)
+
 # zero initialize the matrix just in case
-println("zeroing A")
-PetscMatZeroEntries(A)
+println("zeroing Ap")
 PetscMatZeroEntries(Ap)
+
+PetscMatAssemblyBegin(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
+PetscMatAssemblyEnd(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
+
 
 
 # set some options
 # MatSetValuesBlocked will interpret the array of values as being column
 # major
-MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
-MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
-
-matinfo = PetscMatGetInfo(A, Int32(1))
-println("A block size = ", matinfo.block_size)
 
 # create KSP contex
 ksp = KSP(comm)
@@ -977,7 +1059,7 @@ pc = KSPGetPC(ksp)
 pc_type = PCGetType(pc)
 println("pc_type = ", pc_type)
 
-if pc_type != "none"
+if pc_type == "bjacobi"
   n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
   println("n_local = ", n_local, ", first_local = ", first_local)
   println("length(ksp_arr) = ", length(ksp_arr))
@@ -991,9 +1073,14 @@ if pc_type != "none"
   println("preconditioner using fill level = ", fill_level)
 end
 
+if pc_type == "ilu"
+  fill_level = PCFactorGetLevels(sub_pc)
+  println("preconditioner using fill level = ", fill_level)
+end
 
 
-return A, Ap, x, b, ksp
+
+return A, Ap, x, b, ksp, ctx
 
 end
 
