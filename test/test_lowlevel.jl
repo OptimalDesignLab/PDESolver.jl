@@ -172,7 +172,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
  context("--- Testing dataPrep ---") do
  
-   EulerEquationMod.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+   EulerEquationMod.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
 
@@ -288,5 +288,12 @@ facts("--- Testing Euler Low Level Functions --- ") do
     end
 
   end
+
+  println("typeof(eqn) = ", typeof(eqn))
+
+#  context("--- Testing NonlinearSolvers --- ") do
+#    jac = SparseMatrixCSC(mesh.sparsity_bnds, eltype(eqn.res_vec))
+#
+#  end
 
 end # end facts block

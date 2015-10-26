@@ -448,6 +448,47 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 end
 
 
+function calcJacVecProd(mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b::AbstractVector)
+# calculates the product of the jacobian with the vector vec using a directional
+# derivative
+# only intended to work with complex step
+# might also work for finite differences
+# vec is the vector the jacobian is multiplied by
+# the result is stored in b
+# the product uses the jacobian at the point stored in eqn.q_vec
+# ie. J(eqn.q)*v = b = imag(J(u + pert*v))/pert
+# pert is the perturbation, either real or complex for finite difference or 
+# complex step, respectively
+# func is the residual evaluation function
+  
+  epsilon = real(pert)  # magnitude of perturbation
+
+  # apply perturbation
+  for i=1:mesh.numDof
+    eqn.q_vec[i] += pert*vec[i]
+  end
+
+  # scatter into eqn.q
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+ 
+  func(mesh, sbp, eqn, opts)
+
+  # gather into eqn.res_vec
+  assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
+  
+  # calculate derivatives, store into b
+  calcJacRow(b, eqn.res_vec, epsilon)
+
+  # undo perturbation
+  for i=1:mesh.numDof
+    eqn.q_vec[i] -= pert*vec[i]
+  end
+
+  return nothing
+end
+
+  
+
 function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 # calculate the jacobian using finite difference
   #println(res_0)
