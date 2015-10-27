@@ -273,7 +273,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
 
     # TODO: make an input option for using artifical dissipation
     # as the Petsc preconditioner
-    if opts["use_dissipation"] || opts["jac_type"] == 3
+    jac_type = opts["jac_type"]::Int
+    if opts["use_dissipation"] || jac_type == 3 || jac_type == 4
       dissipation_name = opts["dissipation_name"]
       eqn.dissipation_mat = calcDissipationOperator(mesh, sbp, eqn, 
                                                     dissipation_name, opts)

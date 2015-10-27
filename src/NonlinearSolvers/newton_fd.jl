@@ -208,6 +208,21 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 	eqn.params.use_dissipation = use_dissipation_orig
 	eqn.params.use_edgestab = use_edgestab_orig
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+
+      elseif jac_type == 4 # Petsc jacobian-vector product
+	# calculate preconditioner matrix only
+	res_dummy = []
+	use_dissipation_orig = eqn.params.use_dissipation
+	use_edgestab_orig = eqn.params.use_edgestab
+        eqn.params.use_dissipation = true
+	eqn.params.use_edgestab = false
+
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+        
+#        addDiagonal(mesh, sbp, eqn, jacp)        
+	# use normal stabilization for the real jacobian
+	eqn.params.use_dissipation = use_dissipation_orig
+	eqn.params.use_edgestab = use_edgestab_orig
  
       end
 
@@ -259,8 +274,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
-    elseif jac_type == 3   # petsc
-      @time petscSolve(jac, jacp, x, b, ksp, res_0, delta_res_vec)
+    elseif jac_type == 3 || jac_type == 4  # petsc
+      @time petscSolve(jac, jacp, x, b, ksp, opts, res_0, delta_res_vec)
     end
     
     println("matrix solve @time printed above")
@@ -451,6 +466,7 @@ end
 function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 # calculate Ax = b
 
+  println("entered calcJacVecProd wrapper")
   # get the context
   # the context is a pointer to a tuple of all objects needed
   # for a residual evaluation
@@ -479,6 +495,7 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 
   calcJacVecProd(mesh, sbp, eqn, opts, pert, func, x_arr, b_arr)
 
+  println("finished calculating JacVecProd")
   PetscVecRestoreArrayRead(x, xptr)
   PetscVecRestoreArray(b, bptr)
 
@@ -946,7 +963,7 @@ jac_type = opts["jac_type"]::Int
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-pc_type", "bjacobi", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 comm = MPI.COMM_WORLD
 
 println("creating b")
@@ -967,7 +984,7 @@ if jac_type == 3  # explicit sparse jacobian
   println("creating A")
   A = PetscMat(comm)
   PetscMatSetFromOptions(A)
-  PetscMatSetType(A, PETSc.MATMPIBAIJ)
+  PetscMatSetType(A, PETSc.MATSEQBAIJ)
   PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
 elseif jac_type == 4  # jacobian-vector product
@@ -991,7 +1008,7 @@ println("type of A = ", MatGetType(A))
 println("creating Ap")  # used for preconditioner
 Ap = PetscMat(comm)
 PetscMatSetFromOptions(Ap)
-PetscMatSetType(Ap, PETSc.MATMPIBAIJ)
+PetscMatSetType(Ap, PETSc.MATSEQBAIJ)
 PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
 println("type of Ap = ", MatGetType(Ap))
@@ -1101,11 +1118,13 @@ return nothing
 end
 
 
-function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::AbstractVector, delta_res_vec::AbstractVector)
+function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector )
 
   # solve the system for the newton step, write it to delta_res_vec
   # writing it to delta_res_vec is an unecessary copy, becasue we could
   # write it directly to eqn.q, but for consistency we do it anyways
+
+  jac_type = opts["jac_type"]::Int
 
   # copy res_0 into b
   # create the index array
@@ -1117,6 +1136,7 @@ function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KS
   end
 
   # copy into Petsc and assemble
+  # should do this by direct array access
   PetscVecSetValues(b, idx, res_0, PETSC_INSERT_VALUES)
   PetscVecAssemblyBegin(b)
   PetscVecAssemblyEnd(b)
@@ -1130,32 +1150,44 @@ function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KS
 
   # assemble matrix
   # should this be overlapped with the vector assembly?
-  println("assembling A")
-  PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
+  if jac_type != 4
+    println("assembling A")
+    PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
+  end
 
   PetscMatAssemblyBegin(Ap, PETSC_MAT_FINAL_ASSEMBLY)
   PetscMatAssemblyEnd(Ap, PETSC_MAT_FINAL_ASSEMBLY)
 
-
-  matinfo = PetscMatGetInfo(A, MAT_LOCAL)
-  println("number of mallocs for A = ", matinfo.mallocs)
-  if matinfo.mallocs > 0.5  # if any mallocs
-    println("Caution: non zero number of mallocs for A")
-    println("  number of mallocs = ", matinfo.mallocs)
-  end
-  matinfo = PetscMatGetInfo(Ap, MAT_LOCAL)
-
-  if matinfo.mallocs > 0.5  # if any mallocs
-    println("Caution: non zero number of mallocs for Ap")
-    println("  number of mallocs = ", matinfo.mallocs)
+  if jac_type != 4
+    matinfo = PetscMatGetInfo(A, MAT_LOCAL)
+    println("number of mallocs for A = ", matinfo.mallocs)
+    if matinfo.mallocs > 0.5  # if any mallocs
+      println("Caution: non zero number of mallocs for A")
+      println("  number of mallocs = ", matinfo.mallocs)
+    end
   end
 
+    matinfo = PetscMatGetInfo(Ap, MAT_LOCAL)
 
- # only call this first time?
- # what happens when A and Ap change?
+    if matinfo.mallocs > 0.5  # if any mallocs
+      println("Caution: non zero number of mallocs for Ap")
+      println("  number of mallocs = ", matinfo.mallocs)
+    end
+ 
+
+  # only call this first time?
+  # what happens when A and Ap change?
+  # this is not truely necessary for the common case, because KSPSolve
+  # calls it if needed
+  # it is necessary to call KSPSetUp before getting the preconditioner
+  # context in some cases
   KSPSetUp(ksp)
 
+  nx = PetscVecGetSize(x)
+  nb = PetscVecGetSize(b)
+  println("size of x = ", nx)
+  println("size of y = ", nb)
 
   println("solving system")
   KSPSolve(ksp, b, x)
@@ -1173,7 +1205,9 @@ function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KS
   PetscVecRestoreArray(x, ptr_arr)
 
   # zero out the Jacobian for next use
-  PetscMatZeroEntries(A)
+  if opts["jac_type"] != 4
+    PetscMatZeroEntries(A)
+  end
   PetscMatZeroEntries(Ap)
   return nothing
 end
