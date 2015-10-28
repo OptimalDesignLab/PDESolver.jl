@@ -73,14 +73,19 @@ dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 
 # create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=2)
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=opts["coloring_distance"])
+
+pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+
 # TODO: input argument for dofpernode
 
 # create euler equation
 eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 
-# TODO: needs comment
-init(mesh, sbp, eqn, opts)
+# initialize physics module and populate any fields in mesh and eqn that
+# depend on the physics module
+init(mesh, sbp, eqn, opts, pmesh)
+
 
 res_vec = eqn.res_vec         # solution at previous timestep
 q_vec = eqn.q_vec       # solution at current timestep
@@ -224,7 +229,7 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], 
+    @time newton(evalEuler, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
                  step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 

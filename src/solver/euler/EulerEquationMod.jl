@@ -133,7 +133,7 @@ type ParamType{Tdim}
     use_res_filter = opts["use_res_filter"]
     if use_res_filter println("residual filter enabled") end
 
-    if use_filter || use_res_filter
+    if use_filter || use_res_filter || opts["use_filter_prec"]
       filter_fname = opts["filter_name"]
       filter_mat = calcFilter(sbp, filter_fname, opts)
     else
@@ -280,7 +280,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     # TODO: make an input option for using artifical dissipation
     # as the Petsc preconditioner
     jac_type = opts["jac_type"]::Int
-    if opts["use_dissipation"] || jac_type == 3 || jac_type == 4
+    if opts["use_dissipation"] || opts["use_dissipation_prec"]
       dissipation_name = opts["dissipation_name"]
       eqn.dissipation_mat = calcDissipationOperator(mesh, sbp, eqn, 
                                                     dissipation_name, opts)

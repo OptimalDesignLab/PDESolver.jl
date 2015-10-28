@@ -153,11 +153,12 @@ end  # end evalEuler
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
+function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts, pmesh=mesh)
 
   println("\nInitializing Euler module")
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
+  getBCFunctors(pmesh, sbp, eqn, opts)
 
 
   return nothing

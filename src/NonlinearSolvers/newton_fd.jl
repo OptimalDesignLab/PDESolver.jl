@@ -9,6 +9,7 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
     * sbp : sbp operator to be used to evaluate the residual
     * eqn : EulerData to use to evaluate the residual
     * opts : options dictonary
+    * pmesh : mesh used for preconditioning, defaults to mesh
 
     Optional Arguments
     * itermax : maximum number of Newton iterations
@@ -18,7 +19,7 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
     func must have the signature func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec) 
 
 """->
-function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
+function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -69,7 +70,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
   elseif jac_type == 3 || jac_type == 4 # petsc
-    jac, jacp, x, b, ksp, ctx = createPetscData(mesh, sbp, eqn, opts, func)
+    jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, func)
   end
 
   step_fac = 1.0 # step size limiter
@@ -171,10 +172,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
         # use artificial dissipation for the preconditioner 
 	use_dissipation_orig = eqn.params.use_dissipation
 	use_edgestab_orig = eqn.params.use_edgestab
-        eqn.params.use_dissipation = true
-	eqn.params.use_edgestab = false
+        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
-        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jacp)
+        @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 	eqn.params.use_dissipation = use_dissipation_orig
@@ -197,10 +198,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
         res_dummy = []  # not used, so don't allocation memory
 	use_dissipation_orig = eqn.params.use_dissipation
 	use_edgestab_orig = eqn.params.use_edgestab
-        eqn.params.use_dissipation = true
-	eqn.params.use_edgestab = false
+        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
-        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+        @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
         
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
@@ -213,10 +214,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 	res_dummy = []
 	use_dissipation_orig = eqn.params.use_dissipation
 	use_edgestab_orig = eqn.params.use_edgestab
-        eqn.params.use_dissipation = true
-	eqn.params.use_edgestab = false
+        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
-        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+        @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
         
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
@@ -1014,7 +1015,7 @@ end
 
 
 
-function createPetscData(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, func)
+function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, func)
 # initialize petsc and create Jacobian matrix A, and vectors x, b, and the
 # ksp context
 # serial only
@@ -1087,7 +1088,7 @@ dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 bs = PetscInt(mesh.numDofPerNode)  # block size
 
-# calculate number of non zeros per row
+# calculate number of non zeros per row for A
 for i=1:mesh.numNodes
   max_dof = mesh.sparsity_nodebnds[2, i]
   min_dof = mesh.sparsity_nodebnds[1, i]
@@ -1107,6 +1108,15 @@ if jac_type == 3
 
   PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
   PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
+end
+
+# calculate number of nonzeros per row for A[
+for i=1:mesh.numNodes
+  max_dof = pmesh.sparsity_nodebnds[2, i]
+  min_dof = pmesh.sparsity_nodebnds[1, i]
+  nnz_i = max_dof - min_dof + 1
+  dnnz[i] = nnz_i
+#  println("row ", i," has ", nnz_i, " non zero entries")
 end
 
 PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)

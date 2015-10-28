@@ -52,9 +52,29 @@ get!(arg_dict, "use_dissipation", false)
 get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
 
+# preconditioning stabilization options
+# non-logical values are shared between regular, preconditioned run
+get!(arg_dict, "use_edgestab_prec", false) 
+get!(arg_dict, "use_filter_prec", false)
+get!(arg_dict, "use_dissipation_prec", false)
+
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
   # the raised cosine filter has no paramters
+end
+
+# figure out coloring distances
+if arg_dict["use_edgestab"]
+  get!(arg_dict, "coloring_distance", 2)
+else
+  get!(arg_dict, "coloring_distance", 0)
+end
+
+
+if arg_dict["use_edgestab_prec"]
+  get!(arg_dict, "coloring_distance_prec", 2)
+else
+  get!(arg_dict, "coloring_distance_prec", 0)
 end
 
 
