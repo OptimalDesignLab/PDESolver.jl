@@ -72,9 +72,6 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     jac, jacp, x, b, ksp, ctx = createPetscData(mesh, sbp, eqn, opts, func)
   end
 
-  println("typeof(jac) = ", typeof(jac))
-
-
   step_fac = 1.0 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
   Tsol = typeof(eqn.res_vec[1])
@@ -234,9 +231,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 #    checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
 
     # print as determined by options
-    if write_jac
-       # fname = string("jacobian", i, ".dat")
-       # printMatrix(fname, jac)
+    if write_jac && jac_type != 4
       if jac_type == 3
         PetscMatAssemblyBegin(jac, PETSC_MAT_FINAL_ASSEMBLY)
         PetscMatAssemblyEnd(jac, PETSC_MAT_FINAL_ASSEMBLY)
@@ -415,17 +410,17 @@ function checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
   
   v = ones(mesh.numDof)
   result1 = zeros(mesh.numDof)
-  writedlm("qvec_before.dat", eqn.q_vec)
+#  writedlm("qvec_before.dat", eqn.q_vec)
   calcJacVecProd(mesh, sbp, eqn, opts, pert, func, v, result1)
-  writedlm("qvec_prod.dat", eqn.q_vec)
-  writedlm("q_prod.dat", eqn.q)
+#  writedlm("qvec_prod.dat", eqn.q_vec)
+#  writedlm("q_prod.dat", eqn.q)
   jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   res_dummy = []
 
   disassembleSolution(mesh, sbp, eqn,opts, eqn.q_vec)
   @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
-  writedlm("qvec_explicit.dat", eqn.q_vec)
-  writedlm("q_explicit.dat", eqn.q)
+#  writedlm("qvec_explicit.dat", eqn.q_vec)
+#  writedlm("q_explicit.dat", eqn.q)
   result2 = jac*v
 
   cnt = 0
@@ -449,7 +444,7 @@ function checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
   return nothing
 end
 
-function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; assemble_edgeres=true)
+function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; assemble_edgeres=true, zero_resvec=true)
 # assembles all of the residuals into res_vec
 # no aliaising concerns
 
@@ -458,7 +453,7 @@ function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1};
   if assemble_edgeres
 
     for i=1:size(eqn.res_edge, 4)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i), res_vec)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i), res_vec, zero_resvec=zero_resvec)
     end
   end
 
@@ -486,11 +481,7 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 #  res_0[:] = real(eqn.res_vec)  # is there an unnecessary copy here?
 
   fill!(eqn.res_vec, 0.0)
-  writedlm("res_preassemble.dat", eqn.res)
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
-  writedlm("res_postassemble.dat", eqn.res)
-  writedlm("res_vec.dat", eqn.res_vec)
-  writedlm("dofs.dat", mesh.dofs)
 
 
   for j=1:m
@@ -564,37 +555,7 @@ function calcJacVecProd(mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b
   itr = eqn.params.krylov_itr
 
   epsilon = imag(pert)  # magnitude of perturbationa
-#=
-  writedlm("vec$itr.dat", vec)
 
-#  println("pert = ", pert)
-  b2 = copy(b)
-  jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
-  res_dummy = []
-  eqn.params.krylov_type = 1
-
-  disassembleSolution(mesh, sbp, eqn,opts, eqn.q_vec)
-  writedlm("q_explicit$itr.dat", eqn.q)
-
-  @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
-
-  writedlm("eres$itr.dat", eqn.res)
-
-  writedlm("q_explicit_after$itr.dat", eqn.q)
-  println("jacobian computation @time printed above")
-  tmp = jac*vec
-
-  writedlm("eprod$itr.dat", tmp)
-  for i=1:length(tmp)
-    b2[i] = tmp[i]
-  end
-
-#  return nothing
-
-  eqn.params.krylov_type = 2
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-  writedlm("q_prod$itr.dat", eqn.q)
-=#
   # apply perturbation
   for i=1:mesh.numDof
     eqn.q_vec[i] += pert*vec[i]

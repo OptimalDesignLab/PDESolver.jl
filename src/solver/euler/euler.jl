@@ -238,25 +238,13 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
     applyFilter(mesh, sbp, eqn, eqn.q, opts)
   end
 
-
-
   u = eqn.q
   flux_parametric = eqn.flux_parametric
 
   # zero out res
-#  println("zeroing res")
   fill!(eqn.res, 0.0)
   fill!(eqn.res_edge, 0.0)
  
-#  fill!(eqn.aux_vars, 0.0)
-#  fill!(eqn.flux_parametric, 0.0)
-#  fill!(eqn.bndryflux, 0.0)
-#  fill!(eqn.stabscale, 0.0)
-
-  # disassemble q_vec into eqn.q
-#  disassembleSolution(mesh, sbp, eqn, opts, q_vec)
-  # disassmble q_vec into eqn.q
-
   getAuxVars(mesh, eqn)
 #  println("getAuxVars @time printed above")
 
@@ -270,15 +258,6 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(flux_parametric, :, :, :, 1), view(flux_parametric, :, :, :, 2))
   getEulerFlux(mesh, sbp,  eqn, opts)
-
-  itr = eqn.params.krylov_itr
-  if eqn.params.krylov_type == 1
-    fname = "eeulerflux$itr.dat"
-  else
-    fname = "peulerflux$itr.dat"
-  end
-
-  writedlm(fname, eqn.flux_parametric)
 #  println("getEulerFlux @time printed above")
 
 
@@ -869,24 +848,22 @@ end
 
   This function takes the 3D array of variables in arr and 
   reassmbles is into the vector res_vec.  Note that
-  This is a reduction operation and requires eqn.res_vec to be zerod before
-  calling this function.
+  This is a reduction operation and zeros res_vec before performing the 
+  operation, unless zero_res is set to false
 
   This is a mid level function, and does the right thing regardless of
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, res_vec::AbstractArray{Tres,1})
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, res_vec::AbstractArray{Tres,1}, zero_resvec=true)
 # arr is the array to be assembled into res_vec
 
 #  println("in assembleSolution")
 
-#  println("size(mesh.dofs) = ", size(mesh.dofs))
-#  println("size(eqn.res = ", size(eqn.res))
+  if zero_resvec
+    fill!(res_vec, 0.0)
+  end
 
-
-#  println("before assembly, sum(res) = ", sum(eqn.res))
-#  println("    sum(res_vec) = ", sum(res_vec))
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -897,10 +874,6 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
     end
   end
   
-
-#  println("after assembly, sum(res) = ", sum(eqn.res))
-#  println("    sum(res_vec) = ", sum(res_vec))
-
   return nothing
 end
 
