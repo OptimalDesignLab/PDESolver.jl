@@ -4,16 +4,19 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex.jl"
 
+#  ARGS[1] = "input_vals_vortex5.jl"
   include("../src/solver/euler/startup.jl")
 
   @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
+  initializeTempVariables(mesh)
   println("testing jacobian vector product")
   # test jacobian vector product
   # load a new initial condition
   ICFunc = EulerEquationMod.ICDict["ICIsentropicVortex"]
   ICfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  jac = SparseMatrixCSC(mesh.sparsity_bnds, eltype(eqn.res_vec))
+  NonlinearSolvers.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+  jac = SparseMatrixCSC(mesh.sparsity_bnds, typeof(real(eqn.res[1])))
   epsilon = 1e-20
   pert = complex(0, epsilon)
   NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, EulerEquationMod.evalEuler, [], pert, jac)
@@ -28,6 +31,12 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
     @fact result1[i] => roughly(result2[i])
   end
 
+#  results_all = hcat(result1, result2)
+#  println("results_all = \n", results_all)
+
+#  results_diff = result1 - result2
+#  diff_norm = calcNorm(eqn, results_diff)
+#  println("diff_norm = ", diff_norm)
 
 
   resize!(ARGS, 1)

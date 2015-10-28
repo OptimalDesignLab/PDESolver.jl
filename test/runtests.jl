@@ -1,6 +1,20 @@
+push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+
+
+
 using PDESolver
 #using Base.Test
 using FactCheck
+using ODLCommonTools
+using PdePumiInterface  # common mesh interface - pumi
+using SummationByParts  # SBP operators
+using EulerEquationMod
+using ForwardDiff
+using NonlinearSolvers   # non-linear solvers
+using ArrayViews
+
 
 # insert a command line argument
 resize!(ARGS, 1)

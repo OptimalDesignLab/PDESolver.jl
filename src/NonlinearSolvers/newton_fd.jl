@@ -59,6 +59,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
 
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
+  println("Tjac = ", Tjac)
   m = length(eqn.res_vec)
 #  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
 
@@ -71,6 +72,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     jac, jacp, x, b, ksp, ctx = createPetscData(mesh, sbp, eqn, opts, func)
   end
 
+  println("typeof(jac) = ", typeof(jac))
 
 
   step_fac = 1.0 # step size limiter
@@ -228,6 +230,8 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
       println("complex step jacobian calculate @time printed above")
     end
+
+#    checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
 
     # print as determined by options
     if write_jac
@@ -407,6 +411,44 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 end
 
 
+function checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
+  
+  v = ones(mesh.numDof)
+  result1 = zeros(mesh.numDof)
+  writedlm("qvec_before.dat", eqn.q_vec)
+  calcJacVecProd(mesh, sbp, eqn, opts, pert, func, v, result1)
+  writedlm("qvec_prod.dat", eqn.q_vec)
+  writedlm("q_prod.dat", eqn.q)
+  jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
+  res_dummy = []
+
+  disassembleSolution(mesh, sbp, eqn,opts, eqn.q_vec)
+  @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+  writedlm("qvec_explicit.dat", eqn.q_vec)
+  writedlm("q_explicit.dat", eqn.q)
+  result2 = jac*v
+
+  cnt = 0
+  for i=1:mesh.numDof
+    if abs(result1[i] - result2[i]) > 1e-14
+      cnt += 1
+    end
+  end
+
+  if cnt != 0
+    println(STDERR, "Warning: jacobian vector product check failed")
+    println("cnt = ", cnt)
+    result_diff = result1 - result2
+    diff_norm = calcNorm(eqn, result_diff)
+    println("diff norm = ", diff_norm)
+    println("result_diff = ", result_diff)
+  else
+    println("jacobian vector product check passed")
+  end
+
+  return nothing
+end
+
 function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; assemble_edgeres=true)
 # assembles all of the residuals into res_vec
 # no aliaising concerns
@@ -466,7 +508,7 @@ end
 function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 # calculate Ax = b
 
-  println("entered calcJacVecProd wrapper")
+#  println("entered calcJacVecProd wrapper")
   # get the context
   # the context is a pointer to a tuple of all objects needed
   # for a residual evaluation
@@ -495,11 +537,12 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 
   calcJacVecProd(mesh, sbp, eqn, opts, pert, func, x_arr, b_arr)
 
-  println("finished calculating JacVecProd")
+#  println("finished calculating JacVecProd")
   PetscVecRestoreArrayRead(x, xptr)
   PetscVecRestoreArray(b, bptr)
 
-  return nothing
+
+  return PetscErrorCode(0)
 end
 
 
@@ -517,30 +560,90 @@ function calcJacVecProd(mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b
 # pert is the perturbation, either real or complex for finite difference or 
 # complex step, respectively
 # func is the residual evaluation function
-  
-  epsilon = real(pert)  # magnitude of perturbation
+ 
+  itr = eqn.params.krylov_itr
 
+  epsilon = imag(pert)  # magnitude of perturbationa
+#=
+  writedlm("vec$itr.dat", vec)
+
+#  println("pert = ", pert)
+  b2 = copy(b)
+  jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
+  res_dummy = []
+  eqn.params.krylov_type = 1
+
+  disassembleSolution(mesh, sbp, eqn,opts, eqn.q_vec)
+  writedlm("q_explicit$itr.dat", eqn.q)
+
+  @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+
+  writedlm("eres$itr.dat", eqn.res)
+
+  writedlm("q_explicit_after$itr.dat", eqn.q)
+  println("jacobian computation @time printed above")
+  tmp = jac*vec
+
+  writedlm("eprod$itr.dat", tmp)
+  for i=1:length(tmp)
+    b2[i] = tmp[i]
+  end
+
+#  return nothing
+
+  eqn.params.krylov_type = 2
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+  writedlm("q_prod$itr.dat", eqn.q)
+=#
   # apply perturbation
   for i=1:mesh.numDof
     eqn.q_vec[i] += pert*vec[i]
   end
 
   # scatter into eqn.q
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
- 
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
+#  writedlm("q_prod_after$itr.dat", eqn.q)
   func(mesh, sbp, eqn, opts)
 
+#  writedlm("prod_res$itr.dat", eqn.res)
+  fill!(eqn.res_vec, 0.0)
   # gather into eqn.res_vec
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
   
+#  writedlm("res_vec$itr.dat", eqn.res_vec)
   # calculate derivatives, store into b
   calcJacRow(b, eqn.res_vec, epsilon)
 
+#  writedlm("pprod$itr.dat", b)
+#  println("b = ", b)
   # undo perturbation
   for i=1:mesh.numDof
     eqn.q_vec[i] -= pert*vec[i]
   end
 
+#=
+  cnt = 0
+  for i=1:mesh.numDof
+    if abs(b2[i] - b[i]) > 1e-14
+      cnt += 1
+#      println("  i = ", i)
+    end
+  end
+
+  if cnt != 0
+    println(STDERR, "Warning: jacobian vector product check failed")
+    println("cnt = ", cnt)
+    result_diff = b2 - b
+    diff_norm = calcNorm(eqn, result_diff)
+    println("diff norm = ", diff_norm)
+#    println("result_diff = ", result_diff)
+  else
+    println("jacobian vector product check passed")
+  end
+=#
+  eqn.params.krylov_itr += 1
+
+#  print("\n")
   return nothing
 end
 
@@ -622,7 +725,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 
   # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
-    println("color = ", color)
+#    println("color = ", color)
 #    getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
 #      println("node ", j)
@@ -963,18 +1066,19 @@ jac_type = opts["jac_type"]::Int
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
 comm = MPI.COMM_WORLD
 
+obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
 println("creating b")
 b = PetscVec(comm)
-PetscVecSetType(b, VECMPI)
-PetscVecSetSizes(b, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+PetscVecSetType(b, VECSEQ)
+PetscVecSetSizes(b, obj_size, obj_size)
 
 println("creating x")
 x = PetscVec(comm)
-PetscVecSetType(x, VECMPI)
-PetscVecSetSizes(x, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+PetscVecSetType(x, VECSEQ)
+PetscVecSetSizes(x, obj_size, obj_size)
 
 # tuple of all the objects needed to evaluate the residual
 # only used by Mat Shell
@@ -985,17 +1089,17 @@ if jac_type == 3  # explicit sparse jacobian
   A = PetscMat(comm)
   PetscMatSetFromOptions(A)
   PetscMatSetType(A, PETSc.MATSEQBAIJ)
-  PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+  PetscMatSetSizes(A, obj_size, obj_size, obj_size, obj_size)
 
 elseif jac_type == 4  # jacobian-vector product
   # create matrix shell
   ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple
-  A = MatCreateShell(comm, numDofPerNode, numDofPerNode, numDofPerNode, numDofPerNode, ctx_ptr)
+  A = MatCreateShell(comm, obj_size, obj_size, obj_size, obj_size, ctx_ptr)
   PetscMatSetFromOptions(A)  # necessary?
   PetscSetUp(A)
 
   # give PETSc the function pointer of Jacobian vector product function
-  fptr = cfunction (calcJacVecProd_wrapper, Void, (PetscMat, PetscVec, PetscVec))
+  fptr = cfunction (calcJacVecProd_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
   MatShellSetOperation(A, PETSc.MATOP_MULT, fptr)
 
 else

@@ -100,9 +100,12 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
 # t is current timestep
 # extra_args is unpacked into object needed to evaluation equation
 
+
 dataPrep(mesh, sbp, eqn, opts)
 #println("dataPrep @time printed above")
 evalVolumeIntegrals(mesh, sbp, eqn)
+
+
 #println("volume integral @time printed above")
 
 evalBoundaryIntegrals(mesh, sbp, eqn)
@@ -241,9 +244,15 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
   flux_parametric = eqn.flux_parametric
 
   # zero out res
+#  println("zeroing res")
   fill!(eqn.res, 0.0)
   fill!(eqn.res_edge, 0.0)
-  
+ 
+#  fill!(eqn.aux_vars, 0.0)
+#  fill!(eqn.flux_parametric, 0.0)
+#  fill!(eqn.bndryflux, 0.0)
+#  fill!(eqn.stabscale, 0.0)
+
   # disassemble q_vec into eqn.q
 #  disassembleSolution(mesh, sbp, eqn, opts, q_vec)
   # disassmble q_vec into eqn.q
@@ -261,6 +270,15 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(flux_parametric, :, :, :, 1), view(flux_parametric, :, :, :, 2))
   getEulerFlux(mesh, sbp,  eqn, opts)
+
+  itr = eqn.params.krylov_itr
+  if eqn.params.krylov_type == 1
+    fname = "eeulerflux$itr.dat"
+  else
+    fname = "peulerflux$itr.dat"
+  end
+
+  writedlm(fname, eqn.flux_parametric)
 #  println("getEulerFlux @time printed above")
 
 

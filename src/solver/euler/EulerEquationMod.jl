@@ -100,6 +100,9 @@ type ParamType{Tdim}
 
   use_dissipation::Bool  # use artificial dissipation
   dissipation_const::Float64  # constant used for dissipation filter matrix
+
+  krylov_itr::Int  # Krylov iteration number for iterative solve
+  krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
   function ParamType(sbp, opts, order::Integer)
   # create values, apply defaults
 
@@ -142,10 +145,13 @@ type ParamType{Tdim}
 
     dissipation_const = opts["dissipation_const"]
 
+    krylov_itr = 0
+    krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
+
     return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
                edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, 
                use_filter, use_res_filter, filter_mat, use_dissipation,  
-               dissipation_const)
+               dissipation_const, krylov_itr, krylov_type)
 
     end   # end of ParamType function
 
