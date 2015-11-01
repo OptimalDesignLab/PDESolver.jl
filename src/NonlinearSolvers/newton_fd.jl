@@ -1,4 +1,44 @@
 export newton, newton_check, newton_check_fd, initializeTempVariables, calcResidual
+
+@doc """
+  This type holds all the data the might be needed for Newton's method,
+  including globalization.  This simplifies the data handling and 
+  the C callback used by Petsc
+"""->
+type NewtonData{Tsol, Tres}
+  
+  res_norm_i::Float64  # current step residual norm
+  res_norm_i_1::Float64  # previous step residual norm
+  # Pseudo-transient continuation Euler
+  tau_l::Float64  # current pseudo-timestep
+  q_i_1::Array{Tsol, 1}  # array of solution at previous pseudo-timestep
+
+
+
+  # use default inner constructor
+end
+
+function NewtonData(mesh, sbp, eqn, opts)
+
+  println("entered NewtonData constructor")
+  println("typeof(eqn) = ", typeof(eqn))
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+
+  res_norm_i = 0.0
+  res_norm_i_1 = 0.0
+  if opts["newton_globalize_euler"]
+    tau_l = opts["euler_tau"]  # initailize tau to something
+    q_i_1 = zeros(Tsol, mesh.numDof)
+  else
+    tau_l = 0.0
+    q_i_1 = []
+  end
+
+
+  return NewtonData{Tsol, Tres}(res_norm_i, res_norm_i_1, tau_l, q_i_1)
+end
+
 @doc """
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
@@ -44,6 +84,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
   jac_method = opts["jac_method"]::Int  # finite difference or complex step
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
   epsilon = opts["epsilon"]::Float64
+  globalize_euler = opts["newton_globalize_euler"]::Bool
 
   println("write_rhs = ", write_rhs)
   println("write_res = ", write_res)
@@ -51,6 +92,11 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
   println("res_abstol = ", res_abstol)
   println("res_reltol = ", res_reltol)
   println("res_reltol0 = ", res_reltol0)
+
+  println("before printout")
+  println("typeof(eqn) = ", typeof(eqn))
+  println("after printout")
+  newton_data = NewtonData(mesh, sbp, eqn, opts)
 
   if jac_method == 1  # finite difference
     pert = epsilon
@@ -60,7 +106,6 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
 
 
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
-  println("Tjac = ", Tjac)
   m = length(eqn.res_vec)
 #  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
 
@@ -70,7 +115,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
   elseif jac_type == 3 || jac_type == 4 # petsc
-    jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, func)
+    jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data, func)
   end
 
   step_fac = 1.0 # step size limiter
@@ -92,7 +137,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
 
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
-  res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
   println(fconv, 0, " ", res_0_norm, " ", 0)
   flush(fconv)
@@ -229,6 +274,15 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
       println("complex step jacobian calculate @time printed above")
     end
 
+    # apply globalization
+    if globalize_euler
+      applyEuler(mesh, sbp, eqn, opts, newton_data, jacp)
+
+      if jac_type != 4
+        applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
+      end
+    end
+
 #    checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
 
     # print as determined by options
@@ -307,7 +361,8 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
  
 
     # calculate residual at updated location, used for next iteration rhs
-    res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+    newton_data.res_norm_i_1 = newton_data.res_norm_i
+    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
     println("relative residual ", res_0_norm/res_reltol_0)
 
 
@@ -380,6 +435,11 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
 
     if step_norm < 0.001
       step_fac = 1.0
+    end
+
+    # update globalization parameters
+    if globalize_euler
+      updateEuler(newton_data)
     end
 
     print("\n")
@@ -511,7 +571,8 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   sbp = tpl[2]
   eqn = tpl[3]
   opts = tpl[4]
-  func = tpl[5]
+  newton_data = tpl[5]
+  func = tpl[6]
 
   epsilon =  opts["epsilon"]
   jac_method = opts["jac_method"]
@@ -527,7 +588,7 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   x_arr, xptr = PetscVecGetArrayRead(x)  # read only
   b_arr, bptr = PetscVecGetArray(b)  # writeable
 
-  calcJacVecProd(mesh, sbp, eqn, opts, pert, func, x_arr, b_arr)
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, x_arr, b_arr)
 
 #  println("finished calculating JacVecProd")
   PetscVecRestoreArrayRead(x, xptr)
@@ -540,7 +601,7 @@ end
 
 
 
-function calcJacVecProd(mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b::AbstractVector)
+function calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b::AbstractVector)
 # calculates the product of the jacobian with the vector vec using a directional
 # derivative
 # only intended to work with complex step
@@ -554,6 +615,7 @@ function calcJacVecProd(mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b
 # func is the residual evaluation function
  
   itr = eqn.params.krylov_itr
+  globalize_euler = opts["newton_globalize_euler"]::Bool
 
   epsilon = imag(pert)  # magnitude of perturbationa
 
@@ -575,6 +637,12 @@ function calcJacVecProd(mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b
 #  writedlm("res_vec$itr.dat", eqn.res_vec)
   # calculate derivatives, store into b
   calcJacRow(b, eqn.res_vec, epsilon)
+
+  if globalize_euler
+    applyEuler(mesh, sbp, eqn, opts, vec, newton_data, b)
+  end
+
+
 
 #  writedlm("pprod$itr.dat", b)
 #  println("b = ", b)
@@ -1015,7 +1083,7 @@ end
 
 
 
-function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, func)
+function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, newton_data::NewtonData, func)
 # initialize petsc and create Jacobian matrix A, and vectors x, b, and the
 # ksp context
 # serial only
@@ -1044,7 +1112,7 @@ PetscVecSetSizes(x, obj_size, obj_size)
 
 # tuple of all the objects needed to evaluate the residual
 # only used by Mat Shell
-ctx = (mesh, sbp, eqn, opts, func)  # tuple of all the objects needed to evalute the
+ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects needed to evalute the
                                     # residual
 if jac_type == 3  # explicit sparse jacobian
   println("creating A")

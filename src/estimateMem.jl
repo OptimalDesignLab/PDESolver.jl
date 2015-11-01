@@ -1,4 +1,4 @@
-vals = readdlm("counts.txt", Int)
+vals = readdlm(ARGS[1], Int)
 
 numV = vals[1]
 numEdge = vals[2]
@@ -69,7 +69,7 @@ println("total memory usage estimate: ", total_sum, " bits")
 println("                           = ", total_sum/8, " bytes")
 println("                           = ", total_sum/(8*1024*1024), " megabytes")
 
-println("total memory usage estimate: ", jac_mem, " bits")
+println("Jacobian memory usage estimate: ", jac_mem, " bits")
 println("                           = ", jac_mem/8, " bytes")
 println("                           = ", jac_mem/(8*1024*1024), " megabytes")
 

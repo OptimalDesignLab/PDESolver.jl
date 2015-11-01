@@ -9,6 +9,7 @@ using PETSc
 
 include("rk4.jl")
 include("newton_fd.jl")
+include("globalization.jl")
 #include("newton_fd_old.jl")
 
 end

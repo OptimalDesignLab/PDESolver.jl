@@ -75,13 +75,14 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::Para
   R = params.R
   Ma = params.Ma
 
-  num = gamma*R*E/(rho*cv)
-  denom = 1/(Ma*Ma) + gamma*R/(2*cv)
+#  num = gamma*R*E/(rho*cv)
+#  denom = 1/(Ma*Ma) + gamma*R/(2*cv)
 
-  u_norm = sqrt(num/denom)  # magnitude of free stream velocity
 
-  sol[2] = rho*u_norm*cos(params.aoa)
-  sol[3] = -rho*u_norm*sin(params.aoa)
+#  u_norm = sqrt(num/denom)  # magnitude of free stream velocity
+
+  sol[2] = rho*Ma*cos(params.aoa)
+  sol[3] = -rho*Ma*sin(params.aoa)
 
   return nothing
 end

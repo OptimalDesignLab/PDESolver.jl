@@ -204,6 +204,35 @@ return nothing
 
 end
 
+@doc """
+### EulerEquationMod.FreeStreamBC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  condition that is the free stream, using rho_free, Ma, aoa, and E_free
+
+  This is a low level functor
+"""
+type FreeStreamBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+
+
+#println("in Rho1E2U3Bc")
+qg = zeros(Tsol, 4)
+
+calcFreeStream(x, params, qg)
+#println("qg = ", qg)
+# call Roe solver
+RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+
+return nothing
+
+
+end
+
 
 
 
@@ -216,7 +245,8 @@ end
 global const BCDict = Dict{ASCIIString, BCType} (
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
-"Rho1E2U3BC" => Rho1E2U3BC()
+"Rho1E2U3BC" => Rho1E2U3BC(),
+"FreeStreamBC" => FreeStreamBC()
 )
 
 @doc """

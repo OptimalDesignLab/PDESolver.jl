@@ -115,8 +115,9 @@ type ParamType{Tdim}
     Ma = opts[ "Ma"]
     Re = opts[ "Re"]
     aoa = opts[ "aoa"]
-    rho_free = opts[ "rho_free"]
-    E_free = opts[ "E_free"]
+    E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
+    rho_free = 1.0
+
     edgestab_gamma = opts["edgestab_gamma"]
 
     # debugging options
@@ -277,8 +278,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
 
     calcEdgeStabAlpha(mesh, sbp, eqn)
 
-    # TODO: make an input option for using artifical dissipation
-    # as the Petsc preconditioner
     jac_type = opts["jac_type"]::Int
     if opts["use_dissipation"] || opts["use_dissipation_prec"]
       dissipation_name = opts["dissipation_name"]

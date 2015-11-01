@@ -52,8 +52,8 @@ where input_file_name.jl is in your current directory.
 "Ma" : free stream Mach number (floating point)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
 "aoa" : angle of attack in degrees (floating point)
-"rho_free" : free stream density
-"E_free" : free stream energy
+#"rho_free" : free stream density
+#"E_free" : free stream energy
 "edgestab_gamma"  : edge stabilization parameter, (floatingpoint), default -0.1
 "perturb_ic" : add random noise to initial condition, (Bool), default false
 "perturb_mag" : magnitude of perturbation (perturbation could be + or -), (Float64), default 0.0
@@ -122,6 +122,8 @@ Note that any values associated with these options are shared with the regular
 # Newton's Method options
 "jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)
 "epsilon"  : perturbation size when calculation Jacobian, (Float64), default 1e-6 for finite difference, 1e-20 to complex step
+"newton_globalize_euler"  : use the Pseudo-Transient Continuation 
+                            (aka. implicit Euler) globalization, (Bool), default                            true
 
 # testing options
 "solve" : call the solver specified by run_type, (Bool), default true

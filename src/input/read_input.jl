@@ -38,8 +38,8 @@ Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
 aoa = get!(arg_dict, "aoa", -1.0)*pi/180
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
-rho_free = get!(arg_dict, "rho_free", -1)
-E_free = get!(arg_dict, "E_free", -1)
+#rho_free = get!(arg_dict, "rho_free", -1)
+#E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "Relfunc_name", "none")
 
 
@@ -137,7 +137,8 @@ get!(arg_dict, "res_reltol", 1e-6)
 get!(arg_dict, "res_reltol0", -1.0)
 get!(arg_dict, "print_eigs", false)
 get!(arg_dict, "write_eigs", false)
-
+get!(arg_dict, "newton_globalize_euler", true)
+get!(arg_dict, "euler_tau", 1)
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
 if run_type == 4
