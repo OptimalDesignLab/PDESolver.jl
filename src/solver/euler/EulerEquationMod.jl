@@ -197,8 +197,10 @@ include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
-include("artificialViscosity.jl")
-#include("constant_diff.jl")
+include("SUPG.jl")
+# include("artificialViscosity.jl")
+# include("constant_diff.jl")
+
 
 @doc """
 ### EulerEquationMod.EulerData_
@@ -228,9 +230,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   res::Array{Tres, 3}             # result of computation
-  res_vec::Array{Tres, 1}              # result of computation in vector form
-  q_vec::Array{Tres,1}              # initial condition in vector form
-
+  res_vec::Array{Tres, 1}         # result of computation in vector form
+  q_vec::Array{Tres,1}            # initial condition in vector form
+  Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
+  Aeta::Array{Tsol,4}               # Flux Jacobian in the eta-direction
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
   bndryflux::Array{Tsol, 3}       # boundary flux
   stabscale::Array{Tsol, 2}       # stabilization scale factor
@@ -277,6 +280,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     # Taking a view(A,...) of undefined values is illegal
     # I think its a bug that Array(Float64, ...) initializes values
     eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+    eqn.Axi = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, sbp.numnodes,
+                    mesh.numEl)
+    eqn.Aeta = zeros(eqn.Axi)
     eqn.aux_vars = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, 
                                 mesh.numEl, Tdim)
@@ -286,6 +292,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, sbp.numfacenodes, 
                           mesh.numBoundaryEdges)
     eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
+    
 
     println("eqn.res_type = ", eqn.res_type)
 

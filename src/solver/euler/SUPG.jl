@@ -1,68 +1,189 @@
 # SUPG implementation
+function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+	                            eqn::EulerData{Tsol, Tdim})
 
-function calcFluxJacobian{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-	                                        sbp::SBPOperator,  
-	                                        eqn::EulerData{Tsol, Tdim}, 
-	                                        q::AbstractArray{T,1},opts)
-  # A1 & A2 represent the flux jacobian in this case. This code is only for 2D
-  # This code works at the nodallevel
-  # Source: http://www.theoretical-physics.net/dev/fluid-dynamics/euler.html
+  FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
+  tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
+  calcStabilizationTerm(mesh, sbp, eqn, tau)
+  supg_res = zeros(eqn.res)
+  intvec = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl, 
+                 Tdim) # intermediate vector for calculating integral 
+
+  # SUPG works at the element level so we need to do do a loop over elements
+  # get the strong residual from the weak residual. since it also includes the 
+  # boundary conditions
   
-  # Create Flux Jacobian matrices at the nodal level
-  A1 = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
-  A2 = zeros(A1)
-  gamma_1 = eqn.gamma_1
-  gamma = eqn.gamma
-  u = q[2]/q[1] # Get velocity in the x-direction 
-  v = q[3]/q[1] # Get velocity in the x-direction 
-  R = eqn.R     # Gas constant
-  cv = eqn.cv   # Specific heat at constant volume
-  intvar = (R/cv)*(q[4]/q[1] - 0.5*(u*u + v*v)) # intermediate variable
-
-  # Populating A1
-  A1[1,1] = 0
-  A1[1,2] = 1
-  A1[1,3] = 0
-  A1[1,4] = 0
-  A1[2,1] = -u*u + 0.5*R*(u*u + v*v)/cv 
-  A1[2,2] = 2*u - R*u/cv
-  A1[2,3] = -R*v/cv
-  A1[2,4] = R/cv
-  A1[3,1] = -uv
-  A1[3,2] = v
-  A1[3,3] = u
-  A1[3,4] = 0
-  A1[4,1] = -q[2]*q[4]/(q[1]*q[1]) - u*intvar + u*R*(u*u + v*v)/cv
-  A1[4,2] = q[4]/q[1] + intvar - R*u*u/cv
-  A1[4,3] = -R*u*v/cv
-  A1[4,4] = u + R*u/cv
-
-  # Populating A2
-  A2[1,1] = 0
-  A2[1,2] = 0
-  A2[1,3] = 1
-  A2[1,4] = 0
-  A2[2,1] = -v*u 
-  A2[2,2] = v
-  A2[2,3] = u
-  A2[2,4] = 0
-  A2[3,1] = -v*v + 0.5*R*(u*u + v*v)/cv
-  A2[3,2] = -R*u/cv
-  A2[3,3] = 2*v - R*v/cv
-  A2[3,4] = R/cv
-  A2[4,1] = -q[3]*q[4]/(q[1]*q[1]) - v*intvar + v*(R/cv)*0.5*(u.u + v.v)
-  A2[4,2] = -R*v*u/cv
-  A2[4,3] = q[4]/q[1] + intvar - R*v*v/cv
-  A2[4,4] = v + R*v/cv
-  
+  for i = 1:mesh.numEl
+    # JHinverse = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+    strong_res = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)  
+    # Get the element wise strong residual
+    for j = 1:mesh.numNodesPerElement
+      for k=1:(Tdim+2)
+        dofnum_k = mesh.dofs[k, j, i]
+        JHinverse = eqn.Minv[dofnum_k] # get Minv at the dof
+        strong_res[k,j] = JHinverse*eqn.res[k,j,i]
+      end # end for j = 1:mesh.numNodesPerElement
+      
+      Axi = view(eqn.Axi,:,:,j,i)
+      Aeta = view(eqn.Aeta,:,:,j,i)
+      intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res[:,j]
+      intvec[:,j,i,2] = (tau[j,i]*Aeta).'*strong_res[:,j]
+    end # end for j = 1:mesh.numNodesPerElement
+  end   # end for i = 1:mesh.numEl
+    
+  # calculate the SUPG residual  
+  for i = 1:Tdim
+    intvec_i = view(intvec,:,:,:,i)
+    weakdifferentiate!(sbp, i, intvec_i,supg_res, trans=true)
+  end
+    
+  # Add tthe SUPG residual to the weak residual
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      for k = 1:mesh.numDofPerNode
+        eqn.res[k,j,i] += supg_res[k,j,i]
+      end
+    end
+  end
+    
+  #  println("eqn.res = \n", eqn.res)
+  #  println("eqn.q = \n", eqn.q)
   return nothing
-end # end calcFluxJacobian
+end # end function SUPG
 
+
+function FluxJacobian{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+	                                      sbp::SBPOperator, 
+	                                      eqn::EulerData{Tsol, Tdim})
+
+  # global function that calculates the flux jacobian for all the nodes in the
+  # mesh. Its only for 2D
+
+  gamma_1 = eqn.params.gamma_1
+  gamma = eqn.params.gamma
+  R = eqn.params.R     # Gas constant
+  cv = eqn.params.cv   # Specific heat at constant volume
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      q = view(eqn.q,:, j, i)
+      dxidx = view(mesh.dxidx,:,:,j,i)
+      u = q[2]/q[1] # Get velocity in the x-direction 
+      v = q[3]/q[1] # Get velocity in the x-direction
+      intvar = (R/cv)*(q[4]/q[1] - 0.5*(u*u + v*v)) # intermediate variable
+      Ax= zeros(Tsol, 4, 4) # Flux jacobian in the x direction
+      Ay = zeros(Ax)        # Flux jacobian in the y direction
+
+      # Populating Ax
+      Ax[1,1] = 0
+      Ax[1,2] = 1
+      Ax[1,3] = 0
+      Ax[1,4] = 0
+      Ax[2,1] = -u*u + 0.5*R*(u*u + v*v)/cv 
+      Ax[2,2] = 2*u - R*u/cv
+      Ax[2,3] = -R*v/cv
+      Ax[2,4] = R/cv
+      Ax[3,1] = -u*v
+      Ax[3,2] = v
+      Ax[3,3] = u
+      Ax[3,4] = 0
+      Ax[4,1] = -q[2]*q[4]/(q[1]*q[1]) - u*intvar + 0.5*u*R*(u*u + v*v)/cv
+      Ax[4,2] = q[4]/q[1] + intvar - R*u*u/cv
+      Ax[4,3] = -R*u*v/cv
+      Ax[4,4] = u + R*u/cv
+
+      # Populating Ay
+      Ay[1,1] = 0
+      Ay[1,2] = 0
+      Ay[1,3] = 1
+      Ay[1,4] = 0
+      Ay[2,1] = -v*u 
+      Ay[2,2] = v
+      Ay[2,3] = u
+      Ay[2,4] = 0
+      Ay[3,1] = -v*v + 0.5*R*(u*u + v*v)/cv
+      Ay[3,2] = -R*u/cv
+      Ay[3,3] = 2*v - R*v/cv
+      Ay[3,4] = R/cv
+      Ay[4,1] = -q[3]*q[4]/(q[1]*q[1]) - v*intvar + v*(R/cv)*0.5*(u*u + v*v)
+      Ay[4,2] = -R*v*u/cv
+      Ay[4,3] = q[4]/q[1] + intvar - R*v*v/cv
+      Ay[4,4] = v + R*v/cv
+
+      eqn.Axi[:,:,j,i] = Ax*dxidx[1,1] + Ay*dxidx[1,2]
+      eqn.Aeta[:,:,j,i] = Ax*dxidx[2,1] + Ay*dxidx[2,2]
+    end  # end for j = 1:mesh.numNodesPerElement
+  end    # end for i = 1:mesh.numEL	
+                                      
+  return nothing
+end # end function FluxJacobian
 
 # Stabilization term
-function calcStabilizationTerm(q::AbstractArray{T,1}, h,
-                               eqn::EulerData{Tsol, Tdim})
-  # Nodal level function. Calculates the stabilization term tau
+function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+                               tau::AbstractArray{Tsol,2})
+  
+  # q in the parametric space. Since everything happens in this space
+  q_param = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      q = view(eqn.q,:,j,i)
+      dxidx = view(mesh.dxidx,:,:,j,i)
+      T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
+      rhoe = q[1]*T*eqn.params.cv # internal energy*density. From ideal gas
+                                  # equations. 
+                                  # Alter: rhoe = q[4] - 0.5*q[1]*(u*u + v*v)
+      uxi = (q[2]*dxidx[1,1] + q[3]*dxidx[1,2])/q[1]
+      ueta = (q[2]*dxidx[2,1] + q[3]*dxidx[2,2])/q[1]
+      q_param[1,j,i] = q[1]
+      q_param[2,j,i] = q[1]*uxi
+      q_param[3,j,i] = q[1]*ueta
+      q_param[4,j,i] = rhoe
+    end # end for j = 1:mesh.numNodesPerElement
+  end   # end for i = 1:mesh.numEl
 
+  beta = zeros(2, mesh.numNodesPerElement, mesh.numEl)
+  
+  for k = 1:Tdim
+    res = zeros(q_param)
+    differentiate!(sbp, k, q_param, res)
+    for i = 1:mesh.numEl
+      for j = 1:mesh.numNodesPerElement
+        for l = 1:mesh.numDofPerNode
+          beta[k,j,i] += q_param[l,j,i]*res[l,j,i]
+        end # end for l = 1:mesh.numDofPerNode
+      end   # end for j = 1:mesh.numNodesPerElement
+    end     # end for i = 1:mesh.numEl
+  end       # end for k = 1:Tdim
 
-end
+  for i = 1:mesh.numEl
+    elem_area = calcElementArea(mesh.coords[:,:,i])
+    h = sqrt(2*elem_area)
+    for j = 1:mesh.numNodesPerElement
+      beta[:,j,i] = beta[:,j,i]/norm(beta[:,j,i],2)
+      q = view(eqn.q,:,j,i)
+      T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
+      c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
+      uxi = zeros(2) # Array of velocities in the xi & eta direction
+      uxi[1] = q_param[2,j,i]/q_param[1,j,i]
+      uxi[2] = q_param[3,j,i]/q_param[1,j,i]
+      # Advective stabilization term
+      tau_a = 0.5*h/(c + norm(uxi.'*beta[:,j,i], 1))
+      tau[j,i] = max(0.0, tau_a)
+    end # end for j = 1:mesh.numNodesPerElement
+  end   # for i = 1:mesh.numEl
+
+  return nothing
+end # end calcStabilizationTerm
+
+function calcElementArea{Tmsh}(coords::AbstractArray{Tmsh, 2})
+  # Calculates the element area using coordinates
+  # 2D function for linear mapping
+
+  A = coords[:,1]
+  B = coords[:,2]
+  C = coords[:,3]
+  area = 0.5*(A[1]*(B[2] - C[2]) + B[1]*(C[2] - A[2]) + C[1]*(A[2] - B[2]))
+  
+  return area
+end # end function calcElementArea
