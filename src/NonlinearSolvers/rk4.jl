@@ -32,8 +32,9 @@ rk4
     * eqn : AbstractSolutionData
     * opts : options dictionary
     * res_tol : keyword arg, residual topping tolerance
+    * real_time : do actual time marching, not pseudo-time marching
 """->
-function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0) 
+function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   # Storing the initial density value at all the nodes
@@ -83,9 +84,6 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   x3 = zeros(x_old)
   x4 = zeros(x_old)
 
-  strongres = zeros(x_old)
-
-  
 
   for i=2:(t_steps + 1)
 
@@ -108,17 +106,19 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
  #   eqn.q_vec = x_old
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    eqn.params.t = t
     f( mesh, sbp, eqn, opts, t)
 
-    eqn.res_vec[:] = 0.0
+#    eqn.res_vec[:] = 0.0
+    fill!(eqn.res_vec, 0.0)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    k1[:] = eqn.res_vec
+#    k1[:] = eqn.res_vec
+    for j=1:length(eqn.res_vec) k1[j] = eqn.Minv[j]*eqn.res_vec[j] end
     x2[:] = x_old + (h/2)*k1
 
 #    sol_norm = norm(eqn.res_vec)/mesh.numDof
     
-     strongres[:] = eqn.Minv.*eqn.res_vec
-     sol_norm = calcNorm(eqn, strongres)
+     sol_norm = calcNorm(eqn, k1)
     if iter % 1 == 0
       #= Calculate the error in density
       vRho_calc = zeros(vRho_act)
@@ -163,38 +163,43 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
       break
     end
 
-
+    # stage 2
     eqn.q_vec[:] = x2
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    if real_time eqn.params.t = t + h/2 end
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     k2[:] = eqn.res_vec
+    for j=1:length(eqn.res_vec) k2[j] = eqn.Minv[j]*eqn.res_vec[j] end
     x3[:] = x_old + (h/2)*k2
 
+    # stage 3
     eqn.q_vec[:] = x3
+    eqn.params.t = t + t/2
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#    k3[:] = eqn.res_vec
+    for j=1:length(eqn.res_vec) k3[j] = eqn.Minv[j]*eqn.res_vec[j] end
 
- 
-    k3[:] = eqn.res_vec
+    # stage 4
     x4[:] = x_old + h*k3
-
     eqn.q_vec[:] = x4
-
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    eqn.params.t = t + h
     f( mesh, sbp, eqn, opts, t + h)
 
     fill!(eqn.res_vec, 0.0)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
- 
+    for j=1:length(eqn.res_vec) k4[j] = eqn.Minv[j]*eqn.res_vec[j] end
+#    k4 = eqn.res_vec[:]
 
-    k4 = eqn.res_vec[:]
 
+    # update
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     eqn.q_vec[:] = x_old
 

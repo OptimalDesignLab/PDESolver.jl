@@ -40,6 +40,11 @@ aoa = get!(arg_dict, "aoa", -1.0)
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
+get!(arg_dict, "vortex_x0", 0.0)
+get!(arg_dict, "vortex_strength", -1.0)
+
+
+
 get!(arg_dict, "Relfunc_name", "none")
 
 
@@ -151,6 +156,7 @@ elseif run_type == 5
   get!(arg_dict, "epsilon", 1e-20)
 end
 
+get!(arg_dict, "real_time", false)
 
 # testing options
 get!(arg_dict, "solve", true)

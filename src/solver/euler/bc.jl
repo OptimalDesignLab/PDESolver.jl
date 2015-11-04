@@ -176,6 +176,41 @@ return nothing
 
 end
 
+
+@doc """
+### EulerEquationMod.unsteadyVortexBC <: BCTypes
+
+  This type and the associated call method define a functor to calculate
+  the flux using the Roe Solver using the exact InsentropicVortex solution
+  as boundary state.  See calcBoundaryFlux for the arguments all functors
+  must support.
+
+  This is a low level functor.
+"""->
+type unsteadyVortexBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+
+#  println("entered isentropicOvrtexBC (low level)")
+#  println("Tsol = ", Tsol)
+
+  # getting qg
+  qg = zeros(Tsol, 4)
+  calcUnsteadyVortex(x, params, qg)
+
+  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+
+  return nothing
+
+end # ends the function unsteadyVortex BC
+
+
+
+
+
 @doc """
 ### EulerEquationMod.Rho1E2U3BC <: BCTypes
 
@@ -247,7 +282,8 @@ global const BCDict = Dict{ASCIIString, BCType} (
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
 "Rho1E2U3BC" => Rho1E2U3BC(),
-"FreeStreamBC" => FreeStreamBC()
+"FreeStreamBC" => FreeStreamBC(),
+"unsteadyVortexBC" => unsteadyVortexBC()
 )
 
 @doc """

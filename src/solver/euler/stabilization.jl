@@ -647,6 +647,7 @@ function stabscale{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn:
   for i=1:mesh.numInterfaces
     face_i = mesh.interfaces[i]
     for j=1:sbp.numfacenodes
+      #TODO: iL and iR need more descriptive names
       iL = sbp.facenodes[j, face_i.faceL]
       iR = sbp.facenodes[nbrnodeindex[j], face_i.faceR]
       q = view(eqn.q, :, iL, face_i.elementL)

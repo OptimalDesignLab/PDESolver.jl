@@ -72,7 +72,8 @@ If it is variable sized then macros give the advantage of doing location lookup
     * aoa : angle of attack (radians)
  
 """->
-type ParamType{Tdim} 
+type ParamType{Tdim}
+  t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
   cv::Float64  # specific heat constant
@@ -101,11 +102,16 @@ type ParamType{Tdim}
   use_dissipation::Bool  # use artificial dissipation
   dissipation_const::Float64  # constant used for dissipation filter matrix
 
+
+  vortex_x0::Float64  # vortex center x coordinate at t=0
+  vortex_strength::Float64  # strength of the vortex
+
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
   function ParamType(sbp, opts, order::Integer)
   # create values, apply defaults
-
+    
+    t = 0.0
     # get() = get(dictionary, key, default)
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
@@ -146,13 +152,16 @@ type ParamType{Tdim}
 
     dissipation_const = opts["dissipation_const"]
 
+    vortex_x0 = opts["vortex_x0"]
+    vortex_strength = opts["vortex_strength"]
+
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
-    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
+    return new(t, order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
                edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, 
                use_filter, use_res_filter, filter_mat, use_dissipation,  
-               dissipation_const, krylov_itr, krylov_type)
+               dissipation_const, vortex_x0, vortex_strength, krylov_itr, krylov_type)
 
     end   # end of ParamType function
 

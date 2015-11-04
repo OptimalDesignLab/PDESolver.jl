@@ -10,6 +10,8 @@ where input_file_name.jl is in your current directory.
 "run_type"  : what type of run, 1 = rk4, 4 = Newton finite difference, 5 = Newton complex step (integer)
 
 "order" : order of accuracy of elements, 1-4 will be supported eventually (integer)
+"real_time" : have time marching scheme advance real time instead of pseudo-time,
+             (Bool), default false
 
 
 "delta_t" = timestep for rk4 (floating point)
