@@ -11,7 +11,7 @@ type NewtonData{Tsol, Tres}
   res_norm_i_1::Float64  # previous step residual norm
   # Pseudo-transient continuation Euler
   tau_l::Float64  # current pseudo-timestep
-  q_i_1::Array{Tsol, 1}  # array of solution at previous pseudo-timestep
+  tau_vec::Array{Float64, 1}  # array of solution at previous pseudo-timestep
 
 
 
@@ -28,15 +28,16 @@ function NewtonData(mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
   if opts["newton_globalize_euler"]
-    tau_l = opts["euler_tau"]  # initailize tau to something
-    q_i_1 = zeros(Tsol, mesh.numDof)
+    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
-    tau_l = 0.0
-    q_i_1 = []
+    tau_l = opts["euler_tau"]
+    tau_vec = []
   end
 
+  println("creating NewtonData object, tau = ", tau_l)
+  println("opts[euler_tau] = ", opts["euler_tau"])
 
-  return NewtonData{Tsol, Tres}(res_norm_i, res_norm_i_1, tau_l, q_i_1)
+  return NewtonData{Tsol, Tres}(res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
 @doc """
@@ -78,6 +79,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
   write_eigs = opts["write_eigs"]::Bool
   write_sol = opts["write_sol"]::Bool
   write_vis = opts["write_vis"]::Bool
+  output_freq = opts["output_freq"]::Int
   write_qic = opts["write_qic"]::Bool
   write_res = opts["write_res"]::Bool
   write_q = opts["writeq"]::Bool
@@ -85,6 +87,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
   epsilon = opts["epsilon"]::Float64
   globalize_euler = opts["newton_globalize_euler"]::Bool
+  recalc_prec_freq = opts["recalc_prec_freq"]::Int
 
   println("write_rhs = ", write_rhs)
   println("write_res = ", write_res)
@@ -262,8 +265,10 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
         eqn.params.use_dissipation = opts["use_dissipation_prec"]
 	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
-        @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
-        
+	if ((i % recalc_prec_freq)) == 0 || i == 1
+
+          @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+	end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 	eqn.params.use_dissipation = use_dissipation_orig
@@ -271,19 +276,27 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
  
       end
 
-      println("complex step jacobian calculate @time printed above")
+      if ((i % recalc_prec_freq)) == 0 || i == 1
+        println("complex step jacobian calculate @time printed above")
+      end
     end
 
     # apply globalization
     if globalize_euler
-      applyEuler(mesh, sbp, eqn, opts, newton_data, jacp)
+
+      if jac_type == 3 || jac_type == 4
+	println("applying Euler globalization to jacp")
+	println("tau = ", newton_data.tau_l)
+        applyEuler(mesh, sbp, eqn, opts, newton_data, jacp)
+      end
 
       if jac_type != 4
+	println("applying Euler gloablization to jac")
         applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
       end
     end
 
-#    checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
+#    checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
 
     # print as determined by options
     if write_jac && jac_type != 4
@@ -352,7 +365,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
     end
 
     # write paraview files
-    if write_vis
+    if write_vis && ((i % output_freq)) == 0 || i == 1
       vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_newton", i)
@@ -467,12 +480,12 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
 end
 
 
-function checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
+function checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
   
   v = ones(mesh.numDof)
   result1 = zeros(mesh.numDof)
 #  writedlm("qvec_before.dat", eqn.q_vec)
-  calcJacVecProd(mesh, sbp, eqn, opts, pert, func, v, result1)
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v, result1)
 #  writedlm("qvec_prod.dat", eqn.q_vec)
 #  writedlm("q_prod.dat", eqn.q)
   jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
@@ -480,6 +493,10 @@ function checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
 
   disassembleSolution(mesh, sbp, eqn,opts, eqn.q_vec)
   @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+
+  if opts["newton_globalize_euler"]
+    applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
+  end
 #  writedlm("qvec_explicit.dat", eqn.q_vec)
 #  writedlm("q_explicit.dat", eqn.q)
   result2 = jac*v
@@ -492,15 +509,46 @@ function checkJacVecProd(mesh, sbp, eqn, opts, func, pert)
   end
 
   if cnt != 0
-    println(STDERR, "Warning: jacobian vector product check failed")
+    println(STDERR, "Warning: jacobian vector product check 1 failed")
     println("cnt = ", cnt)
     result_diff = result1 - result2
     diff_norm = calcNorm(eqn, result_diff)
     println("diff norm = ", diff_norm)
     println("result_diff = ", result_diff)
   else
-    println("jacobian vector product check passed")
+    println("jacobian vector product check 1 passed")
   end
+
+
+  for j=2:4
+#  v2 = collect(1:mesh.numDof)
+   v2 = linspace(j, j+1, mesh.numDof)
+  result3 = jac*v2
+
+  result4 = zeros(mesh.numDof)
+
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v2, result4)
+
+  cnt = 0
+  for i=1:mesh.numDof
+    if abs(result3[i] - result4[i]) > 1e-14
+      cnt += 1
+    end
+  end
+
+  if cnt != 0
+    println(STDERR, "Warning: jacobian vector product check $j failed")
+    println("cnt = ", cnt)
+    result_diff = result3 - result4
+    diff_norm = calcNorm(eqn, result_diff)
+    println("diff norm = ", diff_norm)
+#    println("result_diff = ", result_diff)
+  else
+    println("jacobian vector product check $j passed")
+  end
+
+end
+
 
   return nothing
 end
@@ -1096,7 +1144,7 @@ jac_type = opts["jac_type"]::Int
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "6", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
 comm = MPI.COMM_WORLD
 
 obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices

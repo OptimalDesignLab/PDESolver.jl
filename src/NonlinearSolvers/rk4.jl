@@ -48,6 +48,11 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
   println("\nEntered rk4")
 # res_tol is alternative stopping criteria
+
+  # unpack options
+  output_freq = opts["output_freq"]::Int
+  write_vis = opts["write_vis"]::Bool
+
   q_vec = eqn.q_vec
   res_vec = eqn.res_vec
 #  extra_args = (mesh, sbp, eqn)
@@ -62,7 +67,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
   iter = 1
 
-  f1 = open("convergence.dat", "w")
+  f1 = open("convergence.dat", "a+")
 
 #  x[:,1] = x_ic
 
@@ -77,6 +82,9 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   x2 = zeros(x_old)
   x3 = zeros(x_old)
   x4 = zeros(x_old)
+
+  strongres = zeros(x_old)
+
   
 
   for i=2:(t_steps + 1)
@@ -85,7 +93,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #    update_msg = string("RK4 i: ",i,"\n")
 #    write(STDERR,update_msg)
 #    print("\nRK4 i : ", i)
-  if iter % 100 == 0
+  if iter % output_freq == 0
      println("iter: ",i)
   end
 
@@ -99,7 +107,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #    println("eqn.q_vec = ", eqn.q_vec)
 
  #   eqn.q_vec = x_old
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t)
 
     eqn.res_vec[:] = 0.0
@@ -107,9 +115,11 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     k1[:] = eqn.res_vec
     x2[:] = x_old + (h/2)*k1
 
-    sol_norm = norm(eqn.res_vec)/mesh.numDof
-
-    if iter % 100 == 0
+#    sol_norm = norm(eqn.res_vec)/mesh.numDof
+    
+     strongres[:] = eqn.Minv.*eqn.res_vec
+     sol_norm = calcNorm(eqn, strongres)
+    if iter % 1 == 0
       #= Calculate the error in density
       vRho_calc = zeros(vRho_act)
       k = 1
@@ -123,16 +133,17 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
       println("Solution Residual Norm = ", sol_norm)
       println("writing to convergence.dat")
       write(f1, string(i, "   ", sol_norm, "\n")) =#
+      println(f1, i, " ", sol_norm)
     end
     
-    if iter % 1000 == 0
+    if iter % output_freq == 0
       println("flushing convergence.dat to disk")
 #      close(f1)
 #      f1 = open("convergence.dat", "a+")
       flush(f1)
     end
 
-    if iter % 10000 == 0  # this should be an option
+    if write_vis && iter % output_freq == 0
 
       saveSolutionToMesh(mesh, q_vec)
       writeVisFiles(mesh, "solution_rk$iter")
@@ -154,7 +165,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
 
     eqn.q_vec[:] = x2
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
@@ -163,7 +174,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     x3[:] = x_old + (h/2)*k2
 
     eqn.q_vec[:] = x3
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
@@ -175,7 +186,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
     eqn.q_vec[:] = x4
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h)
 
     fill!(eqn.res_vec, 0.0)
@@ -208,7 +219,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # evaluate residual at final q value
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t)
 
     eqn.res_vec[:] = 0.0

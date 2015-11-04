@@ -161,6 +161,7 @@ ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 #println("normal vector = ", [nx2, ny2])
 calcEulerFlux(params, qg, aux_vars, [nx2, ny2], bndryflux)
 
+#TODO: make this a unary minus, not a fp multiplication
 for i=1:4
   bndryflux[i] *= -1
 end

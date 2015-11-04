@@ -36,7 +36,7 @@ cv = R/gamma_1
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
-aoa = get!(arg_dict, "aoa", -1.0)*pi/180
+aoa = get!(arg_dict, "aoa", -1.0)
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
@@ -131,6 +131,8 @@ get!(arg_dict, "write_sol", false)
 get!(arg_dict, "write_qic", false)
 get!(arg_dict, "write_vis", false)
 get!(arg_dict, "write_res", false)
+get!(arg_dict, "output_freq", 1)
+get!(arg_dict, "recalc_prec_freq", 1)
 get!(arg_dict, "jac_type", 2)
 get!(arg_dict, "res_abstol", 1e-6)
 get!(arg_dict, "res_reltol", 1e-6)

@@ -118,6 +118,10 @@ Note that any values associated with these options are shared with the regular
 "write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
 "print_eigs" : calculate and print eigenvalues to STDOUT.  The calculation is very expensive, (Bool), default false
 "write_eigs" : calculate and write eigenvalues to file (eigs$i.dat) each iteration.  If both pritn_eigs and write_eigs are true, only one calculation is performed.  (Bool), default false
+"output_freq" : write paraview files every this many iterations, subject to write_vis, (Integer), default 1
+"recalc_prec_freq" : recalculate the preconditioner matrix every this many 
+                     iterations, if doing an interative solve, (Integer),
+                     default 1
 
 # Newton's Method options
 "jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)
