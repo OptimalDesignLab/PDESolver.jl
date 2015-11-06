@@ -161,11 +161,18 @@ get!(arg_dict, "real_time", false)
 # testing options
 get!(arg_dict, "solve", true)
 
+
+# postprocessing options
+get!(arg_dict, "do_postproc", false)
+get!(arg_dict, "exact_soln_func", "nothing")
+
 # write complete dictionary to file
 fname = "arg_dict_output.txt"
 rmfile(fname)
 f = open(fname, "a+")
 arg_keys = keys(arg_dict)
+
+
 
 for key_i in arg_keys
   println(f, key_i, " => ", arg_dict[key_i])

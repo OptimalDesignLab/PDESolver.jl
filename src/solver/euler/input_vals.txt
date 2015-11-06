@@ -133,3 +133,8 @@ Note that any values associated with these options are shared with the regular
 
 # testing options
 "solve" : call the solver specified by run_type, (Bool), default true
+
+# postprocessing options
+"do_postproc" : do postprocessing of any kind, (Bool), default false
+"exact_soln_func" : one of the IC functions used to compute the exact solution,
+                    (ASCIIString), default "nothing"

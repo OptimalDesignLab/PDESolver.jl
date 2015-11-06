@@ -18,7 +18,7 @@ using ArrayViews
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 
-#function runtest(flag::Int)
+#function runtest()
 println("ARGS = ", ARGS)
 println("size(ARGS) = ", size(ARGS))
 opts = read_input(ARGS[1])
@@ -263,30 +263,26 @@ if opts["solve"]
   end
 
 
-##### Do postprocessing ######
-println("\nDoing postprocessing")
-  if flag == 1
-      res_vec_diff = res_vec - res_vec_exact
-      step = q_vec - res_vec_exact
-      step_norm = norm(step)/mesh.numDof
-      println("step_norm = ", step_norm)
-      res_vec_norm = calcNorm(eqn, res_vec)
-      #res_vec_side_by_side = [res_vec_exact  res_vec]
+  ##### Do postprocessing ######
+  println("\nDoing postprocessing")
 
-      #=
-      println("\n\n\n")
-      println("res_vec_diff: \n")
-      for i=1:size(res_vec_diff)[1]
-	println(res_vec_diff[i,:])
-      end
-      println("res_vec_side_by_side: \n")
-      for i=1:size(res_vec_side_by_side)[1]
-	println(i, " ", res_vec_side_by_side[i,:])
-      end
-      =#
-      println("res_vec_norm: \n",res_vec_norm,"\n")
+  if opts["do_postproc"]
+    exfname = opts["exact_soln_func"]
+    if haskey(ICDict, exfname)
+      exfunc = ICDict[exfname]
+      q_exact = zeros(mesh.numDof)
+      exfunc(mesh, sbp, eqn, opts, q_exact)
 
+      q_diff = eqn.q_vec - q_exact
+      diff_norm = calcNorm(eqn, q_diff)
+      discrete_norm = norm(q_diff)/length(q_diff)
+
+      println("solution error norm = ", diff_norm)
+      println("solution discrete L2 norm = ", discrete_norm)
+    end
   end
+      
+
 
       saveSolutionToMesh(mesh, real(eqn.q_vec))
       printSolution(mesh, real(eqn.q_vec))
@@ -295,4 +291,6 @@ println("\nDoing postprocessing")
 
 end  # end if (opts[solve])
 
+#  return mesh, sbp, eqn, opts
+#end  # end function
 #runtest(1)

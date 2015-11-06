@@ -170,8 +170,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
-#    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    k2[:] = eqn.res_vec
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#    k2[:] = eqn.res_vec
     for j=1:length(eqn.res_vec) k2[j] = eqn.Minv[j]*eqn.res_vec[j] end
     x3[:] = x_old + (h/2)*k2
 
