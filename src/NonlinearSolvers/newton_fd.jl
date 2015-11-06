@@ -89,6 +89,9 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
   #----------------------------------------------------------------------------
   # Storing the initial density value at all the nodes
+  actSoln = zeros(eqn.q_vec)
+  actSoln = copy(eqn.q_vec)
+  #=
   vRho_act = zeros(mesh.numNodes)
   k = 1
   for i = 1:4:length(eqn.q_vec)
@@ -96,6 +99,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     k += 1
   end
   println("Actual Density value succesfully extracted")
+  =#
   #----------------------------------------------------------------------------
 
   # evaluating residual at initial condition
@@ -253,6 +257,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     eqn.q_vec[:] += step_fac*delta_res_vec  # update q_vec
     
     #--------------------------------------------------------------------------
+    #=
     # Calculate the error in density
     vRho_calc = zeros(vRho_act)
     k = 1
@@ -261,9 +266,6 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       k += 1
     end
     ErrDensityVec = vRho_calc - vRho_act
-    # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
-    # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
-    # println("DensityErrorNormL1 = ", ErrDensity1) 
     ErrDensity2 = 0.0
     k = 1
     for i = 1:length(ErrDensityVec)
@@ -272,8 +274,10 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     end
     ErrDensity2 = sqrt(ErrDensity2)
     println("DensityErrorNormL2 = ", ErrDensity2)
-    # println("Discrete density error norm L2 = ", ErrDensity2_discrete)
-
+    =#
+    SolnErrVec = eqn.q_vec - actSoln
+    SolnErrorNorm = calcNorm(eqn, SolnErrVec)
+    println(" Solution Error Norm = ", SolnErrorNorm)
 
 
     #--------------------------------------------------------------------------

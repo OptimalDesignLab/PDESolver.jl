@@ -35,6 +35,8 @@ tmp1 = ((gamma-1)/2)*M_in*M_in
 # println("tmp1 = ", tmp1)
 
 # calculate values at r radius
+# println("r = ", r)
+# println("r_in = ", r_in)
 rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
 # println("rho_r = ", rho_r)
 

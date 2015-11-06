@@ -1,0 +1,31 @@
+<VTKFile type="UnstructuredGrid">
+<UnstructuredGrid>
+<Piece NumberOfPoints="3" NumberOfCells="1">
+<Points>
+<DataArray type="Float64" Name="coordinates" NumberOfComponents="3" format="ascii">
+1 1 0 
+1 0 0 
+2 0 0 
+</DataArray>
+</Points>
+<Cells>
+<DataArray type="Int32" Name="connectivity" format="ascii">
+1 2 0 
+</DataArray>
+<DataArray type="Int32" Name="offsets" format="ascii">
+3
+</DataArray>
+<DataArray type="UInt8" Name="types" format="ascii">
+5
+</DataArray>
+</Cells>
+<PointData>
+</PointData>
+<CellData>
+<DataArray type="Int32" Name="apf_part" NumberOfComponents="1" format="ascii">
+0
+</DataArray>
+</CellData>
+</Piece>
+</UnstructuredGrid>
+</VTKFile>

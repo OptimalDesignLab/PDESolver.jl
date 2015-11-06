@@ -1,0 +1,18 @@
+<VTKFile type="PUnstructuredGrid">
+<PUnstructuredGrid GhostLevel="0">
+<PPoints>
+<PDataArray type="Float64" Name="coordinates" NumberOfComponents="3" format="ascii"/>
+</PPoints>
+<PPointData>
+<PDataArray type="Int32" Name="dof status" NumberOfComponents="1" format="ascii"/>
+<PDataArray type="Int32" Name="reordered node numbers" NumberOfComponents="1" format="ascii"/>
+<PDataArray type="Int32" Name="reordered dof numbers" NumberOfComponents="1" format="ascii"/>
+</PPointData>
+<PCellData>
+<PDataArray type="Int32" Name="faceNums_1" NumberOfComponents="1" format="ascii"/>
+<PDataArray type="Int32" Name="coloring_1" NumberOfComponents="1" format="ascii"/>
+<PDataArray type="Int32" Name="apf_part" NumberOfComponents="1" format="ascii"/>
+</PCellData>
+<Piece Source="mesh_complete0.vtu"/>
+</PUnstructuredGrid>
+</VTKFile>

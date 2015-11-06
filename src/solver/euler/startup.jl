@@ -191,8 +191,10 @@ RecommendedDT = minimum(Dt)
 println("Recommended delta t = ", RecommendedDT)
 
 #elementEigenValues(mesh, sbp, eqn)
-
+# fill!(eqn.res_vec, 0.0)
+# fill!(eqn.res, 0.0)
 # SUPG(mesh, sbp, eqn)
+
 
 #------------------------------------------------------------------------------
 

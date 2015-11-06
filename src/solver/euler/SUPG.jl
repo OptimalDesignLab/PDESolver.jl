@@ -5,6 +5,30 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
   tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
   calcStabilizationTerm(mesh, sbp, eqn, tau)
+  # println("tau = \n", tau)
+  #=
+  counter = 0
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      if tau[j,i] == 0.0
+        counter += 1
+      end
+    end
+  end
+  if counter > 0
+    println("0 tau in use")
+  else
+    println("No 0 tau")
+  end 
+  =#
+
+  # Calculate strong residual
+  strong_res = zeros(eqn.res)
+  for i = 1:Tdim
+    flux_parametric_i = view(eqn.flux_parametric,:,:,:,i)
+    differentiate!(sbp, i, flux_parametric_i, strong_res)
+  end
+  
   supg_res = zeros(eqn.res)
   intvec = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl, 
                  Tdim) # intermediate vector for calculating integral 
@@ -13,21 +37,20 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   # get the strong residual from the weak residual. since it also includes the 
   # boundary conditions
   
-  for i = 1:mesh.numEl
-    # JHinverse = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
-    strong_res = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)  
-    # Get the element wise strong residual
+  for i = 1:mesh.numEl  
     for j = 1:mesh.numNodesPerElement
-      for k=1:(Tdim+2)
+      #=
+      strong_res = zeros(Tsol, mesh.numDofPerNode) # nodal strong residual
+      for k=1:mesh.numDofPerNode
         dofnum_k = mesh.dofs[k, j, i]
         JHinverse = eqn.Minv[dofnum_k] # get Minv at the dof
-        strong_res[k,j] = JHinverse*eqn.res[k,j,i]
+        strong_res[k] = JHinverse*eqn.res[k,j,i]
       end # end for j = 1:mesh.numNodesPerElement
-      
+      =#
       Axi = view(eqn.Axi,:,:,j,i)
       Aeta = view(eqn.Aeta,:,:,j,i)
-      intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res[:,j]
-      intvec[:,j,i,2] = (tau[j,i]*Aeta).'*strong_res[:,j]
+      intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res[:,j,i]
+      intvec[:,j,i,2] = (tau[j,i]*Aeta).'*strong_res[:,j,i]
     end # end for j = 1:mesh.numNodesPerElement
   end   # end for i = 1:mesh.numEl
     
@@ -36,16 +59,31 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
     intvec_i = view(intvec,:,:,:,i)
     weakdifferentiate!(sbp, i, intvec_i,supg_res, trans=true)
   end
-    
+  
+  
+  #=
+  supg_res_vec = zeros(eqn.res_vec)
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      for k=1:4  # loop over dofs on the node
+        dofnum_k = mesh.dofs[k, j, i]
+        supg_res_vec[dofnum_k] += supg_res[k,j,i]
+      end
+    end
+  end
+  =# 
   # Add tthe SUPG residual to the weak residual
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       for k = 1:mesh.numDofPerNode
-        eqn.res[k,j,i] += supg_res[k,j,i]
+        eqn.res[k,j,i] -= supg_res[k,j,i] # because the negative sign is already incorporated in the weak residual
       end
     end
   end
-    
+  
+  # innerprod_supg = eqn.q_vec.'*supg_res_vec
+  # println("innerprod_SUPG = ", innerprod_supg)
+  
   #  println("eqn.res = \n", eqn.res)
   #  println("eqn.q = \n", eqn.q)
   return nothing
@@ -58,6 +96,9 @@ function FluxJacobian{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 
   # global function that calculates the flux jacobian for all the nodes in the
   # mesh. Its only for 2D
+  
+  fill!(eqn.Axi, 0.0)   # Reset Axi & Aeta to zero before calculating flux-
+  fill!(eqn.Aeta, 0.0)  # jacobaian
 
   gamma_1 = eqn.params.gamma_1
   gamma = eqn.params.gamma
@@ -129,10 +170,7 @@ function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
     for j = 1:mesh.numNodesPerElement
       q = view(eqn.q,:,j,i)
       dxidx = view(mesh.dxidx,:,:,j,i)
-      T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
-      rhoe = q[1]*T*eqn.params.cv # internal energy*density. From ideal gas
-                                  # equations. 
-                                  # Alter: rhoe = q[4] - 0.5*q[1]*(u*u + v*v)
+      rhoe = q[4] -0.5*(q[2]*q[2] + q[3]*q[3])/(q[1]*q[1]) 
       uxi = (q[2]*dxidx[1,1] + q[3]*dxidx[1,2])/q[1]
       ueta = (q[2]*dxidx[2,1] + q[3]*dxidx[2,2])/q[1]
       q_param[1,j,i] = q[1]
@@ -169,6 +207,7 @@ function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
       uxi[2] = q_param[3,j,i]/q_param[1,j,i]
       # Advective stabilization term
       tau_a = 0.5*h/(c + norm(uxi.'*beta[:,j,i], 1))
+      # tau[j,i] = 0.005*max(0.0, tau_a)
       tau[j,i] = max(0.0, tau_a)
     end # end for j = 1:mesh.numNodesPerElement
   end   # for i = 1:mesh.numEl
