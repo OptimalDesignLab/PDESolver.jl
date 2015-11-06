@@ -201,8 +201,8 @@ println("Recommended delta t = ", RecommendedDT)
 if opts["solve"]
   
   if flag == 1 # normal run
-   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, 
-       res_tol=opts["res_abstol"])
+   @time rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, 
+       res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
    println("finish rk4")
    printSolution("rk4_solution.dat", eqn.res_vec)
@@ -233,11 +233,10 @@ if opts["solve"]
                  step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
-    println("total solution time printed above")
     printSolution("newton_solution.dat", eqn.res_vec)
 
   elseif flag == 6
-    newton_check(evalEuler, mesh, sbp, eqn, opts)
+    @time newton_check(evalEuler, mesh, sbp, eqn, opts)
     vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     writeVisFiles(mesh, "solution_error")
@@ -245,14 +244,17 @@ if opts["solve"]
     printSolution(mesh, vals)
 
   elseif flag == 7
-    jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
+    @time jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
     writedlm("solution.dat", jac_col)
 
   elseif flag == 8
-    jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
+    @time jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
     writedlm("solution.dat", jac_col)
 
   end       # end of if/elseif blocks checking flag
+
+  println("total solution time printed above")
+
 
   if opts["write_finalsolution"]
     writedlm("solution_final.dat", real(eqn.q_vec))

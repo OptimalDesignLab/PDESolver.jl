@@ -93,7 +93,6 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
      println("i: ",i)
   end
 
-
 #    println("in rk4, i = ", i)
 #    println("in rk4, t = ", t)
 
@@ -103,7 +102,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
  #   eqn.q_vec = x_old
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    eqn.params.t = t
+    if real_time eqn.params.t = t end
     f( mesh, sbp, eqn, opts, t)
 
 #    eqn.res_vec[:] = 0.0
@@ -163,7 +162,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     # stage 2
     eqn.q_vec[:] = x2
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    if real_time eqn.params.t = t + h/2 end
+    if real_time  eqn.params.t = t + h/2 end
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
@@ -174,7 +173,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
     # stage 3
     eqn.q_vec[:] = x3
-    eqn.params.t = t + t/2
+    if real_time eqn.params.t = t + t/2 end
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h/2)
 
@@ -187,7 +186,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     x4[:] = x_old + h*k3
     eqn.q_vec[:] = x4
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    eqn.params.t = t + h
+    if real_time eqn.params.t = t + h end
     f( mesh, sbp, eqn, opts, t + h)
 
     fill!(eqn.res_vec, 0.0)
