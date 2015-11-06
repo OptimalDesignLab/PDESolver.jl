@@ -66,8 +66,6 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #   x = Array(Float64,3,t_steps+2)
 #  x = Array(Float64,m,t_steps+1)
 
-  iter = 1
-
   f1 = open("convergence.dat", "a+")
 
 #  x[:,1] = x_ic
@@ -91,16 +89,15 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #    update_msg = string("RK4 i: ",i,"\n")
 #    write(STDERR,update_msg)
 #    print("\nRK4 i : ", i)
-  if iter % output_freq == 0
-     println("iter: ",i)
+  if i % output_freq == 0
+     println("i: ",i)
   end
 
 
-    iter += 1
-#    println("in rk4, iter = ", iter)
+#    println("in rk4, i = ", i)
 #    println("in rk4, t = ", t)
 
-#    x_old = x[:,iter-1]
+#    x_old = x[:,i-1]
 
 #    println("eqn.q_vec = ", eqn.q_vec)
 
@@ -119,7 +116,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #    sol_norm = norm(eqn.res_vec)/mesh.numDof
     
      sol_norm = calcNorm(eqn, k1)
-    if iter % 1 == 0
+    if i % 1 == 0
       #= Calculate the error in density
       vRho_calc = zeros(vRho_act)
       k = 1
@@ -136,17 +133,17 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
       println(f1, i, " ", sol_norm)
     end
     
-    if iter % output_freq == 0
+    if i % output_freq == 0
       println("flushing convergence.dat to disk")
 #      close(f1)
 #      f1 = open("convergence.dat", "a+")
       flush(f1)
     end
 
-    if write_vis && iter % output_freq == 0
+    if write_vis && i % output_freq == 0
 
       saveSolutionToMesh(mesh, q_vec)
-      writeVisFiles(mesh, "solution_rk$iter")
+      writeVisFiles(mesh, "solution_rk$i")
     end
 
 
@@ -209,9 +206,9 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     fill!(k4, 0.0)
 
 
-#    x[:,iter] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+#    x[:,i] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
 #    println("==== RK4 ==== i: ",i)
-#     println("x[:,iter]: ",x[:,iter])
+#     println("x[:,i]: ",x[:,i])
 #    println("k1: ",k1)
     t = t + h
 
