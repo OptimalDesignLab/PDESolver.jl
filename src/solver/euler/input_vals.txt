@@ -131,6 +131,18 @@ Note that any values associated with these options are shared with the regular
 "newton_globalize_euler"  : use the Pseudo-Transient Continuation 
                             (aka. implicit Euler) globalization, (Bool), default                            true
 
+# Newton-Krylov options
+"krylov_reltol"  : relative residual tolerance for krylov solver, (Float64),
+                   default 1e-2
+"krylov_abstol"  : absolute residual tolerance for kylov solver, (Float64),
+                   default 1e-12
+"krylov_dtol"  : relative residual tolerance for detecting divergence, 
+                 (Float64), default 1e5
+"krylov_itermax"  : maximum number of krylov iterations, (Int), default 1000
+"krylov_gamma"  : parameter for updating krylov_reltol, (Float64), default 2.0
+
+
+
 # testing options
 "solve" : call the solver specified by run_type, (Bool), default true
 

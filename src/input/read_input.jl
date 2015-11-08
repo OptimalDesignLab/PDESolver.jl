@@ -158,6 +158,14 @@ end
 
 get!(arg_dict, "real_time", false)
 
+
+# Krylov options
+get!(arg_dict, "krylov_reltol", 1e-2)
+get!(arg_dict, "krylov_abstol", 1e-12)
+get!(arg_dict, "krylov_dtol", 1e5)
+get!(arg_dict, "krylov_itermax", 1000)
+get!(arg_dict, "krylov_gamma", 2)
+
 # testing options
 get!(arg_dict, "solve", true)
 

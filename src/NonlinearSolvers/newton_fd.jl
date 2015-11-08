@@ -6,7 +6,14 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
   the C callback used by Petsc
 """->
 type NewtonData{Tsol, Tres}
-  
+ 
+  # inexact Newton-Krylov parameters
+  reltol::Float64
+  abstol::Float64
+  dtol::Float64
+  itermax::Int
+  krylov_gamma::Float64  # update parameter for krylov tolerance
+
   res_norm_i::Float64  # current step residual norm
   res_norm_i_1::Float64  # previous step residual norm
   # Pseudo-transient continuation Euler
@@ -25,6 +32,12 @@ function NewtonData(mesh, sbp, eqn, opts)
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
 
+  reltol = opts["krylov_reltol"]
+  abstol = opts["krylov_abstol"]
+  dtol = opts["krylov_dtol"]
+  itermax = opts["krylov_itermax"]
+  krylov_gamma = opts["krylov_gamma"]
+
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
   if opts["newton_globalize_euler"]
@@ -37,7 +50,7 @@ function NewtonData(mesh, sbp, eqn, opts)
   println("creating NewtonData object, tau = ", tau_l)
   println("opts[euler_tau] = ", opts["euler_tau"])
 
-  return NewtonData{Tsol, Tres}(res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonData{Tsol, Tres}(reltol, abstol, dtol, itermax, krylov_gamma, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
 @doc """
@@ -141,6 +154,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
   res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+  println("res_0_norm = ", res_0_norm)
 
   println(fconv, 0, " ", res_0_norm, " ", 0)
   flush(fconv)
@@ -342,7 +356,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc
-      @time petscSolve(jac, jacp, x, b, ksp, opts, res_0, delta_res_vec)
+      @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec)
     end
     
     println("matrix solve @time printed above")
@@ -376,6 +390,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+    println("residual norm = ", res_0_norm)
     println("relative residual ", res_0_norm/res_reltol_0)
 
 
@@ -453,6 +468,10 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
     # update globalization parameters
     if globalize_euler
       updateEuler(newton_data)
+    end
+
+    if jac_type == 3 || jac_type == 4
+      updateKrylov(newton_data)
     end
 
     print("\n")
@@ -1261,7 +1280,7 @@ KSPSetFromOptions(ksp)
 KSPSetOperators(ksp, A, Ap)  # this was A, Ap
 
 # set: rtol, abstol, dtol, maxits
-KSPSetTolerances(ksp, 1e-2, 1e-12, 1e5, PetscInt(1000))
+#KSPSetTolerances(ksp, 1e-2, 1e-12, 1e5, PetscInt(1000))
 #KSPSetUp(ksp)
 
 
@@ -1309,7 +1328,7 @@ return nothing
 end
 
 
-function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector )
+function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector )
 
   # solve the system for the newton step, write it to delta_res_vec
   # writing it to delta_res_vec is an unecessary copy, becasue we could
@@ -1373,6 +1392,10 @@ function petscSolve(A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KS
   # calls it if needed
   # it is necessary to call KSPSetUp before getting the preconditioner
   # context in some cases
+
+  KSPSetTolerances(ksp, newton_data.reltol, newton_data.abstol, 
+                   newton_data.dtol, PetscInt(newton_data.itermax))
+
   KSPSetUp(ksp)
 
   nx = PetscVecGetSize(x)
