@@ -227,4 +227,54 @@ end # end function calcElementArea
 
 #------------------------------------------------------------------------------
 # Debugging code
-# ca
+# calculate the boundary integral using the actual euler flux
+function getPhysBCFluxes(mesh, sbp, eqn, opts)
+  #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+
+  #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
+  bndryfluxPhysical = zeros(eqn.bndryflux)
+
+  for i=1:mesh.numBC
+  #  println("computing flux for boundary condition ", i)
+    functor_i = mesh.bndry_funcs[i]
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1]
+    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = view(bndryfluxPhysical, :, :, start_index:(end_index - 1))
+  
+    calcPhysicalBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+  end
+
+  writeBoundary(mesh, sbp, eqn, opts)
+
+  return nothing
+end
+
+function calcPhysicalBoundaryFlux{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh},
+                                  sbp::SBPOperator, eqn::EulerData{Tsol}, 
+                                  functor::BCType, 
+                                  bndry_facenums::AbstractArray{Boundary,1},
+                                  bndryflux::AbstractArray{Tres, 3})
+
+  nfaces = length(bndry_facenums)
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    for j = 1:sbp.numfacenodes
+      k = sbp.facenodes[j, bndry_i.face]
+      # get components
+      q = view(eqn.q, :, k, bndry_i.element)
+      flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
+      aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
+      x = view(mesh.coords, :, k, bndry_i.element)
+      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
+      #println("eqn.bndryflux = ", eqn.bndryflux)
+      bndryflux_i = view(bndryflux, :, j, i)
+      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+      euler_flux = zeros(Tsol, 4)
+      calcEulerFlux(params, q, aux_vars, [nx, ny], bndryflux_i)
+    end
+  end
+
+end # End function calcPhysicalBoundaryFlux
