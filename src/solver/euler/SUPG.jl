@@ -22,13 +22,14 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   end 
   =#
 
+
   # Calculate strong residual
-  strong_res = zeros(eqn.res)
+  #= strong_res = zeros(eqn.res)
   for i = 1:Tdim
     flux_parametric_i = view(eqn.flux_parametric,:,:,:,i)
     differentiate!(sbp, i, flux_parametric_i, strong_res)
   end
-  
+  =#
   supg_res = zeros(eqn.res)
   intvec = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl, 
                  Tdim) # intermediate vector for calculating integral 
@@ -39,18 +40,15 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   
   for i = 1:mesh.numEl  
     for j = 1:mesh.numNodesPerElement
-      #=
-      strong_res = zeros(Tsol, mesh.numDofPerNode) # nodal strong residual
-      for k=1:mesh.numDofPerNode
-        dofnum_k = mesh.dofs[k, j, i]
-        JHinverse = eqn.Minv[dofnum_k] # get Minv at the dof
+      strong_res = zeros(Tsol, mesh.numDofPerNode)
+      JHinverse = mesh.jac[j,i]/sbp.w[j]
+      for k = 1:mesh.numDofPerNode
         strong_res[k] = JHinverse*eqn.res[k,j,i]
-      end # end for j = 1:mesh.numNodesPerElement
-      =#
+      end
       Axi = view(eqn.Axi,:,:,j,i)
       Aeta = view(eqn.Aeta,:,:,j,i)
-      intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res[:,j,i]
-      intvec[:,j,i,2] = (tau[j,i]*Aeta).'*strong_res[:,j,i]
+      intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res  # [:,j,i]
+      intvec[:,j,i,2] = (tau[j,i]*Aeta).'*strong_res # [:,j,i]
     end # end for j = 1:mesh.numNodesPerElement
   end   # end for i = 1:mesh.numEl
     
@@ -76,7 +74,7 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       for k = 1:mesh.numDofPerNode
-        eqn.res[k,j,i] -= supg_res[k,j,i] # because the negative sign is already incorporated in the weak residual
+        eqn.res[k,j,i] += supg_res[k,j,i] # because the negative sign is already incorporated in the weak residual
       end
     end
   end
@@ -226,3 +224,7 @@ function calcElementArea{Tmsh}(coords::AbstractArray{Tmsh, 2})
   
   return area
 end # end function calcElementArea
+
+#------------------------------------------------------------------------------
+# Debugging code
+# ca
