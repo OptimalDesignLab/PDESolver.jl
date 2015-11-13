@@ -228,28 +228,68 @@ end # end function calcElementArea
 #------------------------------------------------------------------------------
 # Debugging code
 # calculate the boundary integral using the actual euler flux
-function getPhysBCFluxes(mesh, sbp, eqn, opts)
-  #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+
+function getPhysBCFluxes(mesh, sbp, eqn, opts, bndryfluxPhysical)
+  # Calculate the physical BC flux
 
   #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
-  bndryfluxPhysical = zeros(eqn.bndryflux)
-
+  
+  functor_i = BCDict["isentropicVortexBC_physical"]
   for i=1:mesh.numBC
   #  println("computing flux for boundary condition ", i)
-    functor_i = mesh.bndry_funcs[i]
+    # functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
     bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
     bndryflux_i = view(bndryfluxPhysical, :, :, start_index:(end_index - 1))
-  
-    calcPhysicalBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+    #functor_i(q, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+
+    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
   end
 
-  writeBoundary(mesh, sbp, eqn, opts)
 
   return nothing
 end
 
+
+function residualComparison(mesh, sbp, eqn, opts)
+
+ # Get strong residual by differentiating
+  differentiation_strong_res = zeros(eqn.res)
+  
+  for i = 1:Tdim
+    flux_parametric_i = view(eqn.flux_parametric,:,:,:,i)
+    differentiate!(sbp, i, flux_parametric_i, differentiation_strong_res)
+  end
+  println(eqn.M)
+
+  # Get strong residual from the weak form
+  strong_res_from_weak = zeros(eqn.res)
+  for i = 1:mesh.numEl  
+    for j = 1:mesh.numNodesPerElement
+      # println("sbp.w[j] = ", sbp.w[j])
+      # println("mesh.jac[j,i] = ", mesh.jac[j,i])
+      JHinverse = mesh.jac[j,i]/sbp.w[j]
+      for k = 1:mesh.numDofPerNode
+        strong_res_from_weak[k,j,i] = JHinverse*eqn.res[k,j,i]
+      end # end for k = 1:mesh.numDofPerNode
+    end # end for i = 1:mesh.numEl 
+  end   # end for j = 1:mesh.numNodesPerElement
+
+  println("differentiation_strong_res = \n", differentiation_strong_res)
+  println("strong_res_from_weak = \n", strong_res_from_weak)
+  # println("\n eqn.res = \n", eqn.res)
+  Error = zeros(eqn.res)
+  for i = 1:mesh.numEl
+    Error[:,:,i] = differentiation_strong_res[:,:,i] + strong_res_from_weak[:,:,i]
+  end
+  println("\nError = \n", Error)
+
+  return nothing
+end # end function residualComparison
+
+
+#=
 function calcPhysicalBoundaryFlux{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                   sbp::SBPOperator, eqn::EulerData{Tsol}, 
                                   functor::BCType, 
@@ -272,9 +312,11 @@ function calcPhysicalBoundaryFlux{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh},
       bndryflux_i = view(bndryflux, :, j, i)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
       ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      euler_flux = zeros(Tsol, 4)
-      calcEulerFlux(params, q, aux_vars, [nx, ny], bndryflux_i)
+      # euler_flux = zeros(Tsol, 4)
+      # functor(q, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      calcEulerFlux(eqn.params, q, aux_vars, [nx, ny], bndryflux_i)
     end
   end
 
 end # End function calcPhysicalBoundaryFlux
+=#

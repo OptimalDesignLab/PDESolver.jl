@@ -3,73 +3,83 @@
 p = 1 elements
 1. vortex3_1.smb
 numEl = 242
+n = 11
 numNodes = 144
 Solution Error Norm = 0.03743255895640676
 Number of Iterations = 3
 
 2. vortex3_5.smb
 numEl = 450
+n = 15
 numNodes = 256
 Solution Error Norm = 0.020798761261184483
 Number of Iterations = 3
 
 3. vortex3_10.smb
 numEl = 800
+n = 20
 numNodes = 441
 Solution Error Norm = 0.012358822566699063
 Number of Iterations = 3
 
 4. vortex3_15.smb
 numEl = 1250
+n = 25
 numNodes = 676
 Solution Error Norm = 0.008268608306426853
 Number of Iterations = 3
 
 5. vortex3_20.smb
 numEl = 1800
+n = 30
 numNodes = 961
 Solution Error Norm = 0.005997033229884772
 Number of Iterations = 3
 
 6. vortex3_25.smb
 numEl = 2450
+n = 35
 numNodes = 1296
 Solution Error Norm =  0.004518897156285108
 Number of Iterations = 3
 
+
+
+
+
 p = 2 elements
 1. vortex3_1.smb
 numEl = 242
-numNodes = 
-Solution Error Norm = 
-Number of Iterations = 
+numNodes = 771
+Solution Error Norm = 0.3338674495735666
+Number of Iterations = 6
 
 2. vortex3_5.smb
 numEl = 450
-numNodes = 
-Solution Error Norm = 
-Number of Iterations = 
+numNodes = 1411
+Solution Error Norm = 0.1508738600869154
+Number of Iterations = 5
 
 3. vortex3_10.smb
 numEl = 800
-numNodes = 
-Solution Error Norm = 
-Number of Iterations = 
+numNodes = 2481
+Solution Error Norm = 0.06871933194097918
+Number of Iterations = 4
 
 4. vortex3_15.smb
 numEl = 1250
-numNodes = 
-Solution Error Norm = 
-Number of Iterations = 
+numNodes = 3851
+Solution Error Norm = 0.039818174280091406
+Number of Iterations = 4
 
 5. vortex3_20.smb
 numEl = 1800
-numNodes = 
-Solution Error Norm = 
-Number of Iterations = 
+numNodes = 5521
+Solution Error Norm = 0.02653985695257459
+Number of Iterations = 4
 
 6. vortex3_25.smb
 numEl = 2450
-numNodes = 
-Solution Error Norm =  
-Number of Iterations = 
+numNodes = 7491
+Solution Error Norm = 0.019258875328541866
+Number of Iterations = 4

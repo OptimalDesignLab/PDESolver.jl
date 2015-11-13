@@ -413,6 +413,7 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
   m = length(res_0)
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+  
   func(mesh, sbp, eqn, opts)
 #  res_0[:] = real(eqn.res_vec)  # is there an unnecessary copy here?
 

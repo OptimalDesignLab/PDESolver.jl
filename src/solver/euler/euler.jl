@@ -95,49 +95,64 @@ export evalEuler, init
 # this function is what the timestepper calls
 # high level function
 function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t=0.0)
-# res_vec is popualted with du/dt
-# q_vec is q at previous timestep
-# t is current timestep
-# extra_args is unpacked into object needed to evaluation equation
+  # res_vec is popualted with du/dt
+  # q_vec is q at previous timestep
+  # t is current timestep
+  # extra_args is unpacked into object needed to evaluation equation
+  
+  dataPrep(mesh, sbp, eqn, opts)
+  # println("\n eqn.bndryflux = \n", eqn.bndryflux)
 
-dataPrep(mesh, sbp, eqn, opts)
-#println("dataPrep @time printed above")
-evalVolumeIntegrals(mesh, sbp, eqn)
-#println("volume integral @time printed above")
+  #println("dataPrep @time printed above")
+  evalVolumeIntegrals(mesh, sbp, eqn)
 
-evalBoundaryIntegrals(mesh, sbp, eqn)
-#println("boundary integral @time printed above")
+  #println("volume integral @time printed above")
+  
+  #----------------------------------------------------------------------------
+  #=
+  bndryfluxPhysical = zeros(eqn.bndryflux)
+  getPhysBCFluxes(mesh, sbp, eqn, opts, bndryfluxPhysical)
+  #println("bndryfluxPhysical = \n", bndryfluxPhysical)
+  #println("eqn.bndryflux = \n", eqn.bndryflux)
+  bndryfluxPhysical = -1*bndryfluxPhysical
+  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
 
-SUPG(mesh,sbp,eqn)
+  SUPG(mesh,sbp,eqn)
 
+  bndryfluxPhysical = -1*bndryfluxPhysical
+  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  =#
+  #----------------------------------------------------------------------------
 
-addStabilization(mesh, sbp, eqn, opts)
-#println("edge stabilizing @time printed above")
-
-
-# no more assembling solution
-#assembleSolution(mesh, sbp, eqn, res_vec)
-#println("assembly @time printed above")
-
-#applyMassMatrixInverse(eqn, res_vec)
-#println("Minv @time printed above")
-
-#println("after Minv, sum(res) = ", sum(eqn.res))
-#println("    sum(res_vec) = ", sum(res_vec))
-#applyDissipation(mesh, sbp, eqn, res_vec, q_vec)
-
-
-
-#print current error
-#err_norm = norm(res_vec)/mesh.numDof
-#print(" ", err_norm)
+  evalBoundaryIntegrals(mesh, sbp, eqn)
+  # println("\n eqn.res = \n", eqn.res)
+  #println("boundary integral @time printed above")
 
 
-#print("\n")
 
-return nothing
-#return res_vec
+  addStabilization(mesh, sbp, eqn, opts)
+  #println("edge stabilizing @time printed above")
 
+
+  # no more assembling solution
+  #assembleSolution(mesh, sbp, eqn, res_vec)
+  #println("assembly @time printed above")
+
+  #applyMassMatrixInverse(eqn, res_vec)
+  #println("Minv @time printed above")
+
+  #println("after Minv, sum(res) = ", sum(eqn.res))
+  #println("    sum(res_vec) = ", sum(res_vec))
+  #applyDissipation(mesh, sbp, eqn, res_vec, q_vec)
+ 
+  #print current error
+  #err_norm = norm(res_vec)/mesh.numDof
+  #print(" ", err_norm)
+
+
+  #print("\n")
+
+  return nothing
 end  # end evalEuler
 
 
@@ -189,7 +204,6 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
   end
 
 
-
   u = eqn.q
   flux_parametric = eqn.flux_parametric
 
@@ -219,6 +233,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 
 #  getIsentropicVortexBoundaryFlux(mesh, sbp, eqn)
    getBCFluxes(mesh, sbp, eqn, opts)
+   # println("\n eqn.bndryflux = \n", eqn.bndryflux)
 #   println("getBCFluxes @time printed above")
 #  isentropicVortexBC(mesh, sbp, eqn)
   stabscale(mesh, sbp, eqn)
@@ -243,27 +258,24 @@ end # end function dataPrep
 """->
 # this is a mid level function
 function getBCFluxes(mesh, sbp, eqn, opts)
-# get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+  #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
-#println("mesh.bndry_funcs = ", mesh.bndry_funcs)
+  #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
 
-for i=1:mesh.numBC
-
-#  println("computing flux for boundary condition ", i)
-  functor_i = mesh.bndry_funcs[i]
-  start_index = mesh.bndry_offsets[i]
-  end_index = mesh.bndry_offsets[i+1]
-  bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
-  bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+  for i=1:mesh.numBC
+  #  println("computing flux for boundary condition ", i)
+    functor_i = mesh.bndry_funcs[i]
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1]
+    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
   
-  calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+  end
 
-end
+  writeBoundary(mesh, sbp, eqn, opts)
 
-writeBoundary(mesh, sbp, eqn, opts)
-
-return nothing
-
+  return nothing
 end
 
 @doc """
@@ -410,8 +422,10 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 #  println("size eqn.flux_parametric = ", size(eqn.flux_parametric), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   
   for i=1:Tdim
-    weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+    weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
   end
+
+  eqn.res = -eqn.res
   
 #  artificialViscosity(mesh, sbp, eqn) 
 
