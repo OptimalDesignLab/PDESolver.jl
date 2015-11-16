@@ -129,7 +129,7 @@ Note that any values associated with these options are shared with the regular
 "jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)
 "epsilon"  : perturbation size when calculation Jacobian, (Float64), default 1e-6 for finite difference, 1e-20 to complex step
 "newton_globalize_euler"  : use the Pseudo-Transient Continuation 
-                            (aka. implicit Euler) globalization, (Bool), default                            true
+                            (aka. implicit Euler) globalization, (Bool), default                            false
 
 # Newton-Krylov options
 "krylov_reltol"  : relative residual tolerance for krylov solver, (Float64),

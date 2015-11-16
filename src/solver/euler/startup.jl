@@ -75,7 +75,11 @@ smb_name = opts["smb_name"]
 # create linear mesh with 4 dof per node
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=opts["coloring_distance"])
 
-pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+if opts["jac_type"] == 3 || opts["jac_type"] == 4
+  pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+else
+  pmesh = mesh
+end
 
 # TODO: input argument for dofpernode
 
@@ -257,6 +261,7 @@ if opts["solve"]
 
 
   if opts["write_finalsolution"]
+    println("writing final solution")
     writedlm("solution_final.dat", real(eqn.q_vec))
   end
 
@@ -272,15 +277,22 @@ if opts["solve"]
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
       exfunc = ICDict[exfname]
-      q_exact = zeros(mesh.numDof)
+      q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
 
       q_diff = eqn.q_vec - q_exact
       diff_norm = calcNorm(eqn, q_diff)
-      discrete_norm = norm(q_diff)/length(q_diff)
+      discrete_norm = norm(q_diff/length(q_diff))
 
       println("solution error norm = ", diff_norm)
       println("solution discrete L2 norm = ", discrete_norm)
+
+      # print to file
+      outname = opts["calc_error_outfname"]
+      f = open(outname, "w")
+      println(f, mesh.numEl, " ", diff_norm, " ", discrete_norm)
+      close(f)
+
     end
   end
       
