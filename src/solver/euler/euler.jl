@@ -878,6 +878,98 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
   return nothing
 end
 
+
+@doc """
+# low level function
+  Converts a the entropy variables at a node and converts them to
+  conservative variables
+
+  Inputs:
+  params  : ParamType{2, :entropy} used to dispatch to the proper method
+  qe  : vector (of length 4) of entropy variables
+  
+  Inputs/outputs
+  qc : vector (of length 4) of conservative variables.  Contents of vector are
+       overwritten
+
+  Aliasing: qc and qe cannot be the same vector
+"""->
+function convertToConservative{Tsol}(params::ParamType{2, :entropy}, 
+                  qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
+  
+  k1 = 0.5*(qe[2]^2 + qe[3]^2)/qe[4]
+  s = gamma - qe[1] + k1
+  rho_int = exp(-s/gamma_1)*(gamma_1/(-qe[4])^gamma)^(1/gamma_1)
+  qc[1] = -qe[4]*rho_int
+  qc[2] = qe[2]*rho_int
+  qc[3] = qe[3]*rho_int
+  qc[4] = (1.0 - k1)*rho_int
+end
+
+@doc """
+# low level function
+
+  Converts conservative variables to conservative variables (ie. it
+  copies the input to the output).  This method exists to values can be 
+  converted without knowing whether they are conservative or entropy.
+
+"""->
+function convertToConservative{Tsol}(params::ParamType{2, :conservative}, 
+                  qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
+
+  for i=1:length(qe)
+    qc[i] = qe[i]
+  end
+
+  return nothing
+end
+ 
+  
+
+@doc """
+# low level function
+  Converts the conservative variables at a node to entropy variables
+
+  Input:
+  params : ParamType{s, :conservative}
+  qc  : vector (of length 4) of conservative variables
+
+  Outputs:
+  qe : vector (of length 4) of conservative variables.  Contents of vector are
+       overwritten
+
+  Aliasing: qc and qe cannot be the same vector (obviously)
+"""->
+function convertToEntropy{Tsol}(params::ParamType{2, :conservative}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+
+ k1 = 0.5*(qc[2]^2 + qc[3]^2)/qc[1]
+  rho_int = qc[4] -k1
+  s = log(gami*rho_int/(qc[1]^gamma))
+  fac = 1.0/rho_int
+  qe[1] = (rho_int*(gamma + 1 -s) - qc[4])*fac
+  qe[2] = qc[2]*fac
+  qe[3] = qc[3]*fac
+  qe[4] = -qc[1]*fac
+end
+
+@doc """
+# low level function
+  Converts the entropy variables to entropy variables (ie. it copies the 
+  input to the output).  This method exists so variables can be converted 
+  to entropy variables without knowing what type they are.
+
+"""->
+function convertToEntropy{Tsol}(params::ParamType{2, :entroyp}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+
+  for i=1:length(qc)
+    qe[i] = qc[i]
+  end
+
+  return nothing
+end
+
 @doc """
 ### EulerEquationMod.calcEulerFlux
 
@@ -885,7 +977,7 @@ end
    a single node in a particular direction.  2D only.
 
    Inputs:
-   params  : ParamaterType{2}
+   params  : ParamaterType{2, :conservative}
    q  : vector of conservative variables
    aux_vars : vector of auxiliary variables
    dir :  unit vector in direction to calculate the flux
@@ -899,7 +991,7 @@ end
    This is a low level function
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
@@ -919,6 +1011,46 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2}, q::AbstractArray{
  
   return nothing
 
+end
+
+
+@odc """
+# low level function
+    Calculates the Euler flux from entropy variables
+
+    Inputs:
+    params : ParameterType{2, :entropy}
+    q : vector of entropy variables
+    aux_vars : vector of auxiliary variables
+    dir : vector specifying the direction to caculate the flux
+
+    Inputs/Outputs:
+    F  : vector to populate with the flux
+ 
+    This is a low level function.  The second static parameter of 
+    the ParameterType is used to dispatch to the right method for
+    entropy or conservative variables
+"""->
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  # calculate some intermediate quantities
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+    # internal energy (rho*i in Hughes) - not specific internal energy e
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  U = q[2]*dir[1] + q[3]*dir[2]
+  fac = rho_int/q[4]
+
+  # now we can actually calculate the flux
+  F[1] = q[4]*u*fac
+  F[2] = (dir[1]*gamma_1*q[4] - q[2]*U)*fac
+  F[3] = (dir[2]*gamma_1*q[4] - q[3]*U)*fac
+  F[4] = U*(k1 - gamma)*fac
+
+  return nothing
 end
 
 @doc """
@@ -959,14 +1091,14 @@ end
 
   Inputs:
     q  : vector of conservative variables
-    params : ParamType{2}
+    params : ParamType{2, :conservative}
 
-  The paramater of params determines whether the 2D or 3D method is dispatched.
+  The parameter of params determines whether the 2D or 3D method is dispatched.
 
   This is a low level function.
 """->
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2})
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :conservative})
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
@@ -980,13 +1112,35 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2})
 
 end
 
+
+@doc """
+  This function calculates pressure using the entropy variables.
+
+  Inputs:
+    q  : vector of entropy varaibles
+    params : ParamType{2, :entropy}
+
+  returns pressure
+"""->
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  return gamma_1*rho_int
+end
+
+
 @doc """
 ### EulerEquationMod.calcPressure
 
   3D method.  See 2D method documentation
 """->
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3})
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3, :conservative})
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
 
@@ -1000,4 +1154,66 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3})
 
 end
 
+@doc """
+### EulerEquationMod.calcA0
 
+  This function calculates the A0 (ie. dq/dv, where q are the conservative 
+  and v are the entropy variables) for a node, and stores it in params.A0
+
+  The formation of A0 is given in Hughes
+
+  Inputs:
+    q  : vector of conservative variables, length 4
+
+  Inputs/Outputs:
+    params : ParamType{2, :entropy}, has field A0 which is overwritten with
+             the calculated A0
+
+"""->
+function calcA0{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
+
+  
+    gamma = params.gamma
+    gamma_1 = params.gamma_1
+ 
+    k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+    k2 = k1 - gamma
+    k3 = k1*k1 - 2*gamma*k1 + gamma
+#    k4 = k2 - gamma_1
+    s = gamma - q[1] + k1    # entropy
+ 
+    rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+    fac = rho_int/(gamma_1*q[4])
+
+    # calculate the variables used in Hughes A.1
+    c1 = gamma_1*q[4] - q[2]*q[2]
+    c2 = gamma_1*q[4] - q[3]*q[3]
+
+    d1 = -q[2]*q[3]
+
+    e1 = q[2]*q[4]
+    e2 = q[3]*q[5]
+
+    # populate the matrix
+    # the matrix is symmetric, but we don't use it because I think populating
+    # the matrix will be faster if the matrix is write-only
+    params.A0[1,1] = -q[4]*q[4]
+    params.A0[2,1] = e1
+    params.A0[3,1] = e2
+    params.A0[4,1] = q[4]*(1-k1)
+    params.A0[1,2] = e1  # symmetric
+    params.A0[2,2] = c1
+    params.A0[3,2] = d1
+    params.A0[4,2] = q[2]*k2
+    params.A0[1,3] = e2  # symmetric
+    params.A0[2,3] = d1  # symmetric
+    params.A0[3,3] = c2
+    params.A0[4,3] = q[3]*k2
+    params.A0[1,4] = q[4]*(1-k1)  # symmetric
+    params.A0[2,4] = q[2]*k2   # symmetric
+    params.A0[3,4] = q[3]*k2  # symmetric
+    params.A0[4,4] = q[4]*q[4]
+
+    return nothing
+  end
