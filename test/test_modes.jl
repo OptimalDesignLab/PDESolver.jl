@@ -21,10 +21,11 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   pert = complex(0, epsilon)
   NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, EulerEquationMod.evalEuler, [], pert, jac)
 
+  newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
   v = ones(mesh.numDof)  # vector to multiply jacobian against
   result1 = jac*v
   result2 = zeros(mesh.numDof)
-  NonlinearSolvers.calcJacVecProd(mesh, sbp, eqn, opts, pert, EulerEquationMod.evalEuler, v, result2)
+  NonlinearSolvers.calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, EulerEquationMod.evalEuler, v, result2)
 
   # check the two products are equal
   for i=1:mesh.numDof

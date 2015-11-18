@@ -52,8 +52,10 @@ end
 
 
 facts("--- Testing Euler Low Level Functions --- ") do
-    # create an entropy variable Paramtype to test the entropy formulation
-    e_params = EulerEquationMod.ParamType{2, :entropy, opts["Tsol"], opts["Tres"], opts["Tmsh"]}(sbp, opts, mesh.order)
+   opts["variable_type"] = :entropy
+   eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+   e_params = eqn_e.params
+   opts["variable_type"] = :conservative
 
  q = [1.0, 2.0, 3.0, 7.0]
  qg = deepcopy(q)
@@ -61,24 +63,61 @@ facts("--- Testing Euler Low Level Functions --- ") do
  dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
  dir = [1.0, 0.0]
  F = zeros(4)
+ Fe = zeros(4)
  coords = [1.0,  0.0]
 
  flux_parametric = zeros(4,2)
 
    v = zeros(4)
    EulerEquationMod.convertToEntropy(eqn.params, q, v)
-   @fact v => roughly([-4.99528104378295, 4., 6, -1])
+   @fact v => roughly([-2*4.99528104378295, 4., 6, -2*1])
    q_ret = zeros(4)
    EulerEquationMod.convertToConservative(e_params, v, q_ret)
    @fact q_ret => roughly(q)
 
+   context("--- Testing convert Functions ---") do
+     # for the case, the solution is uniform flow
+     v_arr = copy(eqn.q)
+     v2 = zeros(4)
+     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+     EulerEquationMod.convertToEntropy(eqn.params, eqn.q[:, 1, 1], v2)
+     EulerEquationMod.convertToEntropy(mesh, sbp, eqn, opts, v_arr)
+     # test conversion to entropy variables
+     for i=1:mesh.numEl
+       for j=1:mesh.numNodesPerElement
+	 @fact v_arr[:, j, i] => v2
+       end
+     end
+
+     v_vec = copy(eqn.q_vec)
+     EulerEquationMod.convertToEntropy(mesh, sbp, eqn, opts, v_vec)
+     for i=1:4:mesh.numDof
+       @fact v_vec[i:(i+3)] => v2
+     end
+
+     # now test converting back to conservative
+     EulerEquationMod.convertToConservative(mesh, sbp, eqn_e, opts, v_arr)
+     for i =1:mesh.numEl
+       for j=1:mesh.numNodesPerElement
+	 @fact v_arr[:, j, i] => roughly(eqn.q[:, j, i])
+       end
+     end
+
+     EulerEquationMod.convertToConservative(mesh, sbp, eqn_e, opts, v_vec)
+     for i=1:mesh.numDof
+       @fact v_vec[i] => roughly(eqn.q_vec[i])
+     end
+
+
+   end
  context("--- Testing calc functions ---") do
 
    @fact EulerEquationMod.calcPressure(q, eqn.params) => roughly(0.2)
    @fact EulerEquationMod.calcPressure(v, e_params) => roughly(0.2)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
+   EulerEquationMod.calcEulerFlux(e_params, v, aux_vars, dir, Fe)
    @fact F => roughly([2.0, 4.2, 6, 14.4], atol=1e-14)
-
+   @fact Fe => roughly(F)
  end
 
   context("--- Testing Boundary Function ---") do
