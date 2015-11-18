@@ -6,7 +6,8 @@ include("bc_solvers.jl")
 ### EulerEquationMod.calcBoundaryFlux
 
   This function calculates the boundary flux for the portion of the boundary
-  with a particular boundary condition.
+  with a particular boundary condition.  The eqn.q are converted to 
+  conservative variables if needed
 
   Inputs:
   mesh : AbstractMesh
@@ -21,7 +22,7 @@ include("bc_solvers.jl")
 
   The functor must have the signature
   functor( q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
-
+  where q are the *conservative* variables.
   where all arguments (except params) are vectors of values at a node.
 
   This is a mid level function.
@@ -40,7 +41,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBP
     println("element ", bndry_facenums[i].element, " edge ", bndry_facenums[i].face)
   end
 =#
-
+  q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
@@ -50,6 +51,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBP
 
       # get components
       q = view(eqn.q, :, k, bndry_i.element)
+      # convert to conservative variables if needed
+      convertToConservative(eqn.params, q, q2)
       flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
       aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       x = view(mesh.coords, :, k, bndry_i.element)
@@ -59,7 +62,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBP
       bndryflux_i = view(bndryflux, :, j, i)
 
 
-      functor(q, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      functor(q2, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
     end
 

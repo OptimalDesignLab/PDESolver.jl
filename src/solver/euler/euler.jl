@@ -896,7 +896,8 @@ end
 """->
 function convertToConservative{Tsol}(params::ParamType{2, :entropy}, 
                   qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
-  
+ #TODO: make this an inplace operation
+ # this will likely make better use of registers
   k1 = 0.5*(qe[2]^2 + qe[3]^2)/qe[4]
   s = gamma - qe[1] + k1
   rho_int = exp(-s/gamma_1)*(gamma_1/(-qe[4])^gamma)^(1/gamma_1)
@@ -916,15 +917,77 @@ end
 """->
 function convertToConservative{Tsol}(params::ParamType{2, :conservative}, 
                   qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
-
+# maybe the compiler will be smart enough to make this a no-op
   for i=1:length(qe)
     qc[i] = qe[i]
   end
 
   return nothing
 end
- 
-  
+
+@doc """
+# mid level function
+
+  Converts the array (3D form) of entropy variables to conservative variables 
+  in place.  If the array is already in conservative variables this is a no-op
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs:
+    q_arr: array of values (3D) to be converted
+
+  Aliasing: no restrictions
+"""
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+
+  work_arr = zeros(Tsol, size(q_arr, 1))
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+        for k=1:size(q_arr,1)  # copy entropy values into new array
+          work_arr[k] = q_arr[k, j, i]
+	end
+	q_view = view(q_arr, :, j, i)  # reuse memory
+	convertToConservative(eqn.params, q_vals, q_view)
+    end
+  end
+
+  return nothing
+end
+
+# 3D array
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+
+# q_vec conversion
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_vec::AbstractArray{Tsol, 1})
+
+  work_vec = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    for j=1:mesh.numDofPerNode
+      work_vec[j] = q[i + j - 1]
+    end
+    q_view = view(q_arr, i:(i+mesh.numDofPerNode-1))
+    convertToConservative(eqn.params, work_arr, q_view)
+  end
+
+  return nothing
+end
+
+# q_vec conversion
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 1})
+
+  return nothing
+end
+
+
+
 
 @doc """
 # low level function
@@ -943,9 +1006,12 @@ end
 function convertToEntropy{Tsol}(params::ParamType{2, :conservative}, 
                qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
 
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
  k1 = 0.5*(qc[2]^2 + qc[3]^2)/qc[1]
   rho_int = qc[4] -k1
-  s = log(gami*rho_int/(qc[1]^gamma))
+  s = log(gamma_1*rho_int/(qc[1]^gamma))
   fac = 1.0/rho_int
   qe[1] = (rho_int*(gamma + 1 -s) - qc[4])*fac
   qe[2] = qc[2]*fac
@@ -969,6 +1035,73 @@ function convertToEntropy{Tsol}(params::ParamType{2, :entroyp},
 
   return nothing
 end
+
+
+@doc """
+# mid level function
+
+  Converts the array (3D form) of conservative variables to entropy variables 
+  in place.  If the array is already in entropy variables this is a no-op
+
+  Methods also exist for the 1D form.
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs:
+    q_arr: array of values (3D) to be converted
+
+  Aliasing: no restrictions
+"""->
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_arr::AbstractArray{Tsol, 3})
+
+  work_arr = zeros(Tsol, size(q_arr, 1))
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+        for k=1:size(q_arr,1)  # copy conservative values into new array
+          work_arr[k] = q_arr[k, j, i]  # make 
+	end
+	q_view = view(q_arr, :, j, i)  # reuse memory
+	convertToEntropy(eqn.params, work_arr, q_view)
+    end
+  end
+
+  return nothing
+end
+
+
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+
+
+# q_vec conversion
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_vec::AbstractArray{Tsol, 1})
+
+  work_vec = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    for j=1:mesh.numDofPerNode
+      work_vec[j] = q[i + j - 1]
+    end
+    q_view = view(q_arr, i:(i+mesh.numDofPerNode-1))
+    convertToEntropy(eqn.params, work_arr, q_view)
+  end
+
+  return nothing
+end
+
+# q_vec conversion
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 1})
+
+  return nothing
+end
+
+
+
 
 @doc """
 ### EulerEquationMod.calcEulerFlux
@@ -1014,7 +1147,7 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, q:
 end
 
 
-@odc """
+@doc """
 # low level function
     Calculates the Euler flux from entropy variables
 
@@ -1163,11 +1296,13 @@ end
   The formation of A0 is given in Hughes
 
   Inputs:
-    q  : vector of conservative variables, length 4
+    q  : vector of entropy variables, length 4
 
   Inputs/Outputs:
     params : ParamType{2, :entropy}, has field A0 which is overwritten with
              the calculated A0
+
+  This function is currently unused, untested
 
 """->
 function calcA0{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})

@@ -57,6 +57,9 @@ end
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
 
+  The initial condition in eqn.q_vec should be in whatever variables
+  the residual evaluation uses.
+
   Arguments:
     * func  : function that evalutes the residual
     * mesh : mesh to use in evaluating the residual

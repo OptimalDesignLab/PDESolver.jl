@@ -60,6 +60,14 @@ If it is variable sized then macros give the advantage of doing location lookup
   This type is paramaterized on the dimension of the equation for purposes
   of multiple dispatch
 
+  Static Parameters:
+  Tdim : dimensionality of the equation, integer, (used for dispatch)
+  var_type : type of variables used used in the weak form, symbol, (used for
+             dispatch), currently supported values: :conservative, :entropy
+  Tsol : datatype of solution variables q
+  Tres : datatype of residual
+  Tmsh : datatype of mesh related quantities (mapping jacobian etc.)
+
   **Fields**
     # these fields have defaults:
     * cv  : specific heat constant
@@ -72,9 +80,11 @@ If it is variable sized then macros give the advantage of doing location lookup
     * aoa : angle of attack (radians)
  
 """->
-type ParamType{Tdim}
+type ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
+
+  q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
 
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -113,6 +123,9 @@ type ParamType{Tdim}
     
     t = 0.0
     # get() = get(dictionary, key, default)
+
+    q_vals = Array(Tsol, 4)
+
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -158,7 +171,7 @@ type ParamType{Tdim}
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
-    return new(t, order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
+    return new(t, order, q_vals, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
                edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, 
                use_filter, use_res_filter, filter_mat, use_dissipation,  
                dissipation_const, vortex_x0, vortex_strength, krylov_itr, krylov_type)
@@ -193,7 +206,8 @@ abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
     * stabscale : 2D array holding edge stabilization scale factor
     * Minv :  vector holding inverse mass matrix
 """->
-abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
+abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol}
+#TODO: static parameter order is inconsistent with EulerData_
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
@@ -227,14 +241,24 @@ include("artificialViscosity.jl")
   Eventually there will be additional implimentation of EulerData,
   specifically a 3D one.
 
+  Static Parameters:
+    Tsol : datatype of variables solution variables, ie. the 
+           q vector and array
+    Tres : datatype of residual. ie. eltype(res_vec)
+    Tdim : dimensionality of equation, integer, (2 or 3)
+    Tmsh : datatype of mesh related quantities
+    var_type : type of variables used in weak form, symbol, (:conservative 
+               or :entropy)
+
+
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres, var_type}  
 # hold any constants needed for euler equation, as well as solution and data 
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
 # Only the constants are initilized here, the arrays are not.
 
-  params::ParamType{Tdim}
+  params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
   res_type::DataType  # type of res
 
   # the following arrays hold data for all nodes
@@ -261,8 +285,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
   Minv::Array{Float64, 1}         # inverse mass matrix
   M::Array{Float64, 1}            # mass matrix
 
+  # TODO: consider overloading getField instead of having function as
+  #       fields
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
+  convertToEntropyVars::Function  # function eqn.q -> eqn.q entropy variables
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 # minorIterationCallback::Function # called before every residual evaluation
 
@@ -276,10 +303,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
-    eqn.params = ParamType{Tdim}(sbp, opts, mesh.order)
+    eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, mesh.order)
     eqn.res_type = Tres
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
+    eqn.convertToEntropyVars = convertToConservative
     eqn.majorIterationCallback = majorIterationCallback
 
     calcMassMatrixInverse(mesh, sbp, eqn)

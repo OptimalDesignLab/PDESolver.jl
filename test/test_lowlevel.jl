@@ -52,6 +52,8 @@ end
 
 
 facts("--- Testing Euler Low Level Functions --- ") do
+    # create an entropy variable Paramtype to test the entropy formulation
+    e_params = EulerEquationMod.ParamType{2, :entropy, opts["Tsol"], opts["Tres"], opts["Tmsh"]}(sbp, opts, mesh.order)
 
  q = [1.0, 2.0, 3.0, 7.0]
  qg = deepcopy(q)
@@ -63,9 +65,17 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
  flux_parametric = zeros(4,2)
 
+   v = zeros(4)
+   EulerEquationMod.convertToEntropy(eqn.params, q, v)
+   @fact v => roughly([-4.99528104378295, 4., 6, -1])
+   q_ret = zeros(4)
+   EulerEquationMod.convertToConservative(e_params, v, q_ret)
+   @fact q_ret => roughly(q)
+
  context("--- Testing calc functions ---") do
 
    @fact EulerEquationMod.calcPressure(q, eqn.params) => roughly(0.2)
+   @fact EulerEquationMod.calcPressure(v, e_params) => roughly(0.2)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
    @fact F => roughly([2.0, 4.2, 6, 14.4], atol=1e-14)
 

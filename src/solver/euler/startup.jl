@@ -65,6 +65,12 @@ elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
   Tres = Complex128
 end
 
+# record these choices in the dictionary
+opts["Tmsh"] = Tmsh
+opts["Tsbp"] = Tsbp
+opts["Tsol"] = Tsol
+opts["Tres"] = Tres
+
 # create SBP object
 println("\nConstructing SBP Operator")
 sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
@@ -84,7 +90,8 @@ end
 # TODO: input argument for dofpernode
 
 # create euler equation
-eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
+var_type = opts["variable_type"]
+eqn = EulerData_{Tsol, Tres, 2, Tmsh, var_type}(mesh, sbp, opts)
 
 # initialize physics module and populate any fields in mesh and eqn that
 # depend on the physics module
@@ -102,7 +109,10 @@ if haskey(ICDict, Relfunc_name)
   Relfunc = ICDict[Relfunc_name]
   println("Relfunc = ", Relfunc)
   Relfunc(mesh, sbp, eqn, opts, q_vec)
-
+ 
+  if var_type == :entropy
+    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec)
+  end
 #  println("eqn.q_vec = ", eqn.q_vec)
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
@@ -124,6 +134,10 @@ ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec)
+
+if var_type == :entropy
+    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec)
+end
 
 # TODO: cleanup 20151009 start
 

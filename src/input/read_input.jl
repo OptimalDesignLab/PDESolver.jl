@@ -27,6 +27,9 @@ end
 # record fname in dictionary
 arg_dict["fname"] = fname
 
+# type of variables, defaults to conservative
+get!(arg_dict, "variable_type", :conservative)
+
 # supply default values if not given 
 # get() = get!(dictionary, key, default)
 gamma = get!(arg_dict, "gamma", 1.4)
