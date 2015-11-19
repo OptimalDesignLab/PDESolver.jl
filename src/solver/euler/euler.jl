@@ -1410,3 +1410,52 @@ function calcA0Inv{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy
 
     return nothing
 end
+
+
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+# multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
+
+  A0inv = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  workvec = Array(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      # copy values into workvec
+      for k=1:mesh.numDofPerNode
+	workvec[k] = q_arr[k, j, i]
+      end
+
+      q_view = view(q_arr, :, j, i)
+      # get A0Inv for this node
+      calcA0Inv(q_view, eqn.params, A0inv)
+
+      smallmatvec!(A0inv, workvec, q_view)
+    end
+  end
+
+  return nothing
+end
+
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+# multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
+
+  A0 = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  workvec = Array(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      # copy values into workvec
+      for k=1:mesh.numDofPerNode
+	workvec[k] = q_arr[k, j, i]
+      end
+
+      q_view = view(q_arr, :, j, i)
+      # get A0Inv for this node
+      calcA0(q_view, eqn.params, A0)
+
+      smallmatvec!(A0, workvec, q_view)
+    end
+  end
+
+  return nothing
+end
+
+

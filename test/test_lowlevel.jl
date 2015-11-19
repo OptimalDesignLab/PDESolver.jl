@@ -88,9 +88,6 @@ facts("--- Testing Euler Low Level Functions --- ") do
    A02 = inv(A0inv)
    EulerEquationMod.calcA0(v, e_params, A0)
 
-
-   A0_diff = A0 - A02
-
    for i=1:16
      @fact A0[i] => roughly(A02[i], atol=1e-10)
    end
@@ -114,6 +111,38 @@ facts("--- Testing Euler Low Level Functions --- ") do
        @fact v_vec[i:(i+3)] => v2
      end
 
+     println("testing multiply by A0inv")
+     v_arr2 = copy(v_arr)
+     # test multiply by A0inv, A0
+     println("before, v_arr2 = \n", v_arr2)
+
+     EulerEquationMod.calcA0Inv(v_arr2[:, 1, 1], e_params, A0inv)
+     v2 = A0inv*v_arr2[:, 1, 1]
+     EulerEquationMod.matVecA0inv(mesh, sbp, eqn_e, opts, v_arr2)
+     println("v2 = ", v2)
+     println("after, v_arr2 = ", v_arr2)
+     for i=1:mesh.numEl
+       for j=1:mesh.numNodesPerElement
+         @fact v_arr2[:, j, i] => roughly(v2)
+       end
+     end
+
+     println("testing multiply by A0")
+     v_arr3 = copy(v_arr)
+
+     EulerEquationMod.calcA0(v_arr3[:, 1, 1], e_params, A0)
+     v3 = A0*v_arr3[:, 1, 1]  # store original values
+     EulerEquationMod.matVecA0(mesh, sbp, eqn_e, opts, v_arr3)
+     for i=1:mesh.numEl
+       for j=1:mesh.numNodesPerElement
+         @fact v_arr3[:, j, i] => roughly(v3)
+       end
+     end
+
+
+
+     
+
      # now test converting back to conservative
      EulerEquationMod.convertToConservative(mesh, sbp, eqn_e, opts, v_arr)
      for i =1:mesh.numEl
@@ -127,6 +156,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
        @fact v_vec[i] => roughly(eqn.q_vec[i])
      end
 
+     # test multiplying an entire array by A0inv
+     
 
    end
  context("--- Testing calc functions ---") do
