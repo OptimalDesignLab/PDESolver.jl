@@ -1311,50 +1311,102 @@ end
   This function is currently unused, untested
 
 """->
-function calcA0{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
+function calcA0{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A0::AbstractArray{Tsol, 2})
 
-  
-    gamma = params.gamma
-    gamma_1 = params.gamma_1
- 
-    k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
-    k2 = k1 - gamma
-    k3 = k1*k1 - 2*gamma*k1 + gamma
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
 #    k4 = k2 - gamma_1
-    s = gamma - q[1] + k1    # entropy
- 
-    rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  s = gamma - q[1] + k1    # entropy
 
-    fac = rho_int/(gamma_1*q[4])
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
 
-    # calculate the variables used in Hughes A.1
-    c1 = gamma_1*q[4] - q[2]*q[2]
-    c2 = gamma_1*q[4] - q[3]*q[3]
+  fac = rho_int/(gamma_1*q[4])
 
-    d1 = -q[2]*q[3]
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[4] - q[2]*q[2]
+  c2 = gamma_1*q[4] - q[3]*q[3]
 
-    e1 = q[2]*q[4]
-    e2 = q[3]*q[5]
+  d1 = -q[2]*q[3]
 
-    # populate the matrix
-    # the matrix is symmetric, but we don't use it because I think populating
-    # the matrix will be faster if the matrix is write-only
-    params.A0[1,1] = -q[4]*q[4]
-    params.A0[2,1] = e1
-    params.A0[3,1] = e2
-    params.A0[4,1] = q[4]*(1-k1)
-    params.A0[1,2] = e1  # symmetric
-    params.A0[2,2] = c1
-    params.A0[3,2] = d1
-    params.A0[4,2] = q[2]*k2
-    params.A0[1,3] = e2  # symmetric
-    params.A0[2,3] = d1  # symmetric
-    params.A0[3,3] = c2
-    params.A0[4,3] = q[3]*k2
-    params.A0[1,4] = q[4]*(1-k1)  # symmetric
-    params.A0[2,4] = q[2]*k2   # symmetric
-    params.A0[3,4] = q[3]*k2  # symmetric
-    params.A0[4,4] = q[4]*q[4]
+  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A0[1,1] = -q[4]*q[4]*fac
+  A0[2,1] = e1*fac
+  A0[3,1] = e2*fac
+  A0[4,1] = q[4]*(1-k1)*fac
+  A0[1,2] = e1*fac  # symmetric
+  A0[2,2] = c1*fac
+  A0[3,2] = d1*fac
+  A0[4,2] = q[2]*k2*fac
+  A0[1,3] = e2*fac  # symmetric
+  A0[2,3] = d1*fac  # symmetric
+  A0[3,3] = c2*fac
+  A0[4,3] = q[3]*k2*fac
+  A0[1,4] = q[4]*(1-k1)*fac  # symmetric
+  A0[2,4] = q[2]*k2*fac   # symmetric
+  A0[3,4] = q[3]*k2*fac  # symmetric
+  A0[4,4] = -k3*fac
 
     return nothing
-  end
+end
+
+@doc """
+# EulerEquationMod.calcA0Inv
+
+  Calculates inv(A0), where A0 = dq/dv, where q are the conservative variables
+  at a node and v are the entropy varaibles at a node, using the entropy 
+  variables.  
+
+  Inputs:
+  q  : vector (length 4) of entropy variables at a node
+  params : ParamType{2, :entropy}
+
+  Inputs/Outputs:
+    A0inv : matrix to be populated with inv(A0).  Overwritten.
+
+  Aliasing restrictions: none
+"""->
+function calcA0Inv{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A0inv::AbstractArray{Tsol, 2})
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+   s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = -1/(rho_int*q[4])
+
+  d1 = -q[2]*q[3]
+  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+
+  A0inv[1,1] = (k1*k1 + gamma)*fac
+  A0inv[2,1] = k1*q[2]*fac
+  A0inv[3,1] = k1*q[3]*fac
+  A0inv[4,1] = (k1 + 1)*q[4]*fac
+  A0inv[1,2] = k1*q[2]*fac  # symmetry
+  A0inv[2,2] = (q[2]*q[2] - q[4])*fac
+  A0inv[3,2] = -d1*fac
+  A0inv[4,2] = e1*fac
+  A0inv[1,3] = k1*q[3]*fac  # symmetry
+  A0inv[2,3] = -d1*fac  # symmetry
+  A0inv[3,3] = (q[3]*q[3] - q[4])*fac
+  A0inv[4,3] = e2*fac
+  A0inv[1,4] = (k1 + 1)*q[4]*fac  # symmetry
+  A0inv[2,4] = e1*fac  # symmetry
+  A0inv[3,4] = e2*fac  # symmetry
+  A0inv[4,4] = q[4]*q[4]*fac
+
+    return nothing
+end

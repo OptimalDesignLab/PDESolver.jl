@@ -75,6 +75,25 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.convertToConservative(e_params, v, q_ret)
    @fact q_ret => roughly(q)
 
+   A0inv = zeros(4,4)
+   A0inv2 = [170.4 -52 -78 24; 
+             -52 18 24 -8; 
+	     -78 24 38 -12; 
+	     24 -8  -12 4]
+   EulerEquationMod.calcA0Inv(v, e_params, A0inv)
+
+   @fact A0inv => roughly(A0inv2)
+
+   A0 = zeros(4,4)
+   A02 = inv(A0inv)
+   EulerEquationMod.calcA0(v, e_params, A0)
+
+
+   A0_diff = A0 - A02
+
+   for i=1:16
+     @fact A0[i] => roughly(A02[i], atol=1e-10)
+   end
    context("--- Testing convert Functions ---") do
      # for the case, the solution is uniform flow
      v_arr = copy(eqn.q)
