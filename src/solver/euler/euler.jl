@@ -116,9 +116,11 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   #println("eqn.bndryflux = \n", eqn.bndryflux)
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
-
-  SUPG(mesh,sbp,eqn)
-
+  =#
+  if opts["use_SUPG"]
+    SUPG(mesh,sbp,eqn)
+  end
+  #=
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#

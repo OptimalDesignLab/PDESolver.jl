@@ -53,6 +53,7 @@ get!(arg_dict, "use_res_filter", false)
 get!(arg_dict, "use_dissipation", false)
 get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
+get!(arg_dict, "use_SUPG", false)
 
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")

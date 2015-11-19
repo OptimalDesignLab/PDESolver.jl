@@ -1,4 +1,4 @@
-# SUPG implementation
+ # SUPG implementation
 function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
 	                            eqn::EulerData{Tsol, Tdim})
 
@@ -178,7 +178,7 @@ function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
     end # end for j = 1:mesh.numNodesPerElement
   end   # end for i = 1:mesh.numEl
 
-  beta = zeros(2, mesh.numNodesPerElement, mesh.numEl)
+  beta = zeros(Tsol,2, mesh.numNodesPerElement, mesh.numEl)
   
   for k = 1:Tdim
     res = zeros(q_param)
@@ -200,7 +200,7 @@ function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
       q = view(eqn.q,:,j,i)
       T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
       c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
-      uxi = zeros(2) # Array of velocities in the xi & eta direction
+      uxi = zeros(Tsol,2) # Array of velocities in the xi & eta direction
       uxi[1] = q_param[2,j,i]/q_param[1,j,i]
       uxi[2] = q_param[3,j,i]/q_param[1,j,i]
       # Advective stabilization term
@@ -261,14 +261,12 @@ function residualComparison(mesh, sbp, eqn, opts)
     flux_parametric_i = view(eqn.flux_parametric,:,:,:,i)
     differentiate!(sbp, i, flux_parametric_i, differentiation_strong_res)
   end
-  println(eqn.M)
+  
 
   # Get strong residual from the weak form
   strong_res_from_weak = zeros(eqn.res)
   for i = 1:mesh.numEl  
     for j = 1:mesh.numNodesPerElement
-      # println("sbp.w[j] = ", sbp.w[j])
-      # println("mesh.jac[j,i] = ", mesh.jac[j,i])
       JHinverse = mesh.jac[j,i]/sbp.w[j]
       for k = 1:mesh.numDofPerNode
         strong_res_from_weak[k,j,i] = JHinverse*eqn.res[k,j,i]
@@ -289,34 +287,4 @@ function residualComparison(mesh, sbp, eqn, opts)
 end # end function residualComparison
 
 
-#=
-function calcPhysicalBoundaryFlux{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                  sbp::SBPOperator, eqn::EulerData{Tsol}, 
-                                  functor::BCType, 
-                                  bndry_facenums::AbstractArray{Boundary,1},
-                                  bndryflux::AbstractArray{Tres, 3})
-
-  nfaces = length(bndry_facenums)
-  for i=1:nfaces  # loop over faces with this BC
-    bndry_i = bndry_facenums[i]
-    for j = 1:sbp.numfacenodes
-      k = sbp.facenodes[j, bndry_i.face]
-      # get components
-      q = view(eqn.q, :, k, bndry_i.element)
-      flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
-      aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
-      x = view(mesh.coords, :, k, bndry_i.element)
-      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
-      #println("eqn.bndryflux = ", eqn.bndryflux)
-      bndryflux_i = view(bndryflux, :, j, i)
-      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      # euler_flux = zeros(Tsol, 4)
-      # functor(q, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
-      calcEulerFlux(eqn.params, q, aux_vars, [nx, ny], bndryflux_i)
-    end
-  end
-
-end # End function calcPhysicalBoundaryFlux
-=#
+#----------------------------------------------------------------------------
