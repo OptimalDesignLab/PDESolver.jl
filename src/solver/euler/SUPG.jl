@@ -22,9 +22,9 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   end 
   =#
 
-
+  #=
   # Calculate strong residual
-  #= strong_res = zeros(eqn.res)
+  strong_res = zeros(eqn.res)
   for i = 1:Tdim
     flux_parametric_i = view(eqn.flux_parametric,:,:,:,i)
     differentiate!(sbp, i, flux_parametric_i, strong_res)
@@ -47,7 +47,7 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
       end
       Axi = view(eqn.Axi,:,:,j,i)
       Aeta = view(eqn.Aeta,:,:,j,i)
-      intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res  # [:,j,i]
+      intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res # [:,j,i]
       intvec[:,j,i,2] = (tau[j,i]*Aeta).'*strong_res # [:,j,i]
     end # end for j = 1:mesh.numNodesPerElement
   end   # end for i = 1:mesh.numEl
@@ -74,9 +74,9 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       for k = 1:mesh.numDofPerNode
-        eqn.res[k,j,i] += supg_res[k,j,i] # because the negative sign is already incorporated in the weak residual
-      end
-    end
+        eqn.res[k,j,i] += supg_res[k,j,i] # because the negative sign is 
+      end                                 # already incorporated in the weak 
+    end                                   # residual.
   end
   
   # innerprod_supg = eqn.q_vec.'*supg_res_vec
@@ -156,7 +156,50 @@ function FluxJacobian{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function FluxJacobian
 
-# Stabilization term
+# Stabilization Term 3
+function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+                               tau::AbstractArray{Tsol,2})
+  
+  # Reference: http://enu.kz/repository/2010/AIAA-2010-1183.pdf, eqn 15
+
+  # Get shape function derivatives
+  Hinv = 1./sbp.w
+  # println(Hinv)
+  
+  shapefuncderiv = zeros(sbp.numnodes, sbp.numnodes, Tdim)
+  for k = 1:Tdim
+    for i = 1:sbp.numnodes
+      for j = 1:sbp.numnodes
+        shapefuncderiv[j,i,k] = Hinv[i]*sbp.Q[j,i,k]
+      end
+    end
+  end
+  # println(eqn.Axi)
+  
+  
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      q = view(eqn.q,:,j,i)
+      T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
+      c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
+      ux = q[2]/q[1]
+      uy = q[3]/q[1]
+      h_supg = 0.0
+      for k = 1:sbp.numnodes
+        h_supg += abs(ux*shapefuncderiv[j,k,1] + uy*shapefuncderiv[j,k,2])
+      end
+      h_supg = 2/h_supg
+      tau[j,i] = 0.5*h_supg/(c + sqrt(ux*ux + uy*uy))
+    end
+  end
+
+
+  return nothing
+end # end calcStabilizationTerm
+
+#=
+# Stabilization Term 1
 function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
                                tau::AbstractArray{Tsol,2})
@@ -212,6 +255,86 @@ function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end # end calcStabilizationTerm
+=#
+
+#=
+# Stabilization term 2
+function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+                               tau::AbstractArray{Tsol,2})
+  
+  # Reference for stabilization: http://enu.kz/repository/2010/AIAA-2010-1183.pdf
+
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      C = 2 # for 2D quad with ref. coord [-1,1] 
+            # for 2D tri with ref coord [0,1], C = 1
+      q = view(eqn.q,:,j,i)
+      T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
+      c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
+      ux = q[2]/q[1]
+      uy = q[3]/q[1]
+      dxidx = view(mesh.dxidx,:,:, j, i)
+      if abs(ux) < 1e-13 || abs(uy) < 1e-13
+        tau[j,i] = 0.0
+      else
+        g_ij = dxidx[1,1]*dxidx[1,2] + dxidx[2,1]*dxidx[2,2]
+        if abs(g_ij) < 1e-13
+          tau[j,i] = 0.0
+        else
+          elem_area = calcElementArea(mesh.coords[:,:,i])
+          # h_supg = sqrt(2*elem_area)
+          h_supg = C*sqrt((ux*ux + uy*uy)/(ux*g_ij*uy))
+          tau[j,i] = 0.5*h_supg/(c + sqrt(ux*ux + uy*uy))
+        end # end if
+      end   # end if
+    end # end for j = 1:mesh.numNodesPerElement
+  end   # end for i = 1:mesh.numEl
+
+  return nothing
+end # end calcStabilizationTerm
+=#
+#=
+# Stabilization term 4
+function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+                               tau::AbstractArray{Tsol,2})
+
+  # Reference: Three-Dimensional Stabilized Finite Elements for Compressible 
+  #            Navier–Stokes, T. Taylor Erwin, AIAA Journal Vol 51, No. 6,
+  #            June 2013
+
+  # Get shape function derivatives
+  Hinv = 1./sbp.w
+  # println(Hinv)
+  
+  shapefuncderiv = zeros(sbp.numnodes, sbp.numnodes, Tdim)
+  for k = 1:Tdim
+    for i = 1:sbp.numnodes
+      for j = 1:sbp.numnodes
+        shapefuncderiv[j,i,k] = Hinv[i]*sbp.Q[j,i,k]
+      end
+    end
+  end
+
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      Axi = view(eqn.Axi,:,:,j,i)
+      Aeta = view(eqn.Aeta,:,:,j,i)
+      invtau = zeros(mesh.numDofPerNode, mesh.numDofPerNode)
+      for k = 1:sbp.numnodes
+        invtau += shapefuncderiv[j,k,1]*Axi + shapefuncderiv[j,k,2]*Aeta
+        #println("invtau = ", invtau)
+      end
+      T = inv(invtau)
+      println("T = \n", T)
+    end
+  end
+  
+
+  return nothing
+end # end calcStabilizationTerm
+=#
 
 function calcElementArea{Tmsh}(coords::AbstractArray{Tmsh, 2})
   # Calculates the element area using coordinates

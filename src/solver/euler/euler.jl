@@ -105,7 +105,6 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
 
   #println("dataPrep @time printed above")
   evalVolumeIntegrals(mesh, sbp, eqn)
-
   #println("volume integral @time printed above")
   
   #----------------------------------------------------------------------------
@@ -117,9 +116,11 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
+
   if opts["use_SUPG"]
     SUPG(mesh,sbp,eqn)
   end
+  
   #=
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
@@ -129,7 +130,6 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   evalBoundaryIntegrals(mesh, sbp, eqn)
   # println("\n eqn.res = \n", eqn.res)
   #println("boundary integral @time printed above")
-
 
 
   addStabilization(mesh, sbp, eqn, opts)
@@ -423,12 +423,16 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 
 #  println("size eqn.flux_parametric = ", size(eqn.flux_parametric), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   
-  for i=1:Tdim
-    weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
-  end
-
-  eqn.res = -eqn.res
   
+  for i=1:Tdim
+    weakdifferentiate!(sbp, i, -1*view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
+  end
+  
+  #=
+  for i=1:Tdim
+    weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+  end
+  =#
 #  artificialViscosity(mesh, sbp, eqn) 
 
   # hAverage = AvgMeshSize(mesh, eqn)

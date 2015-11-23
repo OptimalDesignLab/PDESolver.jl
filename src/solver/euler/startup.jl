@@ -190,6 +190,11 @@ end
 RecommendedDT = minimum(Dt)
 println("Recommended delta t = ", RecommendedDT)
 
+#=
+FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
+tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
+calcStabilizationTerm(mesh, sbp, eqn, tau) =#
+
 #elementEigenValues(mesh, sbp, eqn)
 # SUPG(mesh, sbp, eqn)
 # residualComparison(mesh, sbp, eqn, opts)
