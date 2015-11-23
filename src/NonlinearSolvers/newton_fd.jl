@@ -333,6 +333,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
       println("Condition number of jacobian = ", cond_j)
     end
 
+
     # if eigenvalues requested and we can calculate them
     if (( print_eigs || write_eigs) && (jac_type == 1 || jac_type == 2))
       eigs_i = reverse(eigvals(jac))

@@ -34,9 +34,8 @@ rk4
     * res_tol : keyword arg, residual topping tolerance
     * real_time : do actual time marching, not pseudo-time marching
 
-   The eqn.q_vec should hold the *conservative* variables, even if using
-   entropy variables.  The function convers to entropy variables internally
-   if needed
+   The eqn.q_vec should hold the whichever variables (conservative or
+   entropy) that the simulation should use.
 """->
 function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
@@ -82,7 +81,6 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   k3 = zeros(x_old)
   k4 = zeros(x_old)
 
-  # these should store the *conservative* variables
   x2 = zeros(x_old)
   x3 = zeros(x_old)
   x4 = zeros(x_old)
@@ -106,15 +104,13 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #    println("eqn.q_vec = ", eqn.q_vec)
 
  #   eqn.q_vec = x_old
-    # q_vec is in conservative variables
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q)
-    # convert to entropy variables here?
     if real_time eqn.params.t = t end
     f( mesh, sbp, eqn, opts, t)
 
 #    eqn.res_vec[:] = 0.0
     fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #    k1[:] = eqn.res_vec
     for j=1:length(eqn.res_vec) k1[j] = eqn.Minv[j]*eqn.res_vec[j] end
@@ -124,7 +120,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
 
 #    sol_norm = norm(eqn.res_vec)/mesh.numDof
-    
+     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts)
+   
      sol_norm = calcNorm(eqn, k1)
     if i % 1 == 0
       #= Calculate the error in density
@@ -173,12 +170,12 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     # stage 2
     eqn.q_vec[:] = x2
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q)
     # convert to entropy variables here
     if real_time  eqn.params.t = t + h/2 end
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #    k2[:] = eqn.res_vec
     for j=1:length(eqn.res_vec) k2[j] = eqn.Minv[j]*eqn.res_vec[j] end
@@ -188,10 +185,10 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     eqn.q_vec[:] = x3
     if real_time eqn.params.t = t + t/2 end
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q)
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #    k3[:] = eqn.res_vec
     for j=1:length(eqn.res_vec) k3[j] = eqn.Minv[j]*eqn.res_vec[j] end
@@ -200,11 +197,11 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     x4[:] = x_old + h*k3
     eqn.q_vec[:] = x4
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q)
     if real_time eqn.params.t = t + h end
     f( mesh, sbp, eqn, opts, t + h)
 
     fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     for j=1:length(eqn.res_vec) k4[j] = eqn.Minv[j]*eqn.res_vec[j] end
 #    k4 = eqn.res_vec[:]

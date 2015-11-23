@@ -54,6 +54,7 @@ end
 facts("--- Testing Euler Low Level Functions --- ") do
    opts["variable_type"] = :entropy
    eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+
    e_params = eqn_e.params
    opts["variable_type"] = :conservative
 
@@ -71,10 +72,12 @@ facts("--- Testing Euler Low Level Functions --- ") do
    v = zeros(4)
    EulerEquationMod.convertToEntropy(eqn.params, q, v)
    @fact v => roughly([-2*4.99528104378295, 4., 6, -2*1])
+   println("v = ", v)
    q_ret = zeros(4)
    EulerEquationMod.convertToConservative(e_params, v, q_ret)
    @fact q_ret => roughly(q)
 
+   # test inv(A0)
    A0inv = zeros(4,4)
    A0inv2 = [170.4 -52 -78 24; 
              -52 18 24 -8; 
@@ -84,6 +87,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    @fact A0inv => roughly(A0inv2)
 
+   # test A0
    A0 = zeros(4,4)
    A02 = inv(A0inv)
    EulerEquationMod.calcA0(v, e_params, A0)
@@ -91,11 +95,49 @@ facts("--- Testing Euler Low Level Functions --- ") do
    for i=1:16
      @fact A0[i] => roughly(A02[i], atol=1e-10)
    end
+
+   # test A1
+   println("v = ", v)
+   A1 = zeros(4,4)
+   EulerEquationMod.calcA1(v, e_params, A1)
+   fac = 0.3125
+   A1_analytic = fac*[16 33.6 48 115.2;
+                           33.6 73.6 100.8 248.32; 
+			   48 100.8 147.2 355.2;
+			   115.2 248.32 355.2 4*218.32]
+
+   A1_diff = A1 - A1_analytic
+   println("A1 = \n", A1)
+   println("A1_analytic = \n", A1_analytic)
+   println("A1_diff = \n", A1_diff)
+   for i=1:16
+     @fact A1[i] => roughly(A1_analytic[i], atol=1e-10)
+   end
+
+   
+   A2 = zeros(4,4)
+   EulerEquationMod.calcA2(v, e_params, A2)
+   A2_analytic = fac*[24. 48 73.6 172.8;
+                           48 100.8 147.2 355.2; 
+			   73.6 147.2 230.4 544.32;
+			   172.8 355.2 544.32 1309.92]
+   A2_diff = A2 - A2_analytic
+   println("A2 = \n", A2)
+   println("A2_analytic = \n", A2_analytic)
+   println("A2_diff = \n", A2_diff)
+
+   for i=1:16
+     @fact A2[i] => roughly(A2_analytic[i], atol=1e-10)
+   end
+
+
+
    context("--- Testing convert Functions ---") do
      # for the case, the solution is uniform flow
+     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
      v_arr = copy(eqn.q)
      v2 = zeros(4)
-     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+ 
      EulerEquationMod.convertToEntropy(eqn.params, eqn.q[:, 1, 1], v2)
      EulerEquationMod.convertToEntropy(mesh, sbp, eqn, opts, v_arr)
      # test conversion to entropy variables
@@ -105,29 +147,28 @@ facts("--- Testing Euler Low Level Functions --- ") do
        end
      end
 
+     eqn_e.q = v_arr # attach entropy variables to eqn_e
+
      v_vec = copy(eqn.q_vec)
      EulerEquationMod.convertToEntropy(mesh, sbp, eqn, opts, v_vec)
      for i=1:4:mesh.numDof
        @fact v_vec[i:(i+3)] => v2
      end
 
+     eqn_e.q_vec = v_vec
      println("testing multiply by A0inv")
      v_arr2 = copy(v_arr)
      # test multiply by A0inv, A0
-     println("before, v_arr2 = \n", v_arr2)
 
      EulerEquationMod.calcA0Inv(v_arr2[:, 1, 1], e_params, A0inv)
      v2 = A0inv*v_arr2[:, 1, 1]
      EulerEquationMod.matVecA0inv(mesh, sbp, eqn_e, opts, v_arr2)
-     println("v2 = ", v2)
-     println("after, v_arr2 = ", v_arr2)
      for i=1:mesh.numEl
        for j=1:mesh.numNodesPerElement
          @fact v_arr2[:, j, i] => roughly(v2)
        end
      end
 
-     println("testing multiply by A0")
      v_arr3 = copy(v_arr)
 
      EulerEquationMod.calcA0(v_arr3[:, 1, 1], e_params, A0)
@@ -193,21 +234,43 @@ facts("--- Testing Euler Low Level Functions --- ") do
    # test that roe flux = euler flux of BC functions
    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, q)
 
+   nrm1 = [dxidx[1,1], dxidx[1,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
+   nrm2 = [dxidx[2,1], dxidx[2,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
+
+
+   println("q = ", q)
    func1 = EulerEquationMod.isentropicVortexBC()
-   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
+   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+ 
    @fact F_roe => roughly(-F) 
 
    q[3] = 0  # make flow parallel to wall
    func1 = EulerEquationMod.noPenetrationBC()
-   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   nrm1 = [dxidx[1,1], dxidx[1,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
+   nrm2 = [dxidx[2,1], dxidx[2,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
+
+
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
+   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+ 
    @fact F_roe => roughly(-F) 
 
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
    func1 = EulerEquationMod.Rho1E2U3BC()
-   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   nrm1 = [dxidx[1,1], dxidx[1,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
+   nrm2 = [dxidx[2,1], dxidx[2,2]]
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
+
+
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
+   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+ 
    @fact F_roe => roughly(-F) 
 
 

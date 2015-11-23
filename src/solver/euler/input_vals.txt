@@ -80,7 +80,11 @@ where input_file_name.jl is in your current directory.
 Note that any values associated with these options are shared with the regular 
 (non preconditioning) version
 
-
+# solve options
+"write_entropy" : write the norm of the entropy during every major iteration, 
+                  (Bool), default false
+"write_entropy_fname" : file name (with extension) to write entropy to, 
+                        (ASCIIString), default "entropy.dat"
 
 # solver debugging options
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
@@ -96,6 +100,7 @@ Note that any values associated with these options are shared with the regular
 "write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false
 "vertify_coloring"  : verify coloring worked correctly, (Bool), default true
 "write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
+
 
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are 

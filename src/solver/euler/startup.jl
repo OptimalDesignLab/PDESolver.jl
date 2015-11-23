@@ -111,7 +111,8 @@ if haskey(ICDict, Relfunc_name)
   Relfunc(mesh, sbp, eqn, opts, q_vec)
  
   if var_type == :entropy
-    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec)
+    println("converting to entropy variables")
+    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
   end
 #  println("eqn.q_vec = ", eqn.q_vec)
   res_real = zeros(mesh.numDof)
@@ -136,7 +137,7 @@ println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec)
 
 if var_type == :entropy
-    eqn.convertToEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec)
+    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
 end
 
 # TODO: cleanup 20151009 start
@@ -186,6 +187,7 @@ writeVisFiles(mesh, "solution_ic")
 initializeTempVariables(mesh)
 
 #------------------------------------------------------------------------------
+#=
 include("checkEigenValues.jl")
 # include("artificialViscosity.jl")
 
@@ -212,7 +214,7 @@ RecommendedDT = minimum(Dt)
 println("Recommended delta t = ", RecommendedDT)
 
 #elementEigenValues(mesh, sbp, eqn)
-
+=#
 #------------------------------------------------------------------------------
 
 # call timestepper
@@ -293,6 +295,10 @@ if opts["solve"]
       exfunc = ICDict[exfname]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
+    if var_type == :entropy
+      println("converting to entropy variables")
+      convertEntropy(mesh, sbp, eqn, opts, q_exact)
+    end
 
       q_diff = eqn.q_vec - q_exact
       diff_norm = calcNorm(eqn, q_diff)

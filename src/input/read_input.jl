@@ -112,6 +112,10 @@ get!(arg_dict, "perturb_mag", 0.0)
 get!(arg_dict, "write_finalsolution", false)
 get!(arg_dict, "write_finalresidual", false)
 
+# solver options
+get!(arg_dict, "write_entropy", false)
+get!(arg_dict, "write_entropy_fname", "entropy.dat")
+
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)

@@ -23,11 +23,14 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 
 #     println("==== entering stabscale ====")
 
+    q_vals = params.q_vals
+    # convert to conservative variables if not already using them
+    convertToConservative(params, u, q_vals)
     # grabbing conserved variables
-    rho = u[1]
-    vel_x = u[2]/rho
-    vel_y = u[3]/rho
-    Energy = u[4]
+    rho = q_vals[1]
+    vel_x = q_vals[2]/rho
+    vel_y = q_vals[3]/rho
+    Energy = q_vals[4]
 
     # from JC's code below, eqn should still be in scope
     pressure = calcPressure(u, eqn.params)
@@ -43,7 +46,8 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 #     println("gamma: ",gamma)
 #     println("rho: ",rho)
     # ideal gas law
-    speed_sound = sqrt((gamma*pressure)/rho)
+    speed_sound = calcSpeedofSound(u, params)
+#    speed_sound = sqrt((gamma*pressure)/rho)
 
     # choice for edge stabilization constant: 
     #   refer to email from JH, 20150504:
@@ -576,13 +580,16 @@ end  # end function
 function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, params::ParamType{2} )
 # calculate stabscale for a single node
 
-#     println("==== entering stabscale ====")
+#     println("==== entering stabscale ====")a
+    q_vals = params.q_vals
+    # convert to conservative variables if not already using them
+    convertToConservative(params, u, q_vals)
 
     # grabbing conserved variables
-    rho = u[1]
-    vel_x = u[2]/rho
-    vel_y = u[3]/rho
-    Energy = u[4]
+    rho = q_vals[1]
+    vel_x = q_vals[2]/rho
+    vel_y = q_vals[3]/rho
+    Energy = q_vals[4]
 
     # from JC's code below, eqn should still be in scope
     pressure = calcPressure(u, params)

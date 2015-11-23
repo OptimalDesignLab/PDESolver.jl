@@ -290,8 +290,15 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
   convertToEntropyVars::Function  # function eqn.q -> eqn.q entropy variables
+  convertToConsVars::Function     # convert to eqn.q -> eqn.q in conservative
+  multiplyA0inv::Function         # multiply an array by inv(A0), where A0
+                                  # is the coefficient matrix of the time 
+				  # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 # minorIterationCallback::Function # called before every residual evaluation
+
+  # some temporary arrays
+  q2::Array{Tsol, 3}  # like eqn.q, useful to store converted variables
 
   # inner constructor
   function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
@@ -307,9 +314,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     eqn.res_type = Tres
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
-    eqn.convertToEntropyVars = convertToConservative
+    eqn.convertToEntropyVars = convertToEntropy
+    eqn.convertToConsVars = convertToConservative
+    eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
-
+    eqn.q2 = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
 
