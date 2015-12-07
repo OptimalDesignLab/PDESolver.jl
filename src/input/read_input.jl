@@ -44,6 +44,9 @@ rho_free = get!(arg_dict, "rho_free", -1)
 E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "Relfunc_name", "none")
 
+#SBP Options
+get!(arg_dict, "Q_transpose", true)
+
 
 # stabilization options
 get!(arg_dict, "use_edgestab", true)

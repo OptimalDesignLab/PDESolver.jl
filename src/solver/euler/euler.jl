@@ -104,7 +104,7 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   # println("\n eqn.bndryflux = \n", eqn.bndryflux)
 
   #println("dataPrep @time printed above")
-  evalVolumeIntegrals(mesh, sbp, eqn)
+  evalVolumeIntegrals(mesh, sbp, eqn, opts)
   #println("volume integral @time printed above")
   
   #----------------------------------------------------------------------------
@@ -411,7 +411,8 @@ end
   This is a mid level function.
 """
 # mid level function
-function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
+function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                             sbp::SBPOperator, eqn::EulerData{Tsol, Tdim}, opts)
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -423,17 +424,17 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 
 #  println("size eqn.flux_parametric = ", size(eqn.flux_parametric), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   
-  
-  for i=1:Tdim
-    weakdifferentiate!(sbp, i, -1*view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
-  end
-  
-  #=
-  for i=1:Tdim
-    weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
-  end
-  =#
-#  artificialViscosity(mesh, sbp, eqn) 
+  if opts["Q_transpose"] == true
+    for i=1:Tdim
+      weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+    end
+  else
+    for i=1:Tdim
+      weakdifferentiate!(sbp, i, -1*view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
+    end
+  end  # end if
+
+  # artificialViscosity(mesh, sbp, eqn) 
 
   # hAverage = AvgMeshSize(mesh, eqn)
   # println("Average Mesh Size = ", hAverage)
