@@ -117,8 +117,8 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
 
-  if opts["use_SUPG"]
-    SUPG2(mesh,sbp,eqn)
+  if opts["use_GLS"]
+    GLS(mesh,sbp,eqn)
   end
   
   #=

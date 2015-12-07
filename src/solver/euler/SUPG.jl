@@ -369,8 +369,8 @@ function circumcircleDiameter{Tmsh}(coords::AbstractArray{Tmsh, 2})
   return dia
 end  # end function circumcircleDiameter
 
-function SUPG2{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
-                                 eqn::EulerData{Tsol, Tdim})
+function GLS{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+                               eqn::EulerData{Tsol, Tdim})
   
   #  println("Entered GLS")  
   FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
