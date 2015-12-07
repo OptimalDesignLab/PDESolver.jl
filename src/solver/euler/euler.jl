@@ -118,7 +118,7 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   =#
 
   if opts["use_SUPG"]
-    SUPG(mesh,sbp,eqn)
+    SUPG2(mesh,sbp,eqn)
   end
   
   #=

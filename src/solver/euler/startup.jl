@@ -196,7 +196,7 @@ tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
 calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 
 #elementEigenValues(mesh, sbp, eqn)
-# SUPG(mesh, sbp, eqn)
+#SUPG2(mesh, sbp, eqn)
 # residualComparison(mesh, sbp, eqn, opts)
 
 #------------------------------------------------------------------------------

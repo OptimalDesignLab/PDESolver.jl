@@ -348,6 +348,150 @@ function calcElementArea{Tmsh}(coords::AbstractArray{Tmsh, 2})
   return area
 end # end function calcElementArea
 
+function circumcircleDiameter{Tmsh}(coords::AbstractArray{Tmsh, 2})
+  # Calculates the circumcircle diameter of the triangular element
+  # 2D function with linear mapping
+  # Reference: http://geometryatlas.com/entries/109
+  
+  x0 = coords[1,1]
+  y0 = coords[2,1]
+  x1 = coords[1,2]
+  y1 = coords[2,2]
+  x2 = coords[1,3]
+  y2 = coords[2,3]
+
+  a = sqrt((x0-x1)^2 + (y0-y1)^2)
+  b = sqrt((x0-x2)^2 + (y0-y2)^2)
+  c = sqrt((x1-x2)^2 + (y1-y2)^2)
+
+  dia = a*b*c/sqrt((a+b+c)*(b+c-a)*(c+a-b)*(a+b-c))
+
+  return dia
+end  # end function circumcircleDiameter
+
+function SUPG2{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+                                 eqn::EulerData{Tsol, Tdim})
+  
+  #  println("Entered GLS")  
+  FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
+  tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
+  calcTau(mesh, sbp, eqn, tau)
+  # println("Tau = \n", tau)
+  
+  supg_res = zeros(eqn.res) # Output of volumeintegrate! 
+  inputArr = zeros(eqn.res) # input array for volumeintegrate!
+  
+  # Get shape function derivatives
+  Hinv = 1./sbp.w
+  shapefuncderiv = zeros(Tsol, sbp.numnodes, sbp.numnodes, Tdim)
+  for k = 1:Tdim
+    for i = 1:sbp.numnodes
+      for j = 1:sbp.numnodes
+        shapefuncderiv[i,j,k] = Hinv[i]*sbp.Q[i,j,k]
+      end
+    end
+  end
+
+  # Populate inputArr
+  for i = 1:mesh.numEl
+    endof = mesh.numDofPerNode*mesh.numNodesPerElement # dofs in an element
+    ndof = mesh.numDofPerNode
+    u = zeros(Tsol,endof) # element level q_vec
+    # Populate u
+    for j = 1:mesh.numNodesPerElement
+      for k = 1:mesh.numDofPerNode
+        u[(j-1)*ndof+k] = eqn.q[k,j,i]
+      end
+    end
+    # println("eqn.q = \n", round(eqn.q,2))
+    # println("u = \n", round(u,2))
+    Axidxi = zeros(Tsol, endof, endof)
+    Axi = view(eqn.Axi,:,:,:,i) # Get flux jacobians for all nodes in an element
+    Aeta = view(eqn.Aeta,:,:,:,i)
+    calcAxidxi(Axidxi, shapefuncderiv, Axi, Aeta, ndof, mesh.numNodesPerElement)
+    # println("Axidxi = \n", round(Axidxi,2))
+    
+    intArr = zeros(Axidxi) # intermediate array for storing tau*Axidxi
+    for j = 1:mesh.numNodesPerElement
+      m = (j-1)*ndof + 1
+      intArr[m:m+ndof-1,:] = sbp.w[j]*mesh.jac[j,i]*tau[j,i]*Axidxi[m:m+ndof-1,:]
+    end
+    #=
+    TestMatrix = Axidxi.'*intArr
+    eigenValues = eigvals(TestMatrix)
+
+    kappa = 0
+    for counter = 1:length(eigenValues)
+      if eigenValues[counter] < 0 || abs(eigenValues[counter]) < 1e-13
+        kappa += 1
+        println(eigenValues[counter])
+      end
+    end
+    println("kappa = ", kappa)
+    =#
+    intvec = Axidxi.'*intArr*u
+    for j = 1:mesh.numNodesPerElement
+      for k = 1:mesh.numDofPerNode
+        inputArr[k,j,i] = intvec[(j-1)*ndof+k]
+      end
+    end
+  end   # end for i = 1:mesh.numEl
+
+  # volumeintegrate!(sbp, inputArr, supg_res)
+  
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      for k = 1:mesh.numDofPerNode
+        eqn.res[k,j,i] -= supg_res[k,j,i] # -ve sign because of right hand side.
+      end                                 # Fluxes are computed explicitly and
+    end                                   # not from weak redidual.
+  end
+
+  return nothing
+end
+
+function calcAxidxi{Tsol}(Axidxi::AbstractArray{Tsol, 2}, 
+                          shapefuncderiv::AbstractArray{Tsol,3},
+                          Axi::AbstractArray{Tsol,3}, 
+                          Aeta::AbstractArray{Tsol,3}, ndof, nnpe)
+  
+  # ndof = mesh.numDofPerNode
+  # nnpe = mesh.numNodesPerElement
+
+  for i = 1:nnpe
+    for j = 1:nnpe
+      m = (i-1)*ndof+1
+      n = (j-1)*ndof+1
+      nAxi = view(Axi,:,:,i) # Flux Jacobian at a node in xi direction
+      nAeta = view(Aeta,:,:,i)
+      Axidxi[m:(m+ndof-1),n:(n+ndof-1)] = nAxi*shapefuncderiv[i,j,1] + 
+                                                      nAeta*shapefuncderiv[i,j,2] 
+    end # end for j = 1:nnpe
+  end   # end for i = 1:nnpe
+
+
+  return nothing
+end
+
+function calcTau{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+                                   eqn::EulerData{Tsol, Tdim},
+                                   tau::AbstractArray{Tsol,2})
+  
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      q = view(eqn.q,:,j,i)
+      T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
+      c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
+      ux = q[2]/q[1]
+      uy = q[3]/q[1]
+      h = circumcircleDiameter(mesh.coords[:,:,i])
+      # println("h = ", h)
+      tau[j,i] = h/(c + sqrt(ux*ux + uy*uy))
+    end
+  end
+
+  return nothing
+end
 #------------------------------------------------------------------------------
 # Debugging code
 # calculate the boundary integral using the actual euler flux
