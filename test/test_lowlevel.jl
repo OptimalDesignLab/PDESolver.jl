@@ -97,7 +97,6 @@ facts("--- Testing Euler Low Level Functions --- ") do
    end
 
    # test A1
-   println("v = ", v)
    A1 = zeros(4,4)
    EulerEquationMod.calcA1(v, e_params, A1)
    fac = 0.3125
@@ -107,9 +106,6 @@ facts("--- Testing Euler Low Level Functions --- ") do
 			   115.2 248.32 355.2 4*218.32]
 
    A1_diff = A1 - A1_analytic
-   println("A1 = \n", A1)
-   println("A1_analytic = \n", A1_analytic)
-   println("A1_diff = \n", A1_diff)
    for i=1:16
      @fact A1[i] => roughly(A1_analytic[i], atol=1e-10)
    end
@@ -122,9 +118,6 @@ facts("--- Testing Euler Low Level Functions --- ") do
 			   73.6 147.2 230.4 544.32;
 			   172.8 355.2 544.32 1309.92]
    A2_diff = A2 - A2_analytic
-   println("A2 = \n", A2)
-   println("A2_analytic = \n", A2_analytic)
-   println("A2_diff = \n", A2_diff)
 
    for i=1:16
      @fact A2[i] => roughly(A2_analytic[i], atol=1e-10)
@@ -205,6 +198,11 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    @fact EulerEquationMod.calcPressure(q, eqn.params) => roughly(0.2)
    @fact EulerEquationMod.calcPressure(v, e_params) => roughly(0.2)
+   a_cons = EulerEquationMod.calcSpeedofSound(q, eqn.params)
+   a_ent = EulerEquationMod.calcSpeedofSound(v, e_params)
+   println("a_cosn = ", a_cons)
+   println("a_ent = ", a_ent)
+   @fact a_cons => roughly(a_ent)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
    EulerEquationMod.calcEulerFlux(e_params, v, aux_vars, dir, Fe)
    @fact F => roughly([2.0, 4.2, 6, 14.4], atol=1e-14)

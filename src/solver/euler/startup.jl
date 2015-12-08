@@ -28,7 +28,6 @@ opts = read_input(ARGS[1])
 flag = opts["run_type"]
 
 # timestepping parameters
-delta_t = opts["delta_t"]   # delta_t: timestep for RK
 t_max = opts["t_max"]       # t_max: maximum time for RK
 order = opts["order"]       # order of accuracy
 
@@ -96,6 +95,8 @@ eqn = EulerData_{Tsol, Tres, 2, Tmsh, var_type}(mesh, sbp, opts)
 # initialize physics module and populate any fields in mesh and eqn that
 # depend on the physics module
 init(mesh, sbp, eqn, opts, pmesh)
+
+delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
 
 res_vec = eqn.res_vec         # solution at previous timestep
@@ -185,6 +186,13 @@ writeVisFiles(mesh, "solution_ic")
 
 # initialize some variables in nl_solvers module
 initializeTempVariables(mesh)
+
+wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
+println("max wave speed = ", wave_speed)
+delta_t = opts["CFL"]*opts["mesh_size"]/wave_speed
+println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
+opts["delta_t"] = delta_t
+
 
 #------------------------------------------------------------------------------
 #=

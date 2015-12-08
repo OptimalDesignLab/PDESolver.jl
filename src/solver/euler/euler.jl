@@ -1357,17 +1357,24 @@ function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2,
 end
 
 
-function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :conservative})
+function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :entropy})
 # calculate speed of sound using the same formula as conservative variables,
 # just rewriting all variables in entropy variables
 
+#  printbacktrace()
+#  println("q = ", q)
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
   pressure = calcPressure(q, params)
   s = gamma - q[1] + k1    # entropy
 
   rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
-  rho = -q[4]/rho_int
+  rho = -q[4]*rho_int
 
-  return sqrt((params.gamma*pressure)/q[1])
+#  println("rho = ", rho)
+  return sqrt((params.gamma*pressure)/rho)
 end
 
 
@@ -1712,4 +1719,54 @@ function calcA2{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, 
     return nothing
 end
 
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts)
+# calculate the maximum wave speed (ie. characteristic speed) on the mesh
+# uses solution vector q, not array
+  q = eqn.q
+  max_speed = zero(eltype(q))
+  for i=1:4:length(q)
+    q_i = view(q, i:(i+3))
+    a = calcSpeedofSound(q_i, eqn.params)
+    ux = q_i[2]/q_i[1]
+    uy = q_i[3]/q_i[1]
+    u_norm = sqrt(ux*ux + uy*uy)
+    speed = a + u_norm
 
+    if speed > max_speed
+      max_speed = speed
+    end  # end if statement
+  end  # end loop over vector q
+
+  return max_speed
+end  # end function
+
+
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts)
+# calculate the maximum wave speed (ie. characteristic speed) on the mesh
+# uses solution vector q, not array
+  q = eqn.q
+  gamma = eqn.params.gamma
+  gamma_1 = eqn.params.gamma_1
+ 
+  max_speed = zero(eltype(q))
+  for i=1:4:length(q)
+    q_i = view(q, i:(i+3))
+    a = calcSpeedofSound(q_i, eqn.params)
+
+   
+    k1 = 0.5*(q_i[2]*q_i[2] + q_i[3]*q_i[3])/q_i[4]  # a constant from Hughes' paper
+    s = gamma - q_i[1] + k1    # entropy
+    rho_int = exp(-s/gamma_1)*(gamma_1/((-q_i[4])^gamma))^(1/gamma_1)
+    rho = -rho_int*q_i[4]
+    ux = rho_int*q[2]/rho
+    uy = rho_int*q[3]/rho
+    u_norm = sqrt(ux*ux + uy*uy)
+    speed = a + u_norm
+
+    if speed > max_speed
+      max_speed = speed
+    end  # end if statement
+  end  # end loop over vector q
+
+  return max_speed
+end  # end function
