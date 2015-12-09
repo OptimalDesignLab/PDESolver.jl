@@ -5,10 +5,11 @@ using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
-export AdvectionData, AdvectionData_, getMass
+export AdvectionData, AdvectionData_, getMass, assembleSolution, disassembleSolution, evalAdvection
 
 # include("advectionFunctions.jl")
 # include("getMass.jl")
+
 
 abstract AbstractAdvectionData{Tsol} <: AbstractSolutionData{Tsol}
 abstract AdvectionData{Tsol, Tdim} <: AbstractAdvectionData{Tsol}
@@ -34,7 +35,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
   res::Array{Tres, 3}  # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
   q_vec::Array{Tres,1}  # initial condition in vector form
-  bndryflux::Array{Tsol, 2}  # boundary flux
+  bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 2}  # mass matrix
   disassembleSolution::Function # function q_vec -> eqn.q
   assembleSolution::Function  # function : eqn.res -> res_vec
@@ -60,6 +61,9 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
   end # ends the constructer AdvectionData_
 
 end # End type AdvectionData_
+
+include("advectionFunctions.jl")
+include("boundaryconditions.jl")
 
 @doc """
 ### AdvectionEquationMod.assembleSolution
@@ -100,7 +104,8 @@ end # end function assembleSolution
   dimension.
 """->
 
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp,
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                               sbp::SBPOperator,
                                                eqn::AdvectionData{Tsol, Tdim},
                                                opts, 
                                                array::AbstractArray{Tsol, 1})
@@ -116,6 +121,7 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp,
 
   return nothing
 end
+
 
 @doc """
 ### getMass

@@ -95,48 +95,66 @@ export evalEuler, init
 # this function is what the timestepper calls
 # high level function
 function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t=0.0)
-# res_vec is popualted with du/dt
-# q_vec is q at previous timestep
-# t is current timestep
-# extra_args is unpacked into object needed to evaluation equation
+  # res_vec is popualted with du/dt
+  # q_vec is q at previous timestep
+  # t is current timestep
+  # extra_args is unpacked into object needed to evaluation equation
+  
+  dataPrep(mesh, sbp, eqn, opts)
+  # println("\n eqn.bndryflux = \n", eqn.bndryflux)
 
-dataPrep(mesh, sbp, eqn, opts)
-#println("dataPrep @time printed above")
-evalVolumeIntegrals(mesh, sbp, eqn)
-#println("volume integral @time printed above")
+  #println("dataPrep @time printed above")
+  evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  #println("volume integral @time printed above")
+  
+  #----------------------------------------------------------------------------
+  #=
+  bndryfluxPhysical = zeros(eqn.bndryflux)
+  getPhysBCFluxes(mesh, sbp, eqn, opts, bndryfluxPhysical)
+  #println("bndryfluxPhysical = \n", bndryfluxPhysical)
+  #println("eqn.bndryflux = \n", eqn.bndryflux)
+  bndryfluxPhysical = -1*bndryfluxPhysical
+  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  =#
 
-evalBoundaryIntegrals(mesh, sbp, eqn)
-#println("boundary integral @time printed above")
+  if opts["use_GLS"]
+    GLS(mesh,sbp,eqn)
+  end
+  
+  #=
+  bndryfluxPhysical = -1*bndryfluxPhysical
+  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  =#
+  #----------------------------------------------------------------------------
 
-
-
-addStabilization(mesh, sbp, eqn, opts)
-#println("edge stabilizing @time printed above")
-
-
-# no more assembling solution
-#assembleSolution(mesh, sbp, eqn, res_vec)
-#println("assembly @time printed above")
-
-#applyMassMatrixInverse(eqn, res_vec)
-#println("Minv @time printed above")
-
-#println("after Minv, sum(res) = ", sum(eqn.res))
-#println("    sum(res_vec) = ", sum(res_vec))
-#applyDissipation(mesh, sbp, eqn, res_vec, q_vec)
-
-
-
-#print current error
-#err_norm = norm(res_vec)/mesh.numDof
-#print(" ", err_norm)
+  evalBoundaryIntegrals(mesh, sbp, eqn)
+  # println("\n eqn.res = \n", eqn.res)
+  #println("boundary integral @time printed above")
 
 
-#print("\n")
+  addStabilization(mesh, sbp, eqn, opts)
+  #println("edge stabilizing @time printed above")
 
-return nothing
-#return res_vec
 
+  # no more assembling solution
+  #assembleSolution(mesh, sbp, eqn, res_vec)
+  #println("assembly @time printed above")
+
+  #applyMassMatrixInverse(eqn, res_vec)
+  #println("Minv @time printed above")
+
+  #println("after Minv, sum(res) = ", sum(eqn.res))
+  #println("    sum(res_vec) = ", sum(res_vec))
+  #applyDissipation(mesh, sbp, eqn, res_vec, q_vec)
+ 
+  #print current error
+  #err_norm = norm(res_vec)/mesh.numDof
+  #print(" ", err_norm)
+
+
+  #print("\n")
+
+  return nothing
 end  # end evalEuler
 
 
@@ -188,7 +206,6 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
   end
 
 
-
   u = eqn.q
   flux_parametric = eqn.flux_parametric
 
@@ -218,6 +235,7 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
 
 #  getIsentropicVortexBoundaryFlux(mesh, sbp, eqn)
    getBCFluxes(mesh, sbp, eqn, opts)
+   # println("\n eqn.bndryflux = \n", eqn.bndryflux)
 #   println("getBCFluxes @time printed above")
 #  isentropicVortexBC(mesh, sbp, eqn)
   stabscale(mesh, sbp, eqn)
@@ -242,27 +260,24 @@ end # end function dataPrep
 """->
 # this is a mid level function
 function getBCFluxes(mesh, sbp, eqn, opts)
-# get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+  #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
-#println("mesh.bndry_funcs = ", mesh.bndry_funcs)
+  #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
 
-for i=1:mesh.numBC
-
-#  println("computing flux for boundary condition ", i)
-  functor_i = mesh.bndry_funcs[i]
-  start_index = mesh.bndry_offsets[i]
-  end_index = mesh.bndry_offsets[i+1]
-  bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
-  bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+  for i=1:mesh.numBC
+  #  println("computing flux for boundary condition ", i)
+    functor_i = mesh.bndry_funcs[i]
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1]
+    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
   
-  calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+  end
 
-end
+  writeBoundary(mesh, sbp, eqn, opts)
 
-writeBoundary(mesh, sbp, eqn, opts)
-
-return nothing
-
+  return nothing
 end
 
 @doc """
@@ -396,7 +411,8 @@ end
   This is a mid level function.
 """
 # mid level function
-function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
+function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                             sbp::SBPOperator, eqn::EulerData{Tsol, Tdim}, opts)
 # evaluate all the integrals over the elements (but not the boundary)
 # does not do boundary integrals
 # mesh : a mesh type, used to access information about the mesh
@@ -408,11 +424,17 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 
 #  println("size eqn.flux_parametric = ", size(eqn.flux_parametric), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   
-  for i=1:Tdim
-    weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
-  end
-  
-#  artificialViscosity(mesh, sbp, eqn) 
+  if opts["Q_transpose"] == true
+    for i=1:Tdim
+      weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+    end
+  else
+    for i=1:Tdim
+      weakdifferentiate!(sbp, i, -1*view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
+    end
+  end  # end if
+
+  # artificialViscosity(mesh, sbp, eqn) 
 
   # hAverage = AvgMeshSize(mesh, eqn)
   # println("Average Mesh Size = ", hAverage)
@@ -532,14 +554,7 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
 end
 
 
-
-
-
-
-
 # some helper functions
-
-
 function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
   dir = [1.0, 0.0]
 #  F = zeros(T, 4)
@@ -552,7 +567,6 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
   return F
 
 end
-
 
 @doc """
 ### EulerEquationMod.getAuxVars
@@ -592,7 +606,9 @@ end
   This is a mid level function
 """->
 # mid level function
-function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,  eqn::EulerData{Tsol, Tdim}, opts)
+function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                        sbp::SBPOperator,  
+                                        eqn::EulerData{Tsol, Tdim}, opts)
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
 
   nrm = zeros(Tmsh, 2)
@@ -606,15 +622,14 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperat
       # doing an view
       for k=1:Tdim  # loop over dimensions  
 	# this will dispatch to the proper calcEulerFlux
-	nrm[1] = mesh.dxidx[k, 1, j, i]
-	nrm[2] = mesh.dxidx[k, 2, j, i]
+	      nrm[1] = mesh.dxidx[k, 1, j, i]
+	      nrm[2] = mesh.dxidx[k, 2, j, i]
 #	nrm_mag = sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2])
 #	nrm[1] /= nrm_mag
 #	nrm[2] /= nrm_mag
 #        nrm = view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
         flux = view(eqn.flux_parametric, :, j, i, k)
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
-  
       end
     end
   end
@@ -657,7 +672,8 @@ end
 """->
 # this function is deprecated in factor of getEulerFlux()
 # useful for benchmarking purposes
-function getEulerFlux2{Tmsh, Tsol}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,  eqn::EulerData{Tsol}, opts)
+function getEulerFlux2{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+                                   eqn::EulerData{Tsol}, opts)
 # calculates the Euler flux for every node in the xi and eta directions
 # eqn is the equation type
 # q is the 3D array (4 by nnodes per element by nel), of the conservative variables
@@ -724,11 +740,9 @@ fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4
   dimension of the equation.
 """->
 # mid level function (although it doesn't really need to Tdim)
-function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, res_vec::AbstractVector{Tsol})
-# apply the inverse mass matrix stored eqn to res_vec
-
-#  res_vec .*= eqn.Minv  # this gives wrong answer
-
+function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, 
+                                            res_vec::AbstractVector{Tsol})
+  # apply the inverse mass matrix stored eqn to res_vec
 
   ndof = length(res_vec)
   for i=1:ndof
@@ -754,13 +768,15 @@ end
 """->
 =#
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, q_vec::AbstractArray{Tsol, 1})
+function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
+                             sbp, eqn::EulerData{Tsol, Tdim}, opts, 
+                             q_vec::AbstractArray{Tsol, 1})
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       for k=1:(Tdim+2)
-	dofnum_k = mesh.dofs[k, j, i]
-	eqn.q[k, j, i] = q_vec[dofnum_k]
+	      dofnum_k = mesh.dofs[k, j, i]
+	      eqn.q[k, j, i] = q_vec[dofnum_k]
       end
     end
   end
@@ -820,8 +836,8 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
       for k=1:4  # loop over dofs on the node
-	dofnum_k = mesh.dofs[k, j, i]
-	res_vec[dofnum_k] += arr[k,j,i]
+	      dofnum_k = mesh.dofs[k, j, i]
+	      res_vec[dofnum_k] += arr[k,j,i]
       end
     end
   end
@@ -854,7 +870,10 @@ end
    This is a low level function
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2}, 
+                      q::AbstractArray{Tsol,1}, 
+                      aux_vars::AbstractArray{Tres, 1}, 
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point

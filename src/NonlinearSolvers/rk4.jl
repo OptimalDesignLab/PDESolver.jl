@@ -36,15 +36,16 @@ rk4
 function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
-  # Storing the initial density value at all the nodes
   #=
+  # Storing the initial density value at all the nodes
   vRho_act = zeros(mesh.numNodes)
   k = 1
   for i = 1:mesh.numDofPerNode:length(eqn.q_vec)
     vRho_act[k] = eqn.q_vec[i]
     k += 1
   end
-  println("Actual Density value succesfully extracted") =#
+  println("Actual Density value succesfully extracted")
+  =#
 
   println("\nEntered rk4")
 # res_tol is alternative stopping criteria
@@ -110,7 +111,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     sol_norm = norm(eqn.res_vec)/mesh.numDof
 
     if iter % 100 == 0
-      #= Calculate the error in density
+      #=
+      # Calculate the error in density
       vRho_calc = zeros(vRho_act)
       k = 1
       for i = 1:4:length(eqn.q_vec)
@@ -118,13 +120,13 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
         k += 1
       end
 
-      ErrDensity = norm(vRho_calc - vRho_act)/mesh.numNodes
-      println("DensityErrorNorm = ", ErrDensity)
+      ErrDensity = norm(vRho_calc - vRho_act)/mesh.numNodes 
+      println("DensityErrorNorm = ", ErrDensity) =#
       println("Solution Residual Norm = ", sol_norm)
-      println("writing to convergence.dat")
-      write(f1, string(i, "   ", sol_norm, "\n")) =#
+      # println("writing to convergence.dat")
+      write(f1, string(i, "   ", sol_norm, "\n"))
     end
-    
+
     if iter % 1000 == 0
       println("flushing convergence.dat to disk")
 #      close(f1)

@@ -27,7 +27,11 @@ include("bc_solvers.jl")
   This is a mid level function.
 """->
 # mid level function
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, functor::BCType, bndry_facenums::AbstractArray{Boundary,1}, bndryflux::AbstractArray{Tres, 3})
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
+                          sbp::SBPOperator, eqn::EulerData{Tsol}, 
+                          functor::BCType, 
+                          bndry_facenums::AbstractArray{Boundary,1}, 
+                          bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
 #  println("enterted calcBoundaryFlux")
@@ -58,12 +62,11 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, sbp::SBP
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = view(bndryflux, :, j, i)
 
-
       functor(q, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
     end
 
- end
+  end
 
 
   return nothing
@@ -84,7 +87,11 @@ type isentropicVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
+              q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres}, 
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -95,15 +102,39 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, q::AbstractArray{Tsol,1
   calcIsentropicVortex(x, params, qg)
 #  println("qg = ", qg)
 #  calcVortex(x, eqn, qg)
-
-
-
-
   RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
 
   return nothing
 
-end # ends the function isentropicVortex BC
+end # ends the function isentropicVortexBC
+
+@doc """
+### EulerEquationMod.isentropicVortexBC_physical <: BCTypes
+
+  This type and the associated call method define a functor to calculate
+  the actual Euler flux  using the exact InsentropicVortex solution
+  as boundary state.  See calcBoundaryFlux for the arguments all functors
+  must support.
+
+  This is a low level functor.
+"""->
+type isentropicVortexBC_physical <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical, 
+              q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres}, 
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+  calcEulerFlux(params, q, aux_vars, [nx, ny], bndryflux)
+
+  return nothing
+
+end # end function isentropicVortexBC_physical
 
 
 @doc """
@@ -204,9 +235,57 @@ return nothing
 
 end
 
+@doc """
+### EulerEquationMod.FreeStreamBC <: BCTypes
 
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state corresponding to the free stream velocity
 
+  This is a low level functor
+"""
+type FreeStreamBC <: BCType
+end
 
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
+              flux_parametric::AbstractArray{Tres},  
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+  qg = zeros(Tsol, 4)
+
+  calcFreeStream(x, params, qg)
+  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+  
+  return nothing
+end
+
+@doc """
+### EulerEquationMod.FreeStreamBC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where all the conservative variables have a value 1.0
+
+  This is a low level functor
+"""
+
+type allOnesBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
+              flux_parametric::AbstractArray{Tres},  
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+  qg = zeros(Tsol, 4)
+  calcOnes(x, params, qg)
+
+  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+
+  # println("bndryflux = ", bndryflux)
+  return nothing
+end # end function call
 
 
 # every time a new boundary condition is created,
@@ -216,7 +295,10 @@ end
 global const BCDict = Dict{ASCIIString, BCType} (
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
-"Rho1E2U3BC" => Rho1E2U3BC()
+"Rho1E2U3BC" => Rho1E2U3BC(),
+"isentropicVortexBC_physical" => isentropicVortexBC_physical(),
+"FreeStreamBC" => FreeStreamBC(),
+"allOnesBC" => allOnesBC()
 )
 
 @doc """

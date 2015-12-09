@@ -35,6 +35,8 @@ tmp1 = ((gamma-1)/2)*M_in*M_in
 # println("tmp1 = ", tmp1)
 
 # calculate values at r radius
+# println("r = ", r)
+# println("r_in = ", r_in)
 rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
 # println("rho_r = ", rho_r)
 
@@ -96,6 +98,17 @@ function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::Par
 
   return nothing
 end
+
+function calcOnes{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+                  params::ParamType{2}, sol::AbstractArray{Tsol,1})
+  
+  fill!(sol, 1.0)
+  
+  # sol[2] = 1.0
+  # sol[3] = -1.0
+
+  return nothing
+end  # end function calcOnes
 
 
 function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})

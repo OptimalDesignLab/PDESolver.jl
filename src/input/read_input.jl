@@ -34,6 +34,8 @@ gamma_1 = gamma - 1
 R = get!(arg_dict, "R", 287.058)
 cv = R/gamma_1
 
+get!(arg_dict, "dimensions", 2)
+
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
 aoa = get!(arg_dict, "aoa", -1.0)*pi/180
@@ -41,6 +43,9 @@ arg_dict["aoa"] = aoa*pi/180  # convert to radians
 rho_free = get!(arg_dict, "rho_free", -1)
 E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "Relfunc_name", "none")
+
+#SBP Options
+get!(arg_dict, "Q_transpose", true)
 
 
 # stabilization options
@@ -51,6 +56,7 @@ get!(arg_dict, "use_res_filter", false)
 get!(arg_dict, "use_dissipation", false)
 get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
+get!(arg_dict, "use_GLS", false)
 
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")

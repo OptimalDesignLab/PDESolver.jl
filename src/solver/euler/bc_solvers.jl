@@ -22,13 +22,22 @@
 
 
 """->
-function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1}, flux_parametric::AbstractArray{Tres}, aux_vars::AbstractArray{Tres, 1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, flux::AbstractArray{Tres, 1}, params::ParamType{2})
+function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, 
+                                     qg::AbstractArray{Tsol, 1}, 
+                                     flux_parametric::AbstractArray{Tres}, 
+                                     aux_vars::AbstractArray{Tres, 1}, 
+                                     dxidx::AbstractArray{Tmsh,2}, 
+                                     nrm::AbstractArray{Tmsh,1}, 
+                                     flux::AbstractArray{Tres, 1}, 
+                                     params::ParamType{2})
+
+  # SAT terms are used for ensuring consistency with the physical problem. Its 
+  # similar to upwinding which adds dissipation to the problem. SATs on the 
+  # boundary can be thought of as having two overlapping nodes and because of
+  # the discontinuous nature of SBP adds some dissipation.
 
   E1dq = zeros(Tres, 4)
   E2dq = zeros(Tres, 4)
-
-#  println("entered isentropicOvrtexBC (low level)")
-#  println("Tsol = ", Tsol)
 
   # Declaring constants 
   d1_0 = 1.0
@@ -45,14 +54,11 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
-#  println("nx, ny = ", nx, ", ", ny)
+  # println("nx, ny = ", nx, ", ", ny)
   dA = sqrt(nx*nx + ny*ny)
- 
-  #   println("dA = ",  (dA))
+  # println("dA = ",  (dA))
 
   fac = d1_0/q[1]
-#   #   println(typeof(fac))
-#   println(typeof(q[4]))
   uL = q[2]*fac; vL = q[3]*fac;
   phi = d0_5*(uL*uL + vL*vL)
 
@@ -63,13 +69,15 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   phi = d0_5*(uR*uR + vR*vR)
   HR = gamma*qg[4]*fac - gami*phi
 
-  sqL = sqrt(q[1]); sqR = sqrt(qg[1])
+  sqL = sqrt(q[1]) 
+  sqR = sqrt(qg[1])
   fac = d1_0/(sqL + sqR)
   u = (sqL*uL + sqR*uR)*fac
   v = (sqL*vL + sqR*vR)*fac
   
   H = (sqL*HL + sqR*HR)*fac
   phi = d0_5*(u*u + v*v)
+  # println("H = ", H, " phi = ", phi)
   
   a = sqrt(gami*(H - phi))
   Un = u*nx + v*ny
@@ -79,36 +87,10 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
 
-#=
-     println("before selection")
-     println("lambda1 = ",  (lambda1))
-     println("lambda2 = ",  (lambda2))
-     println("lambda3 = ",  (lambda3))
-
-     println("tau = ",  (tau))
-     println("sat_Vn = ",  (sat_Vn))
-     println("sat_Vl = ",  (sat_Vl))
-     println("rhoA = ",  (rhoA))
-     println("sgn = ",  (sgn))
-=#
-#  println("sat_Vn = ", sat_Vn)
-#  println("lambda1 = ", lambda1)
-#  println("absvalue(lambda1) = ", absvalue(lambda1))
   lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
   lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
   lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
 
-#=
-     println("after selection")
-     println("lambda1 = ",  (lambda1))
-     println("lambda2 = ",  (lambda2))
-     println("lambda3 = ",  (lambda3))
-=#
-
-
-#  println("lambda1 = ", lambda1)
-#  println("lambda2 = ", lambda2)
-#  println("lambda3 = ", lambda3)
 
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
@@ -154,20 +136,19 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
   E2dq[4] = E2dq[2]*Un
   E2dq[2] = E2dq[2]*nx
 
-  #   println("E1dq = ",  (E1dq))
-  #   println("E2dq = ",  (E2dq))
+  # println("E1dq = ",  (E1dq))
+  # println("E2dq = ",  (E2dq))
 
   #-- add to sat
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
-
-#     println("sat = ",  (sat))
 
   euler_flux = zeros(Tsol, 4)
   euler_flux2 = zeros(Tsol, 4)
 
 
   calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
+  # println("euler_flux = ", euler_flux)
 
   # calculate Euler flux in wall normal directiona
 #  for i=1:4
@@ -196,7 +177,9 @@ function RoeSolver{Tmsh, Tsol, Tres}( q::AbstractArray{Tsol,1}, qg::AbstractArra
     println("euler_flux[i] = ", euler_flux[i])
 =#
 #    flux[i] = -(sat_fac*sat[i] + 0.5*euler_flux[i] + 0.5*euler_flux2[i])
-    flux[i] = -(sat_fac*sat[i] + euler_flux[i])
+    # flux[i] = -sat_fac*sat[i]  # when weak differentiate has transpose = false
+    flux[i] = -(sat_fac*sat[i] + euler_flux[i]) # when weak differentiate has transpose = true
+    # flux[i] =  -euler_flux[i]
 #=
 if nx < 0.0  # inlet
        flux[1] = qg[1]

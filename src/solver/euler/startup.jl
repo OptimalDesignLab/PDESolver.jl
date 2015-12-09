@@ -71,13 +71,14 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
+Tdim = opts["dimensions"]
 
 # create linear mesh with 4 dof per node
 mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4)
 # TODO: input argument for dofpernode
 
 # create euler equation
-eqn = EulerData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
+eqn = EulerData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
 # TODO: needs comment
 init(mesh, sbp, eqn, opts)
@@ -163,8 +164,9 @@ writeVisFiles(mesh, "solution_ic")
 initializeTempVariables(mesh)
 
 #------------------------------------------------------------------------------
-include("checkEigenValues.jl")
+# include("checkEigenValues.jl")
 # include("artificialViscosity.jl")
+# include("SUPG.jl")
 
 # Calculate the recommended delta t
 res_0 = zeros(eqn.res_vec)
@@ -188,7 +190,14 @@ end
 RecommendedDT = minimum(Dt)
 println("Recommended delta t = ", RecommendedDT)
 
+#=
+FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
+tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
+calcStabilizationTerm(mesh, sbp, eqn, tau) =#
+
 #elementEigenValues(mesh, sbp, eqn)
+#SUPG2(mesh, sbp, eqn)
+# residualComparison(mesh, sbp, eqn, opts)
 
 #------------------------------------------------------------------------------
 
