@@ -18,7 +18,7 @@ using ArrayViews
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 
-#function runtest(flag::Int)
+#function runtest()
 println("ARGS = ", ARGS)
 println("size(ARGS) = ", size(ARGS))
 opts = read_input(ARGS[1])
@@ -28,7 +28,6 @@ opts = read_input(ARGS[1])
 flag = opts["run_type"]
 
 # timestepping parameters
-delta_t = opts["delta_t"]   # delta_t: timestep for RK
 t_max = opts["t_max"]       # t_max: maximum time for RK
 order = opts["order"]       # order of accuracy
 
@@ -65,6 +64,12 @@ elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
   Tres = Complex128
 end
 
+# record these choices in the dictionary
+opts["Tmsh"] = Tmsh
+opts["Tsbp"] = Tsbp
+opts["Tsol"] = Tsol
+opts["Tres"] = Tres
+
 # create SBP object
 println("\nConstructing SBP Operator")
 sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
@@ -74,14 +79,26 @@ smb_name = opts["smb_name"]
 Tdim = opts["dimensions"]
 
 # create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4)
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=opts["coloring_distance"])
+
+if opts["jac_type"] == 3 || opts["jac_type"] == 4
+  pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+else
+  pmesh = mesh
+end
+
 # TODO: input argument for dofpernode
 
 # create euler equation
-eqn = EulerData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+var_type = opts["variable_type"]
+eqn = EulerData_{Tsol, Tres, 2, Tmsh, var_type}(mesh, sbp, opts)
 
-# TODO: needs comment
-init(mesh, sbp, eqn, opts)
+# initialize physics module and populate any fields in mesh and eqn that
+# depend on the physics module
+init(mesh, sbp, eqn, opts, pmesh)
+
+delta_t = opts["delta_t"]   # delta_t: timestep for RK
+
 
 res_vec = eqn.res_vec         # solution at previous timestep
 q_vec = eqn.q_vec       # solution at current timestep
@@ -94,7 +111,11 @@ if haskey(ICDict, Relfunc_name)
   Relfunc = ICDict[Relfunc_name]
   println("Relfunc = ", Relfunc)
   Relfunc(mesh, sbp, eqn, opts, q_vec)
-
+ 
+  if var_type == :entropy
+    println("converting to entropy variables")
+    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
+  end
 #  println("eqn.q_vec = ", eqn.q_vec)
   res_real = zeros(mesh.numDof)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
@@ -116,6 +137,10 @@ ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec)
+
+if var_type == :entropy
+    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
+end
 
 # TODO: cleanup 20151009 start
 
@@ -163,8 +188,17 @@ writeVisFiles(mesh, "solution_ic")
 # initialize some variables in nl_solvers module
 initializeTempVariables(mesh)
 
+wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
+println("max wave speed = ", wave_speed)
+delta_t = opts["CFL"]*opts["mesh_size"]/wave_speed
+println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
+opts["delta_t"] = delta_t
+
+
 #------------------------------------------------------------------------------
-# include("checkEigenValues.jl")
+#=
+include("checkEigenValues.jl")
+>>>>>>> jc
 # include("artificialViscosity.jl")
 # include("SUPG.jl")
 
@@ -199,14 +233,15 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 #SUPG2(mesh, sbp, eqn)
 # residualComparison(mesh, sbp, eqn, opts)
 
+=#
 #------------------------------------------------------------------------------
 
 # call timestepper
 if opts["solve"]
   
   if flag == 1 # normal run
-   rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, 
-       res_tol=opts["res_abstol"])
+   @time rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, 
+       res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
    println("finish rk4")
    printSolution("rk4_solution.dat", eqn.res_vec)
@@ -233,15 +268,14 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    @time newton(evalEuler, mesh, sbp, eqn, opts, itermax=opts["itermax"], 
+    @time newton(evalEuler, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
                  step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
-    println("total solution time printed above")
     printSolution("newton_solution.dat", eqn.res_vec)
 
   elseif flag == 6
-    newton_check(evalEuler, mesh, sbp, eqn, opts)
+    @time newton_check(evalEuler, mesh, sbp, eqn, opts)
     vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     writeVisFiles(mesh, "solution_error")
@@ -249,16 +283,20 @@ if opts["solve"]
     printSolution(mesh, vals)
 
   elseif flag == 7
-    jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
+    @time jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
     writedlm("solution.dat", jac_col)
 
   elseif flag == 8
-    jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
+    @time jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
     writedlm("solution.dat", jac_col)
 
   end       # end of if/elseif blocks checking flag
 
+  println("total solution time printed above")
+
+
   if opts["write_finalsolution"]
+    println("writing final solution")
     writedlm("solution_final.dat", real(eqn.q_vec))
   end
 
@@ -267,30 +305,37 @@ if opts["solve"]
   end
 
 
-##### Do postprocessing ######
-println("\nDoing postprocessing")
-  if flag == 1
-      res_vec_diff = res_vec - res_vec_exact
-      step = q_vec - res_vec_exact
-      step_norm = norm(step)/mesh.numDof
-      println("step_norm = ", step_norm)
-      res_vec_norm = calcNorm(eqn, res_vec)
-      #res_vec_side_by_side = [res_vec_exact  res_vec]
+  ##### Do postprocessing ######
+  println("\nDoing postprocessing")
 
-      #=
-      println("\n\n\n")
-      println("res_vec_diff: \n")
-      for i=1:size(res_vec_diff)[1]
-	println(res_vec_diff[i,:])
-      end
-      println("res_vec_side_by_side: \n")
-      for i=1:size(res_vec_side_by_side)[1]
-	println(i, " ", res_vec_side_by_side[i,:])
-      end
-      =#
-      println("res_vec_norm: \n",res_vec_norm,"\n")
+  if opts["do_postproc"]
+    exfname = opts["exact_soln_func"]
+    if haskey(ICDict, exfname)
+      exfunc = ICDict[exfname]
+      q_exact = zeros(Tsol, mesh.numDof)
+      exfunc(mesh, sbp, eqn, opts, q_exact)
+    if var_type == :entropy
+      println("converting to entropy variables")
+      convertEntropy(mesh, sbp, eqn, opts, q_exact)
+    end
 
+      q_diff = eqn.q_vec - q_exact
+      diff_norm = calcNorm(eqn, q_diff)
+      discrete_norm = norm(q_diff/length(q_diff))
+
+      println("solution error norm = ", diff_norm)
+      println("solution discrete L2 norm = ", discrete_norm)
+
+      # print to file
+      outname = opts["calc_error_outfname"]
+      f = open(outname, "w")
+      println(f, mesh.numEl, " ", diff_norm, " ", discrete_norm)
+      close(f)
+
+    end
   end
+      
+
 
       saveSolutionToMesh(mesh, real(eqn.q_vec))
       printSolution(mesh, real(eqn.q_vec))
@@ -299,4 +344,6 @@ println("\nDoing postprocessing")
 
 end  # end if (opts[solve])
 
+#  return mesh, sbp, eqn, opts
+#end  # end function
 #runtest(1)

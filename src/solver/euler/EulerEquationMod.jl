@@ -60,6 +60,14 @@ If it is variable sized then macros give the advantage of doing location lookup
   This type is paramaterized on the dimension of the equation for purposes
   of multiple dispatch
 
+  Static Parameters:
+  Tdim : dimensionality of the equation, integer, (used for dispatch)
+  var_type : type of variables used used in the weak form, symbol, (used for
+             dispatch), currently supported values: :conservative, :entropy
+  Tsol : datatype of solution variables q
+  Tres : datatype of residual
+  Tmsh : datatype of mesh related quantities (mapping jacobian etc.)
+
   **Fields**
     # these fields have defaults:
     * cv  : specific heat constant
@@ -72,8 +80,11 @@ If it is variable sized then macros give the advantage of doing location lookup
     * aoa : angle of attack (radians)
  
 """->
-type ParamType{Tdim} 
+type ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
+  t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
+
+  q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
 
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -100,10 +111,21 @@ type ParamType{Tdim}
 
   use_dissipation::Bool  # use artificial dissipation
   dissipation_const::Float64  # constant used for dissipation filter matrix
+
+
+  vortex_x0::Float64  # vortex center x coordinate at t=0
+  vortex_strength::Float64  # strength of the vortex
+
+  krylov_itr::Int  # Krylov iteration number for iterative solve
+  krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
   function ParamType(sbp, opts, order::Integer)
   # create values, apply defaults
-
+    
+    t = 0.0
     # get() = get(dictionary, key, default)
+
+    q_vals = Array(Tsol, 4)
+
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -112,8 +134,9 @@ type ParamType{Tdim}
     Ma = opts[ "Ma"]
     Re = opts[ "Re"]
     aoa = opts[ "aoa"]
-    rho_free = opts[ "rho_free"]
-    E_free = opts[ "E_free"]
+    E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
+    rho_free = 1.0
+
     edgestab_gamma = opts["edgestab_gamma"]
 
     # debugging options
@@ -130,7 +153,7 @@ type ParamType{Tdim}
     use_res_filter = opts["use_res_filter"]
     if use_res_filter println("residual filter enabled") end
 
-    if use_filter || use_res_filter
+    if use_filter || use_res_filter || opts["use_filter_prec"]
       filter_fname = opts["filter_name"]
       filter_mat = calcFilter(sbp, filter_fname, opts)
     else
@@ -142,10 +165,16 @@ type ParamType{Tdim}
 
     dissipation_const = opts["dissipation_const"]
 
-    return new(order, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
+    vortex_x0 = opts["vortex_x0"]
+    vortex_strength = opts["vortex_strength"]
+
+    krylov_itr = 0
+    krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
+
+    return new(t, order, q_vals, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
                edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, 
                use_filter, use_res_filter, filter_mat, use_dissipation,  
-               dissipation_const)
+               dissipation_const, vortex_x0, vortex_strength, krylov_itr, krylov_type)
 
     end   # end of ParamType function
 
@@ -177,7 +206,8 @@ abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
     * stabscale : 2D array holding edge stabilization scale factor
     * Minv :  vector holding inverse mass matrix
 """->
-abstract EulerData {Tsol, Tdim} <: AbstractEulerData{Tsol}
+abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol}
+#TODO: static parameter order is inconsistent with EulerData_
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
@@ -194,6 +224,7 @@ include("euler_macros.jl")
 include("output.jl")
 include("common_funcs.jl")
 include("euler.jl")
+include("euler_funcs.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
@@ -213,27 +244,41 @@ include("SUPG.jl")
   Eventually there will be additional implimentation of EulerData,
   specifically a 3D one.
 
+  Static Parameters:
+    Tsol : datatype of variables solution variables, ie. the 
+           q vector and array
+    Tres : datatype of residual. ie. eltype(res_vec)
+    Tdim : dimensionality of equation, integer, (2 or 3)
+    Tmsh : datatype of mesh related quantities
+    var_type : type of variables used in weak form, symbol, (:conservative 
+               or :entropy)
+
+
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}  
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres, var_type}  
 # hold any constants needed for euler equation, as well as solution and data 
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
 # Only the constants are initilized here, the arrays are not.
 
-  params::ParamType{Tdim}
+  params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
   res_type::DataType  # type of res
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
+  q_vec::Array{Tres,1}            # initial condition in vector form
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   res::Array{Tres, 3}             # result of computation
   res_vec::Array{Tres, 1}         # result of computation in vector form
-  q_vec::Array{Tres,1}            # initial condition in vector form
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
   Aeta::Array{Tsol,4}               # Flux Jacobian in the eta-direction
+  res_edge::Array{Tres, 4}       # edge based residual used for stabilization
+                                  # numdof per node x nnodes per element x
+				  # numEl x num edges per element
+
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
   bndryflux::Array{Tsol, 3}       # boundary flux
   stabscale::Array{Tsol, 2}       # stabilization scale factor
@@ -244,8 +289,21 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
 
   Minv::Array{Float64, 1}         # inverse mass matrix
   M::Array{Float64, 1}            # mass matrix
-  disassembleSolution::Function   # function q_vec -> eqn.q
+
+  # TODO: consider overloading getField instead of having function as
+  #       fields
+  disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
+  convertToEntropyVars::Function  # function eqn.q -> eqn.q entropy variables
+  convertToConsVars::Function     # convert to eqn.q -> eqn.q in conservative
+  multiplyA0inv::Function         # multiply an array by inv(A0), where A0
+                                  # is the coefficient matrix of the time 
+				  # derivative
+  majorIterationCallback::Function # called before every major (Newton/RK) itr
+# minorIterationCallback::Function # called before every residual evaluation
+
+  # some temporary arrays
+  q2::Array{Tsol, 3}  # like eqn.q, useful to store converted variables
 
   # inner constructor
   function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
@@ -257,17 +315,22 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
-    eqn.params = ParamType{Tdim}(sbp, opts, mesh.order)
+    eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, mesh.order)
     eqn.res_type = Tres
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
-
+    eqn.convertToEntropyVars = convertToEntropy
+    eqn.convertToConsVars = convertToConservative
+    eqn.multiplyA0inv = matVecA0inv
+    eqn.majorIterationCallback = majorIterationCallback
+    eqn.q2 = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
 
     calcEdgeStabAlpha(mesh, sbp, eqn)
 
-    if opts["use_dissipation"]
+    jac_type = opts["jac_type"]::Int
+    if opts["use_dissipation"] || opts["use_dissipation_prec"]
       dissipation_name = opts["dissipation_name"]
       eqn.dissipation_mat = calcDissipationOperator(mesh, sbp, eqn, 
                                                     dissipation_name, opts)
@@ -288,6 +351,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh} <: EulerData{Tsol, Tdim}
                                 mesh.numEl, Tdim)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
     eqn.res_vec = zeros(Tres, mesh.numDof)
+
+    if opts["use_edge_res"]
+      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, mesh.numTypePerElement[2])
+    else
+      eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
+    end
+
     eqn.q_vec = zeros(Tres, mesh.numDof)
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, sbp.numfacenodes, 
                           mesh.numBoundaryEdges)

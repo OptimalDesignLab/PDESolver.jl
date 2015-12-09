@@ -59,7 +59,7 @@ are usually passed an ArrayView, so writing to the argument vector writes
 directly to the large array stored in the eqn object.  Thus there is no 
 loss of efficiency by using low level functions.
 """
-export evalEuler, init
+export evalEuler, init, convertEntropy
 
 # Rules for paramaterization:
 # Tmsh = mesh data type
@@ -102,6 +102,8 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   
   dataPrep(mesh, sbp, eqn, opts)
   # println("\n eqn.bndryflux = \n", eqn.bndryflux)
+#println("dataPrep @time printed above")
+
 
   #println("dataPrep @time printed above")
   evalVolumeIntegrals(mesh, sbp, eqn, opts)
@@ -168,16 +170,78 @@ end  # end evalEuler
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
+function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts, pmesh=mesh)
 
   println("\nInitializing Euler module")
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
+  getBCFunctors(pmesh, sbp, eqn, opts)
 
 
   return nothing
 end
 
+
+function majorIterationCallback(itr::Integer, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEulerData, opts)
+
+#  println("Performing major Iteration Callback")
+#=
+  if itr == 0
+    #----------------------------------------------------------------------------
+    # Storing the initial density value at all the nodes
+    global const vRho_act = zeros(mesh.numNodes)
+    k = 1
+    for counter1 = 1:4:length(eqn.q_vec)
+      vRho_act[k] = eqn.q_vec[counter1]
+      k += 1
+    end
+    println("Actual Density value succesfully extracted")
+    #--------------------------------------------------------------------------
+  else
+    #--------------------------------------------------------------------------
+    # Calculate the error in density
+    vRho_calc = zeros(vRho_act)
+    k = 1
+    for counter1 = 1:4:length(eqn.q_vec)
+      vRho_calc[k] = eqn.q_vec[counter1]
+      k += 1
+    end
+    ErrDensityVec = vRho_calc - vRho_act
+    # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
+    # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
+    # println("DensityErrorNormL1 = ", ErrDensity1) 
+    ErrDensity2 = 0.0
+    k = 1
+    for counter1 = 1:length(ErrDensityVec)
+      ErrDensity2 += real(ErrDensityVec[counter1])*eqn.M[k]*real(ErrDensityVec[counter1])
+      k += 4
+    end
+    ErrDensity2 = sqrt(ErrDensity2)
+    println("DensityErrorNormL2 = ", ErrDensity2)
+    # println("Discrete density error norm L2 = ", ErrDensity2_discrete)
+
+
+
+    #--------------------------------------------------------------------------
+  end
+=#
+  if opts["write_entropy"]
+    # calculate the entropy norm
+    val = zero(Float64)
+    for i=1:mesh.numDofPerNode:mesh.numDof
+      q_vals = view(eqn.q_vec, i:(i+3))
+      s = calcEntropy(q_vals, eqn.params)
+      val += real(s)*eqn.M[i]*real(s)
+    end
+    f = open(opts["write_entropy_fname"], "a+")
+    println(f, itr, " ", eqn.params.t, " ",  val)
+    close(f)
+  end
+
+
+  return nothing
+
+end
 
 @doc """
 ### EulerEquationMod.dataPrep
@@ -205,17 +269,13 @@ function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::
     applyFilter(mesh, sbp, eqn, eqn.q, opts)
   end
 
-
   u = eqn.q
   flux_parametric = eqn.flux_parametric
 
   # zero out res
   fill!(eqn.res, 0.0)
-  
-  # disassemble q_vec into eqn.q
-#  disassembleSolution(mesh, sbp, eqn, opts, q_vec)
-  # disassmble q_vec into eqn.q
-
+  fill!(eqn.res_edge, 0.0)
+ 
   getAuxVars(mesh, eqn)
 #  println("getAuxVars @time printed above")
 
@@ -532,7 +592,11 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
 
   if eqn.params.use_edgestab
 #    println("applying edge stabilization")
-    edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+    if opts["use_edge_res"]
+      edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res, eqn.res_edge)
+    else
+      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+    end
   end
 
   if eqn.params.use_res_filter
@@ -768,9 +832,7 @@ end
 """->
 =#
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
-                             sbp, eqn::EulerData{Tsol, Tdim}, opts, 
-                             q_vec::AbstractArray{Tsol, 1})
+function disassembleSolution{Tmsh, Tsol, Tdim, T}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, q_arr::AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -814,24 +876,22 @@ end
 
   This function takes the 3D array of variables in arr and 
   reassmbles is into the vector res_vec.  Note that
-  This is a reduction operation and requires eqn.res_vec to be zerod before
-  calling this function.
+  This is a reduction operation and zeros res_vec before performing the 
+  operation, unless zero_res is set to false
 
   This is a mid level function, and does the right thing regardless of
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, res_vec::AbstractArray{Tres,1})
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, res_vec::AbstractArray{Tres,1}, zero_resvec=true)
 # arr is the array to be assembled into res_vec
 
 #  println("in assembleSolution")
 
-#  println("size(mesh.dofs) = ", size(mesh.dofs))
-#  println("size(eqn.res = ", size(eqn.res))
+  if zero_resvec
+    fill!(res_vec, 0.0)
+  end
 
-
-#  println("before assembly, sum(res) = ", sum(eqn.res))
-#  println("    sum(res_vec) = ", sum(res_vec))
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -842,13 +902,289 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
     end
   end
   
+  return nothing
+end
 
-#  println("after assembly, sum(res) = ", sum(eqn.res))
-#  println("    sum(res_vec) = ", sum(res_vec))
+# converting to conservative variables
+#------------------------------------------------------------------------------
+@doc """
+# low level function
+  Converts a the entropy variables at a node and converts them to
+  conservative variables
+
+  Inputs:
+  params  : ParamType{2, :entropy} used to dispatch to the proper method
+  qe  : vector (of length 4) of entropy variables
+  
+  Inputs/outputs
+  qc : vector (of length 4) of conservative variables.  Contents of vector are
+       overwritten
+
+  Aliasing: qc and qe cannot be the same vector
+"""->
+function convertToConservative{Tsol}(params::ParamType{2, :entropy}, 
+                  qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
+ #TODO: make this an inplace operation
+ # this will likely make better use of registers
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  k1 = 0.5*(qe[2]^2 + qe[3]^2)/qe[4]
+  s = gamma - qe[1] + k1
+  rho_int = exp(-s/gamma_1)*(gamma_1/(-qe[4])^gamma)^(1/gamma_1)
+  qc[1] = -qe[4]*rho_int
+  qc[2] = qe[2]*rho_int
+  qc[3] = qe[3]*rho_int
+  qc[4] = (1.0 - k1)*rho_int
+end
+
+@doc """
+# low level function
+
+  Converts conservative variables to conservative variables (ie. it
+  copies the input to the output).  This method exists to values can be 
+  converted without knowing whether they are conservative or entropy.
+
+"""->
+function convertToConservative{Tsol}(params::ParamType{2, :conservative}, 
+                  qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
+# maybe the compiler will be smart enough to make this a no-op
+  for i=1:length(qe)
+    qc[i] = qe[i]
+  end
 
   return nothing
 end
 
+@doc """
+# mid level function
+
+  Converts the array (3D form) of entropy variables to conservative variables 
+  in place.  If the array is already in conservative variables this is a no-op
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs:
+    q_arr: array of values (3D) to be converted
+
+  Aliasing: no restrictions
+"""
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+
+  work_vec = zeros(Tsol, size(q_arr, 1))
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+        for k=1:size(q_arr,1)  # copy entropy values into new array
+          work_vec[k] = q_arr[k, j, i]
+	end
+	q_view = view(q_arr, :, j, i)  # reuse memory
+	convertToConservative(eqn.params, work_vec, q_view)
+    end
+  end
+
+  return nothing
+end
+
+# 3D array
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+
+# q_vec conversion
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_vec::AbstractArray{Tsol, 1})
+
+  work_vec = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    for j=1:mesh.numDofPerNode
+      work_vec[j] = q_vec[i + j - 1]
+    end
+    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    convertToConservative(eqn.params, work_vec, q_view)
+  end
+
+  return nothing
+end
+
+# q_vec conversion
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_arr::AbstractArray{Tsol, 1})
+
+  return nothing
+end
+
+
+
+
+# converting to entropy variables
+#------------------------------------------------------------------------------
+# convert to entropy variables without checking if we are already in them
+function convertEntropy{Tsol}(params::ParamType{2}, qc::AbstractArray{Tsol,1},
+                             qe::AbstractArray{Tsol, 1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+ k1 = 0.5*(qc[2]^2 + qc[3]^2)/qc[1]
+  rho_int = qc[4] -k1
+  s = log(gamma_1*rho_int/(qc[1]^gamma))
+  fac = 1.0/rho_int
+  qe[1] = (rho_int*(gamma + 1 -s) - qc[4])*fac
+  qe[2] = qc[2]*fac
+  qe[3] = qc[3]*fac
+  qe[4] = -qc[1]*fac
+
+  return nothing
+end
+
+
+function convertEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres}, opts, q_vec::AbstractArray{Tsol, 1})
+
+  work_vec = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    for j=1:mesh.numDofPerNode
+      work_vec[j] = q_vec[i + j - 1]
+    end
+    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    convertEntropy(eqn.params, work_vec, q_view)
+  end
+
+  return nothing
+end
+
+
+# converting to entropy variables with checking
+@doc """
+# low level function
+  Converts the conservative variables at a node to entropy variables
+
+  Input:
+  params : ParamType{s, :conservative}
+  qc  : vector (of length 4) of conservative variables
+
+  Outputs:
+  qe : vector (of length 4) of conservative variables.  Contents of vector are
+       overwritten
+
+  Aliasing: qc and qe cannot be the same vector (obviously)
+"""->
+function convertToEntropy{Tsol}(params::ParamType{2, :conservative}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+
+  convertEntropy(params, qc, qe)
+
+  #=
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+ k1 = 0.5*(qc[2]^2 + qc[3]^2)/qc[1]
+  rho_int = qc[4] -k1
+  s = log(gamma_1*rho_int/(qc[1]^gamma))
+  fac = 1.0/rho_int
+  qe[1] = (rho_int*(gamma + 1 -s) - qc[4])*fac
+  qe[2] = qc[2]*fac
+  qe[3] = qc[3]*fac
+  qe[4] = -qc[1]*fac
+  =#
+end
+
+
+
+
+
+@doc """
+# low level function
+  Converts the entropy variables to entropy variables (ie. it copies the 
+  input to the output).  This method exists so variables can be converted 
+  to entropy variables without knowing what type they are.
+
+"""->
+function convertToEntropy{Tsol}(params::ParamType{2, :entroyp}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+
+  for i=1:length(qc)
+    qe[i] = qc[i]
+  end
+
+  return nothing
+end
+
+
+
+@doc """
+# mid level function
+
+  Converts the array (3D form) of conservative variables to entropy variables 
+  in place.  If the array is already in entropy variables this is a no-op
+
+  Methods also exist for the 1D form.
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs:
+    q_arr: array of values (3D) to be converted
+
+  Aliasing: no restrictions
+"""->
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_arr::AbstractArray{Tsol, 3})
+i
+
+
+  work_vec = zeros(Tsol, size(q_arr, 1))
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+        for k=1:size(q_arr,1)  # copy conservative values into new array
+          work_vec[k] = q_arr[k, j, i]  # make 
+	end
+	q_view = view(q_arr, :, j, i)  # reuse memory
+	convertToEntropy(eqn.params, work_vec, q_view)
+    end
+  end
+
+  return nothing
+end
+
+
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+
+
+# q_vec conversion
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_vec::AbstractArray{Tsol, 1})
+
+  convertEntropy(mesh, sbp, eqn, opts, q_vec)
+#=  
+  work_vec = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    for j=1:mesh.numDofPerNode
+      work_vec[j] = q_vec[i + j - 1]
+    end
+    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    convertToEntropy(eqn.params, work_vec, q_view)
+  end
+=#
+  return nothing
+end
+
+# q_vec conversion
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 1})
+
+  return nothing
+end
+
+
+
+# calculating the Euler flux
+#------------------------------------------------------------------------------
 @doc """
 ### EulerEquationMod.calcEulerFlux
 
@@ -856,7 +1192,7 @@ end
    a single node in a particular direction.  2D only.
 
    Inputs:
-   params  : ParamaterType{2}
+   params  : ParamaterType{2, :conservative}
    q  : vector of conservative variables
    aux_vars : vector of auxiliary variables
    dir :  unit vector in direction to calculate the flux
@@ -893,6 +1229,46 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2},
  
   return nothing
 
+end
+
+
+@doc """
+# low level function
+    Calculates the Euler flux from entropy variables
+
+    Inputs:
+    params : ParameterType{2, :entropy}
+    q : vector of entropy variables
+    aux_vars : vector of auxiliary variables
+    dir : vector specifying the direction to caculate the flux
+
+    Inputs/Outputs:
+    F  : vector to populate with the flux
+ 
+    This is a low level function.  The second static parameter of 
+    the ParameterType is used to dispatch to the right method for
+    entropy or conservative variables
+"""->
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  # calculate some intermediate quantities
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+    # internal energy (rho*i in Hughes) - not specific internal energy e
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  U = q[2]*dir[1] + q[3]*dir[2]
+  fac = rho_int/q[4]
+
+  # now we can actually calculate the flux
+  F[1] = q[4]*U*fac
+  F[2] = (dir[1]*gamma_1*q[4] - q[2]*U)*fac
+  F[3] = (dir[2]*gamma_1*q[4] - q[3]*U)*fac
+  F[4] = U*(k1 - gamma)*fac
+
+  return nothing
 end
 
 @doc """
@@ -933,26 +1309,42 @@ end
 
   Inputs:
     q  : vector of conservative variables
-    params : ParamType{2}
+    params : ParamType{2, :conservative}
 
-  The paramater of params determines whether the 2D or 3D method is dispatched.
+  The parameter of params determines whether the 2D or 3D method is dispatched.
 
   This is a low level function.
 """->
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2})
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :conservative})
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
-#  internal_energy = res_vec_vals[4]/res_vec_vals[1] - 0.5*(res_vec_vals[2]^2 + res_vec_vals[3]^2)/(res_vec_vals[1]^2)
-#  pressure = res_vec_vals[1]*eqn.R*internal_energy/eqn.cv
-
   return  (params.gamma_1)*(q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])
   
-#   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
-
-
 end
+
+
+@doc """
+  This function calculates pressure using the entropy variables.
+
+  Inputs:
+    q  : vector of entropy varaibles
+    params : ParamType{2, :entropy}
+
+  returns pressure
+"""->
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  
+  k1 = 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  return gamma_1*rho_int
+end
+
 
 @doc """
 ### EulerEquationMod.calcPressure
@@ -960,7 +1352,7 @@ end
   3D method.  See 2D method documentation
 """->
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3})
+function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3, :conservative})
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
 
@@ -975,3 +1367,424 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3})
 end
 
 
+function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :conservative})
+# calculates teh speed of sond at a node
+  pressure = calcPressure(q, params)
+  return sqrt((params.gamma*pressure)/q[1])
+
+end
+
+
+function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :entropy})
+# calculate speed of sound using the same formula as conservative variables,
+# just rewriting all variables in entropy variables
+
+#  printbacktrace()
+#  println("q = ", q)
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  pressure = calcPressure(q, params)
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  rho = -q[4]*rho_int
+
+#  println("rho = ", rho)
+  return sqrt((params.gamma*pressure)/rho)
+end
+
+
+function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :conservative})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  rho_int = q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1]
+  return log(gamma_1*rho_int/(q[1]^gamma))
+end
+
+function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]
+end
+
+@doc """
+### EulerEquationMod.calcA0
+
+  This function calculates the A0 (ie. dq/dv, where q are the conservative 
+  and v are the entropy variables) for a node, and stores it A0
+
+  The formation of A0 is given in Hughes
+
+  Inputs:
+    q  : vector of entropy variables, length 4
+    params : ParamType{2, :entropy}
+
+
+  Inputs/Outputs:
+  A0 : 4x4 matrix populated with A0.  Overwritten
+
+"""->
+function calcA0{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A0::AbstractArray{Tsol, 2})
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
+#    k4 = k2 - gamma_1
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = rho_int/(gamma_1*q[4])
+
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[4] - q[2]*q[2]
+  c2 = gamma_1*q[4] - q[3]*q[3]
+
+  d1 = -q[2]*q[3]
+
+  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A0[1,1] = -q[4]*q[4]*fac
+  A0[2,1] = e1*fac
+  A0[3,1] = e2*fac
+  A0[4,1] = q[4]*(1-k1)*fac
+  A0[1,2] = e1*fac  # symmetric
+  A0[2,2] = c1*fac
+  A0[3,2] = d1*fac
+  A0[4,2] = q[2]*k2*fac
+  A0[1,3] = e2*fac  # symmetric
+  A0[2,3] = d1*fac  # symmetric
+  A0[3,3] = c2*fac
+  A0[4,3] = q[3]*k2*fac
+  A0[1,4] = q[4]*(1-k1)*fac  # symmetric
+  A0[2,4] = q[2]*k2*fac   # symmetric
+  A0[3,4] = q[3]*k2*fac  # symmetric
+  A0[4,4] = -k3*fac
+
+    return nothing
+end
+
+@doc """
+# EulerEquationMod.calcA0Inv
+
+  Calculates inv(A0), where A0 = dq/dv, where q are the conservative variables
+  at a node and v are the entropy varaibles at a node, using the entropy 
+  variables.  
+
+  Inputs:
+  q  : vector (length 4) of entropy variables at a node
+  params : ParamType{2, :entropy}
+
+  Inputs/Outputs:
+    A0inv : matrix to be populated with inv(A0).  Overwritten.
+
+  Aliasing restrictions: none
+"""->
+function calcA0Inv{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A0inv::AbstractArray{Tsol, 2})
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+   s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = -1/(rho_int*q[4])
+
+  d1 = -q[2]*q[3]
+  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+
+  A0inv[1,1] = (k1*k1 + gamma)*fac
+  A0inv[2,1] = k1*q[2]*fac
+  A0inv[3,1] = k1*q[3]*fac
+  A0inv[4,1] = (k1 + 1)*q[4]*fac
+  A0inv[1,2] = k1*q[2]*fac  # symmetry
+  A0inv[2,2] = (q[2]*q[2] - q[4])*fac
+  A0inv[3,2] = -d1*fac
+  A0inv[4,2] = e1*fac
+  A0inv[1,3] = k1*q[3]*fac  # symmetry
+  A0inv[2,3] = -d1*fac  # symmetry
+  A0inv[3,3] = (q[3]*q[3] - q[4])*fac
+  A0inv[4,3] = e2*fac
+  A0inv[1,4] = (k1 + 1)*q[4]*fac  # symmetry
+  A0inv[2,4] = e1*fac  # symmetry
+  A0inv[3,4] = e2*fac  # symmetry
+  A0inv[4,4] = q[4]*q[4]*fac
+
+    return nothing
+end
+
+
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, res_arr::AbstractArray{Tsol, 3})
+# multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
+# res_arr *can* alias eqn.q safely
+  A0inv = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  res_vals = Array(Tsol, mesh.numDofPerNode)
+  q_vals = Array(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      # copy values into workvec
+      for k=1:mesh.numDofPerNode
+	q_vals[k] = eqn.q[k, j, i]
+	res_vals[k] = res_arr[k, j, i]
+      end
+
+      res_view = view(res_arr, :, j, i)
+      # get A0Inv for this node
+      calcA0Inv(q_vals, eqn.params, A0inv)
+
+      smallmatvec!(A0inv, res_vals, res_view)
+    end
+  end
+
+  return nothing
+end
+
+# no-op, because for conservative variables this is A0inv is the identity matrix
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, res_arr::AbstractArray{Tsol, 3})
+# multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
+# res_arr *can* alias eqn.q safely
+# a non-alias tolerant implimention wold avoid copying q_vals
+  A0 = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  res_vals = Array(Tsol, mesh.numDofPerNode)
+  q_vals = Array(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      # copy values into workvec
+      for k=1:mesh.numDofPerNode
+	q_vals[k] = eqn.q[k, j, i]
+	res_vals[k] = res_arr[k, j, i]
+      end
+
+      res_view = view(res_arr, :, j, i)
+      # get A0Inv for this node
+      calcA0(q_vals, eqn.params, A0)
+
+      smallmatvec!(A0, res_vals, res_view)
+    end
+  end
+
+  return nothing
+end
+
+#no-op
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+
+
+
+@doc """
+### EulerEquationMod.calcA1
+
+  This function calculates the A1 (ie. dF1/dv, where F1 is the first column of the
+  Euler flux.
+  and v are the entropy variables) for a node
+
+  The formation of A1 is given in Hughes
+
+  Inputs:
+    q  : vector of entropy variables, length 4
+    params : ParamType{2, :entropy},
+  Inputs/Outputs:
+  A1 : 4x4 matrix to be populated.  Overwritten
+
+
+"""->
+function calcA1{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A1::AbstractArray{Tsol, 2})
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
+  k4 = k2 - gamma_1
+  k5 = k2*k2 - gamma_1*(k1 + k2)
+
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = rho_int/(gamma_1*q[4]*q[4])
+
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[4] - q[2]*q[2]
+  c2 = gamma_1*q[4] - q[3]*q[3]
+
+  d1 = -q[2]*q[3]
+
+  e1 = q[2]*q[4]
+#  e2 = q[3]*q[4]
+
+  println("fac = ", fac)
+  println("e1 = ", e1)
+  println("q[4] = ", q[4])
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A1[1,1] = e1*q[4]*fac
+  A1[2,1] = c1*q[4]*fac
+  A1[3,1] = d1*q[4]*fac
+  A1[4,1] = k2*e1*fac
+  A1[1,2] = c1*q[4]*fac  # symmetric
+  A1[2,2] = -(c1 + 2*gamma_1*q[4])*q[2]*fac
+  A1[3,2] = -c1*q[3]*fac
+  A1[4,2] = (c1*k2 + gamma_1*q[2]*q[2])*fac
+  A1[1,3] = d1*q[4]*fac  # symmetric
+  A1[2,3] = -c1*q[3]*fac  # symmetric
+  A1[3,3] = -c2*q[2]*fac
+  A1[4,3] = k4*d1*fac
+  A1[1,4] = k2*e1*fac  # symmetric
+  A1[2,4] = (c1*k2 + gamma_1*q[2]*q[2])*fac   # symmetric
+  A1[3,4] = k4*d1*fac  # symmetric
+  A1[4,4] = k5*q[2]*fac
+
+  println("A1[1,1] = ", A1[1,1])
+    return nothing
+end
+
+
+@doc """
+### EulerEquationMod.calcA2
+
+  This function calculates the A2 (ie. dF2/dv, where F2 is the second column of the
+  Euler flux.
+  and v are the entropy variables) for a node
+
+  The formation of A2 is given in Hughes
+
+  Inputs:
+    q  : vector of entropy variables, length 4
+    params : ParamType{2, :entropy},
+  Inputs/Outputs:
+  A2 : 4x4 matrix to be populated.  Overwritten
+
+
+"""->
+function calcA2{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A2::AbstractArray{Tsol, 2})
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
+  k4 = k2 - gamma_1
+  k5 = k2*k2 - gamma_1*(k1 + k2)
+
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = rho_int/(gamma_1*q[4]*q[4])
+
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[4] - q[2]*q[2]
+  c2 = gamma_1*q[4] - q[3]*q[3]
+
+  d1 = -q[2]*q[3]
+
+#  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A2[1,1] = e2*q[4]*fac
+  A2[2,1] = d1*q[4]*fac
+  A2[3,1] = c2*q[4]*fac
+  A2[4,1] = k2*e2*fac
+  A2[1,2] = d1*q[4]*fac  # symmetric
+  A2[2,2] = -c1*q[3]*fac
+  A2[3,2] = -c2*q[2]*fac
+  A2[4,2] = k4*d1*fac
+  A2[1,3] = c2*q[4]*fac  # symmetric
+  A2[2,3] = -c2*q[2]*fac  # symmetric
+  A2[3,3] = -(c2 + 2*gamma_1*q[4])*q[3]*fac
+  A2[4,3] = (c2*k2 + gamma_1*q[3]*q[3])*fac
+  A2[1,4] = k2*e2*fac  # symmetric
+  A2[2,4] = k4*d1*fac   # symmetric
+  A2[3,4] = (c2*k2 + gamma_1*q[3]*q[3])*fac  # symmetric
+  A2[4,4] = k5*q[3]*fac
+
+    return nothing
+end
+
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts)
+# calculate the maximum wave speed (ie. characteristic speed) on the mesh
+# uses solution vector q, not array
+  q = eqn.q
+  max_speed = zero(eltype(q))
+  for i=1:4:length(q)
+    q_i = view(q, i:(i+3))
+    a = calcSpeedofSound(q_i, eqn.params)
+    ux = q_i[2]/q_i[1]
+    uy = q_i[3]/q_i[1]
+    u_norm = sqrt(ux*ux + uy*uy)
+    speed = a + u_norm
+
+    if speed > max_speed
+      max_speed = speed
+    end  # end if statement
+  end  # end loop over vector q
+
+  return max_speed
+end  # end function
+
+
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts)
+# calculate the maximum wave speed (ie. characteristic speed) on the mesh
+# uses solution vector q, not array
+  q = eqn.q
+  gamma = eqn.params.gamma
+  gamma_1 = eqn.params.gamma_1
+ 
+  max_speed = zero(eltype(q))
+  for i=1:4:length(q)
+    q_i = view(q, i:(i+3))
+    a = calcSpeedofSound(q_i, eqn.params)
+
+   
+    k1 = 0.5*(q_i[2]*q_i[2] + q_i[3]*q_i[3])/q_i[4]  # a constant from Hughes' paper
+    s = gamma - q_i[1] + k1    # entropy
+    rho_int = exp(-s/gamma_1)*(gamma_1/((-q_i[4])^gamma))^(1/gamma_1)
+    rho = -rho_int*q_i[4]
+    ux = rho_int*q[2]/rho
+    uy = rho_int*q[3]/rho
+    u_norm = sqrt(ux*ux + uy*uy)
+    speed = a + u_norm
+
+    if speed > max_speed
+      max_speed = speed
+    end  # end if statement
+  end  # end loop over vector q
+
+  return max_speed
+end  # end function

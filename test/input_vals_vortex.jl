@@ -31,4 +31,5 @@ arg_dict = Dict{Any, Any} (
 "write_sparsity" => true,
 "write_jac" => true,
 "write_edge_vertnums" => true,
+"solve" => true
 )

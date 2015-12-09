@@ -6,7 +6,8 @@ include("bc_solvers.jl")
 ### EulerEquationMod.calcBoundaryFlux
 
   This function calculates the boundary flux for the portion of the boundary
-  with a particular boundary condition.
+  with a particular boundary condition.  The eqn.q are converted to 
+  conservative variables if needed
 
   Inputs:
   mesh : AbstractMesh
@@ -21,7 +22,7 @@ include("bc_solvers.jl")
 
   The functor must have the signature
   functor( q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
-
+  where q are the *conservative* variables.
   where all arguments (except params) are vectors of values at a node.
 
   This is a mid level function.
@@ -44,7 +45,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
     println("element ", bndry_facenums[i].element, " edge ", bndry_facenums[i].face)
   end
 =#
-
+  q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
@@ -54,6 +55,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
 
       # get components
       q = view(eqn.q, :, k, bndry_i.element)
+      # convert to conservative variables if needed
+      convertToConservative(eqn.params, q, q2)
       flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
       aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       x = view(mesh.coords, :, k, bndry_i.element)
@@ -62,7 +65,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = view(bndryflux, :, j, i)
 
-      functor(q, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      functor(q2, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
     end
 
@@ -192,6 +195,7 @@ ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 #println("normal vector = ", [nx2, ny2])
 calcEulerFlux(params, qg, aux_vars, [nx2, ny2], bndryflux)
 
+#TODO: make this a unary minus, not a fp multiplication
 for i=1:4
   bndryflux[i] *= -1
 end
@@ -205,6 +209,41 @@ return nothing
 
 
 end
+
+
+@doc """
+### EulerEquationMod.unsteadyVortexBC <: BCTypes
+
+  This type and the associated call method define a functor to calculate
+  the flux using the Roe Solver using the exact InsentropicVortex solution
+  as boundary state.  See calcBoundaryFlux for the arguments all functors
+  must support.
+
+  This is a low level functor.
+"""->
+type unsteadyVortexBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+
+#  println("entered isentropicOvrtexBC (low level)")
+#  println("Tsol = ", Tsol)
+
+  # getting qg
+  qg = zeros(Tsol, 4)
+  calcUnsteadyVortex(x, params, qg)
+
+  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+
+  return nothing
+
+end # ends the function unsteadyVortex BC
+
+
+
+
 
 @doc """
 ### EulerEquationMod.Rho1E2U3BC <: BCTypes
@@ -239,7 +278,7 @@ end
 ### EulerEquationMod.FreeStreamBC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
-  state corresponding to the free stream velocity
+  state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
 
   This is a low level functor
 """
@@ -260,8 +299,9 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
   return nothing
 end
 
+
 @doc """
-### EulerEquationMod.FreeStreamBC <: BCTypes
+### EulerEquationMod.allOnesBC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state where all the conservative variables have a value 1.0
@@ -298,7 +338,8 @@ global const BCDict = Dict{ASCIIString, BCType} (
 "Rho1E2U3BC" => Rho1E2U3BC(),
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),
-"allOnesBC" => allOnesBC()
+"allOnesBC" => allOnesBC(),
+"unsteadyVortexBC" => unsteadyVortexBC()
 )
 
 @doc """

@@ -23,11 +23,14 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 
 #     println("==== entering stabscale ====")
 
+    q_vals = params.q_vals
+    # convert to conservative variables if not already using them
+    convertToConservative(params, u, q_vals)
     # grabbing conserved variables
-    rho = u[1]
-    vel_x = u[2]/rho
-    vel_y = u[3]/rho
-    Energy = u[4]
+    rho = q_vals[1]
+    vel_x = q_vals[2]/rho
+    vel_y = q_vals[3]/rho
+    Energy = q_vals[4]
 
     # from JC's code below, eqn should still be in scope
     pressure = calcPressure(u, eqn.params)
@@ -43,7 +46,8 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 #     println("gamma: ",gamma)
 #     println("rho: ",rho)
     # ideal gas law
-    speed_sound = sqrt((gamma*pressure)/rho)
+    speed_sound = calcSpeedofSound(u, params)
+#    speed_sound = sqrt((gamma*pressure)/rho)
 
     # choice for edge stabilization constant: 
     #   refer to email from JH, 20150504:
@@ -142,6 +146,7 @@ function edgestabilize!{T}(sbp::SBPOperator{T}, ifaces::Array{Interface},
                            dξdx::AbstractArray{T,4}, jac::AbstractArray{T,2},
                            α::AbstractArray{T,4}, stabscale::Function,
                            res::AbstractArray{T,2})
+# for scalar equations only!
   @assert( sbp.numnodes == size(u,1) == size(res,1) == size(dξdx,3) == size(x,2) 
           == size(α,3) )
   @assert( size(dξdx,4) == size(α,4) == size(u,2) == size(res,2) == size(x,3) )
@@ -222,6 +227,7 @@ function getdiffelementarea{T, T2, T3}(nrm::AbstractArray{T,1}, dxidx::AbstractA
 
 
 # for vector equations
+
 function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Interface},
                            u::AbstractArray{Tsol,3}, x::AbstractArray{Tmsh,3},
                            dξdx::AbstractArray{Tmsh,4}, jac::AbstractArray{Tmsh,2},
@@ -249,6 +255,8 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
   for (facenum, face) in enumerate(ifaces)
 #   for facenum = 1:length(ifaces)
 #    face = ifaces[facenum]
+#    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
+#    println("uL = ", u[:, :, face.elementL], ", uR = ", u[:, :, face.elementR])
     fill!(EDn, zero(Tres))
     for i = 1:sbp.numfacenodes
       # iL = element-local index for ith node on left element face
@@ -296,9 +304,15 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
           tmpL[field] = dirL[di]*EDn[field,i]/sbp.w[iL]
           tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
         end
+	elementL = face.elementL
+	elementR = face.elementR
         for j = 1:sbp.numnodes
           for field = 1:size(u,1)
+	    tmp2 =  sbp.Q[iL,j,di]*tmpL[field]
+ #           println("res[$field, $j, $elementL] += ", tmp2)
             res[field,j,face.elementL] += sbp.Q[iL,j,di]*tmpL[field]
+	    tmp2 = sbp.Q[iR,j,di]*tmpR[field]
+#            println("res[$field, $j, $elementR] += ", tmp2)
             res[field,j,face.elementR] += sbp.Q[iR,j,di]*tmpR[field]
           end
         end
@@ -307,6 +321,242 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, ifaces::Array{Inter
   end
 
 end
+
+
+# for vector equations
+#TODO: cleanup function signature
+function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::SBPOperator, eqn, ifaces::Array{Interface},
+                           u::AbstractArray{Tsol,3}, x::AbstractArray{Tmsh,3},
+                           dξdx::AbstractArray{Tmsh,4}, jac::AbstractArray{Tmsh,2},
+                           α::AbstractArray{Tmsh,4},stabscal_are::AbstractArray{Tres,2},
+                           res::AbstractArray{Tres, 3}, res_edge::AbstractArray{Tres,4})
+
+  @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dξdx,3) == size(x,2) 
+          == size(α,3) )
+  @assert( size(dξdx,4) == size(α,4) == size(u,3) == size(res,3) == size(x,3) )
+#  @assert( length(u) == length(res) )
+# res is the residual array for element affecting themselves
+# res_edge is the residual array of how elements affect each other
+# this won't work for finite differences
+# should there be a way to detect if this is a residual evaluation or a 
+# differentiation and use the 2x faster version of this function?
+  dim = size(sbp.Q, 3)
+
+#  println("initially:")
+#  println("res = \n", res)
+#  println("res_edge = \n", res_edge)
+
+
+  # JEH: temporary, until nbrnodeindex is part of sbp type
+  nbrnodeindex = Array(sbp.numfacenodes:-1:1)
+
+  Dn = zeros(Tsol, size(u,1))
+  dirL = zeros(Tmsh, (dim))
+  dirR = zeros(Tmsh, (dim))
+  workvec = zeros(Tmsh, (dim))
+  tmpL = zero(Dn)
+  tmpR = zero(Dn)
+  EDn = zeros(Tres, (size(u,1),sbp.numfacenodes) )
+
+  # consider how elementR affects elementL and itself
+  for (facenum, face) in enumerate(ifaces)
+#   for facenum = 1:length(ifaces)
+#    face = ifaces[facenum]
+    fill!(EDn, zero(Tres))
+    uL = real(view(u, :, :, face.elementL))
+    uR = view(u, :, :, face.elementR)
+#    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
+#    println("uL = ", uL, ", uR = ", uR) 
+    for i = 1:sbp.numfacenodes  # consider making this its own function
+      # iL = element-local index for ith node on left element face
+      # iR = element-local index for ith node on right element face
+      iL = sbp.facenodes[i, face.faceL]
+      #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
+      # apply the normal-derivative difference operator along the face
+      smallmatvec!(view(α,:,:,iL,face.elementL),view(sbp.facenormal,:,face.faceL), dirL)
+      fill!(Dn, zero(Tres))
+      directionaldifferentiate!(sbp, dirL, uL, iL, Dn)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      directionaldifferentiate!(sbp, dirR, uR, iR, Dn)
+      # get differential area element: need 1/ds for each Dn term (here and loop
+      # below) to get unit normals, and then need ds for integration, so net
+      # result is 1/ds
+      ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
+                              view(dξdx,:,:,iL,face.elementL), workvec)  # this assumes Tsbp is a lower type than the other
+      # apply the scaling function
+      # calculate scale
+      #=
+      iL = sbp.facenodes[j, face_i.faceL]
+      iR = sbp.facenodes[nbrnodeindex[j], face_i.faceR]
+      q = view(eqn.q, :, iL, face_i.elementL)
+      dxidx = view(mesh.dxidx, :, :, iL, face_i.elementL)
+      nrm = view(sbp.facenormal, :, face_i.faceL)
+      =#
+      uL_node = real(view(eqn.q, :, iL, face.elementL)) # take real part here?
+      dxidx_node = view(mesh.dxidx, :, :, iL, face.elementL)
+      nrm_node = view(sbp.facenormal, :, face.faceL)
+ 
+      scale = stabscale(uL_node, dxidx_node, nrm_node, eqn.params)
+#      scale = stabscale[i, facenum]
+#      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
+#                         view(sbp.facenormal,:,face.faceL))::T./ds # note that u[iL] = u[iR]
+#      println("before scaling, Dn = ", Dn)
+#      println("scale = ", scale)
+      for field = 1:size(u,1)
+        Dn[field] *= scale
+      end
+
+#      println("after scaling Dn = ", Dn)
+      # add the face-mass matrix contribution
+      for j = 1:sbp.numfacenodes
+        for field = 1:size(u,1)
+          EDn[field,j] += sbp.wface[j,i]*Dn[field]
+        end
+      end
+    end  # end loop over face nodes
+
+#    println("EDn = ", EDn)
+
+    for i = 1:sbp.numfacenodes
+#      println("sbp.facenodes = ", sbp.facenodes)
+
+      iL = sbp.facenodes[i, face.faceL]
+      #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
+      smallmatvec!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+#      println("dirL = ", dirL)
+#      println("dirR = ", dirR)
+      # here we use hand-coded reverse-mode to apply the transposed
+      # normal-derivative difference operator
+      for di = 1:size(sbp.Q, 3)
+        for field = 1:size(u,1)
+          tmpL[field] = dirL[di]*EDn[field,i]/sbp.w[iL]
+          tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
+        end
+
+#	println("tmpL = ", tmpL)
+#	println("tmpR = ", tmpR)
+	elementL = face.elementL
+	elementR = face.elementR
+	faceL = face.faceL
+	faceR = face.faceR
+        for j = 1:sbp.numnodes
+          for field = 1:size(u,1)
+	    # this is elementR affecting elementL
+            tmp2 = sbp.Q[iL,j,di]*tmpL[field]
+#            println("res_edge[$field, $j, $elementL, $faceL] += ", tmp2)
+
+            res_edge[field,j,face.elementL, face.faceL] += sbp.Q[iL,j,di]*tmpL[field]
+	    # this is elementR affecting itself
+            tmp2 = sbp.Q[iR,j,di]*tmpR[field]
+#            println("res[$field, $j, $elementR] += ", tmp2)
+
+
+            res[field,j,face.elementR] += sbp.Q[iR,j,di]*tmpR[field]
+	  end  # end loop over fields
+	end  # end loop j=1:sbp.numnodes
+      end  # end loop over directions di
+    end  # end loop over i = 1:sbp.numfacenodes
+  end  # end loop over interfaces
+
+#  println("res = \n", res)
+#  println("res_edge = \n", res_edge)
+#  println("edgestabilization second calculation")
+  # now consider how elementL affects elementR, and itself
+  for (facenum, face) in enumerate(ifaces)
+#   for facenum = 1:length(ifaces)
+#    face = ifaces[facenum]
+    fill!(EDn, zero(Tres))
+    uL = view(u, :, :, face.elementL)
+    uR = real(view(u, :, :, face.elementR))
+#    println("elementL = ", face.elementL, ", elementR = ", face.elementR)
+#    println("uL = ", uL, ", uR = ", uR) 
+ 
+    for i = 1:sbp.numfacenodes  # consider making this its own function
+      # iL = element-local index for ith node on left element face
+      # iR = element-local index for ith node on right element face
+      iL = sbp.facenodes[i, face.faceL]
+      #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
+      # apply the normal-derivative difference operator along the face
+      smallmatvec!(view(α,:,:,iL,face.elementL),view(sbp.facenormal,:,face.faceL), dirL)
+      fill!(Dn, zero(Tres))
+      directionaldifferentiate!(sbp, dirL, uL, iL, Dn)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      directionaldifferentiate!(sbp, dirR, uR, iR, Dn)
+      # get differential area element: need 1/ds for each Dn term (here and loop
+      # below) to get unit normals, and then need ds for integration, so net
+      # result is 1/ds
+      ds = getdiffelementarea(view(sbp.facenormal,:,face.faceL),
+                              view(dξdx,:,:,iL,face.elementL), workvec)  # this assumes Tsbp is a lower type than the other
+      # apply the scaling function
+      uL_node = view(eqn.q, :, iL, face.elementL)
+      dxidx_node = view(mesh.dxidx, :, :, iL, face.elementL)
+      nrm_node = view(sbp.facenormal, :, face.faceL)
+ 
+      scale = stabscale(uL_node, dxidx_node, nrm_node, eqn.params)
+
+#      scale = stabscale[i, facenum]
+#      scale = stabscale(view(u,:,iL,face.elementL), view(dξdx,:,:,iL,face.elementL),
+#                         view(sbp.facenormal,:,face.faceL))::T./ds # note that u[iL] = u[iR]
+
+      for field = 1:size(u,1)
+        Dn[field] *= scale
+      end
+      # add the face-mass matrix contribution
+      for j = 1:sbp.numfacenodes
+        for field = 1:size(u,1)
+          EDn[field,j] += sbp.wface[j,i]*Dn[field]
+        end
+      end
+    end  # end loop over face nodes
+
+
+    for i = 1:sbp.numfacenodes
+#      println("sbp.facenodes = ", sbp.facenodes)
+
+      iL = sbp.facenodes[i, face.faceL]
+      #iR = sbp.facenodes[getnbrnodeindex(sbp, face, i), face.faceR]
+      iR = sbp.facenodes[nbrnodeindex[i], face.faceR]
+      smallmatvec!(view(α,:,:,iL,face.elementL), view(sbp.facenormal,:,face.faceL), dirL)
+      smallmatvec!(view(α,:,:,iR,face.elementR), view(sbp.facenormal,:,face.faceR), dirR)
+      # here we use hand-coded reverse-mode to apply the transposed
+      # normal-derivative difference operator
+      for di = 1:size(sbp.Q, 3)
+        for field = 1:size(u,1)
+          tmpL[field] = dirL[di]*EDn[field,i]/sbp.w[iL]
+          tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
+        end
+
+	elementL = face.elementL
+	elementR = face.elementR
+	faceL = face.faceL
+	faceR = face.faceR
+        for j = 1:sbp.numnodes
+          for field = 1:size(u,1)
+	    # this is elementL affecting itself
+            tmp2 = sbp.Q[iL,j,di]*tmpL[field]
+
+#            println("res[$field, $j, $elementL] += ", tmp2)
+
+            res[field,j,face.elementL] += sbp.Q[iL,j,di]*tmpL[field]
+            tmp2 = sbp.Q[iR,j,di]*tmpR[field]
+#            println("res_edge[$field, $j, $elementR, $faceR] += ", tmp2)
+	    # this is elementL affecting elementR
+            res_edge[field,j,face.elementR, face.faceR] += sbp.Q[iR,j,di]*tmpR[field]
+	  end  # end loop over fields
+	end  # end loop j=1:sbp.numnodes
+      end  # end loop over directions di
+    end  # end loop over i = 1:sbp.numfacenodes
+  end  # end loop over interfaces
+
+#  println("finished second edge stabilization calculation")
+#  println("res = \n", res)
+#  println("res_edge = \n", res_edge)
+
+end  # end function
 
 
 
@@ -330,13 +580,16 @@ end
 function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, params::ParamType{2} )
 # calculate stabscale for a single node
 
-#     println("==== entering stabscale ====")
+#     println("==== entering stabscale ====")a
+    q_vals = params.q_vals
+    # convert to conservative variables if not already using them
+    convertToConservative(params, u, q_vals)
 
     # grabbing conserved variables
-    rho = u[1]
-    vel_x = u[2]/rho
-    vel_y = u[3]/rho
-    Energy = u[4]
+    rho = q_vals[1]
+    vel_x = q_vals[2]/rho
+    vel_y = q_vals[3]/rho
+    Energy = q_vals[4]
 
     # from JC's code below, eqn should still be in scope
     pressure = calcPressure(u, params)
@@ -401,6 +654,7 @@ function stabscale{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn:
   for i=1:mesh.numInterfaces
     face_i = mesh.interfaces[i]
     for j=1:sbp.numfacenodes
+      #TODO: iL and iR need more descriptive names
       iL = sbp.facenodes[j, face_i.faceL]
       iR = sbp.facenodes[nbrnodeindex[j], face_i.faceR]
       q = view(eqn.q, :, iL, face_i.elementL)
@@ -719,11 +973,19 @@ function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPO
 =#
     # scale the mass (digonal) mass matrix by jacobian determinent
     # then multiply by h = (1/jac)^(1/p)
-    h_jac = sbp.w./(mesh.jac[:, i].^2.0)
+#    h_jac = sbp.w./(mesh.jac[:, i].^2.0)
+
+    h_jac = sbp.w./(mesh.jac[:, i].^1.5)
+    # JC modification 11/4
+#    h_jac = sbp.w./(mesh.jac[:, i])
+
     h_jac_inv = 1./h_jac
 
+    # this is the proper artificial dissipation
     dissipation_mat[:, :, i] = epsilon*filt.'*diagm(h_jac)*filt
 
+    # this is the used for preconditioning the iterative solver
+#    dissipation_mat[:, :, i] = epsilon*filt.'*diagm(sbp.w)*filt
   end  # end loop over elements
 
 

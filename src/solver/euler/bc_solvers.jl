@@ -144,17 +144,17 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
 
   euler_flux = zeros(Tsol, 4)
-  euler_flux2 = zeros(Tsol, 4)
+#  euler_flux2 = zeros(Tsol, 4)
 
 
-  calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
-  # println("euler_flux = ", euler_flux)
+  # we can't calculate the Euler flux because params and q 
+  # might be in different variables
+#  calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
 
   # calculate Euler flux in wall normal directiona
-#  for i=1:4
-#    euler_flux[i] = flux_parametric[i]*nrm[1] + flux_parametric[i+4]*nrm[2]
-#  end
-
+  for i=1:4
+    euler_flux[i] = flux_parametric[i]*nrm[1] + flux_parametric[i+4]*nrm[2]
+  end
 
  #    println("euler_flux = ",  (euler_flux))
   

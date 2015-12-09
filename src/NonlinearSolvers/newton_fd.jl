@@ -1,7 +1,64 @@
 export newton, newton_check, newton_check_fd, initializeTempVariables, calcResidual
+
+@doc """
+  This type holds all the data the might be needed for Newton's method,
+  including globalization.  This simplifies the data handling and 
+  the C callback used by Petsc
+"""->
+type NewtonData{Tsol, Tres}
+ 
+  # inexact Newton-Krylov parameters
+  reltol::Float64
+  abstol::Float64
+  dtol::Float64
+  itermax::Int
+  krylov_gamma::Float64  # update parameter for krylov tolerance
+
+  res_norm_i::Float64  # current step residual norm
+  res_norm_i_1::Float64  # previous step residual norm
+  # Pseudo-transient continuation Euler
+  tau_l::Float64  # current pseudo-timestep
+  tau_vec::Array{Float64, 1}  # array of solution at previous pseudo-timestep
+
+
+
+  # use default inner constructor
+end
+
+function NewtonData(mesh, sbp, eqn, opts)
+
+  println("entered NewtonData constructor")
+  println("typeof(eqn) = ", typeof(eqn))
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+
+  reltol = opts["krylov_reltol"]
+  abstol = opts["krylov_abstol"]
+  dtol = opts["krylov_dtol"]
+  itermax = opts["krylov_itermax"]
+  krylov_gamma = opts["krylov_gamma"]
+
+  res_norm_i = 0.0
+  res_norm_i_1 = 0.0
+  if opts["newton_globalize_euler"]
+    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
+  else
+    tau_l = opts["euler_tau"]
+    tau_vec = []
+  end
+
+  println("creating NewtonData object, tau = ", tau_l)
+  println("opts[euler_tau] = ", opts["euler_tau"])
+
+  return NewtonData{Tsol, Tres}(reltol, abstol, dtol, itermax, krylov_gamma, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+end
+
 @doc """
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
+
+  The initial condition in eqn.q_vec should be in whatever variables
+  the residual evaluation uses.
 
   Arguments:
     * func  : function that evalutes the residual
@@ -9,6 +66,7 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
     * sbp : sbp operator to be used to evaluate the residual
     * eqn : EulerData to use to evaluate the residual
     * opts : options dictonary
+    * pmesh : mesh used for preconditioning, defaults to mesh
 
     Optional Arguments
     * itermax : maximum number of Newton iterations
@@ -18,7 +76,7 @@ export newton, newton_check, newton_check_fd, initializeTempVariables, calcResid
     func must have the signature func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec) 
 
 """->
-function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
+function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -35,13 +93,18 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   print_cond = opts["print_cond"]::Bool
   print_eigs = opts["print_eigs"]::Bool
   write_eigs = opts["write_eigs"]::Bool
+  write_eigdecomp = opts["write_eigdecomp"]::Bool
   write_sol = opts["write_sol"]::Bool
   write_vis = opts["write_vis"]::Bool
+  output_freq = opts["output_freq"]::Int
   write_qic = opts["write_qic"]::Bool
   write_res = opts["write_res"]::Bool
+  write_q = opts["writeq"]::Bool
   jac_method = opts["jac_method"]::Int  # finite difference or complex step
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
   epsilon = opts["epsilon"]::Float64
+  globalize_euler = opts["newton_globalize_euler"]::Bool
+  recalc_prec_freq = opts["recalc_prec_freq"]::Int
 
   println("write_rhs = ", write_rhs)
   println("write_res = ", write_res)
@@ -49,6 +112,11 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   println("res_abstol = ", res_abstol)
   println("res_reltol = ", res_reltol)
   println("res_reltol0 = ", res_reltol0)
+
+  println("before printout")
+  println("typeof(eqn) = ", typeof(eqn))
+  println("after printout")
+  newton_data = NewtonData(mesh, sbp, eqn, opts)
 
   if jac_method == 1  # finite difference
     pert = epsilon
@@ -66,11 +134,9 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
-  elseif jac_type == 3  # petsc
-    jac, x, b, ksp = createPetscData(mesh, eqn, opts)
+  elseif jac_type == 3 || jac_type == 4 # petsc
+    jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data, func)
   end
-
-
 
   step_fac = 1.0 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
@@ -87,24 +153,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   # append to be on the safe side
   fconv = open("convergence.dat", "a+")
 
-  #----------------------------------------------------------------------------
-  # Storing the initial density value at all the nodes
-  actSoln = zeros(eqn.q_vec)
-  actSoln = copy(eqn.q_vec)
-  #=
-  vRho_act = zeros(mesh.numNodes)
-  k = 1
-  for i = 1:4:length(eqn.q_vec)
-    vRho_act[k] = eqn.q_vec[i]
-    k += 1
-  end
-  println("Actual Density value succesfully extracted")
-  =#
-  #----------------------------------------------------------------------------
+  eqn.majorIterationCallback(0, mesh, sbp, eqn, opts)
 
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
-  res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+  println("res_0_norm = ", res_0_norm)
 
   println(fconv, 0, " ", res_0_norm, " ", 0)
   flush(fconv)
@@ -113,15 +167,15 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 
   # write rhs to file
   if write_rhs
-    writedlm("rhs1.dat", res_0)
+    writedlm("rhs0.dat", res_0)
   end
 
   if write_qic
-    writedlm("qic.dat", eqn.q)
+    writedlm("q0.dat", eqn.q)
   end
 
   if write_res
-    writedlm("res1.dat", eqn.res)
+    writedlm("res0.dat", eqn.res)
   end
 
   # check if initial residual satisfied absolute or relative tolerances
@@ -133,14 +187,14 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     else
      println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
    end
-   println("writing to convergence.dat")
+#   println("writing to convergence.dat")
 #   println(fconv, i, " ", res_0_norm, " ", 0.0)
    # no need to assemble q into q_vec because it never changed
 
    close(fconv)
 
     if jac_type == 3
-      destroyPetsc(jac, x, b, ksp)
+      destroyPetsc(jac, jacp, x, b, ksp)
     end
 
 
@@ -173,9 +227,25 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
 	println("calculating dense FD jacobian")
         @time calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
-      elseif jac_type == 2 || jac_type == 3  # sparse jacobian
+      elseif jac_type == 2  # Julia sparse jacobian
 	println("calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
+ 
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+      elseif jac_type == 3  # Petsc sparse jacobian
+	println("calculating sparse FD jacobian")
+        res_copy = copy(eqn.res)  # copy unperturbed residual
+        # use artificial dissipation for the preconditioner 
+	use_dissipation_orig = eqn.params.use_dissipation
+	use_edgestab_orig = eqn.params.use_edgestab
+        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+	eqn.params.use_edgestab = opts["use_edgestab_prec"]
+
+        @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
+#        addDiagonal(mesh, sbp, eqn, jacp)        
+	# use normal stabilization for the real jacobian
+	eqn.params.use_dissipation = use_dissipation_orig
+	eqn.params.use_edgestab = use_edgestab_orig
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
       println("FD jacobian calculation @time printed above")
@@ -186,19 +256,68 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       if jac_type == 1  # dense jacobian
 	      println("calculating dense complex step jacobian")
         @time calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
-      elseif jac_type == 2 || jac_type == 3  # sparse jacobian 
+      elseif jac_type == 2  # Julia sparse jacobian 
 	      println("calculating sparse complex step jacobian")
         res_dummy = []  # not used, so don't allocation memory
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+      elseif jac_type == 3 # Petsc sparse jacobian
+        res_dummy = []  # not used, so don't allocation memory
+	use_dissipation_orig = eqn.params.use_dissipation
+	use_edgestab_orig = eqn.params.use_edgestab
+        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+	eqn.params.use_edgestab = opts["use_edgestab_prec"]
+
+        @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+        
+#        addDiagonal(mesh, sbp, eqn, jacp)        
+	# use normal stabilization for the real jacobian
+	eqn.params.use_dissipation = use_dissipation_orig
+	eqn.params.use_edgestab = use_edgestab_orig
+        @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+
+      elseif jac_type == 4 # Petsc jacobian-vector product
+	# calculate preconditioner matrix only
+	res_dummy = []
+	use_dissipation_orig = eqn.params.use_dissipation
+	use_edgestab_orig = eqn.params.use_edgestab
+        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+	eqn.params.use_edgestab = opts["use_edgestab_prec"]
+
+	if ((i % recalc_prec_freq)) == 0 || i == 1
+
+          @time calcJacobianSparse(pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+	end
+#        addDiagonal(mesh, sbp, eqn, jacp)        
+	# use normal stabilization for the real jacobian
+	eqn.params.use_dissipation = use_dissipation_orig
+	eqn.params.use_edgestab = use_edgestab_orig
+ 
       end
 
-      println("complex set jacobian calculate @time printed above")
+      if ((i % recalc_prec_freq)) == 0 || i == 1
+        println("complex step jacobian calculate @time printed above")
+      end
     end
 
+    # apply globalization
+    if globalize_euler
+
+      if jac_type == 3 || jac_type == 4
+	println("applying Euler globalization to jacp")
+	println("tau = ", newton_data.tau_l)
+        applyEuler(mesh, sbp, eqn, opts, newton_data, jacp)
+      end
+
+      if jac_type != 4
+	println("applying Euler gloablization to jac")
+        applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
+      end
+    end
+
+#    checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
+
     # print as determined by options
-    if write_jac
-       # fname = string("jacobian", i, ".dat")
-       # printMatrix(fname, jac)
+    if write_jac && jac_type != 4
       if jac_type == 3
         PetscMatAssemblyBegin(jac, PETSC_MAT_FINAL_ASSEMBLY)
         PetscMatAssemblyEnd(jac, PETSC_MAT_FINAL_ASSEMBLY)
@@ -215,6 +334,7 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Condition number of jacobian = ", cond_j)
     end
 
+
     # if eigenvalues requested and we can calculate them
     if (( print_eigs || write_eigs) && (jac_type == 1 || jac_type == 2))
       eigs_i = reverse(eigvals(jac))
@@ -230,23 +350,36 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       end
     end
 
-      
+    # do the full eigenvalue decomposition
+    # if request and if julia owns the Jacobian matrix
+    if  write_eigdecomp && ( jac_type == 1 || jac_type == 2)
+      println("doing eigen decomposition")
+      # make a dense jacobian so we can get *all* the eigenvalues and vectors
+      # the algorithm for sparse matrices can get all - 2 of them, and might
+      # have problems for matrices with a wide range of eigenvalues
+      jac_dense = full(jac)
+      D, V = eig(jac_dense)
+      writedlm("eigdecomp_real$i.dat", real(D))
+      writedlm("eigdecomp_imag$i.dat", imag(D))
+      writedlm("eigdecomp_realvecs$i.dat", real(V))
+      writedlm("eigdecomp_imagvecs$i.dat", imag(V))
+    elseif write_eigdecomp && (jac_type != 1 && jac_type != 2)
+      println(STDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
+
+    end
 
     # negate res
     for j=1:m
       res_0[j] = -res_0[j]
     end
    
-    res_discretenorm = norm(res_0)
-    println("Discrete L2 norm of residual = ", res_discretenorm)
-
     # calculate Newton step
     if jac_type == 1 || jac_type == 2  # julia jacobian
       @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
-    elseif jac_type == 3   # petsc
-      @time petscSolve(jac, x, b, ksp, res_0, delta_res_vec)
+    elseif jac_type == 3 || jac_type == 4  # petsc
+      @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec)
     end
     
     println("matrix solve @time printed above")
@@ -256,39 +389,20 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
     # perform Newton update
     eqn.q_vec[:] += step_fac*delta_res_vec  # update q_vec
     
-    #--------------------------------------------------------------------------
-    #=
-    # Calculate the error in density
-    vRho_calc = zeros(vRho_act)
-    k = 1
-    for i = 1:4:length(eqn.q_vec)
-      vRho_calc[k] = eqn.q_vec[i]
-      k += 1
-    end
-    ErrDensityVec = vRho_calc - vRho_act
-    ErrDensity2 = 0.0
-    k = 1
-    for i = 1:length(ErrDensityVec)
-      ErrDensity2 += real(ErrDensityVec[i])*eqn.M[k]*real(ErrDensityVec[i])
-      k += 4
-    end
-    ErrDensity2 = sqrt(ErrDensity2)
-    println("DensityErrorNormL2 = ", ErrDensity2)
-    =#
-    SolnErrVec = eqn.q_vec - actSoln
-    SolnErrorNorm = calcNorm(eqn, SolnErrVec)
-    println(" Solution Error Norm = ", SolnErrorNorm)
-
-
-    #--------------------------------------------------------------------------
-    
+    eqn.majorIterationCallback(i, mesh, sbp, eqn, opts)
+ 
     # write starting values for next iteration to file
     if write_sol
       writedlm("q_vec$i.dat", eqn.q_vec)
     end
 
+    if write_q
+      disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+      writedlm("q$i.dat", eqn.q)
+    end
+
     # write paraview files
-    if write_vis
+    if write_vis && ((i % output_freq)) == 0 || i == 1
       vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_newton", i)
@@ -297,23 +411,27 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
  
 
     # calculate residual at updated location, used for next iteration rhs
-    res_0_norm = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+    newton_data.res_norm_i_1 = newton_data.res_norm_i
+    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+    println("residual norm = ", res_0_norm)
     println("relative residual ", res_0_norm/res_reltol_0)
 
+
     # write to convergence file
+    println("i = ", i)
     println(fconv, i, " ", res_0_norm, " ", step_norm)
     println("printed to convergence.dat")
     flush(fconv)
 
 
-    tmp = i+1
+#    tmp = i+1
     # write rhs to file
     if write_rhs
-      writedlm("rhs$tmp.dat", res_0)
+      writedlm("rhs$i.dat", res_0)
     end
 
     if write_res
-      writedlm("res$tmp.dat", eqn.res)
+      writedlm("res$i.dat", eqn.res)
     end
 
 
@@ -325,16 +443,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
     end
 
-     # put solution into q_vec
-#     fill!(eqn.q_vec, 0.0)
-#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
      # put residual into eqn.res_vec
      eqn.res_vec[:] = res_0
      close(fconv)
 
      if jac_type == 3
-	destroyPetsc(jac, x, b, ksp)
+	destroyPetsc(jac, jacp, x, b, ksp)
       end
 
     
@@ -345,16 +459,12 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       println("Newton iteration converged with step_norm = ", step_norm)
       println("Final residual = ", res_0_norm)
 
-     # put solution into q_vec
-#     fill!(eqn.q_vec, 0.0)
-#     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
       # put residual into eqn.res_vec
       eqn.res_vec[:] = res_0
       close(fconv)
       
       if jac_type == 3
-	destroyPetsc(jac, x, b, ksp)
+	destroyPetsc(jac, jacp, x, b, ksp)
       end
 
       return nothing
@@ -378,6 +488,15 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
       step_fac = 1.0
     end
 
+    # update globalization parameters
+    if globalize_euler
+      updateEuler(newton_data)
+    end
+
+    if jac_type == 3 || jac_type == 4
+      updateKrylov(newton_data)
+    end
+
     print("\n")
     step_norm_1 = step_norm
     
@@ -392,19 +511,115 @@ function newton(func, mesh, sbp, eqn, opts; itermax=200, step_tol=1e-6, res_abst
   close(fconv)
 
 
-   # put solution into q_vec
-#   fill!(eqn.q_vec, 0.0)
-#   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
    # put residual into eqn.res_vec
    eqn.res_vec[:] = res_0
  
 
   if jac_type == 3
-    destroyPetsc(jac, x, b, ksp)
+    destroyPetsc(jac, jacp,  x, b, ksp)
   end
   return nothing
 end
+
+
+function checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
+  
+  v = ones(mesh.numDof)
+  result1 = zeros(mesh.numDof)
+#  writedlm("qvec_before.dat", eqn.q_vec)
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v, result1)
+#  writedlm("qvec_prod.dat", eqn.q_vec)
+#  writedlm("q_prod.dat", eqn.q)
+  jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
+  res_dummy = []
+
+  disassembleSolution(mesh, sbp, eqn,opts, eqn.q_vec)
+  @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+
+  if opts["newton_globalize_euler"]
+    applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
+  end
+#  writedlm("qvec_explicit.dat", eqn.q_vec)
+#  writedlm("q_explicit.dat", eqn.q)
+  result2 = jac*v
+
+  cnt = 0
+  for i=1:mesh.numDof
+    if abs(result1[i] - result2[i]) > 1e-14
+      cnt += 1
+    end
+  end
+
+  if cnt != 0
+    println(STDERR, "Warning: jacobian vector product check 1 failed")
+    println("cnt = ", cnt)
+    result_diff = result1 - result2
+    diff_norm = calcNorm(eqn, result_diff)
+    println("diff norm = ", diff_norm)
+    println("result_diff = ", result_diff)
+  else
+    println("jacobian vector product check 1 passed")
+  end
+
+
+  for j=2:4
+#  v2 = collect(1:mesh.numDof)
+   v2 = linspace(j, j+1, mesh.numDof)
+  result3 = jac*v2
+
+  result4 = zeros(mesh.numDof)
+
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v2, result4)
+
+  cnt = 0
+  for i=1:mesh.numDof
+    if abs(result3[i] - result4[i]) > 1e-14
+      cnt += 1
+    end
+  end
+
+  if cnt != 0
+    println(STDERR, "Warning: jacobian vector product check $j failed")
+    println("cnt = ", cnt)
+    result_diff = result3 - result4
+    diff_norm = calcNorm(eqn, result_diff)
+    println("diff norm = ", diff_norm)
+#    println("result_diff = ", result_diff)
+  else
+    println("jacobian vector product check $j passed")
+  end
+
+end
+
+
+  return nothing
+end
+
+function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; assemble_edgeres=true, zero_resvec=true)
+# assembles all of the residuals into res_vec
+# no aliaising concerns
+
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
+
+  if assemble_edgeres
+
+    for i=1:size(eqn.res_edge, 4)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i), res_vec, zero_resvec=zero_resvec)
+    end
+  end
+
+  return nothing
+end
+
+
+function disassembleSolution{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
+# scatters the q_vec to the 3d array eqn.q
+# no aliasing concerns here
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, q_vec)
+
+  return nothing
+end
+
 
 
 function calcResidual(mesh, sbp, eqn, opts, func, res_0)
@@ -412,13 +627,13 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
   m = length(res_0)
 
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-  
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   func(mesh, sbp, eqn, opts)
 #  res_0[:] = real(eqn.res_vec)  # is there an unnecessary copy here?
 
   fill!(eqn.res_vec, 0.0)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
+
 
   for j=1:m
     res_0[j] = real(eqn.res_vec[j])
@@ -431,6 +646,128 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
  return res_0_norm
 end
 
+
+function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
+# calculate Ax = b
+
+#  println("entered calcJacVecProd wrapper")
+  # get the context
+  # the context is a pointer to a tuple of all objects needed
+  # for a residual evaluation
+  ctx = MatShellGetContext(A)
+  tpl = unsafe_pointer_to_objref(ctx)
+  # unpack the tuple (could use compact syntax)
+  mesh = tpl[1]
+  sbp = tpl[2]
+  eqn = tpl[3]
+  opts = tpl[4]
+  newton_data = tpl[5]
+  func = tpl[6]
+
+  epsilon =  opts["epsilon"]
+  jac_method = opts["jac_method"]
+
+  # the perturbation had better match the type of the eqn object
+  if jac_method == 1  # finite difference
+    pert = epsilon
+  elseif jac_method == 2  # complex step
+    pert = complex(0, epsilon)
+  end
+
+  # get the arrays underlying x and b
+  x_arr, xptr = PetscVecGetArrayRead(x)  # read only
+  b_arr, bptr = PetscVecGetArray(b)  # writeable
+
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, x_arr, b_arr)
+
+#  println("finished calculating JacVecProd")
+  PetscVecRestoreArrayRead(x, xptr)
+  PetscVecRestoreArray(b, bptr)
+
+
+  return PetscErrorCode(0)
+end
+
+
+
+
+function calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b::AbstractVector)
+# calculates the product of the jacobian with the vector vec using a directional
+# derivative
+# only intended to work with complex step
+# might also work for finite differences
+# vec is the vector the jacobian is multiplied by
+# the result is stored in b
+# the product uses the jacobian at the point stored in eqn.q_vec
+# ie. J(eqn.q)*v = b = imag(J(u + pert*v))/pert
+# pert is the perturbation, either real or complex for finite difference or 
+# complex step, respectively
+# func is the residual evaluation function
+ 
+  itr = eqn.params.krylov_itr
+  globalize_euler = opts["newton_globalize_euler"]::Bool
+
+  epsilon = imag(pert)  # magnitude of perturbationa
+
+  # apply perturbation
+  for i=1:mesh.numDof
+    eqn.q_vec[i] += pert*vec[i]
+  end
+
+  # scatter into eqn.q
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
+#  writedlm("q_prod_after$itr.dat", eqn.q)
+  func(mesh, sbp, eqn, opts)
+
+#  writedlm("prod_res$itr.dat", eqn.res)
+  fill!(eqn.res_vec, 0.0)
+  # gather into eqn.res_vec
+  assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
+  
+#  writedlm("res_vec$itr.dat", eqn.res_vec)
+  # calculate derivatives, store into b
+  calcJacRow(b, eqn.res_vec, epsilon)
+
+  if globalize_euler
+    applyEuler(mesh, sbp, eqn, opts, vec, newton_data, b)
+  end
+
+
+
+#  writedlm("pprod$itr.dat", b)
+#  println("b = ", b)
+  # undo perturbation
+  for i=1:mesh.numDof
+    eqn.q_vec[i] -= pert*vec[i]
+  end
+
+#=
+  cnt = 0
+  for i=1:mesh.numDof
+    if abs(b2[i] - b[i]) > 1e-14
+      cnt += 1
+#      println("  i = ", i)
+    end
+  end
+
+  if cnt != 0
+    println(STDERR, "Warning: jacobian vector product check failed")
+    println("cnt = ", cnt)
+    result_diff = b2 - b
+    diff_norm = calcNorm(eqn, result_diff)
+    println("diff norm = ", diff_norm)
+#    println("result_diff = ", result_diff)
+  else
+    println("jacobian vector product check passed")
+  end
+=#
+  eqn.params.krylov_itr += 1
+
+#  print("\n")
+  return nothing
+end
+
+  
 
 function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 # calculate the jacobian using finite difference
@@ -451,14 +788,14 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
       eqn.q_vec[j] += epsilon
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
 
     fill!(eqn.res_vec, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.res_vec)
+    assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
     #println(eqn.res_vec)
     calcJacRow(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
@@ -473,6 +810,21 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
 end
 
 
+function addDiagonal(mesh, sbp, eqn, jac)
+# add the mass matrix to the jacobian
+
+  for i=1:mesh.numDof
+     idx = PetscInt[i-1]
+     idy = PetscInt[i-1]
+     vals = [100*eqn.M[i]]
+
+#     println("adding ", vals, " to jacobian entry ", i, ",", i)
+     PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
+   end
+
+   return nothing
+
+ end
 
 function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(SparseMatrixCSC, PetscMat))
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
@@ -489,17 +841,18 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 #  fill!(jac.nzval, 0.0)
 
   # for each color, store the perturbed element corresponding to each element
-  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
+#  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
 
   # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
 #    println("color = ", color)
-    getPertNeighbors(mesh, color, perturbed_els)
+#    getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
 #      println("node ", j)
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 #	println("dof ", i)
         # do perturbation for each residual here:
+
 
 	# apply perturbation to q
 #	println("  applying perturbation")
@@ -513,15 +866,45 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(
 #	
 	# assemble res into jac
 #        println("  assembling jacobian")
-
+#	println("  local dof = ", i, ", local node = ", j)
+#	println("  color_mask = ", mesh.color_masks[color])
+#	println("  assembling standard residual")
 	for k=1:mesh.numEl  # loop over elements in residual
-	  el_pert = perturbed_els[k] # get perturbed element
+#	  el_pert = perturbed_els[k] # get perturbed element
+
+	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
           if el_pert != 0   # if element was actually perturbed for this color
 
+#	    println("el_pert = ", el_pert)
             col_idx = mesh.dofs[i, j, el_pert]
-	    assembleElement(mesh, eqn, res_0, k, el_pert, col_idx, epsilon, jac)
+#	    println("dof_pert = ", col_idx)
+	    #TODO: make an immutable type to hold the bookeeping info
+	    assembleElement(mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
        end  # end loop over k
+
+       # now do res_edge, if needed
+       #TODO: consider making eqn.res 4 dimensional, which is the 
+       #      generalization of having multiple residuals 
+        for edge = 1:size(eqn.res_edge, 4)
+#	  println("assembling edge residual = ", edge)
+	  res_edge = view(eqn.res_edge, :, :, :, edge)
+	  for k=1:mesh.numEl  # loop over elements in residual
+  #	  el_pert = perturbed_els[k] # get perturbed element
+
+	    el_pert = mesh.pertNeighborEls_edge[k, edge] # get perturbed element
+#	    println("el_pert = ", el_pert)
+	    if el_pert != 0   # if element was actually perturbed for this color
+
+	      col_idx = mesh.dofs[i, j, el_pert]
+#	      println("dof_pert = ", col_idx)
+	      #TODO: make an immutable type to hold the bookeeping info
+	      assembleElement(mesh, eqn, res_edge, res_0, k, el_pert, col_idx, epsilon, jac)
+	   end  # end if el_pert != 0
+        end  # end loop over k
+      end  # end loop over local edges
+
+
 
       # undo perturbation
       # is this the best way to undo the perturbation?
@@ -559,13 +942,16 @@ end
 
 
 # finite difference
-function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
+function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
 # el_pert is the element that was perturbed
 # dof_pert is the dof number (global) of the dof that was perturbed
+# nodenum_local is the local node number of the perturbed node
+# dof_pert_local is the dofnumber local to the node of the perturbed dof
 # typically either el_pert or dof_pert will be needed, not both
+
 
 # resize array
 # basically a no-op if array is already the right size
@@ -580,7 +966,7 @@ for j_j = 1:mesh.numNodesPerElement
     idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    tmp = (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
     vals_tmp[pos] = tmp
     pos += 1
   end
@@ -599,7 +985,7 @@ return nothing
 end
 
 # finite difference Petsc
-function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
+function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -612,7 +998,7 @@ for j_j = 1:mesh.numNodesPerElement
     row_idx = mesh.dofs[i_i, j_j, el_res]
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    tmp = (eqn.res[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
     jac[row_idx, dof_pert] += tmp
 
   end
@@ -659,12 +1045,12 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
       eqn.q_vec[j] += pert
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 
     fill!(eqn.res_vec, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
 #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
     calcJacRow(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
@@ -682,7 +1068,7 @@ end
 
 
 # for complex numbers
-function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
+function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -703,7 +1089,7 @@ for j_j = 1:mesh.numNodesPerElement
     idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
 #    col_idx = mesh.dofs[i, j, el_pert]
 
-    vals_tmp[pos] = imag(eqn.res[i_i,j_j, el_res])/epsilon
+    vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
 
     pos += 1
   end
@@ -718,7 +1104,7 @@ end
 
 
 
-function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
+function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -726,12 +1112,22 @@ function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol},
 # dof_pert is the dof number (global) of the dof that was perturbed
 # typically either el_pert or dof_pert will be needed, not both
 
+#println(" element $el_res res = ", view(res_arr, :, :, el_res))
+
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     row_idx = mesh.dofs[i_i, j_j, el_res]
 #    col_idx = mesh.dofs[i, j, el_pert]
+#=
+     if row_idx == 1 && dof_pert == 5
+       println("i_i = ", i_i)
+       println("j_j = ", j_j)
+       println("el_res = ", el_res)
+       println("inserting value ", imag(res_arr[i_i,j_j, el_res])/epsilon, " into jacobian (1,5)")
+     end
+=#
 
-    jac[row_idx, dof_pert] += imag(eqn.res[i_i,j_j, el_res])/epsilon
+    jac[row_idx, dof_pert] += imag(res_arr[i_i,j_j, el_res])/epsilon
   end
 end
 
@@ -740,36 +1136,6 @@ return nothing
 end
 
 
-
-
-function getPertNeighbors(mesh, color, arr)
-# populate the array with the element that is perturbed for each element
-# element number == 0 if no perturbation
-
-#  println("getting neighbor list")
-
-  num_neigh = size(mesh.neighbor_colors, 1)
-#  fill!(arr, 0)
-  for i=1:mesh.numEl
-    # find out if current element or its neighbors have the current color
-    pos = 0
-    for j=1:num_neigh
-      if color == mesh.neighbor_colors[j, i]
-	pos = j
-	break
-      end
-    end
-
-    if pos != 0
-      arr[i] = mesh.neighbor_nums[pos, i]
-    else
-       arr[i] = 0
-     end
-
-  end
-
-  return nothing
-end
 
 function applyPerturbation(arr, mask, pert, i, j)
   # applys perturbation puert to array arr according to mask mask
@@ -807,70 +1173,145 @@ end
 
 
 
-function createPetscData(mesh::AbstractMesh, eqn::AbstractSolutionData, opts)
+function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, newton_data::NewtonData, func)
 # initialize petsc and create Jacobian matrix A, and vectors x, b, and the
 # ksp context
 # serial only
+# func residual evaluation function
+
+jac_type = opts["jac_type"]::Int
 
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "none","-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+#PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
+numDofPerNode = mesh.numDofPerNode
+PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "6", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
 comm = MPI.COMM_WORLD
 
+obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
 println("creating b")
 b = PetscVec(comm)
-PetscVecSetType(b, VECMPI)
-PetscVecSetSizes(b, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+PetscVecSetType(b, VECSEQ)
+PetscVecSetSizes(b, obj_size, obj_size)
 
 println("creating x")
 x = PetscVec(comm)
-PetscVecSetType(x, VECMPI)
-PetscVecSetSizes(x, PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+PetscVecSetType(x, VECSEQ)
+PetscVecSetSizes(x, obj_size, obj_size)
 
-println("creating A")
-A = PetscMat(comm)
-PetscMatSetType(A, MATMPIAIJ)
-PetscMatSetSizes(A, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+# tuple of all the objects needed to evaluate the residual
+# only used by Mat Shell
+ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects needed to evalute the
+                                    # residual
+if jac_type == 3  # explicit sparse jacobian
+  println("creating A")
+  A = PetscMat(comm)
+  PetscMatSetFromOptions(A)
+  PetscMatSetType(A, PETSc.MATSEQBAIJ)
+  PetscMatSetSizes(A, obj_size, obj_size, obj_size, obj_size)
 
-println("preallocating A")
+elseif jac_type == 4  # jacobian-vector product
+  # create matrix shell
+  ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple
+  A = MatCreateShell(comm, obj_size, obj_size, obj_size, obj_size, ctx_ptr)
+  PetscMatSetFromOptions(A)  # necessary?
+  PetscSetUp(A)
+
+  # give PETSc the function pointer of Jacobian vector product function
+  fptr = cfunction (calcJacVecProd_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
+  MatShellSetOperation(A, PETSc.MATOP_MULT, fptr)
+
+else
+  println(STDERR, "Unsupported jacobian type requested")
+  println(STDERR, "jac_type = ", jac_type)
+end
+
+println("type of A = ", MatGetType(A))
+
+println("creating Ap")  # used for preconditioner
+Ap = PetscMat(comm)
+PetscMatSetFromOptions(Ap)
+PetscMatSetType(Ap, PETSc.MATSEQBAIJ)
+PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+
+println("type of Ap = ", MatGetType(Ap))
+
+
+println("preallocating Petsc Matrices")
 # prellocate matrix
 dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
 onnz = zeros(PetscInt, mesh.numDof)  # there is no off diagonal part for single proc case
 dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
-bs = PetscInt(1)  # block size
+bs = PetscInt(mesh.numDofPerNode)  # block size
 
-# calculate number of non zeros per row
-for i=1:mesh.numDof
-  max_dof = mesh.sparsity_bnds[2, i]
-  min_dof = mesh.sparsity_bnds[1, i]
+# calculate number of non zeros per row for A
+for i=1:mesh.numNodes
+  max_dof = mesh.sparsity_nodebnds[2, i]
+  min_dof = mesh.sparsity_nodebnds[1, i]
   nnz_i = max_dof - min_dof + 1
   dnnz[i] = nnz_i
 #  println("row ", i," has ", nnz_i, " non zero entries")
 end
 
-PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
+if jac_type == 3
+
+  PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
+
+  MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+  PetscMatZeroEntries(A)
+  matinfo = PetscMatGetInfo(A, Int32(1))
+  println("A block size = ", matinfo.block_size)
+
+  PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
+  PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
+end
+
+# calculate number of nonzeros per row for A[
+for i=1:mesh.numNodes
+  max_dof = pmesh.sparsity_nodebnds[2, i]
+  min_dof = pmesh.sparsity_nodebnds[1, i]
+  nnz_i = max_dof - min_dof + 1
+  dnnz[i] = nnz_i
+#  println("row ", i," has ", nnz_i, " non zero entries")
+end
+
+PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
+
+MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+matinfo = PetscMatGetInfo(Ap, Int32(1))
+println("Ap block size = ", matinfo.block_size)
 
 # zero initialize the matrix just in case
-println("zeroing A")
-PetscMatZeroEntries(A)
+println("zeroing Ap")
+PetscMatZeroEntries(Ap)
+
+PetscMatAssemblyBegin(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
+PetscMatAssemblyEnd(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
+
+
+
+# set some options
+# MatSetValuesBlocked will interpret the array of values as being column
+# major
 
 # create KSP contex
 ksp = KSP(comm)
-KSPSetOperators(ksp, A, A)
+
 KSPSetFromOptions(ksp)
+KSPSetOperators(ksp, A, Ap)  # this was A, Ap
 
 # set: rtol, abstol, dtol, maxits
-KSPSetTolerances(ksp, 1e-15, 1e-8, 1e5, PetscInt(1000))
-KSPSetUp(ksp)
+#KSPSetTolerances(ksp, 1e-2, 1e-12, 1e5, PetscInt(1000))
+#KSPSetUp(ksp)
 
 
 pc = KSPGetPC(ksp)
 pc_type = PCGetType(pc)
 println("pc_type = ", pc_type)
-
-if pc_type != "none"
+#=
+if pc_type == "bjacobi"
   n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
   println("n_local = ", n_local, ", first_local = ", first_local)
   println("length(ksp_arr) = ", length(ksp_arr))
@@ -884,16 +1325,22 @@ if pc_type != "none"
   println("preconditioner using fill level = ", fill_level)
 end
 
+if pc_type == "ilu"
+  fill_level = PCFactorGetLevels(sub_pc)
+  println("preconditioner using fill level = ", fill_level)
+end
+=#
 
 
-return A, x, b, ksp
+return A, Ap, x, b, ksp, ctx
 
 end
 
-function destroyPetsc(A::PetscMat, x::PetscVec,  b::PetscVec, ksp::KSP)
+function destroyPetsc(A::PetscMat, Ap::PetscMat, x::PetscVec,  b::PetscVec, ksp::KSP)
 # destory Petsc data structures, finalize Petsc
 
 PetscDestroy(A)
+PetscDestroy(Ap)
 PetscDestroy(x)
 PetscDestroy(b)
 PetscDestroy(ksp)
@@ -904,11 +1351,13 @@ return nothing
 end
 
 
-function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::AbstractVector, delta_res_vec::AbstractVector)
+function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector )
 
   # solve the system for the newton step, write it to delta_res_vec
   # writing it to delta_res_vec is an unecessary copy, becasue we could
   # write it directly to eqn.q, but for consistency we do it anyways
+
+  jac_type = opts["jac_type"]::Int
 
   # copy res_0 into b
   # create the index array
@@ -920,6 +1369,7 @@ function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::Abst
   end
 
   # copy into Petsc and assemble
+  # should do this by direct array access
   PetscVecSetValues(b, idx, res_0, PETSC_INSERT_VALUES)
   PetscVecAssemblyBegin(b)
   PetscVecAssemblyEnd(b)
@@ -933,13 +1383,48 @@ function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::Abst
 
   # assemble matrix
   # should this be overlapped with the vector assembly?
-  println("assembling A")
-  PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
+  if jac_type != 4
+    println("assembling A")
+    PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
+  end
 
-  matinfo = PetscMatGetInfo(A, MAT_LOCAL)
-  println("number of mallocs = ", matinfo.mallocs)
+  PetscMatAssemblyBegin(Ap, PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(Ap, PETSC_MAT_FINAL_ASSEMBLY)
 
+  if jac_type != 4
+    matinfo = PetscMatGetInfo(A, MAT_LOCAL)
+    println("number of mallocs for A = ", matinfo.mallocs)
+    if matinfo.mallocs > 0.5  # if any mallocs
+      println("Caution: non zero number of mallocs for A")
+      println("  number of mallocs = ", matinfo.mallocs)
+    end
+  end
+
+    matinfo = PetscMatGetInfo(Ap, MAT_LOCAL)
+
+    if matinfo.mallocs > 0.5  # if any mallocs
+      println("Caution: non zero number of mallocs for Ap")
+      println("  number of mallocs = ", matinfo.mallocs)
+    end
+ 
+
+  # only call this first time?
+  # what happens when A and Ap change?
+  # this is not truely necessary for the common case, because KSPSolve
+  # calls it if needed
+  # it is necessary to call KSPSetUp before getting the preconditioner
+  # context in some cases
+
+  KSPSetTolerances(ksp, newton_data.reltol, newton_data.abstol, 
+                   newton_data.dtol, PetscInt(newton_data.itermax))
+
+  KSPSetUp(ksp)
+
+  nx = PetscVecGetSize(x)
+  nb = PetscVecGetSize(b)
+  println("size of x = ", nx)
+  println("size of y = ", nb)
 
   println("solving system")
   KSPSolve(ksp, b, x)
@@ -957,7 +1442,10 @@ function petscSolve(A::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, res_0::Abst
   PetscVecRestoreArray(x, ptr_arr)
 
   # zero out the Jacobian for next use
-  PetscMatZeroEntries(A)
+  if opts["jac_type"] != 4
+    PetscMatZeroEntries(A)
+  end
+  PetscMatZeroEntries(Ap)
   return nothing
 end
 
@@ -1071,7 +1559,7 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       epsilon = 1e-20
 
 #      eqn.q_vec[j] += complex(0, epsilon)
-      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+      disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
       eqn.q[1, 2, 5] += complex(0, epsilon)
       writedlm("check_q.dat", imag(eqn.q))
 #      eqn.q[1,1,1] += complex(0, epsilon)
@@ -1079,7 +1567,7 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       func(mesh, sbp, eqn, opts)
 
       fill!(eqn.res_vec, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
       calcJacRow(jac_col, eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
@@ -1100,10 +1588,10 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       jac_col = zeros(Float64, mesh.numDof)
       println("\ncalculating column ", j, " of the jacobian")
 
-     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
      func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
      fill!(eqn.res_vec, 0.0)
-     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
      res_0 = copy(eqn.res_vec)
 
       epsilon = 1e-6
@@ -1116,7 +1604,7 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
 
       fill!(eqn.res_vec, 0.0)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
       calcJacRow(jac_col, res_0, eqn.res_vec, epsilon)

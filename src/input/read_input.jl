@@ -27,6 +27,9 @@ end
 # record fname in dictionary
 arg_dict["fname"] = fname
 
+# type of variables, defaults to conservative
+get!(arg_dict, "variable_type", :conservative)
+
 # supply default values if not given 
 # get() = get!(dictionary, key, default)
 gamma = get!(arg_dict, "gamma", 1.4)
@@ -38,10 +41,16 @@ get!(arg_dict, "dimensions", 2)
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
-aoa = get!(arg_dict, "aoa", -1.0)*pi/180
+aoa = get!(arg_dict, "aoa", -1.0)
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
-rho_free = get!(arg_dict, "rho_free", -1)
-E_free = get!(arg_dict, "E_free", -1)
+#rho_free = get!(arg_dict, "rho_free", -1)
+#E_free = get!(arg_dict, "E_free", -1)
+get!(arg_dict, "vortex_x0", 0.0)
+get!(arg_dict, "vortex_strength", -1.0)
+
+# should this really have a default value?
+get!(arg_dict, "CFL", 0.4)
+get!(arg_dict, "mesh_size", 1.0)  # this key should not exist
 get!(arg_dict, "Relfunc_name", "none")
 
 #SBP Options
@@ -58,9 +67,29 @@ get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
 get!(arg_dict, "use_GLS", false)
 
+# preconditioning stabilization options
+# non-logical values are shared between regular, preconditioned run
+get!(arg_dict, "use_edgestab_prec", false) 
+get!(arg_dict, "use_filter_prec", false)
+get!(arg_dict, "use_dissipation_prec", false)
+
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
   # the raised cosine filter has no paramters
+end
+
+# figure out coloring distances
+if arg_dict["use_edgestab"]
+  get!(arg_dict, "coloring_distance", 2)
+else
+  get!(arg_dict, "coloring_distance", 0)
+end
+
+
+if arg_dict["use_edgestab_prec"]
+  get!(arg_dict, "coloring_distance_prec", 2)
+else
+  get!(arg_dict, "coloring_distance_prec", 0)
 end
 
 
@@ -68,9 +97,11 @@ end
 get!(arg_dict, "calc_error", false)
 get!(arg_dict, "calc_error_infname", "none")
 get!(arg_dict, "calc_error_outfname", "error_calc.dat")
-
-
 get!(arg_dict, "calc_trunc_error", false)
+
+
+# Algorithmic Differentiation options
+get!(arg_dict, "use_edge_res", false)
 
 # deal with file names
 smb_name = arg_dict["smb_name"]
@@ -87,6 +118,10 @@ get!(arg_dict, "perturb_ic", false)
 get!(arg_dict, "perturb_mag", 0.0)
 get!(arg_dict, "write_finalsolution", false)
 get!(arg_dict, "write_finalresidual", false)
+
+# solver options
+get!(arg_dict, "write_entropy", false)
+get!(arg_dict, "write_entropy_fname", "entropy.dat")
 
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
@@ -115,13 +150,17 @@ get!(arg_dict, "write_sol", false)
 get!(arg_dict, "write_qic", false)
 get!(arg_dict, "write_vis", false)
 get!(arg_dict, "write_res", false)
+get!(arg_dict, "output_freq", 1)
+get!(arg_dict, "recalc_prec_freq", 1)
 get!(arg_dict, "jac_type", 2)
 get!(arg_dict, "res_abstol", 1e-6)
 get!(arg_dict, "res_reltol", 1e-6)
 get!(arg_dict, "res_reltol0", -1.0)
 get!(arg_dict, "print_eigs", false)
 get!(arg_dict, "write_eigs", false)
-
+get!(arg_dict, "write_eigdecomp", false)
+get!(arg_dict, "newton_globalize_euler", false)
+get!(arg_dict, "euler_tau", 1)
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
 if run_type == 4
@@ -132,15 +171,31 @@ elseif run_type == 5
   get!(arg_dict, "epsilon", 1e-20)
 end
 
+get!(arg_dict, "real_time", false)
+
+
+# Krylov options
+get!(arg_dict, "krylov_reltol", 1e-2)
+get!(arg_dict, "krylov_abstol", 1e-12)
+get!(arg_dict, "krylov_dtol", 1e5)
+get!(arg_dict, "krylov_itermax", 1000)
+get!(arg_dict, "krylov_gamma", 2)
 
 # testing options
 get!(arg_dict, "solve", true)
+
+
+# postprocessing options
+get!(arg_dict, "do_postproc", false)
+get!(arg_dict, "exact_soln_func", "nothing")
 
 # write complete dictionary to file
 fname = "arg_dict_output.txt"
 rmfile(fname)
 f = open(fname, "a+")
 arg_keys = keys(arg_dict)
+
+
 
 for key_i in arg_keys
   println(f, key_i, " => ", arg_dict[key_i])

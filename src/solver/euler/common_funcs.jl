@@ -77,16 +77,70 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::Para
   R = params.R
   Ma = params.Ma
 
-  num = gamma*R*E/(rho*cv)
-  denom = 1/(Ma*Ma) + gamma*R/(2*cv)
+#  num = gamma*R*E/(rho*cv)
+#  denom = 1/(Ma*Ma) + gamma*R/(2*cv)
 
-  u_norm = sqrt(num/denom)  # magnitude of free stream velocity
 
-  sol[2] = rho*u_norm*cos(params.aoa)
-  sol[3] = -rho*u_norm*sin(params.aoa)
+#  u_norm = sqrt(num/denom)  # magnitude of free stream velocity
+
+  sol[2] = rho*Ma*cos(params.aoa)
+  sol[3] = -rho*Ma*sin(params.aoa)
 
   return nothing
 end
+
+
+function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
+# calculate the unsteady vortex at a given point
+# coords specifies the xy coordinates
+# the time is contained in params
+# from K. Mattsson et al./ Computers & Fluixs 36 (2007) 636-649
+
+  function f(coords, params)
+    t = params.t
+    x = coords[1]
+    y = coords[2]
+    x0 = params.vortex_x0
+    return 1 - ( (  (x-x0) - t)^2 + y*y)
+  end
+  
+  fval = f(coords, params)
+  t = params.t
+  epsilon = params.vortex_strength
+  Ma = params.Ma
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  x = coords[1]
+  y = coords[2]
+  x0 = params.vortex_x0
+
+  coeff1 = epsilon*epsilon*gamma_1*Ma*Ma/(8*pi*pi)
+  rho = (1 -coeff1* e^(fval))^(1/gamma_1)
+
+  coeff2 = epsilon*y/(2*pi)
+  u = 1 - coeff2*e^(fval/2)
+
+  coeff3 = epsilon*(x - x0 - t)/(2*pi)
+  v = coeff3*e^(fval/2)
+
+  q2 = rho*u
+  q3 = rho*v
+
+  # calculate E
+  # the paper gives pressure, so calculate E from that and the
+  # pressure expression in terms of E
+  term1 = (rho^gamma)/(gamma_1*gamma*Ma*Ma)
+  term2 = 0.5*(q2*q2 + q3*q3)/rho  
+  E = term1 + term2
+
+  sol[1] = rho
+  sol[2] = q2
+  sol[3] = q3
+  sol[4] = E
+
+  return nothing
+end
+
 
 
 

@@ -32,8 +32,12 @@ rk4
     * eqn : AbstractSolutionData
     * opts : options dictionary
     * res_tol : keyword arg, residual topping tolerance
+    * real_time : do actual time marching, not pseudo-time marching
+
+   The eqn.q_vec should hold the whichever variables (conservative or
+   entropy) that the simulation should use.
 """->
-function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0) 
+function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   #=
@@ -49,6 +53,11 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
   println("\nEntered rk4")
 # res_tol is alternative stopping criteria
+
+  # unpack options
+  output_freq = opts["output_freq"]::Int
+  write_vis = opts["write_vis"]::Bool
+
   q_vec = eqn.q_vec
   res_vec = eqn.res_vec
 #  extra_args = (mesh, sbp, eqn)
@@ -61,9 +70,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #   x = Array(Float64,3,t_steps+2)
 #  x = Array(Float64,m,t_steps+1)
 
-  iter = 1
-
-  f1 = open("convergence.dat", "w")
+  f1 = open("convergence.dat", "a+")
 
 #  x[:,1] = x_ic
 
@@ -78,7 +85,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   x2 = zeros(x_old)
   x3 = zeros(x_old)
   x4 = zeros(x_old)
-  
+
 
   for i=2:(t_steps + 1)
 
@@ -86,32 +93,36 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #    update_msg = string("RK4 i: ",i,"\n")
 #    write(STDERR,update_msg)
 #    print("\nRK4 i : ", i)
-  if iter % 100 == 0
-     println("iter: ",i)
+  if i % output_freq == 0
+     println("i: ",i)
   end
 
-
-    iter += 1
-#    println("in rk4, iter = ", iter)
+#    println("in rk4, i = ", i)
 #    println("in rk4, t = ", t)
 
-#    x_old = x[:,iter-1]
+#    x_old = x[:,i-1]
 
 #    println("eqn.q_vec = ", eqn.q_vec)
 
  #   eqn.q_vec = x_old
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    if real_time eqn.params.t = t end
     f( mesh, sbp, eqn, opts, t)
 
-    eqn.res_vec[:] = 0.0
+    fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    k1[:] = eqn.res_vec
-    x2[:] = x_old + (h/2)*k1
+    for j=1:length(eqn.res_vec) k1[j] = eqn.Minv[j]*eqn.res_vec[j] end
+    x2[:] = x_old + (h/2)*k1  # because the Euler equations are written 
+                              # in conservative variables, the residual
+			      # is r(q) not r(v)
 
-    sol_norm = norm(eqn.res_vec)/mesh.numDof
 
-    if iter % 100 == 0
-      #=
+#    sol_norm = norm(eqn.res_vec)/mesh.numDof
+     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts)
+   
+     sol_norm = calcNorm(eqn, k1)
+    if i % 1 == 0
       # Calculate the error in density
       vRho_calc = zeros(vRho_act)
       k = 1
@@ -121,23 +132,24 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
       end
 
       ErrDensity = norm(vRho_calc - vRho_act)/mesh.numNodes 
-      println("DensityErrorNorm = ", ErrDensity) =#
+      println("DensityErrorNorm = ", ErrDensity)
       println("Solution Residual Norm = ", sol_norm)
-      # println("writing to convergence.dat")
-      write(f1, string(i, "   ", sol_norm, "\n"))
-    end
 
-    if iter % 1000 == 0
+      println("writing to convergence.dat")
+      println(f1, i, " ", sol_norm)
+    end
+    
+    if i % output_freq == 0
       println("flushing convergence.dat to disk")
 #      close(f1)
 #      f1 = open("convergence.dat", "a+")
       flush(f1)
     end
 
-    if iter % 10000 == 0  # this should be an option
+    if write_vis && i % output_freq == 0
 
       saveSolutionToMesh(mesh, q_vec)
-      writeVisFiles(mesh, "solution_rk$iter")
+      writeVisFiles(mesh, "solution_rk$i")
     end
 
 
@@ -154,38 +166,47 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
       break
     end
 
-
+    # stage 2
     eqn.q_vec[:] = x2
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    # convert to entropy variables here
+    if real_time  eqn.params.t = t + h/2 end
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    k2[:] = eqn.res_vec
+#    k2[:] = eqn.res_vec
+    for j=1:length(eqn.res_vec) k2[j] = eqn.Minv[j]*eqn.res_vec[j] end
     x3[:] = x_old + (h/2)*k2
 
+    # stage 3
     eqn.q_vec[:] = x3
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    if real_time eqn.params.t = t + t/2 end
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t + h/2)
 
     fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#    k3[:] = eqn.res_vec
+    for j=1:length(eqn.res_vec) k3[j] = eqn.Minv[j]*eqn.res_vec[j] end
 
- 
-    k3[:] = eqn.res_vec
+    # stage 4
     x4[:] = x_old + h*k3
-
     eqn.q_vec[:] = x4
-
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    if real_time eqn.params.t = t + h end
     f( mesh, sbp, eqn, opts, t + h)
 
     fill!(eqn.res_vec, 0.0)
+    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
- 
+    for j=1:length(eqn.res_vec) k4[j] = eqn.Minv[j]*eqn.res_vec[j] end
+#    k4 = eqn.res_vec[:]
 
-    k4 = eqn.res_vec[:]
 
+    # update
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     eqn.q_vec[:] = x_old
 
@@ -195,9 +216,9 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     fill!(k4, 0.0)
 
 
-#    x[:,iter] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+#    x[:,i] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
 #    println("==== RK4 ==== i: ",i)
-#     println("x[:,iter]: ",x[:,iter])
+#     println("x[:,i]: ",x[:,i])
 #    println("k1: ",k1)
     t = t + h
 
@@ -210,7 +231,7 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 #  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # evaluate residual at final q value
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( mesh, sbp, eqn, opts, t)
 
     eqn.res_vec[:] = 0.0

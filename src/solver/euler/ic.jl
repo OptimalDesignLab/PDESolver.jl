@@ -155,6 +155,49 @@ return nothing
 end  # end function
 
 
+function ICFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+numEl = mesh.numEl
+nnodes = mesh.numNodesPerElement
+dofpernode = mesh.numDofPerNode
+sol = zeros(Tsol, 4)
+for i=1:numEl
+  dofnums_i = mesh.dofs[:, :, i]
+  coords = mesh.coords[:, :, i]
+
+  for j=1:nnodes
+      # get dof numbers for each variable
+      dofnum_rho = dofnums_i[1,j]
+      dofnum_rhou = dofnums_i[2,j]
+      dofnum_rhov = dofnums_i[3,j]
+      dofnum_e = dofnums_i[4,j]
+
+      # coordinates of this node (must be a vertex)
+      x = coords[1,j]
+      y = coords[2,j]
+#      z = coords[3,j]
+
+      calcFreeStream(coords[:,j], eqn.params, sol)
+
+      # apply initial conditions here
+#      u0[dofnum_rho] = 1.0
+#      u0[dofnum_rhou] = 3.0
+#      u0[dofnum_rhov] = 0.0
+#      u0[dofnum_e] = 2.0
+
+      u0[dofnums_i[:,j]] = sol
+  end
+end
+
+return nothing
+
+end  # end function
+
+
+
+
 # what is this? how is it different than ICIsentropic Vortex?
 function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
 # populate u0 with initial values
@@ -384,6 +427,42 @@ return nothing
 end  # end function
 
 
+function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, u0::AbstractArray{Tsol})
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+println("entered ICIsentropicVortex")
+
+numEl = getNumEl(mesh)
+nnodes = operator.numnodes
+dofpernode = getNumDofPerNode(mesh)
+sol = zeros(Tsol, 4)
+for i=1:numEl
+#  println("i = ", i)
+  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
+#  coords = getElementVertCoords(mesh, [i])
+
+  for j=1:nnodes
+
+      # coordinates of this node (must be a vertex)
+#      coords_j = coords[:,j]
+      coords_j = mesh.coords[:,j, i]
+      calcUnsteadyVortex(coords_j, eqn.params, sol)
+
+#      println( "  j = ", j, " sol = ", sol, " coords_j = ", coords_j)
+
+      # apply initial conditions here
+      u0[dofnums_i[:,j]] = sol
+  end
+end
+
+return nothing
+
+end  # end function
+
+
+
+
 function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
 # populate u0 with initial values from a disk file
 # the file name comes from opts["ICfname"]
@@ -409,11 +488,13 @@ global const ICDict = Dict{Any, Function} (
 "ICOnes" => ICOnes,
 "ICRho1E2" => ICRho1E2,
 "ICRho1E2U3" => ICRho1E2U3,
+"ICFreeStream" => ICFreeStream,
 "ICVortex" => ICVortex,
 "ICLinear" => ICLinear,
 "ICsmoothHeavisideder" => ICsmoothHeavisideder,
 "ICsmoothHeaviside" => ICsmoothHeaviside,
 "ICIsentropicVortex" => ICIsentropicVortex,
+"ICUnsteadyVortex" => ICUnsteadyVortex,
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
 "ICFile" => ICFile
 )
