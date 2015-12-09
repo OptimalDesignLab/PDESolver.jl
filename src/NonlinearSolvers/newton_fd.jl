@@ -93,6 +93,7 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
   print_cond = opts["print_cond"]::Bool
   print_eigs = opts["print_eigs"]::Bool
   write_eigs = opts["write_eigs"]::Bool
+  write_eigdecomp = opts["write_eigdecomp"]::Bool
   write_sol = opts["write_sol"]::Bool
   write_vis = opts["write_vis"]::Bool
   output_freq = opts["output_freq"]::Int
@@ -347,6 +348,24 @@ function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e
       if write_eigs
 	writedlm("eigs$i.dat", eigs_i)
       end
+    end
+
+    # do the full eigenvalue decomposition
+    # if request and if julia owns the Jacobian matrix
+    if  write_eigdecomp && ( jac_type == 1 || jac_type == 2)
+      println("doing eigen decomposition")
+      # make a dense jacobian so we can get *all* the eigenvalues and vectors
+      # the algorithm for sparse matrices can get all - 2 of them, and might
+      # have problems for matrices with a wide range of eigenvalues
+      jac_dense = full(jac)
+      D, V = eig(jac_dense)
+      writedlm("eigdecomp_real$i.dat", real(D))
+      writedlm("eigdecomp_imag$i.dat", imag(D))
+      writedlm("eigdecomp_realvecs$i.dat", real(V))
+      writedlm("eigdecomp_imagvecs$i.dat", imag(V))
+    elseif write_eigdecomp && (jac_type != 1 && jac_type != 2)
+      println(STDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
+
     end
 
     # negate res
