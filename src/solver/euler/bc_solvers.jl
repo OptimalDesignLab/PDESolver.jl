@@ -177,8 +177,8 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
     println("euler_flux[i] = ", euler_flux[i])
 =#
 #    flux[i] = -(sat_fac*sat[i] + 0.5*euler_flux[i] + 0.5*euler_flux2[i])
-    flux[i] = -sat_fac*sat[i]  # when weak differentiate has transpose = false
-    # flux[i] = -(sat_fac*sat[i] + euler_flux[i]) # when weak differentiate has transpose = true
+    # flux[i] = -sat_fac*sat[i]  # when weak differentiate has transpose = false
+    flux[i] = -(sat_fac*sat[i] + euler_flux[i]) # when weak differentiate has transpose = true
     # flux[i] =  -euler_flux[i]
 #=
 if nx < 0.0  # inlet

@@ -13,6 +13,7 @@ arg_dict = Dict{Any, Any} (
 "run_type" => 5,
 "jac_type" => 2,
 "order" => 1,
+"Q_transpose" => false,
 "IC_name" => "ICIsentropicVortex",
 #"IC_name" => "ICFile",
 #"ICfname" => "start.dat",

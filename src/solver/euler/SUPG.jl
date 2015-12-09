@@ -6,22 +6,7 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
   calcStabilizationTerm(mesh, sbp, eqn, tau)
   # println("tau = \n", tau)
-  #=
-  counter = 0
-  for i = 1:mesh.numEl
-    for j = 1:mesh.numNodesPerElement
-      if tau[j,i] == 0.0
-        counter += 1
-      end
-    end
-  end
-  if counter > 0
-    println("0 tau in use")
-  else
-    println("No 0 tau")
-  end 
-  =#
-
+  
   #=
   # Calculate strong residual
   strong_res = zeros(eqn.res)
@@ -378,8 +363,8 @@ function GLS{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   calcTau(mesh, sbp, eqn, tau)
   # println("Tau = \n", tau)
   
-  supg_res = zeros(eqn.res) # Output of volumeintegrate! 
-  inputArr = zeros(eqn.res) # input array for volumeintegrate!
+  # supg_res = zeros(eqn.res) # Output of volumeintegrate! 
+  gls_res = zeros(eqn.res) # input array for volumeintegrate!
   
   # Get shape function derivatives
   Hinv = 1./sbp.w
@@ -392,7 +377,7 @@ function GLS{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
     end
   end
 
-  # Populate inputArr
+  # Populate gls_res
   for i = 1:mesh.numEl
     endof = mesh.numDofPerNode*mesh.numNodesPerElement # dofs in an element
     ndof = mesh.numDofPerNode
@@ -416,33 +401,22 @@ function GLS{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
       m = (j-1)*ndof + 1
       intArr[m:m+ndof-1,:] = sbp.w[j]*mesh.jac[j,i]*tau[j,i]*Axidxi[m:m+ndof-1,:]
     end
-    #=
-    TestMatrix = Axidxi.'*intArr
-    eigenValues = eigvals(TestMatrix)
-
-    kappa = 0
-    for counter = 1:length(eigenValues)
-      if eigenValues[counter] < 0 || abs(eigenValues[counter]) < 1e-13
-        kappa += 1
-        println(eigenValues[counter])
-      end
-    end
-    println("kappa = ", kappa)
-    =#
+    
     intvec = Axidxi.'*intArr*u
     for j = 1:mesh.numNodesPerElement
       for k = 1:mesh.numDofPerNode
-        inputArr[k,j,i] = intvec[(j-1)*ndof+k]
+        gls_res[k,j,i] = intvec[(j-1)*ndof+k]
       end
     end
   end   # end for i = 1:mesh.numEl
 
-  # volumeintegrate!(sbp, inputArr, supg_res)
+  # volumeintegrate!(sbp, gls_res, supg_res)
   
+  # println(supg_res)
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       for k = 1:mesh.numDofPerNode
-        eqn.res[k,j,i] -= supg_res[k,j,i] # -ve sign because of right hand side.
+        eqn.res[k,j,i] -= gls_res[k,j,i]  # -ve sign because of right hand side.
       end                                 # Fluxes are computed explicitly and
     end                                   # not from weak redidual.
   end
@@ -465,7 +439,7 @@ function calcAxidxi{Tsol}(Axidxi::AbstractArray{Tsol, 2},
       nAxi = view(Axi,:,:,i) # Flux Jacobian at a node in xi direction
       nAeta = view(Aeta,:,:,i)
       Axidxi[m:(m+ndof-1),n:(n+ndof-1)] = nAxi*shapefuncderiv[i,j,1] + 
-                                                      nAeta*shapefuncderiv[i,j,2] 
+                                          nAeta*shapefuncderiv[i,j,2] 
     end # end for j = 1:nnpe
   end   # end for i = 1:nnpe
 
