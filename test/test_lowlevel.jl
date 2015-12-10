@@ -399,7 +399,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
   context("--- Testing evalVolumeIntegrals ---")  do
 
-    EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
 
     el1_res = [-0.35355  0  0.35355;
                 -0.874999  0.750001  0.124998;
