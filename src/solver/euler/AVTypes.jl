@@ -1,5 +1,7 @@
 using ODLCommonTools
 
+# TODO: long-form document this
+
 export ArtificialViscosityType
 
 type ArtificialViscosityType{Tsol, Tres, Tdim, Tmsh} <: AbstractSolutionData{Tsol}
