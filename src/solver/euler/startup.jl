@@ -334,13 +334,11 @@ if opts["solve"]
 
     end
   end
-      
 
-
-      saveSolutionToMesh(mesh, real(eqn.q_vec))
-      printSolution(mesh, real(eqn.q_vec))
-      printCoordinates(mesh)
-      writeVisFiles(mesh, "solution_done")
+  saveSolutionToMesh(mesh, real(eqn.q_vec))
+  printSolution(mesh, real(eqn.q_vec))
+  printCoordinates(mesh)
+  writeVisFiles(mesh, "solution_done")
 
 end  # end if (opts[solve])
 
