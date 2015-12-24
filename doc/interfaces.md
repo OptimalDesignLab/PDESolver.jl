@@ -6,17 +6,17 @@ Before doing so, a short description of what general Julia interfaces look like 
 The paradigm of Julia code is that of "objects with associated functions", where a new Type is defined, and then functions that take the Type as an argument are defined.
 The functions define the interface to the Type.
 The Type holds data (ie. state), and the functions perform operations on that state (ie. behavior).
-Perhaps counter-intuitively, it is generally not recommended for users of a type to  acess the fields directly.
+Perhaps counter-intuitively, it is generally not recommended for users of a type to  access the fields directly.
 Instead, any needed operations on the data that the Type holds should be provided through functions.
 The benefit of this convention is that it imposes no requirements on how the Type stores its data or the implementations its behavior.
 This is important because a user of the Type should not be concerned with these things.
 The user needs to know what behavior the Type has, but not how it is implemented.
 This becomes even more important when there are multiple implementations certain functionality.
-The user should be able to seemlessly transition between different implementations.
+The user should be able to seamlessly transition between different implementations.
 This requires all implementations have the same interface.
 
 The question of how to enforce interfaces, and how strongly to do so, is still an open question in Julia.
-Some relevent Github issues:
+Some relevant Github issues:
 5
 4935
 6975
@@ -36,7 +36,7 @@ This includes the solution at every node and any auxiliary quantities.
 The storage for any quantity that is calculated over the entire mesh should be allocated as part of this object, in order to avoid repeatedly reallocated the array for every residual evaluation.
 In general, there should never be a need to allocate a vector longer than the number of degrees of freedom at a node (or a matrix similarly sized matrix) during a residual evaluation.
 If it seems like this is necessary, reconsider the structure of the code you are writing.
-There are significiant performance benefits to this rule because it reduces memory allocation.
+There are significant performance benefits to this rule because it reduces memory allocation.
 
 The static parameter `Tsol` is the datatype of the solution variables.
 
@@ -59,7 +59,7 @@ The purpose of these fields are:
      This array should be numDofPerNode x numNodesPerElement x numEl.
      The residual evaluation *only* uses `q`, never `q_vec`
 
-`q_vec`: to hold the solution variables as a vector, used for any linear algebra operations and timestepping.
+`q_vec`: to hold the solution variables as a vector, used for any linear algebra operations and time stepping.
          This array should have a length equal to the total number of degrees of freedom in the mesh.
          There are functions to facilitate the scattering of values from `q_vec` to `q`.
          Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding "gather" operation (ie. `q` -> `q_vec`).
@@ -75,7 +75,7 @@ The purpose of these fields are:
 
 `disassembleSolution`:  Function that takes the a vector such as `q_vec` and scatters it to an array such as `q`.
                         This function must have the signature:
-                        `disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractAray{T, 3}, q_vec::AbstractArray{T, 1}`
+                        `disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1}`
                         Because this variable is a field of a type, it will be dynamically dispatched.
                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.
 
@@ -99,12 +99,12 @@ ODLCommonTools defines:
 
 `abstract AbstractMesh{Tmsh}`.
 
-The purpoose of an `AbstractMesh` is to hold all the mesh related data that the solver will need.
+The purpose of an `AbstractMesh` is to hold all the mesh related data that the solver will need.
 It also serves to establish an interface between the solver and whatever mesh software is used.
 By storing all data in the fields of the `AbstractMesh` object, the details of how the mesh software stores and allows retrieval of data are not needed by the solver.
-This should make it easy to accomodate different mesh softwares without making any changes to the solver.
+This should make it easy to accommodate different mesh software without making any changes to the solver.
 
-The static parameter `Tmsh` is used to enable differentiation with respect to the mesh varaible in the future.
+The static parameter `Tmsh` is used to enable differentiation with respect to the mesh variable in the future.
 
 ###Required Fields
 ```
@@ -163,8 +163,8 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
 
 
 ####Boundary Condition Data
-The mesh object stores data related to applying boundary conditions.  Boundary conditions are imposed weakly, so there is no need to remove degrees of freedom from the mesh when Dirchlet boundary conditions are applied.
-In order to accomodate any combination of boundary conditions, an array of functors are as part of the mesh object, along with lists of which mesh edges (or faces in 3D) should have which boundary condition applied to them
+The mesh object stores data related to applying boundary conditions.  Boundary conditions are imposed weakly, so there is no need to remove degrees of freedom from the mesh when Dirichlet boundary conditions are applied.
+In order to accommodate any combination of boundary conditions, an array of functors are as part of the mesh object, along with lists of which mesh edges (or faces in 3D) should have which boundary condition applied to them
 
 
 `numBC`: number of different types of boundary conditions used.
@@ -184,13 +184,13 @@ Data about interior mesh edges (or faces in 3D) is stored to enable use of edge 
 ####Degree of Freedom Numbering Data
 `dofs`:  numDofPerNode x numNodesPerElement x numEl array.  Holds the degree of freedom number of each degree of freedom.
 
-`sparsity_bnds`:  2 x numDof array.  `sparsity_bnds[:, i]` holds the maximum, minimum degree of freedom numbers assoicated with degree of freedom `i`.  In this context, degrees of freedom `i` and `j` are associated if entry `(i,j)` of the jacobian is non-zero.  In actuality, `sparsity_bnds` need only define upper and lower bounds for degree of freedom associations (ie. they need not be tight bounds).  This array is used to to define the sparsity pattern of the jacobian matrix.
+`sparsity_bnds`:  2 x numDof array.  `sparsity_bnds[:, i]` holds the maximum, minimum degree of freedom numbers associated with degree of freedom `i`.  In this context, degrees of freedom `i` and `j` are associated if entry `(i,j)` of the jacobian is non-zero.  In actuality, `sparsity_bnds` need only define upper and lower bounds for degree of freedom associations (ie. they need not be tight bounds).  This array is used to to define the sparsity pattern of the jacobian matrix.
 
 `sparsity_nodebnds`:  2 x numNodes array.  `sparsity_bnds[:, i]` holds the maximum, minimum node associated with node `i`, similar the information stored in `sparsity_bnds` for degrees of freedom.
 
 
 ####Mesh Coloring Data
-The NonlinearSolvers module uses algorithmic differentiation to compute the Jacobian.  Doing so efficiently requires perturbing multiple degrees of freedom simultaniously, but perturbing associated degrees of freedom at the same time leads to incorrect results.  Mesh coloring assigns each element of the mesh to a group (color) such that every degrees of freedom on each element is not associated with any other degree of freedom on any other element.
+The NonlinearSolvers module uses algorithmic differentiation to compute the Jacobian.  Doing so efficiently requires perturbing multiple degrees of freedom simultaneously, but perturbing associated degrees of freedom at the same time leads to incorrect results.  Mesh coloring assigns each element of the mesh to a group (color) such that every degrees of freedom on each element is not associated with any other degree of freedom on any other element.
 An important aspect of satisfying this condition is the use of the element-based arrays (all arrays that store data for a quantity over the entire mesh are ncomp x numNodesPerElement x numEl).  In such an array, any node that is part of 2 or more elements has one entry for each element.  When performing algorithmic differentiation, this enables perturbing a degree of freedom on one element without perturbing it on the other elements that share the degree of freedom.
 For example, consider a node that is shared by two elements.  Let us say it is node 2 of element 1 and node 3 of element 2.  This means `AbstractSolutionData.q[:, 2, 1]` stores the solution variables for this node on the first element, and `AbstractSolutionData.q[:, 3, 2]` stores the solution variables for the second element.  Because these are different entries in the array `AbstractSolutionData.q`, they can be perturbed independently.  Because `AbstractSolutionData.res` has the same format, the perturbations to `AbstractSolutionData.q[:, 2, 1] are mapped to `AbstractSolutionData.res[:, 2, 1]` for a typical continuous Galerkin type discretization.  This is a direct result of having an element-based discretization.
 There are some discretizations, however, that are not strictly element-based.
@@ -200,8 +200,8 @@ To deal with this, we use the idea of a distance-n coloring.
 A distance-n coloring is a coloring where there are n elements in between two element of the same color. 
 For element-based discretizations with element-based arrays, every element in the mesh can be the same color.
 This is a distance-0 coloring.
-For an edge stabiliztion discretization, a distance-1 coloring is required, where every element is a different color than any neighbors it shares and edge with.
-(As a side node, the algorithms that perform a distance-1 coloring are rather compilicated, so in practice we use a distance-2 coloring instead).
+For an edge stabilization discretization, a distance-1 coloring is required, where every element is a different color than any neighbors it shares and edge with.
+(As a side node, the algorithms that perform a distance-1 coloring are rather complicated, so in practice we use a distance-2 coloring instead).
 
 In order to do algorithmic differentiation, the `AbstractMesh` object must store the information that determines which elements are perturbed for which colors, and, for the edge stabilization case, how to relate a perturbation in the output `AbstractSolutionData.res` to the degree of freedom in `AbstractSolutionData.q` in O(1) time.
 Each degree of freedom on an element is perturbed independently of the other degrees of freedom on the element, so the total number of residual evaluations is the number of colors times the number of degrees of freedom on an element.
@@ -213,6 +213,6 @@ The fields required are:
 For example, in `color_mask_i = color_masks[i]; mask_elj = color_mask_i[j]`, the variable `mask_elj` is either a 1 or a zero, determining whether or not element `j` is perturbed as part of color `i`.
 
 
-`neighbor_nums`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the elmenet whose perturbation is affected element `i` when color `j` is being perturbed.  
+`neighbor_nums`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the element whose perturbation is affected element `i` when color `j` is being perturbed.  
 
 
