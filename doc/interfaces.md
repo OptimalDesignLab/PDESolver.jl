@@ -55,7 +55,7 @@ The required fields of an `AbstractSolutionData are`:
 ```
 
 The purpose of these fields are:
-`q`: to hold the solution variables in an element based array. 
+`q`: to hold the solution variables in an element-based array. 
      This array should be numDofPerNode x numNodesPerElement x numEl.
      The residual evaluation *only* uses `q`, never `q_vec`
 
@@ -104,6 +104,8 @@ It also serves to establish an interface between the solver and whatever mesh so
 By storing all data in the fields of the `AbstractMesh` object, the details of how the mesh software stores and allows retrieval of data are not needed by the solver.
 This should make it easy to accomodate different mesh softwares without making any changes to the solver.
 
+The static parameter `Tmsh` is used to enable differentiation with respect to the mesh varaible in the future.
+
 ###Required Fields
 ```
   # counts
@@ -138,8 +140,8 @@ This should make it easy to accomodate different mesh softwares without making a
 
   # mesh coloring data
   numColors::Integer
-  neighbor_nums::AbstractArray{Integer, 2}
   color_masks::AbstractArray{ AbstractArray{Number, 1}, 1}, 
+  neighbor_nums::AbstractArray{Integer, 2}
   pertNeighborEls::AbstractArray{Integer, 2}
 ```
 ####Counts
@@ -189,3 +191,28 @@ Data about interior mesh edges (or faces in 3D) is stored to enable use of edge 
 
 ####Mesh Coloring Data
 The NonlinearSolvers module uses algorithmic differentiation to compute the Jacobian.  Doing so efficiently requires perturbing multiple degrees of freedom simultaniously, but perturbing associated degrees of freedom at the same time leads to incorrect results.  Mesh coloring assigns each element of the mesh to a group (color) such that every degrees of freedom on each element is not associated with any other degree of freedom on any other element.
+An important aspect of satisfying this condition is the use of the element-based arrays (all arrays that store data for a quantity over the entire mesh are ncomp x numNodesPerElement x numEl).  In such an array, any node that is part of 2 or more elements has one entry for each element.  When performing algorithmic differentiation, this enables perturbing a degree of freedom on one element without perturbing it on the other elements that share the degree of freedom.
+For example, consider a node that is shared by two elements.  Let us say it is node 2 of element 1 and node 3 of element 2.  This means `AbstractSolutionData.q[:, 2, 1]` stores the solution variables for this node on the first element, and `AbstractSolutionData.q[:, 3, 2]` stores the solution variables for the second element.  Because these are different entries in the array `AbstractSolutionData.q`, they can be perturbed independently.  Because `AbstractSolutionData.res` has the same format, the perturbations to `AbstractSolutionData.q[:, 2, 1] are mapped to `AbstractSolutionData.res[:, 2, 1]` for a typical continuous Galerkin type discretization.  This is a direct result of having an element-based discretization.
+There are some discretizations, however, that are not strictly element-based.
+Edge stabilization, for example, causes all the degrees of freedom of one element to be associated with any elements it shares an edge with.
+
+To deal with this, we use the idea of a distance-n coloring.
+A distance-n coloring is a coloring where there are n elements in between two element of the same color. 
+For element-based discretizations with element-based arrays, every element in the mesh can be the same color.
+This is a distance-0 coloring.
+For an edge stabiliztion discretization, a distance-1 coloring is required, where every element is a different color than any neighbors it shares and edge with.
+(As a side node, the algorithms that perform a distance-1 coloring are rather compilicated, so in practice we use a distance-2 coloring instead).
+
+In order to do algorithmic differentiation, the `AbstractMesh` object must store the information that determines which elements are perturbed for which colors, and, for the edge stabilization case, how to relate a perturbation in the output `AbstractSolutionData.res` to the degree of freedom in `AbstractSolutionData.q` in O(1) time.
+Each degree of freedom on an element is perturbed independently of the other degrees of freedom on the element, so the total number of residual evaluations is the number of colors times the number of degrees of freedom on an element.
+
+The fields required are:
+`numColors`:  The number of colors in the mesh.
+
+`color_masks`:  array of length `numColors`.  Each entry in the array is itself an array of length `numEl`.  Each entry of the inner array is either a 1 or a 0, indicating if the current element is perturbed or not for the current color.
+For example, in `color_mask_i = color_masks[i]; mask_elj = color_mask_i[j]`, the variable `mask_elj` is either a 1 or a zero, determining whether or not element `j` is perturbed as part of color `i`.
+
+
+`neighbor_nums`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the elmenet whose perturbation is affected element `i` when color `j` is being perturbed.  
+
+
