@@ -119,28 +119,73 @@ This should make it easy to accomodate different mesh softwares without making a
   coords::AbstractArray{Tmsh, 3}
   dxidx::AbstractArray{Tmsh, 4}
   jac::AbstractArray{Tmsh, 2}
-  dofs::AbstractArray{Integer, 2}
 
   # boundary condition data
   numBC::Integer
-  bndry_funcs::AbstractArray{BCType, 1}
-  bndry_offsets::AbstractArray{Integer, 1}
-  
-  # boundary edge data
   numBoundaryEdges::Integer
   bndryfaces::AbstractArray{Boundary, 1}
-
+  bndry_offsets::AbstractArray{Integer, 1}
+  bndry_funcs::AbstractArray{BCType, 1}
+  
   # interior edge data
   numInterfaces::Integer
   interfaces::AbstractArray{Interface, 1}
 
- 
-  numBoundaryEdges::Integer
-  bndryfaces::AbstractArray{Boundary, 1}
-```
+  # degree of freedom number data
+  dofs::AbstractArray{Integer, 2}
+  sparsity_bnds::AbstractArray{Integer, 2}
+  sparsity_nodebnds::AbstractArray{Integer, 2}
 
-sparsity_bnds
-sparsity_nodebnds
-neighbor_nums
-color_masks
-perNeighborEls
+  # mesh coloring data
+  numColors::Integer
+  neighbor_nums::AbstractArray{Integer, 2}
+  color_masks::AbstractArray{ AbstractArray{Number, 1}, 1}, 
+  pertNeighborEls::AbstractArray{Integer, 2}
+```
+####Counts
+`numVert`:  number of vertices in the mesh
+`numEl`:  number of elements in the mesh
+`numNodes`: number of nodes in the mesh
+`numDof`:  number of degrees of freedom in the mesh (= numNodes * numDofPerNode)
+`numDofPerNode`:  number of degrees of freedom on each node.
+`numNodesPerElement`:  number of nodes on each element.
+`order`:  order of the discretization (ie. first order, second order...), where an order `p` discretization should have a convergence rate of `p+1`.
+
+
+####Mesh Data
+`coords`: n x numNodesPerElement x numEl array, where n is the dimensionality of   the equation being solved (2D or 3D typically).  `coords[:, nodenum, elnum] = [x, y, z]` coordinates.
+
+`dxidx`:  n x n x numNodesPerElement x numEl, where n is defined above.  It stores the mapping jacobian scaled by `( 1/det(jac) dxi/dx )` where xi are the parametric coordinates, x are the physical (x,y,z) coordinates, and jac is the determinant of the mapping jacobian `dxi/ dx`.
+
+`jac`  : numNodesPerElement x numEl array, holding the determinant of the mapping jacobian `dxi/dx` at each node of each element.
+
+
+####Boundary Condition Data
+The mesh object stores data related to applying boundary conditions.  Boundary conditions are imposed weakly, so there is no need to remove degrees of freedom from the mesh when Dirchlet boundary conditions are applied.
+In order to accomodate any combination of boundary conditions, an array of functors are as part of the mesh object, along with lists of which mesh edges (or faces in 3D) should have which boundary condition applied to them
+
+
+`numBC`: number of different types of boundary conditions used.
+`numBoundaryEdges`: number of mesh edges that have boundary conditions applied to them.
+
+`bndryfaces`:  array of Boundary objects (which contain the element number and the local index of the edge), of length `numBoundaryEdges`.
+`bndry_offsets`:  array of length numBC+1, where `bndry_offsets[i]` is the index  in `bndryfaces` where the edges that have boundary condition `i` applied to them start.  The final entry should be `numBoundaryEdges + 1`.  Thus `bndryfaces[ bndry_offsets[i]:(bndry_offsets[i+1] - 1) ]` contains all the boundary edges that have boundary condition `i` applied to them.
+
+`bndry_funcs`:  array of boundary functors, length numBC.  All boundary functors are subtypes of `BCType`.  Because `BCType` is an abstract type, the elements of this array should not be used directly, but passed as an argument to another function, to avoid type instability.
+
+####Interior Edge Data
+Data about interior mesh edges (or faces in 3D) is stored to enable use of edge stabilization or Discontinuous Galerkin type discretization.  Only data for edges (faces) that are shared by two elements is stored (ie. boundary edges are not considered).
+
+`numInterfaces`:  number of interior edges
+`interfaces`:  array of Interface types (which contain the element numbers for the two elements sharing the edge, and the local index of the edge from the perspective of the two elements, and an indication of the relative edge orientation).  The two element are referred to as `elementL` and `elementR`, but the choice of which element is `elementL` and which is `elementR` is arbitrary.  The length of the array is numInterfaces.  Unlike `bndryfaces`, the entries in the array do not have to be in any particular order.
+
+####Degree of Freedom Numbering Data
+`dofs`:  numDofPerNode x numNodesPerElement x numEl array.  Holds the degree of freedom number of each degree of freedom.
+
+`sparsity_bnds`:  2 x numDof array.  `sparsity_bnds[:, i]` holds the maximum, minimum degree of freedom numbers assoicated with degree of freedom `i`.  In this context, degrees of freedom `i` and `j` are associated if entry `(i,j)` of the jacobian is non-zero.  In actuality, `sparsity_bnds` need only define upper and lower bounds for degree of freedom associations (ie. they need not be tight bounds).  This array is used to to define the sparsity pattern of the jacobian matrix.
+
+`sparsity_nodebnds`:  2 x numNodes array.  `sparsity_bnds[:, i]` holds the maximum, minimum node associated with node `i`, similar the information stored in `sparsity_bnds` for degrees of freedom.
+
+
+####Mesh Coloring Data
+The NonlinearSolvers module uses algorithmic differentiation to compute the Jacobian.  Doing so efficiently requires perturbing multiple degrees of freedom simultaniously, but perturbing associated degrees of freedom at the same time leads to incorrect results.  Mesh coloring assigns each element of the mesh to a group (color) such that every degrees of freedom on each element is not associated with any other degree of freedom on any other element.
