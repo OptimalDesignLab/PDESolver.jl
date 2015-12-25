@@ -17,12 +17,9 @@ This requires all implementations have the same interface.
 
 The question of how to enforce interfaces, and how strongly to do so, is still an open question in Julia.
 Some relevant Github issues:
-
-5
-
-4935
-
-6975
+* [5](https://github.com/JuliaLang/julia/issues/5)
+* [4935](https://github.com/JuliaLang/julia/issues/4935)
+* [6975](https://github.com/JuliaLang/julia/issues/6975)
 
 
 One of the strongest arguments against the "functions as interfaces" idea is that for many applications, just storing data in an array is best.
