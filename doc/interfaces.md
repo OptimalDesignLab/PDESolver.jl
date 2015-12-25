@@ -52,6 +52,7 @@ The required fields of an `AbstractSolutionData are`:
   disassembleSolution::Function
   assembleSolution::Function
   multiplyA0inv::Function
+  majorIterationCallback::Function
 ```
 
 The purpose of these fields are:
@@ -83,6 +84,7 @@ Note that for Continuous Galerkin type discretization (as opposed to Discontinuo
 
 `assembleSolution`:  Function that takes an array such as `res` and performs an additive reduction to a vector such as `res_vec`.
                      This function must have the signature:
+
                      `assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)`
                      The argument `zero_resvec` determines whether `res_vec` is zeroed before the reduction is performed.
                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.
@@ -92,9 +94,15 @@ Note that for Continuous Galerkin type discretization (as opposed to Discontinuo
                   This function is used by time marching methods.
                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.
                   The function must have the signature:
+
                   `multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})`
 
 
+`majorIterationCallback`:  function called before every step of Newton's method or stage of an explicit time marching scheme.
+This function is used to do output and logging.
+The function must have the signature:
+
+`function majorIterationCallback(itr, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEulerData, opts)`
 
 ##AbstractMesh
 ODLCommonTools defines:
@@ -252,4 +260,92 @@ For example, in `color_mask_i = color_masks[i]; mask_elj = color_mask_i[j]`, the
 
 `neighbor_nums`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the element whose perturbation is affected element `i` when color `j` is being perturbed, or zero if element `i` is not affected by any perturbation.  
 
+###Other functions
+The mesh module must also define and export the functions
 
+
+```
+saveSolutionToMesh(mesh::MeshImplementationType, vec::AbstractVector)
+writeVisFiles(mesh::MeshImplementationType, fname::ASCIIString)`
+
+where the first function takes a vector of length `numDof` and saves it to the mesh, and the second writes Paraview files for the mesh, including the solution field.
+
+
+##Physics Module
+For every new physics to be solved, a new module should be created.
+The purpose of this module is to evaluate the equation:
+
+`dq/dt = f(q)`
+
+For steady problems, `dq/dt = 0` and the module evaluates the residual.
+For unsteady problems, the form `dq/dt = f(q)` is suitable for explicit time marching.
+
+###AbstractSolutionData Implementation
+
+Each physics module should define and export a subtype of `AbstractSolutionData{Tsol}`.
+The implementation of `AbstractSolutionData{Tsol}` must inherit the `Tsol` static parameter, and may have additional static parameters as well.
+It may also be helpful to define additional abstract types within the physics module to provide different levels of abstractions.
+For example, the Euler physics module defines:
+
+```
+abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
+abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol}
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres, var_type}
+```
+
+The first line is effectively just a name change and may not be necessary.
+The second line adds the static parameters `Tdim`, `Tres`, and `var_type` while inheriting the `Tsol` type from `AbstractEulerData`.
+`Tdim` is the dimensionality of the equation, `Tres` is the datatype of the residual variables, and `var_type` is a symbol indicating whether the equation is being solved with conservative or entropy variables.
+The third line defines a concrete type that implements all the features required of an `AbstractSolutionData`, and adds a static parameter `Tmsh`, the datatype of the mesh variables.  
+The additional static parameter is necessary because one field of `EulerData_` has type `Tmsh`.
+Note that there could be multiple implementations of `AbstractSolutionData` for the Euler equations, perhaps with different fields to store certain data or not.
+All these implementations will need to have the static parameters `Tsol`, `Tdim`, `Tres`, and `var_type`, so `EulerData` is defined as an abstract type, so all implementations can inherit from it.
+All high level function involved in evaluating the residual will take in an argument of type `EulerData`.
+Only when low level functions need to dispatch based on which implementation is used would it take in an `EulerData_` or another implementation.
+
+###Residual Evaluation
+In addition to the `AbstractSolutionData` implementation, each physics module must define and export a function with the signature
+
+`function_name(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)`
+
+where `EulerData` should be replaced with an appropriate type name for the physics module implementation of `AbstractSolutionData`.
+This function should use the `eqn.q` array to populate `eqn.res`.
+This must be done in such a way that algorithmic differentiation will work as described above.
+The physics module should *never* use `q_vec` or `res_vec`.
+
+###Initialization
+The physics module should also define and export an initialization function with the signature:
+
+`init(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, pmesh=mesh)`
+
+that performs all initialization required by the module.
+This function is called before the first residual evaluation, just after the `mesh`, `sbp`, and `eqn` objects are constructed.
+It must also do any initialization for the objects that could not be done during their construction.
+Currently, this only includes populating the `bndry_funcs` field of the `mesh` object.
+This cannot be done when the mesh is constructed because the mesh object should be independent of the physics.
+When using iterative solvers, there might be a second mesh object used for residual evaluations relating to the preconditioner.
+This mesh is called `pmesh` and should be initialized in the same way as the regular `mesh` object.
+
+###Initial Condition
+The physics module must export a dictionary called ICDict that maps strings to the functions that apply the initial condition to the entire mesh.
+These functions must have the signature:
+
+`fname(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, u0::AbstractVector)`
+
+where `u0` is a vector of length `numDof` that is populated with the initial condition.
+
+
+###Callbacks
+The physics module must have the `majorIterationCallback` function described in the `AbstractSolutionData` section.
+This function need not be exported
+
+A minor iteration callback function is being considered.
+
+
+
+ 
+
+##NonlinearSolver
+
+
+##Initialization of a Simulation 
