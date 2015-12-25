@@ -386,18 +386,19 @@ Note that retrieving values from a dictionary is very slow compared to accessing
 ##Initialization of a Simulation 
 Now that all the individual pieces have been described, here is how a simulation is launched.
 
+
+After step 5, the procedure becomes a bit more complicated because there are optional steps.
+Only the required steps are listed below.
+
 1, The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.
 
 2. Second, the `sbp` operator is constructed.
 
 3. The `mesh` object is constructed, using the options dictionary and the `sbp` operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.
 
-4. The `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects.  
+4. The `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects.
 
-5. The physics module is `init` function is called, which initializes the physics module and finishes any initialization that `mesh` and `eqn` objects require.
-
-At this point, the procedure becomes a bit more complicated because there are optional steps.
-Only the required steps are listed below.
+5. The physics module `init` function is called, which initializes the physics module and finishes any initialization that `mesh` and `eqn` objects require.
 
 6. The initial condition is applied to `eqn.q_vec`.
 
@@ -420,30 +421,30 @@ The state of the solver is determined entirely by the state of the objects that 
 ##Variable Naming Conventions
 In an attempt to make code more uniform and readable, certain variable names are reserved for certain uses.
 
-`mesh`:  object that implements `AbstractMesh`
-`pmesh`:  mesh used for preconditioning
-`sbp`:  Summation-by-Parts object
-`eqn`:  object that implements `AbstractSolutionData`
-`opts`: options dictionary
-`params`: parameter object (used for values that might be in `opts` but need to be accessed quickly)
-`x`: the first real coordinate direction
-`y`: the second real coordinate direction
-`xi`: the first parametric coordinate direction
-`eta`: the second parametric coordinate direction
-`h`:  mesh spacing
-`hx`: mesh spacing in x direction
-`hy`: mesh spacing in y direction
-`p`: pressure at a node
-`a`; speed of sound at a node
-`s`: entropy at a node
-`gamma`: specific heat ratio
-`gamma_1`: `gamma` - 1
-`R`: specific gas constant in ideal gas law (units J/(Kg * K) in SI)
-`delta_t`: time step
-`t`: current time
-`nrm`: a normal vector of some kind
-`A0`: the coefficient matrix of the time term at a node
-`Axi`: the flux jacobian at a node in the `xi` direction
-`Aeta`: the flux jacobian at a node in the `eta` direction
-`Ax`: the flux jacobian in the `x` direction at a node
-`Ay`: the flux jacobian in the `y` direction at a node
+* `mesh`:  object that implements `AbstractMesh`
+* `pmesh`:  mesh used for preconditioning
+* `sbp`:  Summation-by-Parts object
+* `eqn`:  object that implements `AbstractSolutionData`
+* `opts`: options dictionary
+* `params`: parameter object (used for values that might be in `opts` but need to be accessed quickly)
+* `x`: the first real coordinate direction
+* `y`: the second real coordinate direction
+* `xi`: the first parametric coordinate direction
+* `eta`: the second parametric coordinate direction
+* `h`:  mesh spacing
+* `hx`: mesh spacing in x direction
+* `hy`: mesh spacing in y direction
+* `p`: pressure at a node
+* `a`; speed of sound at a node
+* `s`: entropy at a node
+* `gamma`: specific heat ratio
+* `gamma_1`: `gamma` - 1
+* `R`: specific gas constant in ideal gas law (units J/(Kg * K) in SI)
+* `delta_t`: time step
+* `t`: current time
+* `nrm`: a normal vector of some kind
+* `A0`: the coefficient matrix of the time term at a node
+* `Axi`: the flux jacobian at a node in the `xi` direction
+* `Aeta`: the flux jacobian at a node in the `eta` direction
+* `Ax`: the flux jacobian in the `x` direction at a node
+* `Ay`: the flux jacobian in the `y` direction at a node
