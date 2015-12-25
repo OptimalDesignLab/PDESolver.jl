@@ -53,6 +53,7 @@ The required fields of an `AbstractSolutionData are`:
   assembleSolution::Function
   multiplyA0inv::Function
   majorIterationCallback::Function
+  params{Tsol...}::AbstractParamType
 ```
 
 The purpose of these fields are:
@@ -104,6 +105,12 @@ The function must have the signature:
 
 `function majorIterationCallback(itr, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEulerData, opts)`
 
+`params`:  user defined type that inherits from `AbstractParamType`.
+The purpose of this type is to store any variables that need to be quickly accessed or updated.
+The only required fields are:
+* `t::Float64`: hold the current time value
+* `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
+
 ##AbstractMesh
 ODLCommonTools defines:
 
@@ -151,7 +158,6 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
   # mesh coloring data
   numColors::Integer
   color_masks::AbstractArray{ AbstractArray{Number, 1}, 1}, 
-  neighbor_nums::AbstractArray{Integer, 2}
   pertNeighborEls::AbstractArray{Integer, 2}
 ```
 ####Counts
@@ -212,6 +218,7 @@ Unlike `bndryfaces`, the entries in the array do not have to be in any particula
 ####Degree of Freedom Numbering Data
 `dofs`:  `numDofPerNode` x `numNodesPerElement` x `numEl` array.
 Holds the degree of freedom number of each degree of freedom.
+Although the exact method used to assign dof numbers is not critical, all degrees of freedom on a node must be number sequentially.
 
 `sparsity_bnds`:  2 x `numDof` array.
 `sparsity_bnds[:, i]` holds the maximum, minimum degree of freedom numbers associated with degree of freedom `i`.
@@ -258,7 +265,7 @@ The fields required are:
 For example, in `color_mask_i = color_masks[i]; mask_elj = color_mask_i[j]`, the variable `mask_elj` is either a 1 or a zero, determining whether or not element `j` is perturbed as part of color `i`.
 
 
-`neighbor_nums`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the element whose perturbation is affected element `i` when color `j` is being perturbed, or zero if element `i` is not affected by any perturbation.  
+`pertNeighborEls`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the element whose perturbation is affected element `i` when color `j` is being perturbed, or zero if element `i` is not affected by any perturbation.  
 
 ###Other Functions
 The mesh module must also define and export the functions
@@ -327,6 +334,7 @@ When using iterative solvers, there might be a second mesh object used for resid
 This mesh is called `pmesh` and should be initialized in the same way as the regular `mesh` object.
 
 This function is called before the first residual evaluation, just after the `mesh`, `sbp`, and `eqn` objects are constructed.
+
 ###Initial Condition
 The physics module must export a dictionary called ICDict that maps strings to the functions that apply the initial condition to the entire mesh.
 These functions must have the signature:
@@ -341,8 +349,6 @@ The physics module must have the `majorIterationCallback` function described in 
 This function need not be exported
 
 A minor iteration callback function is being considered.
-
-
 
  
 
@@ -395,10 +401,49 @@ Only the required steps are listed below.
 
 6. The initial condition is applied to `eqn.q_vec`.
 
-7. A nonlinear solver is called.  Which solver is called and what parameters is uses are determined by the options dictionary.
+7. A nonlinear solver is called.  Which solver is called and what parameters it uses are determined by the options dictionary.
 
 8. Post-processing is done, if required by the options dictionary.
 
 ##Functional Programming
+An important aspect of the use of the `mesh`, `sbp`, `eqn`, and `opts` to define interfaces is that the physics modules and nonlinear solvers are written in a purely function programming style, which is to say that the behavior of every function is determined entirely by the arguments to the function, and the only effects of the function are to modify an argument or return a value.
+
+This property is important for writing generic, reusable code.
+For example, when using iterative solvers, a preconditioner is usually required, and constructing the preconditioner requires doing residual evaluations. 
+In some cases, the preconditioner will use a different mesh or a different mesh coloring.
+Because the physics modules are written in a functional style, they can be used to evaluate the residual on a different mesh simply by passing the residual evaluation function a different mesh object.
+
+A critical aspect of function programming is that there is *no global state*.
+The state of the solver is determined entirely by the state of the objects that are passed around.
+
 
 ##Variable Naming Conventions
+In an attempt to make code more uniform and readable, certain variable names are reserved for certain uses.
+
+`mesh`:  object that implements `AbstractMesh`
+`pmesh`:  mesh used for preconditioning
+`sbp`:  Summation-by-Parts object
+`eqn`:  object that implements `AbstractSolutionData`
+`opts`: options dictionary
+`params`: parameter object (used for values that might be in `opts` but need to be accessed quickly)
+`x`: the first real coordinate direction
+`y`: the second real coordinate direction
+`xi`: the first parametric coordinate direction
+`eta`: the second parametric coordinate direction
+`h`:  mesh spacing
+`hx`: mesh spacing in x direction
+`hy`: mesh spacing in y direction
+`p`: pressure at a node
+`a`; speed of sound at a node
+`s`: entropy at a node
+`gamma`: specific heat ratio
+`gamma_1`: `gamma` - 1
+`R`: specific gas constant in ideal gas law (units J/(Kg * K) in SI)
+`delta_t`: time step
+`t`: current time
+`nrm`: a normal vector of some kind
+`A0`: the coefficient matrix of the time term at a node
+`Axi`: the flux jacobian at a node in the `xi` direction
+`Aeta`: the flux jacobian at a node in the `eta` direction
+`Ax`: the flux jacobian in the `x` direction at a node
+`Ay`: the flux jacobian in the `y` direction at a node

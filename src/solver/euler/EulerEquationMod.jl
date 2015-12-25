@@ -80,7 +80,7 @@ If it is variable sized then macros give the advantage of doing location lookup
     * aoa : angle of attack (radians)
  
 """->
-type ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
+type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
