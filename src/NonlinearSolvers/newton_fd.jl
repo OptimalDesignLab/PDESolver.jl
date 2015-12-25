@@ -231,6 +231,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
       elseif jac_type == 2  # Julia sparse jacobian
 	println("calculating sparse FD jacobian")
+        #TODO: don't copy the giant array!
         res_copy = copy(eqn.res)  # copy unperturbed residual
  
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac)
@@ -260,10 +261,12 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
         @time calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
       elseif jac_type == 2  # Julia sparse jacobian 
 	      println("calculating sparse complex step jacobian")
-        res_dummy = []  # not used, so don't allocation memory
+        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+        println("typeof(res_dummy) = ", typeof(res_dummy))
+        println("size(res_dummy) = ", size(res_dummy))
         @time calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
       elseif jac_type == 3 # Petsc sparse jacobian
-        res_dummy = []  # not used, so don't allocation memory
+        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
 	use_dissipation_orig = eqn.params.use_dissipation
 	use_edgestab_orig = eqn.params.use_edgestab
         eqn.params.use_dissipation = opts["use_dissipation_prec"]
@@ -279,7 +282,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
       elseif jac_type == 4 # Petsc jacobian-vector product
 	# calculate preconditioner matrix only
-	res_dummy = []
+	res_dummy = Array(Float64, 0, 0, 0)
 	use_dissipation_orig = eqn.params.use_dissipation
 	use_edgestab_orig = eqn.params.use_edgestab
         eqn.params.use_dissipation = opts["use_dissipation_prec"]
@@ -610,6 +613,27 @@ end
   return nothing
 end
 
+
+@doc """
+### NonlinearSolvers.assembleResidual
+
+  This function takes the residual in eqn.res and performs an additive reduction
+  into res_vec.
+  This function wraps assembleSolution.
+
+  Inputs:
+    mesh: AbstractMesh
+    sbp:  SBP operator
+    eqn:  AbstractEquation object
+    opts: options dictionary
+    res_vec: residual vector to put the residual into
+
+  Outputs:
+    none
+
+  Aliasing restrictions: none
+
+"""->
 function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; assemble_edgeres=true, zero_resvec=true)
 # assembles all of the residuals into res_vec
 # no aliaising concerns
@@ -627,6 +651,24 @@ function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1};
 end
 
 
+@doc """
+### NonlinearSolvers.idsassembleSolution
+
+  This function performs the scatter q_vec -> eqn.q
+
+  Inputs:
+    mesh: AbstractMesh
+    sbp:  SBP operator
+    eqn:  AbstractEquation object
+    opts: options dictionary
+    q_vec: vector containing solution variables 
+
+  Outputs:
+    none
+
+  Aliasing Restrictions: none
+
+"""->
 function disassembleSolution{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
 # scatters the q_vec to the 3d array eqn.q
 # no aliasing concerns here
@@ -669,13 +711,28 @@ function calcResidual(mesh, sbp, eqn, opts, func)
 
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
 
-  res_0_norm = calcNorm(eqn, eqn.res_vec)
+  res_0_norm = calcNorm(eqn, eqn.res_vec, strongres=true)
 #  println("residual norm = ", res_0_norm)
 
  return res_0_norm
 end
 
+@doc """
+### NonlinearSolvers.calcJacVecProd_wrapper
 
+  This function is passed to Petsc so it can calculate Jacobian-vector products
+  Ax=b.
+
+  Inputs
+    A:  PetscMat object 
+    x:  PetscVec to multiply A with
+
+  Inputs/Outputs:
+    b:  PetscVec to store result in
+
+  Aliasing restrictions: see Petsc documentation
+
+"""->
 function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 # calculate Ax = b
 
@@ -719,8 +776,34 @@ end
 
 
 
+@doc """
+###NonlinearSolver.calcJacVecProd
 
-function calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, vec::AbstractVector, b::AbstractVector)
+  This function calculates a Jacobian vector product Ax=b without explicitly 
+  computing the Jacobian.
+
+  The Jacobian refers to the Jacobian of the point stored in eqn.q_vec
+  Inputs:
+    newton_data:  NewtonData object
+    mesh: AbstractMesh
+    sbp:  SBP operator
+    eqn:  AbstractEquation object
+    opts: options dictionary
+    pert: perturbation to use for the algorithmic differentiation.  Currently,
+          only complex numbers are supported.
+    func: residual evaluation function
+    vec:  the x vector in Ax=b.  Can be AbstractVector type.
+    b:    location to store the result (the b an Ax=b).  Can be any
+          AbstractVector type
+
+  Outputs:
+    none
+
+
+  Aliasing restrictions: vec, b, and eqn.q must not alias each other.
+
+"""
+function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, func::Function, vec::AbstractVector, b::AbstractVector)
 # calculates the product of the jacobian with the vector vec using a directional
 # derivative
 # only intended to work with complex step
@@ -797,8 +880,28 @@ function calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, vec::Abst
 end
 
   
+@doc """
+### NonlinearSolvers.calcJacFD
 
-function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac)
+  This function calculates the Jacobian using finite differences, perturbing
+  one degree of freedom at a time.  This is slow and not very accurate.
+
+  Inputs:
+    newton_data:  NewtonData object
+    mesh: AbstractMesh
+    sbp:  SBP operator
+    eqn:  AbstractEquation object
+    opts: options dictionary
+    pert: perturbation to use the finite differences.  Must be of type Tsol.
+    func: residual evaluation function
+    res_0: vector containing residual at the point the Jacobian is calculated
+
+  Inputs/Outputs:
+    jac:: Jacobian matrix to be populated.  Must be a dense matrix
+
+  Aliasing restrictions: res_0 must not alias eqn.res_vec
+"""->
+function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray)
 # calculate the jacobian using finite difference
   #println(res_0)
   (m,n) = size(jac)
@@ -855,7 +958,35 @@ function addDiagonal(mesh, sbp, eqn, jac)
 
  end
 
-function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0, pert, jac::Union(SparseMatrixCSC, PetscMat))
+@doc """
+### NonlinearSolvers.calcJacobianSparse
+
+  This function calculate the Jacobian sparsely (only the entries 
+    within the sparsity bounds), using either finite differences or algorithmic 
+    differentiation.
+
+  Inputs:
+    newton_data:  NewtonData object
+    mesh: AbstractMesh
+    sbp:  SBP operator
+    eqn:  AbstractEquation object
+    opts: options dictionary
+    pert: perturbation to use for the algorithmic differentiation.  Currently,
+          only complex numbers are supported.
+    func: residual evaluation function
+    res_0: element-based (3 dimensional) array containing the residual evaluated           at the point where the Jacobian is being calculated.
+           This is only used for finite differences (can be a 0 x 0 x 0 array
+           otherwise).
+
+  Inputs/Outputs:
+    jac:  Jacobian matrix.  Must be a sparese matrix type of some kind, 
+          (including PetscMat).
+
+  Aliasing restrictions: res_0 must not alias eqn.res
+
+ 
+"""->
+function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, pert, jac::Union(SparseMatrixCSC, PetscMat))
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type

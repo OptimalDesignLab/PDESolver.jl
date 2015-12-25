@@ -19,7 +19,7 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   jac = SparseMatrixCSC(mesh.sparsity_bnds, typeof(real(eqn.res[1])))
   epsilon = 1e-20
   pert = complex(0, epsilon)
-  NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, EulerEquationMod.evalEuler, [], pert, jac)
+  NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, EulerEquationMod.evalEuler, Array(Float64, 0,0,0), pert, jac)
 
   newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
   v = ones(mesh.numDof)  # vector to multiply jacobian against
