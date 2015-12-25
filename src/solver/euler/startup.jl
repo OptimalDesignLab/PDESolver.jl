@@ -79,7 +79,7 @@ smb_name = opts["smb_name"]
 Tdim = opts["dimensions"]
 
 # create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=opts["coloring_distance"])
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
 
 if opts["jac_type"] == 3 || opts["jac_type"] == 4
   pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])

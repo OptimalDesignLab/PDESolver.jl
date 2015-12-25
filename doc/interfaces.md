@@ -353,7 +353,7 @@ Newton's method can solve steady nonlinear problems.
 
 The RK4 function has the signature:
 
-`rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSoltuionData, opts; kwargs...)`
+`rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; kwargs...)`
 
 where `f` is the residual evaluation function described above.
 For RK4, `Tsol=Tres=Tmsh=Float64` because RK4 does not do any kind of algorithmic differentiation.
@@ -369,5 +369,34 @@ If the complex step method is used, then `Tsol=Tres=Complex128` and `Tmsh=Float6
 The startup.jl script that drives the simulation run should determine these values automatically based on the options dictionary `opts`.
 
 
+##Input Options
+Many of the components of PDESolver have different options that control how they work and what they do.
+In order to  provide a unified method of specifying these options, an dictionary of type `Dict{Any, Any}` is read in from a disk file.
+This dictionary (called `opts` in function signatures), is passed to all high and mid level function so they can use values in the dictionary to determine their control flow.
+Low level functions need to be extremely efficient, so they cannot have conditional logic, therefore they are not passed the dictionary.
+Note that retrieving values from a dictionary is very slow compared to accessing the fields of a type, so all values that are accessed repeatedly should be stored as the field of a type.
+
 ##Initialization of a Simulation 
+Now that all the individual pieces have been described, here is how a simulation is launched.
+
+First, the options dictionary is read in.  
+Default values are supplied for any key that is not specified, if a reasonable default value exists.
+
+Second, the `sbp` operator is constructed.
+
+Third, the `mesh` object is constructed, using the options dictionary and the `sbp` operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.
+
+Fourth, the `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects.  
+
+Fifth, the physics module is `init` function is called, which initializes the physics module and finishes any initialization that `mesh` and `eqn` objects require.
+
+At this point, the procedure becomes a bit more complicated because there are optional steps.
+Only the required steps are listed below.
+
+Sixth, the initial condition is applied to `eqn.q_vec`.
+
+Seventh, a nonlinear solver is called.  Which solver is called and what parameters is uses are determined by the options dictionary.
+
+Eighth, post-processing is done, if required by the options dictionary.
+
 
