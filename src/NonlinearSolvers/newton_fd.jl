@@ -647,7 +647,7 @@ end
       function (which performs eqn.q -> eqn.res) that performs eqn.q_vec ->
       eqn.res_vec.
 
-    The norm of the residual (using the SBP norm) is calculated and returned
+    The norm of the strong residual (using the SBP norm) is calculated and returned (even though the weak form residual is stores in eq.res_vec).
 
     Inputs:
       mesh:  an AbstractMesh object
@@ -655,30 +655,20 @@ end
       eqn:  an AbstractSolutionData object
       opts:  options dictonary
       func: residual evaluation function
-      res_0:  a temporary vector of length numDof.
 
     Outputs:
       res_0_norm:  norm of residual
 
-    Aliasing restrictions: res_0 should not be eqn.res_vec if 
+    Aliasing restrictions: none
 """->
 function calcResidual(mesh, sbp, eqn, opts, func)
 # calculate the residual and its norm
 
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   func(mesh, sbp, eqn, opts)
-#  res_0[:] = real(eqn.res_vec)  # is there an unnecessary copy here?
 
-  fill!(eqn.res_vec, 0.0)
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
 
-#=
-  for j=1:m
-    res_0[j] = real(eqn.res_vec[j])
-  end
-
-  strongres = eqn.Minv.*res_0
-=#
   res_0_norm = calcNorm(eqn, eqn.res_vec)
 #  println("residual norm = ", res_0_norm)
 
