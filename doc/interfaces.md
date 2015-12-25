@@ -300,8 +300,8 @@ The second line adds the static parameters `Tdim`, `Tres`, and `var_type` while 
 The third line defines a concrete type that implements all the features required of an `AbstractSolutionData`, and adds a static parameter `Tmsh`, the datatype of the mesh variables.  
 The additional static parameter is necessary because one field of `EulerData_` has type `Tmsh`.
 Note that there could be multiple implementations of `AbstractSolutionData` for the Euler equations, perhaps with different fields to store certain data or not.
-All these implementations will need to have the static parameters `Tsol`, `Tdim`, `Tres`, and `var_type`, so `EulerData` is defined as an abstract type, so all implementations can inherit from it.
-All high level function involved in evaluating the residual will take in an argument of type `EulerData`.
+All these implementations will need to have the static parameters `Tsol`, `Tdim`, `Tres`, and `var_type`, so `EulerData` is defined as an abstract type, allowing all implementations to inherit from it.
+All high level functions involved in evaluating the residual will take in an argument of type `EulerData`.
 Only when low level functions need to dispatch based on which implementation is used would it take in an `EulerData_` or another implementation.
 
 ###Residual Evaluation
@@ -310,7 +310,7 @@ In addition to the `AbstractSolutionData` implementation, each physics module mu
 `function_name(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)`
 
 where `EulerData` should be replaced with an appropriate type name for the physics module implementation of `AbstractSolutionData`.
-This function should use the `eqn.q` array to populate `eqn.res`.
+This function should use the `eqn.q` array to populate `eqn.res` with `dq/dt = f(q)`.
 This must be done in such a way that algorithmic differentiation will work as described above.
 The physics module should *never* use `q_vec` or `res_vec`.
 
@@ -320,13 +320,13 @@ The physics module should also define and export an initialization function with
 `init(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, pmesh=mesh)`
 
 that performs all initialization required by the module.
-This function is called before the first residual evaluation, just after the `mesh`, `sbp`, and `eqn` objects are constructed.
 It must also do any initialization for the objects that could not be done during their construction.
 Currently, this only includes populating the `bndry_funcs` field of the `mesh` object.
 This cannot be done when the mesh is constructed because the mesh object should be independent of the physics.
 When using iterative solvers, there might be a second mesh object used for residual evaluations relating to the preconditioner.
 This mesh is called `pmesh` and should be initialized in the same way as the regular `mesh` object.
 
+This function is called before the first residual evaluation, just after the `mesh`, `sbp`, and `eqn` objects are constructed.
 ###Initial Condition
 The physics module must export a dictionary called ICDict that maps strings to the functions that apply the initial condition to the entire mesh.
 These functions must have the signature:
@@ -347,8 +347,8 @@ A minor iteration callback function is being considered.
  
 
 ##NonlinearSolvers
-The NonlinearSolvers module does not use any abstract types, but it does place some requirements on the other components of PDESolver.
-It has two main components: a 4th order Runge-Kutta (RK4) explicit time marching method and a Newton's method.
+The `NonlinearSolvers` module does not define any abstract types, but it does place some requirements on the other components of PDESolver.
+`NonlinearSolvers` has two main components: a 4th order Runge-Kutta (RK4) explicit time marching method and a Newton's method.
 The RK4 method can do either pseudo-time stepping for steady problems or real time stepping for unsteady problems.
 Newton's method can solve steady nonlinear problems.
 
@@ -357,7 +357,7 @@ The RK4 function has the signature:
 `rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; kwargs...)`
 
 where `f` is the residual evaluation function described above.
-For RK4, `Tsol=Tres=Tmsh=Float64` because RK4 does not do any kind of algorithmic differentiation.
+For RK4, the static parameters should be `Tsol=Tres=Tmsh=Float64` because RK4 does not do any kind of algorithmic differentiation.
 
 The Newton's method function has the signature:
 
@@ -380,24 +380,25 @@ Note that retrieving values from a dictionary is very slow compared to accessing
 ##Initialization of a Simulation 
 Now that all the individual pieces have been described, here is how a simulation is launched.
 
-First, the options dictionary is read in.  
-Default values are supplied for any key that is not specified, if a reasonable default value exists.
+1, The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.
 
-Second, the `sbp` operator is constructed.
+2. Second, the `sbp` operator is constructed.
 
-Third, the `mesh` object is constructed, using the options dictionary and the `sbp` operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.
+3. The `mesh` object is constructed, using the options dictionary and the `sbp` operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.
 
-Fourth, the `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects.  
+4. The `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects.  
 
-Fifth, the physics module is `init` function is called, which initializes the physics module and finishes any initialization that `mesh` and `eqn` objects require.
+5. The physics module is `init` function is called, which initializes the physics module and finishes any initialization that `mesh` and `eqn` objects require.
 
 At this point, the procedure becomes a bit more complicated because there are optional steps.
 Only the required steps are listed below.
 
-Sixth, the initial condition is applied to `eqn.q_vec`.
+6. The initial condition is applied to `eqn.q_vec`.
 
-Seventh, a nonlinear solver is called.  Which solver is called and what parameters is uses are determined by the options dictionary.
+7. A nonlinear solver is called.  Which solver is called and what parameters is uses are determined by the options dictionary.
 
-Eighth, post-processing is done, if required by the options dictionary.
+8. Post-processing is done, if required by the options dictionary.
 
+##Functional Programming
 
+##Variable Naming Conventions
