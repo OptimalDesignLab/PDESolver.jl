@@ -141,7 +141,6 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   step_fac = 1.0 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
   Tsol = typeof(eqn.res_vec[1])
-#  jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   res_0 = zeros(Tjac, m)  # function evaluated at u0
   res_0_norm = 0.0  # norm of res_0
   delta_res_vec = zeros(Tjac, m)  # newton update
@@ -149,10 +148,10 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   step_norm_1 = zero(Tjac) # norm of previous newton update
 
 
+  ##### Write iteration 0 output #####
   # open file to write convergence data to
   # append to be on the safe side
   fconv = open("convergence.dat", "a+")
-
   eqn.majorIterationCallback(0, mesh, sbp, eqn, opts)
 
   # evaluating residual at initial condition
@@ -163,9 +162,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   println(fconv, 0, " ", res_0_norm, " ", 0)
   flush(fconv)
 
-
-
-  # write rhs to file
+  # post-residual iteration 0 output
   if write_rhs
     writedlm("rhs0.dat", res_0)
   end
@@ -179,19 +176,19 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   end
 
   # check if initial residual satisfied absolute or relative tolerances
-  if res_0_norm < res_abstol || (res_reltol0 > 0 && res_0_norm/res_reltol0 < res_reltol)
+  if res_0_norm < res_abstol || 
+    (res_reltol0 > 0 && res_0_norm/res_reltol0 < res_reltol)
 
+    # print which criteria was statisfied
     if res_0_norm/res_reltol0 < res_reltol
       println("Initial condition satisfied res_reltol with relative residual ", res_0_norm/res_reltol0)
       println("Residual ", res_0_norm)
     else
      println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
-   end
-#   println("writing to convergence.dat")
-#   println(fconv, i, " ", res_0_norm, " ", 0.0)
-   # no need to assemble q into q_vec because it never changed
+    end
+    # no need to assemble q into q_vec because it never changed
 
-   close(fconv)
+    close(fconv)
 
     if jac_type == 3
       destroyPetsc(jac, jacp, x, b, ksp)
@@ -199,7 +196,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
 
    return nothing
- end
+ end  # end if tolerances satisfied
 
  println("res_reltol0 = ", res_reltol0)
  if res_reltol0 > 0  # use the supplied res_reltol0 value
@@ -351,7 +348,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     end
 
     # do the full eigenvalue decomposition
-    # if request and if julia owns the Jacobian matrix
+    # if requested and if julia owns the Jacobian matrix
     if  write_eigdecomp && ( jac_type == 1 || jac_type == 2)
       println("doing eigen decomposition")
       # make a dense jacobian so we can get *all* the eigenvalues and vectors
@@ -363,7 +360,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       writedlm("eigdecomp_imag$i.dat", imag(D))
       writedlm("eigdecomp_realvecs$i.dat", real(V))
       writedlm("eigdecomp_imagvecs$i.dat", imag(V))
-    elseif write_eigdecomp && (jac_type != 1 && jac_type != 2)
+    elseif write_eigdecomp # && we can't calculate it
       println(STDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
 
     end
@@ -378,7 +375,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
-    elseif jac_type == 3 || jac_type == 4  # petsc
+    elseif jac_type == 3 || jac_type == 4  # petsc jacobian
       @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec)
     end
     
@@ -387,7 +384,9 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     println("step_norm = ", step_norm)
 
     # perform Newton update
-    eqn.q_vec[:] += step_fac*delta_res_vec  # update q_vec
+    for i=1:m
+      eqn.q_vec[i] += step_fac*delta_res_vec[i]
+    end
     
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts)
  
@@ -418,7 +417,6 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
 
     # write to convergence file
-    println("i = ", i)
     println(fconv, i, " ", res_0_norm, " ", step_norm)
     println("printed to convergence.dat")
     flush(fconv)
@@ -444,7 +442,10 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     end
 
      # put residual into eqn.res_vec
-     eqn.res_vec[:] = res_0
+     for i=1:m
+       eqn.res_vec[i] = res_0[i]
+     end
+
      close(fconv)
 
      if jac_type == 3
@@ -453,14 +454,16 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
     
      return nothing
-   end
+   end  # end if tolerances satisfied
 
     if (step_norm < step_tol)
       println("Newton iteration converged with step_norm = ", step_norm)
       println("Final residual = ", res_0_norm)
 
       # put residual into eqn.res_vec
-      eqn.res_vec[:] = res_0
+      for i=1:m
+        eqn.res_vec[i] = res_0[i]
+      end
       close(fconv)
       
       if jac_type == 3
@@ -621,7 +624,32 @@ function disassembleSolution{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1}
 end
 
 
+@doc """
+### NonlinearSolvers.calcResidual
 
+  This function takes the eqn object with the solution varaibles stored in
+    q_vec, scatters them into q, evaluates the residual, and then gathers the 
+    residual values into res_vec.
+
+    Effectively, this is a wrapper around the physics module residual evaluation
+      function (which performs eqn.q -> eqn.res) that performs eqn.q_vec ->
+      eqn.res_vec.
+
+    The norm of the residual (using the SBP norm) is calculated and returned
+
+    Inputs:
+      mesh:  an AbstractMesh object
+      sbp:  an SBP operator
+      eqn:  an AbstractSolutionData object
+      opts:  options dictonary
+      func: residual evaluation function
+      res_0:  a temporary vector of length numDof.
+
+    Outputs:
+      res_0_norm:  norm of residual
+
+    Aliasing restrictions: res_0 should not be eqn.res_vec if 
+"""->
 function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 # calculate the residual and its norm
 
@@ -641,7 +669,7 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
 
   strongres = eqn.Minv.*res_0
   res_0_norm = calcNorm(eqn, strongres)
-  println("residual norm = ", res_0_norm)
+#  println("residual norm = ", res_0_norm)
 
  return res_0_norm
 end

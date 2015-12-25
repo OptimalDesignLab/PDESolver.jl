@@ -387,7 +387,7 @@ Note that retrieving values from a dictionary is very slow compared to accessing
 Now that all the individual pieces have been described, here is how a simulation is launched.
 
 
-After step 5, the procedure becomes a bit more complicated because there are optional steps.
+After step 4, the procedure becomes a bit more complicated because there are optional steps.
 Only the required steps are listed below.
 
 1, The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.
