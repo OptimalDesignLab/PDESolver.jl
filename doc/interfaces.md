@@ -345,7 +345,29 @@ A minor iteration callback function is being considered.
 
  
 
-##NonlinearSolver
+##NonlinearSolvers
+The NonlinearSolvers module does not use any abstract types, but it does place some requirements on the other components of PDESolver.
+It has two main components: a 4th order Runge-Kutta (RK4) explicit time marching method and a Newton's method.
+The RK4 method can do either pseudo-time stepping for steady problems or real time stepping for unsteady problems.
+Newton's method can solve steady nonlinear problems.
+
+The RK4 function has the signature:
+
+`rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSoltuionData, opts; kwargs...)`
+
+where `f` is the residual evaluation function described above.
+For RK4, `Tsol=Tres=Tmsh=Float64` because RK4 does not do any kind of algorithmic differentiation.
+
+The Newton's method function has the signature:
+
+`newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; kwargs...)`
+
+where `pmesh` is the preconditioning mesh object, used for constructing the preconditioner for an iterative solver.
+The values of the static parameters for the `mesh` and `eqn` objects depend on the method used for calculating the jacobian `dR/dq` where `R` is the residual.
+If finite differences are used, then `Tsol=Tres=Tmsh=Float64` is required.
+If the complex step method is used, then `Tsol=Tres=Complex128` and `Tmsh=Float64` is required.
+The startup.jl script that drives the simulation run should determine these values automatically based on the options dictionary `opts`.
 
 
 ##Initialization of a Simulation 
+

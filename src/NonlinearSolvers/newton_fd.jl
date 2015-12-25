@@ -76,7 +76,7 @@ end
     func must have the signature func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec) 
 
 """->
-function newton(func, mesh, sbp, eqn, opts, pmesh=mesh; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
+function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences

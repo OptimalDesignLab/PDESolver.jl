@@ -24,7 +24,7 @@ rk4
   This function does 4th order Runge Kutta time stepping
 
   Arguments:
-    * f  : function to call
+    * f  : function evaluation
     * h  : time step size
     * t_max : time value to stop time stepping (time starts at 0)
     * mesh : AbstractMesh
@@ -37,7 +37,7 @@ rk4
    The eqn.q_vec should hold the whichever variables (conservative or
    entropy) that the simulation should use.
 """->
-function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0, real_time=false) 
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   #=
