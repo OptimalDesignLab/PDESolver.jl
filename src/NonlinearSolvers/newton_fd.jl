@@ -1100,7 +1100,28 @@ return nothing
 end
 
 
+@doc """
+### NonlinearSolver.assembleElement
+  
+  This function adds the contribution of one element to the Petsc Jacobian, if
+  finite differences were used to calculate the entries.
 
+  Inputs:
+    mesh:  AbstractMesh object
+    eqn:  AbstractEquation
+    res_arr: element-based (3D) array of perturbed residual values
+    res_0:  element-based (3D) array of non-perturbed residual values
+    el_res: element number of the element we are observing the change in
+    el_pert: element number of the element that was perturbed
+    dof_pert: the degree of freedom number of the perturbed dof
+    epsilon: magnitude of perturbation
+
+  Inputs/Outputs:
+    jac: Petsc Jacobian object
+
+  Aliasing restrictions: res_arr and res_0 must not alias each other.
+
+"""->
 # finite difference
 function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
 # assemble an element contribution into jacobian
@@ -1144,7 +1165,30 @@ return nothing
 
 end
 
-# finite difference Petsc
+
+@doc """
+### NonlinearSolver.assembleElement
+  
+  This function adds the contribution of one element to the Julia 
+  SparseMatrixCSC Jacobian, if finite differences were used to calculate the 
+  entries.
+
+  Inputs:
+    mesh:  AbstractMesh object
+    eqn:  AbstractEquation
+    res_arr: element-based (3D) array of perturbed residual values
+    res_0:  element-based (3D) array of non-perturbed residual values
+    el_res: element number of the element we are observing the change in
+    el_pert: element number of the element that was perturbed
+    dof_pert: the degree of freedom number of the perturbed dof
+    epsilon: magnitude of perturbation
+
+  Inputs/Outputs:
+    jac: SparseMatrixCSC Jacobian object
+
+  Aliasing restrictions: res_arr and res_0 must not alias each other.
+
+"""->
 function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0, el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
@@ -1169,8 +1213,22 @@ return nothing
 end
 
 
+@doc """
+### NonlinearSolvers.calcJacRow
 
+  This function extracts the entries for one column of the Jacobian from two residual evaluates that come from finite differences.
 
+  Inputs:
+    res_0: vector of unperturbed residuala values
+    res: vector of perturbed residual values
+    epsilon: magnitude of perturbation
+
+  Inputs/Outputs:
+    jac_row = vector to be populated with the Jacobian entries
+
+  Aliasing restrictions: res_0 and res cannot alias (obviously).
+
+"""->
 function calcJacRow{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
@@ -1188,7 +1246,26 @@ end
 
 
 
+@doc """
+### NonlinearSolvers.calcJacComplex
 
+  This function calculates the Jacobian using finite differences, perturbing
+  one degree of freedom at a time.  This is slow and not very accurate.
+
+  Inputs:
+    newton_data:  NewtonData object
+    mesh: AbstractMesh
+    sbp:  SBP operator
+    eqn:  AbstractEquation object
+    opts: options dictionary
+    pert: perturbation to use.  Must be of type Tsol.
+    func: residual evaluation function
+
+  Inputs/Outputs:
+    jac:: Jacobian matrix to be populated.  Must be a dense matrix
+
+  Aliasing restrictions: res_0 must not alias eqn.res_vec
+"""->
 function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 
   epsilon = norm(pert)  # complex step perturbation
@@ -1226,7 +1303,28 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 end
 
 
+@doc """
+### NonlinearSolver.assembleElement
+  
+  This function adds the contribution of one element to the PetscMat Jacobian, 
+  if algorthmic differentiation was used to calculate the entries.
 
+  Inputs:
+    mesh:  AbstractMesh object
+    eqn:  AbstractEquation
+    res_arr: element-based (3D) array of perturbed residual values
+    res_0:  element-based (3D) array of non-perturbed residual values (not used)
+    el_res: element number of the element we are observing the change in
+    el_pert: element number of the element that was perturbed
+    dof_pert: the degree of freedom number of the perturbed dof
+    epsilon: magnitude of perturbation
+
+  Inputs/Outputs:
+    jac: PetscMat Jacobian object
+
+  Aliasing restrictions: res_arr and res_0 must not alias each other.
+
+"""->
 # for complex numbers
 function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::PetscMat)
 # assemble an element contribution into jacobian
@@ -1262,8 +1360,29 @@ return nothing
 end
 
 
+@doc """
+### NonlinearSolver.assembleElement
+  
+  This function adds the contribution of one element to the Julia 
+  SparseMatrixCSC Jacobian, if algorthmic differentiation was used to 
+  calculate the entries.
 
+  Inputs:
+    mesh:  AbstractMesh object
+    eqn:  AbstractEquation
+    res_arr: element-based (3D) array of perturbed residual values
+    res_0:  element-based (3D) array of non-perturbed residual values
+    el_res: element number of the element we are observing the change in
+    el_pert: element number of the element that was perturbed
+    dof_pert: the degree of freedom number of the perturbed dof
+    epsilon: magnitude of perturbation
 
+  Inputs/Outputs:
+    jac: SparseMatrixCSC Jacobian object
+
+  Aliasing restrictions: res_arr and res_0 must not alias each other.
+
+"""->
 function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol}, res_arr, res_0,  el_res::Integer, el_pert::Integer, dof_pert::Integer, epsilon, jac::SparseMatrixCSC)
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
@@ -1296,8 +1415,25 @@ return nothing
 end
 
 
+@doc """
+### NonlinearSolvers.applyPerturbation
 
-function applyPerturbation(arr, mask, pert, i, j)
+  This function applies a perturbation to a the specified degree of freedom
+  on each element according to a mask.
+
+  Inputs:
+    mask:  vector of values of length numEl, used to mask the application of
+           the perturbation.
+    pert: perturbation to apply.  Can be any datatype
+    i: local degree of freedom number (in range 1:numDofPerNode) to perturb
+    j: local node number (in range 1:numNodesPerElement) to perturb
+
+  Inputs/Outputs:
+    arr: element based (3D) array of values to perturb
+
+  Aliasing restrictions: none
+"""->
+function applyPerturbation(arr::Abstract3DArray, mask::AbstractVector, pert, i, j)
   # applys perturbation puert to array arr according to mask mask
   # i, j specify the dof, node number within arr
   # the length of mask must equal the third dimension of arr
@@ -1316,7 +1452,22 @@ function applyPerturbation(arr, mask, pert, i, j)
   return nothing
 end
 
- 
+ @doc """
+### NonlinearSolvers.calcJacRow
+
+  This function extracts the entries for one column of the Jacobian from a 
+  complex step residual evaluation
+
+  Inputs:
+    res: vector of perturbed residual values
+    epsilon: magnitude of perturbation
+
+  Inputs/Outputs:
+    jac_row = vector to be populated with the Jacobian entries
+
+  Aliasing restrictions: none
+
+"""->
 function calcJacRow{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
@@ -1332,7 +1483,32 @@ return nothing
 end
 
 
+@doc """
+### NonlinearSolver.createPetscData
 
+  This function creates all the objects needed to use the Petsc solver.
+
+  Inputs:
+    mesh: AbstractMesh object
+    pmesh: AbstractMesh object used for preconditioning
+    sbp: SBP operator
+    eqn: AbstractSolutionData object
+    opts: options dictonary
+    newton_data:  newton iteration object
+    func: residual evaluation function
+
+  Outputs:
+    A: PetscMat for the Jacobian
+    Ap: PetscMat for the preconditioning Jacobian
+    x: PetscVec for the solution of Ax=b
+    b: Petscvec for the b in Ax=b
+    ksp: KSP context
+    ctx: the context for the KSP context.  Is a tuple of all the objects other
+         than A, x, and b needed to do jacobian vector products
+
+    Aliasing restrictions: none
+
+"""->
 function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, newton_data::NewtonData, func)
 # initialize petsc and create Jacobian matrix A, and vectors x, b, and the
 # ksp context
@@ -1496,6 +1672,14 @@ return A, Ap, x, b, ksp, ctx
 
 end
 
+@doc """
+### NonlinearSolvers.destroyPetsc
+
+  Destroy all the objects when finished with Petsc
+
+  Inputs: see createPetscData
+
+"""->
 function destroyPetsc(A::PetscMat, Ap::PetscMat, x::PetscVec,  b::PetscVec, ksp::KSP)
 # destory Petsc data structures, finalize Petsc
 
@@ -1510,7 +1694,29 @@ return nothing
 
 end
 
+@doc """
+### NonlinearSolver.petscSolve
 
+  This function performs the petsc solve x = inv(A)*b. More specifically, it 
+  copies he right hand side into the PetscVec b, assembles them, and performs
+  the solve.
+
+  Inputs:
+    newton_data: Newton's method object
+    A:  PetscMat that is the Jacobian
+    Ap: PetscMat that is the preconditioner
+    x: PetscVec to store the solution in
+    b: PetscVec to put the right hand side in
+    ksp:  KSP context
+    opts: options dictonary
+    res_0: vector to use for the right hand side
+
+  Inputs/Outputs:
+    delta_res_vec: julia vector ot return the solution x in
+
+  Aliasing restrictions: none
+
+"""->
 function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector )
 
   # solve the system for the newton step, write it to delta_res_vec
