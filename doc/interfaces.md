@@ -260,13 +260,14 @@ For example, in `color_mask_i = color_masks[i]; mask_elj = color_mask_i[j]`, the
 
 `neighbor_nums`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the element whose perturbation is affected element `i` when color `j` is being perturbed, or zero if element `i` is not affected by any perturbation.  
 
-###Other functions
+###Other Functions
 The mesh module must also define and export the functions
 
 
 ```
 saveSolutionToMesh(mesh::MeshImplementationType, vec::AbstractVector)
-writeVisFiles(mesh::MeshImplementationType, fname::ASCIIString)`
+writeVisFiles(mesh::MeshImplementationType, fname::ASCIIString)
+```
 
 where the first function takes a vector of length `numDof` and saves it to the mesh, and the second writes Paraview files for the mesh, including the solution field.
 
