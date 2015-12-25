@@ -156,8 +156,13 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
   # evaluating residual at initial condition
   println("evaluating residual at initial condition")
-  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func)
   println("res_0_norm = ", res_0_norm)
+
+  # extract the real components to res_0
+  for i=1:m
+    res_0[i] = real(eqn.res_vec[i])
+  end
 
   println(fconv, 0, " ", res_0_norm, " ", 0)
   flush(fconv)
@@ -411,7 +416,12 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
-    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func, res_0)
+    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func)
+    # extract real component to res_0
+    for i=1:m
+      res_0[i] = real(eqn.res_vec[i])
+    end
+
     println("residual norm = ", res_0_norm)
     println("relative residual ", res_0_norm/res_reltol_0)
 
@@ -515,7 +525,9 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
 
    # put residual into eqn.res_vec
-   eqn.res_vec[:] = res_0
+   for i=1:m
+     eqn.res_vec[i] = res_0[i]
+   end
  
 
   if jac_type == 3
@@ -650,10 +662,8 @@ end
 
     Aliasing restrictions: res_0 should not be eqn.res_vec if 
 """->
-function calcResidual(mesh, sbp, eqn, opts, func, res_0)
+function calcResidual(mesh, sbp, eqn, opts, func)
 # calculate the residual and its norm
-
-  m = length(res_0)
 
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   func(mesh, sbp, eqn, opts)
@@ -662,13 +672,14 @@ function calcResidual(mesh, sbp, eqn, opts, func, res_0)
   fill!(eqn.res_vec, 0.0)
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
 
-
+#=
   for j=1:m
     res_0[j] = real(eqn.res_vec[j])
   end
 
   strongres = eqn.Minv.*res_0
-  res_0_norm = calcNorm(eqn, strongres)
+=#
+  res_0_norm = calcNorm(eqn, eqn.res_vec)
 #  println("residual norm = ", res_0_norm)
 
  return res_0_norm

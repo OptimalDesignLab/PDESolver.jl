@@ -117,8 +117,8 @@ if haskey(ICDict, Relfunc_name)
     convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
   end
 #  println("eqn.q_vec = ", eqn.q_vec)
-  res_real = zeros(mesh.numDof)
-  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
+  res_real = real(eqn.res_vec)
 #  println("res_real = \n", res_real)
 #  println("eqn.res_vec = ", eqn.res_vec)
 #  println("res_real = ", res_real)
@@ -161,8 +161,7 @@ end
 
 if opts["calc_trunc_error"]  # calculate truncation error
   println("\nCalculating residual for truncation error")
-  res_real = zeros(mesh.numDof)
-  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
 
   f = open("error_trunc.dat", "w")
   println(f, tmp)
