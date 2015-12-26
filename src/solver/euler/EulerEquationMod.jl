@@ -375,10 +375,18 @@ end  # end of type declaration
 @doc """
 ### EulerEquationMod.calcMassMatrixInverse
 
-  This function calculates the inverse mass matrix and stores it in eqn.Minv.
+  This function calculates the inverse mass matrix and returns it.
   Because we use SBP operators, the mass matrix is diagonal, so it is stored
   in a vector.  mesh.dofs is used to put the components of the inverse
   mass matrix in the same place as the corresponding values in eqn.res_vec
+
+  Arguments:
+    mesh: AbstractMesh
+    sbp: SBP operator
+    eqn: an implementation of EulerData. Does not have to be fully initialized.
+
+  Outputs:
+    Minv: vector containing inverse mass matrix
 
 """->
 # used by EulerData Constructor
@@ -389,7 +397,7 @@ function calcMassMatrixInverse{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 
-  eqn.Minv = zeros(Tmsh, mesh.numDof)
+  Minv = zeros(Tmsh, mesh.numDof)
 
   for i=1:mesh.numEl
     for j=1:sbp.numnodes
@@ -397,19 +405,35 @@ function calcMassMatrixInverse{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
         dofnum_k = mesh.dofs[k,j,i]
         # multiplication is faster than division, so do the divisions here
         # and then multiply solution vector times Minv
-        eqn.Minv[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
+        Minv[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
       end
     end
   end
 
   for i=1:mesh.numDof
-    eqn.Minv[i] = 1/eqn.Minv[i]
+    Minv[i] = 1/eqn.Minv[i]
   end
 
-  return nothing
+  return Minv
 
 end     # end of calcMassMatrixInverse function
 
+@doc """
+### EulerEquationMod.calcMassMatrix
+
+  This function calculate the mass matrix and returns it.
+  Beause w are using SBP operators, the mass matrix is diagonal, so it is
+  stored in a vector.
+
+  Arguments:
+    mesh: AbstractMesh
+    sbp: SBP operator
+    eqn: an implementation of EulerData. Does not have to be fully initialized.
+
+  Outputs:
+    M: vector containing mass matrix
+
+"""->
 function calcMassMatrix{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                            sbp::SBPOperator, 
                                            eqn::EulerData{Tsol, Tdim})
