@@ -617,7 +617,7 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
   
   # calculate derivatives, store into b
-  calcJacRow(b, eqn.res_vec, epsilon)
+  calcJacCol(b, eqn.res_vec, epsilon)
 
   if globalize_euler
     applyEuler(mesh, sbp, eqn, opts, vec, newton_data, b)
@@ -827,7 +827,7 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
     func(mesh, sbp, eqn, opts)
 
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
-    calcJacRow(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
+    calcJacCol(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
     
   end
 
@@ -881,7 +881,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
 
     fill!(eqn.res_vec, 0.0)
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
-    calcJacRow(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
+    calcJacCol(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
     
   end  # end loop over rows of jacobian
 
@@ -1024,7 +1024,7 @@ end
 
 
 #------------------------------------------------------------------------------
-# Helper functions: assembleElement, calcJacRow for finite difference
+# Helper functions: assembleElement, calcJacCol for finite difference
 #------------------------------------------------------------------------------
 @doc """
 ### NonlinearSolver.assembleElement
@@ -1135,7 +1135,7 @@ end
 
 
 @doc """
-### NonlinearSolvers.calcJacRow
+### NonlinearSolvers.calcJacCol
 
   This function extracts the entries for one column of the Jacobian from two residual evaluates that come from finite differences.
 
@@ -1150,7 +1150,7 @@ end
   Aliasing restrictions: res_0 and res cannot alias (obviously).
 
 """->
-function calcJacRow{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
+function calcJacCol{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
 
@@ -1166,7 +1166,7 @@ end
 
 
 #------------------------------------------------------------------------------
-# helper functions: assembleElement, calcJacRow for complex numbers
+# helper functions: assembleElement, calcJacCol for complex numbers
 #------------------------------------------------------------------------------
 
 @doc """
@@ -1269,7 +1269,7 @@ end
 
 
  @doc """
-### NonlinearSolvers.calcJacRow
+### NonlinearSolvers.calcJacCol
 
   This function extracts the entries for one column of the Jacobian from a 
   complex step residual evaluation
@@ -1284,7 +1284,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcJacRow{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
+function calcJacCol{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
 
@@ -1354,7 +1354,7 @@ function newton_check(func, mesh, sbp, eqn, opts)
       fill!(eqn.res_vec, 0.0)
       func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
-      calcJacRow(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
+      calcJacCol(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
       
     end  # end loop over rows of jacobian
@@ -1418,7 +1418,7 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       fill!(eqn.res_vec, 0.0)
       assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
-      calcJacRow(jac_col, eqn.res_vec, epsilon)
+      calcJacCol(jac_col, eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
       writedlm("check_res.dat", imag(eqn.res))
 
@@ -1456,7 +1456,7 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
-      calcJacRow(jac_col, res_0, eqn.res_vec, epsilon)
+      calcJacCol(jac_col, res_0, eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
 
       return jac_col
