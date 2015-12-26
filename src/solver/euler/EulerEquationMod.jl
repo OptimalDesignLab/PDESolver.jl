@@ -180,19 +180,35 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
 end  # end type declaration
 
-# add a layer of abstraction - although this migh be unnecessary
-abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
+# add a layer of abstraction
+@doc """
+### EulerEquationMod.AbstractEulerData{Tsol, Tres}
+
+  This abstract type should be the supertype of *all* solution data objects
+  that are related to the Euler equations.
+
+  It should be used for specify the type of a function argument only when
+  the function does no operations on the solution data object itself, it just
+  passes it onto other functions that do the work (thus AbstractEulerData 
+  should be used for only the highest level functions).
+
+  Another way of saying say it is that this type should only be used when 
+  the function only needs to ensure that it is solving the Euler equations,
+  but does not care even a little bit about how.
+"""->
+abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 
 @doc """
 ### EulerEquationMod.EulerData
 
   This type, although abstract, is the type functions should use for their
-  input arguments.  It stores all data used in evaluting the Euler Equations.
+  input arguments if they do any operations on the solution data object.
+  It stores all data used in evaluting the Euler Equations.
   
   It is paramaterized on the types Tsol, the type of the
   conservative variables q, and Tdim, the dimension of the equation
 
-  **Fields**
+  It should have the following fields:
    * res_type : datatype of residual (depreciated)
     * q  : 3D array holding conservative variables
     * aux_vars : 3D array holding auxiliary variables
@@ -206,7 +222,7 @@ abstract AbstractEulerData{Tsol} <: AbstractSolutionData{Tsol}
     * stabscale : 2D array holding edge stabilization scale factor
     * Minv :  vector holding inverse mass matrix
 """->
-abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol}
+abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol, Tres}
 #TODO: static parameter order is inconsistent with EulerData_
 
 # high level functions should take in an AbstractEulerData, remaining

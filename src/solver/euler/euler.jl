@@ -170,7 +170,7 @@ end  # end evalEuler
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts, pmesh=mesh)
+function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
 
   println("\nInitializing Euler module")
   # get BC functors
@@ -253,7 +253,7 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts)
+function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # disassembles q_vec into eqn.q
 # calculates all mesh wide quantities in eqn
