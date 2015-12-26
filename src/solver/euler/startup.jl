@@ -184,9 +184,6 @@ saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
 
-# initialize some variables in nl_solvers module
-initializeTempVariables(mesh)
-
 wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
 println("max wave speed = ", wave_speed)
 delta_t = opts["CFL"]*opts["mesh_size"]/wave_speed
