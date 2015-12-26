@@ -1,3 +1,6 @@
+# newton.jl: function to do Newtons method, including calculating the Jacobian
+# includes residual_evaluation.jl and petsc_funcs.jl
+
 export newton, newton_check, newton_check_fd
 
 @doc """
