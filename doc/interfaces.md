@@ -30,7 +30,7 @@ We do this extensively in PDESolver, because arrays are the natural choice for s
 ## AbstractSolutionData
 ODLCommonTools defines:
 
-`abstract AbstractSolutionData{Tsol}`.
+`abstract AbstractSolutionData{Tsol, Tres}`.
 
 The purpose of an `AbstractSolutionData` is to hold all the data related to the solution of an equation.
 This includes the solution at every node and any auxiliary quantities.
@@ -38,7 +38,7 @@ The storage for any quantity that is calculated over the entire mesh should be a
 In general, there should never be a need to allocate a vector longer than the number of degrees of freedom at a node (or a matrix similarly sized matrix) during a residual evaluation.
 Structuring code such that it conforms with this requirement has significant performance benefits because it reduces memory allocation/deallocation.
 
-The static parameter `Tsol` is the datatype of the solution variables.
+The static parameter `Tsol` is the datatype of the solution variables and `Tres` is the datatype of the residual (when computing the Jacobian with finite differences or algorithmic differentiation, these will be the same).
 
 ### Required Fields
 The required fields of an `AbstractSolutionData are`:
