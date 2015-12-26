@@ -125,6 +125,25 @@ function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, newton_data::Newto
   return nothing
 end
 
+
+# Globalize by adding a diagonal term to the Jacobian.  Rather crude.
 #------------------------------------------------------------------------------
   
+function addDiagonal(mesh, sbp, eqn, jac)
+# add the mass matrix to the jacobian
 
+  for i=1:mesh.numDof
+     idx = PetscInt[i-1]
+     idy = PetscInt[i-1]
+     vals = [100*eqn.M[i]]
+
+#     println("adding ", vals, " to jacobian entry ", i, ",", i)
+     PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
+   end
+
+   return nothing
+
+ end
+
+
+#------------------------------------------------------------------------------
