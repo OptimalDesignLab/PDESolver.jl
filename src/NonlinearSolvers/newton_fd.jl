@@ -540,14 +540,32 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 end
 
 
+@doc """
+### NonlinearSolvers.checkJacVecProd
+
+  This function calculates a jacobian vector product, then computes the 
+  Jacobian and multiplies it by the vector and compares the results.
+  This is very expensive, only used for debugging.
+
+  The Jacobian is calculated about the point stored in eqn.q_vec
+
+
+  Inputs:
+    newton_data:  NewtonData object
+    mesh: AbstractMesh object
+    sbp: SBP operator
+    opts: options dictonary
+    func: residual evaluation function
+    pert: perturbation used to calculate the Jacobian.  Can be real (for 
+          finite differences), or some AD datatype.
+
+    Aliasing restrictions: none
+"""->
 function checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
   
   v = ones(mesh.numDof)
   result1 = zeros(mesh.numDof)
-#  writedlm("qvec_before.dat", eqn.q_vec)
   calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v, result1)
-#  writedlm("qvec_prod.dat", eqn.q_vec)
-#  writedlm("q_prod.dat", eqn.q)
   jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   res_dummy = []
 
@@ -557,8 +575,6 @@ function checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
   if opts["newton_globalize_euler"]
     applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
   end
-#  writedlm("qvec_explicit.dat", eqn.q_vec)
-#  writedlm("q_explicit.dat", eqn.q)
   result2 = jac*v
 
   cnt = 0
@@ -579,7 +595,7 @@ function checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
     println("jacobian vector product check 1 passed")
   end
 
-
+  # check some additional vectors
   for j=2:4
 #  v2 = collect(1:mesh.numDof)
    v2 = linspace(j, j+1, mesh.numDof)
@@ -652,7 +668,7 @@ end
 
 
 @doc """
-### NonlinearSolvers.idsassembleSolution
+### NonlinearSolvers.disassembleSolution
 
   This function performs the scatter q_vec -> eqn.q
 
@@ -828,15 +844,12 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
 
   # scatter into eqn.q
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
-#  writedlm("q_prod_after$itr.dat", eqn.q)
   func(mesh, sbp, eqn, opts)
 
-#  writedlm("prod_res$itr.dat", eqn.res)
   fill!(eqn.res_vec, 0.0)
   # gather into eqn.res_vec
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
   
-#  writedlm("res_vec$itr.dat", eqn.res_vec)
   # calculate derivatives, store into b
   calcJacRow(b, eqn.res_vec, epsilon)
 
@@ -844,38 +857,13 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
     applyEuler(mesh, sbp, eqn, opts, vec, newton_data, b)
   end
 
-
-
-#  writedlm("pprod$itr.dat", b)
-#  println("b = ", b)
   # undo perturbation
   for i=1:mesh.numDof
     eqn.q_vec[i] -= pert*vec[i]
   end
 
-#=
-  cnt = 0
-  for i=1:mesh.numDof
-    if abs(b2[i] - b[i]) > 1e-14
-      cnt += 1
-#      println("  i = ", i)
-    end
-  end
-
-  if cnt != 0
-    println(STDERR, "Warning: jacobian vector product check failed")
-    println("cnt = ", cnt)
-    result_diff = b2 - b
-    diff_norm = calcNorm(eqn, result_diff)
-    println("diff norm = ", diff_norm)
-#    println("result_diff = ", result_diff)
-  else
-    println("jacobian vector product check passed")
-  end
-=#
   eqn.params.krylov_itr += 1
 
-#  print("\n")
   return nothing
 end
 
@@ -903,7 +891,6 @@ end
 """->
 function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray)
 # calculate the jacobian using finite difference
-  #println(res_0)
   (m,n) = size(jac)
   entry_orig = zero(eltype(eqn.q_vec))
   epsilon = norm(pert)  # finite difference perturbation
@@ -912,7 +899,6 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray)
 #      println("  jacobian iteration ", j)
     if j==1
       entry_orig = eqn.q_vec[j]
-      #println(eqn.res_vec)
       eqn.q_vec[j] +=  epsilon
     else
       eqn.q_vec[j-1] = entry_orig # undo previous iteration pertubation
@@ -923,14 +909,9 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
-#     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
-
-    fill!(eqn.res_vec, 0.0)
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
-    #println(eqn.res_vec)
     calcJacRow(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
-#      println("res_vec norm = ", norm(res_vec)/m)
     
   end
 
@@ -994,83 +975,45 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, 
   filter_orig = eqn.params.use_filter  # record original filter state
   eqn.params.use_filter = false  # don't repetatively filter
 
-#  epsilon = 1e-6  # finite difference perturbation
   epsilon = norm(pert)  # get magnitude of perturbation
-#  (m,n) = size(jac)
    m = length(res_0)
-#  fill!(jac.nzval, 0.0)
 
-  # for each color, store the perturbed element corresponding to each element
-#  perturbed_els = zeros(eltype(mesh.neighbor_nums), mesh.numEl)
-
-  # debugging: do only first color
   for color=1:mesh.numColors  # loop over colors
-#    println("color = ", color)
-#    getPertNeighbors(mesh, color, perturbed_els)
     for j=1:mesh.numNodesPerElement  # loop over nodes 
-#      println("node ", j)
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
-#	println("dof ", i)
-        # do perturbation for each residual here:
-
-
 	# apply perturbation to q
-#	println("  applying perturbation")
         applyPerturbation(eqn.q, mesh.color_masks[color], pert, i, j)
-#	println("wrote imag(eqn.q)")
-#	println("size(eqn.q) = ", size(eqn.q))
 
 	# evaluate residual
-#	println("  evaluating residual")
         func(mesh, sbp, eqn, opts)
 #	
 	# assemble res into jac
-#        println("  assembling jacobian")
-#	println("  local dof = ", i, ", local node = ", j)
-#	println("  color_mask = ", mesh.color_masks[color])
-#	println("  assembling standard residual")
 	for k=1:mesh.numEl  # loop over elements in residual
-#	  el_pert = perturbed_els[k] # get perturbed element
-
 	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
+          #TODO: find a way to get rid of this if statement
           if el_pert != 0   # if element was actually perturbed for this color
 
-#	    println("el_pert = ", el_pert)
-            col_idx = mesh.dofs[i, j, el_pert]
-#	    println("dof_pert = ", col_idx)
+            col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
 	    #TODO: make an immutable type to hold the bookeeping info
 	    assembleElement(mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
 	 end  # end if el_pert != 0
        end  # end loop over k
 
        # now do res_edge, if needed
-       #TODO: consider making eqn.res 4 dimensional, which is the 
-       #      generalization of having multiple residuals 
         for edge = 1:size(eqn.res_edge, 4)
-#	  println("assembling edge residual = ", edge)
 	  res_edge = view(eqn.res_edge, :, :, :, edge)
 	  for k=1:mesh.numEl  # loop over elements in residual
-  #	  el_pert = perturbed_els[k] # get perturbed element
-
 	    el_pert = mesh.pertNeighborEls_edge[k, edge] # get perturbed element
-#	    println("el_pert = ", el_pert)
 	    if el_pert != 0   # if element was actually perturbed for this color
 
-	      col_idx = mesh.dofs[i, j, el_pert]
-#	      println("dof_pert = ", col_idx)
+	      col_idx = mesh.dofs[i, j, el_pert] # = dof_pert
 	      #TODO: make an immutable type to hold the bookeeping info
 	      assembleElement(mesh, eqn, res_edge, res_0, k, el_pert, col_idx, epsilon, jac)
 	   end  # end if el_pert != 0
         end  # end loop over k
       end  # end loop over local edges
 
-
-
       # undo perturbation
-      # is this the best way to undo the perturbation?
-      # faster to just take the real part of every element?
-
-      #      println("  undoing perturbation")
       applyPerturbation(eqn.q, mesh.color_masks[color], -pert, i, j)
 
       end  # end loop i
@@ -1081,7 +1024,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, 
   eqn.params.use_filter = filter_orig # reset filter
   return nothing
 
-end
+end  # end function
 
 function initializeTempVariables(mesh::AbstractMesh)
 # declare some static work variables
@@ -1145,7 +1088,6 @@ pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
-#    col_idx = mesh.dofs[i, j, el_pert]
 
     tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
     vals_tmp[pos] = tmp
@@ -1153,13 +1095,7 @@ for j_j = 1:mesh.numNodesPerElement
   end
 end
 
-#println("assembling values ", vals_tmp, " into row ", dof_pert, " columns ", idy_tmp)
-
-#println("idy_tmp = ", idy_tmp)
 PetscMatSetValues(jac, idx_tmp, idy_tmp, vals_tmp, PETSC_ADD_VALUES)
-
-
-
 
 return nothing
 
@@ -1200,7 +1136,6 @@ function assembleElement{Tsol <: Real}(mesh, eqn::AbstractSolutionData{Tsol}, re
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     row_idx = mesh.dofs[i_i, j_j, el_res]
-#    col_idx = mesh.dofs[i, j, el_pert]
 
     tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
     jac[row_idx, dof_pert] += tmp
@@ -1237,7 +1172,6 @@ m = length(res_0)
 for i=1:m
   jac_row[i] = (res[i] - res_0[i])/epsilon
 end
-#println(jac_row)
 
 return nothing
 
@@ -1288,9 +1222,7 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac)
 
     fill!(eqn.res_vec, 0.0)
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
-#     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
     calcJacRow(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
-#      println("res_vec norm = ", norm(res_vec)/m)
     
   end  # end loop over rows of jacobian
 
@@ -1334,10 +1266,6 @@ function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol},
 # dof_pert is the dof number (global) of the dof that was perturbed
 # typically either el_pert or dof_pert will be needed, not both
 
-# resize array
-# basically a no-op if array is already the right size
-local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
-
 # get row number
 idy_tmp[1] = dof_pert - 1
 
@@ -1345,7 +1273,6 @@ pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
-#    col_idx = mesh.dofs[i, j, el_pert]
 
     vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
 
@@ -1396,16 +1323,6 @@ function assembleElement{Tsol <: Complex}(mesh, eqn::AbstractSolutionData{Tsol},
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     row_idx = mesh.dofs[i_i, j_j, el_res]
-#    col_idx = mesh.dofs[i, j, el_pert]
-#=
-     if row_idx == 1 && dof_pert == 5
-       println("i_i = ", i_i)
-       println("j_j = ", j_j)
-       println("el_res = ", el_res)
-       println("inserting value ", imag(res_arr[i_i,j_j, el_res])/epsilon, " into jacobian (1,5)")
-     end
-=#
-
     jac[row_idx, dof_pert] += imag(res_arr[i_i,j_j, el_res])/epsilon
   end
 end
