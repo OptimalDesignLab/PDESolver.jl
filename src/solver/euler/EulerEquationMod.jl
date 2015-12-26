@@ -262,7 +262,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
 # Only the constants are initilized here, the arrays are not.
 
   params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
-  res_type::DataType  # type of res
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
@@ -316,7 +315,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     eqn = new()  # incomplete initialization
 
     eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, mesh.order)
-    eqn.res_type = Tres
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.convertToEntropyVars = convertToEntropy
@@ -324,7 +322,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
     eqn.q2 = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    calcMassMatrixInverse(mesh, sbp, eqn)
+    eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
 
     calcEdgeStabAlpha(mesh, sbp, eqn)
@@ -364,7 +362,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
     
 
-    println("eqn.res_type = ", eqn.res_type)
+    println("Tres = ", Tres)
 
     return eqn
 
@@ -411,7 +409,7 @@ function calcMassMatrixInverse{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   for i=1:mesh.numDof
-    Minv[i] = 1/eqn.Minv[i]
+    Minv[i] = 1/Minv[i]
   end
 
   return Minv
