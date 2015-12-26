@@ -237,20 +237,26 @@ include("SUPG.jl")
 ### EulerEquationMod.EulerData_
 
   This type is an implimentation of the abstract EulerData.  It is
-  paramterized by the residual type Tres and the mesh type Tmsh
+  paramterized by the residual datatype Tres and the mesh datatype Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
+  It is also paremterized by var_type, which should be a symbol describing
+  the set of variables stored in eqn.q.  Currently supported values are 
+  :conservative and :entropy, which indicate the conservative variables and
+  the entropy variables described in 'A New Finite Element Formulation for
+  Computational Fluid Dynamics: Part I' by Hughes et al.
 
-  Eventually there will be additional implimentation of EulerData,
+  Eventually there will be additional implimentations of EulerData,
   specifically a 3D one.
 
   Static Parameters:
     Tsol : datatype of variables solution variables, ie. the 
            q vector and array
     Tres : datatype of residual. ie. eltype(res_vec)
-    Tdim : dimensionality of equation, integer, (2 or 3)
+    Tdim : dimensionality of equation, integer, (2 or 3, currently only 2 is
+           supported).
     Tmsh : datatype of mesh related quantities
-    var_type : type of variables used in weak form, symbol, (:conservative 
+    var_type : symbol describing variables used in weak form, (:conservative 
                or :entropy)
 
 
