@@ -301,9 +301,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 # minorIterationCallback::Function # called before every residual evaluation
 
-  # some temporary arrays
-  q2::Array{Tsol, 3}  # like eqn.q, useful to store converted variables
-
   # inner constructor
   function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
 
@@ -321,7 +318,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     eqn.convertToConsVars = convertToConservative
     eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
-    eqn.q2 = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
 

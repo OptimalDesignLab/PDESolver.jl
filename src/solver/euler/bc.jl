@@ -23,7 +23,10 @@ include("bc_solvers.jl")
   The functor must have the signature
   functor( q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
   where q are the *conservative* variables.
-  where all arguments (except params) are vectors of values at a node.
+  where all arguments (except params and nrm) are vectors of values at a node.
+
+  params is the ParamType associated with the the EulerEquation object
+  nrm = sbp.facenormal[:, current_node]
 
   This is a mid level function.
 """->
