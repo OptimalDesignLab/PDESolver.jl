@@ -43,12 +43,14 @@
 # allocating a new array)
 
 @doc """
+### EulerEquationMod General Description
 This module is organized into 3 levels of functions: high, middle, and low.
+
 The high level functions take the mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, and opts (options dictionary), They do not know the types their 
 arguments are paramaterized on. There is only one method for each high level function.  All they do is call mid level functions.
 
 Mid level functions take the same arguments as high level functions but know
-the types they are paramaterized on and do the right thing for all paramters.
+the types they are paramaterized on and do the right thing for all parameters.
 There is only one method for each mid level function.  Mid level functions
 typically pass pieces of the large arrays stored in the eqn and mesh objects
 to low level functions that actually do computation.
@@ -58,6 +60,8 @@ a computation, and store the result in an argument vector.  These function
 are usually passed an ArrayView, so writing to the argument vector writes 
 directly to the large array stored in the eqn object.  Thus there is no 
 loss of efficiency by using low level functions.
+The Params type is also passed to low level function, which has all the 
+type parameters as the EulerEquation object, so it can be used for dispatch.
 """
 export evalEuler, init, convertEntropy
 
@@ -78,7 +82,8 @@ export evalEuler, init, convertEntropy
   four arguments.  Mid level function also take the same arguments.
 
   The input/output variables are eqn.q and eqn.res, respectively.
-  eqn.q_vec and eqn.res_vec exist as reusable storage
+  eqn.q_vec and eqn.res_vec exist for reusable storage *outside* the residual
+  evaluation.  They should never be used inside the residual evaluation.
 
   The function disassembleSolution takes q_vec and puts it into eqn.q
   The function assembleSolution takes eqn.res and puts it into res_vec
@@ -95,20 +100,18 @@ export evalEuler, init, convertEntropy
 # this function is what the timestepper calls
 # high level function
 function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t=0.0)
-  # res_vec is popualted with du/dt
-  # q_vec is q at previous timestep
-  # t is current timestep
-  # extra_args is unpacked into object needed to evaluation equation
+
+  eqn.params.t = t  # record t to params
   
   dataPrep(mesh, sbp, eqn, opts)
-  # println("\n eqn.bndryflux = \n", eqn.bndryflux)
 #println("dataPrep @time printed above")
 
 
-  #println("dataPrep @time printed above")
   evalVolumeIntegrals(mesh, sbp, eqn, opts)
   #println("volume integral @time printed above")
-  
+
+  # delete this if unneeded or put it in a function.  It doesn't belong here,
+  # in a high level function.
   #----------------------------------------------------------------------------
   #=
   bndryfluxPhysical = zeros(eqn.bndryflux)
@@ -130,7 +133,6 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   #----------------------------------------------------------------------------
 
   evalBoundaryIntegrals(mesh, sbp, eqn)
-  # println("\n eqn.res = \n", eqn.res)
   #println("boundary integral @time printed above")
 
 
@@ -138,22 +140,7 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t
   #println("edge stabilizing @time printed above")
 
 
-  # no more assembling solution
-  #assembleSolution(mesh, sbp, eqn, res_vec)
-  #println("assembly @time printed above")
-
-  #applyMassMatrixInverse(eqn, res_vec)
-  #println("Minv @time printed above")
-
-  #println("after Minv, sum(res) = ", sum(eqn.res))
-  #println("    sum(res_vec) = ", sum(res_vec))
-  #applyDissipation(mesh, sbp, eqn, res_vec, q_vec)
- 
-  #print current error
-  #err_norm = norm(res_vec)/mesh.numDof
-  #print(" ", err_norm)
-
-
+  
   #print("\n")
 
   return nothing
@@ -255,14 +242,10 @@ end
 # high level function
 function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
-# disassembles q_vec into eqn.q
 # calculates all mesh wide quantities in eqn
-
-# need: u (previous timestep solution), x (coordinates), dxidx, jac, res, array of interfaces
 
 #println("Entered dataPrep()")
 
-#  println("eqn.q = ", eqn.q)
 
   # apply filtering to input
   if eqn.params.use_filter
@@ -293,16 +276,11 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 
 
 
-#  getIsentropicVortexBoundaryFlux(mesh, sbp, eqn)
    getBCFluxes(mesh, sbp, eqn, opts)
-   # println("\n eqn.bndryflux = \n", eqn.bndryflux)
 #   println("getBCFluxes @time printed above")
-#  isentropicVortexBC(mesh, sbp, eqn)
-  stabscale(mesh, sbp, eqn)
+  
+   stabscale(mesh, sbp, eqn)
 #  println("stabscale @time printed above")
-
-
-
 
 #  println("finished dataPrep()")
   return nothing
@@ -319,7 +297,7 @@ end # end function dataPrep
   This is a mid level function
 """->
 # this is a mid level function
-function getBCFluxes(mesh, sbp, eqn, opts)
+function getBCFluxes(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
   #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
@@ -331,7 +309,9 @@ function getBCFluxes(mesh, sbp, eqn, opts)
     end_index = mesh.bndry_offsets[i+1]
     bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
     bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
-  
+ 
+    # call the function that calculates the flux for this boundary condition
+    # passing the functor into another function avoid type instability
     calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
   end
 
@@ -464,8 +444,9 @@ end
 ### EulerEquationMod.evalVolumeIntegrals
 
   This function evaluates the volume integrals of the Euler equations by
-  calling the appropriate SBP function on the Euler flux stores in eqn.
-  This function knows the dimension of the equation but does the right
+  calling the appropriate SBP function on the Euler flux stored in
+  eqn.flux_parametric.
+  This function knows the dimension of the equation and does the right
   thing for all dimensions.  eqn.res is updated with the result
 
   This is a mid level function.
@@ -534,34 +515,12 @@ function evalBoundaryIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp:
 # eqn : a type that holds some constants needed to evaluate the equation
 #	: also used for multiple dispatch
 
-
-#  println("====== start of evalBoundaryIntegrals ======")
-#boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, isentropicVortexBC, result)
-
-#boundaryintegrate2!(sbp, mesh.bndryfaces, eqn.q, mesh.coords, mesh.dxidx, isentropicVortexBC, eqn.res, mesh, eqn)
-
-#println("eqn.bndryflux = ")
-#println(eqn.bndryflux)
-
-
-#idx = mesh.bndry_offsets[2]
-#el = mesh.bndryfaces[idx].element
-#println("bndry element = ", el)
-#println("boundary flux = ", eqn.bndryflux[:, :, el])
-
-
-boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
-
-#boundaryintegrate!(sbp, bndryfaces, u, x, dxidx, rho1Energy2BC, result)
-
-
-#  println("==== end of evalBoundaryIntegrals ====")
+  boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 
 
   return nothing
 
-end
-#------------- end of evalBoundaryIntegrals
+end  # end evalBoundaryIntegrals
 
 
 @doc """
@@ -619,6 +578,7 @@ end
 
 
 # some helper functions
+# this is a test for an algorithmic differentiation package
 function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
   dir = [1.0, 0.0]
 #  F = zeros(T, 4)
@@ -632,11 +592,14 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 
 end
 
+fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
+
+
 @doc """
 ### EulerEquationMod.getAuxVars
 
   This function calculates any extra variables that are stored across the mesh
-  using the conservative variables eqn.q.
+  using the conservative variables eqn.q.  Currently only calculates pressure.
 
   Thi is a mid level function
 """->
@@ -656,6 +619,7 @@ function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{T
 
   return nothing
 end
+
 
 @doc """ 
 ### EulerEquationMod.getEulerFlux
@@ -704,10 +668,11 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+
 @doc """
 ### EulerEquationMod.writeFlux
 
-  This function writes the real part of Euler flux to a file named Fxi.dat, space delimited, controlled by the input options writeflux, of type Bool.
+  This function writes the real part of Euler flux to a file named Fxi.dat, space delimited, controlled by the input options 'writeflux', of type Bool.
 
   This is a high level function.
 """->
@@ -790,15 +755,13 @@ F_eta = view(eqn.flux_parametric, :, :, :, 2)
 
 end
 
-fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
-
 
 @doc """
 ### EulerEquationMod.applyMassMatrixInverse
 
   This function multiplies eqn.res_vec (the residual in vector form  by eqn.Minv,
   the diagonal mass matrix.  This is a very fast function because all values
-  are precomputed and stores linearly in memory.
+  are precomputed and stored linearly in memory.
 
   This is a mid level function, and does the correct thing regardless of the
   dimension of the equation.
@@ -852,7 +815,7 @@ end
 ### EulerEquationMod.writeQ
 
   This function writes the real part of the solution variables eqn.q to a space 
-  delimited file called q.dat, controlled by the input options writeq, of type bool
+  delimited file called q.dat, controlled by the input options 'writeq', of type bool
 
   This is a high level function.
 """->
@@ -864,7 +827,7 @@ function writeQ(mesh, sbp, eqn, opts)
 
   fname = "q.dat"
   rmfile(fname)
-  writedlm(fname, real(eqn.q))
+  writedlm(fname, eqn.q)
 
   return nothing
 end
@@ -883,7 +846,10 @@ end
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts, arr, res_vec::AbstractArray{Tres,1}, zero_resvec=true)
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                         sbp::SBPOperator, eqn::EulerData{Tsol}, opts, 
+                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         zero_resvec=true)
 # arr is the array to be assembled into res_vec
 
 #  println("in assembleSolution")
@@ -905,6 +871,7 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOp
   return nothing
 end
 
+#------------------------------------------------------------------------------
 # converting to conservative variables
 #------------------------------------------------------------------------------
 @doc """
@@ -954,6 +921,7 @@ function convertToConservative{Tsol}(params::ParamType{2, :conservative},
 
   return nothing
 end
+
 
 @doc """
 # mid level function
@@ -1018,7 +986,7 @@ end
 
 
 
-
+#------------------------------------------------------------------------------
 # converting to entropy variables
 #------------------------------------------------------------------------------
 # convert to entropy variables without checking if we are already in them
