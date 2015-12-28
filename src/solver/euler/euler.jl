@@ -1301,6 +1301,8 @@ end
   The parameter of params determines whether the 2D or 3D method is dispatched.
 
   This is a low level function.
+
+  Aliasing restrictions: none
 """->
 # low level function
 function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :conservative})
@@ -1313,6 +1315,7 @@ end
 
 
 @doc """
+### EulerEquationMod.calcPressure
   This function calculates pressure using the entropy variables.
 
   Inputs:
@@ -1320,6 +1323,8 @@ end
     params : ParamType{2, :entropy}
 
   returns pressure
+
+  Aliasing restrictions: none
 """->
 function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
 
@@ -1343,16 +1348,29 @@ function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3, :cons
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
 
-#  internal_energy = res_vec_vals[4]/res_vec_vals[1] - 0.5*(res_vec_vals[2]^2 + res_vec_vals[3]^2)/(res_vec_vals[1]^2)
-#  pressure = res_vec_vals[1]*eqn.R*internal_energy/eqn.cv
-
   return  (params.gamma_1)*(q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1])
   
-#   println("internal_energy = ", internal_energy, " , pressure = ", pressure)
-
 
 end
 
+
+
+@doc """
+### EulerEquationMod.calcSpeedOfSound
+
+  This function calculates the speed of sound at a node and returns it.
+  Methods are available for both conservative and entropy variables.
+
+  Inputs:
+    q  vector of solution variables at a node
+    params:  ParamType{2, var_type}
+
+  Returns: speed of sound
+
+  This is a low level function
+
+  Aliasing restrictions: none
+"""->
 
 function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :conservative})
 # calculates teh speed of sond at a node
@@ -1360,6 +1378,7 @@ function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2,
   return sqrt((params.gamma*pressure)/q[1])
 
 end
+
 
 
 function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :entropy})
@@ -1383,6 +1402,23 @@ function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2,
 end
 
 
+@doc """
+### EulerEquationMod.calcEntropy
+
+  This function calculates the entropy at a node and returns it.  Method are 
+  available for conservative and entropy variables
+
+  Inputs:
+    q: vector of solution variables at a node.
+    params: ParamTy[e{2, var_type}, used to dispatch to the right method.
+
+  Returns: entropy
+
+  This is a low level function
+
+  Aliasing Restrictions: none
+
+"""->
 function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :conservative})
 
   gamma = params.gamma
@@ -1400,6 +1436,7 @@ function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entro
   return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]
 end
 
+
 @doc """
 ### EulerEquationMod.calcA0
 
@@ -1416,6 +1453,7 @@ end
   Inputs/Outputs:
   A0 : 4x4 matrix populated with A0.  Overwritten
 
+  Aliasing restrictions: none
 """->
 function calcA0{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A0::AbstractArray{Tsol, 2})
 
@@ -1517,7 +1555,27 @@ function calcA0Inv{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy
     return nothing
 end
 
+@doc """
+### EulerEquationMod.matVecA0inv
 
+  This function takes a 3D array and multiplies it in place by the inv(A0) 
+  matrix (calculated at each node), inplace, (where A0 =dq/dv, where q are the 
+  conservative variables and v are some other variables), inplace.
+  Methods are available for conservative and entropy variables.
+
+  For conservative variables, A0 is the identity matrix and this is a no-op
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs:
+    res_arr: the array to multiply 
+
+  Aliasing restrictions: none
+"""->
 function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
@@ -1549,7 +1607,13 @@ function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPO
   return nothing
 end
 
+@doc """
+### EulerEquationMod.matVecA0
 
+  This function is the same as matVecA0inv, except it multiplies by A0 not
+  A0inv.  See its documention.
+
+"""->
 function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
@@ -1588,15 +1652,15 @@ end
 @doc """
 ### EulerEquationMod.calcA1
 
-  This function calculates the A1 (ie. dF1/dv, where F1 is the first column of the
-  Euler flux.
-  and v are the entropy variables) for a node
+  This function calculates the A1 (ie. dF1/dv, where F1 is the first column of 
+  theEuler flux and v are the entropy variables) for a node
 
-  The formation of A1 is given in Hughes
+  The formation of A1 is given in Hughes paper
 
   Inputs:
     q  : vector of entropy variables, length 4
-    params : ParamType{2, :entropy},
+    params : ParamType{2, :entropy}
+
   Inputs/Outputs:
   A1 : 4x4 matrix to be populated.  Overwritten
 
@@ -1724,6 +1788,15 @@ function calcA2{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, 
     return nothing
 end
 
+@doc """
+### EulerEquationMod.calcMaxWaveSpeed
+
+  This function calculates the maximum wave speed (ie. acoustic wave speed)
+  present in the domain and returns it.  Methods are available for conservative and entropy
+  variables.
+
+  This is a mid level function
+"""->
 function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
