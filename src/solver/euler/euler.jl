@@ -868,9 +868,9 @@ end
 # converting to conservative variables
 #------------------------------------------------------------------------------
 @doc """
-# low level function
-  Converts a the entropy variables at a node and converts them to
-  conservative variables
+### EulerEquationMod.convertToConservative
+
+  Converts  the entropy variables at a node to the conservative variables.
 
   Inputs:
   params  : ParamType{2, :entropy} used to dispatch to the proper method
@@ -880,12 +880,12 @@ end
   qc : vector (of length 4) of conservative variables.  Contents of vector are
        overwritten
 
-  Aliasing: qc and qe cannot be the same vector
+  Aliasing: none (qc and qe *can* be the same vector)
+
+  Ths is a low level function.
 """->
 function convertToConservative{Tsol}(params::ParamType{2, :entropy}, 
                   qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
- #TODO: make this an inplace operation
- # this will likely make better use of registers
   gamma = params.gamma
   gamma_1 = params.gamma_1
   k1 = 0.5*(qe[2]^2 + qe[3]^2)/qe[4]
@@ -983,6 +983,24 @@ end
 # converting to entropy variables
 #------------------------------------------------------------------------------
 # convert to entropy variables without checking if we are already in them
+@doc """
+### EulerEquationMod.convertToEntropy
+
+  Converts the conservative variables at a node to the entropy variables.
+
+  Inputs:
+  params  : ParamType{2, :entropy} used to dispatch to the proper method
+  qe  : vector (of length 4) of conservative variables
+  
+  Inputs/outputs
+  qc : vector (of length 4) of entropy variables.  Contents of vector are
+       overwritten
+
+  Aliasing: none (qc and qe *can* be the same vector)
+
+  Ths is a low level function.
+"""->
+
 function convertEntropy{Tsol}(params::ParamType{2}, qc::AbstractArray{Tsol,1},
                              qe::AbstractArray{Tsol, 1})
 
@@ -993,10 +1011,11 @@ function convertEntropy{Tsol}(params::ParamType{2}, qc::AbstractArray{Tsol,1},
   rho_int = qc[4] -k1
   s = log(gamma_1*rho_int/(qc[1]^gamma))
   fac = 1.0/rho_int
+  tmp1 = -qc[1]*fac
   qe[1] = (rho_int*(gamma + 1 -s) - qc[4])*fac
   qe[2] = qc[2]*fac
   qe[3] = qc[3]*fac
-  qe[4] = -qc[1]*fac
+  qe[4] = tmp1
 
   return nothing
 end

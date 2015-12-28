@@ -71,7 +71,12 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    v = zeros(4)
    EulerEquationMod.convertToEntropy(eqn.params, q, v)
-   @fact v => roughly([-2*4.99528104378295, 4., 6, -2*1])
+   v_analytic = [-2*4.99528104378295, 4., 6, -2*1]
+   @fact v => roughly(v_analytic)
+   # test inplace operation
+   q2 = copy(q)
+   EulerEquationMod.convertToEntropy(eqn.params, q2, q2)
+   @fact q2 => v_analytic
    println("v = ", v)
    q_ret = zeros(4)
    EulerEquationMod.convertToConservative(e_params, v, q_ret)
