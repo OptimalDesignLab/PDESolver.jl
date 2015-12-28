@@ -139,7 +139,7 @@ println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec)
 
 if var_type == :entropy
-    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
+    convertToEntropy_(mesh, sbp, eqn, opts, eqn.q_vec)
 end
 
 # TODO: cleanup 20151009 start
