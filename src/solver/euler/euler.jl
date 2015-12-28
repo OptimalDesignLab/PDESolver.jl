@@ -989,6 +989,8 @@ end
   copies the input to the output).  This method exists to values can be 
   converted without knowing whether they are conservative or entropy.
 
+  Aliasing restrictions: none (qc and qe *can* be the same vector)
+
 """->
 function convertToConservative{Tsol}(params::ParamType{2, :conservative}, 
                   qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
@@ -1075,7 +1077,7 @@ end
   qe : vector (of length 4) of conservative variables.  Contents of vector are
        overwritten
 
-  Aliasing: qc and qe cannot be the same vector (obviously)
+  Aliasing restrictions: none (qc and qe *can* be the same vector)
 """->
 function convertToEntropy{Tsol}(params::ParamType{2, :conservative}, 
                qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
@@ -1085,14 +1087,13 @@ function convertToEntropy{Tsol}(params::ParamType{2, :conservative},
 end
 
 
-
-
-
 @doc """
 # low level function
   Converts the entropy variables to entropy variables (ie. it copies the 
   input to the output).  This method exists so variables can be converted 
   to entropy variables without knowing what type they are.
+
+  Aliasing restrictions: none (qc and qe *can* be the same vector)
 
 """->
 function convertToEntropy{Tsol}(params::ParamType{2, :entroyp}, 
