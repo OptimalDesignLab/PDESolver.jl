@@ -1193,7 +1193,7 @@ end
    This is a low level function
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2}, 
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
                       q::AbstractArray{Tsol,1}, 
                       aux_vars::AbstractArray{Tres, 1}, 
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
@@ -1263,7 +1263,7 @@ end
   This is the 3D method.  All arguments are same as the 2D version.
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3, :conservative}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 5), of the conservative variables at the point
