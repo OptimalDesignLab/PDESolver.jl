@@ -535,9 +535,12 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
   if eqn.params.use_edgestab
 #    println("applying edge stabilization")
     if opts["use_edge_res"]
-      edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res, eqn.res_edge)
+      edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords, 
+                     mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, 
+                     eqn.res, eqn.res_edge)
     else
-      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
+      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, 
+                     mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
     end
   end
 
@@ -611,10 +614,12 @@ end
 
   This function calculates the Euler flux across the entire mesh by passing
   pieces of the eqn.q, eqn.aux_vars, eqn.f_xi and eqn.params to a low level
-  function.  The flux is calculated in the xi and eta directions, scaled (mulitiplied)
-  by the Jacobian (so that when performing the integral we don't have to explictly
-  divide by the jacobian, it just cancels out with the jacobian factor introduced
-  here.
+  function.  The flux is calculated in the xi and eta directions, 
+  scaled (mulitiplied) by the mapping jacobian (so that when performing the 
+  integral we don't have to explictly divide by the jacobian, it just cancels 
+  out with the jacobian factor introduced here.
+
+  Calls writeFlux to do any requested output.
 
   This is a mid level function
 """->
@@ -633,15 +638,13 @@ function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
       # q_vals twice, even though writing to the flux vector is slower
       # it might be worth copying the normal vector rather than
       # doing an view
-      for k=1:Tdim  # loop over dimensions  
-	# this will dispatch to the proper calcEulerFlux
-	      nrm[1] = mesh.dxidx[k, 1, j, i]
-	      nrm[2] = mesh.dxidx[k, 2, j, i]
-#	nrm_mag = sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2])
-#	nrm[1] /= nrm_mag
-#	nrm[2] /= nrm_mag
-#        nrm = view(mesh.dxidx, k, :, j, i) # this causes a type stability problem
+      for k=1:Tdim  # loop over dimensions
+        # don't do an array view because strided views are type-unstable
+        nrm[1] = mesh.dxidx[k, 1, j, i]
+        nrm[2] = mesh.dxidx[k, 2, j, i]
         flux = view(eqn.flux_parametric, :, j, i, k)
+
+	# this will dispatch to the proper calcEulerFlux
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
       end
     end
@@ -657,7 +660,8 @@ end
 @doc """
 ### EulerEquationMod.writeFlux
 
-  This function writes the real part of Euler flux to a file named Fxi.dat, space delimited, controlled by the input options 'writeflux', of type Bool.
+  This function writes the real part of Euler flux to a file named Fxi.dat, 
+  space delimited, controlled by the input options 'writeflux', of type Bool.
 
   This is a high level function.
 """->
@@ -750,6 +754,8 @@ end
 
   This is a mid level function, and does the correct thing regardless of the
   dimension of the equation.
+
+  Aliasing restrictions: none
 """->
 # mid level function (although it doesn't really need to Tdim)
 function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, 
@@ -767,18 +773,20 @@ end
 
 
 
-#=
 @doc """
 ### EulerEquationMod.disassembleSolution
 
   This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
-  3 dimensional array of conservative variables.  This function uses mesh.dofs
+  3 dimensional array.  This function uses mesh.dofs
   to speed the process.
+
+  This function also calls writeQ to do any requested output.
 
   This is a mid level function, and does the right thing regardless of equation
   dimension.
+
+  Aliasing restrictions: none
 """->
-=#
 # mid level function (although it doesn't need Tdim)
 function disassembleSolution{Tmsh, Tsol, Tdim, T}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, q_arr::AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})
   # disassemble q_vec into eqn.
@@ -847,8 +855,8 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
       for k=1:4  # loop over dofs on the node
-	      dofnum_k = mesh.dofs[k, j, i]
-	      res_vec[dofnum_k] += arr[k,j,i]
+        dofnum_k = mesh.dofs[k, j, i]
+        res_vec[dofnum_k] += arr[k,j,i]
       end
     end
   end
@@ -912,7 +920,7 @@ end
 # mid level function
 
   Converts the array (3D form) of entropy variables to conservative variables 
-  in place.  If the array is already in conservative variables this is a no-op
+  in place.  If the array is already in conservative variables this is a no-op.
 
   Inputs:
     mesh
@@ -981,7 +989,7 @@ function convertEntropy{Tsol}(params::ParamType{2}, qc::AbstractArray{Tsol,1},
   gamma = params.gamma
   gamma_1 = params.gamma_1
 
- k1 = 0.5*(qc[2]^2 + qc[3]^2)/qc[1]
+  k1 = 0.5*(qc[2]^2 + qc[3]^2)/qc[1]
   rho_int = qc[4] -k1
   s = log(gamma_1*rho_int/(qc[1]^gamma))
   fac = 1.0/rho_int

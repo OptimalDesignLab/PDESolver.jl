@@ -76,6 +76,11 @@ facts("--- Testing Euler Low Level Functions --- ") do
    q_ret = zeros(4)
    EulerEquationMod.convertToConservative(e_params, v, q_ret)
    @fact q_ret => roughly(q)
+   
+   # test inplace operation
+   v2 = copy(v)
+   EulerEquationMod.convertToConservative(e_params, v2, v2)
+   @fact v2 => roughly(q)
 
    # test inv(A0)
    A0inv = zeros(4,4)
