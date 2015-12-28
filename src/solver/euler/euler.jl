@@ -300,7 +300,7 @@ end # end function dataPrep
 
   This function calls other functions to calculate the boundary fluxes, passing
   them pieces of the array needed.  This populates eqn.bndryflux.  It also
-  calles writeBoundary() to do any requested output.
+  calls writeBoundary() to do any requested output.
 
   This is a mid level function
 """->
@@ -386,6 +386,9 @@ end
 
 
 
+#------------------------------------------------------------------------------
+# sanity check functions
+#------------------------------------------------------------------------------
 @doc """
 ### EulerEquationMod.checkDensity
 
@@ -396,9 +399,9 @@ end
   Arguments:
     * EulerData
 
-  This is a low level function.
+  This is a mid level function.
 """->
-# low level function
+# mid level function
 function checkDensity{Tsol}(eqn::EulerData{Tsol})
 # check that density is positive
 
@@ -421,12 +424,12 @@ end
 
   This function checks that pressure is positive.  If not, an error is thrown.
   Because pressure is stored in the auxiliary variables array, this check 
-  takes very little time
+  takes very little time.
 
   Arguments:
     * EulerData
 
-  This is a low level function
+  This is a mid level function
 """->
 function checkPressure(eqn::EulerData)
 # check that density is positive
@@ -435,12 +438,8 @@ function checkPressure(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
-#    q_vals = view(eqn.q, :, j, i)
-#    press = calcPressure(q_vals, eqn)
     aux_vars = view(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
-#    press = getPressure(aux_vars)
-#    println("press = ", press)
     @assert( real(press) > 0.0, "element $i, node $j")
   end
 end
@@ -463,16 +462,6 @@ end
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
                              sbp::SBPOperator, eqn::EulerData{Tsol, Tdim}, opts)
-# evaluate all the integrals over the elements (but not the boundary)
-# does not do boundary integrals
-# mesh : a mesh type, used to access information about the mesh
-# sbp : an SBP operator, used to get stiffness matricies and stuff
-# eqn : a type that holds some constants needed to evaluate the equation
-#	: also used for multiple dispatch
-# res_vec : solution vector to be populated (mesh.numDof entries)
-# q_vec : solution vector at previous timesteps (mesh.numDof entries)
-
-#  println("size eqn.flux_parametric = ", size(eqn.flux_parametric), " size eqn.res = ", size(eqn.res), " sbp.numnodes = ", sbp.numnodes)
   
   if opts["Q_transpose"] == true
     for i=1:Tdim
@@ -480,6 +469,7 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
     end
   else
     for i=1:Tdim
+      #TODO: do this more efficiently
       weakdifferentiate!(sbp, i, -1*view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
     end
   end  # end if
@@ -518,11 +508,6 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SB
 """->
 # mid level function
 function evalBoundaryIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
-# evaluate all the integrals over the boundary
-# mesh : a mesh type, used to access information about the mesh
-# sbp : an SBP operator, used to get stiffness matricies and stuff
-# eqn : a type that holds some constants needed to evaluate the equation
-#	: also used for multiple dispatch
 
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 
@@ -541,23 +526,12 @@ end  # end evalBoundaryIntegrals
 
   This is a mid level function
 """->
-# This function adds edge stabilization to a residual using Prof. Hicken's edgestabilize! in SBP
 # mid level function
 function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts)
 
 #  println("==== start of addStabilization ====")
-  # alpha calculated like in edgestabilize! documentation
-  # stabscale (U+a)*gamma*h^2 where U=u*n, where u is the velocity 
-  #   (remember to scale by rho) and n is the unit normal vector, from nrm->dxidx, then scaled by length
-  # ifaces needs to be calculated
-  # x needs to be passed
 
-  
-
-
-  # u argument here is res_vec in a different format
-#  edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, mesh.jac, eqn.edgestab_alpha, stabscale, eqn.res, mesh, eqn)
-
+  # ----- Edge Stabilization -----#
   if eqn.params.use_edgestab
 #    println("applying edge stabilization")
     if opts["use_edge_res"]
@@ -567,11 +541,13 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperato
     end
   end
 
+  # ----- Filtering -----
   if eqn.params.use_res_filter
 #    println("applying residual filter")
     applyFilter(mesh, sbp, eqn, eqn.res, opts, trans=true)
   end
 
+  # ----- Artificial Dissipation -----
   if eqn.params.use_dissipation
 #    println("applying artificial dissipation")
     applyDissipation(mesh, sbp, eqn, eqn.q, opts)
