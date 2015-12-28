@@ -124,6 +124,11 @@ facts("--- Testing Euler Low Level Functions --- ") do
    end
 
 
+   # check that checkDensity and checkPresure work
+   @fact_throws EulerEquationMod.checkDensity(eqn) => nothing
+   @fact_throws EulerEquationMod.checkPressure(eqn) => nothing
+
+   println("\n\neqn.q = ", eqn.q, "\n")
 
    context("--- Testing convert Functions ---") do
      # for the case, the solution is uniform flow

@@ -122,6 +122,8 @@ get!(arg_dict, "write_finalresidual", false)
 # solver options
 get!(arg_dict, "write_entropy", false)
 get!(arg_dict, "write_entropy_fname", "entropy.dat")
+get!(arg_dict, "check_density", true)
+get!(arg_dict, "check_pressure", true)
 
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)

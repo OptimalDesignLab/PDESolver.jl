@@ -5,20 +5,31 @@
 # The code is organized into 3 levels of functions.  High level functions
 # only call mid level functions, passing the Mesh, Equation, and SBP objects
 # to them.  At this point, there shouldn't be any need for more high level
-# functions.
+# functions.  High level functions should use AbstractMesh and 
+# AbstractEulerData as the types of the mesh and equation objects, to signify 
+# that they are implementation independent.
 #
 # The mid level functions either call SBP functions or have loops over
 # the arrays stored in the Equation, calling low level functions
 # to calculate quantities at each node.  Use the ArrayViews package to pass
-# portions of a larger array to the low level functions.
+# portions of a larger array to the low level functions.  These functions 
+# should use AbstractMesh and EulerData as the types of the mesh and equation
+# objects, to signify they are independent of the mesh implementation but 
+# do interact with the fields of the equation object.
 #
 # Low level functions calculate quantities for a single node.  Although
 # these functions will likely take in an ArrayView, their argument
 # types should be AbstractArrays{T, N}, specifying T according to 
 # what type the original array is (from either the Equation or Mesh object)
+# They should also take the eqn.params object as an argument, which has
+# all of the static parameters as the the equation object, so it can be
+# used to dispatch to the correct method based on the static paremters.
 
-# The proper order for arguments is (mesh, sbp, eqn, opts).
 
+# For high and mid level functions, the proper order for arguments 
+# is (mesh, sbp, eqn, opts).
+# For low level functions, the order of arguments should be: all input 
+# (read-only) arguments, then params, then any output arguments.
 
 # Rules: 
 # 1. function that take a composite type with abstract fields *cannot* use those
@@ -26,9 +37,6 @@
 # This leads directly to a two level structure for the code: high level function
 # that take in composite types and low level function that take in arrays and
 # perform calculations on them
-
-# at this time, no composite types have abstract fields (all AbstractArrays
-# were turned into arrays), so this is a non-issue
 
 # the reason for this is that the compiler does not compile new version of the 
 # function based
@@ -252,9 +260,6 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
     applyFilter(mesh, sbp, eqn, eqn.q, opts)
   end
 
-  u = eqn.q
-  flux_parametric = eqn.flux_parametric
-
   # zero out res
   fill!(eqn.res, 0.0)
   fill!(eqn.res_edge, 0.0)
@@ -262,12 +267,15 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   getAuxVars(mesh, eqn)
 #  println("getAuxVars @time printed above")
 
+  if opts["check_density"]
+    checkDensity(eqn)
+    # println("checkDensity @time printed above")
+  end
 
-  checkDensity(eqn)
-#  println("checkDensity @time printed above")
-
-  checkPressure(eqn)
-#  println("checkPressure @time printed above")
+  if opts["check_pressure"]
+    checkPressure(eqn)
+    # println("checkPressure @time printed above")
+  end
 
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(flux_parametric, :, :, :, 1), view(flux_parametric, :, :, :, 2))
@@ -292,7 +300,7 @@ end # end function dataPrep
 
   This function calls other functions to calculate the boundary fluxes, passing
   them pieces of the array needed.  This populates eqn.bndryflux.  It also
-  calles writeBoundary()
+  calles writeBoundary() to do any requested output.
 
   This is a mid level function
 """->
@@ -391,14 +399,15 @@ end
   This is a low level function.
 """->
 # low level function
-function checkDensity(eqn::EulerData)
+function checkDensity{Tsol}(eqn::EulerData{Tsol})
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
-
+q_cons = zeros(Tsol, ndof)  # conservative variables
 for i=1:numel
   for j=1:nnodes
-    @assert( real(eqn.q[1, j, i]) > 0.0, "element $i, node $j. Density < 0")
+    convertToConservative(eqn.params, view(eqn.q, :, j, i), q_cons)
+    @assert( real(q_cons[1]) > 0.0, "element $i, node $j. Density < 0")
   end
 end
 

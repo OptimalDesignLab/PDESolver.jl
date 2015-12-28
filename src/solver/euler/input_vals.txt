@@ -85,6 +85,10 @@ Note that any values associated with these options are shared with the regular
                   (Bool), default false
 "write_entropy_fname" : file name (with extension) to write entropy to, 
                         (ASCIIString), default "entropy.dat"
+"check_density" : whether not to check that density > 0 every residual 
+                  evalution, (Bool), default true
+"check_pressure": whether to not to check that pressure > 0 every residual
+                  evaluation, (Bool), default true
 
 # solver debugging options
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
