@@ -493,34 +493,6 @@ end
 #------------------------------------------------------------------------------
 
 @doc """
-### EulerEquationMod.applyMassMatrixInverse
-
-  This function multiplies eqn.res_vec (the residual in vector form  by eqn.Minv,
-  the diagonal mass matrix.  This is a very fast function because all values
-  are precomputed and stored linearly in memory.
-
-  This is a mid level function, and does the correct thing regardless of the
-  dimension of the equation.
-
-  Aliasing restrictions: none
-"""->
-# mid level function (although it doesn't really need to Tdim)
-function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, 
-                                            res_vec::AbstractVector{Tsol})
-  # apply the inverse mass matrix stored eqn to res_vec
-
-  ndof = length(res_vec)
-  for i=1:ndof
-    res_vec[i] *= eqn.Minv[i]
-  end
-
-  return nothing
-end
-
-
-
-
-@doc """
 ### EulerEquationMod.disassembleSolution
 
   This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
