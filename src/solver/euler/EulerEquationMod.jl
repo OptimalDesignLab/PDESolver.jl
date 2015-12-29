@@ -90,11 +90,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
+
   function ParamType(sbp, opts, order::Integer)
   # create values, apply defaults
     
     t = 0.0
-    # get() = get(dictionary, key, default)
 
     q_vals = Array(Tsol, 4)
     qg = Array(Tsol, 4)
@@ -143,10 +143,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
-    return new(t, order, q_vals, qg, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free, 
-               edgestab_gamma, writeflux, writeboundary, writeq, use_edgestab, 
-               use_filter, use_res_filter, filter_mat, use_dissipation,  
-               dissipation_const, vortex_x0, vortex_strength, krylov_itr, krylov_type)
+    return new(t, order, q_vals, qg, cv, R, gamma, gamma_1, Ma, Re, aoa, 
+               rho_free, E_free, edgestab_gamma, writeflux, writeboundary, 
+               writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
+               use_dissipation, dissipation_const, vortex_x0, vortex_strength, 
+               krylov_itr, krylov_type)
 
     end   # end of ParamType function
 
@@ -333,7 +334,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
-    eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, mesh.order)
+    eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, 
+                                                             mesh.order)
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.multiplyA0inv = matVecA0inv
@@ -368,7 +370,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     eqn.res_vec = zeros(Tres, mesh.numDof)
 
     if opts["use_edge_res"]
-      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, mesh.numTypePerElement[2])
+      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, 
+                           mesh.numTypePerElement[2])
     else
       eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
     end
