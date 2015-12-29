@@ -132,6 +132,39 @@ end
 
 
 @doc """
+### EulerEquationMod.convertFromNaturlaToWorkingVars
+
+  This function converts a vector qc from the "natural" set of variables to 
+  write the equation to the set of variables the equation is being solved in, 
+  defined by the static parameter var_type of the params.  For the Euler 
+  equations, the "natural" variables are the conservative variables.
+  Every new set of variables must extend this function with a new method.
+
+  Inputs:
+    params:  ParamType{Tdim, var_type}
+    qc: vector of "natural" variables
+
+  Inputs/Outputs:
+    qe: vector to be populated with the new variables
+
+  Low level function.
+
+  Aliasing restrictions: none (this requires that every method of this function
+                         support in-place conversion).
+
+"""->
+function convertFromNaturalToWorkingVars{Tsol}(
+                                         params::ParamType{2, :conservative}, 
+                                         qc::AbstractArray{Tsol,1}, 
+                                         qe::AbstractArray{Tsol,1})
+  for i=1:length(qc)
+    qe[i] = qc[i]
+  end
+
+end
+
+
+@doc """
 # mid level function
 
   Converts the array (3D form) of entropy variables to conservative variables 
@@ -205,7 +238,8 @@ end
 #------------------------------------------------------------------------------
 
 @doc """
-# low level function
+### EulerEquationMod.convertToEntropy
+
   Converts the conservative variables at a node to entropy variables
 
   Input:
@@ -216,7 +250,10 @@ end
   qe : vector (of length 4) of conservative variables.  Contents of vector are
        overwritten
 
+  # low level function
+
   Aliasing restrictions: none (qc and qe *can* be the same vector)
+
 """->
 function convertToEntropy{Tsol}(params::ParamType{2, :conservative}, 
                qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
@@ -227,10 +264,13 @@ end
 
 
 @doc """
-# low level function
+### EulerEquationMod.convertToEntropy
+
   Converts the entropy variables to entropy variables (ie. it copies the 
   input to the output).  This method exists so variables can be converted 
   to entropy variables without knowing what type they are.
+
+  # low level function
 
   Aliasing restrictions: none (qc and qe *can* be the same vector)
 
@@ -245,7 +285,14 @@ function convertToEntropy{Tsol}(params::ParamType{2, :entroyp},
   return nothing
 end
 
+#doc """
 
+
+function convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :entropy}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+
+  convertToEntropy_(params, qc, qe)
+end
 
 @doc """
 # mid level function

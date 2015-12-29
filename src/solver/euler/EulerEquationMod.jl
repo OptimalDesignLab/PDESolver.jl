@@ -17,34 +17,6 @@ using ForwardDiff
 
 export AbstractEulerData, EulerData, EulerData_
 
-#=
-Use this type to leverage multiple dispatch.
-This type holds any data, including large arrays of solution values, 
-  that are specific to the equation for the Euler equations. 
-  This includes the conservative variables q, the fluxes in the xi and eta 
-  direction, and the result of the calculation the inverse mass matrix is 
-  stored here as well (not sure if that fits better here or in the mesh object)
-  things like the coordinate field, the jacobian etc. are stored 
-  in the mesh object
-
-The aux_vars array holds all auxiliary variables that are stored over 
-  the entire mesh.
-Although it can be accessed directly, the preferred method is to use the macros 
-  defined in the euler_macros.jl file.
-These macros return either a scalar or an ArrayView of the specified indices, 
-  depending on if the quantity requested is scalar or vector.
-Every time a new variable is added to the array, the size must be updated 
-  and a new macro must be created.
-
-The uses of aux_vars should mirror that of eqn.q, in that entire columns 
-  should be passed to low level functions and the low level functions 
-  use the macros to access individual variables.
-The advantages of macros vs functions for access to variables remains unclear
-  if aux_vars is a fixed size.
-If it is variable sized then macros give the advantage of doing location lookup
-  at compile time
-=#
-
 @doc """
 ### EulerEquationMod.ParamType
 
@@ -197,6 +169,34 @@ end  # end type declaration
   but does not care even a little bit about how.
 """->
 abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+#=
+Use this type to leverage multiple dispatch.
+This type holds any data, including large arrays of solution values, 
+  that are specific to the equation for the Euler equations. 
+  This includes the solutoin variables q, the fluxes in the xi and eta 
+  direction, and the result of the calculation the inverse mass matrix is 
+  stored here as well (not sure if that fits better here or in the mesh object)
+  things like the coordinate field, the jacobian etc. are stored 
+  in the mesh object
+
+The aux_vars array holds all auxiliary variables that are stored over 
+  the entire mesh.
+Although it can be accessed directly, the preferred method is to use the macros 
+  defined in the euler_macros.jl file.
+These macros return either a scalar or an ArrayView of the specified indices, 
+  depending on if the quantity requested is scalar or vector.
+Every time a new variable is added to the array, the size must be updated 
+  and a new macro must be created.
+
+The uses of aux_vars should mirror that of eqn.q, in that entire columns 
+  should be passed to low level functions and the low level functions 
+  use the macros to access individual variables.
+The advantages of macros vs functions for access to variables remains unclear
+  if aux_vars is a fixed size.
+If it is variable sized then macros give the advantage of doing location lookup
+  at compile time
+=#
+
 
 @doc """
 ### EulerEquationMod.EulerData
@@ -211,15 +211,16 @@ abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
   It should have the following fields:
    * res_type : datatype of residual (depreciated)
     * q  : 3D array holding conservative variables
+    * q_vec  : vector to assemble q into
     * aux_vars : 3D array holding auxiliary variables
     * flux_parametric : 4D array [ndof per node, nnodes per element, nelements, Tdim]
              holding the Euler flux in the xi and eta directions
     * res  : 3D array holding residual
     * res_vec   : vector form of res
-    * q_vec  : initial condition vector
     * edgestab_alpha : paramater used for edge stabilization, 4d array
     * bndryflux : 3D array holding boundary flux data
     * stabscale : 2D array holding edge stabilization scale factor
+    * M : vector holding the mass matrix
     * Minv :  vector holding inverse mass matrix
 """->
 abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol, Tres}
@@ -316,8 +317,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
   #       fields
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
-  convertToEntropyVars::Function  # function eqn.q -> eqn.q entropy variables
-  convertToConsVars::Function     # convert to eqn.q -> eqn.q in conservative
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
                                   # is the coefficient matrix of the time 
 				  # derivative
@@ -337,8 +336,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres,
     eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, mesh.order)
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
-    eqn.convertToEntropyVars = convertToEntropy
-    eqn.convertToConsVars = convertToConservative
     eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
 
