@@ -190,7 +190,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
 #  println("entered isentropicOvrtexBC (low level)")
 
   # getting qg
-  qg = zeros(Tsol, 4)
+  qg = params.qg
   calcIsentropicVortex(x, params, qg)
   RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
 
@@ -312,7 +312,7 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
 #  println("Tsol = ", Tsol)
 
   # getting qg
-  qg = zeros(Tsol, 4)
+  qg = params.qg
   calcUnsteadyVortex(x, params, qg)
 
   RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
@@ -342,9 +342,10 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1}, flux_
 
 
 #println("in Rho1E2U3Bc")
-qg = zeros(Tsol, 4)
+qg = params.qg
 
 calcRho1Energy2U3(x, params, qg)
+
 #println("qg = ", qg)
 # call Roe solver
 RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
@@ -371,7 +372,7 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
-  qg = zeros(Tsol, 4)
+  qg = params.qg
 
   calcFreeStream(x, params, qg)
   RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
@@ -425,7 +426,7 @@ global const BCDict = Dict{ASCIIString, BCType} (
 @doc """
 ### EulerEquationMod.getBCFunctors
 
-  This function uses the opts dictionary to populatemesh.bndry_funcs with
+  This function uses the opts dictionary to populate mesh.bndry_funcs with
   the the functors
 
   This is a high level function.
@@ -434,8 +435,7 @@ global const BCDict = Dict{ASCIIString, BCType} (
 function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
-  println("Entered getBCFunctors")
-  println("BCDict = ", BCDict)
+#  println("Entered getBCFunctors")
 
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
