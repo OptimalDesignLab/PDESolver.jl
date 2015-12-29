@@ -2,7 +2,7 @@
 # this file contains all functions related to converting from one set of
 # variables to another
 
-export convertToEntropy_, convertToConservative_
+export convertFromNaturalToWorkingVars
 
 #------------------------------------------------------------------------------
 # convert variables without checking what type they currently are (unsafe)

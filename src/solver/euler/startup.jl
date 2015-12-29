@@ -141,7 +141,7 @@ ICfunc(mesh, sbp, eqn, opts, q_vec)
 if var_type == :entropy
   for i=1:mesh.numDofPerNode:mesh.numDof
     q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
-    convertToEntropy_(eqn.params, q_view, q_view)
+    convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
   end
 end
 
