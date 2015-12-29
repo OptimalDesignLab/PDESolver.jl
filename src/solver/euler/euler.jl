@@ -380,8 +380,8 @@ end
   This is a mid level function.
 """
 # mid level function
-function evalVolumeIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                             sbp::SBPOperator, eqn::EulerData{Tsol, Tdim}, opts)
+function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                             sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts)
   
   if opts["Q_transpose"] == true
     for i=1:Tdim
@@ -427,8 +427,8 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SB
 
 """->
 # mid level function
-function evalBoundaryIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
+function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim})
 
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 
@@ -513,8 +513,8 @@ end
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim, T}(mesh::AbstractMesh{Tmsh}, sbp,
-                             eqn::EulerData{Tsol, Tdim}, opts, 
+function disassembleSolution{Tmsh, Tsol, Tres, Tdim, T}(mesh::AbstractMesh{Tmsh}, sbp,
+                             eqn::EulerData{Tsol, Tres, Tdim}, opts, 
                              q_arr::AbstractArray{T, 3}, 
                              q_vec::AbstractArray{T, 1})
   # disassemble q_vec into eqn.

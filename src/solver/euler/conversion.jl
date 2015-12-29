@@ -185,7 +185,7 @@ end
 #3D array entropy -> conservative
 function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                                sbp::SBPOperator, 
-                               eqn::EulerData{Tsol, Tdim, Tres, :entropy}, 
+                               eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
                                opts, q_arr::AbstractArray{Tsol, 3})
 
   for i=1:mesh.numEl  # loop over elements
@@ -201,7 +201,7 @@ end
 # 3D array conservative -> conservative
 function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                                sbp::SBPOperator, 
-                               eqn::EulerData{Tsol, Tdim, Tres, :conservative},
+                               eqn::EulerData{Tsol, Tres, Tdim, :conservative},
                                opts, q_arr::AbstractArray{Tsol, 3})
 
   return nothing
@@ -211,7 +211,7 @@ end
 # q_vec conversion entropy -> conservative
 function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                                sbp::SBPOperator, 
-                               eqn::EulerData{Tsol, Tdim, Tres, :entropy}, 
+                               eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
                                opts, q_vec::AbstractArray{Tsol, 1})
 
   for i=1:mesh.numDofPerNode:mesh.numDof
@@ -225,7 +225,7 @@ end
 # q_vec conversion conservative -> conservative
 function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                                sbp::SBPOperator, 
-                               eqn::EulerData{Tsol, Tdim, Tres, :conservative},
+                               eqn::EulerData{Tsol, Tres, Tdim, :conservative},
                                opts, q_arr::AbstractArray{Tsol, 1})
 
   return nothing
@@ -316,7 +316,7 @@ end
 # 3D array conservative -> entropy
 function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
                           sbp::SBPOperator, 
-                          eqn::EulerData{Tsol, Tdim, Tres, :conservative}, 
+                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
                           opts, q_arr::AbstractArray{Tsol, 3})
 
 
@@ -335,7 +335,7 @@ end
 # 3D array entropy -> entropy
 function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
                           sbp::SBPOperator, 
-                          eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, 
+                          eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
                           q_arr::AbstractArray{Tsol, 3})
 
   return nothing
@@ -346,7 +346,7 @@ end
 # q_vec conversion conservative -> entropy
 function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
                           sbp::SBPOperator, 
-                          eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts,
+                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts,
                           q_vec::AbstractArray{Tsol, 1})
 
   for i=1:mesh.numDofPerNode:mesh.numDof
@@ -360,7 +360,7 @@ end
 # q_vec conversion entropy -> entropy
 function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
                           sbp::SBPOperator, 
-                          eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, 
+                          eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
                           q_arr::AbstractArray{Tsol, 1})
 
   return nothing

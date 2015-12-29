@@ -685,7 +685,7 @@ end
 """
 # used by EulerData Constructor - not that that matters for any reason
 # mid level function
-function calcEdgeStabAlpha{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
+function calcEdgeStabAlpha{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim})
 # calculate alpha, needed by edge stabilization
 
 

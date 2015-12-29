@@ -294,8 +294,7 @@ If it is variable sized then macros give the advantage of doing location lookup
     * M : vector holding the mass matrix
     * Minv :  vector holding inverse mass matrix
 """->
-abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol, Tres}
-#TODO: static parameter order is inconsistent with EulerData_
+abstract EulerData {Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres}
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
@@ -350,7 +349,7 @@ include("SUPG.jl")
 
 
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres, var_type}  
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}  
 # hold any constants needed for euler equation, as well as solution and data 
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
@@ -479,9 +478,9 @@ end  # end of type declaration
 """->
 # used by EulerData Constructor
 # mid level functions
-function calcMassMatrixInverse{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                                   sbp::SBPOperator, 
-                                                  eqn::EulerData{Tsol, Tdim})
+                                                  eqn::EulerData{Tsol, Tres, Tdim})
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 
@@ -522,9 +521,9 @@ end     # end of calcMassMatrixInverse function
     M: vector containing mass matrix
 
 """->
-function calcMassMatrix{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                            sbp::SBPOperator, 
-                                           eqn::EulerData{Tsol, Tdim})
+                                           eqn::EulerData{Tsol, Tres, Tdim})
 # calculate the (diagonal) mass matrix as a vector
 # return the vector M
 
@@ -559,7 +558,7 @@ end     # end of calcMassMatrix function
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't really need to Tdim)
-function applyMassMatrixInverse{Tsol, Tdim}(eqn::EulerData{Tsol, Tdim}, 
+function applyMassMatrixInverse{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim}, 
                                             res_vec::AbstractVector{Tsol})
   # apply the inverse mass matrix stored eqn to res_vec
 

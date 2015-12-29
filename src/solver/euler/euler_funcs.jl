@@ -20,9 +20,9 @@
   This is a mid level function
 """->
 # mid level function
-function getEulerFlux{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                         sbp::SBPOperator,  
-                                        eqn::EulerData{Tsol, Tdim}, opts)
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts)
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
 
   nrm = zeros(Tmsh, 2)
@@ -277,8 +277,8 @@ end
 #------------------------------------------------------------------------------
 
 # mid level function
-function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                      eqn::EulerData{Tsol, Tdim})
+function getAuxVars{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                      eqn::EulerData{Tsol, Tres, Tdim})
 # calculate all auxiliary variables
 
   for i=1:mesh.numEl
@@ -600,7 +600,7 @@ end
 """->
 function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
                      sbp::SBPOperator, 
-                     eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, 
+                     eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
                      res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
@@ -629,7 +629,7 @@ end
 # no-op, because for conservative variables this is A0inv is the identity matrix
 function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
                      sbp::SBPOperator, 
-                     eqn::EulerData{Tsol, Tdim, Tres, :conservative}, 
+                     eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
                      opts, res_arr::AbstractArray{Tsol, 3})
 
   return nothing
@@ -643,7 +643,7 @@ end
 
 """->
 function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                  sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy},
+                  sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim, :entropy},
                   opts, res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
@@ -671,7 +671,7 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 #no-op
-function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, res_arr::AbstractArray{Tsol, 3})
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts, res_arr::AbstractArray{Tsol, 3})
 
   return nothing
 end
@@ -833,7 +833,7 @@ end
   This is a mid level function
 """->
 function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
-                          eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts)
+                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
   q = eqn.q
@@ -856,7 +856,7 @@ end  # end function
 
 
 function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
-                          eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts)
+                          eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
   q = eqn.q
