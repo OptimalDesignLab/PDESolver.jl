@@ -274,9 +274,11 @@ qg[3] -= ny*Unrm
 nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
 ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
+v_vals = params.v_vals
+convertFromNaturalToWorkingVars(params, qg, v_vals)
 # this is a problem: q is in conservative variables even if
 # params says we are using entropy variables
-calcEulerFlux(params, qg, aux_vars, [nx2, ny2], bndryflux)
+calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
 
 #TODO: make this a unary minus, not a fp multiplication
 for i=1:4

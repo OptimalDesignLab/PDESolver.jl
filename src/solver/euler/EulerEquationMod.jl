@@ -58,6 +58,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
   q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
   qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
+  v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -98,6 +99,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
     q_vals = Array(Tsol, 4)
     qg = Array(Tsol, 4)
+    v_vals = Array(Tsol, 4)
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -143,8 +145,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
-    return new(t, order, q_vals, qg, cv, R, gamma, gamma_1, Ma, Re, aoa, 
-               rho_free, E_free, edgestab_gamma, writeflux, writeboundary, 
+    return new(t, order, q_vals, qg, v_vals, cv, R, gamma, gamma_1, Ma, Re, aoa,               rho_free, E_free, edgestab_gamma, writeflux, writeboundary, 
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
                use_dissipation, dissipation_const, vortex_x0, vortex_strength, 
                krylov_itr, krylov_type)
