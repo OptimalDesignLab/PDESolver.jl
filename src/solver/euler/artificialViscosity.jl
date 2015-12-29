@@ -80,7 +80,7 @@ end
 function calcArtViscosityFluxComp{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
                                         F::AbstractArray{Tsol,1})
   
-  press = calcPressure(q, params)
+  press = calcPressure(params, q)
   F[1] = q[1]
   F[2] = q[2]
   F[3] = q[3]
@@ -130,7 +130,7 @@ end
 function shockIndicator{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1})
 # Operates at the Nodal Level
 
-  p = calcPressure(q, params)  # Calculate Pressure
+  p = calcPressure(params, q)  # Calculate Pressure
 
   deltaPsi = 0.5             # Empirical constants that determine when when the
   psi0 = -4 - 4.25*log10(p)  # shock indicator should take effect.

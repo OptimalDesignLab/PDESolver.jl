@@ -60,7 +60,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
  q = [1.0, 2.0, 3.0, 7.0]
  qg = deepcopy(q)
- aux_vars = [EulerEquationMod.calcPressure(q, eqn.params)]
+ aux_vars = [EulerEquationMod.calcPressure(eqn.params, q)]
  dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
  dir = [1.0, 0.0]
  F = zeros(4)
@@ -93,14 +93,14 @@ facts("--- Testing Euler Low Level Functions --- ") do
              -52 18 24 -8; 
 	     -78 24 38 -12; 
 	     24 -8  -12 4]
-   EulerEquationMod.calcA0Inv(v, e_params, A0inv)
+   EulerEquationMod.calcA0Inv(e_params, v, A0inv)
 
    @fact A0inv => roughly(A0inv2)
 
    # test A0
    A0 = zeros(4,4)
    A02 = inv(A0inv)
-   EulerEquationMod.calcA0(v, e_params, A0)
+   EulerEquationMod.calcA0(e_params, v, A0)
 
    for i=1:16
      @fact A0[i] => roughly(A02[i], atol=1e-10)
@@ -108,7 +108,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    # test A1
    A1 = zeros(4,4)
-   EulerEquationMod.calcA1(v, e_params, A1)
+   EulerEquationMod.calcA1(e_params, v, A1)
    fac = 0.3125
    A1_analytic = fac*[16 33.6 48 115.2;
                            33.6 73.6 100.8 248.32; 
@@ -122,7 +122,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    
    A2 = zeros(4,4)
-   EulerEquationMod.calcA2(v, e_params, A2)
+   EulerEquationMod.calcA2(e_params, v, A2)
    A2_analytic = fac*[24. 48 73.6 172.8;
                            48 100.8 147.2 355.2; 
 			   73.6 147.2 230.4 544.32;
@@ -168,7 +168,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
      v_arr2 = copy(v_arr)
      # test multiply by A0inv, A0
 
-     EulerEquationMod.calcA0Inv(v_arr2[:, 1, 1], e_params, A0inv)
+     EulerEquationMod.calcA0Inv(e_params, v_arr2[:, 1, 1], A0inv)
      v2 = A0inv*v_arr2[:, 1, 1]
      EulerEquationMod.matVecA0inv(mesh, sbp, eqn_e, opts, v_arr2)
      for i=1:mesh.numEl
@@ -179,7 +179,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
      v_arr3 = copy(v_arr)
 
-     EulerEquationMod.calcA0(v_arr3[:, 1, 1], e_params, A0)
+     EulerEquationMod.calcA0(e_params, v_arr3[:, 1, 1], A0)
      v3 = A0*v_arr3[:, 1, 1]  # store original values
      EulerEquationMod.matVecA0(mesh, sbp, eqn_e, opts, v_arr3)
      for i=1:mesh.numEl
@@ -211,10 +211,10 @@ facts("--- Testing Euler Low Level Functions --- ") do
    end
  context("--- Testing calc functions ---") do
 
-   @fact EulerEquationMod.calcPressure(q, eqn.params) => roughly(0.2)
-   @fact EulerEquationMod.calcPressure(v, e_params) => roughly(0.2)
-   a_cons = EulerEquationMod.calcSpeedofSound(q, eqn.params)
-   a_ent = EulerEquationMod.calcSpeedofSound(v, e_params)
+   @fact EulerEquationMod.calcPressure(eqn.params, q) => roughly(0.2)
+   @fact EulerEquationMod.calcPressure(e_params, v) => roughly(0.2)
+   a_cons = EulerEquationMod.calcSpeedofSound(eqn.params, q)
+   a_ent = EulerEquationMod.calcSpeedofSound(e_params, v)
    println("a_cosn = ", a_cons)
    println("a_ent = ", a_ent)
    @fact a_cons => roughly(a_ent)

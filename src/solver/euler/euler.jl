@@ -28,8 +28,8 @@
 
 # For high and mid level functions, the proper order for arguments 
 # is (mesh, sbp, eqn, opts).
-# For low level functions, the order of arguments should be: all input 
-# (read-only) arguments, then params, then any output arguments.
+# For low level functions, the order of arguments should be:  eqn.params first, 
+# then all input (read-only) arguments, then any output arguments.
 
 # Rules: 
 # 1. function that take a composite type with abstract fields *cannot* use those
@@ -225,7 +225,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh, sbp::SBPOperat
     val = zero(Float64)
     for i=1:mesh.numDofPerNode:mesh.numDof
       q_vals = view(eqn.q_vec, i:(i+3))
-      s = calcEntropy(q_vals, eqn.params)
+      s = calcEntropy(eqn.params, q_vals)
       val += real(s)*eqn.M[i]*real(s)
     end
     f = open(opts["write_entropy_fname"], "a+")
@@ -448,6 +448,10 @@ return nothing
 
 end
 
+
+#------------------------------------------------------------------------------
+# functions that evaluate terms in the weak form
+#------------------------------------------------------------------------------
 @doc """
 ### EulerEquationMod.evalVolumeIntegrals
 
@@ -600,7 +604,7 @@ function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{T
       q_vals = view(eqn.q, :, j, i)
 
       # calculate pressure
-      press = calcPressure(q_vals, eqn.params)
+      press = calcPressure(eqn.params, q_vals)
       @setPressure(eqn.aux_vars, j, i, press)
     end
   end
@@ -782,13 +786,22 @@ end
 
   This function also calls writeQ to do any requested output.
 
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
   This is a mid level function, and does the right thing regardless of equation
   dimension.
 
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{Tmsh, Tsol, Tdim, T}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tdim}, opts, q_arr::AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})
+function disassembleSolution{Tmsh, Tsol, Tdim, T}(mesh::AbstractMesh{Tmsh}, sbp,
+                             eqn::EulerData{Tsol, Tdim}, opts, 
+                             q_arr::AbstractArray{T, 3}, 
+                             q_vec::AbstractArray{T, 1})
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -1236,7 +1249,10 @@ end
     the ParameterType is used to dispatch to the right method for
     entropy or conservative variables
 """->
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, aux_vars::AbstractArray{Tres, 1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy}, 
+                       q::AbstractArray{Tsol,1}, 
+                       aux_vars::AbstractArray{Tres, 1}, 
+                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -1263,7 +1279,9 @@ end
   This is the 3D method.  All arguments are same as the 2D version.
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3, :conservative}, q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3, :conservative}, 
+                       q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  
+                       F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 5), of the conservative variables at the point
@@ -1274,7 +1292,7 @@ function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3, :conservative}, q::Abstr
 # once the Julia developers fix slice notation and speed up subarrays, we can make a faster
 # vectorized version of this
 
-  press = calcPressure(q, params)
+  press = calcPressure(params, q)
   U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
   F[1] = q[1]*U
   F[2] = q[2]*U + dir[1]*press
@@ -1295,8 +1313,8 @@ end
   node in 2D.  It returns a single value.
 
   Inputs:
-    q  : vector of conservative variables
     params : ParamType{2, :conservative}
+    q  : vector of conservative variables
 
   The parameter of params determines whether the 2D or 3D method is dispatched.
 
@@ -1305,7 +1323,8 @@ end
   Aliasing restrictions: none
 """->
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :conservative})
+function calcPressure{Tsol}(params::ParamType{2, :conservative}, 
+                            q::AbstractArray{Tsol,1} )
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
@@ -1319,14 +1338,15 @@ end
   This function calculates pressure using the entropy variables.
 
   Inputs:
-    q  : vector of entropy varaibles
     params : ParamType{2, :entropy}
+    q  : vector of entropy varaibles
 
   returns pressure
 
   Aliasing restrictions: none
 """->
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
+function calcPressure{Tsol}(params::ParamType{2, :entropy}, 
+                            q::AbstractArray{Tsol,1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -1344,7 +1364,8 @@ end
   3D method.  See 2D method documentation
 """->
 # low level function
-function calcPressure{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{3, :conservative})
+function calcPressure{Tsol}(params::ParamType{3, :conservative}, 
+                            q::AbstractArray{Tsol,1} )
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
 
@@ -1356,14 +1377,14 @@ end
 
 
 @doc """
-### EulerEquationMod.calcSpeedOfSound
+### EulerEquationMod.calcSpeedofSound
 
   This function calculates the speed of sound at a node and returns it.
   Methods are available for both conservative and entropy variables.
 
   Inputs:
-    q  vector of solution variables at a node
     params:  ParamType{2, var_type}
+    q  vector of solution variables at a node
 
   Returns: speed of sound
 
@@ -1372,16 +1393,17 @@ end
   Aliasing restrictions: none
 """->
 
-function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :conservative})
+function calcSpeedofSound{Tsol}(params::ParamType{2, :conservative}, q::AbstractArray{Tsol, 1})
 # calculates teh speed of sond at a node
-  pressure = calcPressure(q, params)
+  pressure = calcPressure(params, q)
   return sqrt((params.gamma*pressure)/q[1])
 
 end
 
 
 
-function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2, :entropy})
+function calcSpeedofSound{Tsol}(params::ParamType{2, :entropy}, 
+                                q::AbstractArray{Tsol, 1})
 # calculate speed of sound using the same formula as conservative variables,
 # just rewriting all variables in entropy variables
 
@@ -1391,7 +1413,7 @@ function calcSpeedofSound{Tsol}(q::AbstractArray{Tsol, 1},  params::ParamType{2,
   gamma = params.gamma
   gamma_1 = params.gamma_1
   k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
-  pressure = calcPressure(q, params)
+  pressure = calcPressure(params, q)
   s = gamma - q[1] + k1    # entropy
 
   rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
@@ -1409,8 +1431,8 @@ end
   available for conservative and entropy variables
 
   Inputs:
+    params: ParamType{2, var_type}, used to dispatch to the right method.
     q: vector of solution variables at a node.
-    params: ParamTy[e{2, var_type}, used to dispatch to the right method.
 
   Returns: entropy
 
@@ -1419,7 +1441,8 @@ end
   Aliasing Restrictions: none
 
 """->
-function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :conservative})
+function calcEntropy{Tsol}(params::ParamType{2, :conservative}, 
+                           q::AbstractArray{Tsol,1} )
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -1446,8 +1469,8 @@ end
   The formation of A0 is given in Hughes
 
   Inputs:
-    q  : vector of entropy variables, length 4
     params : ParamType{2, :entropy}
+    q  : vector of entropy variables, length 4
 
 
   Inputs/Outputs:
@@ -1455,7 +1478,8 @@ end
 
   Aliasing restrictions: none
 """->
-function calcA0{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A0::AbstractArray{Tsol, 2})
+function calcA0{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
+                      A0::AbstractArray{Tsol, 2})
 
 
   gamma = params.gamma
@@ -1511,15 +1535,17 @@ end
   variables.  
 
   Inputs:
-  q  : vector (length 4) of entropy variables at a node
-  params : ParamType{2, :entropy}
+    params : ParamType{2, :entropy}
+    q  : vector (length 4) of entropy variables at a node
 
   Inputs/Outputs:
     A0inv : matrix to be populated with inv(A0).  Overwritten.
 
   Aliasing restrictions: none
 """->
-function calcA0Inv{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A0inv::AbstractArray{Tsol, 2})
+function calcA0Inv{Tsol}(params::ParamType{2, :entropy},
+                   q::AbstractArray{Tsol,1},  
+                   A0inv::AbstractArray{Tsol, 2})
   gamma = params.gamma
   gamma_1 = params.gamma_1
 
@@ -1576,7 +1602,10 @@ end
 
   Aliasing restrictions: none
 """->
-function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, res_arr::AbstractArray{Tsol, 3})
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                     sbp::SBPOperator, 
+                     eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, 
+                     res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
   A0inv = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
@@ -1592,7 +1621,7 @@ function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPO
 
       res_view = view(res_arr, :, j, i)
       # get A0Inv for this node
-      calcA0Inv(q_vals, eqn.params, A0inv)
+      calcA0Inv(eqn.params, q_vals, A0inv)
 
       smallmatvec!(A0inv, res_vals, res_view)
     end
@@ -1602,7 +1631,10 @@ function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPO
 end
 
 # no-op, because for conservative variables this is A0inv is the identity matrix
-function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, res_arr::AbstractArray{Tsol, 3})
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                     sbp::SBPOperator, 
+                     eqn::EulerData{Tsol, Tdim, Tres, :conservative}, 
+                     opts, res_arr::AbstractArray{Tsol, 3})
 
   return nothing
 end
@@ -1614,7 +1646,9 @@ end
   A0inv.  See its documention.
 
 """->
-function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, res_arr::AbstractArray{Tsol, 3})
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                  sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy},
+                  opts, res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
 # a non-alias tolerant implimention wold avoid copying q_vals
@@ -1631,7 +1665,7 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOper
 
       res_view = view(res_arr, :, j, i)
       # get A0Inv for this node
-      calcA0(q_vals, eqn.params, A0)
+      calcA0(eqn.params, q_vals, A0)
 
       smallmatvec!(A0, res_vals, res_view)
     end
@@ -1658,15 +1692,16 @@ end
   The formation of A1 is given in Hughes paper
 
   Inputs:
-    q  : vector of entropy variables, length 4
     params : ParamType{2, :entropy}
+    q  : vector of entropy variables, length 4
 
   Inputs/Outputs:
   A1 : 4x4 matrix to be populated.  Overwritten
 
 
 """->
-function calcA1{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A1::AbstractArray{Tsol, 2})
+function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
+                      A1::AbstractArray{Tsol, 2})
 
 
   gamma = params.gamma
@@ -1731,14 +1766,15 @@ end
   The formation of A2 is given in Hughes
 
   Inputs:
-    q  : vector of entropy variables, length 4
     params : ParamType{2, :entropy},
+    q  : vector of entropy variables, length 4
   Inputs/Outputs:
   A2 : 4x4 matrix to be populated.  Overwritten
 
 
 """->
-function calcA2{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy}, A2::AbstractArray{Tsol, 2})
+function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
+                      A2::AbstractArray{Tsol, 2})
 
 
   gamma = params.gamma
@@ -1797,14 +1833,15 @@ end
 
   This is a mid level function
 """->
-function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts)
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
+                          eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
   q = eqn.q
   max_speed = zero(eltype(q))
   for i=1:4:length(q)
     q_i = view(q, i:(i+3))
-    a = calcSpeedofSound(q_i, eqn.params)
+    a = calcSpeedofSound(eqn.params, q_i)
     ux = q_i[2]/q_i[1]
     uy = q_i[3]/q_i[1]
     u_norm = sqrt(ux*ux + uy*uy)
@@ -1819,7 +1856,8 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim
 end  # end function
 
 
-function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts)
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
+                          eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
   q = eqn.q
@@ -1829,7 +1867,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tdim
   max_speed = zero(eltype(q))
   for i=1:4:length(q)
     q_i = view(q, i:(i+3))
-    a = calcSpeedofSound(q_i, eqn.params)
+    a = calcSpeedofSound(eqn.params, q_i)
 
    
     k1 = 0.5*(q_i[2]*q_i[2] + q_i[3]*q_i[3])/q_i[4]  # a constant from Hughes' paper

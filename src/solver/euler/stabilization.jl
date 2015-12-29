@@ -33,7 +33,7 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
     Energy = q_vals[4]
 
     # from JC's code below, eqn should still be in scope
-    pressure = calcPressure(u, eqn.params)
+    pressure = calcPressure(params, u)
 
     # solved eqn for e: E = rho*e + (1/2)*rho*u^2
     vel_squared = vel_x^2 + vel_y^2
@@ -46,7 +46,7 @@ function stabscale{T}(u::AbstractArray{T,1}, dxidx::AbstractArray{T,2}, nrm::Abs
 #     println("gamma: ",gamma)
 #     println("rho: ",rho)
     # ideal gas law
-    speed_sound = calcSpeedofSound(u, params)
+    speed_sound = calcSpeedofSound(params, u)
 #    speed_sound = sqrt((gamma*pressure)/rho)
 
     # choice for edge stabilization constant: 
@@ -580,6 +580,9 @@ end  # end function
 function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, params::ParamType{2} )
 # calculate stabscale for a single node
 
+# u holds whatever the variable type that we are solving the equation in
+# q_vals holds the conservative variables
+
 #     println("==== entering stabscale ====")a
     q_vals = params.q_vals
     # convert to conservative variables if not already using them
@@ -592,7 +595,9 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
     Energy = q_vals[4]
 
     # from JC's code below, eqn should still be in scope
-    pressure = calcPressure(u, params)
+    # calc pressure using the variables u and the params object
+    # of type ParamType{2, :the_variable_type_of_u}
+    pressure = calcPressure(params, u)
 
     # solved eqn for e: E = rho*e + (1/2)*rho*u^2
     vel_squared = vel_x^2 + vel_y^2
@@ -605,7 +610,8 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
 #     println("gamma: ",gamma)
 #     println("rho: ",rho)
     # ideal gas law
-    speed_sound = sqrt((gamma*pressure)/rho)
+    speed_sound = calcSpeedofSound(params, u)
+#    speed_sound = sqrt((gamma*pressure)/rho)
 
     # choice for edge stabilization constant: 
     #   refer to email from JH, 20150504:
