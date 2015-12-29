@@ -107,7 +107,8 @@ export evalEuler, init, convertToEntropy_, convertToConservative_
 """->
 # this function is what the timestepper calls
 # high level function
-function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, t=0.0)
+function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, 
+                   t=0.0)
 
   eqn.params.t = t  # record t to params
   
@@ -165,7 +166,8 @@ end  # end evalEuler
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
+function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
 
   println("\nInitializing Euler module")
   # get BC functors
@@ -177,7 +179,8 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn:
 end
 
 
-function majorIterationCallback(itr::Integer, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEulerData, opts)
+function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
+                                sbp::SBPOperator, eqn::AbstractEulerData, opts)
 
 #  println("Performing major Iteration Callback")
 #=
@@ -248,7 +251,8 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol, Tres}, opts)
+function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+                                     eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
 
@@ -373,7 +377,8 @@ function writeBoundary(mesh, sbp, eqn, opts)
     face = mesh.bndryfaces[i].face
     for j=1:sbp.numfacenodes
       jb = sbp.facenodes[j, face]
-      println(f, "el ", el, ", node_index ", jb, ", flux = ", real(eqn.bndryflux[:, j, i]))
+      println(f, "el ", el, ", node_index ", jb, ", flux = ", 
+               real(eqn.bndryflux[:, j, i]))
     end
   end
   close(f)
@@ -511,7 +516,8 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SB
 
 """->
 # mid level function
-function evalBoundaryIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
+function evalBoundaryIntegrals{Tmsh,  Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim})
 
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 
@@ -531,7 +537,8 @@ end  # end evalBoundaryIntegrals
   This is a mid level function
 """->
 # mid level function
-function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol}, opts)
+function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, 
+                          sbp::SBPOperator, eqn::EulerData{Tsol}, opts)
 
 #  println("==== start of addStabilization ====")
 
@@ -572,6 +579,7 @@ end
 # some helper functions
 # this is a test for an algorithmic differentiation package
 function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
+
   dir = [1.0, 0.0]
 #  F = zeros(T, 4)
   sbp = TriSBP{Float64}()
@@ -596,7 +604,8 @@ fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4
   Thi is a mid level function
 """->
 # mid level function
-function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tdim})
+function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                      eqn::EulerData{Tsol, Tdim})
 # calculate all auxiliary variables
 
   for i=1:mesh.numEl
@@ -901,8 +910,9 @@ end
   Ths is a low level function.
 """->
 
-function convertToEntropy_{Tsol}(params::ParamType{2}, qc::AbstractArray{Tsol,1},
-                             qe::AbstractArray{Tsol, 1})
+function convertToEntropy_{Tsol}(params::ParamType{2}, 
+                           qc::AbstractArray{Tsol,1}, 
+                           qe::AbstractArray{Tsol, 1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -919,19 +929,6 @@ function convertToEntropy_{Tsol}(params::ParamType{2}, qc::AbstractArray{Tsol,1}
 
   return nothing
 end
-
-#=
-# define vector version used in startup.jl
-function convertToEntropy_{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres}, opts, q_vec::AbstractArray{Tsol, 1})
-
-  for i=1:mesh.numDofPerNode:mesh.numDof
-    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
-    convertToEntropy_(eqn.params, q_view, q_view)
-  end
-
-  return nothing
-end
-=#
 
 @doc """
 ### EulerEquationMod.convertToConservative_
@@ -952,7 +949,8 @@ end
   Ths is a low level function.
 """->
 function convertToConservative_{Tsol}(params::ParamType{2}, 
-                  qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
+                                qe::AbstractArray{Tsol,1}, 
+                                qc::AbstractArray{Tsol, 1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -989,7 +987,8 @@ end
   Ths is a low level function.
 """->
 function convertToConservative{Tsol}(params::ParamType{2, :entropy}, 
-                  qe::AbstractArray{Tsol,1}, qc::AbstractArray{Tsol, 1})
+                               qe::AbstractArray{Tsol,1}, 
+                               qc::AbstractArray{Tsol, 1})
 
   convertToConservative_(params, qe, qc)
 
@@ -1035,7 +1034,10 @@ end
   Aliasing: no restrictions
 """->
 #3D array entropy -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                               sbp::SBPOperator, 
+                               eqn::EulerData{Tsol, Tdim, Tres, :entropy}, 
+                               opts, q_arr::AbstractArray{Tsol, 3})
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -1048,14 +1050,20 @@ function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 # 3D array conservative -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_arr::AbstractArray{Tsol, 3})
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                               sbp::SBPOperator, 
+                               eqn::EulerData{Tsol, Tdim, Tres, :conservative},
+                               opts, q_arr::AbstractArray{Tsol, 3})
 
   return nothing
 end
 
 
 # q_vec conversion entropy -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_vec::AbstractArray{Tsol, 1})
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                               sbp::SBPOperator, 
+                               eqn::EulerData{Tsol, Tdim, Tres, :entropy}, 
+                               opts, q_vec::AbstractArray{Tsol, 1})
 
   for i=1:mesh.numDofPerNode:mesh.numDof
     q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
@@ -1066,7 +1074,10 @@ function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 # q_vec conversion conservative -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_arr::AbstractArray{Tsol, 1})
+function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                               sbp::SBPOperator, 
+                               eqn::EulerData{Tsol, Tdim, Tres, :conservative},
+                               opts, q_arr::AbstractArray{Tsol, 1})
 
   return nothing
 end
@@ -1141,8 +1152,11 @@ end
   Aliasing: no restrictions
 """->
 # 3D array conservative -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_arr::AbstractArray{Tsol, 3})
-i
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                          sbp::SBPOperator, 
+                          eqn::EulerData{Tsol, Tdim, Tres, :conservative}, 
+                          opts, q_arr::AbstractArray{Tsol, 3})
+
 
 
   for i=1:mesh.numEl  # loop over elements
@@ -1157,7 +1171,10 @@ end
 
 
 # 3D array entropy -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 3})
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                          sbp::SBPOperator, 
+                          eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, 
+                          q_arr::AbstractArray{Tsol, 3})
 
   return nothing
 end
@@ -1165,7 +1182,10 @@ end
 
 
 # q_vec conversion conservative -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts, q_vec::AbstractArray{Tsol, 1})
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                          sbp::SBPOperator, 
+                          eqn::EulerData{Tsol, Tdim, Tres, :conservative}, opts,
+                          q_vec::AbstractArray{Tsol, 1})
 
   for i=1:mesh.numDofPerNode:mesh.numDof
     q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
@@ -1176,7 +1196,10 @@ function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp:
 end
 
 # q_vec conversion entropy -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, q_arr::AbstractArray{Tsol, 1})
+function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                          sbp::SBPOperator, 
+                          eqn::EulerData{Tsol, Tdim, Tres, :entropy}, opts, 
+                          q_arr::AbstractArray{Tsol, 1})
 
   return nothing
 end
@@ -1393,7 +1416,8 @@ end
   Aliasing restrictions: none
 """->
 
-function calcSpeedofSound{Tsol}(params::ParamType{2, :conservative}, q::AbstractArray{Tsol, 1})
+function calcSpeedofSound{Tsol}(params::ParamType{2, :conservative}, 
+                                q::AbstractArray{Tsol, 1})
 # calculates teh speed of sond at a node
   pressure = calcPressure(params, q)
   return sqrt((params.gamma*pressure)/q[1])
@@ -1451,7 +1475,8 @@ function calcEntropy{Tsol}(params::ParamType{2, :conservative},
   return log(gamma_1*rho_int/(q[1]^gamma))
 end
 
-function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, params::ParamType{2, :entropy})
+function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, 
+                           params::ParamType{2, :entropy})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
