@@ -7,7 +7,6 @@ export convertToEntropy_, convertToConservative_
 #------------------------------------------------------------------------------
 # convert variables without checking what type they currently are (unsafe)
 #------------------------------------------------------------------------------
-# convert to entropy variables without checking if we are already in them
 @doc """
 ### EulerEquationMod.convertToEntropy_
 
@@ -205,7 +204,6 @@ end
 # converting to entropy variables
 #------------------------------------------------------------------------------
 
-# converting to entropy variables with checking
 @doc """
 # low level function
   Converts the conservative variables at a node to entropy variables

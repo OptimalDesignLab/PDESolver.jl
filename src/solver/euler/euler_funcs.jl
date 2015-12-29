@@ -1,8 +1,10 @@
 # euler_funcs.jl
-# this file contains all the functions that calculate values at a node
-# as well as some additional helper functions
+# this file contains all the functions that calculate values at a node (except
+# for boundary related functions) as well as some additional helper functions.
 
-
+#------------------------------------------------------------------------------
+# function to calculate the Euler flux over the entire mesh
+#------------------------------------------------------------------------------
 @doc """ 
 ### EulerEquationMod.getEulerFlux
 
@@ -139,7 +141,7 @@ F_eta = view(eqn.flux_parametric, :, :, :, 2)
 end
 
 
-# calculating the Euler flux
+# calculating the Euler flux at a node
 #------------------------------------------------------------------------------
 @doc """
 ### EulerEquationMod.calcEulerFlux
@@ -270,6 +272,9 @@ end
   Thi is a mid level function
 """->
 
+#------------------------------------------------------------------------------
+# functions for calculating additional quantities: pressure, entropy etc.
+#------------------------------------------------------------------------------
 
 # mid level function
 function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
@@ -288,8 +293,6 @@ function getAuxVars{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end
-
-
 
 
 @doc """
@@ -449,7 +452,9 @@ end
 
 
 
-
+#------------------------------------------------------------------------------
+# function to calculate various coefficient matrices
+#------------------------------------------------------------------------------
 
 @doc """
 ### EulerEquationMod.calcA0
