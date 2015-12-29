@@ -2,6 +2,99 @@ export getBCFunctors
 
 include("bc_solvers.jl")
 
+
+@doc """
+### EulerEquationMod.getBCFluxes
+
+  This function calls other functions to calculate the boundary fluxes, passing
+  them pieces of the array needed.  This populates eqn.bndryflux.  It also
+  calls writeBoundary() to do any requested output.
+
+  This is a mid level function
+"""->
+# this is a mid level function
+function getBCFluxes(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)
+  #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+
+  #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
+
+  for i=1:mesh.numBC
+  #  println("computing flux for boundary condition ", i)
+    functor_i = mesh.bndry_funcs[i]
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1]
+    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+ 
+    # call the function that calculates the flux for this boundary condition
+    # passing the functor into another function avoid type instability
+    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+  end
+
+  writeBoundary(mesh, sbp, eqn, opts)
+
+  return nothing
+end
+
+@doc """
+### EulerEquationMod.writeBoundary 
+
+  This function writes information about the boundary faces and fluxes to files.
+  It is controlled by the input argument writeboundary, of type Bool.
+
+  It generates the files:
+    * boundaryfaces.dat : writes mesh.bndryfaces, an array with eltype Boundary
+                          to a file, one element per line
+    * boundaryflux.dat  : writes the element, local node number and boundary 
+                          flux to a line in a human readable format
+    * boundaryflux2.dat : writes the real part ofmesh.bndryflux to space 
+                          delimited file
+
+   This is a high level function.
+"""->
+function writeBoundary(mesh, sbp, eqn, opts)
+
+  if !eqn.params.writeboundary
+    return nothing
+  end
+
+    face_name = "boundaryfaces.dat"
+    flux_name = "boundaryflux.dat"
+    flux_dlm = "boundaryflux2.dat"
+
+    rmfile(face_name)
+    rmfile(flux_name)
+    rmfile(flux_dlm)
+
+
+  # write boundaryfaces.dat
+  f = open(face_name, "a+")
+  for i=1:length(mesh.bndryfaces)
+    println(f, mesh.bndryfaces[i])
+  end
+  close(f)
+
+  # write boundaryflux.dat
+  f = open(flux_name, "a+")
+  for i=1:mesh.numBoundaryEdges
+    el = mesh.bndryfaces[i].element
+    face = mesh.bndryfaces[i].face
+    for j=1:sbp.numfacenodes
+      jb = sbp.facenodes[j, face]
+      println(f, "el ", el, ", node_index ", jb, ", flux = ", 
+               real(eqn.bndryflux[:, j, i]))
+    end
+  end
+  close(f)
+
+  # write boundaryflux2.dat
+  writedlm(flux_dlm, real(eqn.bndryflux))
+  
+  return nothing
+end
+
+
+
 @doc """
 ### EulerEquationMod.calcBoundaryFlux
 
