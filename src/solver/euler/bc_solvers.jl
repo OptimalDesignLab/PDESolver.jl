@@ -2,16 +2,17 @@
 # this file contains all the flux solvers for weakly imposed boundary conditions
 @doc """
 ### EulerEquationMod.RoeSolver
-  This calculates the Roe flux for boundary conditions at a node
+  This calculates the Roe flux for boundary conditions at a node. The inputs 
+  must be in *conservative* variables.
 
   Inputs:
-  q  : conservative variables of the fluid a
+  q  : conservative variables of the fluid
   qg : conservative variables of the boundary
   flux_parametric : (scaled) Euler flux in the xi and eta directions
   aux_vars : vector of all auxiliary variables at this node
   dxidx : dxidx matrix at the node
   nrm : sbp face normal vector
-  params :: parameter structure
+  params : ParamType
 
   Outputs:
     flux : vector to populate with solution
@@ -19,6 +20,9 @@
   flux_parametric is accessed using *linear* indexing only.  The first 4 entries must be
   the xi direction flux, the next 4 must be the eta direction flux.  This
   makes it possible to pass view(flux_parametric, :, j, i :) and have it work correctly
+
+  Aliasing restrictions:  none of the inputs can alias params.res_vals1,
+                          params.res_vals2, params.q_vals, params.flux_vals1
 
 
 """->
@@ -36,17 +40,17 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
 
-  E1dq = zeros(Tres, 4)
-  E2dq = zeros(Tres, 4)
+  E1dq = params.res_vals1
+  E2dq = params.res_vals2
 
   # Declaring constants 
   d1_0 = 1.0
   d0_0 = 0.0
   d0_5 = 0.5
   tau = 1.0
-  sgn = -1.0
-  gamma = 1.4
-  gami = gamma - 1
+#  sgn = -1.0
+  gamma = params.gamma
+  gami = params.gamma_1
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
   sat_fac = 1  # multiplier for SAT term
@@ -87,9 +91,9 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
 
-  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
-  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
-  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
 
 
   dq1 = q[1] - qg[1] 
@@ -121,7 +125,9 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   tmp1 = d0_5*(lambda1 + lambda2) - lambda3
   tmp2 = gami/(a*a)
   tmp3 = d1_0/(dA*dA)
-  sat[:] = sat[:] + tmp1*(tmp2*E1dq[:] + tmp3*E2dq[:])
+  for i=1:length(sat)
+    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
+  end
   
   #-- get E3*dq
   E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
@@ -141,20 +147,24 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
 
   #-- add to sat
   tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
-  sat[:] = sat[:] + tmp1*(E1dq[:] + gami*E2dq[:])
+  for i=1:length(sat)
+    sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
+  end
 
-  euler_flux = zeros(Tsol, 4)
+  euler_flux = params.flux_vals1
 #  euler_flux2 = zeros(Tsol, 4)
 
 
-  # we can't calculate the Euler flux because params and q 
-  # might be in different variables
-#  calcEulerFlux(params, q, aux_vars, [nx, ny], euler_flux)
+  # because edge numbering is rather arbitary, any memory access is likely to
+  # be a cache miss, so we recalculate the Euler flux
+  q2 = params.q_vals
+  convertFromNaturalToWorkingVars(params, q, q2)
+  calcEulerFlux(params, q2, aux_vars, [nx, ny], euler_flux)
 
   # calculate Euler flux in wall normal directiona
-  for i=1:4
-    euler_flux[i] = flux_parametric[i]*nrm[1] + flux_parametric[i+4]*nrm[2]
-  end
+#  for i=1:4
+#    euler_flux[i] = flux_parametric[i]*nrm[1] + flux_parametric[i+4]*nrm[2]
+#  end
 
  #    println("euler_flux = ",  (euler_flux))
   

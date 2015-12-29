@@ -676,7 +676,7 @@ end
 
 
 @doc """
-### EulerEquationMod.caclEdgeStabAlpha
+### EulerEquationMod.calcEdgeStabAlpha
 
   This function calculates the edge stabilization paramter alpha across the
   entire mesh.
