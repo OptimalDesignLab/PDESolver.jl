@@ -199,6 +199,75 @@ If it is variable sized then macros give the advantage of doing location lookup
   at compile time
 =#
 
+#=
+  Initial Condition:
+    All initial condition functions use conservative variables, and are 
+    converted to the variables used to solve the equation.
+=#
+
+
+#=
+  Boundary conditions:
+    All boundary condition calculations are done in conservative variables.
+    If using some other variables, they are converted before being passed
+    to the boundary condition functions.
+
+    The functors that compute boundary conditions are gathered from BCDict 
+    during init() and stored in mesh.bndry_funcs.  The functors compute the 
+    flux from the boundary condition at a node.  The boundary fluxes for all 
+    the nodes on the boundary are stored in mesh.bndryflux, to be integrated 
+    later using boundaryintegrate!.
+=#
+
+#=
+  Variable Conversion:
+    If solving the equations is some set of variables other than conservative,
+    (lets call them the v variables, and the conservative variables the q
+     variables), the following functions must be defined:
+
+    # convert to conservative variables at a node
+    convertToConservative(params::ParamType, qe::AbstractArray{Tsol, 1},
+                          qc::AbstractArray{Tsol, 1}
+
+    # convert from conservative to the other variables at a node
+    convertToEntropy(params::ParamType, qe::AbstractArray{Tsol, 1}, 
+                     qc::AbstractArray{Tsol, 1})
+
+    # convert from conservative variables to the variables the equation
+    # is being solved in
+    convertFromConservativeToWorkingVars(params::ParamType{Tdim, :var_type, 
+                        qe::AbstractArray{Tsol, 1}, qc::AbstractArray{Tsol, 1})
+
+    # calculate the coefficient matrix of the time derivate (dq/dv) at a node
+    calcA0(params::ParamType, q::AbstractArray{Tsol, 1}, 
+           A0::AbstractArray{Tsol, 2})
+    # calculate inv(dq/dv)
+    calcA0inv(params::ParamType, q::AbstractArray{Tsol, 1}, 
+              A0::AbstractArray{Tsol, 2})
+
+    # multiply a 3D array by inv(A0)
+    matVecA0Inv(mesh, sbp, eqn, opts, arr::AbstractArray{Tsol, 3})
+
+    # calculate the Euler flux at a node
+    calcEulerFlux(params::ParamType, q::AbstractArray{Tsol, 1}, 
+                  aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh}, 
+                  F::AbstractArray{Tsol, 1})
+
+=#
+
+#=
+  Calculating Other Quantities:
+    To calculate physical quantities from the solution variables (for which
+    the calculation is different for the different sets of variables) at a node,
+    a separate function should be used, usnig the params object to dispatch 
+    to the right function for the variables being used. 
+    
+    Some examples:
+
+    calcPressure(params::ParamType, q::AbstractArray{Tsol, 1})
+    calcEntropy(params::ParamType, q::AbstractArray{Tsol, 1})
+    calcSpeedOfSound(params::ParamType, q::AbstractArray{Tsol, 1})
+=#
 
 @doc """
 ### EulerEquationMod.EulerData

@@ -441,8 +441,8 @@ function calcEntropy{Tsol}(params::ParamType{2, :conservative},
   return log(gamma_1*rho_int/(q[1]^gamma))
 end
 
-function calcEntropy{Tsol}(q::AbstractArray{Tsol,1}, 
-                           params::ParamType{2, :entropy})
+function calcEntropy{Tsol}(params::ParamType{2, :entropy}, 
+                           q::AbstractArray{Tsol,1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
