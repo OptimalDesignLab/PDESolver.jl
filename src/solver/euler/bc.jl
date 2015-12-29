@@ -245,45 +245,45 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
 # there might be a way to do this with fewer flops using the tangent vector
 
 
-# calculate normal vector in xy space
-nx = zero(Tmsh)
-ny = zero(Tmsh)
-tngt = Array(Tmsh, 2)  # tangent vector
-nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-fac = 1.0/(sqrt(nx*nx + ny*ny))
-# normalize normal vector
-nx *= fac  
-ny *= fac
+  # calculate normal vector in xy space
+  nx = zero(Tmsh)
+  ny = zero(Tmsh)
+  tngt = Array(Tmsh, 2)  # tangent vector
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac  
+  ny *= fac
 
-Unrm = nx*q[2] + ny*q[3]
+  Unrm = nx*q[2] + ny*q[3]
 
-qg = params.qg
-for i=1:length(q)
-  qg[i] = q[i]
-end
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
 
-#qg = copy(q)
+  #qg = copy(q)
 
-# calculate normal velocity
-qg[2] -= nx*Unrm
-qg[3] -= ny*Unrm
+  # calculate normal velocity
+  qg[2] -= nx*Unrm
+  qg[3] -= ny*Unrm
 
-# call Roe solver
-#RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
-nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  # call Roe solver
+  #RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
-v_vals = params.v_vals
-convertFromNaturalToWorkingVars(params, qg, v_vals)
-# this is a problem: q is in conservative variables even if
-# params says we are using entropy variables
-calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+  v_vals = params.v_vals
+  convertFromNaturalToWorkingVars(params, qg, v_vals)
+  # this is a problem: q is in conservative variables even if
+  # params says we are using entropy variables
+  calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
 
-#TODO: make this a unary minus, not a fp multiplication
-for i=1:4
-  bndryflux[i] *= -1
-end
+  #TODO: make this a unary minus, not a fp multiplication
+  for i=1:4
+    bndryflux[i] = -bndryflux[i]
+  end
 
 return nothing
 
@@ -305,7 +305,11 @@ type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
+              flux_parametric::AbstractArray{Tres},  
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -337,18 +341,23 @@ type Rho1E2U3BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1}, 
+              flux_parametric::AbstractArray{Tres},  
+              aux_vars::AbstractArray{Tres, 1},  
+              x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, 
+              nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, 
+              params::ParamType{2})
 
 
 
-#println("in Rho1E2U3Bc")
-qg = params.qg
+  #println("in Rho1E2U3Bc")
+  qg = params.qg
 
-calcRho1Energy2U3(x, params, qg)
+  calcRho1Energy2U3(x, params, qg)
 
-#println("qg = ", qg)
-# call Roe solver
-RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+  #println("qg = ", qg)
+  # call Roe solver
+  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
 
 return nothing
 
