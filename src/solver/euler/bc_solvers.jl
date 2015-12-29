@@ -157,9 +157,9 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
 
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
-  q2 = params.q_vals
-  convertFromNaturalToWorkingVars(params, q, q2)
-  calcEulerFlux(params, q2, aux_vars, [nx, ny], euler_flux)
+  v_vals = params.q_vals
+  convertFromNaturalToWorkingVars(params, q, v_vals)
+  calcEulerFlux(params, v_vals, aux_vars, [nx, ny], euler_flux)
 
   # calculate Euler flux in wall normal directiona
 #  for i=1:4
