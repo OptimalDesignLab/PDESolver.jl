@@ -53,8 +53,6 @@ function NewtonData(mesh, sbp, eqn, opts)
     tau_vec = []
   end
 
-  println("creating NewtonData object, tau = ", tau_l)
-  println("opts[euler_tau] = ", opts["euler_tau"])
 
   local_size = mesh.numNodesPerElement*mesh.numDofPerNode
   vals_tmp = zeros(1, local_size) # values
@@ -62,7 +60,9 @@ function NewtonData(mesh, sbp, eqn, opts)
   idy_tmp = zeros(PetscInt, 1)  # column indices
 
 
-  return NewtonData{Tsol, Tres}(reltol, abstol, dtol, itermax, krylov_gamma, res_norm_i, res_norm_i_1, tau_l, tau_vec, vals_tmp, idx_tmp, idy_tmp)
+  return NewtonData{Tsol, Tres}(reltol, abstol, dtol, itermax, krylov_gamma, 
+                    res_norm_i, res_norm_i_1, tau_l, tau_vec, vals_tmp, 
+                    idx_tmp, idy_tmp)
 end
 
 
@@ -74,6 +74,30 @@ include("petsc_funcs.jl")  # Petsc related functions
 
   This function uses Newton's method to reduce the residual.  The Jacobian
   is calculated using one of several available methods.
+
+  This two options that control how the jacobian is calculated and stored are 
+  `jac_type` and `jac_method`.  `jac_type` = 1, 2, or 3 correspond to a 
+  dense jacobian matrix, a SparseMatrixCSC matrix that uses direct solves
+
+  jac_type | Meaning
+     1        dense matrix
+     2        SparseMatrixCSC 
+     3        Petsc explictly stored matrix (using CSR internally)
+     4        Petsc matrix shell (jacobian vector products)
+
+  jac_method | Meaning
+     1          use finite differences
+     2          use complex step
+
+  All combinations of jac_type and jac_method are supported except
+  jac_type = 4 and jac_method = 2.
+
+  The magnitude of perturbation for both finite differences and complex step is
+  opts["epsilon"] 
+
+
+  This function supports extensive debugging options. See the document 
+  describing all options supported by PDESolver for details.
 
   The initial condition in eqn.q_vec should be in whatever variables
   the residual evaluation uses.
@@ -91,7 +115,7 @@ include("petsc_funcs.jl")  # Petsc related functions
     * step_tol : step size stopping tolerance
     * res_tol : residual stopping tolerance
 
-    func must have the signature func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec) 
+    func must have the signature func(mesh, sbp, eqn, opts, t=0.0) 
 
 """->
 function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
@@ -124,16 +148,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   globalize_euler = opts["newton_globalize_euler"]::Bool
   recalc_prec_freq = opts["recalc_prec_freq"]::Int
 
-  println("write_rhs = ", write_rhs)
-  println("write_res = ", write_res)
   println("step_tol = ", step_tol)
   println("res_abstol = ", res_abstol)
   println("res_reltol = ", res_reltol)
   println("res_reltol0 = ", res_reltol0)
 
-  println("before printout")
-  println("typeof(eqn) = ", typeof(eqn))
-  println("after printout")
   newton_data = NewtonData(mesh, sbp, eqn, opts)
 
   if jac_method == 1  # finite difference
