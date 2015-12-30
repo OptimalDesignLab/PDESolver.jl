@@ -476,7 +476,7 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
   # ----- Artificial Dissipation -----
   if eqn.params.use_dissipation
 #    println("applying artificial dissipation")
-    applyDissipation(mesh, sbp, eqn, eqn.q, opts)
+    applyDissipation(mesh, sbp, eqn, opts, eqn.q)
   end
 
 #  println("==== end of addStabilization ====")

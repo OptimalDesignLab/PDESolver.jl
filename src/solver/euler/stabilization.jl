@@ -913,18 +913,36 @@ global const filter_dict = Dict{ASCIIString, Function} (
 
 
 ##### Artificial Dissipation Functions ######################################
+@doc """
+### EulerEquationMod.applyDissipation
 
-function applyDissipation{Tmsh, Tsol, T}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol}, arr::AbstractArray{T, 3}, opts)
+  This function multiplies the dissipation matrix operator for each element
+  by the values in a 3D array (typically eqn.q) for each node of the element 
+  and stores the results in eqn.res.
+
+  The dissipation matrix operators must be stored in
+  eqn.dissipation_mat, a numNodesPerElement x numNodesPerElement x numEl array.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    arr: a 3D array to apply the dissipation matrix to
+
+  Aliasing restrictions: no guarantees what happens if arr is eqn.res
+
+"""->
+function applyDissipation{Tmsh, Tsol, T}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol},  opts, arr::AbstractArray{T, 3})
 # applies the artificial dissipation to the array arr
 # arr must be mesh.numDofPerNode by sbp.numNodesPerElement by mesh.numEl
-# trans determine whether or not to transpose the filter matrix
 
-
-  q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  # holds the filtered q variables
+  # holds the filtered q variables
+  q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  
   len = mesh.numNodesPerElement*mesh.numDofPerNode
   for i=1:mesh.numEl
     filt_i = view(eqn.dissipation_mat, :, :, i)
-    q_vals = view(eqn.q, :, :, i)  # mesh.numDof x sbp.numnodes
+    q_vals = view(eqn.q, :, :, i)  # mesh.numDofPerNode x sbp.numnodes
     # apply filter matrix to q_vals transposed, so it is applied to
     # all the rho components, then all the x momentum, etc.
     smallmatmatT!(filt_i, q_vals, q_filt)
@@ -942,14 +960,40 @@ function applyDissipation{Tmsh, Tsol, T}(mesh::AbstractMesh{Tmsh}, sbp::SBPOpera
 end
 
 
+@doc """
+### EulerEquationMod.calcDissipationOperator
 
-function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, dissipation_name::ASCIIString, opts)
+  This function calculates the numNodesPerElement x numNodesPerElement 
+  dissipation matrix operator for each element and returns them in an array
+  numNodesPerElement x numNodesPerElement x numEl array.
+
+  The dissipation matrix operator is calculated as epsilon*filt.'*h_jac*filt,
+  where filt is a (usually diagonal) filter matrix, h_jac is a scaling term 
+  that incorporates information about the shape of the element.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    dissipation_name: an ASCIIString of the function name used to retrieve
+                      the function that generates the matrix filt from a
+                      dictonary
+
+  Outputs:
+    dissipation_mat: a numNodesPerElement x numNodesPerElement x numEl array
+
+    Aliasing restrictions: none
+
+"""->
+function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractEulerData{Tsol}, opts, dissipation_name::ASCIIString)
 # calculates and returns the artificial dissipation operator array
 
-  epsilon = eqn.params.dissipation_const  # get the dissipation constant
-  dissipation_func = dissipation_dict[dissipation_name]
+  epsilon = eqn.params.dissipation_const  # dissipation constant
 
-  filt = getDissipationFilterOperator(sbp, dissipation_func)  # get the dissipation filter matrix for the reference element
+  # get the dissipation filter matrix for the reference element
+  dissipation_func = dissipation_dict[dissipation_name]
+  filt = getDissipationFilterOperator(sbp, dissipation_func)  
 
   # store a sbp.numnodes square matrix for each element
   dissipation_mat = zeros(Tmsh, sbp.numnodes, sbp.numnodes, mesh.numEl)
@@ -992,8 +1036,25 @@ end  # end function
 
 
 
+@doc """
+### EulerEquatoinMod.getDissipatoinFilterOperator
+
+  This function gets the dissipation filter operator used to construction
+  the artificial dissipation matrix.
+
+  The filter is calculated as V*filter_kernel*inv(V), where V is a matrix
+  that converts the interpolating SBP basis to a modal basis and filter_kernal
+  is a matrix (typically diagonal) that performs the filtering of the modal
+  basis coefficients.
 
 
+  Inputs:
+    sbp: SBP operator
+    filter: function to call to calculate the filter kernal
+
+  Outputs:
+    F: a numNodesPerElement x numNodesPerElement filter matrix
+"""->
 function getDissipationFilterOperator{T}(sbp::TriSBP{T}, filter::Function)
 # calculate the filter operator (including the conversion to and from
 # the modal basis) used for artificial dissipation
@@ -1015,6 +1076,7 @@ function getDissipationFilterOperator{T}(sbp::TriSBP{T}, filter::Function)
     for j = 0:r
       i = r-j
       V[:,ptr+1] = SummationByParts.OrthoPoly.proriolpoly(x, y, i, j)
+      #TODO: generalize the filter interface
       lambda[ptr+1] = 1.0 - filter(r/(d+1), eta_c, alpha, s) 
       ptr += 1
     end

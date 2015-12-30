@@ -433,8 +433,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     jac_type = opts["jac_type"]::Int
     if opts["use_dissipation"] || opts["use_dissipation_prec"]
       dissipation_name = opts["dissipation_name"]
-      eqn.dissipation_mat = calcDissipationOperator(mesh, sbp, eqn, 
-                                                    dissipation_name, opts)
+      eqn.dissipation_mat = calcDissipationOperator(mesh, sbp, eqn, opts,
+                                                    dissipation_name)
     else
       eqn.dissipation_mat = Array(Tmsh, 0, 0, 0)
     end
