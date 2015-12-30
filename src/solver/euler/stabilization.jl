@@ -585,7 +585,6 @@ end
 function calcEdgeStabAlpha{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim})
 # calculate alpha, needed by edge stabilization
 
-
   numEl = mesh.numEl
   dxidx = mesh.dxidx
   jac = mesh.jac
@@ -608,8 +607,27 @@ end
 
 
 #####  Functions to for filtering ######################################
+@doc """
+### EulerEquationMod.applyFilter
 
-function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol}, arr, opts; trans=false)
+  This function multiplies a filter matrix by the variables at every
+  node in the mesh.  The filter matrix is stored in eqn.params.filter_mat
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+   
+  Keyword Args:
+    trans=false  : transpose the filter matrix or not.
+
+  Inputs/Outputs:
+    arr: 3D array to multiply the filter matrix by
+
+
+"""->
+function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AbstractSolutionData{Tsol}, opts, arr::Abstract3DArray; trans=false)
 # applies filter to array arr
 # trans determine whether or not to transpose the filter matrix
 
@@ -618,11 +636,12 @@ function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn
   else
     filter_mat = eqn.params.filter_mat
   end
-
-  q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  # holds the filtered q variables
+  
+  # holds the filtered results
+  q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  
   len = mesh.numNodesPerElement*mesh.numDofPerNode
   for i=1:mesh.numEl
-    q_vals = view(eqn.q, :, :, i)  # mesh.numDof x sbp.numnodes
+    q_vals = view(arr, :, :, i)  # mesh.numDof x sbp.numnodes
     # apply filter matrix to q_vals transposed, so it is applied to
     # all the rho components, then all the x momentum, etc.
     smallmatmatT!(filter_mat, q_vals, q_filt)
@@ -630,7 +649,7 @@ function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn
     # copy values back into eqn.q, remembering to transpose q_filt
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
-	eqn.q[k, j, i] = q_filt[j, k]
+	arr[k, j, i] = q_filt[j, k]
       end
     end
 
@@ -641,7 +660,26 @@ end
 
 
 
-    
+@doc """
+### EulerEquationMod.calcfilter
+
+  This function calculates the filter used by applyFilter().
+  The filter is calculated as V*filter_kernel*inv(V), where V is a matrix
+  that converts the interpolating SBP basis to a modal basis and filter_kernal
+  is a matrix (typically diagonal) that performs the filtering of the modal
+  basis coefficients.
+
+  Inputs:
+    sbp: SBP operator used to compute the solutions
+    filter_name: and ASCIIString that matches the name of a filter function.
+                 This string is used to retrieve the function from a dictionary
+                 of all supported filter function.
+    opts:  options dictonary
+
+  Outputs:
+    F_ret: a numNodesPerElement x numNodesPerElement filter operator
+
+"""->
 function calcFilter(sbp::SBPOperator, filter_name::ASCIIString, opts)
 # calc the filter specified by filter_name
 
@@ -684,7 +722,23 @@ function calcFilter(sbp::SBPOperator, filter_name::ASCIIString, opts)
 end
 
 
+@doc """
+### EulerEquationMod.calcModalTransformationOp
 
+  This function calculates a matrix operator V that transforms from a modal
+  basis to an interpolating basis for SBP operators.  Because the transformation
+  itself is rank deficient, V is augmented with the last n vector of its Q
+  matrix (from the full QR decomposition), where numNodesPerElement - rank(V)
+  = n
+
+  Inputs:
+    sbp:  SBP operator
+
+  Outputs:
+    V_full: a numNodesPerElement x numNodesPerElement generalized
+            Vandermonde matrix
+
+"""->
 function calcModalTransformationOp(sbp::SBPOperator)
 
   vtx = [-1. -1; 1 -1; -1 1]  # reference element
@@ -735,6 +789,21 @@ function calcModalTransformationOp(sbp::SBPOperator)
   return V_full
 end
 
+@doc """
+### EulerEquationMod.calcRaisedCosineFilter
+
+  This function constructs a diagonal matrix filt for a 2 dimensional basis
+  filter, using the raised cosine filter described in Spectral Methods for
+  the Euler Equations: Part I by Hussaini, Kproiva, Salas, Zang
+
+  Inputs
+    sbp: SBP operator
+    opts: options dictonary
+
+  Outputs:
+    filt: an numNodesPerElement x numNodesPerElement diagonal filter matrix
+
+"""->
 function calcRaisedCosineFilter(sbp::SBPOperator, opts)
 # calculates the 1D raised cosine filter
 # from Spectral Methods for the Euler Equations: Part I - Fourier Methods and
@@ -770,6 +839,20 @@ function calcRaisedCosineFilter(sbp::SBPOperator, opts)
   return filt
 end
 
+
+@doc """
+### EulerEquationMod.getPascalLevel
+
+  This function returns the level of Pascals Triangle a particular node
+  lies in.
+
+  Inputs:
+    node:  node index
+
+  Outputs:
+    level: integer describing level of Pascals triangle.
+    
+"""->
 function getPascalLevel(node::Integer)
 # get the current polynomial order of some entry node in 
 # Pascals triangle
@@ -796,7 +879,19 @@ function getPascalLevel(node::Integer)
 end
 
 
+@doc """
+### EulerEquationMod.calcLowPassFilter
 
+  This function calculates a low pass filter diagonal filter matrix.
+
+  Inputs:
+    sbp: SBP operator
+    opts: options dictonary
+
+  Outputs:
+    filt: numNodesPerElement x numNodesPerElement diagonal filter matrix
+
+"""->
 function calcLowPassFilter(sbp::SBPOperator, opts)
 
   filt = zeros(sbp.numnodes, sbp.numnodes)
