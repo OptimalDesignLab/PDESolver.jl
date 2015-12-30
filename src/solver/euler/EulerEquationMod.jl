@@ -332,7 +332,6 @@ include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
-include("SUPG.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
 
