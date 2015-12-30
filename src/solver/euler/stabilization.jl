@@ -488,10 +488,10 @@ end  # end function
 ### EulerEquationMod.stabscale
 
   This function calculates the edge stabilization scalaing parameter at a node
-  and returns it. Linear elements only.
+  and returns it.
 
    Inputs:
-    * u : vector of conservative variables
+    * q : vector of conservative variables
     * dxidx : jacobian of xi wrt x coordinates at the node
     * nrm : normal vector in xi space
     * params : ParamType{2}
@@ -499,67 +499,42 @@ end  # end function
     This is a low level function
 """->
 # low level function
-function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, params::ParamType{2} )
+function stabscale{Tmsh,  Tsol}(q::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, params::ParamType{2} )
 # calculate stabscale for a single node
 
-# u holds whatever the variable type that we are solving the equation in
-# q_vals holds the conservative variables
+#     println("==== entering stabscale ====")
+   
+    gamma = params.gamma
+    edge_stab_gamma = params.edgestab_gamma
 
-#     println("==== entering stabscale ====")a
-    q_vals = params.q_vals
+    # u holds whatever the variable type that we are solving the equation in
+    # q_vals holds the conservative variables
     # convert to conservative variables if not already using them
-    convertToConservative(params, u, q_vals)
+    q_vals = params.q_vals
+    convertToConservative(params, q, q_vals)
 
-    # grabbing conserved variables
+    # calc pressure using the variables u and the params object
+    # of type ParamType{2, :the_variable_type_of_u}
+    pressure = calcPressure(params, q)
+    speed_sound = calcSpeedofSound(params, q)
+
+    # extract conserved variables
     rho = q_vals[1]
     vel_x = q_vals[2]/rho
     vel_y = q_vals[3]/rho
     Energy = q_vals[4]
 
-    # from JC's code below, eqn should still be in scope
-    # calc pressure using the variables u and the params object
-    # of type ParamType{2, :the_variable_type_of_u}
-    pressure = calcPressure(params, u)
-
-    # solved eqn for e: E = rho*e + (1/2)*rho*u^2
     vel_squared = vel_x^2 + vel_y^2
     energy = Energy/rho - (1/2)*vel_squared
 
-    # gamma stored in EulerData type
-    gamma = params.gamma
-
-#     println("pressure: ",pressure)
-#     println("gamma: ",gamma)
-#     println("rho: ",rho)
-    # ideal gas law
-    speed_sound = calcSpeedofSound(params, u)
-#    speed_sound = sqrt((gamma*pressure)/rho)
-
-    # choice for edge stabilization constant: 
-    #   refer to email from JH, 20150504:
-    #   Anthony: there is little guidance in the literature regarding 
-    #     gamma for the Euler equations.  I suggest starting with 
-    #     gamma = 0.01.  If that fails (with a cfl of 1.0), then decrease 
-    #     it by an order of magnitude at at time until RK is stable.  
-    #     Once you find a value that works, try increasing it slowly.
-
-    edge_stab_gamma = params.edgestab_gamma  # default
-    #edge_stab_gamma = 0.0 
-#     edge_stab_gamma = 0.00001
 
     # edge lengths component wise
     h_x = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
     h_y = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+    h = sqrt(h_x^2 + h_y^2)  # edge length
 
-    # edge length
-    h = sqrt(h_x^2 + h_y^2)
-#    println("h = ", h)
-
-    # scaled velocity scalar
-#     U = vel_x*(nrm[1]/h) + vel_y*(nrm[2]/h)
     U = vel_x*(h_x/h) + vel_y*(h_y/h)
 
-#     return (U + speed_sound)*edge_stab_gamma*h^2
     return (abs(U) + speed_sound)*edge_stab_gamma*h^(2)
 
   end
@@ -569,7 +544,7 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
 ### EulerEquationMod.stabscale
 
   This function calculate the stabilization scaling parameter across the
-  entire mesh by calling the low level method.
+  entire mesh by calling the low level method.  This populates eqn.stabscale.
 
   This is a mid level function
 """->
@@ -577,7 +552,7 @@ function stabscale{Tmsh,  Tsol}(u::AbstractArray{Tsol,1}, dxidx::AbstractArray{T
 function stabscale{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol})
 # calculate stabscale for entire mesh
 
- nbrnodeindex = Array(sbp.numfacenodes:-1:1)
+  nbrnodeindex = Array(sbp.numfacenodes:-1:1)
 
   for i=1:mesh.numInterfaces
     face_i = mesh.interfaces[i]
@@ -612,7 +587,6 @@ function calcEdgeStabAlpha{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sb
 
 
   numEl = mesh.numEl
-  eqn.edgestab_alpha = Array(Tmsh,2,2,sbp.numnodes,numEl)
   dxidx = mesh.dxidx
   jac = mesh.jac
 

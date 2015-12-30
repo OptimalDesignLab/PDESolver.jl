@@ -388,6 +388,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 				  # numEl x num edges per element
 
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
+                                  # Tdim x Tdim x nnodesPerElement x numEl
   bndryflux::Array{Tsol, 3}       # boundary flux
   stabscale::Array{Tsol, 2}       # stabilization scale factor
 
@@ -428,7 +429,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
 
-    calcEdgeStabAlpha(mesh, sbp, eqn)
 
     jac_type = opts["jac_type"]::Int
     if opts["use_dissipation"] || opts["use_dissipation_prec"]
@@ -461,10 +461,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     end
 
     eqn.q_vec = zeros(Tres, mesh.numDof)
+
+    eqn.edgestab_alpha = zeros(Tmsh,2,2,sbp.numnodes, mesh.numEl)
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, sbp.numfacenodes, 
                           mesh.numBoundaryEdges)
     eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
     
+    calcEdgeStabAlpha(mesh, sbp, eqn)
 
     println("Tres = ", Tres)
 
