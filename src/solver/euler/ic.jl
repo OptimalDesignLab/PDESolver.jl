@@ -167,7 +167,7 @@ end  # end function
 @doc """
 ### EulerEquationMod.ICRho1E2U3
 
-  Sets all components density values to 1.0, x and y momenti to 0.35355, and
+  Sets all components density values to 1.0, x and y momenta to 0.35355, and
   energy to 2.0
 
   Inputs:

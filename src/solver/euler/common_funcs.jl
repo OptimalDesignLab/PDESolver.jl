@@ -1,10 +1,32 @@
-function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractVector{Tsol})
-# calculates the solution at a point of the isentripic vortex
-# 2D only
-# coords contains xy coordinates
-# sol is a vector to be populated with the solution at the point
+@doc """
+### EulerEquationMod.calcIsentropicVortex
 
-#sol = zeros(4)  # storage for solution
+  This function calculates the isentropic vortex solution to the Euler
+  equations at a node.  This function uses an inner radius of 1, an inner 
+  radius density of 2, an inner radius Mach number of 0.95, and an inner radius
+  pressure of 1/gamma.  The denstiy as a function of radius r can be found in, 
+  for example,
+  "Output Error Estimates for Summation-by-parts Finite-difference Schemes",
+  JE Hicken.
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+                              params::ParamType{2}, sol::AbstractVector{Tsol})
+# calculates the solution at a point of the isentropic vortex
+# 2D only
+
 
 # unpack arguments
 x = coords[1]
@@ -24,24 +46,13 @@ p_in =  1/gamma
 
 # calculate r, theta coordinates from x,y
 r = sqrt(x*x + y*y)
-# println("r = ", r)
 theta = atan2(y,x)  # angle in radians
-# println("theta = ", theta)
-
-#println("r = ", r)
-#println("theta = ", theta)
-
-tmp1 = ((gamma-1)/2)*M_in*M_in
-# println("tmp1 = ", tmp1)
 
 # calculate values at r radius
-# println("r = ", r)
-# println("r_in = ", r_in)
+tmp1 = ((gamma-1)/2)*M_in*M_in
 rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
-# println("rho_r = ", rho_r)
 
 p_r = p_in*(rho_r/rho_in)^gamma
-# println("p_r = ", p_r)
 
 a_r = sqrt( gamma*p_r/rho_r )
 
@@ -64,24 +75,41 @@ return nothing
 end
 
 
+@doc """
+### EulerEquationMod.calcFreeStream
 
-function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
+  This function calculates the free stream solution for an airfoil problem 
+  based on the angle of attack and Mach number in nondimensionalized variables.
+
+  Density and energy are set to params.rho_free (usually 1.0) and params.E_free,
+  (usually 1/(gamma*gamma_1) + 0.5*Ma*Ma), and the x and y momenta as
+
+  rho*Ma*cos(angle of attack)  and rho*Ma*sin(angle of attack).
+
+  The angle of attack must be in radians.
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+                        params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 # calculate the free stream conditions using the fields of params
 
   
   rho = sol[1] = params.rho_free
   E = sol[4] = params.E_free
 
-  cv = params.cv
-  gamma = params.gamma
-  R = params.R
   Ma = params.Ma
-
-#  num = gamma*R*E/(rho*cv)
-#  denom = 1/(Ma*Ma) + gamma*R/(2*cv)
-
-
-#  u_norm = sqrt(num/denom)  # magnitude of free stream velocity
 
   sol[2] = rho*Ma*cos(params.aoa)
   sol[3] = -rho*Ma*sin(params.aoa)
@@ -90,11 +118,29 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::Para
 end
 
 
-function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
-# calculate the unsteady vortex at a given point
-# coords specifies the xy coordinates
-# the time is contained in params
-# from K. Mattsson et al./ Computers & Fluixs 36 (2007) 636-649
+@doc """
+### EulerEquationMod.calcUnsteadyVortex
+
+  This function calculates the unsteady vortex solution to the Euler equations
+  at time params.t, where the vortex was centered at x = params.vortex_x0 at 
+  time t=0.  The analytical solution can be found in, for example,
+  K. Mattsson et al./ Computers & Fluixs 36 (2007) 636-649
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+                            params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 
   function f(coords, params)
     t = params.t
@@ -142,30 +188,87 @@ function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::
 end
 
 
+@doc """
+### EulerEquationMod.calcRho1Energy2
 
+  This function sets the density at a node to 1, energy to 2 and the momenta to
+  zero.
 
-function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, params::ParamType{2}, sol::AbstractArray{Tsol,1})
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+                         params::ParamType{2}, sol::AbstractArray{Tsol,1})
   # for square test case with rho = 1, everything else  = 0
 
   sol[1] = 1.0
+  sol[2] = 0.0
+  sol[3] = 0.0
   sol[4] = 2.0
 
   return nothing
 end
 
+
+@doc """
+### EulerEquationMod.calcOnes
+
+  This function sets all the solution variables at a node to 1.0
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
 function calcOnes{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
                   params::ParamType{2}, sol::AbstractArray{Tsol,1})
   
   fill!(sol, 1.0)
-  
-  # sol[2] = 1.0
-  # sol[3] = -1.0
 
   return nothing
 end  # end function calcOnes
 
 
-function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::ParamType{2}, sol::AbstractArray{Tsol, 1})
+@doc """
+### EulerEquationMod.calcRho1Energy2U3
+
+  Sets the density values 1.0, x and y momenta to 0.35355, and
+  energy to 2.0 at a node.
+
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+                           params::ParamType{2}, sol::AbstractArray{Tsol, 1})
   # for square test case with rho = 1, digonal momentum, energy
 
   sol[1] = 1.0
@@ -173,40 +276,53 @@ function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, params::Para
   sol[3] = 0.35355
   sol[4] = 2.0
 
-#=
-  sol[1] = 2.0
-  sol[2] = 0.2
-  sol[3] = 0.2
-  sol[4] = 4.0
-=#
-
   return nothing
 end
 
 
-function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, params::ParamType{2}, sol::AbstractArray{Tsol,1})
+@doc """
+### EulerEquationMod.calcVortex
+
+  Sets the density 1.0, energy to 2.0 at a node.  The momenta are calculated
+  according to solid body rotation with an angular velocity of 0.5 centered 
+  at x = 0.
+
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+                    params::ParamType{2}, sol::AbstractArray{Tsol,1})
 # solid body rotation
   x = coords[1]
   y = coords[2]
 
-#  r = sqrt(x*x + y*y)
-#  theta = atan2(y, x)
+  r = sqrt(x*x + y*y)
+  theta = atan2(y, x)
 
   omega = 0.5
 
   u_norm = omega*r
 
-#  u = -u_norm*sin(theta)
-#  v = u_norm*cos(theta)
-  u0 = 0.1
-
+  u = -u_norm*sin(theta)
+  v = u_norm*cos(theta)
 
   rho = 1.0
   E = 2.0
 
   sol[1] = rho
-  sol[2] = rho*u0*x
-  sol[3] = 0.0
+  sol[2] = rho*u
+  sol[3] = rho*v
   sol[4] = E
 
   return nothing
