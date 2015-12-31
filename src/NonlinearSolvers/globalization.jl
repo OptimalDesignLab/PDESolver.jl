@@ -3,10 +3,19 @@
 # to Newtons method
 
 
-
-# Inexact-Newton-Krylov
-# updates krylov reltol by a factor of (residual_norm_i/residual_norm_i_1)^gamma
 #------------------------------------------------------------------------------
+# Inexact-Newton-Krylov
+#------------------------------------------------------------------------------
+@doc """
+### NonlinearSolvers.updateKrylov
+
+  This function up dates the relative toleranced for the linear solve when doing
+  inexact Newton-Krylov.
+
+  Inputs/Outputs:
+    newton_data: the object storing the data for Newton's method
+
+"""->
 function updateKrylov(newton_data::NewtonData)
 
   norm_i = newton_data.res_norm_i
@@ -27,6 +36,28 @@ end
 # (u - u_i_1)/tau + f(u)
 # where f is the original residual
 #------------------------------------------------------------------------------
+
+@doc """
+### NonlinearSolvers.initEuler
+
+  This function initializes the data needed to do Psudo-Transient Continuation 
+  globalization (aka. Implicit Euler) of Newton's method, using a spatially 
+  varying pseudo-timestep.
+
+  The timestep varies according to 1/(1 + sqrt(det(jac))).
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Outputs:
+    tau_l: the timestep factor
+    tau_vec: the vector (of length numDof) that is added to the diagonal 
+             of the jacobian.
+
+"""->
 function initEuler(mesh, sbp, eqn, opts)
 
   tau_l = opts["euler_tau"]  # initailize tau to something
@@ -36,6 +67,24 @@ function initEuler(mesh, sbp, eqn, opts)
   return tau_l, tau_vec
 end
 
+@doc """
+### NonlinearSolver.calcTauVec
+
+  This function calculates the spatially varying vector for the timestep.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    tau:  timestep factor
+
+  Inputs/Outputs: 
+    tau_vec: vector (of length numDof) populated with tau*spatially varying
+             factor
+
+  Aliasing restrictions:  none
+"""->
 function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
 # calculate the spatially varying pseudo-timestep
   #TODO: make tau_vec = 1/tau_vec, so we don't have to do fp division when
@@ -55,7 +104,16 @@ function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
 end
 
 
+@doc """
+### NonlinearSolver.updateEuler
 
+  This function updates the tau paraemter for the implicit Euler
+  globalization.  tau_vec is also updated
+
+  Inputs/Outputs:
+    newton_data: object holding the necessary data
+
+"""->
 function updateEuler(newton_data)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
@@ -77,6 +135,24 @@ function updateEuler(newton_data)
   return nothing
 end
 
+@doc """
+### NonlinearSolvers.
+
+  This function updates the jacobian matrix with the term from the implicit 
+  Euler globalization.  The term is eqn.M/tau_vec.  Methods are available for
+  dense, sparse, Petsc jacobians, as well as jacobian-vector products.
+
+  Inputs
+    mesh
+    sbp
+    eqn
+    opts
+    newton_data:  the object contaiing tau_vec
+
+  Inputs/Outputs
+    jac: the jacobian matrix
+
+"""->
 function applyEuler(mesh, sbp, eqn, opts, newton_data, jac::Union(Array, SparseMatrixCSC))
 # updates the jacobian with a diagonal term, as though the jac was the 
   println("applying Euler globalization to julia jacobian, tau = ", newton_data.tau_l)
