@@ -2,8 +2,6 @@
 #include("../tools/misc.jl")
 
 
-
-
 @doc """
 ### PDESolver.read_input
 
@@ -40,8 +38,7 @@ include(joinpath(pwd(), fname))  # include file in the users pwd()
 include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 
 get!(arg_dict, "DB_LEVEL", 0)
-global const DB_LEVEL =  arg_dict["DB_LEVEL"]
-
+get!(arg_dict, "db_set", false)
 
 # record fname in dictionary
 arg_dict["fname"] = fname
@@ -320,26 +317,5 @@ function checkKeys(arg_dict, known_keys)
 end
 
 
-
-@doc """
-PDESolver.debug1
-
-  This macro either returns the expressor or not depending on the global 
-  variable DB_LEVEL.  The expression is returned if DB_LEVEL >= 1
-"""->
-macro debug1(expr1)
-  println("entered macro do_db")
-#  println("expr1 = ", expr1)
-#  println("typeof(expr1) = ", typeof(expr1))
-  if DB_LEVEL >= 1
-#    println("at compile time, in DB_Level < 2")
-    return quote
-i#      println("runtime expression")
-        expr1
-    end
-  else
-    return nothing
-  end
-end
 
 

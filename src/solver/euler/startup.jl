@@ -4,6 +4,7 @@
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 #include("complexify.jl")   # TODO: include location needs to be reconsidered
 
 using ODLCommonTools
@@ -13,6 +14,7 @@ using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+#using Debugging   # some debugging utils.
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 

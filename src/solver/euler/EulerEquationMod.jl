@@ -11,9 +11,13 @@ using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
-
+#using Debugging
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
+
+
+
+
 
 export AbstractEulerData, EulerData, EulerData_
 
@@ -322,7 +326,7 @@ abstract EulerData {Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres}
 # this allows them to have different methods for different dimension equations.
 
 # now that EulerData is declared, include other files that use it
-
+include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("euler_macros.jl")
 include("output.jl")
 include("common_funcs.jl")

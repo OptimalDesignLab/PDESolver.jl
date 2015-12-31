@@ -92,6 +92,8 @@ Note that any values associated with these options are shared with the regular
 
 # general debugging options
 "DB_LEVEL" : sets the debug level, (Int), default 0
+"db_set" : has the global constant DB_LEVEL been declared yet, (Bool), 
+           default false, not for users
 
 
 # solver debugging options
