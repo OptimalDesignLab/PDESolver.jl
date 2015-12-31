@@ -1,10 +1,28 @@
 # functions that populate the initial conditions
 # List of functions:
 
-export ICZero, ICOnes, ICRho1E2, ICLinear, ICsmoothHeavisideder, ICsmoothHeaviside, ICIsentropicVortex, ICFile
 export ICDict
 
-function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+@doc """
+### EulerEquationMod.ICZero
+
+  Sets all components of the solution to zero
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs: 
+    u0: vector to populate with the solution
+
+  Aliasing restrictions: none.
+
+"""->
+function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -12,20 +30,23 @@ numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh.dofs, :, :, i)  # get dof nums for this element
+#  coords = view(mesh.coords, :, :, i)
 
   for j=1:nnodes
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
-      z = coords[3,j]
+      x = coords[1]
+      y = coords[2]
+#      z = coords[3,j]
 
       # apply initial conditions here
       u0[dofnum_rho] = 0.0
@@ -39,6 +60,25 @@ return nothing
 
 end  # end function
 
+
+@doc """
+### EulerEquationMod.ICZero
+
+  Sets all components of the solution to 1.0
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs: 
+    u0: vector to populate with the solution
+
+  Aliasing restrictions: none.
+
+"""->
+
 function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                 operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts,
                 u0::AbstractVector{Tsol})
@@ -47,19 +87,26 @@ function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   nnodes = operator.numnodes
   dofpernode = getNumDofPerNode(mesh)
   for i=1:numEl
-    dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-    coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh.dofs, :, :, i)  # get dof nums for this element
+#  coords = view(mesh.coords, :, :, i)
+
+
+#    dofnums_i = view(mesh, i)  # get dof nums for this element
+#    coords = view(mesh, [i])
 
     for j=1:nnodes
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
+      x = coords[1]
+      y = coords[2]
       z = coords[3,j]
 
       # apply initial conditions here
@@ -83,20 +130,26 @@ numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh.dofs, :, :, i)  # get dof nums for this element
+#  coords = view(mesh.coords, :, :, i)
+
+
+#  dofnums_i = view(mesh, i)  # get dof nums for this element
+#  coords = view(mesh, [i])
 
   for j=1:nnodes
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
-      z = coords[3,j]
+      x = coords[1]
+      y = coords[2]
 
       # apply initial conditions here
       u0[dofnum_rho] = 1.0
@@ -120,22 +173,27 @@ nnodes = mesh.numNodesPerElement
 dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
-  dofnums_i = mesh.dofs[:, :, i]
-  coords = mesh.coords[:, :, i]
+
+
+#  dofnums_i = mesh.dofs[:, :, i]
+#  coords = mesh.coords[:, :, i]
 
   for j=1:nnodes
+
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
+      x = coords[1]
+      y = coords[2]
 #      z = coords[3,j]
 
-      calcRho1Energy2U3(coords[:,j], eqn.params, sol)
+      calcRho1Energy2U3(coords, eqn.params, sol)
 
       sol[2] += 0*sin(x)  # add a perturbation
 
@@ -146,7 +204,7 @@ for i=1:numEl
 #      u0[dofnum_rhov] = 0.0
 #      u0[dofnum_e] = 2.0
 
-      u0[dofnums_i[:,j]] = sol
+      u0[dofnums_j] = sol
   end
 end
 
@@ -164,22 +222,29 @@ nnodes = mesh.numNodesPerElement
 dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
-  dofnums_i = mesh.dofs[:, :, i]
-  coords = mesh.coords[:, :, i]
+#  dofnums_i = view(mesh.dofs, :, :, i)  # get dof nums for this element
+#  coords = view(mesh.coords, :, :, i)
+
+
+#  dofnums_i = mesh.dofs[:, :, i]
+#  coords = mesh.coords[:, :, i]
 
   for j=1:nnodes
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
+      x = coords[1]
+      y = coords[2]
 #      z = coords[3,j]
 
-      calcFreeStream(coords[:,j], eqn.params, sol)
+      calcFreeStream(coords, eqn.params, sol)
 
       # apply initial conditions here
 #      u0[dofnum_rho] = 1.0
@@ -187,7 +252,7 @@ for i=1:numEl
 #      u0[dofnum_rhov] = 0.0
 #      u0[dofnum_e] = 2.0
 
-      u0[dofnums_i[:,j]] = sol
+      u0[dofnums_j] = sol
   end
 end
 
@@ -208,20 +273,26 @@ nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh.dofs, :, :, i)  # get dof nums for this element
+#  coords = view(mesh.coords, :, :, i)
+
+
+#  dofnums_i = view(mesh, i)  # get dof nums for this element
+#  coords = view(mesh, [i])
 
   for j=1:nnodes
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
-      z = coords[3,j]
+      x = coords[1]
+      y = coords[2]
 
       calcVortex(coords[:,j], eqn.params, sol)
 
@@ -232,7 +303,7 @@ for i=1:numEl
 #      u0[dofnum_rhov] = 0.0
 #      u0[dofnum_e] = 2.0
 
-      u0[dofnums_i[:,j]] = sol
+      u0[dofnums_j] = sol
   end
 end
 
@@ -242,7 +313,7 @@ end  # end function
 
 
 
-
+#=
 function ICLinear{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, u0::AbstractArray{Tsol,1})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -275,7 +346,7 @@ end
 return nothing
 
 end  # end function
-
+=#
 
 function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
 # calculate the value of the smooth heaviside function derivative at a location x
@@ -292,20 +363,22 @@ numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh, i)  # get dof nums for this element
+#  coords = view(mesh, [i])
 
   for j=1:nnodes
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
-      z = coords[3,j]
+      x = coords[1]
+      y = coords[2]
 
       # apply initial conditions here
       u0[dofnum_rho] = L*(2*k*e^(-2*k*x))/(e^(-2*k*x) +1 )^2
@@ -336,20 +409,22 @@ numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh, i)  # get dof nums for this element
+#  coords = view(mesh, [i])
 
   for j=1:nnodes
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # get dof numbers for each variable
-      dofnum_rho = dofnums_i[1,j]
-      dofnum_rhou = dofnums_i[2,j]
-      dofnum_rhov = dofnums_i[3,j]
-      dofnum_e = dofnums_i[4,j]
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
 
       # coordinates of this node (must be a vertex)
-      x = coords[1,j]
-      y = coords[2,j]
-      z = coords[3,j]
+      x = coords[1]
+      y = coords[2]
 
       # apply initial conditions here
       u0[dofnum_rho] = L/(1 + e^(-k*(x-x0)))
@@ -377,20 +452,22 @@ dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
 #  println("i = ", i)
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-#  coords = getElementVertCoords(mesh, [i])
+#  coords = view(mesh, [i])
 
   for j=1:nnodes
+#      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
 
       # coordinates of this node (must be a vertex)
 #      coords_j = coords[:,j]
-      coords_j = mesh.coords[:,j, i]
+      coords_j = view(mesh.coords, :, j, i)
       calcIsentropicVortex(coords_j, eqn.params, sol)
 
 #      println( "  j = ", j, " sol = ", sol, " coords_j = ", coords_j)
 
       # apply initial conditions here
-      u0[dofnums_i[:,j]] = sol
+      u0[dofnums_j] = sol
   end
 end
 
@@ -407,18 +484,19 @@ nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-  coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh, i)  # get dof nums for this element
+#  coords = view(mesh, [i])
 
   for j=1:nnodes
-
+      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # coordinates of this node (must be a vertex)
-      coords_j = coords[:,j]
-      calcIsentropicVortex(coords_j, eqn.params, sol)
+      calcIsentropicVortex(coords, eqn.params, sol)
 
       # apply initial conditions here
-#       u0[dofnums_i[:,j]] = sol
-      u0[dofnums_i[:,j]] = sol+0.1*rand(4)
+#       u0[dofnums_j] = sol
+      u0[dofnums_j] = sol+0.1*rand(4)
   end
 end
 
@@ -439,20 +517,22 @@ dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
 #  println("i = ", i)
-  dofnums_i = getGlobalNodeNumbers(mesh, i)  # get dof nums for this element
-#  coords = getElementVertCoords(mesh, [i])
+#  dofnums_i = view(mesh, i)  # get dof nums for this element
+#  coords = view(mesh, [i])
 
   for j=1:nnodes
-
+#      coords = view(mesh.coords, :, j, i)
+      dofnums_j = view(mesh.dofs, :, j, i)  # get dof nums for this element
+ 
       # coordinates of this node (must be a vertex)
 #      coords_j = coords[:,j]
-      coords_j = mesh.coords[:,j, i]
-      calcUnsteadyVortex(coords_j, eqn.params, sol)
+      coords = view(mesh.coords, :,j, i)
+      calcUnsteadyVortex(coords, eqn.params, sol)
 
 #      println( "  j = ", j, " sol = ", sol, " coords_j = ", coords_j)
 
       # apply initial conditions here
-      u0[dofnums_i[:,j]] = sol
+      u0[dofnums_j] = sol
   end
 end
 
@@ -490,7 +570,7 @@ global const ICDict = Dict{Any, Function} (
 "ICRho1E2U3" => ICRho1E2U3,
 "ICFreeStream" => ICFreeStream,
 "ICVortex" => ICVortex,
-"ICLinear" => ICLinear,
+#"ICLinear" => ICLinear,
 "ICsmoothHeavisideder" => ICsmoothHeavisideder,
 "ICsmoothHeaviside" => ICsmoothHeaviside,
 "ICIsentropicVortex" => ICIsentropicVortex,
