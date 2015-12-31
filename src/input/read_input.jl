@@ -15,7 +15,7 @@ function read_input(fname::AbstractString)
 println("pwd = ", pwd())
 
 include(joinpath(pwd(), fname))  # include file in the users pwd()
-
+include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary
 
 if haskey(arg_dict, "var1")
@@ -260,10 +260,27 @@ end
 
 =#
 
+checkKeys(arg_dict, known_keys)
+
 return arg_dict
 
 end  # end function
 
+
+
+function checkKeys(arg_dict, known_keys)
+
+  cnt = 0
+  for key in keys(arg_dict)
+    if !haskey(known_keys, key)
+      println(STDERR, "Warning: Key ", key, " in input dictonary not ",
+               "recognized")
+       cnt += 1
+    end
+  end
+
+  return cnt
+end
 
 macro do_db(expr1)
   println("entered macro do_db")

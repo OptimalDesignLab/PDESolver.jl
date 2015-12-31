@@ -114,7 +114,10 @@ if haskey(ICDict, Relfunc_name)
  
   if var_type == :entropy
     println("converting to entropy variables")
-    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
+    for i=1:mesh.numDofPerNode:mesh.numDof
+      q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+      convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+    end
   end
 #  println("eqn.q_vec = ", eqn.q_vec)
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
@@ -315,7 +318,10 @@ if opts["solve"]
       exfunc(mesh, sbp, eqn, opts, q_exact)
     if var_type == :entropy
       println("converting to entropy variables")
-      convertEntropy(mesh, sbp, eqn, opts, q_exact)
+      for i=1:mesh.numDofPerNode:mesh.numDof
+        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+      end
     end
 
       q_diff = eqn.q_vec - q_exact
