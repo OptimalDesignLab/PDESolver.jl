@@ -1,5 +1,10 @@
 #include("new_file2.jl")  # creates arg_dict
 #include("../tools/misc.jl")
+
+module Input
+
+export read_input, DB_LEVEL, debug1
+
 @doc """
 ### PDESolver.read_input
 
@@ -21,7 +26,7 @@
     * fname : name of file to read
 
   Outputs:
-    arg_dict: a Dict{ASCIIString, Any} containing the option keywords and values
+    arg_dict: a Dict{Any, Any} containing the option keywords and values
 
 """->
 function read_input(fname::AbstractString)
@@ -32,11 +37,9 @@ include(joinpath(pwd(), fname))  # include file in the users pwd()
 include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary
 
-if haskey(arg_dict, "var1")
-  global DB_LEVEL =  arg_dict["var1"]
-else
-  global DB_LEVEL = 0
-end
+get!(arg_dict, "DB_LEVEL", 0)
+global const DB_LEVEL =  arg_dict["DB_LEVEL"]
+
 
 # record fname in dictionary
 arg_dict["fname"] = fname
@@ -316,15 +319,21 @@ function checkKeys(arg_dict, known_keys)
   return cnt
 end
 
-macro do_db(expr1)
+@doc """
+PDESolver.debug1
+
+  This macro either returns the expressor or not depending on the global 
+  variable DB_LEVEL.  The expression is returned if DB_LEVEL >= 1
+"""->
+macro debug1(expr1)
   println("entered macro do_db")
 #  println("expr1 = ", expr1)
 #  println("typeof(expr1) = ", typeof(expr1))
-  if DB_LEVEL < 2
-    println("at compile time, in DB_Level < 2")
+  if DB_LEVEL >= 1
+#    println("at compile time, in DB_Level < 2")
     return quote
-            println("runtime expression")
-             expr1
+i#      println("runtime expression")
+        expr1
     end
   else
     return nothing
@@ -332,4 +341,4 @@ macro do_db(expr1)
 end
 
 
-
+end  # end module

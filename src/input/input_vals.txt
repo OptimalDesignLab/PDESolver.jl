@@ -90,6 +90,10 @@ Note that any values associated with these options are shared with the regular
 "check_pressure": whether to not to check that pressure > 0 every residual
                   evaluation, (Bool), default true
 
+# general debugging options
+"DB_LEVEL" : sets the debug level, (Int), default 0
+
+
 # solver debugging options
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false

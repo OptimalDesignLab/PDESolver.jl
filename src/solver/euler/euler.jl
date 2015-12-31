@@ -109,6 +109,8 @@ export evalEuler, init
 function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, 
                    t=0.0)
 
+#  println("DB_LEVEL = ", DB_LEVEL)
+#  @debug println("evaluating residual in debug mode")
   eqn.params.t = t  # record t to params
   
   dataPrep(mesh, sbp, eqn, opts)

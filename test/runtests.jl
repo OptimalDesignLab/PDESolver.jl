@@ -1,7 +1,7 @@
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Input"))
 
 
 using PDESolver
@@ -14,7 +14,7 @@ using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
-
+using Input
 
 # insert a command line argument
 resize!(ARGS, 1)
