@@ -1,9 +1,8 @@
 #include("new_file2.jl")  # creates arg_dict
 #include("../tools/misc.jl")
 
-module Input
 
-export read_input, DB_LEVEL, debug1
+
 
 @doc """
 ### PDESolver.read_input
@@ -33,9 +32,12 @@ function read_input(fname::AbstractString)
 
 println("pwd = ", pwd())
 
+#include(joinpath(pwd(), fname))  # include file in the users pwd()
+#include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
+# take action based on the dictionary
+
 include(joinpath(pwd(), fname))  # include file in the users pwd()
 include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
-# take action based on the dictionary
 
 get!(arg_dict, "DB_LEVEL", 0)
 global const DB_LEVEL =  arg_dict["DB_LEVEL"]
@@ -290,8 +292,6 @@ return arg_dict
 
 end  # end function
 
-
-
 @doc """
 ### PDESolver.checkKeys
 
@@ -319,6 +319,8 @@ function checkKeys(arg_dict, known_keys)
   return cnt
 end
 
+
+
 @doc """
 PDESolver.debug1
 
@@ -341,4 +343,3 @@ i#      println("runtime expression")
 end
 
 
-end  # end module
