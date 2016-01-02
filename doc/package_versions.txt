@@ -1,0 +1,228 @@
+/users/creanj/.julia/v0.4/ArrayViews
+commit 40439daf99155b751d53c6403a5bd35fa0340f7a
+Merge: d3d2537 e138220
+Author: Keno Fischer <kfischer+github@college.harvard.edu>
+Date:   Tue Apr 28 22:08:29 2015 -0400
+
+    Merge pull request #24 from Keno/pull-request/e1382203
+    
+    Fix 0.3 deprecated types
+/users/creanj/.julia/v0.4/BinDeps
+commit d57430a7e55546b9545054cfb5c34724dbed1795
+Merge: 3c93987 36b66d1
+Author: Elliot Saba <staticfloat@gmail.com>
+Date:   Sat Apr 25 07:55:51 2015 -0700
+
+    Merge pull request #131 from JuliaLang/sf/therecanbeonlyone
+    
+    Only accept a single library for each name, and move SystemPath out of Binaries
+/users/creanj/.julia/v0.4/Calculus
+commit 4548c2204988c0d6551b0a7605ad3f4dee17b702
+Author: Miles Lubin <miles.lubin@gmail.com>
+Date:   Wed May 6 09:58:19 2015 -0400
+
+    remove use of square()
+/users/creanj/.julia/v0.4/Codecs
+commit a8b6a8469e1d969966404ae8d771fbf573c39716
+Merge: 6d7659f d6ffd89
+Author: Daniel C. Jones <dcjones@cs.washington.edu>
+Date:   Tue Apr 21 15:35:00 2015 -0700
+
+    Merge pull request #16 from KristofferC/master
+    
+    Updated test and deprecs
+/users/creanj/.julia/v0.4/Compat
+commit 3bbd9536360ac0925b4535036b79d8eb547db977
+Author: Tim Holy <tim.holy@gmail.com>
+Date:   Wed Jun 3 11:10:45 2015 -0500
+
+    Fix REQUIRE
+/users/creanj/.julia/v0.4/Coverage
+commit fb2155d85b0510af580723690376d81de6ff027e
+Merge: 701c0f8 90447f7
+Author: Iain Dunning <iaindunning@gmail.com>
+Date:   Mon Feb 9 16:22:52 2015 -0500
+
+    Merge pull request #49 from IainNZ/teh/fix48
+    
+    Implement `isfuncexpr` locally. Fixes #48.
+/users/creanj/.julia/v0.4/Cpp
+commit 47b1a7f49c51f351e41913745f5eac536ce10d0c
+Author: timholy <tim.holy@gmail.com>
+Date:   Thu Aug 14 08:51:20 2014 -0500
+
+    Restart 0.3- development
+/users/creanj/.julia/v0.4/Dates
+commit 1764fc048a2186438be22dc7a3a34e87b333f296
+Author: Jacob Quinn <quinn.jacobd@gmail.com>
+Date:   Wed Aug 27 19:18:46 2014 -0400
+
+    Rework Dates 0.4 dummy package
+/users/creanj/.julia/v0.4/Debug
+commit 8c4801a6ca6368c6b5175c18a9d666a5694c1c3b
+Merge: 1a124db 57c1823
+Author: toivoh <toivo.h.h@gmail.com>
+Date:   Sat May 2 22:18:48 2015 +0200
+
+    Merge pull request #70 from timholy/teh/compat0.4
+    
+    Updates for julia 0.4
+/users/creanj/.julia/v0.4/Devectorize
+commit 46bc6f8107eb09e3b9433a334d742b2fcdaeee13
+Author: Dahua Lin <lindahua@gmail.com>
+Date:   Sun Apr 19 08:06:55 2015 +0800
+
+    modernize .travis.yml
+/users/creanj/.julia/v0.4/DualNumbers
+commit a9a47656fb6b70e5788551696f133cbe7886ea7b
+Author: Miles Lubin <miles.lubin@gmail.com>
+Date:   Fri Apr 10 16:16:13 2015 -0400
+
+    fix and test subtraction with Dual4
+/users/creanj/.julia/v0.4/FactCheck
+commit e3caf3143b13d4ce9bc576579d5ed9cd4aaefb11
+Author: Jake Bolewski <jakebolewski@gmail.com>
+Date:   Tue Jun 23 13:20:25 2015 -0400
+
+    add tests for commit e4dbe5a
+/users/creanj/.julia/v0.4/ForwardDiff
+commit 6da5f5204fd717a1417a8a4a6b9e2253799879c9
+Author: Theodore Papamarkou <theodore.papamarkou@gmail.com>
+Date:   Sun May 24 14:14:18 2015 +0100
+
+    Fixed warnings raised by tests
+/users/creanj/.julia/v0.4/GnuTLS
+commit 8780b9acfc49ebf9b231b373d31c2c4046f93f13
+Author: Jacob Quinn <quinn.jacobd@gmail.com>
+Date:   Tue Mar 24 13:19:32 2015 -0600
+
+    0.4 compat
+/users/creanj/.julia/v0.4/HttpCommon
+commit 0469d901391ad3a991d5652cbad68629b00eace1
+Merge: 1329400 c3c15ae
+Author: Iain Dunning <iaindunning@gmail.com>
+Date:   Sat Jan 10 17:27:20 2015 +1300
+
+    Merge pull request #21 from sboysel/master
+    
+    changing Set(...) to Set(Any[...])
+/users/creanj/.julia/v0.4/HttpParser
+commit 7d8fcd59e5e9cce65cd23be13f507f28eade9ec9
+Author: Jacob Quinn <quinn.jacobd@gmail.com>
+Date:   Tue Mar 24 13:20:12 2015 -0600
+
+    0.4 compat
+/users/creanj/.julia/v0.4/JSON
+commit d00b5ca7d4820fb5ada94107e47e17b3762865e6
+Author: Tony Kelman <tony@kelman.net>
+Date:   Mon Apr 20 01:03:41 2015 -0700
+
+    start_reading is no longer exported from Base in 0.4
+/users/creanj/.julia/v0.4/JuliaParser
+commit 0495cba1cb3dd307067c99f061c5e0f788b332a6
+Author: jake bolewski <jakebolewski@gmail.com>
+Date:   Thu Feb 5 00:42:28 2015 -0500
+
+    fix exception test
+/users/creanj/.julia/v0.4/METADATA
+commit 05b3da763c7596c66efb2c44d2d1b83b87cbbffc
+Merge: 7512d2a bc8699e
+Author: Tony Kelman <tony@kelman.net>
+Date:   Wed Jul 1 16:30:09 2015 -0400
+
+    Merge pull request #2813 from rawrgrr/pull-request/bc8699e9
+    
+    Tag Levenshtein v0.0.1
+/users/creanj/.julia/v0.4/MPI
+commit 909b61426dc802a332109d729b8540f730377499
+Author: Andreas Noack <andreasnoackjensen@gmail.com>
+Date:   Tue Jul 28 20:20:12 2015 -0400
+
+    Remove space before ( to avoid deprecation warning
+/users/creanj/.julia/v0.4/MUMPS
+commit 33cc2fc9b63ef55cf97ee0ac83bd023d1d60e193
+Merge: 6518f1d 42173a6
+Author: Lars Ruthotto <lruthotto@emory.edu>
+Date:   Thu Aug 6 09:38:15 2015 -0400
+
+    Merge pull request #8 from focus-shift/master
+    
+    One more bug
+/users/creanj/.julia/v0.4/NaNMath
+commit b2148ab8461d73563dd4b7033e9a6546ec355328
+Author: Miles Lubin <miles.lubin@gmail.com>
+Date:   Sun Nov 23 19:31:22 2014 -0500
+
+    add fallback for pow
+/users/creanj/.julia/v0.4/Nettle
+commit 5fa0729cc682d4c8a29ddfc9f45f08eef36e3243
+Merge: c55d943 57679dc
+Author: Elliot Saba <staticfloat@gmail.com>
+Date:   Tue Feb 24 10:50:00 2015 -0800
+
+    Merge pull request #38 from jiahao/cjh/0.4-compat
+    
+    Fix some 0.4 deprecation warnings
+/users/creanj/.julia/v0.4/ODLCommonTools
+commit 2433eeb34b6b5615f3bea8f168e11cf9df732589
+Author: Jared Crean <jcrean01@gmail.com>
+Date:   Fri Dec 25 13:08:23 2015 -0500
+
+    added doc, option to calcNorm
+/users/creanj/.julia/v0.4/PDESolver
+commit 7da2da32bcba155f77fcd31e3f544d6d634cb08d
+Author: Jared Crean <jcrean01@gmail.com>
+Date:   Fri Dec 25 18:50:56 2015 -0500
+
+    finished documentiing newton_fd.jl
+/users/creanj/.julia/v0.4/PDESolverCommon
+commit 58c908e87c54cb82b905506d7548bfa753f06efa
+Author: Anthony Ashley <ashlea@rpi.edu>
+Date:   Fri Oct 16 12:16:38 2015 -0400
+
+    code cleanup complete, pre-testing
+/users/creanj/.julia/v0.4/PETSc
+commit 52dbdc8086f343768d2c88b5750878e5edfc1ef6
+Author: Jared Crean <jcrean01@gmail.com>
+Date:   Mon Oct 26 11:52:49 2015 -0400
+
+    added some matrix free stuff
+/users/creanj/.julia/v0.4/PumiInterface
+commit 3e430d9b08065d227a22860de32c5626f38e5a2b
+Author: Jared Crean <jcrean01@gmail.com>
+Date:   Thu Dec 10 11:05:41 2015 -0500
+
+    changed to backup Pumi vtu writer
+/users/creanj/.julia/v0.4/Requests
+commit 695fb2c0c5609bddf06b146e40f1311dca09f075
+Merge: bb1dd80 be35516
+Author: Seth Bromberger <sbromberger@users.noreply.github.com>
+Date:   Wed Feb 18 10:20:34 2015 -0800
+
+    Merge pull request #43 from JuliaWeb/sab/fixup
+    
+    Sab/fixup
+/users/creanj/.julia/v0.4/SHA
+commit 0e31e9d265eede8cafc9f0c04e928acf5b0fa4cf
+Merge: f091ad7 914a7ea
+Author: Elliot Saba <staticfloat@gmail.com>
+Date:   Mon Mar 23 21:51:51 2015 +0900
+
+    Merge pull request #3 from jakebolewski/jcb/fixbindeps
+    
+    remove deprecation warnings from SHA.jl
+/users/creanj/.julia/v0.4/SummationByParts
+commit b6cd5269738d43ddca7f2ae8586a67b8343af07c
+Author: Jason Hicken <hickej2@rpi.edu>
+Date:   Wed Oct 14 12:34:10 2015 -0400
+
+    updated README.md for Codecov.io badge information
+/users/creanj/.julia/v0.4/URIParser
+commit 3c00f48119909eb105aff6f126611b39a7b16919
+Merge: 49f8cb0 a0f5079
+Author: Keno Fischer <kfischer+github@college.harvard.edu>
+Date:   Sun Mar 22 12:35:51 2015 -0400
+
+    Merge pull request #18 from jakebolewski/jcb/fixbindeps
+    
+    Remove deprecation warnings from URIParser
