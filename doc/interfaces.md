@@ -350,7 +350,17 @@ This function need not be exported
 
 A minor iteration callback function is being considered.
 
+
+### Variable Conversion
+Every physics module should define and export a function
  
+`function convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})`
+
+that converts from the "natural" variables in which to write an equation to 
+some other set of variables at a node.  For the Euler equations, the "natural" 
+variables would be the conservative variables, and one example of "other" 
+variables would be the entropy variables.
 
 ##NonlinearSolvers
 The `NonlinearSolvers` module does not define any abstract types, but it does place some requirements on the other components of PDESolver.
