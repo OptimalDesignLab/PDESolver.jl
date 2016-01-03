@@ -26,11 +26,15 @@ using ODLCommonTools
     them to a single output file
 
 """->
-function extractKeys(fin::ASCIIString, fout::ASCIIString, header=true, footer=true)
+function extractKeys(fin::ASCIIString, fout::ASCIIString; header=true, footer=true)
 
+  println("reading file ", fin)
   f = open(fin, "r")
   
-  if header rmfile(fout) end
+  if header 
+    println("removing file ", fout)
+    rmfile(fout) 
+  end
   fw= open(fout, "a")
 
   if header
@@ -73,9 +77,12 @@ function extractKeys(fin::ASCIIString, fout::ASCIIString, header=true, footer=tr
   if footer
     # close the dictonary declaration
     write(fw, ")")
-    close(f)
-    close(fw)
-  end
+   end
+
+   close(f)
+   close(fw)
+
 end
 
-extractKeys("input_vals.txt", "known_keys.jl")
+extractKeys("input_vals.txt", "known_keys.jl", header=true, footer=false)
+extractKeys("input_vals_internal.txt", "known_keys.jl", header=false, footer=true)

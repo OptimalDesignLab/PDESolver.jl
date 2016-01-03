@@ -37,9 +37,6 @@ println("pwd = ", pwd())
 include(joinpath(pwd(), fname))  # include file in the users pwd()
 include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 
-get!(arg_dict, "DB_LEVEL", 0)
-get!(arg_dict, "db_set", false)
-
 # record fname in dictionary
 arg_dict["fname"] = fname
 
@@ -62,7 +59,7 @@ arg_dict["aoa"] = aoa*pi/180  # convert to radians
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "vortex_x0", 0.0)
-get!(arg_dict, "vortex_strength", -1.0)
+get!(arg_dict, "vortex_strength", 1.0)
 
 # should this really have a default value?
 get!(arg_dict, "CFL", 0.4)
