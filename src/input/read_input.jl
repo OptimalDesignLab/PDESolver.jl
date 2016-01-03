@@ -175,7 +175,7 @@ get!(arg_dict, "print_eigs", false)
 get!(arg_dict, "write_eigs", false)
 get!(arg_dict, "write_eigdecomp", false)
 get!(arg_dict, "newton_globalize_euler", false)
-get!(arg_dict, "euler_tau", 1)
+get!(arg_dict, "euler_tau", 1.0)
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
 if run_type == 4
