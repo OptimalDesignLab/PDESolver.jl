@@ -39,4 +39,4 @@ err_val = 0.000879
 slope_fac = 1.25
 
 @fact err_vals[1] => greater_than(err_val/slope_fac)
-@fact err_vals[1] => less_than(err_vals*slope_fac)
+@fact err_vals[1] => less_than(err_val*slope_fac)
