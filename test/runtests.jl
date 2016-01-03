@@ -13,6 +13,7 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
+global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_channel.jl"
@@ -21,6 +22,11 @@ include("test_input.jl")
 include("test_lowlevel.jl")
 #include("test_simplemesh.jl")
 include("test_modes.jl")
+
+cd("./convergence")
+include(joinpath(pwd(), "runtests.jl"))
+cd("..")
+
 FactCheck.exitstatus()
 
 
