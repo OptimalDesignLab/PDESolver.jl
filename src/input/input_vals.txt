@@ -25,7 +25,11 @@ where input_file_name.jl is in your current directory.
 
 # Physical constants
 "gamma" : the specific heat ratio, Float64, default 1.4
+"R" : the ideal gas constant (J/Kg*K), (FLoatingPoint), default 287.058
 
+#Equation options
+"variable_type": which set of variables to write the equation in, (Symbol), default
+            :conservative
 
 # Solver options
 "res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
@@ -127,7 +131,7 @@ Note that any values associated with these options are shared with the regular
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
 "write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false
-"vertify_coloring"  : verify coloring worked correctly, (Bool), default true
+"verify_coloring"  : verify coloring worked correctly, (Bool), default true
 "write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
 
 
@@ -169,6 +173,9 @@ Note that any values associated with these options are shared with the regular
 "epsilon"  : perturbation size when calculation Jacobian, (Float64), default 1e-6 for finite difference, 1e-20 to complex step
 "newton_globalize_euler"  : use the Pseudo-Transient Continuation 
                             (aka. implicit Euler) globalization, (Bool), default                            false
+"euler_tau": the magnitude factor of the initial pseudo-timestep for the
+             Euler globalization, (FloatingPoint), default 1.0
+
 
 # Newton-Krylov options
 "krylov_reltol"  : relative residual tolerance for krylov solver, (Float64),

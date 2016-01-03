@@ -84,5 +84,26 @@ function extractKeys(fin::ASCIIString, fout::ASCIIString; header=true, footer=tr
 
 end
 
+
+function write_dummy(fout)
+
+
+  fw= open(fout, "a")
+  for i=1:99
+    key = "\"BC$i\""
+    write(fw, key)
+    write(fw, " => true,")
+    write(fw, "\n")
+    key = string("\"BC$i", "_name\"")
+    write(fw, key)
+    write(fw, " => true,")
+    write(fw, "\n")
+  end
+
+  close(fw)
+end
+
+   
 extractKeys("input_vals.txt", "known_keys.jl", header=true, footer=false)
+write_dummy("known_keys.jl")
 extractKeys("input_vals_internal.txt", "known_keys.jl", header=false, footer=true)

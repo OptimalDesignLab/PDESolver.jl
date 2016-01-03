@@ -21,7 +21,7 @@ documented in the input_vals.txt file.  A warning of is printed to STDERR if
 an unrecognized key is found.
 
 The mechanics of the key validation are as follows.  The `extract_keys.jl`
-script reads the input_vals.txt file, looking for any string that is surrounded
+script reads the input_vals.txt file (and the input_vals_internal.txt), looking for any string that is surrounded
 by double quotes and starts in the first character of a line.  All keys are 
 written to a dictonary in the file `known_keys.jl`.  This file is included by
 PDESolver.
