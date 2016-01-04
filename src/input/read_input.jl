@@ -1,28 +1,41 @@
 #include("new_file2.jl")  # creates arg_dict
 #include("../tools/misc.jl")
+
+
 @doc """
-### read_input
+### PDESolver.read_input
 
-  This function reads a file which must declare a dictionary of options.
-  See the documention on input variables for valid keywords.  This function
-  returns the dictionary after doing some sanity checks
+  This function reads a file which must  be a julia source file that declares 
+  a dictionary of option keywords and values for the options named arg_dict.
+  See the documention on input variables for valid keywords.  
+    
+  read_input() returns the dictionary after doing some sanity checks and
+  supplying default values for any unspecified keys.
 
-  Arguments:
+  After supplying default values, it prints the dictonary to arg_dict_output.jl,
+  which is a valid julia source file and can be read in to re-run a simulation.
+
+  This function checks whether the keys in arg_dict are recognized keywords 
+  and prints a warning to STDERR if an unrecognized key is found.  The list of
+  known keys is read from the julia source file known_keys.jl
+
+  Inputs:
     * fname : name of file to read
+
+  Outputs:
+    arg_dict: a Dict{Any, Any} containing the option keywords and values
+
 """->
 function read_input(fname::AbstractString)
 
 println("pwd = ", pwd())
 
-include(joinpath(pwd(), fname))  # include file in the users pwd()
-
+#include(joinpath(pwd(), fname))  # include file in the users pwd()
+#include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary
 
-if haskey(arg_dict, "var1")
-  global DB_LEVEL =  arg_dict["var1"]
-else
-  global DB_LEVEL = 0
-end
+include(joinpath(pwd(), fname))  # include file in the users pwd()
+include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 
 # record fname in dictionary
 arg_dict["fname"] = fname
@@ -46,7 +59,7 @@ arg_dict["aoa"] = aoa*pi/180  # convert to radians
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "vortex_x0", 0.0)
-get!(arg_dict, "vortex_strength", -1.0)
+get!(arg_dict, "vortex_strength", 1.0)
 
 # should this really have a default value?
 get!(arg_dict, "CFL", 0.4)
@@ -122,6 +135,8 @@ get!(arg_dict, "write_finalresidual", false)
 # solver options
 get!(arg_dict, "write_entropy", false)
 get!(arg_dict, "write_entropy_fname", "entropy.dat")
+get!(arg_dict, "check_density", true)
+get!(arg_dict, "check_pressure", true)
 
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
@@ -160,7 +175,7 @@ get!(arg_dict, "print_eigs", false)
 get!(arg_dict, "write_eigs", false)
 get!(arg_dict, "write_eigdecomp", false)
 get!(arg_dict, "newton_globalize_euler", false)
-get!(arg_dict, "euler_tau", 1)
+get!(arg_dict, "euler_tau", 1.0)
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
 if run_type == 4
@@ -190,16 +205,23 @@ get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 
 # write complete dictionary to file
-fname = "arg_dict_output.txt"
+fname = "arg_dict_output.jl"
 rmfile(fname)
 f = open(fname, "a+")
+
+println(f, "arg_dict = Dict{Any, Any}(")
 arg_keys = keys(arg_dict)
 
 
 
 for key_i in arg_keys
-  println(f, key_i, " => ", arg_dict[key_i])
+  show(f, key_i)
+  print(f, " => ")
+  show(f, arg_dict[key_i])
+  println(f, ",")
+#  println(f, show(key_i), " => ", show(arg_dict[key_i]), ",")
 end
+println(f, ")")
 close(f)
 
 
@@ -258,25 +280,39 @@ end
 
 =#
 
+checkKeys(arg_dict, known_keys)
+
 return arg_dict
 
 end  # end function
 
+@doc """
+### PDESolver.checkKeys
 
-macro do_db(expr1)
-  println("entered macro do_db")
-#  println("expr1 = ", expr1)
-#  println("typeof(expr1) = ", typeof(expr1))
-  if DB_LEVEL < 2
-    println("at compile time, in DB_Level < 2")
-    return quote
-            println("runtime expression")
-             expr1
+  This function verifies all the keys in the first argument are also keys
+  of the second argument and prints a warning to STDERR if they are not.
+
+  Inputs
+    arg_dict: first dictonary
+    known_keys: second dictonary
+
+  Outputs:
+    cnt: number of unrecognized keys
+"""->
+function checkKeys(arg_dict, known_keys)
+
+  cnt = 0
+  for key in keys(arg_dict)
+    if !haskey(known_keys, key)
+      println(STDERR, "Warning: Key ", key, " in input dictonary not ",
+               "recognized")
+       cnt += 1
     end
-  else
-    return nothing
   end
+
+  return cnt
 end
+
 
 
 

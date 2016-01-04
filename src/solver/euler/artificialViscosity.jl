@@ -16,9 +16,9 @@
   *  Fav : Flux corresponding to artificial viscosity
 
 """
-function artificialViscosity{Tmsh,Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                               sbp::SBPOperator, 
-                                              eqn::EulerData{Tsol,Tdim})
+                                              eqn::EulerData{Tsol, Tres, Tdim})
   
   # Create the Artificial Viscosity flux matrix
   qbar = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
@@ -80,7 +80,7 @@ end
 function calcArtViscosityFluxComp{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
                                         F::AbstractArray{Tsol,1})
   
-  press = calcPressure(q, params)
+  press = calcPressure(params, q)
   F[1] = q[1]
   F[2] = q[2]
   F[3] = q[3]
@@ -118,8 +118,8 @@ function calcEpsilonHat{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
 return nothing
 end
 
-function EpsilonPDE{Tmsh,Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
-                                     eqn::EulerData{Tsol,Tdim})
+function EpsilonPDE{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+                                     eqn::EulerData{Tsol, Tres, Tdim})
 
   # epsilon = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
   epsilon = zeros(Tsol, sbp.numnodes, mesh.numEl)
@@ -130,7 +130,7 @@ end
 function shockIndicator{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1})
 # Operates at the Nodal Level
 
-  p = calcPressure(q, params)  # Calculate Pressure
+  p = calcPressure(params, q)  # Calculate Pressure
 
   deltaPsi = 0.5             # Empirical constants that determine when when the
   psi0 = -4 - 4.25*log10(p)  # shock indicator should take effect.
@@ -160,9 +160,9 @@ function boundingBox{Tmsh}(coord::AbstractArray{Tmsh,2}, h::AbstractArray{Tmsh,1
 end
 
 #=
-function AverageMeshDimen{Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function AverageMeshDimen{Tmsh, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                       hBar::AbstractArray{Tmsh,1},
-                                      eqn::EulerData{Tsol,Tdim})
+                                      eqn::EulerData{Tsol, Tres, Tdim})
   # Operates at the element level
   # Reset the face iterator at the beginning of wherever this loop is called
   element = getFace() 
@@ -184,7 +184,7 @@ function AverageMeshDimen{Tmsh, Tdim}(mesh::AbstractMesh{Tmsh},
 
 end =#
 
-function AvgMeshSize{Tmsh, Tdim, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol,Tdim})
+function AvgMeshSize{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres, Tdim})
   
   hArray = zeros(Tmsh, Tdim,mesh.numEl)  # Array of bounding box of all adjacent elements
   resetFaceIt() # Reset Iterator over Face
@@ -202,8 +202,8 @@ function AvgMeshSize{Tmsh, Tdim, Tsol}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{
 end
 
 #=
-function AVSourceTerm{Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                             sbp::SBPOperator, eqn::EulerData{Tsol,Tdim})
+function AVSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                             sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim})
 
 epsilon
 end =#

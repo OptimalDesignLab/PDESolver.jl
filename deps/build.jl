@@ -6,6 +6,14 @@ pumiinterface_git = "https://github.com/OptimalDesignLab/PumiInterface.jl.git"
 petsc_git = "https://github.com/JaredCrean2/PETSc.jl.git"
 pkg_dict = Pkg.installed()  # get dictionary of installed package names to version numbers
 
+# generate the known_keys dictonary
+start_dir = pwd()
+input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
+cd(input_path)
+include("extract_keys.jl")
+cd(start_dir)
+
+
 if !haskey(pkg_dict, "ODLCommonTools")
   Pkg.clone(pdesolvercommon_git)
   Pkg.build("ODLCommonTools")

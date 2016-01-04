@@ -24,7 +24,7 @@ rk4
   This function does 4th order Runge Kutta time stepping
 
   Arguments:
-    * f  : function to call
+    * f  : function evaluation
     * h  : time step size
     * t_max : time value to stop time stepping (time starts at 0)
     * mesh : AbstractMesh
@@ -37,7 +37,7 @@ rk4
    The eqn.q_vec should hold the whichever variables (conservative or
    entropy) that the simulation should use.
 """->
-function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol = -1.0, real_time=false) 
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   #=
@@ -62,7 +62,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
   res_vec = eqn.res_vec
 #  extra_args = (mesh, sbp, eqn)
 
-  t = 0.0
+  t = 0.0  # timestepper time
+  treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/h)
   println("t_steps: ",t_steps)
 
@@ -106,8 +107,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
  #   eqn.q_vec = x_old
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    if real_time eqn.params.t = t end
-    f( mesh, sbp, eqn, opts, t)
+    if real_time treal = t end
+    f( mesh, sbp, eqn, opts, treal)
 
     fill!(eqn.res_vec, 0.0)
     eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
@@ -170,8 +171,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     eqn.q_vec[:] = x2
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     # convert to entropy variables here
-    if real_time  eqn.params.t = t + h/2 end
-    f( mesh, sbp, eqn, opts, t + h/2)
+    if real_time  treal = t + h/2 end
+    f( mesh, sbp, eqn, opts, treal)
 
     fill!(eqn.res_vec, 0.0)
     eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
@@ -182,9 +183,9 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
 
     # stage 3
     eqn.q_vec[:] = x3
-    if real_time eqn.params.t = t + t/2 end
+    if real_time treal= t + t/2 end
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    f( mesh, sbp, eqn, opts, t + h/2)
+    f( mesh, sbp, eqn, opts, treal)
 
     fill!(eqn.res_vec, 0.0)
     eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
@@ -196,8 +197,8 @@ function rk4(f, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; re
     x4[:] = x_old + h*k3
     eqn.q_vec[:] = x4
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    if real_time eqn.params.t = t + h end
-    f( mesh, sbp, eqn, opts, t + h)
+    if real_time treal = t + h end
+    f( mesh, sbp, eqn, opts, treal)
 
     fill!(eqn.res_vec, 0.0)
     eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)

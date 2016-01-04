@@ -3,10 +3,19 @@
 # to Newtons method
 
 
-
-# Inexact-Newton-Krylov
-# updates krylov reltol by a factor of (residual_norm_i/residual_norm_i_1)^gamma
 #------------------------------------------------------------------------------
+# Inexact-Newton-Krylov
+#------------------------------------------------------------------------------
+@doc """
+### NonlinearSolvers.updateKrylov
+
+  This function up dates the relative toleranced for the linear solve when doing
+  inexact Newton-Krylov.
+
+  Inputs/Outputs:
+    newton_data: the object storing the data for Newton's method
+
+"""->
 function updateKrylov(newton_data::NewtonData)
 
   norm_i = newton_data.res_norm_i
@@ -18,15 +27,37 @@ function updateKrylov(newton_data::NewtonData)
   return nothing
 end
 
+
 #------------------------------------------------------------------------------
-
-
 # Psuedo-Transient Continuation (aka. Implicit Euler)
-# updates the jacobian with a diagonal term, as though the jac was the 
-# jacobian of this function:
-# (u - u_i_1)/tau + f(u)
-# where f is the original residual
 #------------------------------------------------------------------------------
+
+@doc """
+### NonlinearSolvers.initEuler
+
+  This function initializes the data needed to do Psudo-Transient Continuation 
+  globalization (aka. Implicit Euler) of Newton's method, using a spatially 
+  varying pseudo-timestep.
+
+  updates the jacobian with a diagonal term, as though the jac was the 
+  jacobian of this function:
+  (u - u_i_1)/tau + f(u)
+  where f is the original residual and u_i_1 is the previous step solution
+
+  The timestep varies according to 1/(1 + sqrt(det(jac))).
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Outputs:
+    tau_l: the timestep factor
+    tau_vec: the vector (of length numDof) that is added to the diagonal 
+             of the jacobian.
+
+"""->
 function initEuler(mesh, sbp, eqn, opts)
 
   tau_l = opts["euler_tau"]  # initailize tau to something
@@ -36,6 +67,24 @@ function initEuler(mesh, sbp, eqn, opts)
   return tau_l, tau_vec
 end
 
+@doc """
+### NonlinearSolver.calcTauVec
+
+  This function calculates the spatially varying vector for the timestep.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    tau:  timestep factor
+
+  Inputs/Outputs: 
+    tau_vec: vector (of length numDof) populated with tau*spatially varying
+             factor
+
+  Aliasing restrictions:  none
+"""->
 function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
 # calculate the spatially varying pseudo-timestep
   #TODO: make tau_vec = 1/tau_vec, so we don't have to do fp division when
@@ -55,7 +104,16 @@ function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
 end
 
 
+@doc """
+### NonlinearSolver.updateEuler
 
+  This function updates the tau paraemter for the implicit Euler
+  globalization.  tau_vec is also updated
+
+  Inputs/Outputs:
+    newton_data: object holding the necessary data
+
+"""->
 function updateEuler(newton_data)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
@@ -77,9 +135,29 @@ function updateEuler(newton_data)
   return nothing
 end
 
-function applyEuler(mesh, sbp, eqn, opts, newton_data, jac::Union(Array, SparseMatrixCSC))
+@doc """
+### NonlinearSolvers.applyEuler
+
+  This function updates the jacobian matrix with the term from the implicit 
+  Euler globalization.  The term is eqn.M/tau_vec.  Methods are available for
+  dense, sparse, Petsc jacobians, as well as jacobian-vector products.
+
+  Inputs
+    mesh
+    sbp
+    eqn
+    opts
+    newton_data:  the object contaiing tau_vec
+
+  Inputs/Outputs
+    jac: the jacobian matrix
+
+"""->
+function applyEuler(mesh, sbp, eqn, opts, newton_data, 
+                    jac::Union(Array, SparseMatrixCSC))
 # updates the jacobian with a diagonal term, as though the jac was the 
-  println("applying Euler globalization to julia jacobian, tau = ", newton_data.tau_l)
+  println("applying Euler globalization to julia jacobian, tau = ",
+           newton_data.tau_l)
 
   for i=1:mesh.numDof
     jac[i,i] -= eqn.M[i]/newton_data.tau_vec[i]
@@ -88,7 +166,8 @@ function applyEuler(mesh, sbp, eqn, opts, newton_data, jac::Union(Array, SparseM
   return nothing
 end
 
-function applyEuler(mesh, sbp, eqn, opts, newton_data::NewtonData, jac::PetscMat)
+function applyEuler(mesh, sbp, eqn, opts, newton_data::NewtonData, 
+                    jac::PetscMat)
 # this allocations memory every time
 # should there be a reusable array for this?
 # maybe something in newton_data?
@@ -114,7 +193,8 @@ function applyEuler(mesh, sbp, eqn, opts, newton_data::NewtonData, jac::PetscMat
   return nothing
 end
 
-function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, newton_data::NewtonData, b::AbstractArray)
+function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, 
+                    newton_data::NewtonData, b::AbstractArray)
 # apply the diagonal update term to the jacobian vector product
 
   println("applying matrix free Euler gloablization, tau = ", newton_data.tau_l)
@@ -125,6 +205,25 @@ function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, newton_data::Newto
   return nothing
 end
 
+
+# Globalize by adding a diagonal term to the Jacobian.  Rather crude.
 #------------------------------------------------------------------------------
   
+function addDiagonal(mesh, sbp, eqn, jac)
+# add the mass matrix to the jacobian
 
+  for i=1:mesh.numDof
+     idx = PetscInt[i-1]
+     idy = PetscInt[i-1]
+     vals = [100*eqn.M[i]]
+
+#     println("adding ", vals, " to jacobian entry ", i, ",", i)
+     PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
+   end
+
+   return nothing
+
+ end
+
+
+#------------------------------------------------------------------------------

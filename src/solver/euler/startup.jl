@@ -4,7 +4,7 @@
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 #include("complexify.jl")   # TODO: include location needs to be reconsidered
 
 using ODLCommonTools
@@ -14,7 +14,7 @@ using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
-
+#using Debugging   # some debugging utils.
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 
@@ -79,7 +79,7 @@ smb_name = opts["smb_name"]
 Tdim = opts["dimensions"]
 
 # create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict; dofpernode=4, coloring_distance=opts["coloring_distance"])
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
 
 if opts["jac_type"] == 3 || opts["jac_type"] == 4
   pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
@@ -114,11 +114,14 @@ if haskey(ICDict, Relfunc_name)
  
   if var_type == :entropy
     println("converting to entropy variables")
-    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
+    for i=1:mesh.numDofPerNode:mesh.numDof
+      q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+      convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+    end
   end
 #  println("eqn.q_vec = ", eqn.q_vec)
-  res_real = zeros(mesh.numDof)
-  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
+  res_real = real(eqn.res_vec)
 #  println("res_real = \n", res_real)
 #  println("eqn.res_vec = ", eqn.res_vec)
 #  println("res_real = ", res_real)
@@ -139,7 +142,10 @@ println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec)
 
 if var_type == :entropy
-    convertEntropy(mesh, sbp, eqn, opts, eqn.q_vec)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+  end
 end
 
 # TODO: cleanup 20151009 start
@@ -161,8 +167,7 @@ end
 
 if opts["calc_trunc_error"]  # calculate truncation error
   println("\nCalculating residual for truncation error")
-  res_real = zeros(mesh.numDof)
-  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler, res_real)
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
 
   f = open("error_trunc.dat", "w")
   println(f, tmp)
@@ -184,9 +189,6 @@ writedlm("IC.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
-
-# initialize some variables in nl_solvers module
-initializeTempVariables(mesh)
 
 wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
 println("max wave speed = ", wave_speed)
@@ -315,7 +317,10 @@ if opts["solve"]
       exfunc(mesh, sbp, eqn, opts, q_exact)
     if var_type == :entropy
       println("converting to entropy variables")
-      convertEntropy(mesh, sbp, eqn, opts, q_exact)
+      for i=1:mesh.numDofPerNode:mesh.numDof
+        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+      end
     end
 
       q_diff = eqn.q_vec - q_exact

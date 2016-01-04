@@ -3,14 +3,14 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex.jl"
-
+  println("\n\ntesting ", ARGS[1])
 #  ARGS[1] = "input_vals_vortex5.jl"
   include("../src/solver/euler/startup.jl")
 
   @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
-  initializeTempVariables(mesh)
-  println("testing jacobian vector product")
+
+  println("\n\ntesting jacobian vector product")
   # test jacobian vector product
   # load a new initial condition
   ICFunc = EulerEquationMod.ICDict["ICIsentropicVortex"]
@@ -19,7 +19,8 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   jac = SparseMatrixCSC(mesh.sparsity_bnds, typeof(real(eqn.res[1])))
   epsilon = 1e-20
   pert = complex(0, epsilon)
-  NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, EulerEquationMod.evalEuler, [], pert, jac)
+  newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
+  NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, EulerEquationMod.evalEuler, Array(Float64, 0,0,0), pert, jac)
 
   newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
   v = ones(mesh.numDof)  # vector to multiply jacobian against
@@ -39,26 +40,46 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
 #  diff_norm = calcNorm(eqn, results_diff)
 #  println("diff_norm = ", diff_norm)
 
+  
+  # test entropy variables
+  ARGS[1] = "input_vals_vortexa.jl"
+  println("\n\ntesting ", ARGS[1])
+  include(STARTUP_PATH)
+
+  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex2.jl"
+  println("\n\ntesting ", ARGS[1])
+  include(STARTUP_PATH)
+  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
-  include("../src/solver/euler/startup.jl")
-
+  # test entropy variables
+  ARGS[1] = "input_vals_vortex2a.jl"
+  include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex3.jl"
+  println("\n\ntesting ", ARGS[1])
+  include(STARTUP_PATH)
+  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
-  include("../src/solver/euler/startup.jl")
-
+  # test entropy variables
+  ARGS[1] = "input_vals_vortex3a.jl"
+  include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex4.jl"
+  println("\n\ntesting ", ARGS[1])
+  include(STARTUP_PATH)
+  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
-  include("../src/solver/euler/startup.jl")
-
+  # test entropy variables
+  ARGS[1] = "input_vals_vortex4a.jl"
+  include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
 end

@@ -1,4 +1,911 @@
 # euler_funcs.jl
-# some additional misc. functions
+# this file contains all the functions that calculate values at a node (except
+# for boundary related functions) as well as some additional helper functions.
+
+#------------------------------------------------------------------------------
+# function to calculate the Euler flux over the entire mesh
+#------------------------------------------------------------------------------
+@doc """ 
+### EulerEquationMod.getEulerFlux
+
+  This function calculates the Euler flux across the entire mesh by passing
+  pieces of the eqn.q, eqn.aux_vars, eqn.f_xi and eqn.params to a low level
+  function.  The flux is calculated in the xi and eta directions, 
+  scaled (mulitiplied) by the mapping jacobian (so that when performing the 
+  integral we don't have to explictly divide by the jacobian, it just cancels 
+  out with the jacobian factor introduced here.
+
+  Calls writeFlux to do any requested output.
+
+  This is a mid level function
+"""->
+# mid level function
+function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                        sbp::SBPOperator,  
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts)
+# calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
+
+  nrm = zeros(Tmsh, 2)
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement  # loop over nodes on current element
+      q_vals = view(eqn.q, :, j, i)
+      aux_vars = view(eqn.aux_vars, :, j, i)
+      # put this loop here (rather than outside) to we don't have to fetch
+      # q_vals twice, even though writing to the flux vector is slower
+      # it might be worth copying the normal vector rather than
+      # doing an view
+      for k=1:Tdim  # loop over dimensions
+        # don't do an array view because strided views are type-unstable
+        nrm[1] = mesh.dxidx[k, 1, j, i]
+        nrm[2] = mesh.dxidx[k, 2, j, i]
+        flux = view(eqn.flux_parametric, :, j, i, k)
+
+	# this will dispatch to the proper calcEulerFlux
+        calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
+      end
+    end
+  end
+
+
+  writeFlux(mesh, sbp, eqn, opts)
+
+  return nothing
+end
+
+
+@doc """
+### EulerEquationMod.writeFlux
+
+  This function writes the real part of Euler flux to a file named Fxi.dat, 
+  space delimited, controlled by the input options 'writeflux', of type Bool.
+
+  This is a high level function.
+"""->
+function writeFlux(mesh, sbp, eqn, opts)
+
+   if !eqn.params.writeflux
+     return nothing
+   end
+ 
+   fname = "Fxi.dat"
+   rmfile(fname)
+   writedlm(fname, real(eqn.flux_parametric))
+
+   return nothing
+end
+
+
+@doc """
+### EulerEquationMod.getEulerFlux2
+
+  This function calcules the euler flux over the entire mesh directly (ie.
+  does not call a low level function.  This function is deprecated, although
+  useful for benchmarking purposes.  2D only.
+
+  This is a mid level function
+"""->
+# this function is deprecated in factor of getEulerFlux()
+# useful for benchmarking purposes
+function getEulerFlux2{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+                                   eqn::EulerData{Tsol}, opts)
+# calculates the Euler flux for every node in the xi and eta directions
+# eqn is the equation type
+# q is the 3D array (4 by nnodes per element by nel), of the conservative variables
+# dxidx is the 4D array (2 by 2 x nnodes per element by nel) that specifies the direction of xi and eta in each element (output from mappingjacobian!)
+# flux_parametric is populated with the flux in xi direction (same shape as q)
+# F_eta is populated with flux in eta direction
+
+# once the Julia developers fix slice notation and speed up subarrays, we won't have to 
+# vectorize like this (can calculate flux one node at a time inside a dedicated function
+
+q = eqn.q
+dxidx = mesh.dxidx
+flux_parametric = view(eqn.flux_parametric, :, :, :, 1)
+F_eta = view(eqn.flux_parametric, :, :, :, 2)
+
+(ncomp, nnodes, nel) = size(q)  # get sizes of things
+
+  for i=1:nel  # loop over elements
+    for j=1:nnodes  # loop over nodes within element
+      # get direction vector components (xi direction)
+      nx = dxidx[1, 1, j, i]
+      ny = dxidx[1, 2, j, i]
+      # calculate pressure 
+      press = (eqn.params.gamma-1)*(q[4, j, i] - 0.5*(q[2, j, i]^2 + q[3, j, i]^2)/q[1, j, i])
+
+      # calculate flux in xi direction
+      # hopefully elements of q get stored in a register for reuse in eta direction
+      U = (q[2, j, i]*nx + q[3, j, i]*ny)/q[1, j, i]
+      flux_parametric[1, j, i] = q[1, j, i]*U
+      flux_parametric[2, j, i] = q[2, j, i]*U + nx*press
+      flux_parametric[3, j, i] = q[3, j, i]*U + ny*press
+      flux_parametric[4, j, i] = (q[4, j, i] + press)*U
+
+      # get direction vector components (eta direction)
+      nx = dxidx[2, 1, j, i]
+      ny = dxidx[2, 2, j, i]
+
+      # calculate xi flux
+      U = (q[2, j, i]*nx + q[3, j, i]*ny)/q[1, j, i]
+      F_eta[1, j, i] = q[1, j, i]*U
+      F_eta[2, j, i] = q[2, j, i]*U + nx*press
+      F_eta[3, j, i] = q[3, j, i]*U + ny*press
+      F_eta[4, j, i] = (q[4, j, i] + press)*U
+    end
+  end
+
+
+ 
+  return nothing
+
+end
+
+
+# calculating the Euler flux at a node
+#------------------------------------------------------------------------------
+@doc """
+### EulerEquationMod.calcEulerFlux
+
+   This function calculates the Euler flux from the conservative variables at
+   a single node in a particular direction.  2D only.
+
+   Inputs:
+   params  : ParamaterType{2, :conservative}
+   q  : vector of conservative variables
+   aux_vars : vector of auxiliary variables
+   dir :  unit vector in direction to calculate the flux
+
+   Inputs/Outputs:
+   F  : vector to populate with the flux
+
+   The Tdim paramater of params determine whether this method or the 3D 
+   version is called.
+
+   This is a low level function
+"""->
+# low level function
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+                      q::AbstractArray{Tsol,1}, 
+                      aux_vars::AbstractArray{Tres, 1}, 
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+# calculates the Euler flux in a particular direction at a point
+# eqn is the equation type
+# q is the vector (of length 4), of the conservative variables at the point
+# aux_vars is the vector of auxiliary variables at the point
+# dir is a vector of length 2 that specifies the direction
+# F is populated with the flux (is a vector of length 4)
+# 2D  only
+
+
+#  press = calcPressure(q, params)
+  press = @getPressure(aux_vars)
+  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+  F[1] = q[1]*U
+  F[2] = q[2]*U + dir[1]*press
+  F[3] = q[3]*U + dir[2]*press
+  F[4] = (q[4] + press)*U
+ 
+  return nothing
+
+end
+
+
+@doc """
+# low level function
+    Calculates the Euler flux from entropy variables
+
+    Inputs:
+    params : ParameterType{2, :entropy}
+    q : vector of entropy variables
+    aux_vars : vector of auxiliary variables
+    dir : vector specifying the direction to caculate the flux
+
+    Inputs/Outputs:
+    F  : vector to populate with the flux
+ 
+    This is a low level function.  The second static parameter of 
+    the ParameterType is used to dispatch to the right method for
+    entropy or conservative variables
+"""->
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy}, 
+                       q::AbstractArray{Tsol,1}, 
+                       aux_vars::AbstractArray{Tres, 1}, 
+                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  # calculate some intermediate quantities
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+    # internal energy (rho*i in Hughes) - not specific internal energy e
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  U = q[2]*dir[1] + q[3]*dir[2]
+  fac = rho_int/q[4]
+
+  # now we can actually calculate the flux
+  F[1] = q[4]*U*fac
+  F[2] = (dir[1]*gamma_1*q[4] - q[2]*U)*fac
+  F[3] = (dir[2]*gamma_1*q[4] - q[3]*U)*fac
+  F[4] = U*(k1 - gamma)*fac
+
+  return nothing
+end
+
+@doc """
+### EulerEquationMod.calcEulerFlux
+  This is the 3D method.  All arguments are same as the 2D version.
+"""->
+# low level function
+function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3, :conservative}, 
+                       q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  
+                       F::AbstractArray{Tsol,1})
+# calculates the Euler flux in a particular direction at a point
+# eqn is the equation type
+# q is the vector (of length 5), of the conservative variables at the point
+# dir is a vector of length 3 that specifies the direction
+# F is populated with the flux (is a vector of length 5)
+# 3D  only
+
+# once the Julia developers fix slice notation and speed up subarrays, we can make a faster
+# vectorized version of this
+
+  press = calcPressure(params, q)
+  U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  F[1] = q[1]*U
+  F[2] = q[2]*U + dir[1]*press
+  F[3] = q[3]*U + dir[2]*press
+  F[4] = q[4]*U + dir[3]*press
+  F[5] = (q[5] + press)*U
+ 
+  return nothing
+
+end
+
+
+@doc """
+### EulerEquationMod.getAuxVars
+
+  This function calculates any extra variables that are stored across the mesh
+  using the conservative variables eqn.q.  Currently only calculates pressure.
+
+  Thi is a mid level function
+"""->
+
+#------------------------------------------------------------------------------
+# functions for calculating additional quantities: pressure, entropy etc.
+#------------------------------------------------------------------------------
+
+# mid level function
+function getAuxVars{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                      eqn::EulerData{Tsol, Tres, Tdim})
+# calculate all auxiliary variables
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_vals = view(eqn.q, :, j, i)
+
+      # calculate pressure
+      press = calcPressure(eqn.params, q_vals)
+      @setPressure(eqn.aux_vars, j, i, press)
+    end
+  end
+
+  return nothing
+end
+
+
+@doc """
+### EulerEquationMod.calcPressure
+
+  This function calculates the pressure from the conservative variables at a
+  node in 2D.  It returns a single value.
+
+  Inputs:
+    params : ParamType{2, :conservative}
+    q  : vector of conservative variables
+
+  The parameter of params determines whether the 2D or 3D method is dispatched.
+
+  This is a low level function.
+
+  Aliasing restrictions: none
+"""->
+# low level function
+function calcPressure{Tsol}(params::ParamType{2, :conservative}, 
+                            q::AbstractArray{Tsol,1} )
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+  return  (params.gamma_1)*(q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])
+  
+end
+
+
+@doc """
+### EulerEquationMod.calcPressure
+  This function calculates pressure using the entropy variables.
+
+  Inputs:
+    params : ParamType{2, :entropy}
+    q  : vector of entropy varaibles
+
+  returns pressure
+
+  Aliasing restrictions: none
+"""->
+function calcPressure{Tsol}(params::ParamType{2, :entropy}, 
+                            q::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  
+  k1 = 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  return gamma_1*rho_int
+end
+
+
+@doc """
+### EulerEquationMod.calcPressure
+
+  3D method.  See 2D method documentation
+"""->
+# low level function
+function calcPressure{Tsol}(params::ParamType{3, :conservative}, 
+                            q::AbstractArray{Tsol,1} )
+  # calculate pressure for a node
+  # q is a vector of length 5 of the conservative variables
+
+  return  (params.gamma_1)*(q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1])
+  
+
+end
+
+
+
+@doc """
+### EulerEquationMod.calcSpeedofSound
+
+  This function calculates the speed of sound at a node and returns it.
+  Methods are available for both conservative and entropy variables.
+
+  Inputs:
+    params:  ParamType{2, var_type}
+    q  vector of solution variables at a node
+
+  Returns: speed of sound
+
+  This is a low level function
+
+  Aliasing restrictions: none
+"""->
+
+function calcSpeedofSound{Tsol}(params::ParamType{2, :conservative}, 
+                                q::AbstractArray{Tsol, 1})
+# calculates teh speed of sond at a node
+  pressure = calcPressure(params, q)
+  return sqrt((params.gamma*pressure)/q[1])
+
+end
+
+
+
+function calcSpeedofSound{Tsol}(params::ParamType{2, :entropy}, 
+                                q::AbstractArray{Tsol, 1})
+# calculate speed of sound using the same formula as conservative variables,
+# just rewriting all variables in entropy variables
+
+#  printbacktrace()
+#  println("q = ", q)
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  pressure = calcPressure(params, q)
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+  rho = -q[4]*rho_int
+
+#  println("rho = ", rho)
+  return sqrt((params.gamma*pressure)/rho)
+end
+
+
+@doc """
+### EulerEquationMod.calcEntropy
+
+  This function calculates the entropy at a node and returns it.  Method are 
+  available for conservative and entropy variables
+
+  Inputs:
+    params: ParamType{2, var_type}, used to dispatch to the right method.
+    q: vector of solution variables at a node.
+
+  Returns: entropy
+
+  This is a low level function
+
+  Aliasing Restrictions: none
+
+"""->
+function calcEntropy{Tsol}(params::ParamType{2, :conservative}, 
+                           q::AbstractArray{Tsol,1} )
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  rho_int = q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1]
+  return log(gamma_1*rho_int/(q[1]^gamma))
+end
+
+function calcEntropy{Tsol}(params::ParamType{2, :entropy}, 
+                           q::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]
+end
+
+
+
+#------------------------------------------------------------------------------
+# function to calculate various coefficient matrices
+#------------------------------------------------------------------------------
+
+@doc """
+### EulerEquationMod.calcA0
+
+  This function calculates the A0 (ie. dq/dv, where q are the conservative 
+  and v are the entropy variables) for a node, and stores it A0
+
+  The formation of A0 is given in Hughes
+
+  Inputs:
+    params : ParamType{2, :entropy}
+    q  : vector of entropy variables, length 4
+
+
+  Inputs/Outputs:
+  A0 : 4x4 matrix populated with A0.  Overwritten
+
+  Aliasing restrictions: none
+"""->
+function calcA0{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
+                      A0::AbstractArray{Tsol, 2})
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
+#    k4 = k2 - gamma_1
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = rho_int/(gamma_1*q[4])
+
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[4] - q[2]*q[2]
+  c2 = gamma_1*q[4] - q[3]*q[3]
+
+  d1 = -q[2]*q[3]
+
+  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A0[1,1] = -q[4]*q[4]*fac
+  A0[2,1] = e1*fac
+  A0[3,1] = e2*fac
+  A0[4,1] = q[4]*(1-k1)*fac
+  A0[1,2] = e1*fac  # symmetric
+  A0[2,2] = c1*fac
+  A0[3,2] = d1*fac
+  A0[4,2] = q[2]*k2*fac
+  A0[1,3] = e2*fac  # symmetric
+  A0[2,3] = d1*fac  # symmetric
+  A0[3,3] = c2*fac
+  A0[4,3] = q[3]*k2*fac
+  A0[1,4] = q[4]*(1-k1)*fac  # symmetric
+  A0[2,4] = q[2]*k2*fac   # symmetric
+  A0[3,4] = q[3]*k2*fac  # symmetric
+  A0[4,4] = -k3*fac
+
+    return nothing
+end
+
+@doc """
+# EulerEquationMod.calcA0Inv
+
+  Calculates inv(A0), where A0 = dq/dv, where q are the conservative variables
+  at a node and v are the entropy varaibles at a node, using the entropy 
+  variables.  
+
+  Inputs:
+    params : ParamType{2, :entropy}
+    q  : vector (length 4) of entropy variables at a node
+
+  Inputs/Outputs:
+    A0inv : matrix to be populated with inv(A0).  Overwritten.
+
+  Aliasing restrictions: none
+"""->
+function calcA0Inv{Tsol}(params::ParamType{2, :entropy},
+                   q::AbstractArray{Tsol,1},  
+                   A0inv::AbstractArray{Tsol, 2})
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+   s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = -1/(rho_int*q[4])
+
+  d1 = -q[2]*q[3]
+  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+
+  A0inv[1,1] = (k1*k1 + gamma)*fac
+  A0inv[2,1] = k1*q[2]*fac
+  A0inv[3,1] = k1*q[3]*fac
+  A0inv[4,1] = (k1 + 1)*q[4]*fac
+  A0inv[1,2] = k1*q[2]*fac  # symmetry
+  A0inv[2,2] = (q[2]*q[2] - q[4])*fac
+  A0inv[3,2] = -d1*fac
+  A0inv[4,2] = e1*fac
+  A0inv[1,3] = k1*q[3]*fac  # symmetry
+  A0inv[2,3] = -d1*fac  # symmetry
+  A0inv[3,3] = (q[3]*q[3] - q[4])*fac
+  A0inv[4,3] = e2*fac
+  A0inv[1,4] = (k1 + 1)*q[4]*fac  # symmetry
+  A0inv[2,4] = e1*fac  # symmetry
+  A0inv[3,4] = e2*fac  # symmetry
+  A0inv[4,4] = q[4]*q[4]*fac
+
+    return nothing
+end
+
+@doc """
+### EulerEquationMod.matVecA0inv
+
+  This function takes a 3D array and multiplies it in place by the inv(A0) 
+  matrix (calculated at each node), inplace, (where A0 =dq/dv, where q are the 
+  conservative variables and v are some other variables), inplace.
+  Methods are available for conservative and entropy variables.
+
+  For conservative variables, A0 is the identity matrix and this is a no-op
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs:
+    res_arr: the array to multiply 
+
+  Aliasing restrictions: none
+"""->
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                     sbp::SBPOperator, 
+                     eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
+                     res_arr::AbstractArray{Tsol, 3})
+# multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
+# res_arr *can* alias eqn.q safely
+  A0inv = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  res_vals = Array(Tsol, mesh.numDofPerNode)
+  q_vals = Array(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      # copy values into workvec
+      for k=1:mesh.numDofPerNode
+	q_vals[k] = eqn.q[k, j, i]
+	res_vals[k] = res_arr[k, j, i]
+      end
+
+      res_view = view(res_arr, :, j, i)
+      # get A0Inv for this node
+      calcA0Inv(eqn.params, q_vals, A0inv)
+
+      smallmatvec!(A0inv, res_vals, res_view)
+    end
+  end
+
+  return nothing
+end
+
+# no-op, because for conservative variables this is A0inv is the identity matrix
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                     sbp::SBPOperator, 
+                     eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
+                     opts, res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+@doc """
+### EulerEquationMod.matVecA0
+
+  This function is the same as matVecA0inv, except it multiplies by A0 not
+  A0inv.  See its documention.
+
+"""->
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                  sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim, :entropy},
+                  opts, res_arr::AbstractArray{Tsol, 3})
+# multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
+# res_arr *can* alias eqn.q safely
+# a non-alias tolerant implimention wold avoid copying q_vals
+  A0 = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  res_vals = Array(Tsol, mesh.numDofPerNode)
+  q_vals = Array(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      # copy values into workvec
+      for k=1:mesh.numDofPerNode
+	q_vals[k] = eqn.q[k, j, i]
+	res_vals[k] = res_arr[k, j, i]
+      end
+
+      res_view = view(res_arr, :, j, i)
+      # get A0Inv for this node
+      calcA0(eqn.params, q_vals, A0)
+
+      smallmatvec!(A0, res_vals, res_view)
+    end
+  end
+
+  return nothing
+end
+
+#no-op
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts, res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+
+
+
+
+
+@doc """
+### EulerEquationMod.calcA1
+
+  This function calculates the A1 (ie. dF1/dv, where F1 is the first column of 
+  theEuler flux and v are the entropy variables) for a node
+
+  The formation of A1 is given in Hughes paper
+
+  Inputs:
+    params : ParamType{2, :entropy}
+    q  : vector of entropy variables, length 4
+
+  Inputs/Outputs:
+  A1 : 4x4 matrix to be populated.  Overwritten
+
+
+"""->
+function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
+                      A1::AbstractArray{Tsol, 2})
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
+  k4 = k2 - gamma_1
+  k5 = k2*k2 - gamma_1*(k1 + k2)
+
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = rho_int/(gamma_1*q[4]*q[4])
+
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[4] - q[2]*q[2]
+  c2 = gamma_1*q[4] - q[3]*q[3]
+
+  d1 = -q[2]*q[3]
+
+  e1 = q[2]*q[4]
+#  e2 = q[3]*q[4]
+
+  println("fac = ", fac)
+  println("e1 = ", e1)
+  println("q[4] = ", q[4])
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A1[1,1] = e1*q[4]*fac
+  A1[2,1] = c1*q[4]*fac
+  A1[3,1] = d1*q[4]*fac
+  A1[4,1] = k2*e1*fac
+  A1[1,2] = c1*q[4]*fac  # symmetric
+  A1[2,2] = -(c1 + 2*gamma_1*q[4])*q[2]*fac
+  A1[3,2] = -c1*q[3]*fac
+  A1[4,2] = (c1*k2 + gamma_1*q[2]*q[2])*fac
+  A1[1,3] = d1*q[4]*fac  # symmetric
+  A1[2,3] = -c1*q[3]*fac  # symmetric
+  A1[3,3] = -c2*q[2]*fac
+  A1[4,3] = k4*d1*fac
+  A1[1,4] = k2*e1*fac  # symmetric
+  A1[2,4] = (c1*k2 + gamma_1*q[2]*q[2])*fac   # symmetric
+  A1[3,4] = k4*d1*fac  # symmetric
+  A1[4,4] = k5*q[2]*fac
+
+  println("A1[1,1] = ", A1[1,1])
+    return nothing
+end
+
+
+@doc """
+### EulerEquationMod.calcA2
+
+  This function calculates the A2 (ie. dF2/dv, where F2 is the second column of the
+  Euler flux.
+  and v are the entropy variables) for a node
+
+  The formation of A2 is given in Hughes
+
+  Inputs:
+    params : ParamType{2, :entropy},
+    q  : vector of entropy variables, length 4
+  Inputs/Outputs:
+  A2 : 4x4 matrix to be populated.  Overwritten
+
+
+"""->
+function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
+                      A2::AbstractArray{Tsol, 2})
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[4]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
+  k4 = k2 - gamma_1
+  k5 = k2*k2 - gamma_1*(k1 + k2)
+
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
+
+  fac = rho_int/(gamma_1*q[4]*q[4])
+
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[4] - q[2]*q[2]
+  c2 = gamma_1*q[4] - q[3]*q[3]
+
+  d1 = -q[2]*q[3]
+
+#  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A2[1,1] = e2*q[4]*fac
+  A2[2,1] = d1*q[4]*fac
+  A2[3,1] = c2*q[4]*fac
+  A2[4,1] = k2*e2*fac
+  A2[1,2] = d1*q[4]*fac  # symmetric
+  A2[2,2] = -c1*q[3]*fac
+  A2[3,2] = -c2*q[2]*fac
+  A2[4,2] = k4*d1*fac
+  A2[1,3] = c2*q[4]*fac  # symmetric
+  A2[2,3] = -c2*q[2]*fac  # symmetric
+  A2[3,3] = -(c2 + 2*gamma_1*q[4])*q[3]*fac
+  A2[4,3] = (c2*k2 + gamma_1*q[3]*q[3])*fac
+  A2[1,4] = k2*e2*fac  # symmetric
+  A2[2,4] = k4*d1*fac   # symmetric
+  A2[3,4] = (c2*k2 + gamma_1*q[3]*q[3])*fac  # symmetric
+  A2[4,4] = k5*q[3]*fac
+
+    return nothing
+end
+
+
+@doc """
+### EulerEquationMod.calcMaxWaveSpeed
+
+  This function calculates the maximum wave speed (ie. acoustic wave speed)
+  present in the domain and returns it.  Methods are available for conservative and entropy
+  variables.
+
+  This is a mid level function
+"""->
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
+                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts)
+# calculate the maximum wave speed (ie. characteristic speed) on the mesh
+# uses solution vector q, not array
+  q = eqn.q
+  max_speed = zero(eltype(q))
+  for i=1:4:length(q)
+    q_i = view(q, i:(i+3))
+    a = calcSpeedofSound(eqn.params, q_i)
+    ux = q_i[2]/q_i[1]
+    uy = q_i[3]/q_i[1]
+    u_norm = sqrt(ux*ux + uy*uy)
+    speed = a + u_norm
+
+    if speed > max_speed
+      max_speed = speed
+    end  # end if statement
+  end  # end loop over vector q
+
+  return max_speed
+end  # end function
+
+
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
+                          eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts)
+# calculate the maximum wave speed (ie. characteristic speed) on the mesh
+# uses solution vector q, not array
+  q = eqn.q
+  gamma = eqn.params.gamma
+  gamma_1 = eqn.params.gamma_1
+ 
+  max_speed = zero(eltype(q))
+  for i=1:4:length(q)
+    q_i = view(q, i:(i+3))
+    a = calcSpeedofSound(eqn.params, q_i)
+
+   
+    k1 = 0.5*(q_i[2]*q_i[2] + q_i[3]*q_i[3])/q_i[4]  # a constant from Hughes' paper
+    s = gamma - q_i[1] + k1    # entropy
+    rho_int = exp(-s/gamma_1)*(gamma_1/((-q_i[4])^gamma))^(1/gamma_1)
+    rho = -rho_int*q_i[4]
+    ux = rho_int*q[2]/rho
+    uy = rho_int*q[3]/rho
+    u_norm = sqrt(ux*ux + uy*uy)
+    speed = a + u_norm
+
+    if speed > max_speed
+      max_speed = speed
+    end  # end if statement
+  end  # end loop over vector q
+
+  return max_speed
+end  # end function
+
+
+#------------------------------------------------------------------------------
+# some old experimental functions
+#------------------------------------------------------------------------------
+
+# this is a test for an algorithmic differentiation package
+function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
+
+  dir = [1.0, 0.0]
+#  F = zeros(T, 4)
+  sbp = TriSBP{Float64}()
+  mesh = PumiMesh2{Float64}(".null", "../../mesh_files/quarter_vortex3l.smb", 1, sbp; dofpernode=4)
+  eqn = EulerData1{T, T}(mesh, sbp)
+
+  @time getEulerFlux(eqn, q, dir, F)
+
+  return F
+
+end
+
+fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
 
 

@@ -1,6 +1,6 @@
  # SUPG implementation
-function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
-	                            eqn::EulerData{Tsol, Tdim})
+function SUPG{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+	                            eqn::EulerData{Tsol, Tres, Tdim})
 
   FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
   tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
@@ -73,9 +73,9 @@ function SUPG{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 end # end function SUPG
 
 
-function FluxJacobian{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function FluxJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
 	                                      sbp::SBPOperator, 
-	                                      eqn::EulerData{Tsol, Tdim})
+	                                      eqn::EulerData{Tsol, Tres, Tdim})
 
   # global function that calculates the flux jacobian for all the nodes in the
   # mesh. Its only for 2D
@@ -142,8 +142,8 @@ function FluxJacobian{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
 end # end function FluxJacobian
 
 # Stabilization Term 3
-function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim},
                                tau::AbstractArray{Tsol,2})
   
   # Reference: http://enu.kz/repository/2010/AIAA-2010-1183.pdf, eqn 15
@@ -185,8 +185,8 @@ end # end calcStabilizationTerm
 
 #=
 # Stabilization Term 1
-function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim},
                                tau::AbstractArray{Tsol,2})
   
   # q in the parametric space. Since everything happens in this space
@@ -244,8 +244,8 @@ end # end calcStabilizationTerm
 
 #=
 # Stabilization term 2
-function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim},
                                tau::AbstractArray{Tsol,2})
   
   # Reference for stabilization: http://enu.kz/repository/2010/AIAA-2010-1183.pdf
@@ -281,8 +281,8 @@ end # end calcStabilizationTerm
 =#
 #=
 # Stabilization term 4
-function calcStabilizationTerm{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::SBPOperator, eqn::EulerData{Tsol, Tdim},
+function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                               sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim},
                                tau::AbstractArray{Tsol,2})
 
   # Reference: Three-Dimensional Stabilized Finite Elements for Compressible 
@@ -354,8 +354,8 @@ function circumcircleDiameter{Tmsh}(coords::AbstractArray{Tmsh, 2})
   return dia
 end  # end function circumcircleDiameter
 
-function GLS{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
-                               eqn::EulerData{Tsol, Tdim})
+function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+                               eqn::EulerData{Tsol, Tres, Tdim})
   
   #  println("Entered GLS")  
   FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
@@ -447,8 +447,8 @@ function calcAxidxi{Tsol}(Axidxi::AbstractArray{Tsol, 2},
   return nothing
 end
 
-function calcTau{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
-                                   eqn::EulerData{Tsol, Tdim},
+function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+                                   eqn::EulerData{Tsol, Tres, Tdim},
                                    tau::AbstractArray{Tsol,2})
   
   for i = 1:mesh.numEl
