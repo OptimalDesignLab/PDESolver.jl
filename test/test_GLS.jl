@@ -72,13 +72,6 @@ fill!(eqn.res, 0.0)
 fill!(eqn.res_vec,0.0)
 
 FluxJacobian(mesh, sbp, eqn)
-#println("Node1 = \n",eqn.Aeta[:,:,1,1])
-#println("Node2 = \n",eqn.Aeta[:,:,2,1])
-#println("Node3 = \n",eqn.Aeta[:,:,3,1])
-
-
-# println(eqn.Aeta)
-
 
 
 GLS(mesh, sbp, eqn)
