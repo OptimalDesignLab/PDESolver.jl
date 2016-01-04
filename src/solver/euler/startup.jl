@@ -198,7 +198,6 @@ opts["delta_t"] = delta_t
 #------------------------------------------------------------------------------
 #=
 include("checkEigenValues.jl")
->>>>>>> jc
 # include("artificialViscosity.jl")
 # include("SUPG.jl")
 
