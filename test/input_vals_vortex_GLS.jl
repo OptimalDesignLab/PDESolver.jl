@@ -5,11 +5,6 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any} (
-"var1" => 1,
-"var2" => "a",
-"var3" => 3.5,
-"var4" => [1,2,3],
-"var3" => 4,
 "run_type" => 5,
 "jac_type" => 2,	
 "order" => 1,
