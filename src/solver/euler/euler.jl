@@ -182,6 +182,16 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
                                 sbp::SBPOperator, eqn::AbstractEulerData, opts)
 
 #  println("Performing major Iteration Callback")
+
+
+    if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
+      vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
+      saveSolutionToMesh(mesh, vals)
+      fname = string("solution_", itr)
+      writeVisFiles(mesh, fname)
+    end
+ 
+
 #=
   if itr == 0
     #----------------------------------------------------------------------------

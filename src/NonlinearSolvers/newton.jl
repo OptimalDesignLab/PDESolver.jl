@@ -443,14 +443,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       writedlm("q$i.dat", eqn.q)
     end
 
-    # write paraview files
-    if write_vis && ((i % output_freq)) == 0 || i == 1
-      vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
-      saveSolutionToMesh(mesh, vals)
-      fname = string("solution_newton", i)
-      writeVisFiles(mesh, fname)
-    end
- 
+
 
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
