@@ -129,11 +129,11 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
-  #=
+  
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
-  =#
+  
   #=
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)

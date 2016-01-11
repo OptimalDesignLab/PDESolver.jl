@@ -24,11 +24,14 @@ fill!(eqn.res_vec,0.0)
 # res_0 = zeros(eqn.res_vec)
 res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler)
 
+# println("eqn.q = \n", eqn.q)
 # println("dxidx = \n", mesh.dxidx)
 # println("jacobian determinant = \n", mesh.jac)
 # println("coordinates = \n", mesh.coords)
-#=
+# println("eqn.Axi[:,:,1,1] = \n", eqn.Axi[:,:,1,1])
+
 facts("\nCheck flux jacobian for conservative variables") do
+  
   @fact eqn.Axi[:,:,1,1] --> roughly([0.0 + 0.0im 0.5 + 0.0im 0.0 + 0.0im 0.0 + 0.0im
                  0.04512499999999999 + 0.0im 0.0 + 0.0im 0.13435028842544403 - 0.0im 0.19999999999999996 + 0.0im
                  0.0 + 0.0im -0.3358757210636101 + 0.0im 0.0 + 0.0im 0.0 + 0.0im
@@ -63,26 +66,38 @@ facts("\nCheck flux jacobian for conservative variables") do
   	end
   end
 end
-=#
-facts("Check residual vector without any stabilization") do
-  @fact eqn.res_vec --> roughly([0.026726907259624955,0.48767456657840463,
-  	                             0.5783855773525426,-0.23352036974413096,
-  	                             -0.04667697365332135,-0.5286862525347082,
-  	                             0.056759263290692086,-0.16958045972628238,
-  	                             -0.23493789531609155,-0.018798326722505865,
-  	                             -0.45002903493239477,0.026981780972407405])
-end
+
 
 fill!(eqn.res, 0.0)
 fill!(eqn.res_vec,0.0)
 
 parametricFluxJacobian(mesh, sbp, eqn)
 
-
 GLS(mesh, sbp, eqn)
 facts("Check if GLS residual is getting added to the residual") do
-  @fact eqn.res[:,1,1] --> roughly([0.111689561162,0.507611237471,0.516680308782,-0.1081473535781])
-  @fact eqn.res[:,2,1] --> roughly([0.038285680249,-0.50874958164,-0.00494600527,-0.0442074435602])
-  @fact eqn.res[:,3,1] --> roughly([-0.149975241412,0.00113834417,-0.51173430350,0.15235479713840])
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      for k = 1:mesh.numDofPerNode
+        @fact abs(eqn.res[k,j,i]) --> greater_than(0.0) "GLS values are not getting added to eqn.res at dof $k, node $j, element $i."
+      end
+    end
+  end
 end
 
+q = ones(Tsol, 4)
+Ax = zeros(Tsol, 4, 4)
+Ay = zeros(Tsol, 4, 4)
+calcFluxJacobian(eqn, q, Ax, Ay)
+# println("Ax = \n", Ax)
+# println("\nAy = \n", Ay)
+
+facts("Check if the Flux Jacobian in the X & Y direction are being computed accrately") do
+  @fact Ax --> roughly([0.0 1.0 0.0  0.0
+                       -0.6 1.6 -0.4 0.4
+                       -1.0 1.0 1.0 0.0
+                       -0.6 0.6 -0.4 1.4])
+  @fact Ay --> roughly([0.0 0.0 1.0 0.0
+                       -1.0 1.0 1.0 0.0
+                       -0.6 -0.4 1.6 0.4
+                       -0.6 -0.4 0.6 1.4])
+end
