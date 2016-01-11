@@ -16,9 +16,7 @@ using ForwardDiff
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
 
-export AbstractEulerData, EulerData, EulerData_, AbstractParamType
-
-abstract AbstractParamType
+export AbstractEulerData, EulerData, EulerData_
 
 @doc """
 ### EulerEquationMod.ParamType
