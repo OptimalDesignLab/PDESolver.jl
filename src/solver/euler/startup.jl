@@ -242,9 +242,10 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 if opts["solve"]
   
   if flag == 1 # normal run
-   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
-              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
-              res_tol=opts["res_abstol"], real_time=opts["real_time"])
+   @time rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+#   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
+#              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
+#              res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
    println("finish rk4")
    printSolution("rk4_solution.dat", eqn.res_vec)

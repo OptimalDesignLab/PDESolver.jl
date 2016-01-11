@@ -24,7 +24,7 @@ rk4
   This function does 4th order Runge Kutta time stepping
 
   Arguments:
-    * f  : function evaluation
+    * f  : function evaluation, must have signature (ctx..., opts, t), must have signature (ctx..., opts, t)
     * h  : time step size
     * t_max : time value to stop time stepping (time starts at 0)
     * mesh : AbstractMesh
@@ -37,7 +37,7 @@ rk4
    The eqn.q_vec should hold the whichever variables (conservative or
    entropy) that the simulation should use.
 """->
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol = -1.0, real_time=false)
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, pre_func, post_func, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol = -1.0, real_time=false)
 #function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
@@ -142,7 +142,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
       println("DensityErrorNorm = ", ErrDensity)
       println("Solution Residual Norm = ", sol_norm)
 =#
-      println("writing to convergence.dat")
+#      println("writing to convergence.dat")
       println(f1, i, " ", sol_norm)
     end
     
@@ -189,7 +189,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     # stage 3
     q_vec[:] = x3
     pre_func(ctx..., opts)
-    if real_time treal= t + t/2 end
+    if real_time treal= t + h/2 end
 #    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     f( ctx..., opts, treal)
     post_func(ctx..., opts)
@@ -263,16 +263,29 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 #  writedlm("rk4_output.dat",x,",")
 #   writecsv("rk4_output.dat",x," ")
 #  return x[:, t_steps+1], x
-  return nothing
+  return t
 
 end
 
-function pre_func(mesh, sbp, eqn, opts)
+# this is the version for solving PDEs
+# it uses the pde_pre_func and pde_post_func below
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, real_time=false)
+    rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+
+end
+
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
+
+  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, (mesh, sbp, eqn), opts; majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+end
+
+
+function pde_pre_func(mesh, sbp, eqn, opts)
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 end
 
-function post_func(mesh, sbp, eqn, opts)
+function pde_post_func(mesh, sbp, eqn, opts)
   fill!(eqn.res_vec, 0.0)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
