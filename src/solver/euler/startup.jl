@@ -324,13 +324,13 @@ if opts["solve"]
       exfunc = ICDict[exfname]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
-    if var_type == :entropy
-      println("converting to entropy variables")
-      for i=1:mesh.numDofPerNode:mesh.numDof
-        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
-        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
-      end
-    end
+#    if var_type == :entropy
+#      println("converting to entropy variables")
+#      for i=1:mesh.numDofPerNode:mesh.numDof
+#        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+#        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+#      end
+#    end
 
       q_diff = eqn.q_vec - q_exact
       diff_norm = calcNorm(eqn, q_diff)
