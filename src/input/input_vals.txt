@@ -90,6 +90,10 @@ where input_file_name.jl is in your current directory.
 "write_finalresidual"  : write final residual (in vector form) to file, (Bool), default false
 
 
+# SBP options
+"Q_transpose" : enable transpose option within weakdifferentiate!
+
+
 # stabilization options
 "use_edgestab" : use edge stabilization, (Bool), default true
 "edgestab_gamma" edge stabilization paramater gamma, (floatingpoint), default -0.1
