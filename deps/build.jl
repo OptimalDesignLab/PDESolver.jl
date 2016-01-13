@@ -21,13 +21,6 @@ function installPDESolver()
 
   pkg_dict = Pkg.installed()  # get dictionary of installed package names to version numbers
 
-  # generate the known_keys dictonary
-  start_dir = pwd()
-  input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
-  cd(input_path)
-  include(joinpath(input_path, "extract_keys.jl"))
-  cd(start_dir)
-
   # force installation to a specific commit hash even if package is already present
   # or would normally be install via the REQUIRE file
   global const FORCE_INSTALL_ALL = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_ALL")
@@ -83,6 +76,14 @@ function installPDESolver()
   end
 
   close(f)
+
+  # generate the known_keys dictonary
+  start_dir = pwd()
+  input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
+  cd(input_path)
+  include(joinpath(input_path, "extract_keys.jl"))
+  cd(start_dir)
+
 end  # end function
 
 
