@@ -235,6 +235,8 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 # residualComparison(mesh, sbp, eqn, opts)
 
 =#
+
+res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler)
 #------------------------------------------------------------------------------
 
 # call timestepper
