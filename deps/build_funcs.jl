@@ -17,7 +17,7 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
 # f: file handle to write progress to
 # force: install the package regardless of other flags, default false
 
-  if !haskey(pkg_dict, pkg_name)  || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkgname")  || FORCE_INSTALL_ALL || force
+  if !haskey(pkg_dict, pkg_name)  || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name")  || FORCE_INSTALL_ALL || force
     println(f, "Installing package $pkg_name")
     try 
       Pkg.clone(git_url)
