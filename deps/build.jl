@@ -84,3 +84,7 @@ function installPDESolver()
 
   close(f)
 end  # end function
+
+
+# run the installation
+installPDESolver()
