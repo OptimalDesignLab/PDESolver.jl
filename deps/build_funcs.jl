@@ -24,6 +24,8 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
     try 
       if !isdir(Pkg.dir(pkg_name))  # if package not already present
         Pkg.clone(git_url)
+      else
+        reset_repo(pkg_name)
       end
       set_hash(pkg_name, git_commit)
       Pkg.build(pkg_name)
@@ -40,4 +42,11 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
   end
 
   flush(f)
+end
+
+function reset_repo(pkg_name::AbstractString)
+  start_dir = pwd()
+  cd(Pkg.dir(pkg_name))
+  run(`git reset --hard`)  # remove changes to files under version control
+  run(`git clean -x -f -d`) # remove any files not under version control
 end
