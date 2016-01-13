@@ -24,8 +24,9 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
       set_has(git_url)
       Pkg.build(pkg_name)
       println(f, "  Installation appears to have completed sucessfully")
-    catch
+    catch x
       println(f, "Error installing package $pkg_name")
+      println(f, "Error is $x")
     end
 
   else
