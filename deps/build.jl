@@ -37,17 +37,31 @@ function installPDESolver()
   # now install PETSc
   pkg_name = "PETSc"
   git_url = petsc_git
-  if !haskey(pkg_dict, pkg_name)  || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name")  || FORCE_INSTALL_ALL
-    println("installing PETSc")
-    start_dir = pwd()
-    cd(Pkg.dir() )
-    run(`git clone $petsc_git`)
-    println("finished clone")
-    mv("./Petsc", "./PETSc")
-    println("mv complete sucessfully")
-    Pkg.build("PETSc")
-    println("building PETSc")
-    cd(start_dir)
+  already_installed = haskey(pkg_dict, pkg_name) 
+  force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
+
+  if !already_installed  || force_specific  || FORCE_INSTALL_ALL
+    println(f, "Installing package $pkg_name")
+    try 
+
+      start_dir = pwd()
+      cd(Pkg.dir() )
+      run(`git clone $petsc_git`)
+      mv("./Petsc", "./PETSc")
+      Pkg.build("PETSc")
+      cd(start_dir)
+      println(f, "  Installation appears to have completed sucessfully")
+    catch x
+      println(f, "Error installing package $pkg_name")
+      println(f, "Error is $x")
+    end
+
+  else
+    println(f, "Skipping installation of package $pkg_name")
+    println(f, "already installed: ", already_installed, ", specifically forced: ", force_specific,
+               ", force general: ", FORCE_INSTALL_ALL)
+
+ 
   end
 
   #------------------------------------------------------------------------------
@@ -70,7 +84,8 @@ function installPDESolver()
                "Debug" "8c4801a6ca6368c6b5175c18a9d666a5694c1c3b"
                ]
 
-  if haskey(ENV, "PDESOLVE_INSTALL_DEPS_MANUAL")
+  if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL")
+    println(f, "\nManually installing packages\n")
     for i=1:size(pkg_list, 1)
       pkg_name = std_pkgs[i, 1]
       git_commit = std_pkgs[i, 2]
