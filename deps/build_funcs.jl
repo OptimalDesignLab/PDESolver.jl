@@ -19,7 +19,7 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
 
   already_installed = haskey(pkg_dict, pkg_name) 
   force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
-  if !already_installed || force_specifc || FORCE_INSTALL_ALL || force
+  if !already_installed || force_specific || FORCE_INSTALL_ALL || force
     println(f, "Installing package $pkg_name")
     try 
       Pkg.clone(git_url)
