@@ -87,8 +87,8 @@ function installPDESolver()
   if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL")
     println(f, "\nManually installing packages\n")
     for i=1:size(pkg_list, 1)
-      pkg_name = std_pkgs[i, 1]
-      git_commit = std_pkgs[i, 2]
+      pkg_name = pkg_list[i, 1]
+      git_commit = pkg_list[i, 2]
 
       install_pkg(pkg_name, pkg_name, git_commit, pkg_dict, f, force=true)
     end
