@@ -25,7 +25,7 @@ function installPDESolver()
   start_dir = pwd()
   input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
   cd(input_path)
-  include("extract_keys.jl")
+  include(joinpath(input_path, "extract_keys.jl"))
   cd(start_dir)
 
   # force installation to a specific commit hash even if package is already present
