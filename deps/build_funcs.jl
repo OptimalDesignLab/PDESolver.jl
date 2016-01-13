@@ -22,7 +22,9 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
   if !already_installed || force_specific || FORCE_INSTALL_ALL || force
     println(f, "Installing package $pkg_name")
     try 
-      Pkg.clone(git_url)
+      if !isdir(Pkg.dir(pkg_name))  # if package not already present
+        Pkg.clone(git_url)
+      end
       set_hash(pkg_name, git_commit)
       Pkg.build(pkg_name)
       println(f, "  Installation appears to have completed sucessfully")

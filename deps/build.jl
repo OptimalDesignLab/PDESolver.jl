@@ -77,7 +77,7 @@ function installPDESolver()
                "ArrayViews" "40439daf99155b751d53c6403a5bd35fa0340f7a";
                "SHA" "0e31e9d265eede8cafc9f0c04e928acf5b0fa4cf";
                "BinDeps" "d57430a7e55546b9545054cfb5c34724dbed1795";
-               "NanMath" "b2148ab8461d73563dd4b7033e9a6546ec355328";
+               "NaNMath" "b2148ab8461d73563dd4b7033e9a6546ec355328";
                "Calculus" "4548c2204988c0d6551b0a7605ad3f4dee17b702";
                "DualNumbers" "a9a47656fb6b70e5788551696f133cbe7886ea7b";
                "ForwardDiff" "6da5f5204fd717a1417a8a4a6b9e2253799879c9";
