@@ -21,7 +21,7 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
     println(f, "Installing package $pkg_name")
     try 
       Pkg.clone(git_url)
-      set_hash(git_url)
+      set_hash(git_url, git_commit)
       Pkg.build(pkg_name)
       println(f, "  Installation appears to have completed sucessfully")
     catch x
