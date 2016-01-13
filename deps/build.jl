@@ -75,7 +75,7 @@ function installPDESolver()
       pkg_name = std_pkgs[i, 1]
       git_commit = std_pkgs[i, 2]
 
-      install_pkg(pkg_name, git_name, git_commit, pkg_dict, f, force=true)
+      install_pkg(pkg_name, pkg_name, git_commit, pkg_dict, f, force=true)
     end
   end
 
