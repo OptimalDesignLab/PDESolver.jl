@@ -32,9 +32,8 @@ manually, forcefully.
 `PDESOLVER_FORCE_DEP_INSTALL_ALL`: forces the checkout and re-installation 
  of the non-standard packages, even if already installed
 `PDESOLVER_FORCE_DEP_INSTALL_pkg_name`: force the checkout and re-installation
-of the package named `pkg_name` if it undergoes the checkout process.  
-Non-standard packages always undergo the checkout process, packages listed 
-in `REQUIRE` only do so if `PDESOLVER_INSTALL_DEPS_MANUAL` is set.
+of the package named `pkg_name`.
+ 
 
 For all these environmental variables, the value is not important, only the 
 existance of the variable.

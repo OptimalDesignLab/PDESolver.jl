@@ -23,8 +23,11 @@ function installPDESolver()
 
   # force installation to a specific commit hash even if package is already present
   # or would normally be install via the REQUIRE file
+
   global const FORCE_INSTALL_ALL = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_ALL")
 
+
+  println(f, "\n---Installing non METADATA packages---\n")
   for i=1:size(std_pkgs, 1)
     pkg_name = std_pkgs[i, 1]
     git_url = std_pkgs[i, 2]
@@ -58,12 +61,12 @@ function installPDESolver()
 
   else
     println(f, "Skipping installation of package $pkg_name")
-    println(f, "already installed: ", already_installed, ", specifically forced: ", force_specific,
+    println(f, "  already installed: ", already_installed, ", specifically forced: ", force_specific,
                ", force general: ", FORCE_INSTALL_ALL)
-
- 
   end
 
+
+  println(f, "\n---Finished installing non METADATA packages---\n")
   #------------------------------------------------------------------------------
   # these packages are not always installed manually
   # this section provides a backup mechanism if the regular version resolution
@@ -84,15 +87,19 @@ function installPDESolver()
                "Debug" "8c4801a6ca6368c6b5175c18a9d666a5694c1c3b"
                ]
 
-  if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL")
-    println(f, "\nManually installing packages\n")
+    println(f, "\n---Considering manual package installations---\n")
     for i=1:size(pkg_list, 1)
+
       pkg_name = pkg_list[i, 1]
       git_commit = pkg_list[i, 2]
 
-      install_pkg(pkg_name, pkg_name, git_commit, pkg_dict, f, force=true)
+      if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL") || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
+
+        install_pkg(pkg_name, pkg_name, git_commit, pkg_dict, f, force=true)
+      end
     end
-  end
+
+    println(f, "\n---Finished manual package installations---\n")
 
   close(f)
 
