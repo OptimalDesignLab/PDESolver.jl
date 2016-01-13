@@ -38,11 +38,15 @@ function installPDESolver()
   pkg_name = "PETSc"
   git_url = petsc_git
   if !haskey(pkg_dict, pkg_name)  || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name")  || FORCE_INSTALL_ALL
+    println("installing PETSc")
     start_dir = pwd()
     cd(Pkg.dir() )
     run(`git clone $petsc_git`)
+    println("finished clone")
     mv("./Petsc", "./PETSc")
+    println("mv complete sucessfully")
     Pkg.build("PETSc")
+    println("building PETSc")
     cd(start_dir)
   end
 
