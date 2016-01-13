@@ -8,7 +8,7 @@ function installPDESolver()
   # these packages are always installed manually
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
-  std_pkgs = ["SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "b6cd5269738d43ddca7f2ae8586a67b8343af07c";
+  std_pkgs = ["SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "c72ccc564d165e7e4fed5dba12da908fbb6dba27";
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "HEAD"
               "MPI" "git@github.com:JuliaParallel/MPI.jl.git" "909b61426dc802a332109d729b8540f730377499"
