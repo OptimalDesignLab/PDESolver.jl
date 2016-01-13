@@ -1,5 +1,5 @@
 # download and build all non metadata dependences
-include("build_funcs")
+include("build_funcs.jl")
 
 function installPDESolver()
 
