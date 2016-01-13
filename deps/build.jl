@@ -41,7 +41,7 @@ function installPDESolver()
     start_dir = pwd()
     cd(Pkg.dir() )
     run(`git clone $petsc_git`)
-    mv("./Petsc ./PETSc")
+    mv("./Petsc", "./PETSc")
     Pkg.build("PETSc")
     cd(start_dir)
   end
