@@ -17,7 +17,9 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
 # f: file handle to write progress to
 # force: install the package regardless of other flags, default false
 
-  if !haskey(pkg_dict, pkg_name)  || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name")  || FORCE_INSTALL_ALL || force
+  already_installed = haskey(pkg_dict, pkg_name) 
+  force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
+  if !already_installed || force_specifc || FORCE_INSTALL_ALL || force
     println(f, "Installing package $pkg_name")
     try 
       Pkg.clone(git_url)
@@ -31,6 +33,8 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
 
   else
     println(f, "Skipping installation of package $pkg_name")
+    println(f, "already installed: ", already_installed, ", specifically forced: ", force_specific,
+               ", force general: ", FORCE_INSTALL_ALL, ", force override: ", force)
   end
 
   flush(f)
