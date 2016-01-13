@@ -11,7 +11,7 @@ function installPDESolver()
   std_pkgs = ["SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "b6cd5269738d43ddca7f2ae8586a67b8343af07c";
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "HEAD"
-              "MPI", "git@github.com:JuliaParallel/MPI.jl.git", "909b61426dc802a332109d729b8540f730377499"
+              "MPI" "git@github.com:JuliaParallel/MPI.jl.git" "909b61426dc802a332109d729b8540f730377499"
               ]
 
 
@@ -70,7 +70,7 @@ function installPDESolver()
                "Calculus" "4548c2204988c0d6551b0a7605ad3f4dee17b702";
                "DualNumbers" "a9a47656fb6b70e5788551696f133cbe7886ea7b";
                "ForwardDiff" "6da5f5204fd717a1417a8a4a6b9e2253799879c9";
-               "Debug" " 8c4801a6ca6368c6b5175c18a9d666a5694c1c3b"
+               "Debug" "8c4801a6ca6368c6b5175c18a9d666a5694c1c3b"
                ]
 
   if haskey(ENV, "PDESOLVE_INSTALL_DEPS_MANUAL")
