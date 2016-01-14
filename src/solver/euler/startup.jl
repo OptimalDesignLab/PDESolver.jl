@@ -238,22 +238,6 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 
 #res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler)
 
-#=include("GLS.jl")
-# println("eqn.q = ", eqn.q_vec)
-q = Complex{Float64}[2.0,0.0,-1.3435028842544403,2.236964285714286] #,2.7471243198017943 + 0.0im,0.0 + 0.0im,-0.9226923617648067 + 0.0im,2.9397909406236087 + 0.0im,2.482248369113201 + 0.0im,0.8337269608348652 + 0.0im,-0.8337269608348653 + 0.0im,2.6963422909492136 + 0.0im]
-dxidx = Complex{Float64}[0,0.5]
-T = zeros(Tsol,4,4)
-Tinv = zeros(T)
-Lambda = eye(T)
-calcEigenFactorization(eqn, q, dxidx, T, Tinv, Lambda)
-NonlinearSolvers.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-parametricFluxJacobian(mesh, sbp, eqn)
-println("T = \n", T)
-println("Tinv = \n", Tinv)
-println("Lambda = \n", Lambda)
-println("TLambdaT-1 = \n", real(T*Lambda*Tinv))
-println("eqn.Axi[:,:,1,1] = \n", real(eqn.Aeta[:,:,1,1])) =#
-
 #------------------------------------------------------------------------------
 
 # call timestepper

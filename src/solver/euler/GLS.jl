@@ -235,18 +235,19 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      intMat = zeros(Tsol, 4, 4)  # Intermediate matrix
-      Axi = view(eqn.Axi,:,:,j,i)
-      Aeta = view(eqn.Aeta,:,:,j,i)
+      q = view(eqn.q,:,j,i)
+      dxidx = view(mesh.dxidx,:,:,j,i) # get mapping jacobian at node j
       for k = 1:mesh.numNodesPerElement
-        intMat = shapefuncderiv[j,k,1]*Axi + shapefuncderiv[j,k,2]*Aeta
-        E = eigfact(intMat)
-        absLambda = eye(intMat)
-        for l = 1:mesh.numDofPerNode
-          absLambda[l,l] = abs(E.values[l])*absLambda[l,l]
-        end
-        tau[:,:,j,i] += E.vectors*absLambda*inv(E.vectors)
+        for l = 1:Tdim
+          jac_vector = Tsol[dxidx[l,1];dxidx[l,2]]
+          T = zeros(Tsol,4,4)
+          Tinv = zeros(T)
+          Lambda = eye(T)
+          calcEigenFactorization(eqn, q, jac_vector, T, Tinv, Lambda)
+          tau[:,:,j,i] += T*abs(shapefuncderiv[j,k,l]*Lambda)*Tinv
+        end # end for l = 1:Tdim
       end # for k = 1:mesh.numNodesPerElement
+      
       tau[:,:,j,i] = inv(tau[:,:,j,i])
       
       #=E = eigfact(intMat) # Type: contains the eigen values and vectors
@@ -369,7 +370,13 @@ Reference: ``Efficient Solution Methods for the Navier–Stokes Equations``, T.H
 *  `q`    : Conservative variables at a node
 *  `dxidx`: mapping jacobian vector. It can be either [dξ/dx dξ/dy] or 
             [dη/dx dη/dy] depending on what Axi or Aeta being factorized.
-*  
+*  `T`    : Matrix of eigen vectors.
+*  `Tinv` : Inverse of T
+*  `Lambda` : Diagonal matrix of eigen values
+
+**Outputs**
+
+*  None
 
 """->
 function calcEigenFactorization{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
@@ -433,40 +440,7 @@ function calcEigenFactorization{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdi
 
   return nothing
 end
-#=
-@doc """
-### EulerEquationMod.fluxJacoianEigenVectors
 
-Calculates the eigen vectors of the Flux Jacobian in the parametric coordinate
-system. This is for conservative variables. 
-
-Reference: ``Efficient Solution Methods for the Navier–Stokes Equations``, T.H,
-           Pulliam, NASA Ames Research Center
-
-**Inputs**
-
-*  `eqn` : Euler equation object
-*  `q`   : Conservative variables at a node
-*  `T`   : Matrix representing eigen vectors. Last dimension of T indicates 
-           direction. 1 = xi, 2 = eta.
-*  `Tinv`: Inverse of T
-
-**Outputs**
-
-*  None
-
-"""->
-
-function fluxJacoianEigenVectors{Tsol, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
-                          q::AbstractArray{Tsol,1}, T::AbstractArray{Tsol,3}, 
-                          Tinv::AbstractArray{Tsol,3})
-
-  for k = 1:Tdim
-    
-  end # end for k = 1:Tdim
-
-end # end function fluxJacoianEigenVectors
-=#
 
 @doc """
 ### EulerEquationMod.calcElementArea

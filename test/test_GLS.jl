@@ -111,7 +111,7 @@ facts("Check if eigen value factorization is being computed correctly") do
   Lambda = eye(T)
   
   # check Axi factorization is being computed correctly
-  dxidx = Complex{Float64}[0.5,0.0]
+  dxidx = Tsol[0.5,0.0]
   calcEigenFactorization(eqn, q, dxidx, T, Tinv, Lambda)
   @fact T --> roughly([1.0 0.0 1.0 1.0
                        0.0 0.0 0.7071067811865476 -0.7071067811865476
@@ -127,7 +127,7 @@ facts("Check if eigen value factorization is being computed correctly") do
                             0.0 0.0 0.0 -0.3535533905932738])
 
   # Check Aeta factorization in being computed correctly
-  dxidx = Complex{Float64}[0.0,0.5]
+  dxidx = Tsol[0.0,0.5]
   calcEigenFactorization(eqn, q, dxidx, T, Tinv, Lambda)
   @fact T --> roughly([1.0 0.0 1.0 1.0
                        0.0 1.0 0.0 0.0
