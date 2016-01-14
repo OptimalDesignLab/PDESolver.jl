@@ -684,8 +684,8 @@ end
 @doc """
 ### EulerEquationMod.calcA1
 
-  This function calculates the A1 (ie. dF1/dv, where F1 is the first column of 
-  theEuler flux and v are the entropy variables) for a node, aka the flux 
+  This function calculates the A1 (ie. dF1/dq, where F1 is the first column of 
+  the Euler flux) for a node, aka the flux 
   Jacobian of the Euler flux in the x direction.  Methods are available for
   both conservative and entropy variables.
 
@@ -792,9 +792,9 @@ end
 @doc """
 ### EulerEquationMod.calcA2
 
-  This function calculates the A2 (ie. dF2/dv, where F2 is the second column of the
-  Euler flux.
-  and v are the entropy variables) for a node
+  This function calculates A2 (ie. dF2/dq, where F2 is the second column of the
+  Euler flux, aka the flux jacobian in the y direction. 
+  Methods are available for both conservative and entropy variables.
 
   The formation of A2 is given in Hughes
 
@@ -817,22 +817,22 @@ function calcA2{Tsol}(params::ParamType{2, :conservative},
   intvar = (R/cv)*(q[4]/q[1] - 0.5*(u*u + v*v)) # intermediate variable
  
    # Populating Ay
-  Ay[1,1] = 0
-  Ay[1,2] = 0
-  Ay[1,3] = 1
-  Ay[1,4] = 0
-  Ay[2,1] = -v*u 
-  Ay[2,2] = v
-  Ay[2,3] = u
-  Ay[2,4] = 0
-  Ay[3,1] = -v*v + 0.5*R*(u*u + v*v)/cv
-  Ay[3,2] = -R*u/cv
-  Ay[3,3] = 2*v - R*v/cv
-  Ay[3,4] = R/cv
-  Ay[4,1] = -q[3]*q[4]/(q[1]*q[1]) - v*intvar + v*(R/cv)*0.5*(u*u + v*v)
-  Ay[4,2] = -R*v*u/cv
-  Ay[4,3] = q[4]/q[1] + intvar - R*v*v/cv
-  Ay[4,4] = v + R*v/cv
+  A2[1,1] = 0
+  A2[1,2] = 0
+  A2[1,3] = 1
+  A2[1,4] = 0
+  A2[2,1] = -v*u 
+  A2[2,2] = v
+  A2[2,3] = u
+  A2[2,4] = 0
+  A2[3,1] = -v*v + 0.5*R*(u*u + v*v)/cv
+  A2[3,2] = -R*u/cv
+  A2[3,3] = 2*v - R*v/cv
+  A2[3,4] = R/cv
+  A2[4,1] = -q[3]*q[4]/(q[1]*q[1]) - v*intvar + v*(R/cv)*0.5*(u*u + v*v)
+  A2[4,2] = -R*v*u/cv
+  A2[4,3] = q[4]/q[1] + intvar - R*v*v/cv
+  A2[4,4] = v + R*v/cv
 
   return nothing
 end

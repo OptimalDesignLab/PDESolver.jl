@@ -108,6 +108,17 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    # test A1
    A1 = zeros(4,4)
+   q_tmp = ones(Tsol, 4)
+   EulerEquationMod.calcA1(eqn.params, q_tmp, A1)
+   @fact A1 => roughly([0.0 1.0 0.0  0.0
+                         -0.6 1.6 -0.4 0.4
+                         -1.0 1.0 1.0 0.0
+                         -0.6 0.6 -0.4 1.4])
+
+
+
+
+
    EulerEquationMod.calcA1(e_params, v, A1)
    fac = 0.3125
    A1_analytic = fac*[16 33.6 48 115.2;
@@ -122,6 +133,15 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    
    A2 = zeros(4,4)
+   A2 = zeros(4,4)
+   EulerEquationMod.calcA2(eqn.params, q_tmp, A2)
+   @fact A2 => roughly([0.0 0.0 1.0 0.0
+                       -1.0 1.0 1.0 0.0
+                       -0.6 -0.4 1.6 0.4
+                       -0.6 -0.4 0.6 1.4])
+
+
+
    EulerEquationMod.calcA2(e_params, v, A2)
    A2_analytic = fac*[24. 48 73.6 172.8;
                            48 100.8 147.2 355.2; 
