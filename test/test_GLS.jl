@@ -84,14 +84,16 @@ facts("Check if GLS residual is getting added to the residual") do
   end
 end
 
-q = ones(Tsol, 4)
-Ax = zeros(Tsol, 4, 4)
-Ay = zeros(Tsol, 4, 4)
-calcFluxJacobian(eqn, q, Ax, Ay)
+
 # println("Ax = \n", Ax)
 # println("\nAy = \n", Ay)
 
 facts("Check if the Flux Jacobian in the X & Y direction are being computed accrately") do
+  q = ones(Tsol, 4)
+  Ax = zeros(Tsol, 4, 4)
+  Ay = zeros(Tsol, 4, 4)
+  calcFluxJacobian(eqn, q, Ax, Ay)
+
   @fact Ax --> roughly([0.0 1.0 0.0  0.0
                        -0.6 1.6 -0.4 0.4
                        -1.0 1.0 1.0 0.0
@@ -100,4 +102,43 @@ facts("Check if the Flux Jacobian in the X & Y direction are being computed accr
                        -1.0 1.0 1.0 0.0
                        -0.6 -0.4 1.6 0.4
                        -0.6 -0.4 0.6 1.4])
+end
+
+facts("Check if eigen value factorization is being computed correctly") do
+  q = Complex{Float64}[2.0,0.0,-1.3435028842544403,2.236964285714286]
+  T = zeros(Tsol,4,4)
+  Tinv = zeros(T)
+  Lambda = eye(T)
+  
+  # check Axi factorization is being computed correctly
+  dxidx = Complex{Float64}[0.5,0.0]
+  calcEigenFactorization(eqn, q, dxidx, T, Tinv, Lambda)
+  @fact T --> roughly([1.0 0.0 1.0 1.0
+                       0.0 0.0 0.7071067811865476 -0.7071067811865476
+                      -0.67175144212722 -1.0 -0.6717514421272202 -0.6717514421
+                       0.22562500000000002 0.6717514 1.4756250 1.4756250])
+  @fact Tinv --> roughly([0.8195 0.0 -0.5374011537017759 -0.8
+                         -0.6717514421272202 0.0 -1.0 0.0
+                          0.09025 0.7071067811865475 0.26870057685088794 0.4
+                          0.09025 -0.7071067811865475 0.26870057685088794 0.4])
+  @fact Lambda --> roughly([0.0 0.0 0.0 0.0
+                            0.0 0.0 0.0 0.0
+                            0.0 0.0 0.3535533905932738 0.0
+                            0.0 0.0 0.0 -0.3535533905932738])
+
+  # Check Aeta factorization in being computed correctly
+  dxidx = Complex{Float64}[0.0,0.5]
+  calcEigenFactorization(eqn, q, dxidx, T, Tinv, Lambda)
+  @fact T --> roughly([1.0 0.0 1.0 1.0
+                       0.0 1.0 0.0 0.0
+                      -0.6717514421272202 -0.0 0.035355339 -1.3788582233
+                       0.225625 0.0 1.0006250000000003 1.950625])
+  @fact T --> roughly([0.8195 0.0 -0.5374011537017759 -0.8
+                      -0.0 1.0 -0.0 0.0
+                       0.56525 0.0 0.9758073580374353 0.4
+                      -0.38475 -0.0 -0.43840620433565947 0.4])
+  @fact Lambda --> roughly([-0.3358757210636101 0.0 0.0 0.0
+                             0.0 -0.3358757210636101 0.0 0.0
+                             0.0 0.0 0.01767766952966371 0.0
+                             0.0 0.0 0.0 -0.6894291116568838])
 end

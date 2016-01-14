@@ -248,8 +248,7 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         tau[:,:,j,i] += E.vectors*absLambda*inv(E.vectors)
       end # for k = 1:mesh.numNodesPerElement
       tau[:,:,j,i] = inv(tau[:,:,j,i])
-      println("\ntau[:,:,j,i] = \n", tau[:,:,j,i])
-
+      
       #=E = eigfact(intMat) # Type: contains the eigen values and vectors
       absLambda = eye(intMat)
       for l = 1:mesh.numDofPerNode
@@ -373,7 +372,7 @@ Reference: ``Efficient Solution Methods for the Navier–Stokes Equations``, T.H
 *  
 
 """->
-function calcEigenFactorization{Tsol, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
+function calcEigenFactorization{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
                           q::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tsol,1},
                           T::AbstractArray{Tsol,2}, Tinv::AbstractArray{Tsol,2},
                           Lambda::AbstractArray{Tsol,2})
@@ -383,18 +382,18 @@ function calcEigenFactorization{Tsol, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
   kappa = sqrt(kappax*kappax + kappay*kappay)
   u = q[2]/q[1] # velocity in the x-direction
   v = q[3]/q[1] # velocity in the y-direction
-  T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
-  c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
-  phi = 0.5*eqn.params.gamma_1*(u*u + v*v)
+  Temp = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv)) # Temperature
+  c = sqrt(eqn.params.gamma*eqn.params.R*Temp)  # Speed of sound
+  phi2 = 0.5*eqn.params.gamma_1*(u*u + v*v) # phi^2
   beta = 0.5/(c*c)
   thetacap = (kappax*u + kappay*v)/kappa
   U = kappax*u + kappay*v
   
   # Matrix of eigen vectors
-  T[1,1] = 1
-  T[1,2] = 0
-  T[1,3] = 1
-  T[1,4] = 1
+  T[1,1] = 1.0
+  T[1,2] = 0.0
+  T[1,3] = 1.0
+  T[1,4] = 1.0
   T[2,1] = u
   T[2,2] = kappay/kappa
   T[2,3] = u + kappax*c/kappa
@@ -403,25 +402,25 @@ function calcEigenFactorization{Tsol, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
   T[3,2] = -kappax/kappa
   T[3,3] = v + kappay*c/kappa
   T[3,4] = v - kappay*c/kappa
-  T[4,1] = phi*phi/eqn.params.gamma_1
+  T[4,1] = phi2/eqn.params.gamma_1
   T[4,2] = (kappay*u - kappax*v)/kappa
-  T[4,3] = (phi*phi + c*c)/eqn.params.gamma_1 + c*thetacap
-  T[4,4] = (phi*phi + c*c)/eqn.params.gamma_1 - c*thetacap
+  T[4,3] = (phi2 + c*c)/eqn.params.gamma_1 + c*thetacap
+  T[4,4] = (phi2 + c*c)/eqn.params.gamma_1 - c*thetacap
 
   # Inverse of matrix of eigen vectors
-  Tinv[1,1] = 1 - phi*phi/(c*c)
+  Tinv[1,1] = 1 - phi2/(c*c)
   Tinv[1,2] = eqn.params.gamma_1*u/(c*c)
   Tinv[1,3] = eqn.params.gamma_1*v/(c*c)
   Tinv[1,4] = -eqn.params.gamma_1/(c*c)
   Tinv[2,1] = -(kappay*u - kappax*v)/kappa
   Tinv[2,2] = kappay/kappa
   Tinv[2,3] = -kappax/kappa
-  Tinv[2,4] = 0
-  Tinv[3,1] = beta*(phi*phi - c*thetacap)
+  Tinv[2,4] = 0.0
+  Tinv[3,1] = beta*(phi2 - c*thetacap)
   Tinv[3,2] = beta*(kappax*c/kappa - eqn.params.gamma_1*u)
   Tinv[3,3] = beta*(kappay*c/kappa - eqn.params.gamma_1*v)
   Tinv[3,4] = beta*eqn.params.gamma_1
-  Tinv[4,1] = beta*(phi*phi + c*thetacap)
+  Tinv[4,1] = beta*(phi2 + c*thetacap)
   Tinv[4,2] = -beta*(kappax*c/kappa + eqn.params.gamma_1*u)
   Tinv[4,3] = -beta*(kappay*c/kappa + eqn.params.gamma_1*v)
   Tinv[4,4] = beta*eqn.params.gamma_1
@@ -431,10 +430,10 @@ function calcEigenFactorization{Tsol, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
   Lambda[2,2] = U
   Lambda[3,3] = U + c*kappa
   Lambda[4,4] = U - c*kappa
-  
+
   return nothing
 end
-
+#=
 @doc """
 ### EulerEquationMod.fluxJacoianEigenVectors
 
@@ -467,7 +466,7 @@ function fluxJacoianEigenVectors{Tsol, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
   end # end for k = 1:Tdim
 
 end # end function fluxJacoianEigenVectors
-
+=#
 
 @doc """
 ### EulerEquationMod.calcElementArea
