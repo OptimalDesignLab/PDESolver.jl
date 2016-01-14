@@ -685,7 +685,9 @@ end
 ### EulerEquationMod.calcA1
 
   This function calculates the A1 (ie. dF1/dv, where F1 is the first column of 
-  theEuler flux and v are the entropy variables) for a node
+  theEuler flux and v are the entropy variables) for a node, aka the flux 
+  Jacobian of the Euler flux in the x direction.  Methods are available for
+  both conservative and entropy variables.
 
   The formation of A1 is given in Hughes paper
 
@@ -698,6 +700,39 @@ end
 
 
 """->
+
+function calcA1{Tsol}(params::ParamType{2, :conservative}, 
+                      q::AbstractArray{Tsol,1}, A1::AbstractArray{Tsol, 2})
+  gamma_1 = params.gamma_1
+  gamma = params.gamma
+  R = params.R     # Gas constant
+  cv = params.cv   # Specific heat at constant volume
+  u = q[2]/q[1] # Get velocity in the x-direction 
+  v = q[3]/q[1] # Get velocity in the x-direction
+  intvar = (R/cv)*(q[4]/q[1] - 0.5*(u*u + v*v)) # intermediate variable
+  
+  # Populating A1
+  A1[1,1] = 0
+  A1[1,2] = 1
+  A1[1,3] = 0
+  A1[1,4] = 0
+  A1[2,1] = -u*u + 0.5*R*(u*u + v*v)/cv 
+  A1[2,2] = 2*u - R*u/cv
+  A1[2,3] = -R*v/cv
+  A1[2,4] = R/cv
+  A1[3,1] = -u*v
+  A1[3,2] = v
+  A1[3,3] = u
+  A1[3,4] = 0
+  A1[4,1] = -q[2]*q[4]/(q[1]*q[1]) - u*intvar + 0.5*u*R*(u*u + v*v)/cv
+  A1[4,2] = q[4]/q[1] + intvar - R*u*u/cv
+  A1[4,3] = -R*u*v/cv
+  A1[4,4] = u + R*u/cv
+
+  return nothing
+end
+
+
 function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
                       A1::AbstractArray{Tsol, 2})
 
@@ -771,6 +806,37 @@ end
 
 
 """->
+function calcA2{Tsol}(params::ParamType{2, :conservative}, 
+                      q::AbstractArray{Tsol,1}, A2::AbstractArray{Tsol, 2})
+  gamma_1 = params.gamma_1
+  gamma = params.gamma
+  R = params.R     # Gas constant
+  cv = params.cv   # Specific heat at constant volume
+  u = q[2]/q[1] # Get velocity in the x-direction 
+  v = q[3]/q[1] # Get velocity in the x-direction
+  intvar = (R/cv)*(q[4]/q[1] - 0.5*(u*u + v*v)) # intermediate variable
+ 
+   # Populating Ay
+  Ay[1,1] = 0
+  Ay[1,2] = 0
+  Ay[1,3] = 1
+  Ay[1,4] = 0
+  Ay[2,1] = -v*u 
+  Ay[2,2] = v
+  Ay[2,3] = u
+  Ay[2,4] = 0
+  Ay[3,1] = -v*v + 0.5*R*(u*u + v*v)/cv
+  Ay[3,2] = -R*u/cv
+  Ay[3,3] = 2*v - R*v/cv
+  Ay[3,4] = R/cv
+  Ay[4,1] = -q[3]*q[4]/(q[1]*q[1]) - v*intvar + v*(R/cv)*0.5*(u*u + v*v)
+  Ay[4,2] = -R*v*u/cv
+  Ay[4,3] = q[4]/q[1] + intvar - R*v*v/cv
+  Ay[4,4] = v + R*v/cv
+
+  return nothing
+end
+
 function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
                       A2::AbstractArray{Tsol, 2})
 
