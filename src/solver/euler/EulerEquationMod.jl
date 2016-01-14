@@ -70,6 +70,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
 
+  A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
+  A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
+
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -118,6 +121,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     flux_vals1 = Array(Tres, 4)
     flux_vals2 = Array(Tres, 4)
 
+    A1 = zeros(Tsol, 4, 4)
+    A2 = zeros(Tsol, 4, 4)
+
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -164,7 +170,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
     return new(t, order, q_vals, qg, v_vals, res_vals1, res_vals2, flux_vals1, 
-               flux_vals2, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free,
+               flux_vals2, A1, A2, cv, R, gamma, gamma_1, Ma, Re, aoa, 
+               rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
                use_dissipation, dissipation_const, vortex_x0, vortex_strength, 
