@@ -146,7 +146,7 @@ It computes the Euler flux Jacobian at the nodal level in te physical space
 
 **Outputs**
 
-* None 
+*  None 
 """->
 function calcFluxJacobian{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
                           q::AbstractArray{Tsol,1}, Ax::AbstractArray{Tsol,2}, 
@@ -239,25 +239,16 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       dxidx = view(mesh.dxidx,:,:,j,i) # get mapping jacobian at node j
       for k = 1:mesh.numNodesPerElement
         for l = 1:Tdim
-          jac_vector = Tsol[dxidx[l,1];dxidx[l,2]]
+          jac_vector = Tsol[dxidx[l,1];dxidx[l,2]] # get a jacobian vector for eigen value factorization
           T = zeros(Tsol,4,4)
           Tinv = zeros(T)
           Lambda = eye(T)
           calcEigenFactorization(eqn, q, jac_vector, T, Tinv, Lambda)
-          tau[:,:,j,i] += T*abs(shapefuncderiv[j,k,l]*Lambda)*Tinv
+          tau[:,:,j,i] += mesh.jac[j,i]*T*abs(shapefuncderiv[j,k,l]*Lambda)*Tinv
         end # end for l = 1:Tdim
       end # for k = 1:mesh.numNodesPerElement
       
       tau[:,:,j,i] = inv(tau[:,:,j,i])
-      
-      #=E = eigfact(intMat) # Type: contains the eigen values and vectors
-      absLambda = eye(intMat)
-      for l = 1:mesh.numDofPerNode
-        absLambda[l,l] = abs(E.values[l])*absLambda[l,l]
-      end # end for l = 1:mesh.numDofPerNode
-      tau[:,:,j,i] = E.vectors*absLambda*inv(E.vectors)
-      # println("\ntau[:,:,j,i] = \n", tau[:,:,j,i])
-       =#
     end # end for j = 1:mesh.numNodesPerElement
   end   # end for i = 1:mesh.numEl
   
@@ -398,38 +389,38 @@ function calcEigenFactorization{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdi
   
   # Matrix of eigen vectors
   T[1,1] = 1.0
-  T[1,2] = 0.0
-  T[1,3] = 1.0
-  T[1,4] = 1.0
   T[2,1] = u
-  T[2,2] = kappay/kappa
-  T[2,3] = u + kappax*c/kappa
-  T[2,4] = u - kappax*c/kappa
   T[3,1] = v
-  T[3,2] = -kappax/kappa
-  T[3,3] = v + kappay*c/kappa
-  T[3,4] = v - kappay*c/kappa
   T[4,1] = phi2/eqn.params.gamma_1
+  T[1,2] = 0.0
+  T[2,2] = kappay/kappa
+  T[3,2] = -kappax/kappa
   T[4,2] = (kappay*u - kappax*v)/kappa
+  T[1,3] = 1.0
+  T[2,3] = u + kappax*c/kappa
+  T[3,3] = v + kappay*c/kappa
   T[4,3] = (phi2 + c*c)/eqn.params.gamma_1 + c*thetacap
+  T[1,4] = 1.0
+  T[2,4] = u - kappax*c/kappa
+  T[3,4] = v - kappay*c/kappa
   T[4,4] = (phi2 + c*c)/eqn.params.gamma_1 - c*thetacap
 
   # Inverse of matrix of eigen vectors
   Tinv[1,1] = 1 - phi2/(c*c)
-  Tinv[1,2] = eqn.params.gamma_1*u/(c*c)
-  Tinv[1,3] = eqn.params.gamma_1*v/(c*c)
-  Tinv[1,4] = -eqn.params.gamma_1/(c*c)
   Tinv[2,1] = -(kappay*u - kappax*v)/kappa
-  Tinv[2,2] = kappay/kappa
-  Tinv[2,3] = -kappax/kappa
-  Tinv[2,4] = 0.0
   Tinv[3,1] = beta*(phi2 - c*thetacap)
-  Tinv[3,2] = beta*(kappax*c/kappa - eqn.params.gamma_1*u)
-  Tinv[3,3] = beta*(kappay*c/kappa - eqn.params.gamma_1*v)
-  Tinv[3,4] = beta*eqn.params.gamma_1
   Tinv[4,1] = beta*(phi2 + c*thetacap)
+  Tinv[1,2] = eqn.params.gamma_1*u/(c*c)
+  Tinv[2,2] = kappay/kappa
+  Tinv[3,2] = beta*(kappax*c/kappa - eqn.params.gamma_1*u)
   Tinv[4,2] = -beta*(kappax*c/kappa + eqn.params.gamma_1*u)
+  Tinv[1,3] = eqn.params.gamma_1*v/(c*c)
+  Tinv[2,3] = -kappax/kappa
+  Tinv[3,3] = beta*(kappay*c/kappa - eqn.params.gamma_1*v)
   Tinv[4,3] = -beta*(kappay*c/kappa + eqn.params.gamma_1*v)
+  Tinv[1,4] = -eqn.params.gamma_1/(c*c)
+  Tinv[2,4] = 0.0
+  Tinv[3,4] = beta*eqn.params.gamma_1
   Tinv[4,4] = beta*eqn.params.gamma_1
   
   # Get the eigen values
