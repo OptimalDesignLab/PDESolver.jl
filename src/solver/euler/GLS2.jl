@@ -4,15 +4,19 @@
 # by Shakib, Hughes, and Johan
 
 # this *should* work for both conservative and entropy variables, I think
-function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                    sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+
+  # extract some constants
+  numDofPerNode = mesh.numDofPerNode
+  numNodesPerElement = mesh.numNodesPerElement
 
   # reusable storage
 
   # flux jacobians: a n x n matrix for each coordinate direction for each node
   A_mats = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, 
                       mesh.numNodesPerElement)
-  dxidx_hat = zeros(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
+#  dxidx_hat = zeros(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
 
   # temporarily hold the transposed q variables for the element
   qtranspose = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)
@@ -24,12 +28,23 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   tau = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, 
                     mesh.numNodesPerElement)
 
+  # hold differentiation matrices D
+  D = zeros(Float64, numNodesPerElement, numNodesPerElement, Tdim)
   # temporary vectors 1 through 4, stored in a matrix so they can be
   # access programaticaly
   tmps = zeros(Tres, mesh.numDofPerNode, 2*Tdim)
 
+  # calculate D
+  for d=1:Tdim
+    smallmatmat!(diagm(sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
+  end
+
   for el = 1:mesh.numEl
     # get all the quantities for this element
+    dxidx_hat = view(mesh.dxidx, :, :, :, el)
+    getGLSVars(eqn.params, view(q, :, :, el), dxidx_hat, view(mesh.jac, :, el),
+               D, A_mats, qtranspose, qxtranspose, qx, dxidx, tau)
+
 
 
 
@@ -41,6 +56,40 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 
 end  # end function
 
+@doc """
+### EulerEquationMod.getGLSVars
+
+  This function calculates all the quantities needed to calculate the GLS
+  stabilization term for an element.
+
+  Although I only worked out the math for 2D, I am pretty sure this will
+  work in 3D as well
+
+  Inputs:
+    params: ParamType, var_type can be anything
+    q: array of solution variables for the element, 
+       numDofPerNode x numNodesPerElement
+    aux_vars: array of auxiliary variables for the element, 
+              numAuxVars numNodesPerElement
+    dxidx_hat: an array of the mapping jacobian scaled by 1/|J|, ie.
+               (dxi/dx)/|J| for the entire element, 
+               (Tdim x Tdim) x numNodesPerElement
+    D : an array of the SBP differentiation matrices in the parametric 
+        coordinate directions, (numNodesPerElement x numNodesPerElement) x Tdim
+
+  Inputs/Outputs:
+    A_mats: array the be populated with flux jacobian for the entire element,
+            (numDofPerNode x NumDofPerNode) x Tdim x numNodesPerElement
+    qtranspose: array to hold transpose(q) (temporarily)
+    qxtranspose: array to hold [Dxi*transpose(q), Deta*transpose(q) ...]
+                 numNodesPerElement x numDofPerNode x Tdim  (temporarily)
+    qx: transpose of qxtranspose (reversing the first two dimensions)
+    dxidx: dxidx_hat * |J| (so the scaling by 1/|J| is undone)
+    tau:  array of tau matrices for each node, 
+          numDofPerNode x numDofPerNode x numNodesPerElement
+
+            
+"""->
 function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
                     q::AbstractArray{Tsol, 2}, aux_vars::AbstractArray{Tsol, 2},
                     dxidx_hat::AbstractArray{Tmsh, 3}, 
@@ -101,63 +150,96 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     end
   end
 
-  # get tau
+  # get tau for each node
   for k=1:numNodesPerElement
     tau_k = view(tau, :, :, k)
-    getTau
+    A_mat_k = view(A_mats, :, :, :, k)
+    dxidx_k = view(dxidx, :, :, k)
+    getTau(eqn.params, A_mat_k, dxidx_k, tau_k)
   end
 
   return nothing
 end  # end function
 
+@doc """
+### EulerEquationMod.getTau
+
+  This function computes the tau matrix for a single node, for a steady problem
+  as described in Hughes part X.
+
+  Inputs
+    params:  a ParamType, var_type can be anything
+    A_mat: a matrix containing the flux jacobians at the node
+           (numDofPerNode x numDofPerNode) x Tdim
+    dxidx: a matrix the mapping jacobian for the node (dxi_i/dx_j), Tdim x Tdim
+           This should *not* be scaled by 1/|J|
+
+  Inputs/Outputs:
+    tau: the numDofPerNode x numDofPerNode matrix to be populated
+
+
+"""->
 function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
                 params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
-                A_mat::AbstractArray{Tsol, 3}, dxidx::AbstractArray{Tmsh, 3}, 
+                A_mat::AbstractArray{Tsol, 3}, dxidx::AbstractArray{Tmsh, 2}, 
                 tau::AbstractArray{T, 2})
 
   numDofPerNode = size(A_mat, 1)
-  tmp = params.A1
-  tmp2 = params.A2
-
+  AjAk = params.A1
+  flux_term = params.A2
+  fill!(AjAk, 0.0)
+  fill!(flux_term, 0.0)
+ 
   for k=1:Tdim
     for j=1:Tdim
       Aj = view(A_mat, :, :, j)
       Ak = view(A_mat, :, :, k)
-      smallmatmat(Aj, Ak, tmp)
-      fac = zero(Tmsh)
+      smallmatmat!(Aj, Ak, AjAk)  # Aj*Ak
+
+      # calculate factor of dxidx*dxidx + dxidx*dxidx ...
+      jacobian_fac = zero(Tmsh)
       for i=1:Tdim
-        fac += dxidx[i, j]*dxidx[i, k]
+        jacobian_fac += dxidx[i, j]*dxidx[i, k]
       end
 
-      # accumulate in tmp2
+      # accumulate dxidx*dxidx*Aj*Ak for all j, k in tmp2
       for p=1:numDofPerNode
         for q=1:numDofPerNode
-          tmp2[p, q] += fac*tmp[p, q]
+          flux_term[p, q] += jacobian_fac*AjAk[p, q]
         end
       end
 
+    end  # end loop over j
+  end  # end loop over k
+
+  # add a source term here
+
+
+  # now take negative square root of the matrix
+  # there are more efficient ways of doing this
+  D, V = eig(tmp2)
+
+  # check that D contains only positive numbers
+  # this should be inside a @debug1
+  for i=1:numDofPerNode
+    @assert real(D[i]) > 0.0
+  end
+
+  fill!(tmp, 0.0)
+  for i=1:numDofPerNode
+    D[i] = D[i]^(-0.5)
+  end
+  
+  # reconstruct M = (V*D)*inv(V)
+  Vinv = inv(V)
+  for i=1:numDofPerNode
+    entry = D[i]
+    for j=1:numDofPerNode
+      V[j, i] *= entry
     end
   end
-      # add a source term here
 
+  smallmatmat!(V, Vinv, tau)
 
-      # now take negative square root of the matrix
-      # there are more efficient ways of doing this
-      D, V = eig(tmp2)
-      fill!(tmp, 0.0)
-      for i=1:numDofPerNode
-        D[i] = D[i]^(-0.5)
-      end
-      
-      Vinv = inv(V)
-      # reconstruct M = (V*D)*inv(V)
-      for i=1:numDofPerNode
-        entry = D[i]
-        for j=1:numDofPerNode
-          V[j, i] *= entry
-        end
-      end
-
-      smallmatmat(V, Vinv, tau)
-
-      
+  return nothing
+end  # end function
