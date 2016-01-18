@@ -244,13 +244,12 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           Tinv = zeros(T)
           Lambda = eye(T)
           calcEigenFactorization(eqn, q, jac_vector, T, Tinv, Lambda)
-          tau[:,:,j,i] += mesh.jac[j,i]*T*abs(shapefuncderiv[j,k,l]*Lambda)*Tinv
+          tau[:,:,j,i] += T*abs(shapefuncderiv[j,k,l]*Lambda)*Tinv
         end # end for l = 1:Tdim
-      end # for k = 1:mesh.numNodesPerElement
-      
+      end   # for k = 1:mesh.numNodesPerElement
       tau[:,:,j,i] = inv(tau[:,:,j,i])
-    end # end for j = 1:mesh.numNodesPerElement
-  end   # end for i = 1:mesh.numEl
+    end     # end for j = 1:mesh.numNodesPerElement
+  end       # end for i = 1:mesh.numEl
   
   #= Using Masayuki's thesis and Barth's chapter. Using latter's convention
   
@@ -317,6 +316,8 @@ Calculates Axi*Dxi + Aeta*Deta at the element level
 *  `shapefuncderiv`: Shape function derivative (Dxi and Deta above)
 *  `Axi` : Flux jacobian in the xi direction
 *  `Aeta` : Flux jacobian in the eta direction
+*  `ndof` : Number of degrees of freedom per node
+*  `nnpe` : Number of nodes per element
 
 **Outputs**
 
@@ -326,9 +327,6 @@ function calcAxidxi{Tsol}(Axidxi::AbstractArray{Tsol, 2},
                           shapefuncderiv::AbstractArray{Tsol,3},
                           Axi::AbstractArray{Tsol,3}, 
                           Aeta::AbstractArray{Tsol,3}, ndof, nnpe)
-  
-  # ndof = mesh.numDofPerNode
-  # nnpe = mesh.numNodesPerElement
 
   for i = 1:nnpe
     for j = 1:nnpe
@@ -341,12 +339,11 @@ function calcAxidxi{Tsol}(Axidxi::AbstractArray{Tsol, 2},
     end # end for j = 1:nnpe
   end   # end for i = 1:nnpe
 
-
   return nothing
 end
 
 @doc """
-### EulerEquationMod. calcEigenFactorization
+### EulerEquationMod.calcEigenFactorization
 
 Computes the eigen value facotrization of the flux jacobian in either xi or eta
 direction. This is a nodal level function. It is only for 2D conservative 

@@ -326,6 +326,9 @@ q_cons = zeros(Tsol, ndof)  # conservative variables
 for i=1:numel
   for j=1:nnodes
     convertToConservative(eqn.params, view(eqn.q, :, j, i), q_cons)
+    if real(q_cons[1]) < 0.0
+      println("q_conservative = ", q_cons)
+    end
     @assert( real(q_cons[1]) > 0.0, "element $i, node $j. Density < 0")
   end
 end
