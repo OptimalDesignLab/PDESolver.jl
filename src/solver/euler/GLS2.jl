@@ -68,17 +68,21 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       res_i = view(eqn.res, :, i, el)
       for j=1:numNodesPerElement
         println("  j = ", j)
+
+        # zero  out some things
+        fill!(qx, 0.0)
+        fill!(tmps, 0.0)
         # trial space part
         # rotate qxi, qeta to qx, qy
         for d1=1:Tdim  # the x-y coordinate direction
           for d2=1:Tdim  # the xi-eta coordinate direction
             for n=1:numDofPerNode
-              qx[n, d1] += dxidx_hat[d2, d1, j]*qxi[n, d2]
+              qx[n, d1] += dxidx_hat[d2, d1, j]*qxi[n, j, d2]
             end
           end
         end
 
-        println("qx = ", qx)
+        println("\n  qx = \n", qx)
 
         # multiply qx, qy  flux jacobians Ax, Ay
         for d1=1:Tdim
@@ -88,64 +92,74 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           smallmatvec!(A_d1, q_d1, tmp_d1)
         end
 
-        println("trial space terms = ", tmps[:, 1:2])
+        println("\n  trial space terms = \n", tmps[:, 1:2])
 
         # now add them together
         tmp1 = view(tmps, :, 1)
         for d1=2:Tdim
-          tmp_other = view(tmps, :, d1)
           for n=1:numDofPerNode
-            tmp1[n] += tmp_other[n]
+            tmp1[n] += tmps[n, d1]
           end
         end
 
+        println("\n trial space term = \n", tmp1)
         # now multiply by tau
-        tau_j = view(taus, :, :, i)
+        tau_j = view(taus, :, :, j)
+        println("  \ntau = \n", tau_j) 
         tmp2 = view(tmps, :, 2)  # store result of multiplication here
         smallmatvec!(tau_j, tmp1, tmp2)  # this overwrites tmp2
 
-        println("after multiplication by tau, reduction vector = \n", tmp2)
+        println("\n  after multiplication by tau, reduction vector = \n", tmp2)
         # copy tmp2 into tmp1 so the next phase of reductions can proceed in
         # parallel
         # multiply by integration weight (from sbp.w) at the same time
         for n=1:numDofPerNode
-          tmp2[n] *= w[i]
+          tmp2[n] *= w[j]
           tmp1[n] = tmp2[n]
         end
 
-        println("after multiplication by w, reduction vector = \n", tmp2)
+        println("\n  after multiplication by w, reduction vector = \n", tmp2)
+
         # now do weighting space 
+         # now multiply by flux jacobians transposed
+         for d1=1:Tdim
+           A_d1 = view(A_mats, :, :, d1, j)
+           x_d1 = view(tmps, :, d1)
+           b_d1 = view(tmps, :, d1+Tdim)  # now we use the second half of tmps
+           smallmatTvec!(A_d1, x_d1, b_d1)
+         end
+
+         println("\n  after multiplication by flux jacobians, reduction vector = \n", tmps[:, 3:4])
+
          # rotate the differentiation matrices D into x-y
         for d1=1:Tdim  # the x-y coordinate direction
+          println("d1 = ", d1)
           fac = zero(Tmsh)  # variable to accumulate the factor in
           for d2=1:Tdim  # the xi-eta coordinate direction
-              fac += dxidx_hat[d2, d1, j]*Dtranspose[i, j, d2]
+              println("d2 = ", d2)
+              println("dxidx = ", dxidx[d2, d1, i])
+              println("d value = ", Dtranspose[i, j, d2])
+              fac += dxidx[d2, d1, i]*Dtranspose[i, j, d2]
           end
 
-          # now update tmp1 through tmp 2/3 with the factor
+          println("fac = ", fac)
+
+          # now update upper half of tmps with the factor
           for n=1:numDofPerNode
-            tmps[n, d1] *= fac
+            tmps[n, d1 + Tdim] *= fac
           end
         end
 
 
-       println("after multiplication by Dx, Dy, reduction vector = \n", tmps[:, 1:2])
+       println("\n  after multiplication by Dx, Dy, reduction vector = \n", tmps[:, 3:4])
 
-       # now multiply by flux jacobians transposed
-       for d1=1:Tdim
-         A_d1 = view(A_mats, :, :, d1)
-         x_d1 = view(tmps, :, d1)
-         b_d1 = view(tmps, :, d1+Tdim)  # now we use the second half of tmps
-         smallmatTvec!(A_d1, x_d1, b_d1)
-       end
-
-       println("after multiplication by flux jacobians, reduction vector = \n", tmps[:, 3:4])
        # now update res
        for d1=(Tdim+1):(2*Tdim)  # loop over the second half of tmps
          @simd for n=1:numDofPerNode
            res_i[n] += tmps[n, d1]
          end
        end
+
 
 
 
@@ -258,7 +272,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
   for k=1:numNodesPerElement
     tau_k = view(tau, :, :, k)
     A_mat_k = view(A_mats, :, :, :, k)
-    dxidx_k = view(dxidx, :, :, k)
+    dxidx_k = view(dxidx_hat, :, :, k)
     getTau(params, A_mat_k, dxidx_k, tau_k)
   end
 

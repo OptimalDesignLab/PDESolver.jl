@@ -182,10 +182,11 @@ facts ("----- Testing GLS2 -----") do
 
     trial_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi*q + dxidxhat_tilde_21*D_tilde_eta*q) + 
                  A2tilde*(dxidxhat_tilde_12*D_tilde_xi*q + dxidxhat_tilde_22*D_tilde_eta*q)
-
+    println("trial_term = ", trial_term)
     gls_test = weighting_term.'*H_tilde*tau_tilde*trial_term
 
     # now compute it in the code
+    print("\n\n")
     fill!(eqn.res, 0.0)
     EulerEquationMod.applyGLS2(mesh, sbp, eqn, opts)
     gls_code = reshape(eqn.res[:, :, 1], 12)
@@ -194,30 +195,106 @@ facts ("----- Testing GLS2 -----") do
     println("gls_code = ", gls_code)
 
     @fact gls_code => roughly(gls_test, atol=1e-14)
+    println("gls_code - gls_test = ", gls_code - gls_test)
+    print("\n\n")
 
+    println("\nPrinting intermediate quantities:\n")
     println("q = ", q)
     println("dxidx_hat = ", dxidx_hat)
     println("Dxi = ", D_tilde_xi)
     println("Deta = ", D_tilde_eta)
     println("A1tilde = ", A1tilde)
     println("A2tilde = ", A2tilde)
+    println("dxidx_tilde_11 = ", dxidx_tilde_11)
+    println("dxidx_tilde_12 = ", dxidx_tilde_12)
+    println("dxidx_tilde_21 = ", dxidx_tilde_21)
+    println("dxidx_tilde_22 = ", dxidx_tilde_22)
     println("qxi = ", D_tilde_xi*q)
     println("qeta = ", D_tilde_eta*q)
     println("dxidx = ", dxidx)
 
-    tmp1 = dxidxhat_tilde_11*D_tilde_xi*q + dxidxhat_tilde_21*D_tilde_eta*q
-    tmp2 = dxidxhat_tilde_12*D_tilde_xi*q + dxidxhat_tilde_22*D_tilde_eta*q
-    tmp3 = A1tilde*tmp1
-    tmp4 = A2tilde*tmp2
-    tmp5 = tmp3 + tmp4
-    tmp6 = tau_tilde*tmp5
-    tmp7 = H_tilde*tmp6
-    tmp8 = A1tilde.'*tmp7
-    tmp9 = A2tilde.'*tmp7
-    tmp10 = (dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta).'*tmp8
-    tmp11 = (dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta).'*tmp9
-    tmp12 = tmp10 + tmp11
 
+    range_idx = (1:4, 5:8, 9:12)
+    res_test = zeros(12)
+    for i=1:3
+      println("i = ", i)
+      idx_i = range_idx[i]
+      for j=1:3
+        println("  j = ", j)
+        idx_j = range_idx[j]
+        # trial space
+        tmp1 = D_tilde_xi[idx_j, :]*q
+        tmp2 = D_tilde_eta[idx_j, :]*q
+        tmp3 = dxidxhat_tilde_11[idx_j, idx_j]*tmp1 + dxidxhat_tilde_21[idx_j, idx_j]*tmp2
+        tmp4 = dxidxhat_tilde_12[idx_j, idx_j]*tmp1 + dxidxhat_tilde_22[idx_j, idx_j]*tmp2
+        tmp5 = A1tilde[idx_j, idx_j]*tmp3
+        tmp6 = A2tilde[idx_j, idx_j]*tmp4
+        tmp7 = tmp5 + tmp6
+        tmp8 = tau_tilde[idx_j, idx_j]*tmp7
+        tmp9 = H_tilde[idx_j, idx_j]*tmp8
+        # weigthing space
+        tmp10 = A1tilde[idx_j, idx_j].'*tmp9
+        tmp11 = A2tilde[idx_j, idx_j].'*tmp9
+        tmp12 = (dxidx_tilde_11[idx_i, idx_i]*D_tilde_xi[idx_j, idx_i] + dxidx_tilde_21[idx_i, idx_i]*D_tilde_eta[idx_j, idx_i])
+        tmp13 = (dxidx_tilde_12[idx_i, idx_i]*D_tilde_xi[idx_j, idx_i] + dxidx_tilde_22[idx_i, idx_i]*D_tilde_eta[idx_j, idx_i])
+        tmp14 = tmp12.'*tmp10
+        tmp15 = tmp13.'*tmp11
+        tmp16 = tmp14 + tmp15
+         
+        
+        for k=1:4
+          res_test[idx_i[k]] += tmp16[k]
+        end
+
+        println("\n  qx = \n", tmp3) 
+        println("\n  qy = \n", tmp4)
+        println("\n  trial space x term = \n", tmp5)
+        println("\n  trial space y term = \n", tmp6)
+        println("\n  trial space term = \n", tmp7)
+        println("\n  tau = \n", tau_tilde[idx_j, idx_j])
+        println("\n  after multiplication by tau, reduction vector = \n", tmp8)
+        println("\n  after multiplication by w, reduction vector = \n", tmp9)
+        println("\n  after multiplication by Ax, reduction vector = \n", tmp10)
+        println("\n  after multiplication by Ay, reduction vector = \n", tmp11)
+        println("\n  dxidx_11 = \n", dxidx_tilde_11[idx_i, idx_i])
+        println("\n  dxidx_21 = \n", dxidx_tilde_21[idx_i, idx_i])
+        println("\n  dxidx_12 = \n", dxidx_tilde_12[idx_i, idx_i])
+        println("\n  dxidx_22 = \n", dxidx_tilde_22[idx_i, idx_i])
+        println("\n  D_xi = \n", D_tilde_xi[idx_j, idx_i])
+        println("\n  D_eta = \n", D_tilde_eta[idx_j, idx_i])
+        println("\n  x factor = \n", tmp12)
+        println("\n  y factor = \n", tmp13)
+        println("\n  after multiplication by Dx, reduction vector = \n", tmp14)
+        println("\n  after multiplication by Dy, reduction vector = \n", tmp15)
+        println("\n  final results = ", res_test)
+
+      end
+    end
+
+    @fact res_test => roughly(gls_test, atol=1e-14)
+    println("diff = ", gls_test - res_test)
+
+    # another check of the block matrix approach
+    tmp1 = D_tilde_xi*q
+    tmp2 = D_tilde_eta*q
+    tmp3 = dxidxhat_tilde_11*tmp1 + dxidxhat_tilde_21*tmp2
+    tmp4 = dxidxhat_tilde_12*tmp1 + dxidxhat_tilde_22*tmp2
+    tmp5 = A1tilde*tmp3
+    tmp6 = A2tilde*tmp4
+    tmp7 = tmp5 + tmp6
+    println("block trial term = ", tmp7)
+    tmp8 = tau_tilde*tmp7
+    tmp9 = H_tilde*tmp8
+    # weigthing space
+    tmp10 = A1tilde.'*tmp9
+    tmp11 = A2tilde.'*tmp9
+    tmp12 = (dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta).'*tmp10
+    tmp13 = (dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta).'*tmp11
+    res_test2 = tmp12 + tmp13
+
+    @fact res_test2 => roughly(gls_test, atol=1e-14)
+    println("block matrix diff = ", gls_test - res_test2)
+#=
     # check the weighting term
 
     tmp8a = A1tilde.'
@@ -235,21 +312,11 @@ facts ("----- Testing GLS2 -----") do
     println("weighting term 2-3 diff = ", weighting_term2 - weighting_term3)
 
     println("weighting term 1-3 diff = ", weighting_term.' - weighting_term3)
-    println("\nPrinting intermediate quantities:\n")
-    println("qx = ", tmp1) 
-    println("qy = ", tmp2)
-    println("trial space x term = ", tmp3)
-    println("trial space y term = ", tmp4)
-    println("after multiplication by tau, reduction vector = \n", tmp6)
-    println("after multiplication by w, reduction vector = \n", tmp7)
-    println("after multiplication by Ax, reduction vector = \n", tmp8)
-    println("after multiplication by Ay, reduction vector = \n", tmp9)
-    println("after multiplication by Dx, reduction vector = \n", tmp10)
-    println("after multiplication by Dy, reduction vector = \n", tmp11)
-    println("final results = ", tmp12)
 
-    @fact tmp12 => roughly(gls_test, atol=1e-14)
-    println("diff = ", gls_test - tmp12)
+=#
+
+
+
     return gls_test, gls_code
   end  # end function test_gls
 
