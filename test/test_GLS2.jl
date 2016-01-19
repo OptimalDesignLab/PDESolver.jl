@@ -31,10 +31,13 @@ facts ("----- Testing GLS2 -----") do
 
   
   function test_gls(mesh, sbp, eqn, opts)
-    
+   
+    Tsol = eltype(eqn.q)
+    Tmsh = eltype(mesh.dxidx)
+    Tres = eltype(eqn.res)
     # do GLS for first element only, compare the slow, explicit version 
     # with the fast index notation one
-    q = zeros(12)
+    q = zeros(Tsol, 12)
     q[1:4] = eqn.q[:, 1, 1]
     q[5:8] = eqn.q[:, 2, 1]
     q[9:12] = eqn.q[:, 3, 1]
@@ -46,15 +49,14 @@ facts ("----- Testing GLS2 -----") do
     end
 
     function getTau_test(params, q, dxidx)
-      A1 = zeros(4,4)
-      A2 = zeros(4,4)
-      A0inv = zeros(4,4)
-      tau = zeros(12, 12)
+      A1 = zeros(Tsol, 4,4)
+      A2 = zeros(Tsol, 4,4)
+      A0inv = zeros(Tsol, 4,4)
+      tau = zeros(Tres, 12, 12)
       range_idx = (1:4, 5:8, 9:12)
       for i=1:3
-        println("i = ", i)
         idx_i = range_idx[i]
-        tau_i = zeros(4,4)
+        tau_i = zeros(Tres, 4,4)
         q_i = q[idx_i]
         dxidx_i = dxidx[:, :, i] 
         EulerEquationMod.calcA1(params, q_i, A1)
@@ -67,8 +69,8 @@ facts ("----- Testing GLS2 -----") do
         tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 1] + dxidx[2, 2]*dxidx[2, 1])*A2*A1
         tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 2] + dxidx[2, 2]*dxidx[2, 2])*A2*A2
 
-
         EulerEquationMod.calcA0Inv(params, q_i, A0inv)
+
         D, V = eig(tau_i)
         D2 = diagm(D.^(-0.5))
         new_tau = V*D2*inv(V)
@@ -76,16 +78,14 @@ facts ("----- Testing GLS2 -----") do
         tau[idx_i, idx_i] = real(new_tau2)
 
         # check agains the tau calculation in EulerEquationMod
-        A_mat = zeros(4,4,2)
+        A_mat = zeros(Tsol, 4,4,2)
         A_mat[:, :, 1] = A1
         A_mat[:, :, 2] = A2
 
 
-        tau_old = zeros(4, 4)
+        tau_old = zeros(Tres, 4, 4)
         EulerEquationMod.getTau(params, A_mat, dxidx_i, tau_old)
 
-        println("tau_test = ", new_tau2)
-        println("tau_code = ", tau_old)
         @fact tau_old => roughly(new_tau2, atol=1e-14)
       end
 
@@ -118,8 +118,8 @@ facts ("----- Testing GLS2 -----") do
     function getAtilde(params, q, dir)
 
       range_idx = (1:4, 5:8, 9:12)
-      Atilde = zeros(12, 12)
-      A = zeros(4,4)
+      Atilde = zeros(Tsol, 12, 12)
+      A = zeros(Tsol, 4,4)
       for i=1:3
         idx_i = range_idx[i]
         if dir == 1
@@ -140,7 +140,7 @@ facts ("----- Testing GLS2 -----") do
     function getdxidx_tilde(dxidx, k, j)
 
       range_idx = (1:4, 5:8, 9:12)
-      dxidx_tilde = zeros(12, 12)
+      dxidx_tilde = zeros(Tmsh, 12, 12)
 
       for i=1:3
         idx_i = range_idx[i]
@@ -182,7 +182,6 @@ facts ("----- Testing GLS2 -----") do
 
     trial_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi*q + dxidxhat_tilde_21*D_tilde_eta*q) + 
                  A2tilde*(dxidxhat_tilde_12*D_tilde_xi*q + dxidxhat_tilde_22*D_tilde_eta*q)
-    println("trial_term = ", trial_term)
     gls_test = weighting_term.'*H_tilde*tau_tilde*trial_term
 
     # now compute it in the code
@@ -190,14 +189,14 @@ facts ("----- Testing GLS2 -----") do
     fill!(eqn.res, 0.0)
     EulerEquationMod.applyGLS2(mesh, sbp, eqn, opts)
     gls_code = reshape(eqn.res[:, :, 1], 12)
-
+#=
     println("gls_test = ", gls_test)
     println("gls_code = ", gls_code)
-
+=#
     @fact gls_code => roughly(gls_test, atol=1e-14)
-    println("gls_code - gls_test = ", gls_code - gls_test)
-    print("\n\n")
-
+#    println("gls_code - gls_test = ", gls_code - gls_test)
+#    print("\n\n")
+#=
     println("\nPrinting intermediate quantities:\n")
     println("q = ", q)
     println("dxidx_hat = ", dxidx_hat)
@@ -212,15 +211,13 @@ facts ("----- Testing GLS2 -----") do
     println("qxi = ", D_tilde_xi*q)
     println("qeta = ", D_tilde_eta*q)
     println("dxidx = ", dxidx)
-
+=#
 
     range_idx = (1:4, 5:8, 9:12)
-    res_test = zeros(12)
+    res_test = zeros(Tres, 12)
     for i=1:3
-      println("i = ", i)
       idx_i = range_idx[i]
       for j=1:3
-        println("  j = ", j)
         idx_j = range_idx[j]
         # trial space
         tmp1 = D_tilde_xi[idx_j, :]*q
@@ -245,7 +242,7 @@ facts ("----- Testing GLS2 -----") do
         for k=1:4
           res_test[idx_i[k]] += tmp16[k]
         end
-
+#=
         println("\n  qx = \n", tmp3) 
         println("\n  qy = \n", tmp4)
         println("\n  trial space x term = \n", tmp5)
@@ -267,12 +264,12 @@ facts ("----- Testing GLS2 -----") do
         println("\n  after multiplication by Dx, reduction vector = \n", tmp14)
         println("\n  after multiplication by Dy, reduction vector = \n", tmp15)
         println("\n  final results = ", res_test)
-
+=#
       end
     end
 
     @fact res_test => roughly(gls_test, atol=1e-14)
-    println("diff = ", gls_test - res_test)
+#    println("diff = ", gls_test - res_test)
 
     # another check of the block matrix approach
     tmp1 = D_tilde_xi*q
@@ -282,7 +279,6 @@ facts ("----- Testing GLS2 -----") do
     tmp5 = A1tilde*tmp3
     tmp6 = A2tilde*tmp4
     tmp7 = tmp5 + tmp6
-    println("block trial term = ", tmp7)
     tmp8 = tau_tilde*tmp7
     tmp9 = H_tilde*tmp8
     # weigthing space
@@ -293,7 +289,7 @@ facts ("----- Testing GLS2 -----") do
     res_test2 = tmp12 + tmp13
 
     @fact res_test2 => roughly(gls_test, atol=1e-14)
-    println("block matrix diff = ", gls_test - res_test2)
+#    println("block matrix diff = ", gls_test - res_test2)
 #=
     # check the weighting term
 
@@ -348,6 +344,64 @@ facts ("----- Testing GLS2 -----") do
   include(STARTUP_PATH)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   test_gls(mesh, sbp, eqn ,opts)
+
+  println("----- Performing GLS2 finite difference checks -----")
+  jac_fd = zeros(12, 12)
+  eps_fd = 1e-6
+  res0 = copy(reshape(eqn.res[:, :, 1], 12))  # use res from previous run
+  println("doing finite differences")
+  for j=1:3
+    for i=1:4
+      pos = (j-1)*4 + i
+      println("pos = ", pos)
+      eqn.q[i, j, 1] += eps_fd
+      test_gls(mesh, sbp, eqn, opts)
+      res_ij = copy(reshape(eqn.res[:, :, 1], 12))
+      jac_fd[:, pos] = (res_ij - res0)/eps_fd
+      eqn.q[i, j, 1] -= eps_fd  # undo perturbatino
+    end
+  end
+
+  # now do complex step
+
+  println("doing complex step")
+  println("typeof(q_vec) = ", typeof(q_vec))
+  arg_dict["run_type"] = 5
+  f = open("input_vals_vortex3c_gls.jl", "w")
+  println(f, arg_dict)
+  close(f)
+  ARGS[1] = "input_vals_vortex3c_gls.jl"
+  include(STARTUP_PATH)
+
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  println("typeof(q_vec) = ", typeof(q_vec))
+
+  eps_c = 1e-20
+  jac_c = zeros(12, 12)
+  println("typeof(eqn) = ", typeof(eqn))
+  println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
+  for j=1:3
+    for i=1:4
+      pos = (j-1)*4 + i
+      println("pos = ", pos)
+      eqn.q[i, j, 1] += complex(0, eps_c)
+      test_gls(mesh, sbp, eqn, opts)
+      res_ij = copy(reshape(eqn.res[:, :, 1], 12))
+      jac_c[:, pos] = imag(res_ij)/eps_c
+      eqn.q[i, j, 1] -= complex(0, eps_c)  # undo perturbatino
+    end
+  end
+
+  for j=1:12
+    @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=1e-5)
+  end
+
+  for j=1:12
+    println("column $j")
+    println("jac_c = \n", jac_c[:, j])
+    println("jac_fd = \n", jac_fd[:, j])
+    println("jac diff = \n", jac_c[:,j] - jac_fd[:, j])
+  end    
 
 
 

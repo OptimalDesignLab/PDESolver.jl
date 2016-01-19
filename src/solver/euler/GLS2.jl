@@ -53,7 +53,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     aux_vars = view(eqn.aux_vars, :, :, el)
     getGLSVars(eqn.params, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el),
                D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
-
+#=
     if el == 1
       println("q = ", view(eqn.q, :, :, el))
       println("dxidx_hat = ", dxidx_hat)
@@ -62,12 +62,10 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       println("qxi = ", qxi)
       println("dxidx = ", dxidx)
     end
-
+=#
     for i=1:numNodesPerElement
-      println("i = ", i)
       res_i = view(eqn.res, :, i, el)
       for j=1:numNodesPerElement
-        println("  j = ", j)
 
         # zero  out some things
         fill!(qx, 0.0)
@@ -82,7 +80,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           end
         end
 
-        println("\n  qx = \n", qx)
+#        println("\n  qx = \n", qx)
 
         # multiply qx, qy  flux jacobians Ax, Ay
         for d1=1:Tdim
@@ -92,7 +90,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           smallmatvec!(A_d1, q_d1, tmp_d1)
         end
 
-        println("\n  trial space terms = \n", tmps[:, 1:2])
+#        println("\n  trial space terms = \n", tmps[:, 1:2])
 
         # now add them together
         tmp1 = view(tmps, :, 1)
@@ -102,14 +100,14 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           end
         end
 
-        println("\n trial space term = \n", tmp1)
+#        println("\n trial space term = \n", tmp1)
         # now multiply by tau
         tau_j = view(taus, :, :, j)
-        println("  \ntau = \n", tau_j) 
+#        println("  \ntau = \n", tau_j) 
         tmp2 = view(tmps, :, 2)  # store result of multiplication here
         smallmatvec!(tau_j, tmp1, tmp2)  # this overwrites tmp2
 
-        println("\n  after multiplication by tau, reduction vector = \n", tmp2)
+#        println("\n  after multiplication by tau, reduction vector = \n", tmp2)
         # copy tmp2 into tmp1 so the next phase of reductions can proceed in
         # parallel
         # multiply by integration weight (from sbp.w) at the same time
@@ -118,7 +116,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           tmp1[n] = tmp2[n]
         end
 
-        println("\n  after multiplication by w, reduction vector = \n", tmp2)
+#        println("\n  after multiplication by w, reduction vector = \n", tmp2)
 
         # now do weighting space 
          # now multiply by flux jacobians transposed
@@ -129,20 +127,20 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
            smallmatTvec!(A_d1, x_d1, b_d1)
          end
 
-         println("\n  after multiplication by flux jacobians, reduction vector = \n", tmps[:, 3:4])
+#         println("\n  after multiplication by flux jacobians, reduction vector = \n", tmps[:, 3:4])
 
          # rotate the differentiation matrices D into x-y
         for d1=1:Tdim  # the x-y coordinate direction
-          println("d1 = ", d1)
+#          println("d1 = ", d1)
           fac = zero(Tmsh)  # variable to accumulate the factor in
           for d2=1:Tdim  # the xi-eta coordinate direction
-              println("d2 = ", d2)
-              println("dxidx = ", dxidx[d2, d1, i])
-              println("d value = ", Dtranspose[i, j, d2])
+#              println("d2 = ", d2)
+#              println("dxidx = ", dxidx[d2, d1, i])
+#              println("d value = ", Dtranspose[i, j, d2])
               fac += dxidx[d2, d1, i]*Dtranspose[i, j, d2]
           end
 
-          println("fac = ", fac)
+#          println("fac = ", fac)
 
           # now update upper half of tmps with the factor
           for n=1:numDofPerNode
@@ -151,7 +149,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         end
 
 
-       println("\n  after multiplication by Dx, Dy, reduction vector = \n", tmps[:, 3:4])
+#       println("\n  after multiplication by Dx, Dy, reduction vector = \n", tmps[:, 3:4])
 
        # now update res
        for d1=(Tdim+1):(2*Tdim)  # loop over the second half of tmps
@@ -341,7 +339,9 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
   # check that D contains only positive numbers
   # this should be inside a @debug1
   for i=1:numDofPerNode
-    @assert real(D[i]) > 0.0
+    if real(D[i]) < 0.0
+      println("warning, D[$i] = ", D[i])
+    end
   end
 
   for i=1:numDofPerNode
