@@ -7,6 +7,7 @@
 function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                    sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
+  println("----- Entered applyGLS2 -----")
   # extract some constants
   numDofPerNode = mesh.numDofPerNode
   numNodesPerElement = mesh.numNodesPerElement
@@ -24,9 +25,12 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   qxitranspose = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode, Tdim)
   # hold un-transposed qxi (temporarily)
   qxi = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+  # hold non-scaled mapping jacobian
+  dxidx = zeros(Tmsh, Tdim, Tdim, numNodesPerElement)
   # hold tau, a n x n matrix for each node
-  tau = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, 
+  taus = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, 
                     mesh.numNodesPerElement)
+
   # hold differentiation matrices D
   D = zeros(Float64, numNodesPerElement, numNodesPerElement, Tdim)
   Dtranspose = zeros(D)  # transpose D because we access it in that order
@@ -37,22 +41,34 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   # calculate D
   for d=1:Tdim
-    smallmatmat!(diagm(sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
+    smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
     Dtranspose[:, :, d] = D[:, :, d].'
   end
 
   
-
-  for el = 1:mesh.numEl
+   for el = 1:1  # DEBUGGING: do only first element
+#  for el = 1:mesh.numEl
     # get all the quantities for this element
     dxidx_hat = view(mesh.dxidx, :, :, :, el)
-    getGLSVars(eqn.params, view(q, :, :, el), dxidx_hat, view(mesh.jac, :, el),
-               D, A_mats, qtranspose, qxitranspose, qxi, dxidx, tau)
+    aux_vars = view(eqn.aux_vars, :, :, el)
+    getGLSVars(eqn.params, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el),
+               D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
+
+    if el == 1
+      println("q = ", view(eqn.q, :, :, el))
+      println("dxidx_hat = ", dxidx_hat)
+      println("D = ", D)
+      println("A_mats = ", A_mats)
+      println("qxi = ", qxi)
+      println("dxidx = ", dxidx)
+    end
 
     for i=1:numNodesPerElement
+      println("i = ", i)
       res_i = view(eqn.res, :, i, el)
       for j=1:numNodesPerElement
-
+        println("  j = ", j)
+        # trial space part
         # rotate qxi, qeta to qx, qy
         for d1=1:Tdim  # the x-y coordinate direction
           for d2=1:Tdim  # the xi-eta coordinate direction
@@ -62,13 +78,17 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           end
         end
 
+        println("qx = ", qx)
+
         # multiply qx, qy  flux jacobians Ax, Ay
         for d1=1:Tdim
           A_d1 = view(A_mats, :, :, d1, j)
           q_d1 = view(qx, :, d1)
-          tmp_d1= view(tmps, d1)
-          smallmatvec!(Ad1, q_d1, tmp_d1)
+          tmp_d1= view(tmps, :, d1)
+          smallmatvec!(A_d1, q_d1, tmp_d1)
         end
+
+        println("trial space terms = ", tmps[:, 1:2])
 
         # now add them together
         tmp1 = view(tmps, :, 1)
@@ -80,18 +100,20 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         end
 
         # now multiply by tau
-        tau_j = view(taus, :, :, j)
+        tau_j = view(taus, :, :, i)
         tmp2 = view(tmps, :, 2)  # store result of multiplication here
         smallmatvec!(tau_j, tmp1, tmp2)  # this overwrites tmp2
 
+        println("after multiplication by tau, reduction vector = \n", tmp2)
         # copy tmp2 into tmp1 so the next phase of reductions can proceed in
         # parallel
         # multiply by integration weight (from sbp.w) at the same time
         for n=1:numDofPerNode
-          tmp2[n] *= w[n]
+          tmp2[n] *= w[i]
           tmp1[n] = tmp2[n]
         end
 
+        println("after multiplication by w, reduction vector = \n", tmp2)
         # now do weighting space 
          # rotate the differentiation matrices D into x-y
         for d1=1:Tdim  # the x-y coordinate direction
@@ -102,22 +124,26 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
           # now update tmp1 through tmp 2/3 with the factor
           for n=1:numDofPerNode
-            tmp[n, d1] *= fac
+            tmps[n, d1] *= fac
           end
         end
+
+
+       println("after multiplication by Dx, Dy, reduction vector = \n", tmps[:, 1:2])
 
        # now multiply by flux jacobians transposed
        for d1=1:Tdim
          A_d1 = view(A_mats, :, :, d1)
-         x_d1 = view(tmp, :, d1)
-         b_d1 = view(tmp, :, d1+Tdim)  # now we use the second half of tmps
+         x_d1 = view(tmps, :, d1)
+         b_d1 = view(tmps, :, d1+Tdim)  # now we use the second half of tmps
          smallmatTvec!(A_d1, x_d1, b_d1)
        end
 
+       println("after multiplication by flux jacobians, reduction vector = \n", tmps[:, 3:4])
        # now update res
        for d1=(Tdim+1):(2*Tdim)  # loop over the second half of tmps
          @simd for n=1:numDofPerNode
-           res[n] += tmps[n, d1]
+           res_i[n] += tmps[n, d1]
          end
        end
 
@@ -128,6 +154,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   end  # end loop over elements
 
+  println("----- Finished applyGLS2 -----")
   return nothing
 
 end  # end function
@@ -170,7 +197,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
                     q::AbstractArray{Tsol, 2}, aux_vars::AbstractArray{Tsol, 2},
                     dxidx_hat::AbstractArray{Tmsh, 3}, 
                     jac::AbstractArray{Tmsh, 1},
-                    D::AbstractArray{Float64, 3}  
+                    D::AbstractArray{Float64, 3},  
                     A_mats::AbstractArray{Tsol, 4}, # begin outputs
                     qtranspose::AbstractArray{Tsol, 2}, 
                     qxitranspose::AbstractArray{Tsol, 3}, 
@@ -178,26 +205,27 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
                     dxidx::AbstractArray{Tmsh, 3}, 
                     tau::AbstractArray{Tres, 3})
 
+#  println("----- Entered getGLSVars -----")
 
   numNodesPerElement = size(q, 2)
   numDofPerNode = size(q, 1)
   # move q into q_transpose
-  for i=1:numDofPerNode
-    for j=1:numNodesPerElement
-      q_transpose[j, i] = q[i, j]
-    end
-  end
+#  for i=1:numDofPerNode
+#    for j=1:numNodesPerElement
+#      qtranspose[j, i] = q[i, j]
+#    end
+#  end
 
   # multiply by Dxi, Deta ...
   for d=1:Tdim
-    smallmatmatT!(view(D, :, :, d), q_transpose, view(qxtranspose, :, :, d))
+    smallmatmatT!(view(D, :, :, d), q, view(qxitranspose, :, :, d))
   end
 
   # un-transpose while putting into qx
   for d=1:Tdim
     for j=1:numNodesPerElement
       for i=1:numDofPerNode
-        qxi[i, j, d] = qxitranpose[j, i, d]
+        qxi[i, j, d] = qxitranspose[j, i, d]
       end
     end
   end
@@ -221,7 +249,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
   for k = 1:numNodesPerElement
     for j=1:Tdim
       for i=1:Tdim
-        dxidx[i, j, k] = dxidx_hat*jac[k]
+        dxidx[i, j, k] = dxidx_hat[i,j,k]*jac[k]
       end
     end
   end
@@ -231,7 +259,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     tau_k = view(tau, :, :, k)
     A_mat_k = view(A_mats, :, :, :, k)
     dxidx_k = view(dxidx, :, :, k)
-    getTau(eqn.params, A_mat_k, dxidx_k, tau_k)
+    getTau(params, A_mat_k, dxidx_k, tau_k)
   end
 
   return nothing
@@ -258,7 +286,9 @@ end  # end function
 function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
                 params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
                 A_mat::AbstractArray{Tsol, 3}, dxidx::AbstractArray{Tmsh, 2}, 
-                tau::AbstractArray{T, 2})
+                tau::AbstractArray{Tres, 2})
+
+#  println("----- Entered getTau -----")
 
   numDofPerNode = size(A_mat, 1)
   AjAk = params.A1
@@ -293,15 +323,13 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
 
   # now take negative square root of the matrix
   # there are more efficient ways of doing this
-  D, V = eig(tmp2)
-
+  D, V = eig(flux_term)
   # check that D contains only positive numbers
   # this should be inside a @debug1
   for i=1:numDofPerNode
     @assert real(D[i]) > 0.0
   end
 
-  fill!(tmp, 0.0)
   for i=1:numDofPerNode
     D[i] = D[i]^(-0.5)
   end
@@ -317,5 +345,6 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
 
   smallmatmat!(V, Vinv, tau)
 
+#  println("----- Finished getTau -----")
   return nothing
 end  # end function

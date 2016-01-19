@@ -345,6 +345,7 @@ include("bc.jl")
 include("stabilization.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
+include("GLS2.jl")
 
 
 @doc """
