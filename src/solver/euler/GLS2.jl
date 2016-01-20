@@ -267,10 +267,11 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
   # get tau for each node
   for k=1:numNodesPerElement
+    q_k = view(q, :, k)
     tau_k = view(tau, :, :, k)
     A_mat_k = view(A_mats, :, :, :, k)
     dxidx_k = view(dxidx_hat, :, :, k)
-    getTau(params, A_mat_k, dxidx_k, tau_k)
+    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
   end
 
   return nothing
@@ -296,15 +297,17 @@ end  # end function
 """->
 function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
                 params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
-                A_mat::AbstractArray{Tsol, 3}, dxidx::AbstractArray{Tmsh, 2}, 
-                tau::AbstractArray{Tres, 2})
+                q::AbstractArray{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
+                dxidx::AbstractArray{Tmsh, 2}, tau::AbstractArray{Tres, 2})
 
 #  println("----- Entered getTau -----")
 
   numDofPerNode = size(A_mat, 1)
   AjAk = params.A1
   flux_term = params.A2
-  fill!(AjAk, 0.0)
+  A0inv = params.A0inv
+  tmp_mat = params.Rmat1
+  fill!(AjAk, 0.0)  # unneeded?
   fill!(flux_term, 0.0)
  
   for k=1:Tdim
@@ -321,8 +324,8 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
 
       # accumulate dxidx*dxidx*Aj*Ak for all j, k in tmp2
       for p=1:numDofPerNode
-        for q=1:numDofPerNode
-          flux_term[p, q] += jacobian_fac*AjAk[p, q]
+        for r=1:numDofPerNode
+          flux_term[p, r] += jacobian_fac*AjAk[p, r]
         end
       end
 
@@ -356,8 +359,10 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
     end
   end
 
-  smallmatmat!(V, Vinv, tau)
+  smallmatmat!(V, Vinv, tmp_mat)
 
+  calcA0Inv(params, q, A0inv)
+  smallmatmat!(A0inv, tmp_mat, tau)
 #  println("----- Finished getTau -----")
   return nothing
 end  # end function

@@ -18,17 +18,6 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 
 facts ("----- Testing GLS2 -----") do
 
-  include("input_vals_channel.jl")
-  arg_dict["solve"] = false
-  f = open("input_vals_channel_gls.jl", "w")
-  println(f, arg_dict)
-  close(f)
-
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_channel_gls.jl"
-  include(STARTUP_PATH)
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
   
   function test_gls(mesh, sbp, eqn, opts)
    
@@ -55,6 +44,7 @@ facts ("----- Testing GLS2 -----") do
       tau = zeros(Tres, 12, 12)
       range_idx = (1:4, 5:8, 9:12)
       for i=1:3
+        println("i = ", i)
         idx_i = range_idx[i]
         tau_i = zeros(Tres, 4,4)
         q_i = q[idx_i]
@@ -67,10 +57,12 @@ facts ("----- Testing GLS2 -----") do
         tau_i[:, :] += (dxidx_i[1, 1]*dxidx_i[1, 2] + dxidx[2, 1]*dxidx[2, 2])*A1*A2
 
         tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 1] + dxidx[2, 2]*dxidx[2, 1])*A2*A1
+
         tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 2] + dxidx[2, 2]*dxidx[2, 2])*A2*A2
 
-        EulerEquationMod.calcA0Inv(params, q_i, A0inv)
 
+        EulerEquationMod.calcA0Inv(params, q_i, A0inv)
+        @fact issym(A0inv) => true
         D, V = eig(tau_i)
         D2 = diagm(D.^(-0.5))
         new_tau = V*D2*inv(V)
@@ -84,8 +76,9 @@ facts ("----- Testing GLS2 -----") do
 
 
         tau_old = zeros(Tres, 4, 4)
-        EulerEquationMod.getTau(params, A_mat, dxidx_i, tau_old)
-
+        EulerEquationMod.getTau(params, q_i, A_mat, dxidx_i, tau_old)
+        println("\ntau_test = ", new_tau2)
+        println("\ntau_code = ", tau_old)
         @fact tau_old => roughly(new_tau2, atol=1e-14)
       end
 
@@ -180,9 +173,13 @@ facts ("----- Testing GLS2 -----") do
     weighting_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) +
                      A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
 
-    trial_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi*q + dxidxhat_tilde_21*D_tilde_eta*q) + 
-                 A2tilde*(dxidxhat_tilde_12*D_tilde_xi*q + dxidxhat_tilde_22*D_tilde_eta*q)
-    gls_test = -(weighting_term.'*H_tilde*tau_tilde*trial_term)
+    trial_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi + dxidxhat_tilde_21*D_tilde_eta) + 
+                 A2tilde*(dxidxhat_tilde_12*D_tilde_xi + dxidxhat_tilde_22*D_tilde_eta)
+    gls_operator = weighting_term.'*H_tilde*tau_tilde*trial_term
+#    @fact issym(tau_tilde) => true
+    println("tau_tilde = \n", tau_tilde)
+#    @fact issym(gls_operator) => true
+    gls_test = -(gls_operator*q)
 
     # now compute it in the code
     print("\n\n")
@@ -316,11 +313,29 @@ facts ("----- Testing GLS2 -----") do
     return gls_test, gls_code
   end  # end function test_gls
 
-  
+ 
   println("----- Testing GLS2 on steady channel -----")
+#=
+  include("input_vals_channel.jl")
+  arg_dict["solve"] = false
+  arg_dict["variable_type"] = :entropy
+  f = open("input_vals_channel_gls.jl", "w")
+  println(f, arg_dict)
+  close(f)
+
+  resize!(ARGS, 1)
+  ARGS[1] = "input_vals_channel_gls.jl"
+  include(STARTUP_PATH)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+=#
+
+
+
   # test on the steady channel case
   include("input_vals_channel.jl")
   arg_dict["solve"] = false
+  arg_dict["variable_type"] = :entropy
   f = open("input_vals_channel_gls.jl", "w")
   println(f, arg_dict)
   close(f)
@@ -335,6 +350,7 @@ facts ("----- Testing GLS2 -----") do
   # test on isentropic vortex
   include("input_vals_vortex3.jl")
   arg_dict["solve"] = false
+  arg_dict["variable_type"] = :entropy
   f = open("input_vals_vortex3_gls.jl", "w")
   println(f, arg_dict)
   close(f)
