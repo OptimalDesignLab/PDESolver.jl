@@ -684,8 +684,10 @@ end
 @doc """
 ### EulerEquationMod.calcA1
 
-  This function calculates the A1 (ie. dF1/dv, where F1 is the first column of 
-  theEuler flux and v are the entropy variables) for a node
+  This function calculates the A1 (ie. dF1/dq, where F1 is the first column of 
+  the Euler flux) for a node, aka the flux 
+  Jacobian of the Euler flux in the x direction.  Methods are available for
+  both conservative and entropy variables.
 
   The formation of A1 is given in Hughes paper
 
@@ -698,6 +700,40 @@ end
 
 
 """->
+
+function calcA1{Tsol}(params::ParamType{2, :conservative}, 
+                      q::AbstractArray{Tsol,1}, A1::AbstractArray{Tsol, 2})
+  gamma_1 = params.gamma_1
+  gamma = params.gamma
+  u = q[2]/q[1] # Get velocity in the x-direction 
+  v = q[3]/q[1] # Get velocity in the x-direction
+
+  intvar = gamma_1*(u*u + v*v)/2
+  a1 = intvar*2 - gamma*q[4]/q[1]
+  A1[1,1] = 0
+  A1[2,1] = intvar - u*u
+  A1[3,1] = -u*v
+  A1[4,1] = a1*u
+
+  A1[1,2] = 1
+  A1[2,2] = (3 - gamma)*u
+  A1[3,2] = v
+  A1[4,2] = gamma*q[4]/q[1] - intvar - gamma_1*u*u
+
+  A1[1,3] = 0
+  A1[2,3] = -gamma_1*v
+  A1[3,3] = u
+  A1[4,3] = -gamma_1*u*v
+
+  A1[1,4] = 0
+  A1[2,4] = gamma_1
+  A1[3,4] = 0
+  A1[4,4] = gamma*u
+
+  return nothing
+end
+
+
 function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
                       A1::AbstractArray{Tsol, 2})
 
@@ -726,9 +762,6 @@ function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
   e1 = q[2]*q[4]
 #  e2 = q[3]*q[4]
 
-  println("fac = ", fac)
-  println("e1 = ", e1)
-  println("q[4] = ", q[4])
   # populate the matrix
   # the matrix is symmetric, but we don't use it because I think populating
   # the matrix will be faster if the matrix is write-only
@@ -757,9 +790,9 @@ end
 @doc """
 ### EulerEquationMod.calcA2
 
-  This function calculates the A2 (ie. dF2/dv, where F2 is the second column of the
-  Euler flux.
-  and v are the entropy variables) for a node
+  This function calculates A2 (ie. dF2/dq, where F2 is the second column of the
+  Euler flux, aka the flux jacobian in the y direction. 
+  Methods are available for both conservative and entropy variables.
 
   The formation of A2 is given in Hughes
 
@@ -771,6 +804,37 @@ end
 
 
 """->
+function calcA2{Tsol}(params::ParamType{2, :conservative}, 
+                      q::AbstractArray{Tsol,1}, A2::AbstractArray{Tsol, 2})
+  gamma_1 = params.gamma_1
+  gamma = params.gamma
+  u = q[2]/q[1] # Get velocity in the x-direction 
+  v = q[3]/q[1] # Get velocity in the x-direction
+
+  intvar = gamma_1*(u*u + v*v)/2
+  a1 = intvar*2 - gamma*q[4]/q[1]
+
+  A2[1,1] = 0
+  A2[2,1] = -u*v
+  A2[3,1] = intvar - v*v
+  A2[4,1] = a1*v
+  A2[1,2] = 0
+  A2[2,2] = v
+  A2[3,2] = -gamma_1*u
+  A2[4,2] = -gamma_1*u*v
+  A2[1,3] = 1
+  A2[2,3] = u
+  A2[3,3] = (3 - gamma)*v
+  A2[4,3] = gamma*q[4]/q[1] - intvar - gamma_1*v*v
+  A2[1,4] = 0
+  A2[2,4] = 0
+  A2[3,4] = gamma_1
+  A2[4,4] = gamma*v
+
+
+  return nothing
+end
+
 function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
                       A2::AbstractArray{Tsol, 2})
 

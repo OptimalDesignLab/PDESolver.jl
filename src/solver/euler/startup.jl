@@ -97,7 +97,7 @@ eqn = EulerData_{Tsol, Tres, 2, Tmsh, var_type}(mesh, sbp, opts)
 # depend on the physics module
 init(mesh, sbp, eqn, opts, pmesh)
 
-delta_t = opts["delta_t"]   # delta_t: timestep for RK
+#delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
 
 res_vec = eqn.res_vec         # solution at previous timestep
@@ -244,8 +244,10 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 if opts["solve"]
   
   if flag == 1 # normal run
-   @time rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, 
-       res_tol=opts["res_abstol"], real_time=opts["real_time"])
+   @time rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+#   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
+#              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
+#              res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
    println("finish rk4")
    printSolution("rk4_solution.dat", eqn.res_vec)
@@ -297,6 +299,12 @@ if opts["solve"]
   end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")
+  # evaluate residual at final q value
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  evalEuler( mesh, sbp, eqn, opts, eqn.params.t)
+
+  eqn.res_vec[:] = 0.0
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
 
   if opts["write_finalsolution"]
@@ -318,13 +326,13 @@ if opts["solve"]
       exfunc = ICDict[exfname]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
-    if var_type == :entropy
-      println("converting to entropy variables")
-      for i=1:mesh.numDofPerNode:mesh.numDof
-        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
-        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
-      end
-    end
+#    if var_type == :entropy
+#      println("converting to entropy variables")
+#      for i=1:mesh.numDofPerNode:mesh.numDof
+#        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+#        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+#      end
+#    end
 
       q_diff = eqn.q_vec - q_exact
       diff_norm = calcNorm(eqn, q_diff)

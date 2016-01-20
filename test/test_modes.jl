@@ -83,3 +83,8 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
 end
+
+facts("-----  Testing rk4 -----") do
+
+  include("test_rk4.jl")
+end

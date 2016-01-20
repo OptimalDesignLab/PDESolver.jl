@@ -24,7 +24,7 @@ rk4
   This function does 4th order Runge Kutta time stepping
 
   Arguments:
-    * f  : function evaluation
+    * f  : function evaluation, must have signature (ctx..., opts, t), must have signature (ctx..., opts, t)
     * h  : time step size
     * t_max : time value to stop time stepping (time starts at 0)
     * mesh : AbstractMesh
@@ -37,7 +37,8 @@ rk4
    The eqn.q_vec should hold the whichever variables (conservative or
    entropy) that the simulation should use.
 """->
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, pre_func, post_func, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol = -1.0, real_time=false)
+#function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   #=
@@ -58,8 +59,8 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
   output_freq = opts["output_freq"]::Int
   write_vis = opts["write_vis"]::Bool
 
-  q_vec = eqn.q_vec
-  res_vec = eqn.res_vec
+#  q_vec = eqn.q_vec
+#  res_vec = eqn.res_vec
 #  extra_args = (mesh, sbp, eqn)
 
   t = 0.0  # timestepper time
@@ -106,24 +107,29 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 #    println("eqn.q_vec = ", eqn.q_vec)
 
  #   eqn.q_vec = x_old
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+#    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    pre_func(ctx..., opts)
     if real_time treal = t end
-    f( mesh, sbp, eqn, opts, treal)
-
-    fill!(eqn.res_vec, 0.0)
-    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    for j=1:length(eqn.res_vec) k1[j] = eqn.Minv[j]*eqn.res_vec[j] end
+    f( ctx..., opts, treal)
+    sol_norm = post_func(ctx..., opts)
+#    fill!(eqn.res_vec, 0.0)
+#    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
+#    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#    for j=1:length(eqn.res_vec) k1[j] = eqn.Minv[j]*eqn.res_vec[j] end
+    for j=1:m
+      k1[j] = res_vec[j]
+    end
     x2[:] = x_old + (h/2)*k1  # because the Euler equations are written 
                               # in conservative variables, the residual
 			      # is r(q) not r(v)
 
 
 #    sol_norm = norm(eqn.res_vec)/mesh.numDof
-     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts)
+     majorIterationCallback(i, ctx..., opts)
    
-     sol_norm = calcNorm(eqn, k1)
+#     sol_norm = calcNorm(eqn, k1)
     if i % 1 == 0
+#=
       # Calculate the error in density
       vRho_calc = zeros(vRho_act)
       k = 1
@@ -135,8 +141,8 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
       ErrDensity = norm(vRho_calc - vRho_act)/mesh.numNodes 
       println("DensityErrorNorm = ", ErrDensity)
       println("Solution Residual Norm = ", sol_norm)
-
-      println("writing to convergence.dat")
+=#
+#      println("writing to convergence.dat")
       println(f1, i, " ", sol_norm)
     end
     
@@ -145,12 +151,6 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 #      close(f1)
 #      f1 = open("convergence.dat", "a+")
       flush(f1)
-    end
-
-    if write_vis && i % output_freq == 0
-
-      saveSolutionToMesh(mesh, q_vec)
-      writeVisFiles(mesh, "solution_rk$i")
     end
 
 
@@ -168,48 +168,62 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
     end
 
     # stage 2
-    eqn.q_vec[:] = x2
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    q_vec[:] = x2
+    pre_func(ctx..., opts) 
+#    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     # convert to entropy variables here
     if real_time  treal = t + h/2 end
-    f( mesh, sbp, eqn, opts, treal)
-
-    fill!(eqn.res_vec, 0.0)
-    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    f( ctx..., opts, treal)
+    post_func(ctx..., opts)
+#    fill!(eqn.res_vec, 0.0)
+#    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
+#    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #    k2[:] = eqn.res_vec
-    for j=1:length(eqn.res_vec) k2[j] = eqn.Minv[j]*eqn.res_vec[j] end
+#    for j=1:length(eqn.res_vec) k2[j] = eqn.Minv[j]*eqn.res_vec[j] end
+    for j=1:m
+      k2[j] = res_vec[j]
+    end
+
     x3[:] = x_old + (h/2)*k2
 
     # stage 3
-    eqn.q_vec[:] = x3
-    if real_time treal= t + t/2 end
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    f( mesh, sbp, eqn, opts, treal)
+    q_vec[:] = x3
+    pre_func(ctx..., opts)
+    if real_time treal= t + h/2 end
+#    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    f( ctx..., opts, treal)
+    post_func(ctx..., opts)
 
-    fill!(eqn.res_vec, 0.0)
-    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#    fill!(eqn.res_vec, 0.0)
+#    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
+#    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #    k3[:] = eqn.res_vec
-    for j=1:length(eqn.res_vec) k3[j] = eqn.Minv[j]*eqn.res_vec[j] end
+#    for j=1:length(eqn.res_vec) k3[j] = eqn.Minv[j]*eqn.res_vec[j] end
+    for j=1:m
+      k3[j] = res_vec[j]
+    end
 
     # stage 4
     x4[:] = x_old + h*k3
-    eqn.q_vec[:] = x4
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    q_vec[:] = x4
+    pre_func(ctx..., opts)
+#   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     if real_time treal = t + h end
-    f( mesh, sbp, eqn, opts, treal)
-
-    fill!(eqn.res_vec, 0.0)
-    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    for j=1:length(eqn.res_vec) k4[j] = eqn.Minv[j]*eqn.res_vec[j] end
+    f( ctx..., opts, treal)
+    post_func(ctx..., opts)
+#    fill!(eqn.res_vec, 0.0)
+#    eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
+#    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+#    for j=1:length(eqn.res_vec) k4[j] = eqn.Minv[j]*eqn.res_vec[j] end
 #    k4 = eqn.res_vec[:]
+    for j=1:m
+      k4[j] = res_vec[j]
+    end
 
 
     # update
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
-    eqn.q_vec[:] = x_old
+    q_vec[:] = x_old
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)
@@ -231,13 +245,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 #  fill!(eqn.q_vec, 0.0)
 #  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-    # evaluate residual at final q value
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    f( mesh, sbp, eqn, opts, t)
 
-    eqn.res_vec[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
- 
   # put residual into eqn.res_vec
 #  eqn.res_vec[:] = k1
  
@@ -255,6 +263,33 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::Abstract
 #  writedlm("rk4_output.dat",x,",")
 #   writecsv("rk4_output.dat",x," ")
 #  return x[:, t_steps+1], x
-  return nothing
+  return t
 
 end
+
+# this is the version for solving PDEs
+# it uses the pde_pre_func and pde_post_func below
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, real_time=false)
+    rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+
+end
+
+function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
+
+  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, (mesh, sbp, eqn), opts; majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+end
+
+
+function pde_pre_func(mesh, sbp, eqn, opts)
+
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+end
+
+function pde_post_func(mesh, sbp, eqn, opts)
+  fill!(eqn.res_vec, 0.0)
+  eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
+  return calcNorm(eqn, eqn.res_vec)
+end
+
