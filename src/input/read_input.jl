@@ -79,13 +79,13 @@ get!(arg_dict, "use_dissipation", false)
 get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
 get!(arg_dict, "use_GLS", false)
+get!(arg_dict, "use_GLS2", false)
 
 # preconditioning stabilization options
 # non-logical values are shared between regular, preconditioned run
 get!(arg_dict, "use_edgestab_prec", false) 
 get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
-
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
   # the raised cosine filter has no paramters

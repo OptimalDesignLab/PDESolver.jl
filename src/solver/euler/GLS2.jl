@@ -7,7 +7,7 @@
 function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                    sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
-  println("----- Entered applyGLS2 -----")
+#  println("----- Entered applyGLS2 -----")
   # extract some constants
   numDofPerNode = mesh.numDofPerNode
   numNodesPerElement = mesh.numNodesPerElement
@@ -46,8 +46,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   
-   for el = 1:1  # DEBUGGING: do only first element
-#  for el = 1:mesh.numEl
+  for el = 1:mesh.numEl
     # get all the quantities for this element
     dxidx_hat = view(mesh.dxidx, :, :, :, el)
     aux_vars = view(eqn.aux_vars, :, :, el)
@@ -154,7 +153,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
        # now update res
        for d1=(Tdim+1):(2*Tdim)  # loop over the second half of tmps
          @simd for n=1:numDofPerNode
-           res_i[n] += tmps[n, d1]
+           res_i[n] -= tmps[n, d1]
          end
        end
 
@@ -166,7 +165,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   end  # end loop over elements
 
-  println("----- Finished applyGLS2 -----")
+#  println("----- Finished applyGLS2 -----")
   return nothing
 
 end  # end function

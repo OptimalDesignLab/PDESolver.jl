@@ -182,7 +182,7 @@ facts ("----- Testing GLS2 -----") do
 
     trial_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi*q + dxidxhat_tilde_21*D_tilde_eta*q) + 
                  A2tilde*(dxidxhat_tilde_12*D_tilde_xi*q + dxidxhat_tilde_22*D_tilde_eta*q)
-    gls_test = weighting_term.'*H_tilde*tau_tilde*trial_term
+    gls_test = -(weighting_term.'*H_tilde*tau_tilde*trial_term)
 
     # now compute it in the code
     print("\n\n")
@@ -240,7 +240,7 @@ facts ("----- Testing GLS2 -----") do
          
         
         for k=1:4
-          res_test[idx_i[k]] += tmp16[k]
+          res_test[idx_i[k]] -= tmp16[k]
         end
 #=
         println("\n  qx = \n", tmp3) 
@@ -286,7 +286,7 @@ facts ("----- Testing GLS2 -----") do
     tmp11 = A2tilde.'*tmp9
     tmp12 = (dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta).'*tmp10
     tmp13 = (dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta).'*tmp11
-    res_test2 = tmp12 + tmp13
+    res_test2 = -(tmp12 + tmp13)
 
     @fact res_test2 => roughly(gls_test, atol=1e-14)
 #    println("block matrix diff = ", gls_test - res_test2)

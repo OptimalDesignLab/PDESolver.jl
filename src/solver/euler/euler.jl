@@ -489,6 +489,10 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
     applyDissipation(mesh, sbp, eqn, opts, eqn.q)
   end
 
+  if opts["use_GLS2"]
+    applyGLS2(mesh, sbp, eqn, opts)
+  end
+
 #  println("==== end of addStabilization ====")
 
 

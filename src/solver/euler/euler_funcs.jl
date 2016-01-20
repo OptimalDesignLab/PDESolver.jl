@@ -841,7 +841,6 @@ function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
   A1[3,4] = k4*d1*fac  # symmetric
   A1[4,4] = k5*q[2]*fac
 
-  println("A1[1,1] = ", A1[1,1])
     return nothing
 end
 
