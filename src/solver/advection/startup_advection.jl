@@ -88,6 +88,7 @@ println("finished initializing u")
 
 global int_advec = 1
 
+#------------------------------------------------------------------------------
 # Calculate the recommended delta t
 CFLMax = 1      # Maximum Recommended CFL Value
 const alpha_x = 1.0 # advection velocity in x direction
@@ -102,6 +103,7 @@ for i = 1:mesh.numEl
 end   # end for i = mesh.numEl
 RecommendedDT = minimum(Dt)
 println("Recommended delta t = ", RecommendedDT)
+#------------------------------------------------------------------------------
 
 t = 0.0
 # evalAdvection(mesh, sbp, eqn, opts, t)

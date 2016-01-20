@@ -96,12 +96,25 @@ end # end function assembleSolution
 @doc """
 ### AdvectionEquationMod.disassembleSolution
 
-  This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
-  3 dimensional array of conservative variables.  This function uses mesh.dofs
-  to speed the process.
+This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
+3 dimensional array of conservative variables.  This function uses mesh.dofs
+to speed the process.
 
-  This is a mid level function, and does the right thing regardless of equation
-  dimension.
+This is a mid level function, and does the right thing regardless of equation
+dimension.
+
+**Inputs**
+
+*  `mesh` : Mesh object
+*  `sbp`  : Summation-by-parts operator
+*  `eqn`  : Advection equation object
+*  `opts` :
+*  `array`:
+
+**Outputs**
+
+*  None
+
 """->
 
 function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
@@ -126,10 +139,16 @@ end
 @doc """
 ### getMass
 
-Calculates the masss matrix and given the mesh and SBP operator
+Calculates the masss matrix and given the mesh and SBP operator.
 
-*  operator: SBP operator
-*  mesh: Mesh object.
+**Inputs**
+
+*  `operator`: SBP operator
+*  `mesh`    : Mesh object
+
+**Outputs**
+
+*  `mass_matrix` : Mass matrix
 
 """-> 
 
