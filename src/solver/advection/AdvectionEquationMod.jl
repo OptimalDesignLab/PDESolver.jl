@@ -34,10 +34,10 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
   flux_parametric::Array{Tsol,4}  # flux in xi direction
   res::Array{Tres, 3}  # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
-  q_vec::Array{Tres,1}  # initial condition in vector form
+  u_vec::Array{Tres,1}  # initial condition in vector form
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 2}  # mass matrix
-  disassembleSolution::Function # function q_vec -> eqn.q
+  disassembleSolution::Function # function u_vec -> eqn.q
   assembleSolution::Function  # function : eqn.res -> res_vec
 
   function AdvectionData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
@@ -54,7 +54,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
     eqn.u = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_vec = zeros(Tres, mesh.numDof)
-    eqn.q_vec = zeros(Tres, mesh.numDof)
+    eqn.u_vec = zeros(Tres, mesh.numDof)
     eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
 
     return eqn
@@ -96,7 +96,7 @@ end # end function assembleSolution
 @doc """
 ### AdvectionEquationMod.disassembleSolution
 
-This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
+This takes eqn.u_vec (the initial state), and disassembles it into eqn.q, the
 3 dimensional array of conservative variables.  This function uses mesh.dofs
 to speed the process.
 
@@ -108,7 +108,7 @@ dimension.
 *  `mesh` : Mesh object
 *  `sbp`  : Summation-by-parts operator
 *  `eqn`  : Advection equation object
-*  `opts` :
+*  `opts` : Options dictionary
 *  `array`:
 
 **Outputs**
@@ -122,7 +122,7 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
                                                eqn::AdvectionData{Tsol, Tdim},
                                                opts, 
                                                array::AbstractArray{Tsol, 1})
-  # disassemble q_vec into eqn.
+  # disassemble u_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       dofnum_k = mesh.dofs[1, j, i]

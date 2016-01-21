@@ -69,26 +69,74 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 # create mesh with 1 dofpernode
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, arg_dict ; dofpernode=1)
+
+# create linear mesh with 4 dof per node
+mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, 
+                       coloring_distance=opts["coloring_distance"])
+if opts["jac_type"] == 3 || opts["jac_type"] == 4
+  pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+else
+  pmesh = mesh
+end
+
+# Create advection equation object
 eqn = AdvectionData_{Tsol, Tres, 2, Tmsh}(mesh, sbp, opts)
 
-# Initialize the advection equation
-# u_i = eqn.u_i  # create u vector (current timestep)
-# u_i_1 = eqn.u_i_1 # u at next timestep
-for i = 1:mesh.numEl
-  for j = 1:mesh.numNodesPerElement
-    x_j = mesh.coords[1,j,i]
-    u_j = sin(x_j)
-    dofnum = mesh.dofs[1, j, i]
-    eqn.q_vec[dofnum] = u_j
-  end # end for j = 1:sbp.numnodes
-end # end for i=1:mesh.numEl
+u_vec = eqn.u_vec
 
+# Initialize the advection equation
+init(mesh, sbp, eqn, opts)
+
+# Populate with initial conditions
+println("\nEvaluating initial condition")
+ICfunc_name = opts["IC_name"]
+ICfunc = ICDict[ICfunc_name]
+println("ICfunc = ", ICfunc)
+ICfunc(mesh, sbp, eqn, opts, u_vec) 
 println("finished initializing u")
+
+if opts["calc_error"]
+  println("\ncalculating error of file ", opts["calc_error_infname"], 
+          " compared to initial condition")
+  vals = readdlm(opts["calc_error_infname"])
+  @assert length(vals) == mesh.numDof
+
+  err_vec = vals - eqn.u_vec
+  err = calcNorm(eqn, err_vec)
+  outname = opts["calc_error_outfname"]
+  println("printint err = ", err, " to file ", outname)
+  f = open(outname, "w")
+  println(f, err)
+  close(f)
+end
+
+if opts["calc_trunc_error"]  # calculate truncation error
+  println("\nCalculating residual for truncation error")
+  tmp = calcResidual(mesh, sbp, eqn, opts, evalAdvection)
+
+  f = open("error_trunc.dat", "w")
+  println(f, tmp)
+  close(f)
+end
+
+if opts["perturb_ic"]
+  println("\nPerturbing initial condition")
+  perturb_mag = opts["perturb_mag"]
+  for i=1:mesh.numDof
+    u_vec[i] += perturb_mag*rand()
+  end
+end
+
+res_vec_exact = deepcopy(u_vec)
+
+rmfile("IC.dat")
+writedlm("IC.dat", real(u_vec))
+saveSolutionToMesh(mesh, u_vec)
 
 global int_advec = 1
 
 #------------------------------------------------------------------------------
+#=
 # Calculate the recommended delta t
 CFLMax = 1      # Maximum Recommended CFL Value
 const alpha_x = 1.0 # advection velocity in x direction
@@ -102,7 +150,7 @@ for i = 1:mesh.numEl
   end # end for j = 1:mesh.numNodesPerElement
 end   # end for i = mesh.numEl
 RecommendedDT = minimum(Dt)
-println("Recommended delta t = ", RecommendedDT)
+println("Recommended delta t = ", RecommendedDT) =#
 #------------------------------------------------------------------------------
 
 t = 0.0
