@@ -50,7 +50,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     # get all the quantities for this element
     dxidx_hat = view(mesh.dxidx, :, :, :, el)
     aux_vars = view(eqn.aux_vars, :, :, el)
-    getGLSVars(eqn.params, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el),
+    getGLSVars(eqn.params, eqn.params_conservative, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el),
                D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
 #=
     if el == 1
@@ -180,7 +180,8 @@ end  # end function
   work in 3D as well
 
   Inputs:
-    params: ParamType, var_type can be anything
+    params: ParamType, var_type can be anythinga
+    params_c: ParamType, var_type must be :conservative
     q: array of solution variables for the element, 
        numDofPerNode x numNodesPerElement
     aux_vars: array of auxiliary variables for the element, 
@@ -205,6 +206,7 @@ end  # end function
             
 """->
 function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
+                    params_c::ParamType{Tdim, :conservative},
                     q::AbstractArray{Tsol, 2}, aux_vars::AbstractArray{Tsol, 2},
                     dxidx_hat::AbstractArray{Tmsh, 3}, 
                     jac::AbstractArray{Tmsh, 1},
@@ -241,8 +243,43 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     end
   end
 
-  
-  # get flux jacobian
+   # get dxidx - not scaled by 1/|J|
+  for k = 1:numNodesPerElement
+    for j=1:Tdim
+      for i=1:Tdim
+        dxidx[i, j, k] = dxidx_hat[i,j,k]*jac[k]
+      end
+    end
+  end
+
+ 
+  # get conservative variable flux jacobian 
+  q_c = params_c.q_vals
+  for k=1:numNodesPerElement
+    q_k = view(q, :, k)
+    convertToConservative(params, q_k, q_c)
+    A1_k = view(A_mats, :, :, 1, k)
+    calcA1(params_c, q_c, A1_k)
+    A2_k = view(A_mats, :, :, 2, k)
+    calcA2(params_c, q_c, A2_k)
+
+    if Tdim == 3  # three cheers for static analysis
+      A3_k = view(A_mats, :, :, 3, k)
+      calcA3(params_c, q_c, A3_k)
+    end
+  end
+
+  # get tau for each node - using conservative variable flux jacobian
+  for k=1:numNodesPerElement
+    q_k = view(q, :, k)
+    tau_k = view(tau, :, :, k)
+    A_mat_k = view(A_mats, :, :, :, k)
+    dxidx_k = view(dxidx_hat, :, :, k)
+    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
+#    getTau(params, jac[k], tau_k)
+  end
+
+  # get entropy variable  flux jacobian 
   for k=1:numNodesPerElement
     q_k = view(q, :, k)
     A1_k = view(A_mats, :, :, 1, k)
@@ -256,24 +293,6 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     end
   end
 
-  # get dxidx - not scaled by 1/|J|
-  for k = 1:numNodesPerElement
-    for j=1:Tdim
-      for i=1:Tdim
-        dxidx[i, j, k] = dxidx_hat[i,j,k]*jac[k]
-      end
-    end
-  end
-
-  # get tau for each node
-  for k=1:numNodesPerElement
-    q_k = view(q, :, k)
-    tau_k = view(tau, :, :, k)
-    A_mat_k = view(A_mats, :, :, :, k)
-    dxidx_k = view(dxidx_hat, :, :, k)
-#    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
-    getTau(params, jac[k], tau_k)
-  end
 
   return nothing
 end  # end function

@@ -37,7 +37,7 @@ facts ("----- Testing GLS2 -----") do
       dxidx[:, :, i] = dxidx[:, :, i]*jac[i]
     end
 
-    function getTau_test(params, q, dxidx)
+    function getTau_test(params, params_c, q, dxidx)
       A1 = zeros(Tsol, 4,4)
       A2 = zeros(Tsol, 4,4)
       A0inv = zeros(Tsol, 4,4)
@@ -48,9 +48,11 @@ facts ("----- Testing GLS2 -----") do
         idx_i = range_idx[i]
         tau_i = zeros(Tres, 4,4)
         q_i = q[idx_i]
+        q_i_c = zeros(q_i)
+        EulerEquationMod.convertToConservative_(params, q_i, q_i_c)
         dxidx_i = dxidx[:, :, i] 
-        EulerEquationMod.calcA1(params, q_i, A1)
-        EulerEquationMod.calcA2(params, q_i, A2)
+        EulerEquationMod.calcA1(params_c, q_i_c, A1)
+        EulerEquationMod.calcA2(params_c, q_i_c, A2)
 
         tau_i[:, :] += (dxidx_i[1, 1]*dxidx_i[1, 1] + dxidx[2, 1]*dxidx[2, 1])*A1*A1
         
@@ -62,12 +64,13 @@ facts ("----- Testing GLS2 -----") do
 
 
         EulerEquationMod.calcA0Inv(params, q_i, A0inv)
-        @fact issym(A0inv) => true
+        @fact isSymmetric(A0inv) => true
         D, V = eig(tau_i)
         D2 = diagm(D.^(-0.5))
         new_tau = V*D2*inv(V)
         new_tau2 = A0inv*new_tau
         tau[idx_i, idx_i] = real(new_tau2)
+        @fact isSymmetric(new_tau2, 1e-10) => true
 
         # check agains the tau calculation in EulerEquationMod
         A_mat = zeros(Tsol, 4,4,2)
@@ -77,6 +80,7 @@ facts ("----- Testing GLS2 -----") do
 
         tau_old = zeros(Tres, 4, 4)
         EulerEquationMod.getTau(params, q_i, A_mat, dxidx_i, tau_old)
+        @fact isSymmetric(tau_old, 1e-10) => true
         println("\ntau_test = ", new_tau2)
         println("\ntau_code = ", tau_old)
         @fact tau_old => roughly(new_tau2, atol=1e-14)
@@ -85,7 +89,7 @@ facts ("----- Testing GLS2 -----") do
       return tau
     end
 
-    tau_tilde = getTau_test(eqn.params, q, dxidx_hat)
+    tau_tilde = getTau_test(eqn.params, eqn.params_conservative, q, dxidx_hat)
 
     function getDtilde(sbp, dir::Integer)
       range_idx = (1:4, 5:8, 9:12)
@@ -176,9 +180,9 @@ facts ("----- Testing GLS2 -----") do
     trial_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi + dxidxhat_tilde_21*D_tilde_eta) + 
                  A2tilde*(dxidxhat_tilde_12*D_tilde_xi + dxidxhat_tilde_22*D_tilde_eta)
     gls_operator = weighting_term.'*H_tilde*tau_tilde*trial_term
-#    @fact issym(tau_tilde) => true
+    @fact isSymmetric(tau_tilde, 1e-10) => true
     println("tau_tilde = \n", tau_tilde)
-#    @fact issym(gls_operator) => true
+    @fact isSymmetric(gls_operator, 1e-10) => true
     gls_test = -(gls_operator*q)
 
     # now compute it in the code
@@ -346,6 +350,7 @@ facts ("----- Testing GLS2 -----") do
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   test_gls(mesh, sbp, eqn ,opts)
 
+
   println("----- Testing GLS2 on isentropic vortex -----")
   # test on isentropic vortex
   include("input_vals_vortex3.jl")
@@ -361,9 +366,10 @@ facts ("----- Testing GLS2 -----") do
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   test_gls(mesh, sbp, eqn ,opts)
 
+
   println("----- Performing GLS2 finite difference checks -----")
   jac_fd = zeros(12, 12)
-  eps_fd = 1e-6
+  eps_fd = 1e-7
   res0 = copy(reshape(eqn.res[:, :, 1], 12))  # use res from previous run
   println("doing finite differences")
   for j=1:3
@@ -409,7 +415,7 @@ facts ("----- Testing GLS2 -----") do
   end
 
   for j=1:12
-    @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=1e-5)
+    @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=1e-5/norm(jac_fd[:, j], Inf))
   end
 
   for j=1:12
@@ -418,7 +424,6 @@ facts ("----- Testing GLS2 -----") do
     println("jac_fd = \n", jac_fd[:, j])
     println("jac diff = \n", jac_c[:,j] - jac_fd[:, j])
   end    
-
 
 
 end  # end facts do block
