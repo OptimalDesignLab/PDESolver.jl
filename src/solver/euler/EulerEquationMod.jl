@@ -392,7 +392,15 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 # Formats of all arrays are documented in SBP.
 # Only the constants are initilized here, the arrays are not.
 
+  # this is the ParamType object that uses the same variables as
+  # the EulerData_ object
   params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
+
+  # we include a ParamType object of all variable types, because occasionally
+  # we need to do a calculation in  variables other than var_type
+  # params (above) typically points to the same object as one of these
+  params_conservative::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}
+  params_entropy::ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
@@ -441,8 +449,22 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
-    eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, 
-                                                             mesh.order)
+    vars_orig = opts["variable_type"]
+    opts["variable_type"] = :conservative
+    eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}(
+                                       sbp, opts, mesh.order)
+    opts["variable_type"] = :entropy
+    eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
+                                       sbp, opts, mesh.order)
+
+    opts["variable_type"] = vars_orig
+    if vars_orig == :conservative
+      eqn.params = eqn.params_conservative
+    elseif vars_orig == :entropy
+      eqn.params = eqn.params_entropy
+    else
+      println(STDERR, "Warning: variable_type not recognized")
+    end
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.multiplyA0inv = matVecA0inv

@@ -271,7 +271,8 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     tau_k = view(tau, :, :, k)
     A_mat_k = view(A_mats, :, :, :, k)
     dxidx_k = view(dxidx_hat, :, :, k)
-    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
+#    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
+    getTau(params, jac[k], tau_k)
   end
 
   return nothing
@@ -366,3 +367,12 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
 #  println("----- Finished getTau -----")
   return nothing
 end  # end function
+
+function getTau{Tres}(params::ParamType, jac, tau::AbstractArray{Tres, 2})
+
+  for i=1:size(tau, 1)
+    tau[i,i] = (sqrt(jac))^(params.order+1)/4800
+  end
+
+
+end
