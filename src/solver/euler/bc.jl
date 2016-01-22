@@ -441,7 +441,7 @@ global const BCDict = Dict{ASCIIString, BCType} (
   This is a high level function.
 """->
 # use this function to populate access the needed values in BCDict
-function getBCFunctors(mesh::PumiMesh, sbp::SBPOperator, eqn::EulerData, opts)
+function getBCFunctors(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
 #  println("Entered getBCFunctors")

@@ -12,7 +12,7 @@
    * mesh :: PumiMesh2
    * u  : vector of values
 """->
-function printSolution(mesh::PumiMesh2, u::AbstractVector)
+function printSolution(mesh::AbstractMesh, u::AbstractVector)
 # print solution to file
 # format = for each element, node, print u rho*u rho*v E
 
@@ -45,7 +45,7 @@ end
   Inputs:
     * mesh :: PumiMesh2
 """->
-function printCoordinates(mesh::PumiMesh2)
+function printCoordinates(mesh::AbstractMesh)
 # print solution to file
 # format = for each element, node, print u rho*u rho*v E
 

@@ -414,7 +414,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 # minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor
-  function EulerData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
+  function EulerData_(mesh::AbstractMesh, sbp::SBPOperator, opts)
 
     println("\nConstruction EulerData object")
     println("  Tsol = ", Tsol)
