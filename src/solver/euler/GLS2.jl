@@ -150,7 +150,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #              println("d2 = ", d2)
 #              println("dxidx = ", dxidx[d2, d1, i])
 #              println("d value = ", Dtranspose[i, j, d2])
-              fac += dxidx[d2, d1, i]*Dtranspose[i, j, d2]
+              fac += dxidx_hat[d2, d1, i]*Dtranspose[i, j, d2]
           end
 
 #          println("fac = ", fac)
