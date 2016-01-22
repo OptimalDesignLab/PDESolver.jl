@@ -41,6 +41,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   qx = zeros(Tres, numDofPerNode, Tdim)  # accumulation vectors
 
   # DEBUGGING
+  
   gls_res = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, 
                   mesh.numEl)
 
@@ -48,6 +49,8 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                   mesh.numEl)
   tau_eval_sum = 0.0
   tau_eval_cnt = 0
+  res_before = copy(eqn.res)
+  
   # calculate D
   for d=1:Tdim
     smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
@@ -58,6 +61,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   for el = 1:mesh.numEl
     # get all the quantities for this element
     dxidx_hat = view(mesh.dxidx, :, :, :, el)
+    jac = view(mesh.jac, :, el)
     aux_vars = view(eqn.aux_vars, :, :, el)
     getGLSVars(eqn.params, eqn.params_conservative, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el), D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
 #=
@@ -72,8 +76,9 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 =#
     for i=1:numNodesPerElement
       res_i = view(eqn.res, :, i, el)
+      #DEBUGGING
       gls_res_i = view(gls_res, :, i, el)
-      gls_full_i = view(gls_res, :, i, el)
+      gls_full_i = view(gls_full, :, i, el)
       for j=1:numNodesPerElement
 
         # zero  out some things
@@ -84,7 +89,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         for d1=1:Tdim  # the x-y coordinate direction
           for d2=1:Tdim  # the xi-eta coordinate direction
             for n=1:numDofPerNode
-              qx[n, d1] += dxidx_hat[d2, d1, j]*qxi[n, j, d2]
+              qx[n, d1] += dxidx[d2, d1, j]*qxi[n, j, d2]
             end
           end
         end
@@ -110,9 +115,11 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         end
         
         #DEBUGGING
+        
         for n=1:numDofPerNode
           gls_res_i[n] += tmp1[n]
         end
+        
 #        println("\n trial space term = \n", tmp1)
         # now multiply by tau
         tau_j = view(taus, :, :, j)
@@ -125,7 +132,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         # parallel
         # multiply by integration weight (from sbp.w) at the same time
         for n=1:numDofPerNode
-          tmp2[n] *= w[j]
+          tmp2[n] *= w[j]*jac[j]
           tmp1[n] = tmp2[n]
         end
 
@@ -150,7 +157,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #              println("d2 = ", d2)
 #              println("dxidx = ", dxidx[d2, d1, i])
 #              println("d value = ", Dtranspose[i, j, d2])
-              fac += dxidx_hat[d2, d1, i]*Dtranspose[i, j, d2]
+              fac += dxidx[d2, d1, i]*Dtranspose[i, j, d2]
           end
 
 #          println("fac = ", fac)
@@ -188,21 +195,26 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end  # end loop over elements
 
   #DEBUGGING
+  
   gls_resvec = zeros(Tsol, mesh.numDof)
   full_resvec = zeros(Tsol, mesh.numDof)
   old_resvec = zeros(Tsol, mesh.numDof)
   assembleSolution(mesh, sbp, eqn, opts, gls_res, gls_resvec)
   assembleSolution(mesh, sbp, eqn, opts, gls_full, full_resvec)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, old_resvec)
+  writedlm("gls_full.dat", real(gls_full))
+  writedlm("gls_fullvec.dat", full_resvec)
+  assembleSolution(mesh, sbp, eqn, opts, res_before, old_resvec)
   gls_norm = calcNorm(eqn, gls_resvec)
-  full_norm = calcNorm(eqn, gls_resvec)
+  full_norm = calcNorm(eqn, full_resvec)
   old_norm = calcNorm(eqn, old_resvec)
   tau_eval_avg = tau_eval_sum/tau_eval_cnt
   rmfile("gls_norm.dat")
+  println("printing gls_norm.dat")
   f = open("gls_norm.dat", "w")
   println(f, gls_norm, " ", old_norm, " ", full_norm, " ", tau_eval_avg)
   close(f)
 #  println("----- Finished applyGLS2 -----")
+  
   return nothing
 
 end  # end function
@@ -312,7 +324,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     q_k = view(q, :, k)
     tau_k = view(tau, :, :, k)
     A_mat_k = view(A_mats, :, :, :, k)
-    dxidx_k = view(dxidx_hat, :, :, k)
+    dxidx_k = view(dxidx, :, :, k)
     getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
 #    getTau(params, jac[k], tau_k)
   end

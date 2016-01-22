@@ -89,7 +89,7 @@ facts ("----- Testing GLS2 -----") do
       return tau
     end
 
-    tau_tilde = getTau_test(eqn.params, eqn.params_conservative, q, dxidx_hat)
+    tau_tilde = getTau_test(eqn.params, eqn.params_conservative, q, dxidx)
 
     function getDtilde(sbp, dir::Integer)
       range_idx = (1:4, 5:8, 9:12)
@@ -191,12 +191,12 @@ facts ("----- Testing GLS2 -----") do
     println("jac_tilde = \n", jac_tilde)
 
     # now compute the whole GLS term
-    weighting_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi + dxidxhat_tilde_21*D_tilde_eta) +
-                     A2tilde*(dxidxhat_tilde_12*D_tilde_xi + dxidxhat_tilde_22*D_tilde_eta)
+    weighting_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) +
+                     A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
 
-    trial_term = A1tilde*(dxidxhat_tilde_11*D_tilde_xi + dxidxhat_tilde_21*D_tilde_eta) + 
-                 A2tilde*(dxidxhat_tilde_12*D_tilde_xi + dxidxhat_tilde_22*D_tilde_eta)
-    gls_operator = weighting_term.'*H_tilde*tau_tilde*trial_term
+    trial_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) + 
+                 A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
+    gls_operator = weighting_term.'*H_tilde*jac_tilde*tau_tilde*trial_term
     @fact isSymmetric(tau_tilde, 1e-10) => true
     println("tau_tilde = \n", tau_tilde)
     @fact isSymmetric(gls_operator, 1e-10) => true
@@ -240,18 +240,18 @@ facts ("----- Testing GLS2 -----") do
         # trial space
         tmp1 = D_tilde_xi[idx_j, :]*q
         tmp2 = D_tilde_eta[idx_j, :]*q
-        tmp3 = dxidxhat_tilde_11[idx_j, idx_j]*tmp1 + dxidxhat_tilde_21[idx_j, idx_j]*tmp2
-        tmp4 = dxidxhat_tilde_12[idx_j, idx_j]*tmp1 + dxidxhat_tilde_22[idx_j, idx_j]*tmp2
+        tmp3 = dxidx_tilde_11[idx_j, idx_j]*tmp1 + dxidx_tilde_21[idx_j, idx_j]*tmp2
+        tmp4 = dxidx_tilde_12[idx_j, idx_j]*tmp1 + dxidx_tilde_22[idx_j, idx_j]*tmp2
         tmp5 = A1tilde[idx_j, idx_j]*tmp3
         tmp6 = A2tilde[idx_j, idx_j]*tmp4
         tmp7 = tmp5 + tmp6
         tmp8 = tau_tilde[idx_j, idx_j]*tmp7
-        tmp9 = H_tilde[idx_j, idx_j]*tmp8
+        tmp9 = H_tilde[idx_j, idx_j]*jac_tilde[idx_j, idx_j]*tmp8
         # weigthing space
         tmp10 = A1tilde[idx_j, idx_j].'*tmp9
         tmp11 = A2tilde[idx_j, idx_j].'*tmp9
-        tmp12 = (dxidxhat_tilde_11[idx_i, idx_i]*D_tilde_xi[idx_j, idx_i] + dxidxhat_tilde_21[idx_i, idx_i]*D_tilde_eta[idx_j, idx_i])
-        tmp13 = (dxidxhat_tilde_12[idx_i, idx_i]*D_tilde_xi[idx_j, idx_i] + dxidxhat_tilde_22[idx_i, idx_i]*D_tilde_eta[idx_j, idx_i])
+        tmp12 = (dxidx_tilde_11[idx_i, idx_i]*D_tilde_xi[idx_j, idx_i] + dxidx_tilde_21[idx_i, idx_i]*D_tilde_eta[idx_j, idx_i])
+        tmp13 = (dxidx_tilde_12[idx_i, idx_i]*D_tilde_xi[idx_j, idx_i] + dxidx_tilde_22[idx_i, idx_i]*D_tilde_eta[idx_j, idx_i])
         tmp14 = tmp12.'*tmp10
         tmp15 = tmp13.'*tmp11
         tmp16 = tmp14 + tmp15
@@ -292,18 +292,18 @@ facts ("----- Testing GLS2 -----") do
     # another check of the block matrix approach
     tmp1 = D_tilde_xi*q
     tmp2 = D_tilde_eta*q
-    tmp3 = dxidxhat_tilde_11*tmp1 + dxidxhat_tilde_21*tmp2
-    tmp4 = dxidxhat_tilde_12*tmp1 + dxidxhat_tilde_22*tmp2
+    tmp3 = dxidx_tilde_11*tmp1 + dxidx_tilde_21*tmp2
+    tmp4 = dxidx_tilde_12*tmp1 + dxidx_tilde_22*tmp2
     tmp5 = A1tilde*tmp3
     tmp6 = A2tilde*tmp4
     tmp7 = tmp5 + tmp6
     tmp8 = tau_tilde*tmp7
-    tmp9 = H_tilde*tmp8
+    tmp9 = H_tilde*jac_tilde*tmp8
     # weigthing space
     tmp10 = A1tilde.'*tmp9
     tmp11 = A2tilde.'*tmp9
-    tmp12 = (dxidxhat_tilde_11*D_tilde_xi + dxidxhat_tilde_21*D_tilde_eta).'*tmp10
-    tmp13 = (dxidxhat_tilde_12*D_tilde_xi + dxidxhat_tilde_22*D_tilde_eta).'*tmp11
+    tmp12 = (dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta).'*tmp10
+    tmp13 = (dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta).'*tmp11
     res_test2 = -(tmp12 + tmp13)
 
     @fact res_test2 => roughly(gls_test, atol=1e-14)
@@ -337,6 +337,7 @@ facts ("----- Testing GLS2 -----") do
   end  # end function test_gls
 
  
+if true
   println("----- Testing GLS2 on steady channel -----")
 #=
   include("input_vals_channel.jl")
@@ -354,7 +355,6 @@ facts ("----- Testing GLS2 -----") do
 =#
 
 
-
   # test on the steady channel case
   include("input_vals_channel.jl")
   arg_dict["solve"] = false
@@ -368,8 +368,8 @@ facts ("----- Testing GLS2 -----") do
   include(STARTUP_PATH)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   test_gls(mesh, sbp, eqn ,opts)
-
-
+end
+if true
   println("----- Testing GLS2 on isentropic vortex -----")
   # test on isentropic vortex
   include("input_vals_vortex3.jl")
@@ -384,8 +384,9 @@ facts ("----- Testing GLS2 -----") do
   include(STARTUP_PATH)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   test_gls(mesh, sbp, eqn ,opts)
+end
 
-
+if true
   println("----- Performing GLS2 finite difference checks -----")
   jac_fd = zeros(12, 12)
   eps_fd = 1e-7
@@ -443,6 +444,6 @@ facts ("----- Testing GLS2 -----") do
     println("jac_fd = \n", jac_fd[:, j])
     println("jac diff = \n", jac_c[:,j] - jac_fd[:, j])
   end    
-
+end
 
 end  # end facts do block
