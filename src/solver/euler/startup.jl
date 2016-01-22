@@ -196,6 +196,10 @@ delta_t = opts["CFL"]*opts["mesh_size"]/wave_speed
 println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
 opts["delta_t"] = delta_t
 
+#DEBUGGING
+if opts["test_GLS2"]
+  calcResidual(mesh, sbp, eqn, opts, evalEuler)
+end
 
 #------------------------------------------------------------------------------
 #=

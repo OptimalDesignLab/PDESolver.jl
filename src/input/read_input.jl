@@ -143,6 +143,8 @@ writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
 get!(arg_dict, "writeq", false)
 
+#DEBUGGING
+get!(arg_dict, "test_GLS2", false)
 # mesh debugging options
 get!(arg_dict, "write_edge_vertnums", false)
 get!(arg_dict, "write_face_vertnums", false)

@@ -33,12 +33,21 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   # hold differentiation matrices D
   D = zeros(Float64, numNodesPerElement, numNodesPerElement, Tdim)
+
   Dtranspose = zeros(D)  # transpose D because we access it in that order
   # temporary vectors 1 through 4, stored in a matrix so they can be
   # access programaticaly
   tmps = zeros(Tres, mesh.numDofPerNode, 2*Tdim)
   qx = zeros(Tres, numDofPerNode, Tdim)  # accumulation vectors
 
+  # DEBUGGING
+  gls_res = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, 
+                  mesh.numEl)
+
+  gls_full = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, 
+                  mesh.numEl)
+  tau_eval_sum = 0.0
+  tau_eval_cnt = 0
   # calculate D
   for d=1:Tdim
     smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
@@ -50,8 +59,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     # get all the quantities for this element
     dxidx_hat = view(mesh.dxidx, :, :, :, el)
     aux_vars = view(eqn.aux_vars, :, :, el)
-    getGLSVars(eqn.params, eqn.params_conservative, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el),
-               D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
+    getGLSVars(eqn.params, eqn.params_conservative, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el), D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
 #=
     if el == 1
       println("q = ", view(eqn.q, :, :, el))
@@ -64,6 +72,8 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 =#
     for i=1:numNodesPerElement
       res_i = view(eqn.res, :, i, el)
+      gls_res_i = view(gls_res, :, i, el)
+      gls_full_i = view(gls_res, :, i, el)
       for j=1:numNodesPerElement
 
         # zero  out some things
@@ -98,7 +108,11 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
             tmp1[n] += tmps[n, d1]
           end
         end
-
+        
+        #DEBUGGING
+        for n=1:numDofPerNode
+          gls_res_i[n] += tmp1[n]
+        end
 #        println("\n trial space term = \n", tmp1)
         # now multiply by tau
         tau_j = view(taus, :, :, j)
@@ -153,6 +167,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
        # now update res
        for d1=(Tdim+1):(2*Tdim)  # loop over the second half of tmps
          @simd for n=1:numDofPerNode
+           gls_full_i[n] -= tmps[n, d1]  # DEBUGGING
            res_i[n] -= tmps[n, d1]
          end
        end
@@ -160,11 +175,33 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 
 
-      end  # end loop over i
-    end  # end loop over j
+      end  # end loop over j
+
+
+      # DEBUGGING
+      Dvals, V = eig(view(taus, :, :, i))
+      tau_eval_sum += real(Dvals[1])
+      tau_eval_cnt += 1
+
+    end  # end loop over i
 
   end  # end loop over elements
 
+  #DEBUGGING
+  gls_resvec = zeros(Tsol, mesh.numDof)
+  full_resvec = zeros(Tsol, mesh.numDof)
+  old_resvec = zeros(Tsol, mesh.numDof)
+  assembleSolution(mesh, sbp, eqn, opts, gls_res, gls_resvec)
+  assembleSolution(mesh, sbp, eqn, opts, gls_full, full_resvec)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, old_resvec)
+  gls_norm = calcNorm(eqn, gls_resvec)
+  full_norm = calcNorm(eqn, gls_resvec)
+  old_norm = calcNorm(eqn, old_resvec)
+  tau_eval_avg = tau_eval_sum/tau_eval_cnt
+  rmfile("gls_norm.dat")
+  f = open("gls_norm.dat", "w")
+  println(f, gls_norm, " ", old_norm, " ", full_norm, " ", tau_eval_avg)
+  close(f)
 #  println("----- Finished applyGLS2 -----")
   return nothing
 
@@ -255,6 +292,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
  
   # get conservative variable flux jacobian 
   q_c = params_c.q_vals
+  fill!(q_c, 0.0)
   for k=1:numNodesPerElement
     q_k = view(q, :, k)
     convertToConservative(params, q_k, q_c)
@@ -305,7 +343,8 @@ end  # end function
 
   Inputs
     params:  a ParamType, var_type can be anything
-    A_mat: a matrix containing the flux jacobians at the node
+    A_mat: a matrix containing the flux jacobians of the conservative variables 
+           at the node
            (numDofPerNode x numDofPerNode) x Tdim
     dxidx: a matrix the mapping jacobian for the node (dxi_i/dx_j), Tdim x Tdim
            This should *not* be scaled by 1/|J|

@@ -173,6 +173,20 @@ facts ("----- Testing GLS2 -----") do
 
     H_tilde = getH(sbp)
 
+    function getJac(jac)
+      jac_tilde = zeros(12, 12)
+
+      range_idx = (1:4, 5:8, 9:12)
+      for i=1:3
+        idx_i = range_idx[i]
+        jac_tilde[idx_i, idx_i] = jac[i]
+      end
+
+      return jac_tilde
+    end
+
+    jac_tilde = getJac(mesh.jac[:, 1])
+
     # now compute the whole GLS term
     weighting_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) +
                      A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
@@ -290,6 +304,21 @@ facts ("----- Testing GLS2 -----") do
     res_test2 = -(tmp12 + tmp13)
 
     @fact res_test2 => roughly(gls_test, atol=1e-14)
+
+
+    # test the mapping jacobian is handled correctly
+    # now compute the whole GLS term
+    weighting_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) +
+                     A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
+
+    trial_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) + 
+                 A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
+    gls_operator = weighting_term.'*H_tilde*jac_tilde*tau_tilde*trial_term
+    res_jactest = gls_operator*q
+    @fact res_jactest => roughly(gls_test, atol=1e-13)
+    println("res_jactest = ", res_jactest)
+    println("gls_test = ", gls_test)
+    println("diff = ", gls_test - res_jactest)
 #    println("block matrix diff = ", gls_test - res_test2)
 #=
     # check the weighting term
@@ -366,7 +395,7 @@ facts ("----- Testing GLS2 -----") do
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   test_gls(mesh, sbp, eqn ,opts)
 
-
+#=
   println("----- Performing GLS2 finite difference checks -----")
   jac_fd = zeros(12, 12)
   eps_fd = 1e-7
@@ -425,5 +454,5 @@ facts ("----- Testing GLS2 -----") do
     println("jac diff = \n", jac_c[:,j] - jac_fd[:, j])
   end    
 
-
+=#
 end  # end facts do block
