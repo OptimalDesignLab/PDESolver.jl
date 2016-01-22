@@ -41,7 +41,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   qx = zeros(Tres, numDofPerNode, Tdim)  # accumulation vectors
 
   # DEBUGGING
-  
+#=  
   gls_res = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, 
                   mesh.numEl)
 
@@ -50,7 +50,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   tau_eval_sum = 0.0
   tau_eval_cnt = 0
   res_before = copy(eqn.res)
-  
+=#  
   # calculate D
   for d=1:Tdim
     smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
@@ -77,8 +77,8 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     for i=1:numNodesPerElement
       res_i = view(eqn.res, :, i, el)
       #DEBUGGING
-      gls_res_i = view(gls_res, :, i, el)
-      gls_full_i = view(gls_full, :, i, el)
+#      gls_res_i = view(gls_res, :, i, el)
+#      gls_full_i = view(gls_full, :, i, el)
       for j=1:numNodesPerElement
 
         # zero  out some things
@@ -115,10 +115,11 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         end
         
         #DEBUGGING
-        
+       #= 
         for n=1:numDofPerNode
           gls_res_i[n] += tmp1[n]
         end
+        =#
         
 #        println("\n trial space term = \n", tmp1)
         # now multiply by tau
@@ -174,7 +175,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
        # now update res
        for d1=(Tdim+1):(2*Tdim)  # loop over the second half of tmps
          @simd for n=1:numDofPerNode
-           gls_full_i[n] -= tmps[n, d1]  # DEBUGGING
+#           gls_full_i[n] -= tmps[n, d1]  # DEBUGGING
            res_i[n] -= tmps[n, d1]
          end
        end
@@ -184,18 +185,18 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
       end  # end loop over j
 
-
+#=
       # DEBUGGING
       Dvals, V = eig(view(taus, :, :, i))
       tau_eval_sum += real(Dvals[1])
       tau_eval_cnt += 1
-
+=#
     end  # end loop over i
 
   end  # end loop over elements
 
   #DEBUGGING
-  
+#=  
   gls_resvec = zeros(Tsol, mesh.numDof)
   full_resvec = zeros(Tsol, mesh.numDof)
   old_resvec = zeros(Tsol, mesh.numDof)
@@ -214,7 +215,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   println(f, gls_norm, " ", old_norm, " ", full_norm, " ", tau_eval_avg)
   close(f)
 #  println("----- Finished applyGLS2 -----")
-  
+=#  
   return nothing
 
 end  # end function
@@ -325,8 +326,8 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     tau_k = view(tau, :, :, k)
     A_mat_k = view(A_mats, :, :, :, k)
     dxidx_k = view(dxidx, :, :, k)
-    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
-#    getTau(params, jac[k], tau_k)
+#    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
+    getTau(params, jac[k], tau_k)
   end
 
   # get entropy variable  flux jacobian 
@@ -440,8 +441,9 @@ end  # end function
 
 function getTau{Tres}(params::ParamType, jac, tau::AbstractArray{Tres, 2})
 
+  fac = 2.0
   for i=1:size(tau, 1)
-    tau[i,i] = (sqrt(jac))^(params.order+1)/4800
+    tau[i,i] = fac*1/(jac^(1/(params.order + 1)))
   end
 
 

@@ -111,12 +111,12 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
 
   eqn.params.t = t  # record t to params
   
-  dataPrep(mesh, sbp, eqn, opts)
-  #println("dataPrep @time printed above")
+  @time dataPrep(mesh, sbp, eqn, opts)
+  println("dataPrep @time printed above")
 
 
-  evalVolumeIntegrals(mesh, sbp, eqn, opts)
-  #println("volume integral @time printed above")
+  @time evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -140,16 +140,16 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
   =#
   #----------------------------------------------------------------------------
 
-  evalBoundaryIntegrals(mesh, sbp, eqn)
-  #println("boundary integral @time printed above")
+  @time evalBoundaryIntegrals(mesh, sbp, eqn)
+  println("boundary integral @time printed above")
 
 
-  addStabilization(mesh, sbp, eqn, opts)
-  #println("edge stabilizing @time printed above")
+  @time addStabilization(mesh, sbp, eqn, opts)
+  println("stabilizing @time printed above")
 
 
   
-  #print("\n")
+  print("\n")
 
   return nothing
 end  # end evalEuler
@@ -490,7 +490,7 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   if opts["use_GLS2"]
-    applyGLS2(mesh, sbp, eqn, opts)
+     applyGLS2(mesh, sbp, eqn, opts)
   end
 
 #  println("==== end of addStabilization ====")
