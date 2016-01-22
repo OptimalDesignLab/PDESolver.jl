@@ -180,7 +180,7 @@ facts ("----- Testing GLS2 -----") do
       for i=1:3
         for j=1:4
           pos = (i-1)*4 + j
-          jac_tilde[pos, pos] = jac[i]
+          jac_tilde[pos, pos] = 1./jac[i]
         end
       end
 

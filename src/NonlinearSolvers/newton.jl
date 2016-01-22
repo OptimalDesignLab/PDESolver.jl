@@ -175,7 +175,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data, func)
   end
 
-  step_fac = 1.0 # step size limiter
+  step_fac = 0.5 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
   Tsol = typeof(eqn.res_vec[1])
   res_0 = zeros(Tjac, m)  # function evaluated at u0
@@ -514,7 +514,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       return nothing
     end
 
-
+#=
     # adjust step size limiter
     if (step_norm < step_norm_1)  # decreasing step size
       step_fac *= 1.2
@@ -531,7 +531,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     if step_norm < 0.001
       step_fac = 1.0
     end
-
+=#
     # update globalization parameters
     if globalize_euler
       updateEuler(newton_data)

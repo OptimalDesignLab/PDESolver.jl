@@ -132,7 +132,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         # parallel
         # multiply by integration weight (from sbp.w) at the same time
         for n=1:numDofPerNode
-          tmp2[n] *= w[j]*jac[j]
+          tmp2[n] *= w[j]/jac[j]
           tmp1[n] = tmp2[n]
         end
 
@@ -209,7 +209,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   old_norm = calcNorm(eqn, old_resvec)
   tau_eval_avg = tau_eval_sum/tau_eval_cnt
   rmfile("gls_norm.dat")
-  println("printing gls_norm.dat")
+#  println("printing gls_norm.dat")
   f = open("gls_norm.dat", "w")
   println(f, gls_norm, " ", old_norm, " ", full_norm, " ", tau_eval_avg)
   close(f)
