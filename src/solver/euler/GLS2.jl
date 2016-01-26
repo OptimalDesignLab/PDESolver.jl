@@ -443,7 +443,7 @@ function getTau{Tres}(params::ParamType, jac, tau::AbstractArray{Tres, 2})
 
   fac = 2.0
   for i=1:size(tau, 1)
-    tau[i,i] = fac*1/(jac^(1/(params.order + 1)))
+    tau[i,i] = fac*1/(jac^(1/2))
   end
 
 

@@ -111,12 +111,12 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
 
   eqn.params.t = t  # record t to params
   
-  @time dataPrep(mesh, sbp, eqn, opts)
-  println("dataPrep @time printed above")
+  dataPrep(mesh, sbp, eqn, opts)
+#  println("dataPrep @time printed above")
 
 
-  @time evalVolumeIntegrals(mesh, sbp, eqn, opts)
-  println("volume integral @time printed above")
+  evalVolumeIntegrals(mesh, sbp, eqn, opts)
+#  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -140,16 +140,16 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
   =#
   #----------------------------------------------------------------------------
 
-  @time evalBoundaryIntegrals(mesh, sbp, eqn)
-  println("boundary integral @time printed above")
+  evalBoundaryIntegrals(mesh, sbp, eqn)
+#  println("boundary integral @time printed above")
 
 
-  @time addStabilization(mesh, sbp, eqn, opts)
-  println("stabilizing @time printed above")
+  addStabilization(mesh, sbp, eqn, opts)
+#  println("stabilizing @time printed above")
 
 
   
-  print("\n")
+#  print("\n")
 
   return nothing
 end  # end evalEuler
@@ -605,6 +605,36 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   
   return nothing
 end
+
+# mid level function (although it doesn't need Tdim)
+function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                         sbp::SBPOperator, eqn::EulerData{Tsol}, opts, 
+                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         zero_resvec=true)
+# arr is the array to be assembled into res_vec
+
+#  println("in assembleSolution")
+
+  if zero_resvec
+    fill!(res_vec, 0.0)
+  end
+
+
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      for k=size(arr, 1)  # loop over dofs on the node
+
+        dofnum_k = mesh.dofs[k, j, i]
+        dofnum_k1 = div(dofnum_k, mesh.numDofPerNode) + 1 # get node number
+
+        res_vec[dofnum_k1] = arr[k,j,i]
+      end
+    end
+  end
+  
+  return nothing
+end
+
 
 
 
