@@ -5,14 +5,16 @@ using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
-export AdvectionData, AdvectionData_, getMass, assembleSolution, disassembleSolution, evalAdvection
+export AdvectionData, AdvectionData_, getMass, assembleSolution, disassembleSolution
+export evalAdvection, init # exported from advectionFunctions.jl
+export ICDict              # exported from ic.jl
 
 # include("advectionFunctions.jl")
 # include("getMass.jl")
 
 
-abstract AbstractAdvectionData{Tsol} <: AbstractSolutionData{Tsol}
-abstract AdvectionData{Tsol, Tdim} <: AbstractAdvectionData{Tsol}
+abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
 
 @doc """
 ### AdvectionEquationMod.AdvectionData_
@@ -24,21 +26,29 @@ abstract AdvectionData{Tsol, Tdim} <: AbstractAdvectionData{Tsol}
 
 """->
 
-type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
+type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
+  t::Float64
   res_type::DataType  # type of res
-  u::Array{Tsol, 3}
+  alpha_x::Array{Tsol, 3}
+  alpha_y::Array{Tsol, 3}
+  q::Array{Tsol, 3}
   res::Array{Tsol, 3}
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi direction
-  res::Array{Tres, 3}  # result of computation
+  res::Array{Tres, 3}      # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
-  u_vec::Array{Tres,1}  # initial condition in vector form
+  q_vec::Array{Tres,1}     # initial condition in vector form
   bndryflux::Array{Tsol, 3}  # boundary flux
-  M::Array{Float64, 2}  # mass matrix
+  M::Array{Float64, 1}       # mass matrix
+  Minv::Array{Float64, 1}    # inverse mass matrix
   disassembleSolution::Function # function u_vec -> eqn.q
-  assembleSolution::Function  # function : eqn.res -> res_vec
+  assembleSolution::Function    # function : eqn.res -> res_vec
+  multiplyA0inv::Function       # multiply an array by inv(A0), where A0
+                                # is the coefficient matrix of the time 
+                                # derivative
+  majorIterationCallback::Function # called before every major (Newton/RK) itr
 
   function AdvectionData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
     println("\nConstruction AdvectionData object")
@@ -47,15 +57,21 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
     println("  Tdim = ", Tdim)
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initilization
+    eqn.t = 0.0
     eqn.res_type = Tres
+    eqn.alpha_x = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.alpha_y = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
-    eqn.M = getMass(sbp, mesh)
-    eqn.u = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.majorIterationCallback = majorIterationCallback
+    eqn.M = calcMassMatrix(mesh, sbp, eqn)
+    eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
+    eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_vec = zeros(Tres, mesh.numDof)
-    eqn.u_vec = zeros(Tres, mesh.numDof)
+    eqn.q_vec = zeros(Tres, mesh.numDof)
     eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
+    eqn.multiplyA0inv = matVecA0inv
 
     return eqn
   end # ends the constructer AdvectionData_
@@ -63,7 +79,10 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tdim}
 end # End type AdvectionData_
 
 include("advectionFunctions.jl")
+include("common_funcs.jl")
 include("boundaryconditions.jl")
+include("bc_solvers.jl")
+include("ic.jl")
 
 @doc """
 ### AdvectionEquationMod.assembleSolution
@@ -78,10 +97,14 @@ include("boundaryconditions.jl")
 
 """->
 
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                                            sbp::SBPOperator, 
-                                            eqn::AdvectionData{Tsol}, opts, 
-                                            arr, res_vec::AbstractArray{Tres,1})
+function assembleSolution{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                          sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                          opts, arr::AbstractArray{Tres,3}, 
+                          res_vec::AbstractArray{Tres,1}, zero_resvec=true)
+
+  if zero_resvec
+    fill!(res_vec, 0.0)
+  end
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -117,16 +140,16 @@ dimension.
 
 """->
 
-function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                               sbp::SBPOperator,
-                                               eqn::AdvectionData{Tsol, Tdim},
-                                               opts, 
-                                               array::AbstractArray{Tsol, 1})
-  # disassemble u_vec into eqn.
+function disassembleSolution{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                            sbp::SBPOperator,eqn::AdvectionData{Tsol, Tres, Tdim},
+                            opts, array1::AbstractArray{Tsol, 3},
+                            array2::AbstractArray{Tres, 1})
+  
+  # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       dofnum_k = mesh.dofs[1, j, i]
-      eqn.u[1, j, i] = array[dofnum_k]
+      array1[1, j, i] = array2[dofnum_k]
     end
   end
 
@@ -135,41 +158,103 @@ function disassembleSolution{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-
 @doc """
-### getMass
+### AdvectionEquationMod.calcMassMatrix
 
-Calculates the masss matrix and given the mesh and SBP operator.
+  This function calculate the mass matrix and returns it.
+  Beause w are using SBP operators, the mass matrix is diagonal, so it is
+  stored in a vector.
 
-**Inputs**
+  Arguments:
+    mesh: AbstractMesh
+    sbp: SBP operator
+    eqn: an implementation of AdvectionData. Does not have to be fully initialized.
 
-*  `operator`: SBP operator
-*  `mesh`    : Mesh object
+  Outputs:
+    M: vector containing mass matrix
 
-**Outputs**
+"""->
+function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                        sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim})
+# calculate the (diagonal) mass matrix as a vector
+# return the vector M
 
-*  `mass_matrix` : Mass matrix
-
-"""-> 
-
-function getMass(sbp::SBPOperator, mesh::PumiMesh2)
-  # assemble mesh
-  numnodes = mesh.numNodes  # number of dofs
-  numdof = numnodes*mesh.numDofPerNode
-  mass_matrix = zeros(numdof, numdof)
+  M = zeros(Tmsh, mesh.numDof)
 
   for i=1:mesh.numEl
-    dofnums_i = getGlobalNodeNumbers(mesh, i)
-    nnodes = size(dofnums_i)[2]  # number of nodes
-    for j=1:nnodes
+    for j=1:sbp.numnodes
       for k=1:mesh.numDofPerNode
-        dofnum_k = dofnums_i[k,j]
-        mass_matrix[dofnum_k, dofnum_k] += sbp.w[j]
+        dofnum_k = mesh.dofs[k,j,i]
+        # multiplication is faster than division, so do the divions here
+        # and then multiply solution vector times M
+        M[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
       end
     end
   end
 
-  return mass_matrix
+  return M
+
+end     # end of calcMassMatrix function
+
+@doc """
+### AdvectionEquationMod.calcMassMatrixInverse
+
+  This function calculates the inverse mass matrix and returns it.
+  Because we use SBP operators, the mass matrix is diagonal, so it is stored
+  in a vector.  mesh.dofs is used to put the components of the inverse
+  mass matrix in the same place as the corresponding values in eqn.res_vec
+
+  Arguments:
+    mesh: AbstractMesh
+    sbp: SBP operator
+    eqn: an implementation of AdvectionData. Does not have to be fully initialized.
+
+  Outputs:
+    Minv: vector containing inverse mass matrix
+
+"""->
+# used by AdvectionData Constructor
+# mid level functions
+function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                                  sbp::SBPOperator, 
+                                                  eqn::AdvectionData{Tsol, Tres, Tdim})
+# calculate the inverse mass matrix so it can be applied to the entire solution vector
+# mass matrix is diagonal, stores in vector eqn.Minv
+
+  Minv = zeros(Tmsh, mesh.numDof)
+
+  for i=1:mesh.numEl
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+        dofnum_k = mesh.dofs[k,j,i]
+        # multiplication is faster than division, so do the divisions here
+        # and then multiply solution vector times Minv
+        Minv[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
+      end
+    end
+  end
+
+  for i=1:mesh.numDof
+    Minv[i] = 1/Minv[i]
+  end
+
+  return Minv
+
+end     # end of calcMassMatrixInverse function
+
+# functions needed to make it compatible with the NonLinearSolvers module
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                     sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                     opts, res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                  sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+                  res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
 end
 
 end # end module
