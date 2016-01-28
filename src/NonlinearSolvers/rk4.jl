@@ -146,6 +146,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
+      flush(f1)
      # put solution into q_vec
 #     fill!(eqn.q_vec, 0.0)
 #     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)

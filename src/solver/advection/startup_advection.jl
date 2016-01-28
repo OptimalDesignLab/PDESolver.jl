@@ -132,7 +132,7 @@ res_vec_exact = deepcopy(q_vec)
 rmfile("IC.dat")
 writedlm("IC.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
-
+writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
 
 #------------------------------------------------------------------------------

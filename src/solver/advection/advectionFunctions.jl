@@ -27,6 +27,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # const eqn.alpha_x = 1.0 
   # const eqn.alpha_y = 1.0 
 
+  eqn.t = t
   eqn.alpha_x = fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
   eqn.alpha_y = fill!(eqn.alpha_y, 1.0) # advection velocity in y direction
   
@@ -70,6 +71,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
                                     alpha_x::AbstractArray{Tsol, 3}, 
                                     alpha_y::AbstractArray{Tsol, 3})
 
+  println("----- Entered evalSCResidual -----")
   dxi_dxq = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2) 
   for i=1:mesh.numEl  # loop over element
     for j=1:mesh.numNodesPerElement
@@ -79,11 +81,22 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
                         mesh.dxidx[2,2,j,i]*alpha_y[1,j,i])*eqn.q[1,j,i]
     end
   end  # end loop over elements
-  
+
+
+  for i=1:mesh.numEl
+    println("for element $i, dxidx = \n", mesh.dxidx[:, :, :, i])
+    println("for element $i, q = \n", eqn.q[:, :, i])
+    for j = 1:Tdim
+      println("flux for element $i direction $j = \n", dxi_dxq[:, :, i, j])
+    end
+  end
+
   for i = 1:Tdim
     weakdifferentiate!(sbp,i,view(dxi_dxq,:,:,:,i), eqn.res, trans = true)
   end
 
+  println("residual = \n", eqn.res)
+  println("----- Finished evalSCResidual -----")
   return nothing
 end  # end function
 
@@ -109,6 +122,8 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                    sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
                    alpha_x::AbstractArray{Tsol, 3}, alpha_y::AbstractArray{Tsol, 3})
 
+  println("----- Entered evalBndry -----")
+  println("bndryfaces = \n", mesh.bndryfaces)
   # get arguments needed for sbp boundaryintegrate!
 
   #=bndry_edges = mesh.bndryfaces
@@ -143,8 +158,11 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
   end
 
+  println("bndryflux = \n", eqn.bndryflux)
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
-  
+  println("after adding boundary component, res = \n", eqn.res)
+
+  println("----- Finished evalBndry -----")
   return nothing
 end # end function evalBndry
 
@@ -168,7 +186,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 #  println("Performing major Iteration Callback")
 
   if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
-    vals = abs(real(eqn.u_vec))  # remove unneded imaginary part
+    vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
