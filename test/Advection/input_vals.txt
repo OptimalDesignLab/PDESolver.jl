@@ -1,0 +1,3 @@
+# this is a comment
+"key1": abc
+"smb_name": another key
