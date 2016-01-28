@@ -70,15 +70,8 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
                                     alpha_x::AbstractArray{Tsol, 3}, 
                                     alpha_y::AbstractArray{Tsol, 3})
 
-	                      
-  ndof = mesh.numDof  # Total number of dofs
-  numEl = mesh.numEl  # Total number of elements
-  # nnodes = mesh.numNodesPerElement # count the number of nodes per element 
-  ub = zeros(mesh.numNodesPerElement) # holds original solution at for an element
-  fluxes = zeros(mesh.numNodesPerElement, 2)  # jacobian term times advection velocity divided
-                             # by jac
-  dxi_dxq = zeros(Tsol, 1, mesh.numNodesPerElement, numEl, 2) 
-  for i=1:numEl  # loop over element
+  dxi_dxq = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2) 
+  for i=1:mesh.numEl  # loop over element
     for j=1:mesh.numNodesPerElement
       dxi_dxq[1,j,i,1] = (mesh.dxidx[1,1,j,i]*alpha_x[1,j,i] + 
                         mesh.dxidx[1,2,j,i]*alpha_y[1,j,i])*eqn.q[1,j,i]

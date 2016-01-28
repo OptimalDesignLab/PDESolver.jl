@@ -83,6 +83,7 @@ eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
 q_vec = eqn.q_vec
 
+
 # Initialize the advection equation
 init(mesh, sbp, eqn, opts)
 

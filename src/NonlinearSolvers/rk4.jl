@@ -41,17 +41,6 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 #function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
-  #=
-  # Storing the initial density value at all the nodes
-  vRho_act = zeros(mesh.numNodes)
-  k = 1
-  for i = 1:mesh.numDofPerNode:length(eqn.q_vec)
-    vRho_act[k] = eqn.q_vec[i]
-    k += 1
-  end
-  println("Actual Density value succesfully extracted")
-  =#
-
   println("\nEntered rk4")
 # res_tol is alternative stopping criteria
 
@@ -281,7 +270,7 @@ end
 
 
 function pde_pre_func(mesh, sbp, eqn, opts)
-
+  
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 end
 

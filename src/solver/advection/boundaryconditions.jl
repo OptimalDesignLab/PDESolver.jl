@@ -67,14 +67,35 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+@doc """
+### AdvectionEquationMod.x5plusy5BC
+
+Calculates q at the boundary which is equal to x^5 + y^5. It is a nodal 
+level function.
+
+**Inputs**
+
+*  `u` : Advection variable (eqn.q)
+*  `alpha_x` & `alpha_y` : velocities in the X & Y directions
+*  `coords` : Nodal coordinates
+*  `dxidx`  : Mapping Jacobian
+*  `nrm`    : SBP face-normal vectors
+*  `bndryflux` : Flux at the boundary
+
+**Outputs**
+
+*  None
+
+"""->
+
 type x5plusy5BC <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::x5plusy5BC, u::AbstractArray{Tsol,1}, 
-              alpha_x::Tsol, alpha_y::Tsol, coords::AbstractArray{Tmsh,1}, 
+              alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1})
-
+  println("Tsol =", Tsol)
   u_bc = 0.0
   calc_x5plusy5(coords, u_bc) # Calculate the actual analytic value of u at the bondary
   RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx, bndryflux)
@@ -82,6 +103,26 @@ function call{Tmsh, Tsol, Tres}(obj::x5plusy5BC, u::AbstractArray{Tsol,1},
   return nothing
 end
 
+@doc """
+### AdvectionEquationMod.x5plusy5BC
+
+Calculates q at the boundary which is equal to exp(x+y). It is a nodal 
+level function.
+
+**Inputs**
+
+*  `u` : Advection variable (eqn.q)
+*  `alpha_x` & `alpha_y` : velocities in the X & Y directions
+*  `coords` : Nodal coordinates
+*  `dxidx`  : Mapping Jacobian
+*  `nrm`    : SBP face-normal vectors
+*  `bndryflux` : Flux at the boundary
+
+**Outputs**
+
+*  None
+
+"""->
 type exp_xplusyBC <: BCType
 end
 
