@@ -23,7 +23,8 @@ function calc_sinwave{Tmsh}(coords::AbstractArray{Tmsh}, t)
   x = coords[1]
   y = coords[2]
 
-  return sin( (x + y)/2 + t)
+  return sin (-x + t)
+#  return sin( (-x + -y)/2 + t)
 end
 
 
