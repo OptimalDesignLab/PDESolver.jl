@@ -48,7 +48,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       k = sbp.facenodes[j, bndry_i.face]
 
       # get components
-      q = view(eqn.q, :, k, bndry_i.element)
+      q = view(eqn.q, 1, k, bndry_i.element)
       alpha_x = view(eqn.alpha_x, 1, k, bndry_i.element)
       alpha_y = view(eqn.alpha_y, 1, k, bndry_i.element)
       # flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
@@ -57,7 +57,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = view(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
-      bndryflux_i = view(bndryflux, :, j, i)
+      bndryflux_i = view(bndryflux, 1, j, i)
 
       # functor(u, flux_parametric, aux_vars, coords, dxidx, nrm, bndryflux_i, eqn.params)
       functor(q, alpha_x, alpha_y, coords, dxidx, nrm, bndryflux_i)
@@ -91,13 +91,12 @@ level function.
 type x5plusy5BC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::x5plusy5BC, u::AbstractArray{Tsol,1}, 
+function call{Tmsh, Tsol, Tres}(obj::x5plusy5BC, u::Tsol, 
               alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-              bndryflux::AbstractArray{Tres, 1})
-  println("Tsol =", Tsol)
-  u_bc = 0.0
-  calc_x5plusy5(coords, u_bc) # Calculate the actual analytic value of u at the bondary
+              bndryflux::Tres)
+
+  u_bc = calc_x5plusy5(coords) # Calculate the actual analytic value of u at the bondary
   RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx, bndryflux)
 
   return nothing
@@ -126,13 +125,12 @@ level function.
 type exp_xplusyBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::exp_xplusyBC, u::AbstractArray{Tsol,1}, 
-              alpha_x::Tsol, alpha_y::Tsol, coords::AbstractArray{Tmsh,1}, 
+function call{Tmsh, Tsol, Tres}(obj::x5plusy5BC, u::Tsol, 
+              alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-              bndryflux::AbstractArray{Tres, 1})
+              bndryflux::Tres)
 
-  u_bc = 0.0
-  calc_exp_xplusy(coords, u_bc)
+  u_bc = calc_exp_xplusy(coords)
   RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx, bndryflux)
 
   return nothing
