@@ -12,6 +12,7 @@ using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument

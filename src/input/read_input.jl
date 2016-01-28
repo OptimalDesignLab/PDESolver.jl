@@ -80,6 +80,7 @@ get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
 get!(arg_dict, "use_GLS", false)
 get!(arg_dict, "use_GLS2", false)
+get!(arg_dict, "tau_type", 1)
 
 # preconditioning stabilization options
 # non-logical values are shared between regular, preconditioned run

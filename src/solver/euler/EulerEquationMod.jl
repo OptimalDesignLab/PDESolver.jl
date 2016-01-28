@@ -75,6 +75,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
   A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
 
+  A_mats::Array{Tsol, 3}  # reusable storage for flux jacobians
+
   Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
   Rmat2::Array{Tres, 2}
 
@@ -104,6 +106,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   use_dissipation::Bool  # use artificial dissipation
   dissipation_const::Float64  # constant used for dissipation filter matrix
 
+  tau_type::Int  # type of tau to use for GLS stabilization
 
   vortex_x0::Float64  # vortex center x coordinate at t=0
   vortex_strength::Float64  # strength of the vortex
@@ -130,6 +133,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     A0inv = zeros(Tsol, 4, 4)
     A1 = zeros(Tsol, 4, 4)
     A2 = zeros(Tsol, 4, 4)
+    A_mats = zeros(Tsol, 4, 4, Tdim)
 
     Rmat1 = zeros(Tres, 4, 4)
     Rmat2 = zeros(Tres, 4, 4)
@@ -173,6 +177,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
     dissipation_const = opts["dissipation_const"]
 
+    tau_type = opts["tau_type"]
+
     vortex_x0 = opts["vortex_x0"]
     vortex_strength = opts["vortex_strength"]
 
@@ -180,11 +186,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
     return new(t, order, q_vals, qg, v_vals, res_vals1, res_vals2, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, Rmat1, Rmat2, cv, R, gamma, gamma_1, Ma, Re, aoa, 
+               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, cv, R, 
+               gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
-               use_dissipation, dissipation_const, vortex_x0, vortex_strength, 
+               use_dissipation, dissipation_const, tau_type, vortex_x0, 
+               vortex_strength, 
                krylov_itr, krylov_type)
 
     end   # end of ParamType function

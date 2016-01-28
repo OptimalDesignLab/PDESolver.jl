@@ -23,6 +23,17 @@ function absvalue(x)   # general fallback method
   return abs(x)
 end
 
+# array method
+function absvalue{T}(x::AbstractArray{T})
+
+  x2 = copy(x)
+  for i=1:length(x)
+    x2[i] = absvalue(x[i])
+  end
+
+  return x2
+end
+
 import Base.isless
 
 @doc """

@@ -57,8 +57,8 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     Dtranspose[:, :, d] = D[:, :, d].'
   end
 
-  
-  for el = 1:mesh.numEl
+   for el =1:1  #DEBUGGING 
+#  for el = 1:mesh.numEl
     # get all the quantities for this element
     dxidx_hat = view(mesh.dxidx, :, :, :, el)
     jac = view(mesh.jac, :, el)
@@ -268,6 +268,15 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
                     dxidx::AbstractArray{Tmsh, 3}, 
                     tau::AbstractArray{Tres, 3})
 
+
+  # who cares about performance?
+  tau_type = params.tau_type
+  gls1 = true
+  gls2 = false
+  gls3 = false
+
+
+
 #  println("----- Entered getGLSVars -----")
 
   numNodesPerElement = size(q, 2)
@@ -304,21 +313,45 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
  
   # get conservative variable flux jacobian 
-  q_c = params_c.q_vals
-  fill!(q_c, 0.0)
-  for k=1:numNodesPerElement
-    q_k = view(q, :, k)
-    convertToConservative(params, q_k, q_c)
-    A1_k = view(A_mats, :, :, 1, k)
-    calcA1(params_c, q_c, A1_k)
-    A2_k = view(A_mats, :, :, 2, k)
-    calcA2(params_c, q_c, A2_k)
+  if tau_type == 1
+#    println("getting conservative variable flux jacobians")
+    q_c = params_c.q_vals
+    fill!(q_c, 0.0)
+    for k=1:numNodesPerElement
+      q_k = view(q, :, k)
+      convertToConservative(params, q_k, q_c)
+      A1_k = view(A_mats, :, :, 1, k)
+      calcA1(params_c, q_c, A1_k)
+      A2_k = view(A_mats, :, :, 2, k)
+      calcA2(params_c, q_c, A2_k)
 
-    if Tdim == 3  # three cheers for static analysis
-      A3_k = view(A_mats, :, :, 3, k)
-      calcA3(params_c, q_c, A3_k)
+      if Tdim == 3  # three cheers for static analysis
+        A3_k = view(A_mats, :, :, 3, k)
+        calcA3(params_c, q_c, A3_k)
+      end
+    end
+  else
+#    println("getting entropy variable flux jacobians")
+    # get entropy variable  flux jacobian 
+    for k=1:numNodesPerElement
+      q_k = view(q, :, k)
+#      println("q_k code = ", q_k)
+      A1_k = view(A_mats, :, :, 1, k)
+      calcA1(params, q_k, A1_k)
+#      println("A1 code = \n", A1_k)
+      A2_k = view(A_mats, :, :, 2, k)
+      calcA2(params, q_k, A2_k)
+#      println("A2 code = \n", A2_k)
+
+      if Tdim == 3  # three cheers for static analysis
+        A3_k = view(A_mats, :, :, 3, k)
+        calcA3(params, q_k, A3_k)
+      end
     end
   end
+
+
+
 
   # get tau for each node - using conservative variable flux jacobian
   for k=1:numNodesPerElement
@@ -326,24 +359,42 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     tau_k = view(tau, :, :, k)
     A_mat_k = view(A_mats, :, :, :, k)
     dxidx_k = view(dxidx, :, :, k)
-#    getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
-    getTau(params, jac[k], tau_k)
+
+    # dance branch prediction, dance
+    if tau_type == 1
+     getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
+    elseif tau_type == 2
+      getTau(params, jac[k], tau_k)
+    elseif tau_type == 3
+      p = 1
+#      println("\n arguments passed to getTau from applyGLS2:")
+#      println("q_k = ", q_k)
+#      println("A_mat_k = \n", A_mat_k)
+#      println("dxidx_k = \n", dxidx_k)
+#      println("p_val = ", p)
+#      println("tau_k = \n", tau_k)
+      getTau(params, q_k, A_mat_k, dxidx_k, p, tau_k)
+    else
+      println(STDERR, "Warning: unsupported Tau requested for GLS")
+    end
+
   end
 
-  # get entropy variable  flux jacobian 
-  for k=1:numNodesPerElement
-    q_k = view(q, :, k)
-    A1_k = view(A_mats, :, :, 1, k)
-    calcA1(params, q_k, A1_k)
-    A2_k = view(A_mats, :, :, 2, k)
-    calcA2(params, q_k, A2_k)
+  if tau_type == 1
+    # get entropy variable  flux jacobian 
+    for k=1:numNodesPerElement
+      q_k = view(q, :, k)
+      A1_k = view(A_mats, :, :, 1, k)
+      calcA1(params, q_k, A1_k)
+      A2_k = view(A_mats, :, :, 2, k)
+      calcA2(params, q_k, A2_k)
 
-    if Tdim == 3  # three cheers for static analysis
-      A3_k = view(A_mats, :, :, 3, k)
-      calcA3(params, q_k, A3_k)
+      if Tdim == 3  # three cheers for static analysis
+        A3_k = view(A_mats, :, :, 3, k)
+        calcA3(params, q_k, A3_k)
+      end
     end
   end
-
 
   return nothing
 end  # end function
@@ -369,7 +420,7 @@ end  # end function
 """->
 function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
                 params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
-                q::AbstractArray{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
+                q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
                 dxidx::AbstractArray{Tmsh, 2}, tau::AbstractArray{Tres, 2})
 
 #  println("----- Entered getTau -----")
@@ -439,7 +490,7 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
   return nothing
 end  # end function
 
-function getTau{Tres}(params::ParamType, jac, tau::AbstractArray{Tres, 2})
+function getTau{Tres}(params::ParamType, jac::Number, tau::AbstractArray{Tres, 2})
 
   fac = 2.0
   for i=1:size(tau, 1)
@@ -448,3 +499,98 @@ function getTau{Tres}(params::ParamType, jac, tau::AbstractArray{Tres, 2})
 
 
 end
+
+# not sure if this works with conservative variables
+# A_mats must be the entropy variable flux jacobians
+function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy}, 
+                q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
+                dxidx::AbstractArray{Tmsh, 2}, p::Integer, tau::AbstractArray{Tres, 2})
+#  println("----- Enetered getTau -----")
+
+  B_d = params.Rmat1  # storeage for B_i
+  B_p = params.Rmat2  # storage for the accumulation of the B_ia
+  fill!(B_p, 0.0)
+  A_mat_hat = params.A_mats
+  A0 = params.A0
+  calcA0(params, q, A0)
+  L = chol(A0)' # is the hermitian transpose right here?
+
+  Linv = full(inv(L))  # convert to full matrices because I think it is more
+                       # efficient for small matrices
+
+  # calculate the A_i hats = inv(L)*flux_jacobian_i*inv(L).'
+  tmp_mat = params.A1
+  for d1=1:Tdim
+    A_hat_d1 = view(A_mat_hat, :, :, d1)
+    A_d1 = view(A_mat, :, :, d1)
+    smallmatmat!(Linv, A_d1, tmp_mat)
+    smallmatmatT!(tmp_mat, Linv, A_hat_d1)
+  end
+
+#  println("A_mat_hat = \n", A_mat_hat)
+
+  for d1=1:Tdim  # loop over B_d
+    fill!(B_d, 0.0)
+
+    for d2=1:Tdim  # summed index dxi_d1/dx_d2 A_d2
+      A_hat_d2 = view(A_mat_hat, :, :, d2)
+      dxidx_d2 = dxidx[d1, d2]
+      # accumulate into B_d
+      for i=1:size(B_d, 1)
+        for j=1:size(B_d, 2)
+          B_d[i, j] += dxidx_d2*A_hat_d2[i, j]
+        end
+      end
+
+    end  # end loop d2
+
+ #   println("before make_symmetric, symmetry norm = ", vecnorm(B_d - B_d.'))
+    make_symmetric!(B_d)  # make sure it is symmetric so we get real eigenvalues
+                          # when using real variables
+
+#    println("B$d1 = \n", B_d)
+    D, V = eig(B_d)
+#    println("D$d1 = \n", D)
+#    println("V$d1 = \n", V)
+#    println("p = ", p)
+ #   println("before update, B_p = \n", B_p)
+    # take absolute value, raise to  power p while accumulating into B_p
+    for k=1:length(D)  # for each eigenvalue, do  outer product
+      v_k = view(V, :, k)
+      val_k = absvalue(D[k])^p
+      for i=1:size(B_p, 1)
+        for j=1:size(B_p, 2)
+          B_p[i, j] += val_k*v_k[i]*v_k[j]
+        end
+      end
+    end
+
+#    println("after adding b$d1, B_p = \n", B_p)
+
+  end  # end loop d1
+
+#  println("B_p = \n", B_p)
+  D2, V2 = eig(B_p)
+
+  # now calculate tau: invert and take the pth root of D_p at the same time
+  fill!(tau, 0.0)
+  for k=1:length(D2)
+    v_k = view(V2, :, k)
+    val_k = D2[k]^(-1/p)
+    for i=1:size(B_p, 1)
+      for j=1:size(B_p, 2)
+        tau[i, j] += val_k*v_k[i]*v_k[j]
+      end
+    end
+  end
+
+#  println("tau = \n", tau)
+
+#  println("----- finished getTau -----")
+  return nothing
+end
+ 
+
+
+
+

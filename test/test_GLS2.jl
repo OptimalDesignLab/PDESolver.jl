@@ -12,7 +12,7 @@ using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
-
+include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 
 
@@ -37,60 +37,158 @@ facts ("----- Testing GLS2 -----") do
       dxidx[:, :, i] = dxidx[:, :, i]*jac[i]
     end
 
-    function getTau_test(params, params_c, q, dxidx)
-      A1 = zeros(Tsol, 4,4)
-      A2 = zeros(Tsol, 4,4)
-      A0inv = zeros(Tsol, 4,4)
+    println("q = \n", q)
+    function getTau_test(params, params_c, q, dxidx, jac)
+
       tau = zeros(Tres, 12, 12)
       range_idx = (1:4, 5:8, 9:12)
-      for i=1:3
-        println("i = ", i)
-        idx_i = range_idx[i]
-        tau_i = zeros(Tres, 4,4)
-        q_i = q[idx_i]
-        q_i_c = zeros(q_i)
-        EulerEquationMod.convertToConservative_(params, q_i, q_i_c)
-        dxidx_i = dxidx[:, :, i] 
-        EulerEquationMod.calcA1(params_c, q_i_c, A1)
-        EulerEquationMod.calcA2(params_c, q_i_c, A2)
+      if params.tau_type == 1
+        A1 = zeros(Tsol, 4,4)
+        A2 = zeros(Tsol, 4,4)
+        A0inv = zeros(Tsol, 4,4)
+        for i=1:3
+          println("i = ", i)
+          idx_i = range_idx[i]
+          tau_i = zeros(Tres, 4,4)
+          q_i = q[idx_i]
+          q_i_c = zeros(q_i)
+          EulerEquationMod.convertToConservative_(params, q_i, q_i_c)
+          dxidx_i = dxidx[:, :, i] 
+          EulerEquationMod.calcA1(params_c, q_i_c, A1)
+          EulerEquationMod.calcA2(params_c, q_i_c, A2)
 
-        tau_i[:, :] += (dxidx_i[1, 1]*dxidx_i[1, 1] + dxidx[2, 1]*dxidx[2, 1])*A1*A1
+          tau_i[:, :] += (dxidx_i[1, 1]*dxidx_i[1, 1] + dxidx[2, 1]*dxidx[2, 1])*A1*A1
+          
+          tau_i[:, :] += (dxidx_i[1, 1]*dxidx_i[1, 2] + dxidx[2, 1]*dxidx[2, 2])*A1*A2
+
+          tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 1] + dxidx[2, 2]*dxidx[2, 1])*A2*A1
+
+          tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 2] + dxidx[2, 2]*dxidx[2, 2])*A2*A2
+
+
+          EulerEquationMod.calcA0Inv(params, q_i, A0inv)
+          @fact isSymmetric(A0inv) => true
+          D, V = eig(tau_i)
+          D2 = diagm(D.^(-0.5))
+          new_tau = V*D2*inv(V)
+          new_tau2 = A0inv*new_tau
+          tau[idx_i, idx_i] = real(new_tau2)
+          @fact isSymmetric(new_tau2, 1e-10) => true
+
+          # check agains the tau calculation in EulerEquationMod
+          A_mat = zeros(Tsol, 4,4,2)
+          A_mat[:, :, 1] = A1
+          A_mat[:, :, 2] = A2
+
+
+          tau_old = zeros(Tres, 4, 4)
+          EulerEquationMod.getTau(params, q_i, A_mat, dxidx_i, tau_old)
+          @fact isSymmetric(tau_old, 1e-10) => true
+#          println("\ntau_test = ", new_tau2)
+#          println("\ntau_code = ", tau_old)
+          @fact tau_old => roughly(new_tau2, atol=1e-14)
+        end
+      elseif params.tau_type == 2
+        println("jac = ", jac)
+        fac = 2.0
+        for i=1:3
+          jac_i = jac[i]
+          tau_i = zeros(Tres, 4,4 )
+          idx_i = range_idx[i]
+          for j=1:4
+            tau_i[j, j] = fac*1/(jac_i^(0.5))
+          end
         
-        tau_i[:, :] += (dxidx_i[1, 1]*dxidx_i[1, 2] + dxidx[2, 1]*dxidx[2, 2])*A1*A2
+          tau_code = zeros(Tres, 4,4)
+          EulerEquationMod.getTau(params, jac_i, tau_code)
+          println("tau_test = \n", tau_i)
+          println("tau_code = \n", tau_code)
+          @fact tau_code => roughly(tau_i, atol=1e-14)
 
-        tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 1] + dxidx[2, 2]*dxidx[2, 1])*A2*A1
+          tau[idx_i, idx_i] = tau_i
+        end
 
-        tau_i[:, :] += (dxidx_i[1, 2]*dxidx_i[1, 2] + dxidx[2, 2]*dxidx[2, 2])*A2*A2
+      elseif params.tau_type == 3
+        for i=1:3
+          dxidx_i = view(dxidx, :, :, i)
+          println("dxidx_i = ", dxidx_i)
+          tau_i = zeros(Tres, 4, 4)
+          p_val = 2
+          idx_i = range_idx[i]
+          q_i = q[idx_i]
+          A0_i = zeros(Tsol, 4,4)
+          EulerEquationMod.calcA0(params, q_i, A0_i)
+          L = chol(A0_i)'
+          Lt = L.'
+          A1 = zeros(Tsol, 4,4)
+          A2 = zeros(Tsol, 4,4)
+          println("q_i testing = ", q_i)
+          EulerEquationMod.calcA1(params, q_i, A1)
+          EulerEquationMod.calcA2(params, q_i, A2)
+          println("A1 testing = \n", A1)
+          println("A2 testing = \n", A2)
+          A1hat = inv(L)*A1*inv(Lt)
+          A2hat = inv(L)*A2*inv(Lt)
+          println("A1hat = \n", A1hat)
+          println("A2hat = \n", A2hat)
 
+          B1 = dxidx_i[1,1]*A1hat + dxidx_i[1,2]*A2hat
+          B2 = dxidx_i[2,1]*A1hat + dxidx_i[2,2]*A2hat
 
-        EulerEquationMod.calcA0Inv(params, q_i, A0inv)
-        @fact isSymmetric(A0inv) => true
-        D, V = eig(tau_i)
-        D2 = diagm(D.^(-0.5))
-        new_tau = V*D2*inv(V)
-        new_tau2 = A0inv*new_tau
-        tau[idx_i, idx_i] = real(new_tau2)
-        @fact isSymmetric(new_tau2, 1e-10) => true
+          println("p = ", p_val)
+#          println("symmetry norm = ", vecnorm(B1 - B1.'))
+          make_symmetric!(B1)
+          println("B1 = \n", B1)
 
-        # check agains the tau calculation in EulerEquationMod
-        A_mat = zeros(Tsol, 4,4,2)
-        A_mat[:, :, 1] = A1
-        A_mat[:, :, 2] = A2
+          D, V = eig(B1)
+          println("D = \n", D)
+          println("V = \n", V)
 
+#          println("symmetry norm = ", vecnorm(B2 - B2.'))
+          make_symmetric!(B2)
+          println("B2 = \n", B2)
+          D2, V2 = eig(B2)
+          B_acc = V*diagm(absvalue(D).^p_val)*V.'
+          println("B_p 1 = \n", B_acc)
+          println("D2 = \n", D2)
+          println("V2 = \n", V2)
+          B_acc[:, :] += V2*diagm(absvalue(D2).^p_val)*V2.'
 
-        tau_old = zeros(Tres, 4, 4)
-        EulerEquationMod.getTau(params, q_i, A_mat, dxidx_i, tau_old)
-        @fact isSymmetric(tau_old, 1e-10) => true
-        println("\ntau_test = ", new_tau2)
-        println("\ntau_code = ", tau_old)
-        @fact tau_old => roughly(new_tau2, atol=1e-14)
-      end
+          println("Bp 2 = \n", B_acc)
+ 
+          D3, V3 = eig(B_acc)
+          D3p = D3.^(1/p_val)
+          D3pinv = D3p.^(-1)
+          tau_i[:, :] = V3*diagm(D3pinv)*V3.'
 
+          A_mat = zeros(Tsol, 4, 4, 2)
+          A_mat[:, :, 1] = A1
+          A_mat[:, :, 2] = A2
+
+          tau_code = zeros(Tres, 4, 4)
+          println("\narguments passed to getTau for testing:")
+          println("q_i = ", q_i)
+          println("A_mat = \n", A_mat)
+          println("dxidx = \n", dxidx_i)
+          println("p_val = ", p_val)
+          println("tau_code = \n", tau_code)
+          EulerEquationMod.getTau(params, q_i, A_mat, dxidx_i, p_val, tau_code)
+
+          println("tau_code = \n", tau_code)
+          println("tau_i = \n", tau_i)
+          println("diff = \n", tau_code - tau_i)
+          @fact tau_code => roughly(tau_i, atol=1e-14)
+
+          tau[idx_i, idx_i] = tau_i
+        end  # end loop
+      end  # end conditional
+
+            
       return tau
     end
 
-    tau_tilde = getTau_test(eqn.params, eqn.params_conservative, q, dxidx)
-
+    tau_tilde = getTau_test(eqn.params, eqn.params_conservative, q, dxidx, jac)
+    println("tau_tilde = \n", tau_tilde)
     function getDtilde(sbp, dir::Integer)
       range_idx = (1:4, 5:8, 9:12)
       D = inv(diagm(sbp.w))*sbp.Q[:, :, dir]
@@ -188,7 +286,7 @@ facts ("----- Testing GLS2 -----") do
     end
 
     jac_tilde = getJac(mesh.jac[:, 1])
-    println("jac_tilde = \n", jac_tilde)
+#    println("jac_tilde = \n", jac_tilde)
 
     # now compute the whole GLS term
     weighting_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) +
@@ -198,20 +296,23 @@ facts ("----- Testing GLS2 -----") do
                  A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
     gls_operator = weighting_term.'*H_tilde*jac_tilde*tau_tilde*trial_term
     @fact isSymmetric(tau_tilde, 1e-10) => true
-    println("tau_tilde = \n", tau_tilde)
+#    println("tau_tilde = \n", tau_tilde)
     @fact isSymmetric(gls_operator, 1e-10) => true
     gls_test = -(gls_operator*q)
 
     # now compute it in the code
     print("\n\n")
     fill!(eqn.res, 0.0)
+    println("----- applying GLS2 -----")
     EulerEquationMod.applyGLS2(mesh, sbp, eqn, opts)
+    println("----- finished applying GLS2 -----")
     gls_code = reshape(eqn.res[:, :, 1], 12)
-#=
+
     println("gls_test = ", gls_test)
     println("gls_code = ", gls_code)
-=#
-    @fact gls_code => roughly(gls_test, atol=1e-14)
+    println("diff = \n", gls_code - gls_test)
+
+    @fact gls_code => roughly(gls_test, atol=1e-13)
 #    println("gls_code - gls_test = ", gls_code - gls_test)
 #    print("\n\n")
 #=
@@ -286,7 +387,7 @@ facts ("----- Testing GLS2 -----") do
       end
     end
 
-    @fact res_test => roughly(gls_test, atol=1e-14)
+    @fact res_test => roughly(gls_test, atol=1e-13)
 #    println("diff = ", gls_test - res_test)
 
     # another check of the block matrix approach
@@ -306,7 +407,7 @@ facts ("----- Testing GLS2 -----") do
     tmp13 = (dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta).'*tmp11
     res_test2 = -(tmp12 + tmp13)
 
-    @fact res_test2 => roughly(gls_test, atol=1e-14)
+    @fact res_test2 => roughly(gls_test, atol=1e-13)
 
 
 #    println("block matrix diff = ", gls_test - res_test2)
@@ -336,114 +437,128 @@ facts ("----- Testing GLS2 -----") do
     return gls_test, gls_code
   end  # end function test_gls
 
- 
+#for p=1:3
+p = 3
 if true
-  println("----- Testing GLS2 on steady channel -----")
+  println("----- Testing GLS2 p$p on steady channel -----")
+  #=
+    include("input_vals_channel.jl")
+    arg_dict["solve"] = false
+    arg_dict["variable_type"] = :entropy
+    f = open("input_vals_channel_gls.jl", "w")
+    println(f, arg_dict)
+    close(f)
+
+    resize!(ARGS, 1)
+    ARGS[1] = "input_vals_channel_gls.jl"
+    include(STARTUP_PATH)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  =#
+
+
+    # test on the steady channel case
+    include("input_vals_channel.jl")
+    arg_dict["solve"] = false
+    arg_dict["variable_type"] = :entropy
+    f = open("input_vals_channel_gls.jl", "w")
+    println(f, arg_dict)
+    close(f)
+
+    resize!(ARGS, 1)
+    ARGS[1] = "input_vals_channel_gls.jl"
+    include(STARTUP_PATH)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    eqn.params.tau_type = p
+
+    test_gls(mesh, sbp, eqn ,opts)
+#  end
+end
+if true
+    println("----- Testing GLS2 p$p on isentropic vortex -----")
+    # test on isentropic vortex
+    include("input_vals_vortex3.jl")
+    arg_dict["solve"] = false
+    arg_dict["variable_type"] = :entropy
+    f = open("input_vals_vortex3_gls.jl", "w")
+    println(f, arg_dict)
+    close(f)
+
+    resize!(ARGS, 1)
+    ARGS[1] = "input_vals_vortex3_gls.jl"
+    include(STARTUP_PATH)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    eqn.params.tau_type = p
+    test_gls(mesh, sbp, eqn ,opts)
+end
+
+if true
+    println("----- Performing GLS2 p$p finite difference checks -----")
+    ARGS[1] = "input_vals_vortex3_gls.jl"
+    include(STARTUP_PATH)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    eqn.params.tau_type = p
+    test_gls(mesh, sbp, eqn, opts)
+    jac_fd = zeros(12, 12)
+    eps_fd = 1e-7
+    res0 = copy(reshape(eqn.res[:, :, 1], 12))  # use res from previous run
+    println("doing finite differences")
+    for j=1:3
+      for i=1:4
+        pos = (j-1)*4 + i
+        println("pos = ", pos)
+        eqn.q[i, j, 1] += eps_fd
+        test_gls(mesh, sbp, eqn, opts)
+        res_ij = copy(reshape(eqn.res[:, :, 1], 12))
+        jac_fd[:, pos] = (res_ij - res0)/eps_fd
+        eqn.q[i, j, 1] -= eps_fd  # undo perturbation
+      end
+    end
+
+    # now do complex step
+
+    println("doing complex step")
+    println("typeof(q_vec) = ", typeof(q_vec))
+    arg_dict["run_type"] = 5
+    f = open("input_vals_vortex3c_gls.jl", "w")
+    println(f, arg_dict)
+    close(f)
+    ARGS[1] = "input_vals_vortex3c_gls.jl"
+    include(STARTUP_PATH)
+
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    eqn.params.tau_type = p
+    println("typeof(q_vec) = ", typeof(q_vec))
+
+    eps_c = 1e-20
+    jac_c = zeros(12, 12)
+    println("typeof(eqn) = ", typeof(eqn))
+    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
+    for j=1:3
+      for i=1:4
+        pos = (j-1)*4 + i
+        println("pos = ", pos)
+        eqn.q[i, j, 1] += complex(0, eps_c)
+        test_gls(mesh, sbp, eqn, opts)
+        res_ij = copy(reshape(eqn.res[:, :, 1], 12))
+        jac_c[:, pos] = imag(res_ij)/eps_c
+        eqn.q[i, j, 1] -= complex(0, eps_c)  # undo perturbatino
+      end
+    end
+
+    for j=1:12
+      @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=1e-5/norm(jac_fd[:, j], Inf))
+    end
+
 #=
-  include("input_vals_channel.jl")
-  arg_dict["solve"] = false
-  arg_dict["variable_type"] = :entropy
-  f = open("input_vals_channel_gls.jl", "w")
-  println(f, arg_dict)
-  close(f)
-
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_channel_gls.jl"
-  include(STARTUP_PATH)
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
+    for j=1:12
+      println("column $j")
+      println("jac_c = \n", jac_c[:, j])
+      println("jac_fd = \n", jac_fd[:, j])
+      println("jac diff = \n", jac_c[:,j] - jac_fd[:, j])
+    end    
 =#
-
-
-  # test on the steady channel case
-  include("input_vals_channel.jl")
-  arg_dict["solve"] = false
-  arg_dict["variable_type"] = :entropy
-  f = open("input_vals_channel_gls.jl", "w")
-  println(f, arg_dict)
-  close(f)
-
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_channel_gls.jl"
-  include(STARTUP_PATH)
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  test_gls(mesh, sbp, eqn ,opts)
-end
-if true
-  println("----- Testing GLS2 on isentropic vortex -----")
-  # test on isentropic vortex
-  include("input_vals_vortex3.jl")
-  arg_dict["solve"] = false
-  arg_dict["variable_type"] = :entropy
-  f = open("input_vals_vortex3_gls.jl", "w")
-  println(f, arg_dict)
-  close(f)
-
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_vortex3_gls.jl"
-  include(STARTUP_PATH)
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  test_gls(mesh, sbp, eqn ,opts)
-end
-
-if true
-  println("----- Performing GLS2 finite difference checks -----")
-  jac_fd = zeros(12, 12)
-  eps_fd = 1e-7
-  res0 = copy(reshape(eqn.res[:, :, 1], 12))  # use res from previous run
-  println("doing finite differences")
-  for j=1:3
-    for i=1:4
-      pos = (j-1)*4 + i
-      println("pos = ", pos)
-      eqn.q[i, j, 1] += eps_fd
-      test_gls(mesh, sbp, eqn, opts)
-      res_ij = copy(reshape(eqn.res[:, :, 1], 12))
-      jac_fd[:, pos] = (res_ij - res0)/eps_fd
-      eqn.q[i, j, 1] -= eps_fd  # undo perturbatino
-    end
-  end
-
-  # now do complex step
-
-  println("doing complex step")
-  println("typeof(q_vec) = ", typeof(q_vec))
-  arg_dict["run_type"] = 5
-  f = open("input_vals_vortex3c_gls.jl", "w")
-  println(f, arg_dict)
-  close(f)
-  ARGS[1] = "input_vals_vortex3c_gls.jl"
-  include(STARTUP_PATH)
-
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  println("typeof(q_vec) = ", typeof(q_vec))
-
-  eps_c = 1e-20
-  jac_c = zeros(12, 12)
-  println("typeof(eqn) = ", typeof(eqn))
-  println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
-  for j=1:3
-    for i=1:4
-      pos = (j-1)*4 + i
-      println("pos = ", pos)
-      eqn.q[i, j, 1] += complex(0, eps_c)
-      test_gls(mesh, sbp, eqn, opts)
-      res_ij = copy(reshape(eqn.res[:, :, 1], 12))
-      jac_c[:, pos] = imag(res_ij)/eps_c
-      eqn.q[i, j, 1] -= complex(0, eps_c)  # undo perturbatino
-    end
-  end
-
-  for j=1:12
-    @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=1e-5/norm(jac_fd[:, j], Inf))
-  end
-
-  for j=1:12
-    println("column $j")
-    println("jac_c = \n", jac_c[:, j])
-    println("jac_fd = \n", jac_fd[:, j])
-    println("jac diff = \n", jac_c[:,j] - jac_fd[:, j])
-  end    
-end
+end  # end if statement
+#end  # end loop over p
 
 end  # end facts do block
