@@ -30,13 +30,16 @@ function calcDofs(m, p)
 end
 
 
-function findMeshSize(p1_el)
-# find the size of the mesh with the closest number of dofs to 
-# the p1 mesh
-
+function findMeshSize(p1_el, p)
+# find the size of the square mesh with elements of order p 
+# with the closest number of dofs to 
+# the p1 mesh with p1_el elements per side,
+# returns the number of elements per side, total number of dofs
+  
   p1dofs = calcDofs(p1_el, 1)
   println("the p1 mesh has ", p1dofs, " dofs")
-  for p=2:4
+  mesh_size_i = 0  # declare in this scope
+  dof_mesh_size_i = 0
     mesh_size = 1
     mesh_size_upper = 0
     for i=1:p1_el  # loop over mesh sizes
@@ -57,12 +60,24 @@ function findMeshSize(p1_el)
         mesh_size_i = mesh_size_upper - 1
         dof_mesh_size_i = dofs_lower
       end
-
         println("p $p mesh should have $mesh_size_i elements per side, and therefore $dof_mesh_size_i dofs")
-    end  # end loop over p values
 
-  return nothing
+  return mesh_size_i, dof_mesh_size_i
 end
 
-findMeshSize(100)
+p1_mesh_sizes = collect(11:5:50)
+p = 4
+fname = "mesh_counts.dat"
+if isfile(fname)
+  rm(fname)
+end
+f = open(fname, "w")
+for i=1:length(p1_mesh_sizes)
+  els, dofs = findMeshSize(p1_mesh_sizes[i], p)
+  println(f, els)
+end
+
+close(f)
+
+
 

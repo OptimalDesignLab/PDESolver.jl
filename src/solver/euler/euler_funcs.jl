@@ -577,6 +577,65 @@ function calcA0Inv{Tsol}(params::ParamType{2, :entropy},
     return nothing
 end
 
+
+@doc """
+### EulerEquationMod.calcA0
+
+  This function calculates the A0 (ie. dq/dq, where q are the conservative 
+  variables at a node), and stores it A0.  This function is provided for 
+  compatability purposes
+
+
+  Inputs:
+    params : ParamType{2, :entropy}
+    q  : vector of conservative variables, length 4
+
+
+  Inputs/Outputs:
+  A0 : 4x4 matrix populated with A0.  Overwritten
+
+  Aliasing restrictions: none
+"""->
+function calcA0{Tsol}(params::ParamType{2, :conservative}, q::AbstractArray{Tsol,1},
+                      A0::AbstractArray{Tsol, 2})
+
+
+  for i=1:length(q)
+    A0[i,i] = one(Tsol)
+  end
+
+  return nothing
+end
+
+
+
+@doc """
+# EulerEquationMod.calcA0Inv
+
+  Calculates inv(A0), where A0 = dq/dq, where q are the conservative variables
+  at a node.  This function is provided for compatability purposes  
+
+  Inputs:
+    params : ParamType{2, :entropy}
+    q  : vector (length 4) of conservative variables at a node
+
+  Inputs/Outputs:
+    A0inv : matrix to be populated with inv(A0).  Overwritten.
+
+  Aliasing restrictions: none
+"""->
+function calcA0Inv{Tsol}(params::ParamType{2, :conservative},
+                   q::AbstractArray{Tsol,1},  
+                   A0inv::AbstractArray{Tsol, 2})
+
+  for i=1:length(q)
+    A0inv[i,i] = one(Tsol)
+  end
+
+  return nothing
+end
+
+
 @doc """
 ### EulerEquationMod.matVecA0inv
 
@@ -782,7 +841,6 @@ function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
   A1[3,4] = k4*d1*fac  # symmetric
   A1[4,4] = k5*q[2]*fac
 
-  println("A1[1,1] = ", A1[1,1])
     return nothing
 end
 

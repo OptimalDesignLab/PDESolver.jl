@@ -514,7 +514,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       return nothing
     end
 
-
+#=
     # adjust step size limiter
     if (step_norm < step_norm_1)  # decreasing step size
       step_fac *= 1.2
@@ -531,7 +531,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     if step_norm < 0.001
       step_fac = 1.0
     end
-
+=#
     # update globalization parameters
     if globalize_euler
       updateEuler(newton_data)

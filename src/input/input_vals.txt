@@ -104,7 +104,8 @@ where input_file_name.jl is in your current directory.
 "dissipation_name" : name of artificial dissipation kernel to use, (ASCIIString), default "none"
 "dissipation_const" : constant to multiply dissipation filter by, (Float64), default 0.0
 "use_GLS" : use Galerkin Least-Squares stabilization, (Bool), default false
-
+"use_GLS2": use Hughes' formulation of Galerkin Least-Squares, (Bool), default false
+"tau_type" : which definition of tau to use of GLS, (Int), default 1
 # stabilization preconditioning options
 "use_edgestab_prec" : use edge stabilization for preconditioning matrix, (Bool), default false
 "use_filter_prec" : use filter for preconditioning matrix, (Bool), default false

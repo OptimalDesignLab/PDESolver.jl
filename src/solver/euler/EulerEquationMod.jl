@@ -67,6 +67,16 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
 
+  A0::Array{Tsol, 2}  # reusable storage for the A0 matrix
+  A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
+  A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
+  A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
+
+  A_mats::Array{Tsol, 3}  # reusable storage for flux jacobians
+
+  Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
+  Rmat2::Array{Tres, 2}
+
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -93,6 +103,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   use_dissipation::Bool  # use artificial dissipation
   dissipation_const::Float64  # constant used for dissipation filter matrix
 
+  tau_type::Int  # type of tau to use for GLS stabilization
 
   vortex_x0::Float64  # vortex center x coordinate at t=0
   vortex_strength::Float64  # strength of the vortex
@@ -114,6 +125,15 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
     flux_vals1 = Array(Tres, 4)
     flux_vals2 = Array(Tres, 4)
+
+    A0 = zeros(Tsol, 4, 4)
+    A0inv = zeros(Tsol, 4, 4)
+    A1 = zeros(Tsol, 4, 4)
+    A2 = zeros(Tsol, 4, 4)
+    A_mats = zeros(Tsol, 4, 4, Tdim)
+
+    Rmat1 = zeros(Tres, 4, 4)
+    Rmat2 = zeros(Tres, 4, 4)
 
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
@@ -154,6 +174,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
     dissipation_const = opts["dissipation_const"]
 
+    tau_type = opts["tau_type"]
+
     vortex_x0 = opts["vortex_x0"]
     vortex_strength = opts["vortex_strength"]
 
@@ -161,10 +183,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
     return new(t, order, q_vals, qg, v_vals, res_vals1, res_vals2, flux_vals1, 
-               flux_vals2, cv, R, gamma, gamma_1, Ma, Re, aoa, rho_free, E_free,
+               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, cv, R, 
+               gamma, gamma_1, Ma, Re, aoa, 
+               rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
-               use_dissipation, dissipation_const, vortex_x0, vortex_strength, 
+               use_dissipation, dissipation_const, tau_type, vortex_x0, 
+               vortex_strength, 
                krylov_itr, krylov_type)
 
     end   # end of ParamType function
@@ -335,6 +360,7 @@ include("bc.jl")
 include("stabilization.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
+include("GLS2.jl")
 
 
 @doc """
@@ -371,7 +397,15 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 # Formats of all arrays are documented in SBP.
 # Only the constants are initilized here, the arrays are not.
 
+  # this is the ParamType object that uses the same variables as
+  # the EulerData_ object
   params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
+
+  # we include a ParamType object of all variable types, because occasionally
+  # we need to do a calculation in  variables other than var_type
+  # params (above) typically points to the same object as one of these
+  params_conservative::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}
+  params_entropy::ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
@@ -420,8 +454,22 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
-    eqn.params = ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(sbp, opts, 
-                                                             mesh.order)
+    vars_orig = opts["variable_type"]
+    opts["variable_type"] = :conservative
+    eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}(
+                                       sbp, opts, mesh.order)
+    opts["variable_type"] = :entropy
+    eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
+                                       sbp, opts, mesh.order)
+
+    opts["variable_type"] = vars_orig
+    if vars_orig == :conservative
+      eqn.params = eqn.params_conservative
+    elseif vars_orig == :entropy
+      eqn.params = eqn.params_entropy
+    else
+      println(STDERR, "Warning: variable_type not recognized")
+    end
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.multiplyA0inv = matVecA0inv

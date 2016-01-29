@@ -79,13 +79,14 @@ get!(arg_dict, "use_dissipation", false)
 get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
 get!(arg_dict, "use_GLS", false)
+get!(arg_dict, "use_GLS2", false)
+get!(arg_dict, "tau_type", 1)
 
 # preconditioning stabilization options
 # non-logical values are shared between regular, preconditioned run
 get!(arg_dict, "use_edgestab_prec", false) 
 get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
-
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
   # the raised cosine filter has no paramters
@@ -143,6 +144,8 @@ writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
 get!(arg_dict, "writeq", false)
 
+#DEBUGGING
+get!(arg_dict, "test_GLS2", false)
 # mesh debugging options
 get!(arg_dict, "write_edge_vertnums", false)
 get!(arg_dict, "write_face_vertnums", false)
