@@ -146,6 +146,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
+      flush(f1)
      # put solution into q_vec
 #     fill!(eqn.q_vec, 0.0)
 #     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -208,11 +209,20 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     for j=1:m
       k4[j] = res_vec[j]
     end
+#=
+    println("k1 = \n", k1)
+    println("k2 = \n", k2)
+    println("k3 = \n", k3)
+    println("k4 = \n", k4)
 
-
+    println("q_hold = \n", x_old)
+=#
     # update
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     q_vec[:] = x_old
+
+
+#    println("q_new = \n", q_vec)
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)

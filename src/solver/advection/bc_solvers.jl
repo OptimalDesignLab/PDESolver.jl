@@ -52,14 +52,13 @@ function flux1(u_sbp_, dxidx, nrm, net_flux, alpha_x, alpha_y)
   return nothing
 end # end function flux1
 
-function RoeSolver{Tsol, Tmsh, Tres}(u::Tsol, u_bc, alpha_x, alpha_y, 
-	               nrm, dxidx::AbstractArray{Tmsh,2}, bndryflux::Tres)
+function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, alpha_x, alpha_y, 
+	               nrm, dxidx::AbstractArray{Tmsh,2})
 
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
   bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*abs(alpha_n).*(u_bc - u)
-
 
   #= # Code from the flux1
   u_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
@@ -84,5 +83,5 @@ function RoeSolver{Tsol, Tmsh, Tres}(u::Tsol, u_bc, alpha_x, alpha_y,
 
   bndryflux = flx_xi*nrm[1] + flx_eta*nrm[2]
   =#
-  return nothing
+  return bndryflux
 end # end function AdvectionRoeSolver

@@ -132,7 +132,7 @@ res_vec_exact = deepcopy(q_vec)
 rmfile("IC.dat")
 writedlm("IC.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
-
+writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
 
 #------------------------------------------------------------------------------
@@ -244,6 +244,10 @@ if opts["solve"]
       println("solution error norm = ", diff_norm)
       println("solution discrete L2 norm = ", discrete_norm)
 
+      sol_norm = calcNorm(eqn, eqn.q_vec)
+      exact_norm = calcNorm(eqn, q_exact)
+      println("numerical solution norm = ", sol_norm)
+      println("exact solution norm = ", exact_norm)
       # print to file
       outname = opts["calc_error_outfname"]
       f = open(outname, "w")

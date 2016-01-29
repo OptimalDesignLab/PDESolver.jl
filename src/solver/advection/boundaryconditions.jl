@@ -38,29 +38,36 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
 
 #  println("enterted calcBoundaryFlux")
   
-
+  t = eqn.t
   nfaces = length(bndry_facenums)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
-#    println("interface ", i)
+    println("face ", i)
     for j = 1:sbp.numfacenodes
+      println("  node ", j)
       k = sbp.facenodes[j, bndry_i.face]
 
       # get components
-      q = view(eqn.q, 1, k, bndry_i.element)
-      alpha_x = view(eqn.alpha_x, 1, k, bndry_i.element)
-      alpha_y = view(eqn.alpha_y, 1, k, bndry_i.element)
+      q = eqn.q[ 1, k, bndry_i.element]
+      alpha_x = eqn.alpha_x[1, k, bndry_i.element]
+      alpha_y = eqn.alpha_y[ 1, k, bndry_i.element]
       # flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
       # aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       coords = view(mesh.coords, :, k, bndry_i.element)
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = view(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
-      bndryflux_i = view(bndryflux, 1, j, i)
-
       # functor(u, flux_parametric, aux_vars, coords, dxidx, nrm, bndryflux_i, eqn.params)
-      functor(q, alpha_x, alpha_y, coords, dxidx, nrm, bndryflux_i)
+      println("  q = ", q)
+      println("  alpha_x = ", alpha_x)
+      println("  alpha_Y = ", alpha_y)
+      println("  coords = ", coords)
+      println("  dxidx = ", dxidx)
+      println("  nrm = ", nrm)
+      println("  t = ", t)
+      bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
+      println("  bndryflux = ", bndryflux[1, j, i])
     end
   end
 
@@ -91,15 +98,20 @@ level function.
 type x5plusy5BC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::x5plusy5BC, u::Tsol, 
+function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol, 
               alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-              bndryflux::Tres)
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
   u_bc = calc_x5plusy5(coords) # Calculate the actual analytic value of u at the bondary
-  RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx, bndryflux)
+  println("  u = ", u)
+  println("  u_bc = ", u_bc)
+  println("  alpha_x = ", alpha_x)
+  println("  alpha_y = ", alpha_y)
+  println("  dxidx = ", dxidx)
+  println("  nrm = ", nrm)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
-  return nothing
+  return bndryflux
 end
 
 @doc """
@@ -125,17 +137,30 @@ level function.
 type exp_xplusyBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::x5plusy5BC, u::Tsol, 
+function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol, 
               alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-              bndryflux::Tres)
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
   u_bc = calc_exp_xplusy(coords)
-  RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx, bndryflux)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
-  return nothing
+  return bndryflux
 end
 
+
+type sinwave_BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::sinwave_BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_sinwave(coords, t)
+  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
 
 @doc """
 ### AdvectionEquationMod.BCDict
@@ -146,7 +171,8 @@ new boundary condition is created, it should get added to BCDict.
 """->
 global const BCDict = Dict{ASCIIString, BCType} (
 "x5plusy5BC" => x5plusy5BC(),
-"exp_xplusyBC" => exp_xplusyBC()
+"exp_xplusyBC" => exp_xplusyBC(),
+"sinwaveBC" => sinwave_BC(),
 )
 
 

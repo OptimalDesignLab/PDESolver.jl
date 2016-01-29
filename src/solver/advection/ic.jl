@@ -73,8 +73,28 @@ function ICexp_xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
+
+function ICsinwave{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                    sbp::SBPOperator{Tsbp}, eqn::AdvectionData{Tsol}, 
+                    opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+  	for j = 1:mesh.numNodesPerElement
+  	  dofnums_j = view(mesh.dofs, :, j, i)
+  	  x = mesh.coords[1,j,i]
+  	  y = mesh.coords[2,j,i]
+  	  u0[dofnums_j] = calc_sinwave(mesh.coords[:, j, i], eqn.t)
+  	end
+  end
+
+  return nothing
+end # end function exp_xplusy
+
+
+
+
 @doc """
-### EulerEquationMod.ICFile
+### AdvectionEquationMod.ICFile
 
 This function reads a vector from a file on disk and set the solution to it.
 The vector must contain the same number of entries as there are degrees of 
@@ -120,5 +140,6 @@ end
 global const ICDict = Dict{Any, Function} (
 "ICx5plusy5" => ICx5plusy5,
 "ICexp_xplusy" => ICexp_xplusy,
+"ICsinwave" => ICsinwave,
 "ICFile" => ICFile
 )
