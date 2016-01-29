@@ -198,8 +198,10 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     println("writing vtk file")
     vals = real(eqn.q_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
+    cd("./SolutionFiles")
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
+    cd("../")
   end
  
   return nothing
