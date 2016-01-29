@@ -70,7 +70,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
                                     alpha_x::AbstractArray{Tsol, 3}, 
                                     alpha_y::AbstractArray{Tsol, 3})
 
-  dxi_dxq = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2) 
+  dxi_dxq = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim) 
   for i=1:mesh.numEl  # loop over element
     for j=1:mesh.numNodesPerElement
       dxi_dxq[1,j,i,1] = (mesh.dxidx[1,1,j,i]*alpha_x[1,j,i] + 
