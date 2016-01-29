@@ -18,7 +18,7 @@ type ArtificialViscosityType{Tsol, Tres, Tdim, Tmsh} <: AbstractSolutionData{Tso
   stabscale::Array{Tsol, 2}         # stabilization scale factor
   Minv::Array{Float64, 1}           # inverse mass matrix
 
-  function ArtificialViscosityType(mesh::PumiMesh2, sbp::SBPOperator, opts)
+  function ArtificialViscosityType(mesh::AbstractMesh, sbp::SBPOperator, opts)
     eqn = new()  # incomplete initilization
     eqn.params = ParamType{Tdim}(opts)
   end

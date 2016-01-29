@@ -539,7 +539,7 @@ function disassembleSolution{Tmsh, Tsol, Tres, Tdim, T}(mesh::AbstractMesh{Tmsh}
     for j = 1:mesh.numNodesPerElement
       for k=1:(Tdim+2)
 	      dofnum_k = mesh.dofs[k, j, i]
-	      eqn.q[k, j, i] = q_vec[dofnum_k]
+	      q_arr[k, j, i] = q_vec[dofnum_k]
       end
     end
   end
