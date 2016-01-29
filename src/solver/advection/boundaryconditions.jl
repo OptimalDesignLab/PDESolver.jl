@@ -43,9 +43,9 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
-    println("face ", i)
+#    println("face ", i)
     for j = 1:sbp.numfacenodes
-      println("  node ", j)
+#      println("  node ", j)
       k = sbp.facenodes[j, bndry_i.face]
 
       # get components
@@ -59,15 +59,15 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       nrm = view(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
       # functor(u, flux_parametric, aux_vars, coords, dxidx, nrm, bndryflux_i, eqn.params)
-      println("  q = ", q)
-      println("  alpha_x = ", alpha_x)
-      println("  alpha_Y = ", alpha_y)
-      println("  coords = ", coords)
-      println("  dxidx = ", dxidx)
-      println("  nrm = ", nrm)
-      println("  t = ", t)
+#      println("  q = ", q)
+#      println("  alpha_x = ", alpha_x)
+#      println("  alpha_Y = ", alpha_y)
+#      println("  coords = ", coords)
+#      println("  dxidx = ", dxidx)
+#      println("  nrm = ", nrm)
+#      println("  t = ", t)
       bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
-      println("  bndryflux = ", bndryflux[1, j, i])
+#      println("  bndryflux = ", bndryflux[1, j, i])
     end
   end
 
@@ -103,12 +103,14 @@ function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol,
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
   u_bc = calc_x5plusy5(coords) # Calculate the actual analytic value of u at the bondary
+#=
   println("  u = ", u)
   println("  u_bc = ", u_bc)
   println("  alpha_x = ", alpha_x)
   println("  alpha_y = ", alpha_y)
   println("  dxidx = ", dxidx)
   println("  nrm = ", nrm)
+=#
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
   return bndryflux
@@ -156,7 +158,7 @@ function call{Tmsh, Tsol}(obj::sinwave_BC, u::Tsol, alpha_x, alpha_y,
               nrm::AbstractArray{Tmsh,1}, t)
 
   u_bc = calc_sinwave(coords, t)
-  println("  u_bc = ", u_bc)
+#  println("  u_bc = ", u_bc)
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
   return bndryflux

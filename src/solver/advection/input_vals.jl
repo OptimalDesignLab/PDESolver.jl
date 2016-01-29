@@ -5,7 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any} (
-"run_type" => 1,
+"run_type" => 10,
 "order" => 1,
 "real_time" => true,
 "IC_name" => "ICsinwave",
@@ -15,7 +15,7 @@ arg_dict = Dict{Any, Any} (
 #"BC2" => [4, 10],
 #"BC2_name" => "noPenetrationBC",
 "delta_t" => 2*pi/5000,
-"t_max" => 2*pi,
+"t_max" => 100*2*pi/5000,
 #"smb_name" => "src/mesh_files/channel.smb",
 "smb_name" => "src/mesh_files/tri8l.smb",
 #"dmg_name" => "../../mesh_files/vortex.dmg",

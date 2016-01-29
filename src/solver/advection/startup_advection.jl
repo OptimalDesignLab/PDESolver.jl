@@ -30,7 +30,7 @@ t_max = opts["t_max"]
 
 order = opts["order"]  # order of accuracy
 
-if flag == 1 || flag == 8  # normal run
+if flag == 1 || flag == 8  || flag == 9 || flag == 10  # normal run
   Tmsh = Float64
   Tsbp = Float64
   Tsol = Float64
@@ -207,6 +207,36 @@ if opts["solve"]
     @time jac_col = newton_check_fd(evalAdvection, mesh, sbp, eqn, opts, 1)
     writedlm("solution.dat", jac_col)
 
+  elseif flag == 9
+    # to non-pde rk4 run
+    function pre_func(mesh, sbp, eqn,  opts)
+      println("pre_func was called")
+      return nothing
+    end
+
+    function post_func(mesh, sbp, eqn, opts)
+#      for i=1:mesh.numDof
+#        eqn.res_vec[i] *= eqn.Minv[i]
+#      end
+      nrm = norm(eqn.res_vec)
+      println("post_func returning residual norm = ", nrm)
+      return nrm
+    end
+
+    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, pre_func, post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+
+  elseif flag == 10
+    function test_pre_func(mesh, sbp, eqn, opts)
+      
+      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    end
+
+    function test_post_func(mesh, sbp, eqn, opts)
+      return calcNorm(eqn, eqn.res_vec)
+    end
+
+
+    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func, test_post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
   end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")

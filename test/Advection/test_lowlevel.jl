@@ -206,19 +206,32 @@ end
     @fact val => roughly(val_exp, atol=1e-14)
 
 
-
-
-
-
-
-
-
-    
-
-
-
-
  end
+
+  context("--- Testing Volume Integrals ---")  do
+
+    # use the 8 element mesh
+    ARGS[1] = "input_vals_8el.jl"
+    include(STARTUP_PATH)
+
+    fill!(eqn.q, 0.0)
+    alpha_x = ones(Float64 ,1, mesh.numNodesPerElement, mesh.numEl)
+    alpha_y = zeros(alpha_x)
+    println("typeof(alpha_x) = ", typeof(alpha_x))
+
+    fill!(eqn.res, 0.0)
+    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
+    println("eqn.res = ", eqn.res)
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    println("eqn.res_vec = \n", eqn.res_vec)
+    @fact eqn.res => roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-14)
+
+
+
+
+  end
+
+
 
 
 #=
@@ -226,12 +239,6 @@ end
  
   end
 
-
-  context("--- Testing evalVolumeIntegrals ---")  do
-
-
-
-  end
 
 
   context("--- Testing evalBoundaryIntegrals ---") do

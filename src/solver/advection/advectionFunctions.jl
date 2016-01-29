@@ -23,7 +23,30 @@ Pass this function as an input argument to the RK4 solver just like evalAdvectio
 function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                        sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
-  
+
+  println("t = ", t)
+  println("entered evalAdvection")
+  println("eqn.q_vec = \n", eqn.q_vec)
+  println("eqn.q = \n", eqn.q)
+  println("centerline diff = ", eqn.q_vec[1] - eqn.q_vec[4])
+#=
+  for i = 1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofnum_j = mesh.dofs[1, j, i]
+      x_j = mesh.coords[1, j, i]
+      eqn.res_vec[dofnum_j] = cos(-x_j + t)
+    end
+  end
+
+  # now multiply by M  - actually don't, because the residuals should only be
+  # equal after multiplication by Minv
+  for i=1:mesh.numDof
+    eqn.res_vec[i] = eqn.res_vec[i]
+  end
+
+  println("eqn.res_vec = \n", eqn.res_vec)
+=#
+
   # const eqn.alpha_x = 1.0 
   # const eqn.alpha_y = 1.0 
 
@@ -37,14 +60,40 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # println(eqn.u)
   
   evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
-  # assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  # println(eqn.res_vec)
+   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+   println("after evalSCResidual, eqn.res_vec = \n", eqn.res_vec)
+   println("eqn.res = \n", eqn.res)
+   println("centerline diff = ", eqn.res_vec[1] - eqn.res_vec[4])
   # println("evalSCResidual complete")
+#=
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
   # println("evalBndry complete")
+
+   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+   res_scaled = eqn.Minv.*eqn.res_vec
+   println("after evalBndry, scaled eqn.res_vec = \n", res_scaled)
+   println("centerline diff = ", res_scaled[1] - res_scaled[4])
   # assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   # println(eqn.res_vec)
-  
+=#
+
+  coords = [-1.0, 0]
+  u_bc = calc_sinwave(coords, t)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  for i=1:mesh.numDof
+    eqn.res_vec[i] *= eqn.Minv[i]
+  end
+
+  alpha_x = 1.0
+  eqn.res_vec[8] = -alpha_x*u_bc
+  eqn.res_vec[7] = -alpha_x*u_bc
+  eqn.res_vec[9] = -alpha_x*u_bc
+
+  coords = [1.0, 0]
+  u_bc = calc_sinwave(coords, t)
+  eqn.res_vec[5] = -alpha_x*u_bc
+  eqn.res_vec[3] = -alpha_x*u_bc
+  eqn.res_vec[2] = -alpha_x*u_bc
   return nothing
 end
 
@@ -74,16 +123,21 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 
 
 #  println("----- Entered evalSCResidual -----")
+  alpha_x = 1.0
+  alpha_y = 0.0
   Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over element
     for j=1:mesh.numNodesPerElement
-      Adq_dxi[1,j,i,1] = (mesh.dxidx[1,1,j,i]*alpha_x[1,j,i] + 
-                        mesh.dxidx[1,2,j,i]*alpha_y[1,j,i])*eqn.q[1,j,i]
-      Adq_dxi[1,j,i,2] = (mesh.dxidx[2,1,j,i]*alpha_x[1,j,i] + 
-                        mesh.dxidx[2,2,j,i]*alpha_y[1,j,i])*eqn.q[1,j,i]
+      alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + mesh.dxidx[1, 2, j, i]*alpha_y
+      alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + mesh.dxidx[2, 2, j, i]*alpha_y
+      Adq_dxi[1,j,i,1] = alpha_xi*eqn.q[1,j,i]
+      Adq_dxi[1,j,i,2] = alpha_eta*eqn.q[1,j,i]
     end
   end  # end loop over elements
 
+  println("Adq_dxi = \n", Adq_dxi[:, :, :, 1])
+
+  println("Adq_deta = \n", Adq_dxi[:, :, :, 2])
 
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
@@ -97,6 +151,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 
       println("flux for element $i node $j direction x = \n", flux_xy[1])
       println("flux for element $i node $j direction y = \n", flux_xy[2])
+
     end
   end
 
