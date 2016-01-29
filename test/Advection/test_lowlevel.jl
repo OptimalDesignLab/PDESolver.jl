@@ -90,22 +90,138 @@ facts("--- Testing Functions Within AdvectionData_--- ") do
   Minv_test = 1./M_test
   Minv_test = AdvectionEquationMod.calcMassMatrixInverse(mesh, sbp, eqn)
   @fact Minv_test => roughly(Minv_test, atol=1e-13)
+
+  arr = rand(1, 3, 2)
+  arr_orig = copy(arr)
+  AdvectionEquationMod.matVecA0inv(mesh, sbp, eqn, opts, arr)
+  @fact arr => roughly(arr_orig, atol=1e-14)
+
+  AdvectionEquationMod.matVecA0(mesh, sbp, eqn, opts, arr)
+  @fact arr => roughly(arr_orig, atol=1e-14)
 end
-
-  context("--- Testing Boundary Function ---") do
-
- end
-
 
 
  context("--- Testing common functions ---") do
 
+   x = 1.
+   y = 2.
+   coords = [x, y]
+   val = AdvectionEquationMod.calc_x5plusy5(coords)
+   @fact val => roughly(x^5 + y^5, atol=1e-14)
+   
+   val = AdvectionEquationMod.calc_exp_xplusy(coords)
+   @fact val => roughly(exp(x + y), atol=1e-14)
+
+
+ end
+
+
+
+  context("--- Testing Boundary Function ---") do
+
+    # testing choice of u or u_bc
+    u = 5.0
+    u_bc = 2.5
+    alpha_x = 1.5
+    alpha_y = 0.5
+    dxidx = [1. 0; 0 1]
+    nrm = [1., 0]
+
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+    @fact val => roughly(u*alpha_x, atol=1e-14)
+
+    nrm = [-1.0, 0]
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    @fact val => roughly(-u_bc*alpha_x, atol=1e-14)
+
+
+    nrm = [0, 1.0]
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    @fact val => roughly(u*alpha_y, atol=1e-14)
+
+    nrm = [0, -1.0]
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    @fact val => roughly(-u_bc*alpha_y, atol=1e-14)
+
+    # now test rotation using dxidx
+    
+    function get_rotation_matrix(theta)
+      return [cos(theta) -sin(theta); sin(theta) cos(theta)]
+    end
+
+    theta = 30*pi/180  # angle between x axis and xi axis
+    flow_direction = 25*pi/180
+    alpha_mag = 2.0
+    alpha_x = alpha_mag*cos(flow_direction)
+    alpha_y = alpha_mag*sin(flow_direction)
+
+    dxidx = get_rotation_matrix( theta)
+
+    # nrm is in the xi-eta space
+    # the xi axis is 30 degrees clockwise of the x axis, so the alpha vector
+    # which is already at 25 degrees from the x axis needs to go 30 more
+    # to be in the xi-eta coordinate system
+    # this is still an outflow for nrm = [1, 0]
+    nrm = [1., 0]  # flow is in the xi direction
+    angle_diff = theta + flow_direction
+    alpha_eff = alpha_mag*cos(angle_diff)  # effective alpha in the wall normal
+                                           # direction
+    val_exp = alpha_eff*u
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    println("val = ", val)
+    println("val_exp = ", val_exp)
+
+    @fact val => roughly(val_exp, atol=1e-14)
+
+    # now check eta direction
+    nrm = [0, 1.]
+    alpha_eff = alpha_mag*sin(angle_diff)
+    val_exp = u*alpha_eff
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+    @fact val => roughly(val_exp, atol=1e-14)
+
+    # now rotate the coordinate system so much that this becomes an inflow
+    theta = 120*pi/180
+    nrm = [1., 0]
+    angle_diff = theta + flow_direction
+    alpha_eff = alpha_mag*cos(angle_diff)
+    val_exp = alpha_eff*u_bc
+
+    dxidx = get_rotation_matrix( theta)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    println("val = ", val)
+    println("val_exp = ", val_exp)
+    @fact val => roughly(val_exp, atol=1e-14)
+
+    # check eta direction
+    nrm = [0, 1]
+    angle_diff = theta + flow_direction
+    alpha_eff = alpha_mag*sin(angle_diff)
+    val_exp = alpha_eff*u
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    println("val = ", val)
+    println("val_exp = ", val_exp)
+    @fact val => roughly(val_exp, atol=1e-14)
+
+
+
+
+
+
+
+
+
+    
+
 
 
 
  end
 
 
+#=
  context("--- Testing dataPrep ---") do
  
   end
@@ -124,3 +240,4 @@ end
   context("--- Testing evalEuler --- ")  do
 
 end # end facts block
+=#

@@ -20,7 +20,7 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_channel.jl"
 include("test_empty.jl")
-include("test_input.jl")
+#include("test_input.jl")
 include("test_lowlevel.jl")
 
 
