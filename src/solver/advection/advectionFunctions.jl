@@ -52,9 +52,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   eqn.t = t
   println("t = ", eqn.t)
-  eqn.alpha_x = fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
-  eqn.alpha_y = fill!(eqn.alpha_y, 0.0) # advection velocity in y direction
-  
+ 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   # disassembleSolution(mesh, sbp, eqn, opts, eqn.u_vec)
   # println(eqn.u)
@@ -124,11 +122,11 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 
 
 #  println("----- Entered evalSCResidual -----")
-  alpha_x = 1.0
-  alpha_y = 0.0
   Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over element
     for j=1:mesh.numNodesPerElement
+      alpha_x = eqn.alpha_x[1, j, i]
+      alpha_y = eqn.alpha_y[1, j, i]
       alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + mesh.dxidx[1, 2, j, i]*alpha_y
       alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + mesh.dxidx[2, 2, j, i]*alpha_y
       Adq_dxi[1,j,i,1] = alpha_xi*eqn.q[1,j,i]
@@ -184,7 +182,7 @@ Evaluate boundary integrals for advection equation
 *  None
 
 """->
-
+#TODO: get rid of alpha_x and alpha_y arguments: they are not used
 function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                    sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
                    alpha_x::AbstractArray{Tsol, 3}, alpha_y::AbstractArray{Tsol, 3})
@@ -242,6 +240,8 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 
   println("Entering Advection Module")
   getBCFunctors(mesh, sbp, eqn, opts)
+  fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
+  fill!(eqn.alpha_y, 0.0) # advection velocity in y direction
   
   return nothing
 end

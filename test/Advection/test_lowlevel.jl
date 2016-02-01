@@ -409,6 +409,7 @@ end
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     for i=1:mesh.numEl
       println("element $i")
+      println("dxidx = ", mesh.dxidx[:, :, 1, i])
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
