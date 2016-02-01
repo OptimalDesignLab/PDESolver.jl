@@ -24,11 +24,11 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                        sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
 
-  println("t = ", t)
-  println("entered evalAdvection")
-  println("eqn.q_vec = \n", eqn.q_vec)
-  println("eqn.q = \n", eqn.q)
-  println("centerline diff = ", eqn.q_vec[1] - eqn.q_vec[4])
+#  println("t = ", t)
+#  println("entered evalAdvection")
+#  println("eqn.q_vec = \n", eqn.q_vec)
+#  println("eqn.q = \n", eqn.q)
+#  println("centerline diff = ", eqn.q_vec[1] - eqn.q_vec[4])
 #=
   for i = 1:mesh.numEl
     for j=1:mesh.numNodesPerElement
@@ -60,23 +60,23 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # println(eqn.u)
   
   evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
-   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-   println("after evalSCResidual, eqn.res_vec = \n", eqn.res_vec)
-   println("eqn.res = \n", eqn.res)
-   println("centerline diff = ", eqn.res_vec[1] - eqn.res_vec[4])
+ #  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+ #  println("after evalSCResidual, eqn.res_vec = \n", eqn.res_vec)
+ #  println("eqn.res = \n", eqn.res)
+ #  println("centerline diff = ", eqn.res_vec[1] - eqn.res_vec[4])
   # println("evalSCResidual complete")
-#=
+
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
   # println("evalBndry complete")
 
-   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-   res_scaled = eqn.Minv.*eqn.res_vec
-   println("after evalBndry, scaled eqn.res_vec = \n", res_scaled)
-   println("centerline diff = ", res_scaled[1] - res_scaled[4])
+ #  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+ #  res_scaled = eqn.Minv.*eqn.res_vec
+ #  println("after evalBndry, scaled eqn.res_vec = \n", res_scaled)
+ #  println("centerline diff = ", res_scaled[1] - res_scaled[4])
   # assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   # println(eqn.res_vec)
-=#
 
+#=
   coords = [-1.0, 0]
   u_bc = calc_sinwave(coords, t)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
@@ -94,6 +94,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   eqn.res_vec[5] = -alpha_x*u_bc
   eqn.res_vec[3] = -alpha_x*u_bc
   eqn.res_vec[2] = -alpha_x*u_bc
+=#
   return nothing
 end
 
@@ -135,10 +136,10 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
     end
   end  # end loop over elements
 
-  println("Adq_dxi = \n", Adq_dxi[:, :, :, 1])
-
-  println("Adq_deta = \n", Adq_dxi[:, :, :, 2])
-
+#  println("Adq_dxi = \n", Adq_dxi[:, :, 1, 1])
+#  println("Adq_dxi full = \n", Adq_dxi[:, :, :, 1])
+#  println("Adq_deta = \n", Adq_dxi[:, :, 1, 2])
+#=
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       flux_vals = zeros(Tsol, 2)
@@ -154,7 +155,9 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
 
     end
   end
-
+=#
+  res2 = zeros(Tres, mesh.numNodesPerElement, mesh.numEl)
+#  fill!(eqn.res, 0.0)
   for i = 1:Tdim
     weakdifferentiate!(sbp,i,view(Adq_dxi,:,:,:,i), eqn.res, trans = true)
   end

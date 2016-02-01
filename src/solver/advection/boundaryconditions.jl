@@ -44,6 +44,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
     bndry_i = bndry_facenums[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
 #    println("face ", i)
+
+#      println("evaluating boundary flux for element ", bndry_i.element, " face ", bndry_i.face)
     for j = 1:sbp.numfacenodes
 #      println("  node ", j)
       k = sbp.facenodes[j, bndry_i.face]

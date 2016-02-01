@@ -18,6 +18,7 @@ arg_dict = Dict{Any, Any} (
 "t_max" => 100*2*pi/5000,
 #"smb_name" => "src/mesh_files/channel.smb",
 "smb_name" => "src/mesh_files/tri8l.smb",
+#"smb_name" => "src/mesh_files/channel_verylarge.smb",
 #"dmg_name" => "../../mesh_files/vortex.dmg",
 "dmg_name" => ".null",
 "res_tol" => 1e-10,
@@ -41,5 +42,6 @@ arg_dict = Dict{Any, Any} (
 "output_freq" => 1,
 "solve" => true,
 "do_postproc" => true,
-"exact_soln_func" => "ICsinwave"
+"exact_soln_func" => "ICsinwave",
+"write_face_vertnums" => true
 )
