@@ -39,6 +39,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   flux_parametric::Array{Tsol,4}  # flux in xi direction
   res::Array{Tres, 3}      # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
+  res_edge::Array{Tres, 4} # edge based residual storage
   q_vec::Array{Tres,1}     # initial condition in vector form
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
@@ -69,6 +70,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_vec = zeros(Tres, mesh.numDof)
+    eqn.res_edge = Array(Tres, 0, 0, 0, 0)
     eqn.q_vec = zeros(Tres, mesh.numDof)
     eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
     eqn.multiplyA0inv = matVecA0inv

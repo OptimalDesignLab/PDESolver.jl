@@ -276,16 +276,16 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 	println("calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
         # use artificial dissipation for the preconditioner 
-	use_dissipation_orig = eqn.params.use_dissipation
-	use_edgestab_orig = eqn.params.use_edgestab
-        eqn.params.use_dissipation = opts["use_dissipation_prec"]
-	eqn.params.use_edgestab = opts["use_edgestab_prec"]
+#	use_dissipation_orig = eqn.params.use_dissipation
+#	use_edgestab_orig = eqn.params.use_edgestab
+#        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+#	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
         @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
-	eqn.params.use_dissipation = use_dissipation_orig
-	eqn.params.use_edgestab = use_edgestab_orig
+#	eqn.params.use_dissipation = use_dissipation_orig
+#	eqn.params.use_edgestab = use_edgestab_orig
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
       println("FD jacobian calculation @time printed above")
@@ -302,26 +302,26 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
       elseif jac_type == 3 # Petsc sparse jacobian
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-	use_dissipation_orig = eqn.params.use_dissipation
-	use_edgestab_orig = eqn.params.use_edgestab
-        eqn.params.use_dissipation = opts["use_dissipation_prec"]
-	eqn.params.use_edgestab = opts["use_edgestab_prec"]
+#	use_dissipation_orig = eqn.params.use_dissipation
+#	use_edgestab_orig = eqn.params.use_edgestab
+#        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+#	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
         @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
         
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
-	eqn.params.use_dissipation = use_dissipation_orig
-	eqn.params.use_edgestab = use_edgestab_orig
+#	eqn.params.use_dissipation = use_dissipation_orig
+#	eqn.params.use_edgestab = use_edgestab_orig
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
 
       elseif jac_type == 4 # Petsc jacobian-vector product
 	# calculate preconditioner matrix only
 	res_dummy = Array(Float64, 0, 0, 0)
-	use_dissipation_orig = eqn.params.use_dissipation
-	use_edgestab_orig = eqn.params.use_edgestab
-        eqn.params.use_dissipation = opts["use_dissipation_prec"]
-	eqn.params.use_edgestab = opts["use_edgestab_prec"]
+#	use_dissipation_orig = eqn.params.use_dissipation
+#	use_edgestab_orig = eqn.params.use_edgestab
+#        eqn.params.use_dissipation = opts["use_dissipation_prec"]
+#	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
 	if ((i % recalc_prec_freq)) == 0 || i == 1
 
@@ -329,8 +329,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 	end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
-	eqn.params.use_dissipation = use_dissipation_orig
-	eqn.params.use_edgestab = use_edgestab_orig
+#	eqn.params.use_dissipation = use_dissipation_orig
+#	eqn.params.use_edgestab = use_edgestab_orig
  
       end
 
@@ -800,7 +800,8 @@ end
 ### NonlinearSolvers.calcJacFD
 
   This function calculates the Jacobian using finite differences, perturbing
-  one degree of freedom at a time.  This is slow and not very accurate.
+  one degree of freedom at a time.  This is slow and not very accurate.  
+  The Jacobian is calculated about the point in eqn.q_vec.
 
   Inputs:
     newton_data:  NewtonData object
@@ -824,7 +825,7 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
   epsilon = norm(pert)  # finite difference perturbation
   # calculate jacobian
   for j=1:m
-#      println("  jacobian iteration ", j)
+      println("  jacobian iteration ", j)
     if j==1
       entry_orig = eqn.q_vec[j]
       eqn.q_vec[j] +=  epsilon
@@ -834,11 +835,15 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
       eqn.q_vec[j] += epsilon
     end
 
+    println("eqn.q_vec = \n", eqn.q_vec)
+
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    println("eqn.q = \n", eqn.q)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
+    println("eqn.res_vec = \n", eqn.res_vec)
     calcJacCol(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
     
   end
@@ -855,7 +860,8 @@ end
 ### NonlinearSolvers.calcJacComplex
 
   This function calculates the Jacobian (dense) using the complex step method, 
-  perturbing one degree of freedom at a time.  This is very slow.
+  perturbing one degree of freedom at a time.  This is very slow.  The jacobian
+  is calculated about the point in eqn.q_vec.
 
   Inputs:
     newton_data:  NewtonData object
@@ -912,7 +918,8 @@ end
 
   This function calculate the Jacobian sparsely (only the entries 
     within the sparsity bounds), using either finite differences or algorithmic 
-    differentiation.
+    differentiation.  The jacobian is calculated about the point stored in 
+    eqn.q (not eqn.q_vec).
 
   Inputs:
     newton_data:  NewtonData object
@@ -940,8 +947,8 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 # pert is perturbation to apply
 # this function is independent of perturbation type
 
-  filter_orig = eqn.params.use_filter  # record original filter state
-  eqn.params.use_filter = false  # don't repetatively filter
+#  filter_orig = eqn.params.use_filter  # record original filter state
+#  eqn.params.use_filter = false  # don't repetatively filter
 
   epsilon = norm(pert)  # get magnitude of perturbation
    m = length(res_0)
@@ -959,6 +966,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 	for k=1:mesh.numEl  # loop over elements in residual
 	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
           #TODO: find a way to get rid of this if statement
+          # Solution: make pertNeighbor Els only hold the perturbed elements
           if el_pert != 0   # if element was actually perturbed for this color
 
             col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
@@ -989,7 +997,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   end  # end loop over colors
 
   # now jac is complete
-  eqn.params.use_filter = filter_orig # reset filter
+#  eqn.params.use_filter = filter_orig # reset filter
   return nothing
 
 end  # end function
