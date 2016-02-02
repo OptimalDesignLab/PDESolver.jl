@@ -69,7 +69,7 @@ function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, alpha_x, alpha_y,
 #  println("alpha_eta = ", alpha_eta)
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
 #  println("alpha_nrm = ", alpha_n)
-  bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*abs(alpha_n).*(u_bc - u)
+  bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
 
 #  println("bndryflux = ", bndryflux)
   #= # Code from the flux1
