@@ -7,8 +7,13 @@
   There is probably a bit-twiddling way of doing this faster
 
 """
-function absvalue(x::Complex)
+function absvalue{T <: Complex}(x::T)
 
+  c_part = flipsign(imag(x), real(x))
+  return T(abs(real(x)), c_part)
+
+end
+#=
   x2 = complex(real(x), imag(x))
 
   if (real(x) < 0)
@@ -18,7 +23,7 @@ function absvalue(x::Complex)
 #  println("after modification, x2 = ", x2)
   return x2
 end
-
+=#
 function absvalue(x)   # general fallback method
   return abs(x)
 end
