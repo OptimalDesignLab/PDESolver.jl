@@ -104,7 +104,7 @@ if opts["calc_error"]
   err_vec = vals - eqn.q_vec
   err = calcNorm(eqn, err_vec)
   outname = opts["calc_error_outfname"]
-  println("printint err = ", err, " to file ", outname)
+  println("printed err = ", err, " to file ", outname)
   f = open(outname, "w")
   println(f, err)
   close(f)
@@ -278,12 +278,37 @@ if opts["solve"]
       exact_norm = calcNorm(eqn, q_exact)
       println("numerical solution norm = ", sol_norm)
       println("exact solution norm = ", exact_norm)
+
+      # calculate the average mesh size
+      jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
+      jac_vec = zeros(Tmsh, mesh.numNodes)
+      AdvectionEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+      # scale by the minimum distance between nodes on a reference element
+      # this is a bit of an assumption, because for distorted elements this
+      # might not be entirely accurate
+      println("mesh.min_node_distance = ", mesh.min_node_dist)
+      h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
+    #  println("h_avg = ", h_avg)
+      h_avg *= mesh.min_node_dist
+    #  println("h_avg = ", h_avg)
+
+
+
+
       # print to file
+      outname = opts["calc_error_outfname"]
+      println("printed err = ", diff_norm, " to file ", outname)
+      f = open(outname, "w")
+      println(f, diff_norm, " ", h_avg)
+      close(f)
+
+
+#=
       outname = opts["calc_error_outfname"]
       f = open(outname, "w")
       println(f, mesh.numEl, " ", diff_norm, " ", discrete_norm)
       close(f)
-
+=#
     end
   end
 

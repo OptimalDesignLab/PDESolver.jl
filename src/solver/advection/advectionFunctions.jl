@@ -51,7 +51,6 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # const eqn.alpha_y = 1.0 
 
   eqn.t = t
-  println("t = ", eqn.t)
  
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   # disassembleSolution(mesh, sbp, eqn, opts, eqn.u_vec)
@@ -256,11 +255,42 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     println("writing vtk file")
     vals = real(eqn.q_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
-    cd("./SolutionFiles")
+#    cd("./SolutionFiles")
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
-    cd("../")
+#    cd("../")
   end
  
   return nothing
 end
+
+
+function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                         sbp::SBPOperator, eqn::AbstractAdvectionData{Tsol}, opts, 
+                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         zero_resvec=true)
+# arr is the array to be assembled into res_vec
+
+#  println("in assembleSolution")
+
+  if zero_resvec
+    fill!(res_vec, 0.0)
+  end
+
+
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      for k=size(arr, 1)  # loop over dofs on the node
+
+        dofnum_k = mesh.dofs[k, j, i]
+
+        res_vec[dofnum_k] = arr[k,j,i]
+      end
+    end
+  end
+  
+  return nothing
+end
+
+
+

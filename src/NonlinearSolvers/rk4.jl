@@ -95,7 +95,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 
 #    println("eqn.q_vec = ", eqn.q_vec)
 
-     println("\nrk4 stage 1")
+#     println("\nrk4 stage 1")
  #   eqn.q_vec = x_old
 #    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     pre_func(ctx..., opts)
@@ -159,7 +159,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     end
 
     # stage 2
-    println("\nrk4 stage 2")
+#    println("\nrk4 stage 2")
     q_vec[:] = x2
     pre_func(ctx..., opts) 
 #    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -179,7 +179,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     x3[:] = x_old + (h/2)*k2
 
     # stage 3
-    println("\nrk4 stage 3")
+#    println("\nrk4 stage 3")
     q_vec[:] = x3
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
@@ -197,7 +197,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     end
 
     # stage 4
-    println("\nrk4 stage 4")
+#    println("\nrk4 stage 4")
     x4[:] = x_old + h*k3
     q_vec[:] = x4
     pre_func(ctx..., opts)
