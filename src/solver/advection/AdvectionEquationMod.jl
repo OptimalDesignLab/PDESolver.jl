@@ -49,6 +49,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   multiplyA0inv::Function       # multiply an array by inv(A0), where A0
                                 # is the coefficient matrix of the time 
                                 # derivative
+  src_func::SRCType  # functor for source term
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
   function AdvectionData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
@@ -87,6 +88,7 @@ include("bc_solvers.jl")
 include("ic.jl")
 include("GLS2.jl")
 include("../euler/complexify.jl")
+include("source.jl")
 
 @doc """
 ### AdvectionEquationMod.assembleSolution

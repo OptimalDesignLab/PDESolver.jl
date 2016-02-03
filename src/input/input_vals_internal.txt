@@ -19,4 +19,5 @@
 
 "solve" : call the solver specified by run_type, (Bool), default true
 
-
+"use_src_term" : whether to call the source term routin, (Bool), false if 
+                 the source term is the zero source term, otherwise true

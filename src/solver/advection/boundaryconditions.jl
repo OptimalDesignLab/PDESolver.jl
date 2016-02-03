@@ -137,7 +137,7 @@ function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol,
               alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_exp_xplusy(coords)
+  u_bc = calc_exp_xplusy(coords, alpha_x, alpha_y, t)
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
   return bndryflux
@@ -151,12 +151,58 @@ function call{Tmsh, Tsol}(obj::sinwave_BC, u::Tsol, alpha_x, alpha_y,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_sinwave(coords, t)
+  u_bc = calc_sinwave(coords, alpha_x, alpha_y, t)
 #  println("  u_bc = ", u_bc)
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
   return bndryflux
 end
+
+
+type sinwavey_BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::sinwavey_BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_sinwavey(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+
+type sinwavey_pertBC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::sinwavey_pertBC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_sinwavey_pert(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+type mms1BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::mms1BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_mms1(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+
 
 @doc """
 ### AdvectionEquationMod.BCDict
@@ -169,6 +215,8 @@ global const BCDict = Dict{ASCIIString, BCType} (
 "x5plusy5BC" => x5plusy5BC(),
 "exp_xplusyBC" => exp_xplusyBC(),
 "sinwaveBC" => sinwave_BC(),
+"sinwaveyBC" => sinwavey_BC(),
+"sinwavey_pertBC" => sinwavey_pertBC()
 )
 
 

@@ -115,10 +115,13 @@ end
    x = 1.
    y = 2.
    coords = [x, y]
-   val = AdvectionEquationMod.calc_x5plusy5(coords)
+   alpha_x = 0.0
+   alpha_y = 0.0
+   t = 0.0
+   val = AdvectionEquationMod.calc_x5plusy5(coords, alpha_x, alpha_y, t)
    @fact val => roughly(x^5 + y^5, atol=1e-14)
    
-   val = AdvectionEquationMod.calc_exp_xplusy(coords)
+   val = AdvectionEquationMod.calc_exp_xplusy(coords, alpha_x, alpha_y, t)
    @fact val => roughly(exp(x + y), atol=1e-14)
 
 
@@ -356,7 +359,9 @@ end
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         x = mesh.coords[1, j, i]
-        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], 0.25)
+        alpha_x = eqn.alpha_x[1, j, i]
+        alpha_y, = eqn.alpha_y[1, j, i]
+        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], alpha_x, alpha_y, 0.25)
       end
     end
 
@@ -364,7 +369,7 @@ end
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
+    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -383,7 +388,10 @@ end
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         x = mesh.coords[1, j, i]
-        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], 0.25)
+        alpha_x = eqn.alpha_x[1, j, i]
+        alpha_y, = eqn.alpha_y[1, j, i]
+
+        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], alpha_x, alpha_y, 0.25)
       end
     end
 
@@ -391,7 +399,7 @@ end
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
+    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)

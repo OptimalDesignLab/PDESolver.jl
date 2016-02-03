@@ -69,6 +69,14 @@ get!(arg_dict, "Relfunc_name", "none")
 #SBP Options
 get!(arg_dict, "Q_transpose", true)
 
+# source term options
+get!(arg_dict, "SRCname", "SRC0")
+if arg_dict["SRCname"] == "SRC0"
+  get!(arg_dict, "use_src_term", false)
+else
+  get!(arg_dict, "use_src_term", true)
+end
+
 
 # stabilization options
 get!(arg_dict, "use_edgestab", true)

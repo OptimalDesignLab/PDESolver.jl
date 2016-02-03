@@ -24,9 +24,10 @@ include("test_lowlevel.jl")
 #include("test_simplemesh.jl")
 include("test_modes.jl")
 #include("test_GLS2.jl")
-cd("./convergence")
-include(joinpath(pwd(), "runtests.jl"))
-cd("..")
+
+#cd("./convergence")
+#include(joinpath(pwd(), "runtests.jl"))
+#cd("..")
 
 FactCheck.exitstatus()
 

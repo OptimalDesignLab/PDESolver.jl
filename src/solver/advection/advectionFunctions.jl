@@ -128,6 +128,42 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 end # end function evalBndry
 
 
+function evalSRCTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                     sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, 
+                     opts)
+
+
+  # placeholder for multiple source term functionality (similar to how
+  # boundary conditions are done)
+  if opts["use_src_term"]
+    applySRCTerm(mesh, sbp, eqn, opts, eqn.src_func)
+  end
+
+  return nothing
+end  # end function
+
+function applySRCTerm(mesh,sbp, eqn, opts, src_func)
+
+  weights = sbp.w
+  t = eqn.t
+  for i=1:mesh.numEl
+    jac_i = view(mesh.jac, :, i)
+    res_i = view(eqn.res, :, :, i)
+    for j=1:mesh.numNodesPerElement
+      coords_j = view(mesh.coords, :, j, i)
+      alpha_x = eqn.alpha_x[1, j, i]
+      alpha_y, = eqn.alpha_y[1, j, i]
+
+      src_val = src_func(coords_j, alpha_x, alpha_y, t)
+      res_i[j] += weights[j]*src_val/jac_i[j]
+    end
+  end
+
+  return nothing
+end
+
+
+
 @doc """
 ### AdvectionEquationMod.init
 """->
@@ -136,6 +172,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 
   println("Entering Advection Module")
   getBCFunctors(mesh, sbp, eqn, opts)
+  getSRCFunctors(mesh, sbp, eqn, opts)
   fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
   fill!(eqn.alpha_y, 0.0) # advection velocity in y direction
   
