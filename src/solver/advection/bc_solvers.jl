@@ -54,47 +54,12 @@ end # end function flux1
 
 function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, alpha_x, alpha_y, 
 	               nrm, dxidx::AbstractArray{Tmsh,2})
-#=
-  println("----- Entered RoeSolver -----")
-  println("u = ", u)
-  println("u_bc = ", u_bc)
-  println("alpha_x = ", alpha_x)
-  println("alpha_y = ", alpha_y)
-  println("nrm = ", nrm)
-  println("dxidx = ", dxidx)
-=#
+
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
-#  println("alpha_xi = ", alpha_xi)
-#  println("alpha_eta = ", alpha_eta)
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
 #  println("alpha_nrm = ", alpha_n)
   bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
 
-#  println("bndryflux = ", bndryflux)
-  #= # Code from the flux1
-  u_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
-  u_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
-  mag_x = u_xi*nrm[1]  # x flow magnitude
-  mag_y = u_eta*nrm[2]  # y flow magnitude
-  mag = mag_x + mag_y
-  
-
-  # because mag is scalar,not vector, can combine these if statements
-  if mag < 0  # inflow condition, added factor of nrm[2]
-    flx_xi = u_xi*u_bc
-  else
-    flx_xi = u_xi*u
-  end
-
-  if mag < 0  # inflow condition, added factor of nrm[1]
-    flx_eta = u_eta*u_bc
-  else
-    flx_eta = u_eta*u
-  end
-
-  bndryflux = flx_xi*nrm[1] + flx_eta*nrm[2]
-  =#
-#  println("----- Finished RoeSolver -----")
   return bndryflux
 end # end function AdvectionRoeSolver

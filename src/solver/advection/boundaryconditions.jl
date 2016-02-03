@@ -105,14 +105,6 @@ function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol,
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
   u_bc = calc_x5plusy5(coords) # Calculate the actual analytic value of u at the bondary
-#=
-  println("  u = ", u)
-  println("  u_bc = ", u_bc)
-  println("  alpha_x = ", alpha_x)
-  println("  alpha_y = ", alpha_y)
-  println("  dxidx = ", dxidx)
-  println("  nrm = ", nrm)
-=#
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
   return bndryflux
