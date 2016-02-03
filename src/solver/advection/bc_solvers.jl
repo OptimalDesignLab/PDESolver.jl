@@ -52,8 +52,27 @@ function flux1(u_sbp_, dxidx, nrm, net_flux, alpha_x, alpha_y)
   return nothing
 end # end function flux1
 
-function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, alpha_x, alpha_y, 
-	               nrm, dxidx::AbstractArray{Tmsh,2})
+@doc"""
+### AdvectionEquationMod.RoeSolver
+
+Roe solver for the advection equations. It determines the boundary flux on 
+each boundary. It is called at the nodal level
+
+**Inputs**
+
+*  `u`    : Solution of advection equation at a particular node
+*  `u_bc` : Prescribed solution value at the boundary
+*  `alpha_x` & `alpha_y`: advection velocities in x & y directions
+*  `nrm`  : Summation-by-parts face normal vector
+*  `dxidx`: Mapping jacobian at a particular node
+
+**Outputs**
+
+*  `bndryflux` : Boundary flux at the particular node
+
+"""->
+function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, alpha_x, alpha_y, nrm, 
+                               dxidx::AbstractArray{Tmsh,2})
 
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y

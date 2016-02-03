@@ -21,18 +21,11 @@ function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
                                      eqn::AdvectionData{Tsol, Tres, Tdim})
 
   tau = zeros(Tsol,mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.numEl)
-  # calculate tau
+  calcTau(mesh, sbp, eqn, tau)
 
   # Calculate the shape function derivatives
-  Hinv = 1./sbp.w
   shapefuncderiv = zeros(Tsol, sbp.numnodes, sbp.numnodes, Tdim)
-  for k = 1:Tdim
-    for i = 1:sbp.numnodes
-      for j = 1:sbp.numnodes
-        shapefuncderiv[i,j,k] = Hinv[i]*sbp.Q[i,j,k]
-      end
-    end
-  end 
+  calcShapefuncDeriv(sbp, shapefuncderiv)
   
   gls_res = zeros(eqn.res)
 
@@ -76,13 +69,13 @@ Calculates Axi*Dxi + Aeta*Deta at the element level
 
 **Inputs**
 
+*  `mesh`   : Abstract mesh type
 *  `Axidxi` : Product of flux jacobian with shape function derivative
               Axi*Dxi + Aeta*Deta
+*  `dxidx`  : Mapping jacobian for all the nodes in an element
+*  `alpha_x` & `alpha_y`: Velocities in the X & Y direction for all the nodes
+                          in an element.
 *  `shapefuncderiv`: Shape function derivative (Dxi and Deta above)
-*  `Axi` : Flux jacobian in the xi direction
-*  `Aeta` : Flux jacobian in the eta direction
-*  `ndof` : Number of degrees of freedom per node
-*  `nnpe` : Number of nodes per element
 
 **Outputs**
 
@@ -94,7 +87,7 @@ function calcAxiDxi{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 	                            dxidx::AbstractArray{Tmsh,3},
 	                            alpha_x::AbstractArray{Tsol,1}, 
 	                            alpha_y{Tsol,1}, shapefuncderiv),
-                                shapefuncderiv::AbstractArray{Tsol,3})
+                              shapefuncderiv::AbstractArray{Tsol,3})
 
   alpha_xi = eye(mesh.numNodesPerElement)
   alpha_eta = eye(mesh.numNodesPerElement)
@@ -110,22 +103,33 @@ function calcAxiDxi{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+
+@doc """
+### AdvectionEquationMod.calcTau
+
+Calculates the stabilization term tau for GLS. It operates at the global level.
+
+**Inputs**
+
+*  `mesh` : Abstract mesh type
+*  `sbp`  : Summation-by-parts operator
+*  `eqn`  : Advection equation object
+*  `tau`  : Stabilization term. It is an element level array with size equal 
+            to number of nodes in an element.
+
+**Outputs**
+
+* None
+"""->
 function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                  sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
-                 tau::AbstractArray{Tsol,3}, order::Integer)
+                 tau::AbstractArray{Tsol,3})
   
   # Using Glasby's implementation for advection equation
 
   # Get shape function derivatives at the nodes
-  Hinv = 1./sbp.w
   shapefuncderiv = zeros(Tsol, sbp.numnodes, sbp.numnodes, Tdim)
-  for k = 1:Tdim
-    for i = 1:sbp.numnodes
-      for j = 1:sbp.numnodes
-        shapefuncderiv[i,j,k] = Hinv[i]*sbp.Q[i,j,k]
-      end
-    end
-  end
+  calcShapefuncDeriv(sbp, shapefuncderiv)
 
   for i = 1:mesh.numEl
     alpha_xi = zeros(Tsol, mesh.numNodesPerElement,mesh.numNodesPerElement)
@@ -135,11 +139,43 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       alpha_y = eqn.alpha_y[1, j, i]
       alpha_xi[j,j] = mesh.dxidx[1, 1, j, i]*alpha_x + mesh.dxidx[1, 2, j, i]*alpha_y
       alpha_eta[j,j] = mesh.dxidx[2, 1, j, i]*alpha_x + mesh.dxidx[2, 2, j, i]*alpha_y
-    end
+    end  # end for j = 1:mesh.numNodesPerElement
     tau[:,:,i] = abs(alpha_xi*shapefuncderiv[:,:,1]) + 
                  abs(alpha_eta*shapefuncderiv[:,:,2])
-  	end
-  end
+    tau[:,:,i] = inv(tau[:,:,i])
+  end    # end for i = 1:mesh.numEl
+
+  return nothing
+end
+
+
+@doc """
+### AdvectionEquationMod.calcShapefuncDeriv
+
+Calculates the shape function derivatives for a 2D problem
+
+**Inputs**
+
+*  `sbp` : Summation-by-parts operator
+*  `shapefuncderiv` : Array containing the shape functions
+
+**Outputs**
+
+*  None
+
+"""->
+function calcShapefuncDeriv{Tsol}(sbp::SBPOperator, 
+                                  shapefuncderiv::AbstractArray{Tsol,3})
+
+  Tdim = 2  # For a 2D problem
+  Hinv = 1./sbp.w
+  for k = 1:Tdim
+    for i = 1:sbp.numnodes
+      for j = 1:sbp.numnodes
+        shapefuncderiv[i,j,k] = Hinv[i]*sbp.Q[i,j,k]
+      end
+    end
+  end  
 
   return nothing
 end

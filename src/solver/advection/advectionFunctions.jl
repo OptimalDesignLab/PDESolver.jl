@@ -31,6 +31,9 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
 
+  if opts["use_GLS"]
+    GLS(mesh, sbp, eqn)
+  end
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
   # println("evalBndry complete")
 
