@@ -10,7 +10,7 @@ implementation is only for steady problems and conservative variables
 
 *  `mesh`: AbstractMesh type
 *  `sbp` : Summation-by-parts operator
-*  `eqn` : Equation object used elsewhere
+*  `eqn` : Advection equation object
 
 **Outputs**
 
@@ -18,10 +18,9 @@ implementation is only for steady problems and conservative variables
 
 """->
 function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
-                               eqn::AdvectionData{Tsol, Tres, Tdim})
+                                     eqn::AdvectionData{Tsol, Tres, Tdim})
 
-  tau = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, 
-              mesh.numNodesPerElement, mesh.numEl)
+  tau = zeros(Tsol,mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.numEl)
   # calculate tau
 
   # Calculate the shape function derivatives
@@ -49,8 +48,9 @@ function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
     calcAxiDxi(mesh, AxiDxi, dxidx, alpha_x, alpha_y, shapefuncderiv)
 
     intArr = zeros(AxiDxi) # intermediate array for storing tau*AxiDxi
+    intArr = tau[:,:,i]*AxiDxi
     for j = 1:mesh.numNodesPerElement
-      intArr = sbp.w[j]*tau[j,i]*AxiDxi
+      intArr[j,:,i] = sbp.w[j]*intArr[j,:,i] # multiply rows of intArr with H.
     end
     intvec = Axidxi.'*intArr*u
     gls_res[1,:,i] = intvec[:]
@@ -68,6 +68,27 @@ function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   return nothing
 end
 
+
+@doc """
+### AdvectionEquationMod.calcAxidxi
+
+Calculates Axi*Dxi + Aeta*Deta at the element level
+
+**Inputs**
+
+*  `Axidxi` : Product of flux jacobian with shape function derivative
+              Axi*Dxi + Aeta*Deta
+*  `shapefuncderiv`: Shape function derivative (Dxi and Deta above)
+*  `Axi` : Flux jacobian in the xi direction
+*  `Aeta` : Flux jacobian in the eta direction
+*  `ndof` : Number of degrees of freedom per node
+*  `nnpe` : Number of nodes per element
+
+**Outputs**
+
+*  None
+
+"""->
 function calcAxiDxi{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, 
 	                            AxiDxi::AbstractArray{Tsol,2},  
 	                            dxidx::AbstractArray{Tmsh,3},
@@ -85,6 +106,40 @@ function calcAxiDxi{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   AxiDxi = alpha_xi*shapefuncderiv[:,:,1] + alpha_eta*shapefuncderiv[:,:,2]  
+
+  return nothing
+end
+
+function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                 sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                 tau::AbstractArray{Tsol,3}, order::Integer)
+  
+  # Using Glasby's implementation for advection equation
+
+  # Get shape function derivatives at the nodes
+  Hinv = 1./sbp.w
+  shapefuncderiv = zeros(Tsol, sbp.numnodes, sbp.numnodes, Tdim)
+  for k = 1:Tdim
+    for i = 1:sbp.numnodes
+      for j = 1:sbp.numnodes
+        shapefuncderiv[i,j,k] = Hinv[i]*sbp.Q[i,j,k]
+      end
+    end
+  end
+
+  for i = 1:mesh.numEl
+    alpha_xi = zeros(Tsol, mesh.numNodesPerElement,mesh.numNodesPerElement)
+    alpha_eta = zeros(alpha_xi)
+  	for j = 1:mesh.numNodesPerElement
+      alpha_x = eqn.alpha_x[1, j, i]
+      alpha_y = eqn.alpha_y[1, j, i]
+      alpha_xi[j,j] = mesh.dxidx[1, 1, j, i]*alpha_x + mesh.dxidx[1, 2, j, i]*alpha_y
+      alpha_eta[j,j] = mesh.dxidx[2, 1, j, i]*alpha_x + mesh.dxidx[2, 2, j, i]*alpha_y
+    end
+    tau[:,:,i] = abs(alpha_xi*shapefuncderiv[:,:,1]) + 
+                 abs(alpha_eta*shapefuncderiv[:,:,2])
+  	end
+  end
 
   return nothing
 end
