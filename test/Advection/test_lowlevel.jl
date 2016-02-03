@@ -27,7 +27,7 @@ facts("--- Testing Mesh --- ") do
   @fact mesh.numNodesPerElement => 3
   @fact mesh.numNodesPerType => [1, 0 , 0]
 
-  println("mesh.bndryfaces = ", mesh.bndryfaces)
+#  println("mesh.bndryfaces = ", mesh.bndryfaces)
   @fact mesh.bndry_funcs[1] => AdvectionEquationMod.x5plusy5BC()
   @fact mesh.bndryfaces[1].element => 1
   @fact mesh.bndryfaces[1].face => 1
@@ -38,7 +38,7 @@ facts("--- Testing Mesh --- ") do
   @fact mesh.bndryfaces[4].element => 2
   @fact mesh.bndryfaces[4].face => 3
 
-  println("mesh.interfaces = ",  mesh.interfaces)
+#  println("mesh.interfaces = ",  mesh.interfaces)
   @fact mesh.interfaces[1].elementL => 2
   @fact mesh.interfaces[1].elementR => 1
   @fact mesh.interfaces[1].faceL => 2
@@ -46,11 +46,11 @@ facts("--- Testing Mesh --- ") do
 
   jac_fac = 0.25
   fac = 2
-  println("mesh.coords = ", mesh.coords)
+#  println("mesh.coords = ", mesh.coords)
   @fact mesh.coords[:, :, 1] => roughly([4 4 0; 0 4 4.0])
   @fact mesh.coords[:, :, 2] => roughly([0.0 4 0; 0 0 4])
 
-  println("mesh.dxidx = \n", mesh.dxidx)
+#  println("mesh.dxidx = \n", mesh.dxidx)
 
   @fact mesh.dxidx[:, :, 1, 1] => roughly(fac*[1 1; -1 0.0], atol=1e-14)
   @fact mesh.dxidx[:, :, 2, 1] => roughly(fac*[1 1; -1 0.0], atol=1e-14)
@@ -79,7 +79,6 @@ facts("--- Testing Functions Within AdvectionData_--- ") do
   @fact u[1,2,2] => roughly(1.0)
   @fact u[1,3,2] => roughly(3.0)
 
-  println("mesh.dofs = \n", mesh.dofs)
   #checking assembleSolution
   fill!(u_vec, 0.0)
   eqn.assembleSolution(mesh, sbp, eqn, opts, u, u_vec)
@@ -87,8 +86,6 @@ facts("--- Testing Functions Within AdvectionData_--- ") do
 
   # check mass matrix
   # just for testing, make jac != 1
-  println("sbp.w = ", sbp.w)
-  println("mesh.jac = ", mesh.jac)
   w_val = sbp.w[1]  # all of sbp.w entries are the same
   jac_val = 0.25
   M1 = 2*w_val/jac_val
@@ -181,8 +178,6 @@ end
                                            # direction
     val_exp = alpha_eff*u
     val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
-    println("val = ", val)
-    println("val_exp = ", val_exp)
 
     @fact val => roughly(val_exp, atol=1e-14)
 
@@ -203,8 +198,6 @@ end
 
     dxidx = get_rotation_matrix( theta)
     val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
-    println("val = ", val)
-    println("val_exp = ", val_exp)
     @fact val => roughly(val_exp, atol=1e-14)
 
     # check eta direction
@@ -213,8 +206,6 @@ end
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = alpha_eff*u
     val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
-    println("val = ", val)
-    println("val_exp = ", val_exp)
     @fact val => roughly(val_exp, atol=1e-14)
 
 
@@ -229,13 +220,10 @@ end
     fill!(eqn.q, 0.0)
     alpha_x = ones(Float64 ,1, mesh.numNodesPerElement, mesh.numEl)
     alpha_y = zeros(alpha_x)
-    println("typeof(alpha_x) = ", typeof(alpha_x))
 
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
-    println("eqn.res = ", eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    println("eqn.res_vec = \n", eqn.res_vec)
     @fact eqn.res => roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-14)
 
 
@@ -243,9 +231,6 @@ end
     fill!(eqn.q, 1.0)
     fill!(eqn.res, 0.0)
     dxidx1 = mesh.dxidx[:, :, :, 1]
-    println("dxidx for element 1 = \n", dxidx1)
-    println("|J| for element 1 = \n", mesh.jac[:, 1])
-    println("coords for element 1 = \n", mesh.coords[:, :, 1])
     jac = mesh.jac[:, 1]
     dxidx_true = zeros(2, 2, 3)
     for i=1:3
@@ -256,21 +241,15 @@ end
     q = [eqn.q[1, 1, 1], eqn.q[1, 2, 1], eqn.q[1, 3, 1]]  # extract q values
     # sum reduces the vector to the value of the integral
     val_test = sum(Qx.'*q)  
-    println("val_test = ", val_test)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     # extract residual values
     vec_code =  [eqn.res[1, 1, 1], eqn.res[1, 2, 1], eqn.res[1, 3, 1]]
     val_code = sum(vec_code)
-    println("val_code = ", val_code)
     xi_flux = dxidx1[1,1,1]*1*q
     xi_component = sbp.Q[:, :, 1].'*xi_flux
     eta_flux = dxidx1[2, 1]*1*q
     eta_component = sbp.Q[:, :, 2].'*eta_flux
     val2_test = sum(xi_component + eta_component)
-    println("test xi_flux = ", xi_flux)
-    println("test xi_component = ", xi_component)
-    println("test eta_flux = ", eta_flux)
-    println("test eta_component = ", eta_component)
     @fact val_test => roughly(val2_test, atol=1e-14)
     @fact val_test => roughly(val_code, atol=1e-14)
 
@@ -294,40 +273,31 @@ end
       end
     end
 
-    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
     # check the boundry contribution
     AdvectionEquationMod.evalBndry(mesh, sbp, eqn, alpha_x, alpha_y)
 
-    println("eqn.res[:, :, 1] = ", eqn.res[:, :, 1])
     @fact sum(eqn.res[:, :, 1]) => roughly(-2.0, atol=1e-14)
     @fact sum(eqn.res[:, :, 3]) => roughly(-2.0, atol=1e-14)
 
-    println("eqn.res[:, :, 6] = ", eqn.res[:, :, 6])
     @fact sum(eqn.res[:, :, 6]) => roughly(-2.0, atol=1e-14)
     @fact sum(eqn.res[:, :, 8]) => roughly(-2.0, atol=1e-14)
 
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     for i=1:mesh.numEl
-      println("element $i")
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-#      println("val_code = ", val_code)
       @fact sum(val_code) => roughly(0.0, atol=1e-14)  # proven by hand calc
-      println("val_test = ", val_test)
-      println("val_code = ", val_code)
       @fact val_code => roughly(val_test, atol=1e-14)
     end
 
-    println("mesh.dofs = \n", mesh.dofs)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     val_test =[-1., 2/3, 1, -2, 1/3, -1, 1, 2/3, 1/3]
-    println("eqn.res_vec = \n", eqn.res_vec)
     @fact eqn.res_vec => roughly(val_test, atol=1e-14)
 
     println("----- Checking q=2*x^2 + 5 case -----")
@@ -340,20 +310,15 @@ end
       end
     end
 
-    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     for i=1:mesh.numEl
-      println("element $i")
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-#      println("val_code = ", val_code)
-      println("val_test = ", val_test)
-      println("val_code = ", val_code)
       @fact val_code => roughly(val_test, atol=1e-14)
     end
 
@@ -370,20 +335,15 @@ end
       end
     end
 
-    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     for i=1:mesh.numEl
-      println("element $i")
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-#      println("val_code = ", val_code)
-      println("val_test = ", val_test)
-      println("val_code = ", val_code)
       @fact val_code => roughly(val_test, atol=1e-14)
     end
 
@@ -399,30 +359,21 @@ end
         eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], 0.25)
       end
     end
-    println("eqn.q = \n", eqn.q)
 
     mesh.bndry_funcs[1] = AdvectionEquationMod.sinwave_BC()
-    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     for i=1:mesh.numEl
-      println("element $i")
-      println("dxidx = ", mesh.dxidx[:, :, 1, i])
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-#      println("val_code = ", val_code)
-      println("  val_test = ", val_test)
-      println("  val_code = ", val_code)
       @fact val_code => roughly(val_test, atol=1e-14)
     end
 
-    println("eqn.res = \n", eqn.res)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    println("eqn.res_vec = \n", eqn.res_vec)
 
     ARGS[1] = "input_vals_channel_verylarge.jl"
     include(STARTUP_PATH)
@@ -435,23 +386,17 @@ end
         eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], 0.25)
       end
     end
-    println("eqn.q = \n", eqn.q)
 
     mesh.bndry_funcs[1] = AdvectionEquationMod.sinwave_BC()
-    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     for i=1:mesh.numEl
-      println("element $i")
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-#      println("val_code = ", val_code)
-      println("val_test = ", val_test)
-      println("val_code = ", val_code)
       @fact val_code => roughly(val_test, atol=1e-14)
     end
 

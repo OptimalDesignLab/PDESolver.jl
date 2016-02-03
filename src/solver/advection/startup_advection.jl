@@ -23,8 +23,7 @@ opts = read_input(ARGS[1])
 
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
 flag = opts["run_type"]
-println("run type flag = ", flag)
-println("from arg_dict, flag = ", arg_dict["run_type"])
+
 # timestepping parameters
 delta_t = opts["delta_t"]
 t_max = opts["t_max"]

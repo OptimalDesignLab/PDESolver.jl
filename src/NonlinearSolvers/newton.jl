@@ -825,7 +825,6 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
   epsilon = norm(pert)  # finite difference perturbation
   # calculate jacobian
   for j=1:m
-      println("  jacobian iteration ", j)
     if j==1
       entry_orig = eqn.q_vec[j]
       eqn.q_vec[j] +=  epsilon
@@ -835,15 +834,12 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
       eqn.q_vec[j] += epsilon
     end
 
-    println("eqn.q_vec = \n", eqn.q_vec)
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-    println("eqn.q = \n", eqn.q)
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
-    println("eqn.res_vec = \n", eqn.res_vec)
     calcJacCol(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
     
   end
