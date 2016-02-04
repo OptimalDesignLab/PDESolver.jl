@@ -85,7 +85,8 @@ include("common_funcs.jl")
 include("boundaryconditions.jl")
 include("bc_solvers.jl")
 include("ic.jl")
-include("GLS2.jl")
+include("GLS.jl")
+# include("GLS2.jl")
 include("../euler/complexify.jl")
 
 @doc """

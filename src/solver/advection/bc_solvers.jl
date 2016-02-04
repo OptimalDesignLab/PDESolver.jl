@@ -52,7 +52,7 @@ function flux1(u_sbp_, dxidx, nrm, net_flux, alpha_x, alpha_y)
   return nothing
 end # end function flux1
 
-@doc"""
+@doc """
 ### AdvectionEquationMod.RoeSolver
 
 Roe solver for the advection equations. It determines the boundary flux on 
