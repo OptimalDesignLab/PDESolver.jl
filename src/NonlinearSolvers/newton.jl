@@ -427,8 +427,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     println("step_norm = ", step_norm)
 
     # perform Newton update
-    for i=1:m
-      eqn.q_vec[i] += step_fac*delta_res_vec[i]
+    for j=1:m
+      eqn.q_vec[j] += step_fac*delta_res_vec[j]
     end
     
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts)
@@ -449,8 +449,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func)
     # extract real component to res_0
-    for i=1:m
-      res_0[i] = real(eqn.res_vec[i])
+    for j=1:m
+      res_0[j] = real(eqn.res_vec[j])
     end
 
     println("residual norm = ", res_0_norm)
@@ -483,8 +483,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     end
 
      # put residual into eqn.res_vec
-     for i=1:m
-       eqn.res_vec[i] = res_0[i]
+     for j=1:m
+       eqn.res_vec[j] = res_0[j]
      end
 
      close(fconv)
@@ -502,8 +502,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       println("Final residual = ", res_0_norm)
 
       # put residual into eqn.res_vec
-      for i=1:m
-        eqn.res_vec[i] = res_0[i]
+      for j=1:m
+        eqn.res_vec[j] = res_0[j]
       end
       close(fconv)
       
@@ -556,8 +556,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
 
    # put residual into eqn.res_vec
-   for i=1:m
-     eqn.res_vec[i] = res_0[i]
+   for j=1:m
+     eqn.res_vec[j] = res_0[j]
    end
  
 

@@ -43,7 +43,7 @@ function calc_mms1{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   y = coords[2]
   px = 1.5
   py = 1.5
-  return (sin(px*x)*cos(py*y) + sin(px*x)*cos(py*y))
+  return sin(px*x)*cos(py*y) + sin(px*x)*cos(py*y)
 end
 
 # x derivative of mms1

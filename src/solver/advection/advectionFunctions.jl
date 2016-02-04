@@ -183,7 +183,7 @@ end
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
                                 sbp::SBPOperator, eqn::AbstractAdvectionData, opts)
 
-#  println("Performing major Iteration Callback")
+  println("Performing major Iteration Callback for iteration ", itr)
 
   if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
     println("writing vtk file")
