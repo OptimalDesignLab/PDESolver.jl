@@ -31,6 +31,9 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
 
+  if opts["use_GLS"]
+    GLS(mesh, sbp, eqn)
+  end
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
   # println("evalBndry complete")
 
@@ -64,7 +67,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
                                     alpha_y::AbstractArray{Tsol, 3})
 
 
-#  println("----- Entered evalSCResidual -----")
+  #  println("----- Entered evalSCResidual -----")
   Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -77,13 +80,11 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
     end
   end  # end loop over elements
 
-
-  res2 = zeros(Tres, mesh.numNodesPerElement, mesh.numEl)
   for i = 1:Tdim
     weakdifferentiate!(sbp,i,view(Adq_dxi,:,:,:,i), eqn.res, trans = true)
   end
 
-#  println("----- Finished evalSCResidual -----")
+  #  println("----- Finished evalSCResidual -----")
   return nothing
 end  # end function
 

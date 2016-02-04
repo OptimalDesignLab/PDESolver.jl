@@ -2,17 +2,17 @@
 
 
 @doc """
-### EulerEquationMod.printSolution
+### AdvectionEquationMod.printSolution
 
   This function prints the solution vector u to a file named solution.dat.
   Each line contains: element number, local node number, and the 4 conservative
   variable values.
 
   Inputs:
-   * mesh :: PumiMesh2
+   * mesh :: AbstractMesh
    * u  : vector of values
 """->
-function printSolution(mesh::PumiMesh2, u::AbstractVector)
+function printSolution(mesh::AbstractMesh, u::AbstractVector)
 # print solution to file
 # format = for each element, node, print u rho*u rho*v E
 
@@ -37,15 +37,15 @@ return nothing
 end
 
 @doc """
-### EulerEquationMod.printCoordinates
+### AdvectionEquationMod.printCoordinates
 
   This function prints the mesh vertex coordinates in the same format 
   as printSolution prints the solution vector.
 
   Inputs:
-    * mesh :: PumiMesh2
+    * mesh :: AbstractMesh
 """->
-function printCoordinates(mesh::PumiMesh2)
+function printCoordinates(mesh::AbstractMesh)
 # print solution to file
 # format = for each element, node, print u rho*u rho*v E
 
@@ -71,7 +71,7 @@ return nothing
 end
 
 @doc """
-### EulerEquationMod.printSolution
+### AdvectionEquationMod.printSolution
 
   This function prints the solution vector to the file with the given name.
   The solution vector is printed one value per line.
@@ -95,7 +95,7 @@ end
 
 
 @doc """
-### EulerEquationMod.printMatrix
+### AdvectionEquationMod.printMatrix
 
   This function prints a 2D matrix of Float64s to a file with the given name
 
