@@ -34,6 +34,8 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
   # println("evalBndry complete")
 
+  evalSRCTerm(mesh, sbp, eqn, opts)
+
   return nothing
 end
 
@@ -152,7 +154,7 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
     for j=1:mesh.numNodesPerElement
       coords_j = view(mesh.coords, :, j, i)
       alpha_x = eqn.alpha_x[1, j, i]
-      alpha_y, = eqn.alpha_y[1, j, i]
+      alpha_y = eqn.alpha_y[1, j, i]
 
       src_val = src_func(coords_j, alpha_x, alpha_y, t)
       res_i[j] += weights[j]*src_val/jac_i[j]
