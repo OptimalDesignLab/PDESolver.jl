@@ -58,5 +58,14 @@ facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
     @fact tau[:,1] --> roughly([1.0,1.0,1.0])
   end
 
+  context("Check GLS") do
+    fill!(eqn.alpha_x, 1.0)
+    fill!(eqn.alpha_y, 1.0)
+    fill!(eqn.res, 0.0)
+    eqn.q[1,:,1] = eqn.q_vec
+    GLS(mesh, sbp, eqn)
+    @fact eqn.res[1,:,1] --> roughly([8.0 -4.0 -4.0])
+
+  end
 
 end  # end facts

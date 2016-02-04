@@ -19,6 +19,7 @@ implementation is only for steady problems and conservative variables
 """->
 function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
                                      eqn::AdvectionData{Tsol, Tres, Tdim})
+  
 
   gls_res = zeros(eqn.res)
   tau = zeros(Tsol,mesh.numNodesPerElement, mesh.numEl)
@@ -38,13 +39,12 @@ function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
     alpha_y = view(eqn.alpha_y, 1, :, i)
     dxidx = view(mesh.dxidx, :, :, :, i)
     AxiDxi = calcAxiDxi(mesh, dxidx, alpha_x, alpha_y, shapefuncderiv)
-
     intArr = zeros(AxiDxi) # intermediate array for storing H*tau*AxiDxi
     for j = 1:mesh.numNodesPerElement
-      intArr[j,:,i] = sbp.w[j]*tau[j]*intArr[j,:,i]
+      intArr[j,:,i] = sbp.w[j]*tau[j]*AxiDxi[j,:,i]
     end
     
-    intvec = Axidxi.'*intArr*u
+    intvec = AxiDxi.'*intArr*u
     gls_res[1,:,i] = intvec[:]
   
   end  # end for i = 1:mesh.numEl
@@ -84,8 +84,8 @@ Calculates Axi*Dxi + Aeta*Deta at the element level
 """->
 function calcAxiDxi{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, 
 	                              dxidx::AbstractArray{Tmsh,3},
-	                              alpha_x::AbstractArray{Tsol,1}, 
-	                              alpha_y::AbstractArray{Tsol,1}, 
+	                              alpha_x::AbstractArray{Tsol}, 
+	                              alpha_y::AbstractArray{Tsol}, 
                                 shapefuncderiv::AbstractArray{Tsol,3})
 
   alpha_xi = zeros(Tsol, mesh.numNodesPerElement, mesh.numNodesPerElement)
