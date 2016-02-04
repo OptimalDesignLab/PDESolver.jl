@@ -216,7 +216,8 @@ global const BCDict = Dict{ASCIIString, BCType} (
 "exp_xplusyBC" => exp_xplusyBC(),
 "sinwaveBC" => sinwave_BC(),
 "sinwaveyBC" => sinwavey_BC(),
-"sinwavey_pertBC" => sinwavey_pertBC()
+"sinwavey_pertBC" => sinwavey_pertBC(),
+"mms1BC" => mms1BC(),
 )
 
 

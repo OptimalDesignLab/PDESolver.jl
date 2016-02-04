@@ -56,7 +56,7 @@ where input_file_name.jl is in your current directory.
 # i must have values 1 through numBC
 
 # source term specification (advection equation only)
-"SRCName": the name of the source term to use, (ASCIIString), default SRC0
+"SRCname": the name of the source term to use, (ASCIIString), default SRC0
 
 # misc options
 "calc_error"  : calculate error norm of values in a file compared to the initial condition, number of values in the file must equal the number of dofs in the mesh, (Bool), default false

@@ -38,16 +38,20 @@ function calc_sinwavey_pert{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y,
   return calc_sinwavey(coords, t)*1000*sin(x)
 end
 
-function calc_mms1{Tmsh}(coords::AbstractArray{Tmsh}, t)
+function calc_mms1{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   x = coords[1]
   y = coords[2]
-  return (sin(200*pi*x)*cos(200*pi*y) + sin(50*pi*x)*cos(400*pi*y))
+  px = 1.5
+  py = 1.5
+  return (sin(px*x)*cos(py*y) + sin(px*x)*cos(py*y))
 end
 
 # x derivative of mms1
-function calc_mms1dx{Tmsh}(coords::AbstractArray{Tmsh}, t)
+function calc_mms1dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   x = coords[1]
   y = coords[2]
-  return 200*pi*cos(200*pi*x)*cos(200*pi*y) + 50*pi*cos(50*pi*x)*cos(400*pi*y)
+  px = 1.5
+  py = 1.5
+  return px*cos(px*x)*cos(py*y) + px*cos(px*x)*cos(py*y)
 end
 
