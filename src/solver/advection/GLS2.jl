@@ -23,7 +23,8 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   gls_full = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   middle_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   res_before = copy(eqn.res)
-
+  weighting_res = zeros(middle_term)
+  weighting_vec = ones(mesh.numNodesPerElement)
   tau_sum = zero(Tres)
   tau_cnt = 0
 
@@ -60,7 +61,7 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 #     tau_vec[j] = getTau(alpha_xj, alpha_yj, dxidx_j, p)
 
      tau_vec[j] = getTau(alpha_x, alpha_y, jac[j], mesh.min_node_dist)
-     println("tau_vec[$j] = ", tau_vec[j])
+#     println("tau_vec[$j] = ", tau_vec[j])
      #DEBUGGING
      tau_sum += tau_vec[j]
      tau_cnt += 1
@@ -110,11 +111,19 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
      red_vec3[j] = alpha_x*red_vec3[j] + alpha_y*red_vec4[j]
    end
 
+
+   weight_vals = alpha_x*smallmatTvec(Dx, weighting_vec)
+   weight_vals2 =alpha_y*smallmatTvec(Dy, weighting_vec)
+
+
    # add source term to weighting term
    for j=1:mesh.numNodesPerElement
-     coords_j = view(mesh.coords, :, j, i)
-     q_j = u[j]
-     red_vec3[j] -= (src_func(coords_j, alpha_x, alpha_y, eqn.t)/q_j)*red_vec1[j]
+#     coords_j = view(mesh.coords, :, j, i)
+#     q_j = u[j]
+#     red_vec3[j] -= (src_func(coords_j, alpha_x, alpha_y, eqn.t)/q_j)*red_vec1[j]
+      red_vec3[j] = red_vec1[j]
+      #DEBUGGING
+      weighting_res[1, j, i] = weight_vals[j] + weight_vals2[j]
    end
 
 
@@ -131,9 +140,11 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   full_resvec = zeros(Tsol, mesh.numDof)
   middle_vec = zeros(Tsol, mesh.numDof)
   old_resvec = zeros(Tsol, mesh.numDof)
+  weight_resvec = zeros(Tsol, mesh.numDof)
   assembleSolution(mesh, sbp, eqn, opts, gls_res, gls_resvec)
   assembleSolution(mesh, sbp, eqn, opts, gls_full, full_resvec)
   assembleSolution(mesh, sbp, eqn, opts, middle_term, middle_vec)
+  assembleSolution(mesh, sbp, eqn, opts, weighting_res, weight_resvec)
   writedlm("gls_full.dat", real(gls_full))
   writedlm("gls_fullvec.dat", full_resvec)
   assembleSolution(mesh, sbp, eqn, opts, res_before,  old_resvec)
@@ -141,10 +152,11 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   full_norm = calcNorm(eqn, full_resvec, strongres=true)
   middle_norm = calcNorm(eqn, middle_vec, strongres=false)
   old_norm = calcNorm(eqn, old_resvec, strongres=true)
+  weight_norm = calcNorm(eqn, weight_resvec, strongres=false)
   tau_avg = tau_sum/tau_cnt
   rmfile("gls_norm.dat")
   f = open("gls_norm.dat", "w")
-  println(f, gls_norm, " ", old_norm, " ", full_norm, " ", real(tau_avg), " ", middle_norm)
+  println(f, gls_norm, " ", old_norm, " ", full_norm, " ", real(tau_avg), " ", middle_norm, " ", weight_norm)
   close(f)
 
 
