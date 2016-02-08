@@ -119,6 +119,28 @@ if opts["calc_trunc_error"]  # calculate truncation error
   close(f)
 end
 
+if opts["calc_havg"]
+  # calculate the average mesh size
+  jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
+  jac_vec = zeros(Tmsh, mesh.numNodes)
+  AdvectionEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+  # scale by the minimum distance between nodes on a reference element
+  # this is a bit of an assumption, because for distorted elements this
+  # might not be entirely accurate
+  println("mesh.min_node_distance = ", mesh.min_node_dist)
+  h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
+#  println("h_avg = ", h_avg)
+  h_avg *= mesh.min_node_dist
+#  println("h_avg = ", h_avg)
+
+  rmfile("havg.dat")
+  f = open("havg.dat", "w")
+  println(f, h_avg)
+  close(f)
+end
+
+
+
 if opts["perturb_ic"]
   println("\nPerturbing initial condition")
   perturb_mag = opts["perturb_mag"]
@@ -134,6 +156,11 @@ writedlm("IC.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
+
+if opts["test_GLS2"]
+  calcResidual(mesh, sbp, eqn, opts, evalAdvection)
+end
+
 
 #------------------------------------------------------------------------------
 #=

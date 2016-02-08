@@ -33,14 +33,17 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   if opts["use_GLS"]
     GLS(mesh, sbp, eqn)
-  elseif opts["use_GLS2"]
-    applyGLS2(mesh, sbp, eqn, opts)
   end
+  evalSRCTerm(mesh, sbp, eqn, opts)
 
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
   # println("evalBndry complete")
 
-  evalSRCTerm(mesh, sbp, eqn, opts)
+
+
+  if opts["use_GLS2"]
+    applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
+  end
 
   return nothing
 end

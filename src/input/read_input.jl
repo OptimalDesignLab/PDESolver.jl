@@ -120,7 +120,7 @@ get!(arg_dict, "calc_error", false)
 get!(arg_dict, "calc_error_infname", "none")
 get!(arg_dict, "calc_error_outfname", "error_calc.dat")
 get!(arg_dict, "calc_trunc_error", false)
-
+get!(arg_dict, "calc_havg", false)
 
 # Algorithmic Differentiation options
 get!(arg_dict, "use_edge_res", false)

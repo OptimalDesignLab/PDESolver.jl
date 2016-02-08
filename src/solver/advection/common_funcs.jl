@@ -55,3 +55,60 @@ function calc_mms1dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   return px*cos(px*x)*cos(py*y) + px*cos(px*x)*cos(py*y)
 end
 
+function calc_x4{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return x.^4 + x.^3 + x.^2 + x + 1
+end
+
+function calc_x4der{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return 4*x.^3 + 3*x.^2 + 2*x + 1
+end
+
+#DEBUGGING: set to constant
+function calc_p1{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return  x + 1
+end
+
+function calc_p1dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return 1
+end
+
+function calc_p2{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return x^2 + x + 1
+end
+
+function calc_p2dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return 2*x + 1
+end
+
+function calc_p3{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return x^3 + x^2 + x + 1
+end
+
+function calc_p3dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return 3*x^2 + 2*x + 1
+end
+
+function calc_p4{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return x^4 + x^3 + x^2 + x + 1
+end
+
+function calc_p4dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return 4*x^3 + 3*x^2 + 2*x + 1
+end
+
+
+
+
+
+
+

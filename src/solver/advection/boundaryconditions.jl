@@ -202,6 +202,76 @@ function call{Tmsh, Tsol}(obj::mms1BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+type x4BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::x4BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_x4(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+type p1BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::p1BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_p1(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+type p2BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::p2BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_p2(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+type p3BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::p3BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_p3(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+
+type p4BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::p4BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_p4(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
 
 
 @doc """
@@ -218,6 +288,11 @@ global const BCDict = Dict{ASCIIString, BCType} (
 "sinwaveyBC" => sinwavey_BC(),
 "sinwavey_pertBC" => sinwavey_pertBC(),
 "mms1BC" => mms1BC(),
+"x4BC" => x4BC(),
+"p1BC" => p1BC(),
+"p2BC" => p2BC(),
+"p3BC" => p3BC(),
+"p4BC" => p4BC(),
 )
 
 

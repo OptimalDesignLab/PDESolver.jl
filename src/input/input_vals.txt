@@ -63,6 +63,9 @@ where input_file_name.jl is in your current directory.
 "calc_error_infname"  : name of file to load, (ASCIIString), 
 "calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat
 "calc_trunc_error"  : calculate truncation error, IC must be exact solution for this to work, writes value to file error_trunc.dat, (Bool), default false
+"calc_havg" : calculate the average minimum distance between nodes (ie. the 
+              mesh spacing) and write it to the file "havg.dat", (Bool), default
+              false
 
 # algorithmic differentiation options
 "res_edge_res" : use an edge based residual data structure (in addition to

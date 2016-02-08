@@ -1,6 +1,6 @@
 
 
-function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, 2}, opts)
+function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, 2}, opts, src_func)
 
 #  println("----- entered applyGLS2 -----")
   Dx = zeros(Float64, mesh.numNodesPerElement, mesh.numNodesPerElement)
@@ -18,7 +18,14 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   Dxi = diagm(1./sbp.w)*sbp.Q[:, :, 1]
   Deta = diagm(1./sbp.w)*sbp.Q[:, :, 2]
 
-  for i=1:1  # DEBUGGING: only do first element
+  #DEBUGGING
+  gls_res = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  gls_full = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  res_before = copy(eqn.res)
+
+  tau_sum = zero(Tres)
+  tau_cnt = 0
+  for i=1:mesh.numEl
     # calculate the quantities needed for this element
     dxidx_hat = view(mesh.dxidx[:, :, :, i])  
     jac = view(mesh.jac, :, i)
@@ -47,7 +54,12 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
      alpha_yj = eqn.alpha_y[1, j, i]
      dxidx_j = view(dxidx, :, :, j)
      p = 2
-     tau_vec[j] = getTau(alpha_xj, alpha_yj, dxidx_j, p)
+#     tau_vec[j] = getTau(alpha_xj, alpha_yj, dxidx_j, p)
+
+     tau_vec[j] = getTau(alpha_xj, alpha_yj, jac[j], mesh.min_node_dist)
+     #DEBUGGING
+     tau_sum += tau_vec[j]
+     tau_cnt += 1
    end
 
    for j=1:mesh.numNodesPerElement
@@ -62,6 +74,17 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 
    for j=1:mesh.numNodesPerElement
      red_vec1[j] = alpha_x*red_vec1[j] + alpha_y*red_vec2[j]
+   end
+
+   # add source term
+   for j=1:mesh.numNodesPerElement
+     coords_j = view(mesh.coords, :, j, i)
+     red_vec1[j] -= src_func(coords_j, alpha_x, alpha_y, eqn.t)
+   end
+
+   #DEBUGGING
+   for j=1:mesh.numNodesPerElement
+     gls_res[1, j, i] = red_vec1[j]
    end
 
 #   println("weighting space term = ", red_vec1)
@@ -79,10 +102,32 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 
    for j=1:mesh.numNodesPerElement
      res[j] -= alpha_x*red_vec3[j] + alpha_y*red_vec4[j]
+     gls_full[1, j, i] -= alpha_x*red_vec3[j] + alpha_y*red_vec4[j]
+
    end
 
 
   end  # end loop over elements
+
+  gls_resvec = zeros(Tsol, mesh.numDof)
+  full_resvec = zeros(Tsol, mesh.numDof)
+  old_resvec = zeros(Tsol, mesh.numDof)
+  assembleSolution(mesh, sbp, eqn, opts, gls_res, gls_resvec)
+  assembleSolution(mesh, sbp, eqn, opts, gls_full, full_resvec)
+  writedlm("gls_full.dat", real(gls_full))
+  writedlm("gls_fullvec.dat", full_resvec)
+  assembleSolution(mesh, sbp, eqn, opts, res_before,  old_resvec)
+  gls_norm = calcNorm(eqn, gls_resvec)
+  full_norm = calcNorm(eqn, full_resvec, strongres=true)
+  old_norm = calcNorm(eqn, old_resvec, strongres=true)
+  tau_avg = tau_sum/tau_cnt
+  rmfile("gls_norm.dat")
+  f = open("gls_norm.dat", "w")
+  println(f, gls_norm, " ", old_norm, " ", full_norm, " ", real(tau_avg))
+  close(f)
+
+
+
 
 #  println("----- Finished applyGLS2 -----")
   return nothing
@@ -92,9 +137,16 @@ end  # end function
 
 
 function getTau(alpha_x, alpha_y, dxidx::AbstractMatrix, p)
-
+  fac = 2.5
   b1 = dxidx[1,1]*alpha_x + dxidx[2,1]*alpha_y
   b2 = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   bp = absvalue(b1)^p + absvalue(b2)^p
-  return bp^(1/p)
+  return fac*(bp^(-1/p))
+end
+
+function getTau{Tmsh}(alpha_x, alpha_y, jac::Tmsh, min_node_dist)
+
+  h = min_node_dist*(1/sqrt(jac))
+  alpha_nrm = sqrt(alpha_x*alpha_x + alpha_y*alpha_y)
+  return 0.5*h*h/alpha_nrm
 end

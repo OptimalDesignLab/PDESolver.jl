@@ -31,6 +31,45 @@ function call(obj::SRCmms1, coords::AbstractVector, alpha_x, alpha_y, t)
   return alpha_x*calc_mms1dx(coords, alpha_x, alpha_y, t)
 end
 
+type SRCx4 <: SRCType
+end
+
+function call(obj::SRCx4, coords::AbstractVector, alpha_x, alpha_y, t)
+  return alpha_x*calc_x4der(coords, alpha_x, alpha_y, t)
+end
+
+type SRCp1 <: SRCType
+end
+
+function call(obj::SRCp1, coords::AbstractVector, alpha_x, alpha_y, t)
+  return alpha_x*calc_p1dx(coords, alpha_x, alpha_y, t)
+end
+
+type SRCp2 <: SRCType
+end
+
+function call(obj::SRCp2, coords::AbstractVector, alpha_x, alpha_y, t)
+  return alpha_x*calc_p2dx(coords, alpha_x, alpha_y, t)
+end
+
+type SRCp3 <: SRCType
+end
+
+function call(obj::SRCp3, coords::AbstractVector, alpha_x, alpha_y, t)
+  return alpha_x*calc_p3dx(coords, alpha_x, alpha_y, t)
+end
+
+type SRCp4 <: SRCType
+end
+
+function call(obj::SRCp4, coords::AbstractVector, alpha_x, alpha_y, t)
+  return alpha_x*calc_p4dx(coords, alpha_x, alpha_y, t)
+end
+
+
+
+
+
 
 
 @doc """
@@ -45,6 +84,11 @@ global const SRCDict = Dict{ASCIIString, SRCType} (
 "SRC1" => SRC1(),
 "SRCx" => SRCx(),
 "SRCmms1" => SRCmms1(),
+"SRCx4" => SRCx4(),
+"SRCp1" => SRCp1(),
+"SRCp2" => SRCp2(),
+"SRCp3" => SRCp3(),
+"SRCp4" => SRCp4()
 )
 
 @doc """
