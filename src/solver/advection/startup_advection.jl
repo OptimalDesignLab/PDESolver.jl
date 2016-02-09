@@ -295,11 +295,15 @@ if opts["solve"]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
       q_diff = eqn.q_vec - q_exact
+#      diff_norm = norm(q_diff, Inf)
       diff_norm = calcNorm(eqn, q_diff)
       discrete_norm = norm(q_diff/length(q_diff))
 
       println("solution error norm = ", diff_norm)
       println("solution discrete L2 norm = ", discrete_norm)
+
+#      sol_norm = norm(eqn.q_vec, Inf)
+#      exact_norm = norm(q_exact)
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
       exact_norm = calcNorm(eqn, q_exact)

@@ -183,7 +183,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   getBCFunctors(mesh, sbp, eqn, opts)
   getSRCFunctors(mesh, sbp, eqn, opts)
   fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
-  fill!(eqn.alpha_y, 0.0) # advection velocity in y direction
+  fill!(eqn.alpha_y, 1.0) # advection velocity in y direction
   
   return nothing
 end

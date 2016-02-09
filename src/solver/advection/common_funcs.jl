@@ -68,7 +68,8 @@ end
 #DEBUGGING: set to constant
 function calc_p1{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   x = coords[1]
-  return  x + 1
+  y = coords[2]
+  return  x + 1 + y
 end
 
 function calc_p1dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
@@ -76,9 +77,16 @@ function calc_p1dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   return 1
 end
 
+function calc_p1dy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  y = coords[2]
+  return 1
+end
+
+
 function calc_p2{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   x = coords[1]
-  return x^2 + x + 1
+  y = coords[2]
+  return x^2 + x + 1 + y^2 + y
 end
 
 function calc_p2dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
@@ -86,9 +94,16 @@ function calc_p2dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   return 2*x + 1
 end
 
+function calc_p2dy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  y = coords[2]
+  return 2*y + 1
+end
+
+
 function calc_p3{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   x = coords[1]
-  return x^3 + x^2 + x + 1
+  y = coords[2]
+  return x^3 + x^2 + x + 1 + y^3 + y^2 + y
 end
 
 function calc_p3dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
@@ -96,9 +111,15 @@ function calc_p3dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   return 3*x^2 + 2*x + 1
 end
 
+function calc_p3dy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  y = coords[2]
+  return 3*y^2 + 2*y + 1
+end
+
 function calc_p4{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   x = coords[1]
-  return x^4 + x^3 + x^2 + x + 1
+  y = coords[2]
+  return x^4 + x^3 + x^2 + x + 1 + y^4 + y^3 + y^2 + y
 end
 
 function calc_p4dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
@@ -106,6 +127,11 @@ function calc_p4dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   return 4*x^3 + 3*x^2 + 2*x + 1
 end
 
+function calc_p4dy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return 4*y^3 + 3*y^2 + 2*y + 1
+end
 
 
 

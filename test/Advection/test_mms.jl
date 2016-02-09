@@ -71,7 +71,7 @@ facts ("----- Testing using manufactured polynomials -----") do
   include(STARTUP_PATH)
   fill!(eqn.res, 0.0)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  println("eqn.q_vec = ", eqn.q_vec)
+#  println("eqn.q_vec = ", eqn.q_vec)
   AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-13)

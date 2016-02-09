@@ -42,28 +42,31 @@ type SRCp1 <: SRCType
 end
 
 function call(obj::SRCp1, coords::AbstractVector, alpha_x, alpha_y, t)
-  return alpha_x*calc_p1dx(coords, alpha_x, alpha_y, t)
+  return alpha_x*calc_p1dx(coords, alpha_x, alpha_y, t) + alpha_y*calc_p1dy(coords, alpha_x, alpha_y, t)
+
 end
 
 type SRCp2 <: SRCType
 end
 
 function call(obj::SRCp2, coords::AbstractVector, alpha_x, alpha_y, t)
-  return alpha_x*calc_p2dx(coords, alpha_x, alpha_y, t)
+  return alpha_x*calc_p2dx(coords, alpha_x, alpha_y, t) + alpha_y*calc_p2dy(coords, alpha_x, alpha_y, t)
+
 end
 
 type SRCp3 <: SRCType
 end
 
 function call(obj::SRCp3, coords::AbstractVector, alpha_x, alpha_y, t)
-  return alpha_x*calc_p3dx(coords, alpha_x, alpha_y, t)
+  return alpha_x*calc_p3dx(coords, alpha_x, alpha_y, t) + alpha_y*calc_p3dy(coords, alpha_x, alpha_y, t)
+
 end
 
 type SRCp4 <: SRCType
 end
 
 function call(obj::SRCp4, coords::AbstractVector, alpha_x, alpha_y, t)
-  return alpha_x*calc_p4dx(coords, alpha_x, alpha_y, t)
+  return alpha_x*calc_p4dx(coords, alpha_x, alpha_y, t) + alpha_y*calc_p4dy(coords, alpha_x, alpha_y, t)
 end
 
 
