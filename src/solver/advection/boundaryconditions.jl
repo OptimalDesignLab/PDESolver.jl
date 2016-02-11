@@ -273,6 +273,20 @@ function call{Tmsh, Tsol}(obj::p4BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+type p5BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_p5(coords, alpha_x, alpha_y, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
 
 @doc """
 ### AdvectionEquationMod.BCDict
@@ -293,6 +307,7 @@ global const BCDict = Dict{ASCIIString, BCType} (
 "p2BC" => p2BC(),
 "p3BC" => p3BC(),
 "p4BC" => p4BC(),
+"p5BC" => p5BC(),
 )
 
 

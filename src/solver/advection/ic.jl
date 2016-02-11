@@ -247,6 +247,28 @@ function ICp4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
+
+function ICp5{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                    sbp::SBPOperator{Tsbp}, eqn::AdvectionData{Tsol}, 
+                    opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+  	for j = 1:mesh.numNodesPerElement
+  	  dofnums_j = view(mesh.dofs, :, j, i)
+  	  x = mesh.coords[1,j,i]
+  	  y = mesh.coords[2,j,i]
+          alpha_x = eqn.alpha_x[1, j, i]
+          alpha_y, = eqn.alpha_y[1, j, i]
+
+  	  u0[dofnums_j] = calc_p5(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
+  	end
+  end
+
+  return nothing
+end # end function exp_xplusy
+
+
+
 @doc """
 ### AdvectionEquationMod.ICFile
 
@@ -304,4 +326,5 @@ global const ICDict = Dict{Any, Function} (
 "ICp2" => ICp2,
 "ICp3" => ICp3,
 "ICp4" => ICp4,
+"ICp5" => ICp5,
 )

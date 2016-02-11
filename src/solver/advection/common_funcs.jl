@@ -134,6 +134,24 @@ function calc_p4dy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
 end
 
 
+function calc_p5{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return x.^5 + x^4 + x^3 + x^2 + x + 1 + y^5 + y^4 + y^3 + y^2 + y
+end
+
+function calc_p5dx{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  return 5*x^4 + 4*x^3 + 3*x^2 + 2*x + 1
+end
+
+function calc_p5dy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return 5*y^4 + 4*y^3 + 3*y^2 + 2*y + 1
+end
+
+
 
 
 

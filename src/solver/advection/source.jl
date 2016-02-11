@@ -69,6 +69,13 @@ function call(obj::SRCp4, coords::AbstractVector, alpha_x, alpha_y, t)
   return alpha_x*calc_p4dx(coords, alpha_x, alpha_y, t) + alpha_y*calc_p4dy(coords, alpha_x, alpha_y, t)
 end
 
+type SRCp5 <: SRCType
+end
+
+function call(obj::SRCp5, coords::AbstractVector, alpha_x, alpha_y, t)
+  return alpha_x*calc_p5dx(coords, alpha_x, alpha_y, t) + alpha_y*calc_p5dy(coords, alpha_x, alpha_y, t)
+end
+
 
 
 
@@ -91,7 +98,8 @@ global const SRCDict = Dict{ASCIIString, SRCType} (
 "SRCp1" => SRCp1(),
 "SRCp2" => SRCp2(),
 "SRCp3" => SRCp3(),
-"SRCp4" => SRCp4()
+"SRCp4" => SRCp4(),
+"SRCp5" => SRCp5(),
 )
 
 @doc """
