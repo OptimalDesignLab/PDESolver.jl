@@ -145,8 +145,8 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   assembleSolution(mesh, sbp, eqn, opts, gls_full, full_resvec)
   assembleSolution(mesh, sbp, eqn, opts, middle_term, middle_vec)
   assembleSolution(mesh, sbp, eqn, opts, weighting_res, weight_resvec)
-  writedlm("gls_full.dat", real(gls_full))
-  writedlm("gls_fullvec.dat", full_resvec)
+#  writedlm("gls_full.dat", real(gls_full))
+#  writedlm("gls_fullvec.dat", full_resvec)
   assembleSolution(mesh, sbp, eqn, opts, res_before,  old_resvec)
   gls_norm = norm(gls_resvec, Inf)
   full_norm = norm(full_resvec, Inf)
@@ -184,7 +184,7 @@ end
 
 function getTau{Tmsh}(alpha_x, alpha_y, jac::Tmsh, min_node_dist)
 
-  fac = 1.
+  fac = 25.
   h = (1/sqrt(jac))/2  # /2 because reference element is -1 to 1
   alpha_nrm = sqrt(alpha_x*alpha_x + alpha_y*alpha_y)
   return fac*0.5*h/alpha_nrm

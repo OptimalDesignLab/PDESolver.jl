@@ -370,7 +370,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     
     # calculate Jacobian condition number
     if print_cond
-      cond_j = cond(jac)
+      println("calculating condition number of jacobian")
+      cond_j = cond(full(jac))
       println("Condition number of jacobian = ", cond_j)
     end
 
@@ -388,6 +389,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       if write_eigs
 	writedlm("eigs$i.dat", eigs_i)
       end
+
     end
 
     # do the full eigenvalue decomposition
@@ -403,6 +405,9 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       writedlm("eigdecomp_imag$i.dat", imag(D))
       writedlm("eigdecomp_realvecs$i.dat", real(V))
       writedlm("eigdecomp_imagvecs$i.dat", imag(V))
+
+      max_val = typemin(Float64)
+      min_val = typemax(Float64)
     elseif write_eigdecomp # && we can't calculate it
       println(STDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
 

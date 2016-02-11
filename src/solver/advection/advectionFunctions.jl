@@ -29,14 +29,14 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
  
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   
-  evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+#  evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
 
   if opts["use_GLS"]
     GLS(mesh, sbp, eqn)
   end
-  evalSRCTerm(mesh, sbp, eqn, opts)
+#  evalSRCTerm(mesh, sbp, eqn, opts)
 
-  evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+#  evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
   # println("evalBndry complete")
 
 
