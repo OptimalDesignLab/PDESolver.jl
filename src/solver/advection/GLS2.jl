@@ -81,6 +81,7 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
      red_vec1[j] = alpha_x*red_vec1[j] + alpha_y*red_vec2[j]
    end
 
+
    # add source term
    for j=1:mesh.numNodesPerElement
      coords_j = view(mesh.coords, :, j, i)
@@ -92,6 +93,7 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
      gls_res[1, j, i] = red_vec1[j]
    end
 
+   
 #   println("weighting space term = ", red_vec1)
    # middle terms
    # also copy pinto red_vec2 at same time
@@ -121,7 +123,7 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
 #     coords_j = view(mesh.coords, :, j, i)
 #     q_j = u[j]
 #     red_vec3[j] -= (src_func(coords_j, alpha_x, alpha_y, eqn.t)/q_j)*red_vec1[j]
-      red_vec3[j] = red_vec1[j]
+#      red_vec3[j] = red_vec1[j]
       #DEBUGGING
       weighting_res[1, j, i] = weight_vals[j] + weight_vals2[j]
    end
@@ -174,6 +176,7 @@ end  # end function
 
 
 
+
 function getTau(alpha_x, alpha_y, dxidx::AbstractMatrix, p)
   fac = 2.5
   b1 = dxidx[1,1]*alpha_x + dxidx[2,1]*alpha_y
@@ -184,7 +187,7 @@ end
 
 function getTau{Tmsh}(alpha_x, alpha_y, jac::Tmsh, min_node_dist)
 
-  fac = 25.
+  fac = 1
   h = (1/sqrt(jac))/2  # /2 because reference element is -1 to 1
   alpha_nrm = sqrt(alpha_x*alpha_x + alpha_y*alpha_y)
   return fac*0.5*h/alpha_nrm
