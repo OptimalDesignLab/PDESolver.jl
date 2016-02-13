@@ -1,0 +1,275 @@
+push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+
+using PDESolver
+#using Base.Test
+using FactCheck
+using ODLCommonTools
+using PdePumiInterface  # common mesh interface - pumi
+using SummationByParts  # SBP operators
+using EulerEquationMod
+using ForwardDiff
+using NonlinearSolvers   # non-linear solvers
+using ArrayViews
+include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
+global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
+
+
+
+facts("----- Testing GLS3 -----") do
+
+function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
+
+  eqn.params.tau_type = 2
+  Dxi = diagm(1./sbp.w)*sbp.Q[:, :, 1]
+  Deta = diagm(1./sbp.w)*sbp.Q[:, :, 2]
+
+  # create indices
+  idx_range = Array(UnitRange{Int64}, mesh.numNodesPerElement)
+  for i=1:mesh.numNodesPerElement
+    start_idx = (i-1)*mesh.numDofPerNode + 1
+    end_idx = i*mesh.numDofPerNode
+    idx_range[i] = copy(start_idx:end_idx)
+  end
+
+#    println("idx_range = ", idx_range)
+
+    size_block = mesh.numNodesPerElement*mesh.numDofPerNode
+#    println("size_block = ", size_block)
+
+    # get GLS from the code
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.applyGLS3(mesh, sbp, eqn, opts)  
+
+  # testing: only do one element
+  for el =1:mesh.numEl
+#    println("testing element ", el)
+
+    # constant mapping elements only
+    dxidx = zeros(2,2)
+    dxidx_hat_el = view(mesh.dxidx, :, :, 1, el)
+    jac_el = view(mesh.jac, :, el)
+    q_el = reshape(copy(eqn.q[:, :, el]), size_block)
+
+    for i=1:2
+      for j=1:2
+        dxidx[i,j] = dxidx_hat_el[i, j, 1]*jac_el[1]
+      end
+    end
+
+    # calculate Dx, Dy
+    Dx = dxidx[1,1]*Dxi + dxidx[2, 1]*Deta
+    Dy = dxidx[1,2]*Dxi + dxidx[2, 2]*Deta
+
+#    println("Dx = \n", Dx)
+#    println("Dy = \n", Dy)
+
+    # create block Dx, Dy
+    Dx_tilde = zeros(Tmsh, size_block, size_block)
+    Dy_tilde = zeros(Dx_tilde)
+
+   
+    for i=1:mesh.numNodesPerElement
+      idx_i = idx_range[i]
+#      println("idx_i = ", idx_i)
+      for j=1:mesh.numNodesPerElement
+        idx_j = idx_range[j]
+#        println("  idx_j = ", idx_j)
+        Dx_tilde[idx_i, idx_j] = Dx[i, j]*eye(mesh.numDofPerNode)
+        Dy_tilde[idx_i, idx_j] = Dy[i, j]*eye(mesh.numDofPerNode)
+      end
+    end
+
+#    println("Dx_tilde = \n", Dx_tilde)
+#    println("Dy_tilde = \n", Dy_tilde)
+
+    # create A1 tilde and A2 tilde
+    A1_tilde = zeros(Tsol, size_block, size_block)
+    A2_tilde = zeros(Tsol, size_block, size_block)
+
+    for i=1:mesh.numNodesPerElement
+      idx_i = idx_range[i]
+      q_i = q_el[idx_i]
+
+      A1 = view(A1_tilde, idx_i, idx_i)
+      EulerEquationMod.calcA1(eqn.params, q_i, A1)
+
+      A2 = view(A2_tilde, idx_i, idx_i)
+      EulerEquationMod.calcA2(eqn.params, q_i, A2)
+    end
+
+#    println("A1 = \n", A1_tilde)
+#    println("A2 = \n", A2_tilde)
+
+    # create middle terms, including tau
+    middle_tilde = zeros(Tres, size_block, size_block)
+
+    for i=1:mesh.numNodesPerElement
+
+      idx_i = idx_range[i]
+      tau = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
+      EulerEquationMod.getTau(eqn.params, jac_el[i], tau)  # tau number 2
+
+      middle_tilde[idx_i, idx_i] = (sbp.w[i]/jac_el[i])*tau
+    end
+
+
+    # create the operator
+    fancy_L  = A1_tilde*Dx_tilde + A2_tilde*Dy_tilde
+    gls_operator = fancy_L.'*middle_tilde*fancy_L
+    
+    @fact isSymmetric(gls_operator, 1e-12) => true
+    #println("max asymmetry = ", maximum(abs(gls_operator - gls_operator.')))
+
+    gls_test = -gls_operator*q_el
+
+    gls_code = reshape(copy(eqn.res[:, :, el]), size_block)
+
+    @fact gls_code => roughly(gls_test, atol=1e-12)
+#    println("gls_test = \n", gls_test)
+#    println("gls_code = \n", gls_code)
+
+    trial_term = fancy_L*q_el
+    middle_term = middle_tilde*trial_term
+    gls_term = -fancy_L.'*middle_term
+#    println("element $el trial term = \n", trial_term)
+#    println("elemetn $el middle_term = \n", middle_term)
+#    println("element $el gls_term = \n", gls_term)
+
+    @fact gls_term => roughly(gls_test, atol=1e-12)
+    # test matrix transpose
+    tmp1 = A1_tilde.'*middle_term
+    tmp2 = A2_tilde.'*middle_term
+    gls_test2 = -(Dx_tilde.'*tmp1 + Dy_tilde.'*tmp2)
+    @fact gls_test2 => roughly(gls_test, atol=1e-12)
+
+
+  end  # end loop over elements
+
+  return nothing
+
+end  # end function
+
+
+  # run the tests
+if false
+  println("----- Testing GLS3 channel -----")
+  resize!(ARGS, 1)
+  ARGS[1] = "input_vals_channel_gls.jl"
+  include(STARTUP_PATH)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  test_GLS(mesh, sbp, eqn, opts)
+end
+
+for p = 1:4
+if true
+    println("----- Testing GLS3 p$p  on isentropic vortex -----")
+    # test on isentropic vortex
+    include("input_vals_vortex3.jl")
+    arg_dict["order"] = p
+    arg_dict["solve"] = false
+    arg_dict["variable_type"] = :entropy
+    f = open("input_vals_vortex3_gls.jl", "w")
+    print(f, "arg_dict = ")
+    println(f, arg_dict)
+    close(f)
+
+    resize!(ARGS, 1)
+    ARGS[1] = "input_vals_vortex3_gls.jl"
+    include(STARTUP_PATH)
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    test_GLS(mesh, sbp, eqn ,opts)
+end
+end
+
+p = 4
+if true
+    println("----- Performing GLS2 finite difference checks -----")
+    ARGS[1] = "input_vals_vortex3_gls.jl"
+    include(STARTUP_PATH)
+
+    arg_dict["order"] = p
+    f = open("input_vals_vortex3_gls.jl", "w")
+    print(f, "arg_dict = ")
+    println(f, arg_dict)
+    close(f)
+    ARGS[1] = "input_vals_vortex3_gls.jl"
+    include(STARTUP_PATH)
+
+
+
+    len = mesh.numDofPerNode*mesh.numNodesPerElement
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    test_GLS(mesh, sbp, eqn, opts)
+    jac_fd = zeros(len, len)
+    eps_fd = 1e-7
+    res0 = copy(reshape(eqn.res[:, :, 1], len))  # use res from previous run
+    println("doing finite differences")
+    for j=1:mesh.numNodesPerElement
+      for i=1:mesh.numDofPerNode
+        pos = (j-1)*mesh.numDofPerNode + i
+        println("pos = ", pos)
+        eqn.q[i, j, 1] += eps_fd
+        test_GLS(mesh, sbp, eqn, opts)
+        res_ij = copy(reshape(eqn.res[:, :, 1], len))
+        jac_fd[:, pos] = (res_ij - res0)/eps_fd
+        eqn.q[i, j, 1] -= eps_fd  # undo perturbation
+      end
+    end
+
+    # now do complex step
+
+    println("doing complex step")
+    println("typeof(q_vec) = ", typeof(q_vec))
+    arg_dict["run_type"] = 5
+    f = open("input_vals_vortex3c_gls.jl", "w")
+    print(f, "arg_dict = ")
+    println(f, arg_dict)
+    close(f)
+    ARGS[1] = "input_vals_vortex3c_gls.jl"
+    include(STARTUP_PATH)
+
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    eqn.params.tau_type = p
+    println("typeof(q_vec) = ", typeof(q_vec))
+
+    eps_c = 1e-20
+    jac_c = zeros(len, len)
+    println("typeof(eqn) = ", typeof(eqn))
+    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
+    for j=1:mesh.numNodesPerElement
+      for i=1:mesh.numDofPerNode
+        pos = (j-1)*mesh.numDofPerNode + i
+        println("pos = ", pos)
+        eqn.q[i, j, 1] += complex(0, eps_c)
+        test_GLS(mesh, sbp, eqn, opts)
+        res_ij = copy(reshape(eqn.res[:, :, 1], len))
+        jac_c[:, pos] = imag(res_ij)/eps_c
+        eqn.q[i, j, 1] -= complex(0, eps_c)  # undo perturbatino
+      end
+    end
+
+    for j=1:len
+      tol = 5e-5
+      println("tol = ", tol)
+      @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=tol)
+      println("jac_fd = \n", jac_fd[:, j])
+      println("jac_c = \n", jac_c[:, j])
+      println("diff = \n", jac_c[:, j] - jac_fd[:, j])
+      println("max diff = ", maximum(abs(jac_c[:, j] - jac_fd[:, j])))
+    end
+
+#=
+    for j=1:12
+      println("column $j")
+      println("jac_c = \n", jac_c[:, j])
+      println("jac_fd = \n", jac_fd[:, j])
+      println("jac diff = \n", jac_c[:,j] - jac_fd[:, j])
+    end    
+=#
+end  # end if statement
+
+
+end  # end the fact block
+

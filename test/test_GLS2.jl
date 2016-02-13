@@ -43,6 +43,7 @@ facts ("----- Testing GLS2 -----") do
       tau = zeros(Tres, 12, 12)
       range_idx = (1:4, 5:8, 9:12)
       if params.tau_type == 1
+        println("testing tau_type = 1")
         A1 = zeros(Tsol, 4,4)
         A2 = zeros(Tsol, 4,4)
         A0inv = zeros(Tsol, 4,4)
@@ -89,7 +90,7 @@ facts ("----- Testing GLS2 -----") do
           @fact tau_old => roughly(new_tau2, atol=1e-14)
         end
       elseif params.tau_type == 2
-        println("jac = ", jac)
+        println("testing tau_type = 2")
         fac = 2.0
         for i=1:3
           jac_i = jac[i]
@@ -109,9 +110,9 @@ facts ("----- Testing GLS2 -----") do
         end
 
       elseif params.tau_type == 3
+        println("testing tau_type = 3")
         for i=1:3
           dxidx_i = view(dxidx, :, :, i)
-          println("dxidx_i = ", dxidx_i)
           tau_i = zeros(Tres, 4, 4)
           p_val = 2
           idx_i = range_idx[i]
@@ -129,32 +130,32 @@ facts ("----- Testing GLS2 -----") do
           println("A2 testing = \n", A2)
           A1hat = inv(L)*A1*inv(Lt)
           A2hat = inv(L)*A2*inv(Lt)
-          println("A1hat = \n", A1hat)
-          println("A2hat = \n", A2hat)
+#          println("A1hat = \n", A1hat)
+#          println("A2hat = \n", A2hat)
 
           B1 = dxidx_i[1,1]*A1hat + dxidx_i[1,2]*A2hat
           B2 = dxidx_i[2,1]*A1hat + dxidx_i[2,2]*A2hat
 
-          println("p = ", p_val)
+#          println("p = ", p_val)
 #          println("symmetry norm = ", vecnorm(B1 - B1.'))
           make_symmetric!(B1)
-          println("B1 = \n", B1)
+#          println("B1 = \n", B1)
 
           D, V = eig(B1)
-          println("D = \n", D)
-          println("V = \n", V)
+#          println("D = \n", D)
+#          println("V = \n", V)
 
 #          println("symmetry norm = ", vecnorm(B2 - B2.'))
           make_symmetric!(B2)
-          println("B2 = \n", B2)
+#          println("B2 = \n", B2)
           D2, V2 = eig(B2)
           B_acc = V*diagm(absvalue(D).^p_val)*V.'
-          println("B_p 1 = \n", B_acc)
-          println("D2 = \n", D2)
-          println("V2 = \n", V2)
+#          println("B_p 1 = \n", B_acc)
+#          println("D2 = \n", D2)
+#          println("V2 = \n", V2)
           B_acc[:, :] += V2*diagm(absvalue(D2).^p_val)*V2.'
 
-          println("Bp 2 = \n", B_acc)
+#          println("Bp 2 = \n", B_acc)
  
           D3, V3 = eig(B_acc)
           D3p = D3.^(1/p_val)
@@ -166,17 +167,17 @@ facts ("----- Testing GLS2 -----") do
           A_mat[:, :, 2] = A2
 
           tau_code = zeros(Tres, 4, 4)
-          println("\narguments passed to getTau for testing:")
-          println("q_i = ", q_i)
-          println("A_mat = \n", A_mat)
-          println("dxidx = \n", dxidx_i)
-          println("p_val = ", p_val)
-          println("tau_code = \n", tau_code)
+ #         println("\narguments passed to getTau for testing:")
+ #         println("q_i = ", q_i)
+ #         println("A_mat = \n", A_mat)
+ #         println("dxidx = \n", dxidx_i)
+ #         println("p_val = ", p_val)
+ #         println("tau_code = \n", tau_code)
           EulerEquationMod.getTau(params, q_i, A_mat, dxidx_i, p_val, tau_code)
 
-          println("tau_code = \n", tau_code)
-          println("tau_i = \n", tau_i)
-          println("diff = \n", tau_code - tau_i)
+ #         println("tau_code = \n", tau_code)
+ #         println("tau_i = \n", tau_i)
+ #         println("diff = \n", tau_code - tau_i)
           @fact tau_code => roughly(tau_i, atol=1e-14)
 
           tau[idx_i, idx_i] = tau_i
@@ -289,15 +290,17 @@ facts ("----- Testing GLS2 -----") do
 #    println("jac_tilde = \n", jac_tilde)
 
     # now compute the whole GLS term
-    weighting_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) +
-                     A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
-
     trial_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) + 
                  A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
+
+    weighting_term = copy(trial_term)
+#    weighting_term = A1tilde*(dxidx_tilde_11*D_tilde_xi + dxidx_tilde_21*D_tilde_eta) +
+#                     A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
+
     gls_operator = weighting_term.'*H_tilde*jac_tilde*tau_tilde*trial_term
-    @fact isSymmetric(tau_tilde, 1e-10) => true
+    @fact isSymmetric(tau_tilde, 1e-14) => true
 #    println("tau_tilde = \n", tau_tilde)
-    @fact isSymmetric(gls_operator, 1e-10) => true
+    @fact isSymmetric(gls_operator, 1e-14) => true
     gls_test = -(gls_operator*q)
 
     # now compute it in the code
@@ -313,6 +316,36 @@ facts ("----- Testing GLS2 -----") do
     println("diff = \n", gls_code - gls_test)
 
     @fact gls_code => roughly(gls_test, atol=1e-13)
+
+
+    # now test GLS3
+    print("\n\n")
+    fill!(eqn.res, 0.0)
+    println("----- applying GLS3 -----")
+    EulerEquationMod.applyGLS3(mesh, sbp, eqn, opts)
+    println("----- finished applying GLS3 -----")
+    gls_code = reshape(eqn.res[:, :, 1], 12)
+
+
+    # look at individual terms
+    trial_vec = trial_term*q
+    middle_vec = H_tilde*jac_tilde*tau_tilde*trial_vec
+    gls_vec = weighting_term.'*middle_vec
+    println("trial_vec = \n", trial_vec)
+    println("middle_vec = \n", middle_vec)
+    println("gls_vec = \n", gls_vec)
+    
+
+
+    println("gls_test = ", gls_test)
+    println("gls_code = ", gls_code)
+    println("diff = \n", gls_code - gls_test)
+
+    @fact gls_code => roughly(gls_test, atol=1e-13)
+
+   
+
+
 #    println("gls_code - gls_test = ", gls_code - gls_test)
 #    print("\n\n")
 #=
@@ -438,7 +471,7 @@ facts ("----- Testing GLS2 -----") do
   end  # end function test_gls
 
 #for p=1:3
-p = 3
+p = 1
 if true
   println("----- Testing GLS2 p$p on steady channel -----")
   #=

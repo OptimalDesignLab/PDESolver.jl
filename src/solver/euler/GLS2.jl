@@ -41,7 +41,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   qx = zeros(Tres, numDofPerNode, Tdim)  # accumulation vectors
 
   # DEBUGGING
-#=  
+
   gls_res = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, 
                   mesh.numEl)
 
@@ -50,15 +50,15 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   tau_eval_sum = 0.0
   tau_eval_cnt = 0
   res_before = copy(eqn.res)
-=#  
+
   # calculate D
   for d=1:Tdim
     smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
     Dtranspose[:, :, d] = D[:, :, d].'
   end
 
-   for el =1:1  #DEBUGGING 
-#  for el = 1:mesh.numEl
+#   for el =1:1  #DEBUGGING 
+  for el = 1:mesh.numEl
     # get all the quantities for this element
     dxidx_hat = view(mesh.dxidx, :, :, :, el)
     jac = view(mesh.jac, :, el)
@@ -77,8 +77,8 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     for i=1:numNodesPerElement
       res_i = view(eqn.res, :, i, el)
       #DEBUGGING
-#      gls_res_i = view(gls_res, :, i, el)
-#      gls_full_i = view(gls_full, :, i, el)
+      gls_res_i = view(gls_res, :, i, el)
+      gls_full_i = view(gls_full, :, i, el)
       for j=1:numNodesPerElement
 
         # zero  out some things
@@ -115,11 +115,11 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         end
         
         #DEBUGGING
-       #= 
+       
         for n=1:numDofPerNode
           gls_res_i[n] += tmp1[n]
         end
-        =#
+        
         
 #        println("\n trial space term = \n", tmp1)
         # now multiply by tau
@@ -132,8 +132,9 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         # copy tmp2 into tmp1 so the next phase of reductions can proceed in
         # parallel
         # multiply by integration weight (from sbp.w) at the same time
+        # the indices should be i not j ???
         for n=1:numDofPerNode
-          tmp2[n] *= w[j]/jac[j]
+          tmp2[n] *= w[i]/jac[i]
           tmp1[n] = tmp2[n]
         end
 
@@ -175,7 +176,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
        # now update res
        for d1=(Tdim+1):(2*Tdim)  # loop over the second half of tmps
          @simd for n=1:numDofPerNode
-#           gls_full_i[n] -= tmps[n, d1]  # DEBUGGING
+           gls_full_i[n] -= tmps[n, d1]  # DEBUGGING
            res_i[n] -= tmps[n, d1]
          end
        end
@@ -185,18 +186,18 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
       end  # end loop over j
 
-#=
+
       # DEBUGGING
       Dvals, V = eig(view(taus, :, :, i))
       tau_eval_sum += real(Dvals[1])
       tau_eval_cnt += 1
-=#
+
     end  # end loop over i
 
   end  # end loop over elements
 
   #DEBUGGING
-#=  
+ #= 
   gls_resvec = zeros(Tsol, mesh.numDof)
   full_resvec = zeros(Tsol, mesh.numDof)
   old_resvec = zeros(Tsol, mesh.numDof)
@@ -215,7 +216,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   println(f, gls_norm, " ", old_norm, " ", full_norm, " ", tau_eval_avg)
   close(f)
 #  println("----- Finished applyGLS2 -----")
-=#  
+ =#
   return nothing
 
 end  # end function
@@ -271,9 +272,6 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
   # who cares about performance?
   tau_type = params.tau_type
-  gls1 = true
-  gls2 = false
-  gls3 = false
 
 
 
@@ -399,6 +397,359 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
   return nothing
 end  # end function
 
+#=
+function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
+                    params_c::ParamType{Tdim, :conservative},
+                    q::AbstractArray{Tsol, 2}, aux_vars::AbstractArray{Tsol, 2},
+                    dxidx_hat::AbstractArray{Tmsh, 3}, 
+                    jac::AbstractArray{Tmsh, 1},
+                    D::AbstractArray{Float64, 3},  
+                    A_mats::AbstractArray{Tsol, 4}, # begin outputs
+                    qtranspose::AbstractArray{Tsol, 2}, 
+                    qxitranspose::AbstractArray{Tsol, 3}, 
+                    qxi::AbstractArray{Tsol, 3},
+                    dxidx::AbstractArray{Tmsh, 3}, 
+                    tau::AbstractArray{Tres, 3})
+
+=#
+
+function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+
+  println("----- Entered applyGLS3 -----")
+  numDofPerNode = mesh.numDofPerNode
+  numNodesPerElement = mesh.numNodesPerElement
+  w = sbp.w
+  # reusable storage
+
+  # flux jacobians: a n x n matrix for each coordinate direction for each node
+  A_mats = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, 
+                      mesh.numNodesPerElement)
+#  dxidx_hat = zeros(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
+
+  # hold non-scaled mapping jacobian
+  dxidx = zeros(Tmsh, Tdim, Tdim, numNodesPerElement)
+  # hold tau, a n x n matrix for each node
+  taus = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, 
+                    mesh.numNodesPerElement)
+
+  # hold differentiation matrices Dxi (parametric directions) and Dx 
+  # (physical directions)
+  Dxi = zeros(Float64, numNodesPerElement, numNodesPerElement, Tdim)
+  Dx = zeros(Dxi)
+
+  # temporary vectors 1 through 4, stored in a matrix so they can be
+  # access programaticaly
+  tmps = zeros(Tres, mesh.numDofPerNode, 2*Tdim)
+  trial_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  middle_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  complete_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  # calculate Dxi
+  # calculate D
+  for d=1:Tdim
+    smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(Dxi, :, :, d))
+  end
+
+  # DEBUGGING
+  gls_res = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, 
+                  mesh.numEl)
+  middle_terms = zeros(gls_res)
+  gls_full = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, 
+                  mesh.numEl)
+  tau_eval_sum = 0.0
+  tau_eval_cnt = 0
+  res_before = copy(eqn.res)
+
+
+
+
+#   for el = 1:1  # DEBUGGING
+  for el = 1:mesh.numEl
+
+    q_el = view(eqn.q, :, :, el)
+    aux_vars_el = view(eqn.aux_vars, :, :, el)
+    dxidx_hat_el = view(mesh.dxidx, :, :, :, el)
+    jac_el = view(mesh.jac, :, el)
+   
+    fill!(Dx, 0.0)
+    fill!(taus, 0.0)
+    # get all the variables needed for this element
+    getGLSVars3(eqn.params, eqn.params_conservative, q_el, aux_vars_el, 
+                dxidx_hat_el, jac_el, Dxi, Dx, A_mats, dxidx, taus)
+
+    fill!(trial_term, 0.0)
+    fill!(middle_term, 0.0)
+    fill!(complete_term, 0.0)
+
+    for i=1:mesh.numNodesPerElement  # row index  (free index)
+      gls_res_debug_i = view(gls_res, :, i, el)
+
+      # variable to accumulate the trial term at node i
+      trial_term_i = view(trial_term, :, i)
+      for j=1:mesh.numNodesPerElement  # column index  (summed index)
+        fill!(tmps, 0.0)
+        q_j = view(eqn.q, :, j, el)
+
+        ### Trial space term ###
+
+        # multiply q_j by entries of the Dx and store in the lower half of
+        # tmps
+        for d1 = 1:Tdim
+          tmp_d1 = view(tmps, :, d1)
+          d_val = Dx[i, j, d1]
+          for n=1:numDofPerNode
+            tmp_d1[n] = d_val*q_j[n]
+          end
+        end
+
+        # now multiply by flux jacobian evaluated at i, storing in upper
+        # half of tmps
+        for d1 = 1:Tdim
+          A_i = view(A_mats, :, :, d1, i)
+          tmp_1 = view(tmps, :, d1)
+          tmp_2 = view(tmps, :, d1 + Tdim)
+          smallmatvec!(A_i, tmp_1, tmp_2)
+        end
+
+        # accumulate into trial term vector
+        # Perf Note: do parallel reads of tmps vectors
+        # is there an AVX instruction for scaling by a constant?
+        for n=1:numDofPerNode
+          for d1 = (Tdim+1):2*Tdim
+            trial_term_i[n] += tmps[n, d1]
+            #DEBUGGING
+            gls_res_debug_i[n] += tmps[n, d1]
+          end
+        end
+
+      end  # end sum over j in the trial term
+    end  # end loop over i for the trial term
+
+#    println("trial_term = \n", trial_term)
+
+    ### now do middle terms ###
+
+    for i=1:mesh.numNodesPerElement
+      # multiply by integration weight, jacobian factor
+      trial_term_i = view(trial_term, :, i)
+      middle_term_i = view(middle_term, :, i)
+      middle_terms_debug_i = view(middle_terms, :, i, el)
+
+      fac = w[i]/jac_el[i]
+      for n=1:numDofPerNode
+        trial_term_i[n] *= fac
+      end
+
+      # multiply by tau
+      tau_i = view(taus, :, :, i)
+      smallmatvec!(tau_i, trial_term_i, middle_term_i)
+
+      # DEBUGGING
+      for n=1:numDofPerNode
+        middle_terms_debug_i[n] += middle_term[n]
+      end
+    
+    end  # end loop over i for middle terms
+
+#    println("middle_term = ", middle_term)
+
+    ### now do weighting space term ###
+
+    for i=1:mesh.numNodesPerElement  # free index
+      complete_term_i = view(complete_term, :, i)
+      res_i = view(eqn.res, :, i, el)
+      gls_full_debug_i = view(gls_full, :, i, el)
+
+      for j=1:mesh.numNodesPerElement  # summed index
+        fill!(tmps, 0.0)
+        middle_term_j = view(middle_term, :, j)
+
+
+        # multiply by transposed flux jacobian, store in lower half of tmps
+        for d1 = 1:Tdim
+          A_d1 = view(A_mats, :, :, d1, j)
+          tmp_d1 = view(tmps, :, d1)
+          smallmatTvec!(A_d1, middle_term_j, tmp_d1)
+        end
+
+        # multiply by entries of the Dx
+        for d1 = 1:Tdim
+          d_d1 = Dx[j, i, d1]
+          tmp_d1 = view(tmps, :, d1)
+          for n=1:numDofPerNode
+            tmp_d1[n] *= d_d1
+          end
+        end
+
+        # sum into complete_term
+        for n=1:numDofPerNode
+          for d1=1:Tdim
+            tmp_d1 = view(tmps, :, d1)
+            complete_term_i[n] += tmp_d1[n]
+          end
+        end
+
+      end  # end loop over j
+
+      # update res
+      for n=1:numDofPerNode
+        res_i[n] -= complete_term_i[n]
+        #DEBUGGING
+        gls_full_debug_i[n] -= complete_term_i[n]
+      end
+
+
+    end  # end loop over i
+
+#    println("complete_term = \n", complete_term)
+#    println("res = \n", eqn.res[:, :, el])
+
+  end  # end loop over elements
+
+#=
+  println("element 1 gls_res = \n", gls_res[:, :, 1])
+  println("element 1 middle_terms = \n", middle_terms[:, :, 1])
+  println("element 1 gls_full = \n", gls_full[:, :, 1])
+=#
+  #=
+  gls_res_vec = zeros(Tres, mesh.numDof)
+  middle_vec = zeros(gls_res_vec)
+  gls_fullvec = zeros(gls_res_vec)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, gls_res_vec
+  =#
+
+  println("----- Finished applyGLS3 -----")
+  return nothing
+
+end
+
+
+function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim}, 
+                     params_c::ParamType{Tdim, :conservative}, 
+                     q::AbstractArray{Tsol, 2}, 
+                     aux_vars::AbstractArray{Tsol, 2}, 
+                     dxidx_hat::AbstractArray{Tmsh, 3}, 
+                     jac::AbstractArray{Tmsh, 1}, D::AbstractArray{Float64, 3},
+                     # begin output parameters
+                     Dx::AbstractArray{Tmsh, 3}, A_mats::AbstractArray{Tsol, 4},
+                     dxidx::AbstractArray{Tmsh,3}, tau::AbstractArray{Tres, 3})
+
+
+  numDofPerNode = size(q, 1)
+  numNodesPerElement = size(q, 2)
+
+   # get dxidx - not scaled by 1/|J|
+  for k = 1:numNodesPerElement
+    for j=1:Tdim
+      for i=1:Tdim
+        dxidx[i, j, k] = dxidx_hat[i,j,k]*jac[k]
+      end
+    end
+  end
+
+  # calculate Dx, Dy, Dz
+  for d_phys = 1:Tdim  # loop over x, y, z directions
+    D_phys = view(Dx, :, :, d_phys)
+    for d_param = 1:Tdim  # loop for xi, eta, ...
+      D_param = view(D, :, :, d_param)
+      for j=1:numNodesPerElement
+        for i=1:numNodesPerElement
+          fac = dxidx[d_param, d_phys, i]  # get jacobian term
+          D_phys[i, j] += fac*D_param[i, j]
+        end
+      end
+    end
+  end
+
+  tau_type = params.tau_type
+  if tau_type == 1
+#    println("getting conservative variable flux jacobians")
+    q_c = params_c.q_vals
+    fill!(q_c, 0.0)
+    for k=1:numNodesPerElement
+      q_k = view(q, :, k)
+      convertToConservative(params, q_k, q_c)
+      A1_k = view(A_mats, :, :, 1, k)
+      calcA1(params_c, q_c, A1_k)
+      A2_k = view(A_mats, :, :, 2, k)
+      calcA2(params_c, q_c, A2_k)
+
+      if Tdim == 3  # three cheers for static analysis
+        A3_k = view(A_mats, :, :, 3, k)
+        calcA3(params_c, q_c, A3_k)
+      end
+    end
+  else
+#    println("getting entropy variable flux jacobians")
+    # get entropy variable  flux jacobian 
+    for k=1:numNodesPerElement
+      q_k = view(q, :, k)
+#      println("q_k code = ", q_k)
+      A1_k = view(A_mats, :, :, 1, k)
+      calcA1(params, q_k, A1_k)
+#      println("A1 code = \n", A1_k)
+      A2_k = view(A_mats, :, :, 2, k)
+      calcA2(params, q_k, A2_k)
+#      println("A2 code = \n", A2_k)
+
+      if Tdim == 3  # three cheers for static analysis
+        A3_k = view(A_mats, :, :, 3, k)
+        calcA3(params, q_k, A3_k)
+      end
+    end
+  end
+
+  # get tau for each node - using conservative variable flux jacobian
+  for k=1:numNodesPerElement
+    q_k = view(q, :, k)
+    tau_k = view(tau, :, :, k)
+    A_mat_k = view(A_mats, :, :, :, k)
+    dxidx_k = view(dxidx, :, :, k)
+
+    # dance branch prediction, dance
+    if tau_type == 1
+     getTau(params, q_k, A_mat_k, dxidx_k, tau_k)
+    elseif tau_type == 2
+      getTau(params, jac[k], tau_k)
+    elseif tau_type == 3
+      p = 1
+#      println("\n arguments passed to getTau from applyGLS2:")
+#      println("q_k = ", q_k)
+#      println("A_mat_k = \n", A_mat_k)
+#      println("dxidx_k = \n", dxidx_k)
+#      println("p_val = ", p)
+#      println("tau_k = \n", tau_k)
+      getTau(params, q_k, A_mat_k, dxidx_k, p, tau_k)
+    else
+      println(STDERR, "Warning: unsupported Tau requested for GLS")
+    end
+
+  end
+
+  if tau_type == 1
+    # get entropy variable  flux jacobian 
+    for k=1:numNodesPerElement
+      q_k = view(q, :, k)
+      A1_k = view(A_mats, :, :, 1, k)
+      calcA1(params, q_k, A1_k)
+      A2_k = view(A_mats, :, :, 2, k)
+      calcA2(params, q_k, A2_k)
+
+      if Tdim == 3  # three cheers for static analysis
+        A3_k = view(A_mats, :, :, 3, k)
+        calcA3(params, q_k, A3_k)
+      end
+    end
+  end
+
+
+
+  return nothing
+
+end  # end function
+
+
+
 @doc """
 ### EulerEquationMod.getTau
 
@@ -423,7 +774,7 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
                 q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
                 dxidx::AbstractArray{Tmsh, 2}, tau::AbstractArray{Tres, 2})
 
-#  println("----- Entered getTau -----")
+#  println("----- Entered getTau original-----")
 
   numDofPerNode = size(A_mat, 1)
   AjAk = params.A1
@@ -492,6 +843,7 @@ end  # end function
 
 function getTau{Tres}(params::ParamType, jac::Number, tau::AbstractArray{Tres, 2})
 
+#  println("----- Entered getTau simple -----")
   fac = 2.0
   for i=1:size(tau, 1)
     tau[i,i] = fac*1/(jac^(1/2))
@@ -505,7 +857,6 @@ end
 function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy}, 
                 q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
                 dxidx::AbstractArray{Tmsh, 2}, p::Integer, tau::AbstractArray{Tres, 2})
-#  println("----- Enetered getTau -----")
 
   B_d = params.Rmat1  # storeage for B_i
   B_p = params.Rmat2  # storage for the accumulation of the B_ia
@@ -573,13 +924,14 @@ function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy},
   D2, V2 = eig(B_p)
 
   # now calculate tau: invert and take the pth root of D_p at the same time
+  fac = 50.0
   fill!(tau, 0.0)
   for k=1:length(D2)
     v_k = view(V2, :, k)
     val_k = D2[k]^(-1/p)
     for i=1:size(B_p, 1)
       for j=1:size(B_p, 2)
-        tau[i, j] += val_k*v_k[i]*v_k[j]
+        tau[i, j] += fac*val_k*v_k[i]*v_k[j]
       end
     end
   end
