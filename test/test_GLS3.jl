@@ -153,7 +153,7 @@ end  # end function
 
 
   # run the tests
-if false
+if true
   println("----- Testing GLS3 channel -----")
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_channel_gls.jl"
@@ -183,9 +183,9 @@ if true
 end
 end
 
-p = 4
+for p = 1:4
 if true
-    println("----- Performing GLS2 finite difference checks -----")
+    println("----- Performing GLS3 p$p finite difference checks -----")
     ARGS[1] = "input_vals_vortex3_gls.jl"
     include(STARTUP_PATH)
 
@@ -197,6 +197,8 @@ if true
     ARGS[1] = "input_vals_vortex3_gls.jl"
     include(STARTUP_PATH)
 
+    # trick code into only doing the first element
+    mesh.numEl = 1
 
 
     len = mesh.numDofPerNode*mesh.numNodesPerElement
@@ -221,7 +223,6 @@ if true
     # now do complex step
 
     println("doing complex step")
-    println("typeof(q_vec) = ", typeof(q_vec))
     arg_dict["run_type"] = 5
     f = open("input_vals_vortex3c_gls.jl", "w")
     print(f, "arg_dict = ")
@@ -230,18 +231,17 @@ if true
     ARGS[1] = "input_vals_vortex3c_gls.jl"
     include(STARTUP_PATH)
 
+    # trick code into only doing 1 element
+    mesh.numEl = 1
+
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     eqn.params.tau_type = p
-    println("typeof(q_vec) = ", typeof(q_vec))
 
     eps_c = 1e-20
     jac_c = zeros(len, len)
-    println("typeof(eqn) = ", typeof(eqn))
-    println("eqn.q[:, :, 1] = ", eqn.q[:, :, 1])
     for j=1:mesh.numNodesPerElement
       for i=1:mesh.numDofPerNode
         pos = (j-1)*mesh.numDofPerNode + i
-        println("pos = ", pos)
         eqn.q[i, j, 1] += complex(0, eps_c)
         test_GLS(mesh, sbp, eqn, opts)
         res_ij = copy(reshape(eqn.res[:, :, 1], len))
@@ -252,12 +252,7 @@ if true
 
     for j=1:len
       tol = 5e-5
-      println("tol = ", tol)
       @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=tol)
-      println("jac_fd = \n", jac_fd[:, j])
-      println("jac_c = \n", jac_c[:, j])
-      println("diff = \n", jac_c[:, j] - jac_fd[:, j])
-      println("max diff = ", maximum(abs(jac_c[:, j] - jac_fd[:, j])))
     end
 
 #=
@@ -269,7 +264,7 @@ if true
     end    
 =#
 end  # end if statement
-
+end  # end p=1:4
 
 end  # end the fact block
 
