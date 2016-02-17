@@ -143,7 +143,12 @@ function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.sinwave_BC
 
+  Uses the Roe solver to calculate the boundary flux using calc_sinewave to
+  get the boundary state
+"""->
 type sinwave_BC <: BCType
 end
 
@@ -158,7 +163,12 @@ function call{Tmsh, Tsol}(obj::sinwave_BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.sinwavey_BC
 
+  Uses the Roe solver to calculate the boundary flux using calc_sinewavey to
+  get the boundary state
+"""->
 type sinwavey_BC <: BCType
 end
 
@@ -173,6 +183,12 @@ function call{Tmsh, Tsol}(obj::sinwavey_BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.sinwavey_pertBC
+
+  Uses the Roe solver to calculate the boundary flux using calc_sinewave_pert to
+  get the boundary state
+"""->
 
 type sinwavey_pertBC <: BCType
 end
@@ -188,6 +204,12 @@ function call{Tmsh, Tsol}(obj::sinwavey_pertBC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.mms1BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_mms1 to get
+  the boundary state.
+"""->
 type mms1BC <: BCType
 end
 
@@ -202,6 +224,12 @@ function call{Tmsh, Tsol}(obj::mms1BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.x4BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_x4 to
+  get the boundary state.
+"""->
 type x4BC <: BCType
 end
 
@@ -215,6 +243,13 @@ function call{Tmsh, Tsol}(obj::x4BC, u::Tsol, alpha_x, alpha_y,
 
   return bndryflux
 end
+
+@doc """
+### AdvectionEquationMod.p1BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_p1 to
+  get the boundary state
+"""->
 
 type p1BC <: BCType
 end
@@ -230,6 +265,12 @@ function call{Tmsh, Tsol}(obj::p1BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.p2BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_p2 to
+  get the boundary state
+"""->
 type p2BC <: BCType
 end
 
@@ -244,6 +285,12 @@ function call{Tmsh, Tsol}(obj::p2BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.p3BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_p3 to
+  get the boundary state
+"""->
 type p3BC <: BCType
 end
 
@@ -259,6 +306,12 @@ function call{Tmsh, Tsol}(obj::p3BC, u::Tsol, alpha_x, alpha_y,
 end
 
 
+@doc """
+### AdvectionEquationMod.p4BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_p4 to
+  get the boundary state.
+"""->
 type p4BC <: BCType
 end
 
@@ -272,6 +325,13 @@ function call{Tmsh, Tsol}(obj::p4BC, u::Tsol, alpha_x, alpha_y,
 
   return bndryflux
 end
+
+@doc """
+### AdvectionEquationMod.p5BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_p5 to
+  get the boundary state.
+"""->
 
 type p5BC <: BCType
 end
