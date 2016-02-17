@@ -403,8 +403,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       D, V = eig(jac_dense)
       writedlm("eigdecomp_real$i.dat", real(D))
       writedlm("eigdecomp_imag$i.dat", imag(D))
-      writedlm("eigdecomp_realvecs$i.dat", real(V))
-      writedlm("eigdecomp_imagvecs$i.dat", imag(V))
+#      writedlm("eigdecomp_realvecs$i.dat", real(V))
+#      writedlm("eigdecomp_imagvecs$i.dat", imag(V))
 
       max_val = typemin(Float64)
       min_val = typemax(Float64)

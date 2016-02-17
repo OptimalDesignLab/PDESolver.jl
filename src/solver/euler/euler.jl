@@ -493,7 +493,8 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   if opts["use_GLS2"]
-     applyGLS2(mesh, sbp, eqn, opts)
+     applyGLS3(mesh, sbp, eqn, opts)
+#    test_GLS(mesh, sbp, eqn, opts)
   end
 
 #  println("==== end of addStabilization ====")

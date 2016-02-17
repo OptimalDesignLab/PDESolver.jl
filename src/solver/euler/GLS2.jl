@@ -415,7 +415,6 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
 function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
-  println("----- Entered applyGLS3 -----")
   numDofPerNode = mesh.numDofPerNode
   numNodesPerElement = mesh.numNodesPerElement
   w = sbp.w
@@ -618,7 +617,6 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
   eqn.assembleSolution(mesh, sbp, eqn, opts, gls_res_vec
   =#
 
-  println("----- Finished applyGLS3 -----")
   return nothing
 
 end
@@ -749,6 +747,121 @@ function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 end  # end function
 
 
+function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
+
+  eqn.params.tau_type = 2
+  Dxi = diagm(1./sbp.w)*sbp.Q[:, :, 1]
+  Deta = diagm(1./sbp.w)*sbp.Q[:, :, 2]
+
+  # create indices
+  idx_range = Array(UnitRange{Int64}, mesh.numNodesPerElement)
+  for i=1:mesh.numNodesPerElement
+    start_idx = (i-1)*mesh.numDofPerNode + 1
+    end_idx = i*mesh.numDofPerNode
+    idx_range[i] = copy(start_idx:end_idx)
+  end
+
+#    println("idx_range = ", idx_range)
+
+    size_block = mesh.numNodesPerElement*mesh.numDofPerNode
+#    println("size_block = ", size_block)
+
+
+  # testing: only do one element
+  for el =1:mesh.numEl
+#    println("testing element ", el)
+    res_el = view(eqn.res, :, :, el)
+
+    # constant mapping elements only
+    dxidx = zeros(2,2)
+    dxidx_hat_el = view(mesh.dxidx, :, :, 1, el)
+    jac_el = view(mesh.jac, :, el)
+    q_el = reshape(copy(eqn.q[:, :, el]), size_block)
+
+    for i=1:2
+      for j=1:2
+        dxidx[i,j] = dxidx_hat_el[i, j, 1]*jac_el[1]
+      end
+    end
+
+    # calculate Dx, Dy
+    Dx = dxidx[1,1]*Dxi + dxidx[2, 1]*Deta
+    Dy = dxidx[1,2]*Dxi + dxidx[2, 2]*Deta
+
+#    println("Dx = \n", Dx)
+#    println("Dy = \n", Dy)
+
+    # create block Dx, Dy
+    Dx_tilde = zeros(Tmsh, size_block, size_block)
+    Dy_tilde = zeros(Dx_tilde)
+
+   
+    for i=1:mesh.numNodesPerElement
+      idx_i = idx_range[i]
+#      println("idx_i = ", idx_i)
+      for j=1:mesh.numNodesPerElement
+        idx_j = idx_range[j]
+#        println("  idx_j = ", idx_j)
+        Dx_tilde[idx_i, idx_j] = Dx[i, j]*eye(mesh.numDofPerNode)
+        Dy_tilde[idx_i, idx_j] = Dy[i, j]*eye(mesh.numDofPerNode)
+      end
+    end
+
+#    println("Dx_tilde = \n", Dx_tilde)
+#    println("Dy_tilde = \n", Dy_tilde)
+
+    # create A1 tilde and A2 tilde
+    A1_tilde = zeros(Tsol, size_block, size_block)
+    A2_tilde = zeros(Tsol, size_block, size_block)
+
+    for i=1:mesh.numNodesPerElement
+      idx_i = idx_range[i]
+      q_i = q_el[idx_i]
+
+      A1 = view(A1_tilde, idx_i, idx_i)
+      EulerEquationMod.calcA1(eqn.params, q_i, A1)
+
+      A2 = view(A2_tilde, idx_i, idx_i)
+      EulerEquationMod.calcA2(eqn.params, q_i, A2)
+    end
+
+#    println("A1 = \n", A1_tilde)
+#    println("A2 = \n", A2_tilde)
+
+    # create middle terms, including tau
+    middle_tilde = zeros(Tres, size_block, size_block)
+
+    for i=1:mesh.numNodesPerElement
+
+      idx_i = idx_range[i]
+      tau = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
+      EulerEquationMod.getTau(eqn.params, jac_el[i], tau)  # tau number 2
+
+      middle_tilde[idx_i, idx_i] = (sbp.w[i]/jac_el[i])*tau
+    end
+
+
+    # create the operator
+    fancy_L  = A1_tilde*Dx_tilde + A2_tilde*Dy_tilde
+    gls_operator = fancy_L.'*middle_tilde*fancy_L
+    
+    @assert isSymmetric(gls_operator, 1e-12)
+    #println("max asymmetry = ", maximum(abs(gls_operator - gls_operator.')))
+
+    gls_test = -gls_operator*q_el
+
+    for i=1:size_block
+      res_el[i] += gls_test[i]
+    end
+  end  # end loop over elements
+
+  return nothing
+
+end  # end function
+
+
+
+
 
 @doc """
 ### EulerEquationMod.getTau
@@ -844,7 +957,7 @@ end  # end function
 function getTau{Tres}(params::ParamType, jac::Number, tau::AbstractArray{Tres, 2})
 
 #  println("----- Entered getTau simple -----")
-  fac = 2.0
+  fac = 1.0
   for i=1:size(tau, 1)
     tau[i,i] = fac*1/(jac^(1/2))
   end
@@ -924,7 +1037,7 @@ function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy},
   D2, V2 = eig(B_p)
 
   # now calculate tau: invert and take the pth root of D_p at the same time
-  fac = 50.0
+  fac = 1.0
   fill!(tau, 0.0)
   for k=1:length(D2)
     v_k = view(V2, :, k)

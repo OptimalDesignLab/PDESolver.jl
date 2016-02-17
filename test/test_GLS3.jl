@@ -1,3 +1,4 @@
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -15,7 +16,7 @@ using ArrayViews
 include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 
-
+=#
 
 facts("----- Testing GLS3 -----") do
 

@@ -178,8 +178,8 @@ end  # end function
 
 
 function getTau(alpha_x, alpha_y, dxidx::AbstractMatrix, p)
-  fac = 2.5
-  b1 = dxidx[1,1]*alpha_x + dxidx[2,1]*alpha_y
+  fac = 1.0
+  b1 = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   b2 = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   bp = absvalue(b1)^p + absvalue(b2)^p
   return fac*(bp^(-1/p))
