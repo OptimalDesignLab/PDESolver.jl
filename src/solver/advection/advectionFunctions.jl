@@ -31,13 +31,13 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
 
-  if opts["use_GLS"]
-    GLS(mesh, sbp, eqn)
-  end
+  # Does not work, should remove
+#  if opts["use_GLS"]
+#    GLS(mesh, sbp, eqn)
+#  end
   evalSRCTerm(mesh, sbp, eqn, opts)
 
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
-  # println("evalBndry complete")
 
 
 
@@ -67,7 +67,8 @@ integrals) this only works for triangular meshes, where are elements are same
 
 """->
 
-function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                    sbp::SBPOperator, 
                                     eqn::AdvectionData{Tsol, Tres, Tdim}, 
                                     alpha_x::AbstractArray{Tsol, 3}, 
                                     alpha_y::AbstractArray{Tsol, 3})
@@ -79,8 +80,10 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::S
     for j=1:mesh.numNodesPerElement
       alpha_x = eqn.alpha_x[1, j, i]
       alpha_y = eqn.alpha_y[1, j, i]
-      alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + mesh.dxidx[1, 2, j, i]*alpha_y
-      alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + mesh.dxidx[2, 2, j, i]*alpha_y
+      alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + 
+                 mesh.dxidx[1, 2, j, i]*alpha_y
+      alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + 
+                  mesh.dxidx[2, 2, j, i]*alpha_y
       Adq_dxi[1,j,i,1] = alpha_xi*eqn.q[1,j,i]
       Adq_dxi[1,j,i,2] = alpha_eta*eqn.q[1,j,i]
     end
@@ -137,6 +140,25 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 end # end function evalBndry
 
 
+@doc """
+### AdvectionEquationMod.evalSRCTerm
+
+  This function performs all the actions necessary to update eqn.res
+  with the source term.  The source term is stored in eqn.src_func.  It is
+  an abstract field, so it cannot be accessed (performantly) direction, so
+  it is passed to an inner function.
+
+  Inputs:
+    mesh : Abstract mesh type
+    sbp  : Summation-by-parts operator
+    eqn  : Advection equation object
+    opts : options dictonary
+
+  Outputs: none
+
+  Aliasing restrictions: none
+
+"""->
 function evalSRCTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, 
                      opts)
@@ -151,6 +173,28 @@ function evalSRCTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+@doc """
+### AdvectionEquationMod.applySRCTerm
+
+  This function updates eqn.res with the source term.  
+
+  Inputs: 
+    mesh
+    sbp
+    eqn
+    opts
+    src_func:  the functor that returns the value of the source term at a node
+               This functor must have the signature:
+               src_func(coords, alpha_x, alpha_y, t)
+               where coords is a vector of length 2 containing the x and y 
+               coordinates of the node, alpha_x and alpha_y are the advection
+               coefficients, and t is the current time.
+
+  Outputs: none
+
+  Aliasing restrictions: none
+
+"""->
 function applySRCTerm(mesh,sbp, eqn, opts, src_func)
 
   weights = sbp.w
@@ -175,6 +219,19 @@ end
 
 @doc """
 ### AdvectionEquationMod.init
+
+  This function initializes the mesh and equation objects with any module
+  specific data, such as boundary condition and source term functors.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Outputs: none
+
+  Aliasing restrictions: none
 """->
 function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
               eqn::AbstractAdvectionData{Tsol, Tres}, opts)
@@ -188,7 +245,24 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
   return nothing
 end
 
+@doc """
+### AdvectionEquationMod.majorIterationCallback
 
+  This function gets called by the NonlinearSolvers during every major 
+  iteration.  This provides the opportunity to do output or monitoring.
+
+  Inputs:
+    itr: major iteration number
+    mesh
+    sbp
+    eqn
+    opts
+
+    Outputs: none
+
+    Aliasing restrictions: none
+
+"""->
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
                                 sbp::SBPOperator, eqn::AbstractAdvectionData, opts)
 
@@ -208,6 +282,33 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 end
 
 
+@doc """"
+### AdvectionEquationMod.assembleArray
+
+  This function performs an assignment reduction of a 3D array to a vector.
+  Note that because this is an assignment reduction, the order in which 
+  3D array is read matters, because only the last value assigned to a location 
+  in a vector remains.
+
+  In most cases, what you really wnat is assembleSolution().
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    arr: the 3D array to be reduced into a vector
+
+  Inputs/Outputs:
+    res_vec: the vector to reduce the array into
+
+  Keywords:
+    zeros_resvec: whether or not to zero res_vec before performing the
+                  reduction, default true
+
+   Aliasing restrictions: none
+
+"""->
 function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
                          sbp::SBPOperator, eqn::AbstractAdvectionData{Tsol}, opts, 
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
