@@ -25,9 +25,9 @@ include("test_lowlevel.jl")
 include("test_GLS3.jl")
 include("test_modes.jl")
 
-#cd("./convergence")
-#include(joinpath(pwd(), "runtests.jl"))
-#cd("..")
+cd("./convergence")
+include(joinpath(pwd(), "runtests.jl"))
+cd("..")
 
 FactCheck.exitstatus()
 

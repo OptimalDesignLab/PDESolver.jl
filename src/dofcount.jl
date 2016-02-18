@@ -123,6 +123,6 @@ end
 
 
 #run_dof()
-findMeshSize(841, 1)
+findMeshSize(771, 4)
 
 

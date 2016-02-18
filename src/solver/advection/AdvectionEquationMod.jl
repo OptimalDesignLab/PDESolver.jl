@@ -5,7 +5,7 @@ using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
-export AdvectionData, AdvectionData_, getMass, assembleSolution, disassembleSolution
+export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 export evalAdvection, init # exported from advectionFunctions.jl
 export ICDict              # exported from ic.jl
 
