@@ -101,12 +101,21 @@ facts("--- Testing Euler Low Level Functions --- ") do
    A0 = zeros(4,4)
    A02 = inv(A0inv)
    EulerEquationMod.calcA0(e_params, v, A0)
-
+  
    for i=1:16
      @fact A0[i] => roughly(A02[i], atol=1e-10)
    end
 
-   # test A1
+
+   A0inv_c = zeros(4,4)
+   EulerEquationMod.calcA0(eqn.params, q, A0inv_c)
+   @fact A0inv_c => eye(4)
+
+   A0_c = zeros(4,4)
+   EulerEquationMod.calcA0Inv(eqn.params, q, A0_c)
+   @fact A0_c => eye(4)
+
+     # test A1
    A1 = zeros(4,4)
    q_tmp = ones(Tsol, 4)
    EulerEquationMod.calcA1(eqn.params, q_tmp, A1)

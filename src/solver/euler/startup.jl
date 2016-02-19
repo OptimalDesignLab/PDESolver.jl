@@ -158,10 +158,24 @@ if opts["calc_error"]
 
   err_vec = vals - eqn.q_vec
   err = calcNorm(eqn, err_vec)
+
+  # calculate avg mesh size
+  jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
+  jac_vec = zeros(Tmsh, mesh.numNodes)
+  EulerEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+  # scale by the minimum distance between nodes on a reference element
+  # this is a bit of an assumption, because for distorted elements this
+  # might not be entirely accurate
+  println("mesh.min_node_distance = ", mesh.min_node_dist)
+  h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
+#  println("h_avg = ", h_avg)
+  h_avg *= mesh.min_node_dist
+#  println("h_avg = ", h_avg)
+
   outname = opts["calc_error_outfname"]
   println("printint err = ", err, " to file ", outname)
   f = open(outname, "w")
-  println(f, err)
+  println(f, err, " ", h_avg)
   close(f)
 end
 
@@ -196,11 +210,14 @@ delta_t = opts["CFL"]*opts["mesh_size"]/wave_speed
 println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
 opts["delta_t"] = delta_t
 
+#DEBUGGING
+if opts["test_GLS2"]
+  calcResidual(mesh, sbp, eqn, opts, evalEuler)
+end
 
 #------------------------------------------------------------------------------
 #=
 include("checkEigenValues.jl")
->>>>>>> jc
 # include("artificialViscosity.jl")
 # include("SUPG.jl")
 
@@ -236,6 +253,9 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 # residualComparison(mesh, sbp, eqn, opts)
 
 =#
+
+#res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalEuler)
+
 #------------------------------------------------------------------------------
 
 # call timestepper

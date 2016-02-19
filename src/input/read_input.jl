@@ -69,6 +69,14 @@ get!(arg_dict, "Relfunc_name", "none")
 #SBP Options
 get!(arg_dict, "Q_transpose", true)
 
+# source term options
+get!(arg_dict, "SRCname", "SRC0")
+if arg_dict["SRCname"] == "SRC0"
+  get!(arg_dict, "use_src_term", false)
+else
+  get!(arg_dict, "use_src_term", true)
+end
+
 
 # stabilization options
 get!(arg_dict, "use_edgestab", true)
@@ -79,13 +87,14 @@ get!(arg_dict, "use_dissipation", false)
 get!(arg_dict, "dissipation_name", "none")
 get!(arg_dict, "dissipation_const", 0.0)
 get!(arg_dict, "use_GLS", false)
+get!(arg_dict, "use_GLS2", false)
+get!(arg_dict, "tau_type", 1)
 
 # preconditioning stabilization options
 # non-logical values are shared between regular, preconditioned run
 get!(arg_dict, "use_edgestab_prec", false) 
 get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
-
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
   # the raised cosine filter has no paramters
@@ -111,7 +120,7 @@ get!(arg_dict, "calc_error", false)
 get!(arg_dict, "calc_error_infname", "none")
 get!(arg_dict, "calc_error_outfname", "error_calc.dat")
 get!(arg_dict, "calc_trunc_error", false)
-
+get!(arg_dict, "calc_havg", false)
 
 # Algorithmic Differentiation options
 get!(arg_dict, "use_edge_res", false)
@@ -143,6 +152,8 @@ writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
 get!(arg_dict, "writeq", false)
 
+#DEBUGGING
+get!(arg_dict, "test_GLS2", false)
 # mesh debugging options
 get!(arg_dict, "write_edge_vertnums", false)
 get!(arg_dict, "write_face_vertnums", false)
@@ -150,6 +161,8 @@ get!(arg_dict, "write_boundarynums", false)
 get!(arg_dict, "write_dxidx", false)
 get!(arg_dict, "write_coords", false)
 get!(arg_dict, "write_sparsity", false)
+get!(arg_dict, "write_sparsity_nodebnds", false)
+get!(arg_dict, "write_offsets", false)
 get!(arg_dict, "verify_coloring", true)
 get!(arg_dict, "write_counts", false)
 

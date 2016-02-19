@@ -13,7 +13,8 @@ export calcResidual
       function (which performs eqn.q -> eqn.res) that performs eqn.q_vec ->
       eqn.res_vec.
 
-    The norm of the strong residual (using the SBP norm) is calculated and returned (even though the weak form residual is stores in eq.res_vec).
+    The norm of the strong residual (using the SBP norm) is calculated and returned
+    (even though the weak form residual is stores in eq.res_vec).
 
     Inputs:
       mesh:  an AbstractMesh object
@@ -62,7 +63,8 @@ end
   Aliasing restrictions: none
 
 """->
-function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; assemble_edgeres=true, zero_resvec=true)
+function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; 
+                             assemble_edgeres=true, zero_resvec=true)
 # assembles all of the residuals into res_vec
 # no aliaising concerns
 
@@ -71,7 +73,8 @@ function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1};
   if assemble_edgeres
 
     for i=1:size(eqn.res_edge, 4)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i), res_vec, zero_resvec=zero_resvec)
+      eqn.assembleSolution(mesh, sbp, eqn, opts, view(eqn.res_edge, :, :, :, i),
+                           res_vec, zero_resvec=zero_resvec)
     end
   end
 
@@ -104,6 +107,3 @@ function disassembleSolution{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1}
 
   return nothing
 end
-
-
-

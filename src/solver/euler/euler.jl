@@ -112,11 +112,11 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
   eqn.params.t = t  # record t to params
   
   dataPrep(mesh, sbp, eqn, opts)
-  #println("dataPrep @time printed above")
+#  println("dataPrep @time printed above")
 
 
   evalVolumeIntegrals(mesh, sbp, eqn, opts)
-  #println("volume integral @time printed above")
+#  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -129,7 +129,7 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
-
+  
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
@@ -141,15 +141,15 @@ function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts,
   #----------------------------------------------------------------------------
 
   evalBoundaryIntegrals(mesh, sbp, eqn)
-  #println("boundary integral @time printed above")
+#  println("boundary integral @time printed above")
 
 
   addStabilization(mesh, sbp, eqn, opts)
-  #println("edge stabilizing @time printed above")
+#  println("stabilizing @time printed above")
 
 
   
-  #print("\n")
+#  print("\n")
 
   return nothing
 end  # end evalEuler
@@ -336,6 +336,9 @@ q_cons = zeros(Tsol, ndof)  # conservative variables
 for i=1:numel
   for j=1:nnodes
     convertToConservative(eqn.params, view(eqn.q, :, j, i), q_cons)
+    if real(q_cons[1]) < 0.0
+      println("q_conservative = ", q_cons)
+    end
     @assert( real(q_cons[1]) > 0.0, "element $i, node $j. Density < 0")
   end
 end
@@ -489,6 +492,11 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
     applyDissipation(mesh, sbp, eqn, opts, eqn.q)
   end
 
+  if opts["use_GLS2"]
+     applyGLS3(mesh, sbp, eqn, opts)
+#    test_GLS(mesh, sbp, eqn, opts)
+  end
+
 #  println("==== end of addStabilization ====")
 
 
@@ -601,6 +609,36 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   
   return nothing
 end
+
+# mid level function (although it doesn't need Tdim)
+function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                         sbp::SBPOperator, eqn::EulerData{Tsol}, opts, 
+                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         zero_resvec=true)
+# arr is the array to be assembled into res_vec
+
+#  println("in assembleSolution")
+
+  if zero_resvec
+    fill!(res_vec, 0.0)
+  end
+
+
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      for k=size(arr, 1)  # loop over dofs on the node
+
+        dofnum_k = mesh.dofs[k, j, i]
+        dofnum_k1 = div(dofnum_k, mesh.numDofPerNode) + 1 # get node number
+
+        res_vec[dofnum_k1] = arr[k,j,i]
+      end
+    end
+  end
+  
+  return nothing
+end
+
 
 
 

@@ -1,226 +1,340 @@
 # advectionFunctions.jl
 
 @doc """
-### evalAdvection
+### AdvectionEquationMod.evalAdvection
 
 This function evaluates the Advection equation and preps it for the RK4 solver.
-Pass this function as an input argument to the RK4 solver just like evalEuler.
+Pass this function as an input argument to the RK4 solver just like evalAdvection.
+
+**Inputs**
+
+*  `mesh` : Abstract mesh object
+*  `sbp`  : Summation-by-parts operator
+*  `eqn`  : Advection equation object
+*  `opts` : Options dictionary
+*  `t`    :
+
+**Outputs**
+
+*  None
 
 """->
 
-function evalAdvection(mesh::AbstractMesh, sbp::SBPOperator,
-                       eqn::AdvectionData, opts, t)
+function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                       sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                       opts, t = 0.0)
 
-  # u_i_1 = zeros(mesh.numDof)
-  # eqn.res_vec = fill!(eqn.res_vec, 0.0)
-  const alpha_x = 1.0 # advection velocity in x direction
-  const alpha_y = 0.0 # advection velocity in y direction
-  
+#  println("entered evalAdvection")
+  eqn.t = t
+ 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
-  # disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-  # println(eqn.u)
   
-  evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
-  # assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  # println(eqn.res_vec)
-  # println("evalSCResidual complete")
-  evalBndry(mesh, sbp, eqn, alpha_x, alpha_y)
-  # println("evalBndry complete")
-  # assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  # println(eqn.res_vec)
-  
-  eqn.res_vec = eqn.M\eqn.res_vec
-  
-  # eqn.res = copy(eqn.u) # transfer eqn.u to eqn.res for assembly in RK
-  # return u_i_1
+  evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+
+  # Does not work, should remove
+#  if opts["use_GLS"]
+#    GLS(mesh, sbp, eqn)
+#  end
+  evalSRCTerm(mesh, sbp, eqn, opts)
+
+  evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+
+
+
+  if opts["use_GLS2"]
+    applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
+  end
+
   return nothing
 end
 
 @doc """
-### evalSCResidual
+### AdvectionEquationMod.evalSCResidual
 
 Evaluate the residual using summation by parts (not including boundary 
 integrals) this only works for triangular meshes, where are elements are same
 
-* mesh : mesh type
-* operator: what operator to use (SBP, lagrange polynomial ...)
-* u : solution vector (must be ndof by 1) to be populated
-* u0 : solution vector at previous timestep
-* alpha_x and alpha_y : advection velocities in x and y directions
+**Inputs**
+
+*  `mesh` : mesh type
+*  `sbp`  : Summation-by-parts operator
+*  `eqn`  : Advection equation object
+*  `alpha_x` and `alpha_y` : advection velocities in x & y directions
+
+**Outputs**
+
+*  None
 
 """->
 
-function evalSCResidual{Tsol, Tdim}(mesh::AbstractMesh, sbp::SBPOperator, 
-                                    eqn::AdvectionData{Tsol, Tdim}, 
-                                    alpha_x::FloatingPoint, 
-                                    alpha_y::FloatingPoint)
+function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                    sbp::SBPOperator, 
+                                    eqn::AdvectionData{Tsol, Tres, Tdim}, 
+                                    alpha_x::AbstractArray{Tsol, 3}, 
+                                    alpha_y::AbstractArray{Tsol, 3})
 
-	                                  # u::AbstractVector, u0, 
-	                      
-# not clear how to do source term using SBP operators
-  # println("alpha_x = ", alpha_x)
-  # println("alpha_y = ", alpha_y)
-	# initialize
 
-  ndof = mesh.numDof  # Total number of dofs
-  numEl = mesh.numEl  # Total number of elements
-  nnodes = mesh.numNodesPerElement # count the number of nodes per element 
-  ub = zeros(nnodes) # holds original solution at for an element
-  fluxes = zeros(nnodes, 2)  # jacobian term times advection velocity divided
-                             # by jac
-
-  for i=1:numEl  # loop over element
-
-    dofnums_i = getGlobalNodeNumbers(mesh, i)
-    # ub = u0[dofnums_i]  # get original solution values
-    # vert_coords = getElementVertCoords(mesh, [i])
-    # vert_coords_extract = vert_coords[1:2, :, :]
-    # dxi_dx = zeros(2, 2, nnodes, 1)
-    # jac = zeros(nnodes, 1)
-    # mappingjacobian!(operator, vert_coords_extract, dxi_dx, jac)
-    dxi_dxu = zeros(nnodes,2)
-    #=
-    for j=1:nnodes
-      dxi_dxu[j,1] += (dxi_dx[1,1,j,1]*alpha_x + dxi_dx[1,2,j,1]*alpha_y)*ub[j]
-      dxi_dxu[j,2] += (dxi_dx[2,1,j,1]*alpha_x + dxi_dx[2,2,j,1]*alpha_y)*ub[j]
+  #  println("----- Entered evalSCResidual -----")
+  Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      alpha_x = eqn.alpha_x[1, j, i]
+      alpha_y = eqn.alpha_y[1, j, i]
+      alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + 
+                 mesh.dxidx[1, 2, j, i]*alpha_y
+      alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + 
+                  mesh.dxidx[2, 2, j, i]*alpha_y
+      Adq_dxi[1,j,i,1] = alpha_xi*eqn.q[1,j,i]
+      Adq_dxi[1,j,i,2] = alpha_eta*eqn.q[1,j,i]
     end
-    =#
-    for j=1:nnodes
-      dxi_dxu[j,1] += (mesh.dxidx[1,1,j,i]*alpha_x + mesh.dxidx[1,2,j,i]*alpha_y)*eqn.u[1,j,i]
-      dxi_dxu[j,2] += (mesh.dxidx[2,1,j,i]*alpha_x + mesh.dxidx[2,2,j,i]*alpha_y)*eqn.u[1,j,i]
-    end
-
-    # copy dxi_dxu into column matricies to satisfy SBP
-    dxi_dxu_x = zeros(nnodes,1)
-    dxi_dxu_x[:] = dxi_dxu[:,1]
-    dxi_dxu_y = zeros(nnodes,1)
-    dxi_dxu_y[:] = dxi_dxu[:,2]
-
-    # Calculate element wise volume integral
-    res = zeros(nnodes,1)
-    weakdifferentiate!(sbp, 1, dxi_dxu_x, res, trans=true)
-    weakdifferentiate!(sbp, 2, dxi_dxu_y, res, trans=true)
-
-    eqn.res[1,:,i] = res[:,1] # Transfer element residual to the eqn object
   end  # end loop over elements
 
-  # println(eqn.res)
+  for i = 1:Tdim
+    weakdifferentiate!(sbp,i,view(Adq_dxi,:,:,:,i), eqn.res, trans = true)
+  end
 
+  #  println("----- Finished evalSCResidual -----")
+  return nothing
 end  # end function
 
 @doc """
-### evalBndry
+### AdvectionEquationMod.evalBndry
 
 Evaluate boundary integrals for advection equation
 
-*  mesh : mesh type, must be PumiMesh (need adjacency information
-*  operator : SBP operator
-*  u : solution vector to be populated, has already has volume integrals done
-*  u0 : solution vector at previous timestep
-*  alpha_x and alpha_y : advection veocities in x and y directions
+**Inputs**
+
+*  `mesh` : Abstract mesh type
+*  `sbp`  : Summation-by-parts operator
+*  `eqn`  : Advection equation object
+*  `alpha_x` & `alpha_y` : advection veocities in x & y directions
+
+**Outputs**
+
+*  None
 
 """->
+#TODO: get rid of alpha_x and alpha_y arguments: they are not used
+function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                   sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                   alpha_x::AbstractArray{Tsol, 3}, alpha_y::AbstractArray{Tsol, 3})
 
-function evalBndry{Tsol, Tdim}(mesh::PumiMesh2, sbp::SBPOperator, eqn::AdvectionData{Tsol, Tdim},
-                   alpha_x::FloatingPoint, alpha_y::FloatingPoint)
-
-  # println("entered evalBndry")
-
-  # get arguments needed for sbp boundaryintegrate!
-
-  bndry_edges = mesh.bndryfaces
-  # num_bndry_edges = mesh.numBoundaryEdges
-
-  if length(mesh.bndryfaces) != mesh.numBoundaryEdges
-    println("Error with Boundary!!!!")
-  end
-  #=
-  bndry_faces = Array(Boundary, num_bndry_edges)
-  bndry_sign = zeros(Int, num_bndry_edges)
-  bndry_orientation = zeros(Int, num_bndry_edges)
-
-  for i=1:num_bndry_edges  # extract element and edge numbers
-    edgenum_i = bndry_edges[i]
-    edge_i = mesh.edges[edgenum_i]
-
-    # get mesh face associated with edge
-    countAdjacent(mesh.m_ptr, edge_i, 2)
-    face = getAdjacent(1)[1]  # get the single face (not an array)
-    facenum_i = getFaceNumber2(face) + 1  # convert to 1 based indexing
-    (down_edges, numedges) = getDownward(mesh.m_ptr, face, 1)
-    edgenum_local = 0
-    for j = 1:numedges  # find which local edge is edge_i
-      if down_edges[j] == edge_i
-        edgenum_local = j
-      end # end if
-    end # end for j = 1:numedges
-
-    println("after correction, edgenum_local = ", edgenum_local)
-    bndry_faces[i] = Boundary(facenum_i, edgenum_local)
-  end  # end for i=1:num_bndry_edges 
-  
-  for i=1:num_bndry_edges
-    bndry_i = bndry_faces[i]
-  end # end for i=1:num_bndry_edges
-  
-  # create new u formatted for SBP
-  # also get coordinates needed for  mapping jacobian
-  u_sbp = zeros(operator.numnodes, mesh.numEl)
-  x = zeros(2, operator.numnodes, mesh.numEl)
-
-  for i=1:mesh.numEl
-    dofnums_i = getGlobalNodeNumbers(mesh, i)
-    u_sbp[:,i] = u0[dofnums_i]
-    x_i = getElementVertCoords(mesh, [i])
-    x[:,:,i] = x_i[1:2,:]
+#  println("----- Entered evalBndry -----")
+  for i=1:mesh.numBC
+  #  println("computing flux for boundary condition ", i)
+    functor_i = mesh.bndry_funcs[i]
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1]
+    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+ 
+    # call the function that calculates the flux for this boundary condition
+    # passing the functor into another function avoid type instability
+    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
   end
 
-  dxi_dx = zeros(2,2,operator.numnodes, mesh.numEl)
-  jac = zeros(operator.numnodes, mesh.numEl)
-  mappingjacobian!(operator, x, dxi_dx, jac) # populate dxi_dx and jac
-  res = zeros(operator.numnodes, mesh.numEl)
-  =#
-
-  # define the flux function
-  # u_bc = sin(-1)  # boundary condition (for all sides)
-  # println("u_bc = ", u_bc)
-  # cntr = 1  # count number of times flux function is called
-
-  # Need to fill up bndryflux
-  # println("heehaw 1")
-
-  for i = 1:mesh.numBoundaryEdges
-    # println("i = ", i)
-    bndry_i = mesh.bndryfaces[i]
-    # println("bndryfaces extracted")
-    for j = 1:sbp.numfacenodes
-      k = sbp.facenodes[j, bndry_i.face]
-      u = view(eqn.u, :, k, bndry_i.element)
-      x = view(mesh.coords, :, k, bndry_i.element)
-      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
-      bndryflux_i = view(eqn.bndryflux, :, j, i)
-      # println("arrayView bndryflux_i created")
-      flux1(u, dxidx, nrm, bndryflux_i, alpha_x, alpha_y) # calculate the boundary flux
-    end # for j = 1:sbp.numfacenodes
-  end # end for i = 1:mesh.numBoundaryEdges
-
-  # println("heehaw 2")
-  
-  # boundaryintegrate!(operator, bndry_faces, u_sbp, dxi_dx, flux1, res)
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
-  #=
-  bndry_contrib = zeros(mesh.numDof)
 
-  for i=1:mesh.numEl
-    dofnums_i = getGlobalNodeNumbers(mesh, i)
-    vals_i = res[:,i]
-    u[dofnums_i.'] -= vals_i
-    bndry_contrib[dofnums_i.'] -= vals_i
-  end # end for i=1:mesh.numEl =#
-
+#  println("----- Finished evalBndry -----")
+  return nothing
 end # end function evalBndry
-#=
 
 
-"""-> =#
+@doc """
+### AdvectionEquationMod.evalSRCTerm
+
+  This function performs all the actions necessary to update eqn.res
+  with the source term.  The source term is stored in eqn.src_func.  It is
+  an abstract field, so it cannot be accessed (performantly) direction, so
+  it is passed to an inner function.
+
+  Inputs:
+    mesh : Abstract mesh type
+    sbp  : Summation-by-parts operator
+    eqn  : Advection equation object
+    opts : options dictonary
+
+  Outputs: none
+
+  Aliasing restrictions: none
+
+"""->
+function evalSRCTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                     sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, 
+                     opts)
+
+
+  # placeholder for multiple source term functionality (similar to how
+  # boundary conditions are done)
+  if opts["use_src_term"]
+    applySRCTerm(mesh, sbp, eqn, opts, eqn.src_func)
+  end
+
+  return nothing
+end  # end function
+
+@doc """
+### AdvectionEquationMod.applySRCTerm
+
+  This function updates eqn.res with the source term.  
+
+  Inputs: 
+    mesh
+    sbp
+    eqn
+    opts
+    src_func:  the functor that returns the value of the source term at a node
+               This functor must have the signature:
+               src_func(coords, alpha_x, alpha_y, t)
+               where coords is a vector of length 2 containing the x and y 
+               coordinates of the node, alpha_x and alpha_y are the advection
+               coefficients, and t is the current time.
+
+  Outputs: none
+
+  Aliasing restrictions: none
+
+"""->
+function applySRCTerm(mesh,sbp, eqn, opts, src_func)
+
+  weights = sbp.w
+  t = eqn.t
+  for i=1:mesh.numEl
+    jac_i = view(mesh.jac, :, i)
+    res_i = view(eqn.res, :, :, i)
+    for j=1:mesh.numNodesPerElement
+      coords_j = view(mesh.coords, :, j, i)
+      alpha_x = eqn.alpha_x[1, j, i]
+      alpha_y = eqn.alpha_y[1, j, i]
+
+      src_val = src_func(coords_j, alpha_x, alpha_y, t)
+      res_i[j] += weights[j]*src_val/jac_i[j]
+    end
+  end
+
+  return nothing
+end
+
+
+
+@doc """
+### AdvectionEquationMod.init
+
+  This function initializes the mesh and equation objects with any module
+  specific data, such as boundary condition and source term functors.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Outputs: none
+
+  Aliasing restrictions: none
+"""->
+function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+              eqn::AbstractAdvectionData{Tsol, Tres}, opts)
+
+  println("Entering Advection Module")
+  getBCFunctors(mesh, sbp, eqn, opts)
+  getSRCFunctors(mesh, sbp, eqn, opts)
+  fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
+  fill!(eqn.alpha_y, 1.0) # advection velocity in y direction
+  
+  return nothing
+end
+
+@doc """
+### AdvectionEquationMod.majorIterationCallback
+
+  This function gets called by the NonlinearSolvers during every major 
+  iteration.  This provides the opportunity to do output or monitoring.
+
+  Inputs:
+    itr: major iteration number
+    mesh
+    sbp
+    eqn
+    opts
+
+    Outputs: none
+
+    Aliasing restrictions: none
+
+"""->
+function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
+                                sbp::SBPOperator, eqn::AbstractAdvectionData, opts)
+
+  println("Performing major Iteration Callback for iteration ", itr)
+
+  if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
+    println("writing vtk file")
+    vals = real(eqn.q_vec)  # remove unneded imaginary part
+    saveSolutionToMesh(mesh, vals)
+#    cd("./SolutionFiles")
+    fname = string("solution_", itr)
+    writeVisFiles(mesh, fname)
+#    cd("../")
+  end
+ 
+  return nothing
+end
+
+
+@doc """"
+### AdvectionEquationMod.assembleArray
+
+  This function performs an assignment reduction of a 3D array to a vector.
+  Note that because this is an assignment reduction, the order in which 
+  3D array is read matters, because only the last value assigned to a location 
+  in a vector remains.
+
+  In most cases, what you really wnat is assembleSolution().
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    arr: the 3D array to be reduced into a vector
+
+  Inputs/Outputs:
+    res_vec: the vector to reduce the array into
+
+  Keywords:
+    zeros_resvec: whether or not to zero res_vec before performing the
+                  reduction, default true
+
+   Aliasing restrictions: none
+
+"""->
+function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                         sbp::SBPOperator, eqn::AbstractAdvectionData{Tsol}, opts, 
+                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         zero_resvec=true)
+# arr is the array to be assembled into res_vec
+
+#  println("in assembleSolution")
+
+  if zero_resvec
+    fill!(res_vec, 0.0)
+  end
+
+
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      for k=size(arr, 1)  # loop over dofs on the node
+
+        dofnum_k = mesh.dofs[k, j, i]
+
+        res_vec[dofnum_k] = arr[k,j,i]
+      end
+    end
+  end
+  
+  return nothing
+end
+
+
+

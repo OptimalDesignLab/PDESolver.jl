@@ -27,3 +27,4 @@ rm -v ./boundary_nums.dat
 rm -v ./sparsity_bnds.dat
 rm -v ./counts*.txt
 rm -v ./edge_vertdofs.txt
+rm -v ./*vtu

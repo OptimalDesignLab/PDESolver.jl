@@ -55,11 +55,17 @@ where input_file_name.jl is in your current directory.
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
 
+# source term specification (advection equation only)
+"SRCname": the name of the source term to use, (ASCIIString), default SRC0
+
 # misc options
 "calc_error"  : calculate error norm of values in a file compared to the initial condition, number of values in the file must equal the number of dofs in the mesh, (Bool), default false
 "calc_error_infname"  : name of file to load, (ASCIIString), 
 "calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat
 "calc_trunc_error"  : calculate truncation error, IC must be exact solution for this to work, writes value to file error_trunc.dat, (Bool), default false
+"calc_havg" : calculate the average minimum distance between nodes (ie. the 
+              mesh spacing) and write it to the file "havg.dat", (Bool), default
+              false
 
 # algorithmic differentiation options
 "res_edge_res" : use an edge based residual data structure (in addition to
@@ -90,6 +96,10 @@ where input_file_name.jl is in your current directory.
 "write_finalresidual"  : write final residual (in vector form) to file, (Bool), default false
 
 
+# SBP options
+"Q_transpose" : enable transpose option within weakdifferentiate!
+
+
 # stabilization options
 "use_edgestab" : use edge stabilization, (Bool), default true
 "edgestab_gamma" edge stabilization paramater gamma, (floatingpoint), default -0.1
@@ -100,7 +110,8 @@ where input_file_name.jl is in your current directory.
 "dissipation_name" : name of artificial dissipation kernel to use, (ASCIIString), default "none"
 "dissipation_const" : constant to multiply dissipation filter by, (Float64), default 0.0
 "use_GLS" : use Galerkin Least-Squares stabilization, (Bool), default false
-
+"use_GLS2": use Hughes' formulation of Galerkin Least-Squares, (Bool), default false
+"tau_type" : which definition of tau to use of GLS, (Int), default 1
 # stabilization preconditioning options
 "use_edgestab_prec" : use edge stabilization for preconditioning matrix, (Bool), default false
 "use_filter_prec" : use filter for preconditioning matrix, (Bool), default false
@@ -131,6 +142,9 @@ Note that any values associated with these options are shared with the regular
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
 "write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false
+"write_sparsity_nodebnds" :  write upper and lower node bounds to sparsity_bnds.dat, (Bool), default false
+"write_offsets"  : write the offset values that account for entity orientation
+                   to file entity_offsets.dat, (Bool), default false
 "verify_coloring"  : verify coloring worked correctly, (Bool), default true
 "write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
 

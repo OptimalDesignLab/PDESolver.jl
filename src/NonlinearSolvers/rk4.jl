@@ -41,17 +41,6 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 #function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
-  #=
-  # Storing the initial density value at all the nodes
-  vRho_act = zeros(mesh.numNodes)
-  k = 1
-  for i = 1:mesh.numDofPerNode:length(eqn.q_vec)
-    vRho_act[k] = eqn.q_vec[i]
-    k += 1
-  end
-  println("Actual Density value succesfully extracted")
-  =#
-
   println("\nEntered rk4")
 # res_tol is alternative stopping criteria
 
@@ -96,7 +85,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 #    write(STDERR,update_msg)
 #    print("\nRK4 i : ", i)
   if i % output_freq == 0
-     println("i: ",i)
+     println("\ntimestep ",i)
   end
 
 #    println("in rk4, i = ", i)
@@ -106,6 +95,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 
 #    println("eqn.q_vec = ", eqn.q_vec)
 
+#     println("\nrk4 stage 1")
  #   eqn.q_vec = x_old
 #    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     pre_func(ctx..., opts)
@@ -157,6 +147,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
 
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
+      flush(f1)
      # put solution into q_vec
 #     fill!(eqn.q_vec, 0.0)
 #     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -168,6 +159,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     end
 
     # stage 2
+#    println("\nrk4 stage 2")
     q_vec[:] = x2
     pre_func(ctx..., opts) 
 #    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -187,6 +179,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     x3[:] = x_old + (h/2)*k2
 
     # stage 3
+#    println("\nrk4 stage 3")
     q_vec[:] = x3
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
@@ -204,6 +197,7 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     end
 
     # stage 4
+#    println("\nrk4 stage 4")
     x4[:] = x_old + h*k3
     q_vec[:] = x4
     pre_func(ctx..., opts)
@@ -219,11 +213,20 @@ function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::Abstrac
     for j=1:m
       k4[j] = res_vec[j]
     end
+#=
+    println("k1 = \n", k1)
+    println("k2 = \n", k2)
+    println("k3 = \n", k3)
+    println("k4 = \n", k4)
 
-
+    println("q_old = \n", x_old)
+=#
     # update
     x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     q_vec[:] = x_old
+
+
+#    println("q_new = \n", q_vec)
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)
@@ -281,7 +284,7 @@ end
 
 
 function pde_pre_func(mesh, sbp, eqn, opts)
-
+  
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 end
 
@@ -292,4 +295,5 @@ function pde_post_func(mesh, sbp, eqn, opts)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   return calcNorm(eqn, eqn.res_vec)
 end
+
 

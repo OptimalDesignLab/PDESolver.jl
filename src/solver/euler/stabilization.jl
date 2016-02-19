@@ -3,7 +3,7 @@
 # Stabilization functions may be put in separate files if they are included 
 # here
 
-include("SUPG.jl")
+include("GLS.jl")
 include("filtering.jl")
 include("artificial_dissipation.jl")
 

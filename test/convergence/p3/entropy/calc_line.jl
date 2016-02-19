@@ -1,6 +1,6 @@
 # calculate the least squares line of the errors
 function calc_line()
-  dirs = Array(4:5)
+  dirs = [1, 2]
   npts = length(dirs)
   println("maximum(dirs) = ", maximum(dirs))
   err_vals = zeros(maximum(dirs))
