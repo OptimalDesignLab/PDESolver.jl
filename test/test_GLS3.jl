@@ -155,6 +155,16 @@ end  # end function
 
   # run the tests
 if true
+  include("input_vals_channel.jl")
+  arg_dict["solve"] = false
+  arg_dict["variable_type"] = :entropy
+  f = open("input_vals_channel_gls.jl", "w")
+  println(f, "arg_dict = ")
+  println(f, arg_dict)
+  close(f)
+
+
+
   println("----- Testing GLS3 channel -----")
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_channel_gls.jl"
