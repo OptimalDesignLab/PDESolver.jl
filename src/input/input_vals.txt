@@ -142,6 +142,9 @@ Note that any values associated with these options are shared with the regular
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
 "write_sparsity" : write upper and lower dof bounds to sparsity_bnds.dat, (Bool), default false
+"write_sparsity_nodebnds" :  write upper and lower node bounds to sparsity_bnds.dat, (Bool), default false
+"write_offsets"  : write the offset values that account for entity orientation
+                   to file entity_offsets.dat, (Bool), default false
 "verify_coloring"  : verify coloring worked correctly, (Bool), default true
 "write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
 
