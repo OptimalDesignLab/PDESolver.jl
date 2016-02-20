@@ -313,7 +313,7 @@ function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end
 
-global const ICDict = Dict{Any, Function} (
+global const ICDict = Dict{Any, Function}(
 "ICx5plusy5" => ICx5plusy5,
 "ICexp_xplusy" => ICexp_xplusy,
 "ICsinwave" => ICsinwave,

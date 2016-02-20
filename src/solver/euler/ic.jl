@@ -643,7 +643,7 @@ end
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
 
-global const ICDict = Dict{Any, Function} (
+global const ICDict = Dict{Any, Function}(
 "ICZero" => ICZero,
 "ICOnes" => ICOnes,
 "ICRho1E2" => ICRho1E2,

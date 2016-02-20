@@ -1012,7 +1012,7 @@ end  # end function
 #------------------------------------------------------------------------------
 # some old experimental functions
 #------------------------------------------------------------------------------
-
+#=
 # this is a test for an algorithmic differentiation package
 function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 
@@ -1029,5 +1029,5 @@ function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
 end
 
 fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
-
+=#
 

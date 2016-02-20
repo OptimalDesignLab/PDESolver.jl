@@ -1,5 +1,5 @@
 
-facts ("---- Testing input processing ------") do
+facts("---- Testing input processing ------") do
 
   extract_path = joinpath(Pkg.dir("PDESolver"), "src/input/extract_keys.jl")
   extract_path2 = joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl")

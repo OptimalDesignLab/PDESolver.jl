@@ -943,7 +943,7 @@ end
 
  
 """->
-function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, pert, jac::Union(SparseMatrixCSC, PetscMat))
+function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, pert, jac::Union{SparseMatrixCSC, PetscMat})
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type

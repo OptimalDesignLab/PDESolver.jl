@@ -302,7 +302,7 @@ function calcLowPassFilter(sbp::SBPOperator, opts)
 end
 
 
-global const filter_dict = Dict{ASCIIString, Function} (
+global const filter_dict = Dict{ASCIIString, Function}(
 "raisedCosineFilter" => calcRaisedCosineFilter,
 "lowPassFilter" => calcLowPassFilter,
 )

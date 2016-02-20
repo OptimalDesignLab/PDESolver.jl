@@ -10,7 +10,7 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
 
 
-  println("\n\ntesting jacobian vector product")
+  println("\n\n----- Testing jacobian vector product -----")
   # test jacobian vector product
   # load a new initial condition
   ICFunc = EulerEquationMod.ICDict["ICIsentropicVortex"]
@@ -30,7 +30,7 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
 
   # check the two products are equal
   for i=1:mesh.numDof
-    @fact result1[i] => roughly(result2[i])
+    @fact result1[i] => roughly(result2[i], atol=1e-13)
   end
 
 #  results_all = hcat(result1, result2)

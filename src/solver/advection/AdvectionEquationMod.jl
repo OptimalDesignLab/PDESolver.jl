@@ -34,7 +34,6 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   alpha_x::Array{Tsol, 3}
   alpha_y::Array{Tsol, 3}
   q::Array{Tsol, 3}
-  res::Array{Tsol, 3}
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi direction
   res::Array{Tres, 3}      # result of computation

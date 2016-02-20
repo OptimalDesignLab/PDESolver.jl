@@ -1,5 +1,5 @@
 
-facts ("----- Testing GLS2 -----") do
+facts("----- Testing GLS2 -----") do
 
   ARGS[1] = "input_vals_GLS2.jl"
   include(STARTUP_PATH)

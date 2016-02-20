@@ -154,7 +154,7 @@ end
 
 """->
 function applyEuler(mesh, sbp, eqn, opts, newton_data, 
-                    jac::Union(Array, SparseMatrixCSC))
+                    jac::Union{Array, SparseMatrixCSC})
 # updates the jacobian with a diagonal term, as though the jac was the 
   println("applying Euler globalization to julia jacobian, tau = ",
            newton_data.tau_l)

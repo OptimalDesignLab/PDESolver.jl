@@ -72,7 +72,7 @@ elseif jac_type == 4  # jacobian-vector product
   PetscSetUp(A)
 
   # give PETSc the function pointer of Jacobian vector product function
-  fptr = cfunction (calcJacVecProd_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
+  fptr = cfunction(calcJacVecProd_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
   MatShellSetOperation(A, PETSc.MATOP_MULT, fptr)
 
 else

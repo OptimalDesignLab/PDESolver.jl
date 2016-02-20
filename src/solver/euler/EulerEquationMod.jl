@@ -336,7 +336,7 @@ If it is variable sized then macros give the advantage of doing location lookup
     * M : vector holding the mass matrix
     * Minv :  vector holding inverse mass matrix
 """->
-abstract EulerData {Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres}
+abstract EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres}
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation

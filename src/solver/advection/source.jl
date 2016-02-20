@@ -147,7 +147,7 @@ end
   of the node, alpha_x and alpha_y are the advection velocities in the x an y
   directions, and t is the current time
 """->
-global const SRCDict = Dict{ASCIIString, SRCType} (
+global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRC0" => SRC0(),
 "SRC1" => SRC1(),
 "SRCx" => SRCx(),

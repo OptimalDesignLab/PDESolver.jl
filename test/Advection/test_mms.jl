@@ -32,7 +32,7 @@ function make_input(degree)
   return fname
 end
 
-facts ("----- Testing using manufactured polynomials -----") do
+facts("----- Testing using manufactured polynomials -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_mms.jl"

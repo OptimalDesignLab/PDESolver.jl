@@ -422,7 +422,7 @@ end # end function call
 # add it to the dictionary
 #const isentropicVortexBC_ = isentropicVortexBC()
 #const noPenetrationBC_ = noPenetrationBC()
-global const BCDict = Dict{ASCIIString, BCType} (
+global const BCDict = Dict{ASCIIString, BCType}(
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
 "Rho1E2U3BC" => Rho1E2U3BC(),

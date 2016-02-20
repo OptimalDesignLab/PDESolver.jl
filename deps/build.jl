@@ -74,18 +74,17 @@ function installPDESolver()
   #------------------------------------------------------------------------------
 
   # array of [pkg_name, commit_hash]
-  pkg_list = [ "Compat" "3bbd9536360ac0925b4535036b79d8eb547db977";
-               "URIParser" "3c00f48119909eb105aff6f126611b39a7b16919";
-               "FactCheck" "e3caf3143b13d4ce9bc576579d5ed9cd4aaefb11";
-               "ArrayViews" "40439daf99155b751d53c6403a5bd35fa0340f7a";
-               "SHA" "0e31e9d265eede8cafc9f0c04e928acf5b0fa4cf";
-               "BinDeps" "d57430a7e55546b9545054cfb5c34724dbed1795";
-               "NaNMath" "b2148ab8461d73563dd4b7033e9a6546ec355328";
-               "Calculus" "4548c2204988c0d6551b0a7605ad3f4dee17b702";
-               "DualNumbers" "a9a47656fb6b70e5788551696f133cbe7886ea7b";
-               "ForwardDiff" "6da5f5204fd717a1417a8a4a6b9e2253799879c9";
-               "Debug" "8c4801a6ca6368c6b5175c18a9d666a5694c1c3b"
-               ]
+  pkg_list = ["Compat"  "5b03745a6a948781329c444f08ad67cff63f91f7";
+  "URIParser" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
+  "FactCheck" "e3caf3143b13d4ce9bc576579d5ed9cd4aaefb11";
+  "ArrayViews" "4ec55697fc4f9cba522a5137b96d502230269910"
+  "SHA" "6f249c3e3f8ec0503f11e95ac5dca8edf210ab2c";
+  "BinDeps" "0ff7ad492955bca87155f62511ac37d662616de3";
+  "NaNMath" "adb02521f6fd7dfa7c64bbb38611d1f017e026f1";
+  "Calculus" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
+  "DualNumbers" "7d4eedfa1bd6c0af7d844d085d0c2ce6b2357aa7";
+  "Debug" "0e733093cd71c67bd40ac1295e54153c3db0c751";
+  "MPI" "c546ee896f314340dc61e8bf7ab71f979c57d73c"]
 
     println(f, "\n---Considering manual package installations---\n")
     for i=1:size(pkg_list, 1)

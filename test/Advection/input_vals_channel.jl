@@ -4,7 +4,7 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 
-arg_dict = Dict{Any, Any} (
+arg_dict = Dict{Any, Any}(
 "run_type" => 1,
 "order" => 1,
 "IC_name" => "ICx5plusy5",

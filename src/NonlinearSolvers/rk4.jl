@@ -37,8 +37,8 @@ rk4
    The eqn.q_vec should hold the whichever variables (conservative or
    entropy) that the simulation should use.
 """->
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, pre_func, post_func, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol = -1.0, real_time=false)
-#function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, res_vec::AbstractVector, pre_func, post_func, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol = -1.0, real_time=false)
+#function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   println("\nEntered rk4")
@@ -272,12 +272,12 @@ end
 
 # this is the version for solving PDEs
 # it uses the pde_pre_func and pde_post_func below
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, real_time=false)
-    rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts; majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, real_time=false)
+    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
 end
 
-function rk4(f::Function, h::FloatingPoint, t_max::FloatingPoint, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
   rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, (mesh, sbp, eqn), opts; majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
 end

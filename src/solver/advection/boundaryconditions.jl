@@ -355,7 +355,7 @@ It stores all the possible boundary condition dictionary options. Whenever a
 new boundary condition is created, it should get added to BCDict.
 
 """->
-global const BCDict = Dict{ASCIIString, BCType} (
+global const BCDict = Dict{ASCIIString, BCType}(
 "x5plusy5BC" => x5plusy5BC(),
 "exp_xplusyBC" => exp_xplusyBC(),
 "sinwaveBC" => sinwave_BC(),
