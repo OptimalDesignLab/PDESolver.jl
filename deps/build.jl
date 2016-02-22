@@ -76,7 +76,7 @@ function installPDESolver()
   # array of [pkg_name, commit_hash]
   pkg_list = ["Compat" "aa23cb98dbdba0eab82d465f87b1a936685548c0";
               "URIParser" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
-              "FactCheck" "e3caf3143b13d4ce9bc576579d5ed9cd4aaefb11";
+              "FactCheck" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
               "ArrayViews" "4ec55697fc4f9cba522a5137b96d502230269910";
               "SHA" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
               "BinDeps" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
