@@ -164,8 +164,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
 
    # check that checkDensity and checkPresure work
-   @fact_throws EulerEquationMod.checkDensity(eqn) --> nothing
-   @fact_throws EulerEquationMod.checkPressure(eqn) --> nothing
+   @fact_throws EulerEquationMod.checkDensity(eqn)
+   @fact_throws EulerEquationMod.checkPressure(eqn)
 
    println("\n\neqn.q = ", eqn.q, "\n")
 
@@ -488,7 +488,11 @@ facts("--- Testing Euler Low Level Functions --- ") do
     EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
     for i=1:mesh.numDof
+<<<<<<< HEAD
       eqn.res_vec[i] --> roughly(0.0, atol=1e-14)
+=======
+      @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-14)
+>>>>>>> dict_fix
     end
 
   end
