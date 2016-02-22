@@ -42,7 +42,7 @@ facts("----- Testing using manufactured polynomials -----") do
   println("eqn.q_vec = ", eqn.q_vec)
   AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-14)
+  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-12)
 
 
   fname = make_input(2)
@@ -53,7 +53,7 @@ facts("----- Testing using manufactured polynomials -----") do
   println("eqn.q_vec = ", eqn.q_vec)
   AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-13)
+  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-12)
 
   fname = make_input(3)
   ARGS[1] = fname
@@ -63,7 +63,7 @@ facts("----- Testing using manufactured polynomials -----") do
   println("eqn.q_vec = ", eqn.q_vec)
   AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-13)
+  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-12)
 
 
   fname = make_input(4)
@@ -74,7 +74,7 @@ facts("----- Testing using manufactured polynomials -----") do
 #  println("eqn.q_vec = ", eqn.q_vec)
   AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-13)
+  @fact eqn.res_vec => roughly(zeros(mesh.numDof), atol=1e-12)
 
 
 

@@ -454,8 +454,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
 		-0.874999 0.124998 0.75001;
 		-0.972263  0.972263 0]
  
-    @fact eqn.res[:, :, 1] => roughly(el1_res, atol=1e-5)
-    @fact eqn.res[:, :, 2] => roughly(el2_res, atol=1e-5)
+    @fact eqn.res[:, :, 1] => roughly(el1_res, atol=1e-4)
+    @fact eqn.res[:, :, 2] => roughly(el2_res, atol=1e-4)
 
 
 

@@ -227,7 +227,7 @@ end
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, alpha_x, alpha_y)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    @fact eqn.res => roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-14)
+    @fact eqn.res => roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-12)
 
 
     # check that Qx.'*q = 0 when q = ones(3)
@@ -301,7 +301,7 @@ end
 
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     val_test =[-1., 2/3, 1, -2, 1/3, -1, 1, 2/3, 1/3]
-    @fact eqn.res_vec => roughly(val_test, atol=1e-14)
+    @fact eqn.res_vec => roughly(val_test, atol=1e-12)
 
     println("----- Checking q=2*x^2 + 5 case -----")
     
