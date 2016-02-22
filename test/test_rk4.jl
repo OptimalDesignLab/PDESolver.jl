@@ -21,7 +21,7 @@ function test_f(q_vec, res_vec, opts, t)
   res_vec[1] = 4*t^3 + 3*t^2 + 2*t + 1
 end
 
-opts_rk = Dict{Any, Any}("output_freq" --> 1, "write_vis" --> false)
+opts_rk = Dict{Any, Any}("output_freq" => 1, "write_vis" => false)
 
 q_vec_rk = [1.0]
 res_vec_rk = [0.0]

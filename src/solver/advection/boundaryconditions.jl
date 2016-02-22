@@ -356,18 +356,18 @@ new boundary condition is created, it should get added to BCDict.
 
 """->
 global const BCDict = Dict{ASCIIString, BCType}(
-"x5plusy5BC" --> x5plusy5BC(),
-"exp_xplusyBC" --> exp_xplusyBC(),
-"sinwaveBC" --> sinwave_BC(),
-"sinwaveyBC" --> sinwavey_BC(),
-"sinwavey_pertBC" --> sinwavey_pertBC(),
-"mms1BC" --> mms1BC(),
-"x4BC" --> x4BC(),
-"p1BC" --> p1BC(),
-"p2BC" --> p2BC(),
-"p3BC" --> p3BC(),
-"p4BC" --> p4BC(),
-"p5BC" --> p5BC(),
+"x5plusy5BC" => x5plusy5BC(),
+"exp_xplusyBC" => exp_xplusyBC(),
+"sinwaveBC" => sinwave_BC(),
+"sinwaveyBC" => sinwavey_BC(),
+"sinwavey_pertBC" => sinwavey_pertBC(),
+"mms1BC" => mms1BC(),
+"x4BC" => x4BC(),
+"p1BC" => p1BC(),
+"p2BC" => p2BC(),
+"p3BC" => p3BC(),
+"p4BC" => p4BC(),
+"p5BC" => p5BC(),
 )
 
 

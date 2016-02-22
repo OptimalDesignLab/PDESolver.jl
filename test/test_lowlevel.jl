@@ -488,11 +488,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
     EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
     for i=1:mesh.numDof
-<<<<<<< HEAD
-      eqn.res_vec[i] --> roughly(0.0, atol=1e-14)
-=======
       @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-14)
->>>>>>> dict_fix
     end
 
   end

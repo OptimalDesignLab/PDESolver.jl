@@ -423,13 +423,13 @@ end # end function call
 #const isentropicVortexBC_ = isentropicVortexBC()
 #const noPenetrationBC_ = noPenetrationBC()
 global const BCDict = Dict{ASCIIString, BCType}(
-"isentropicVortexBC" --> isentropicVortexBC(),
-"noPenetrationBC" --> noPenetrationBC(),
-"Rho1E2U3BC" --> Rho1E2U3BC(),
-"isentropicVortexBC_physical" --> isentropicVortexBC_physical(),
-"FreeStreamBC" --> FreeStreamBC(),
-"allOnesBC" --> allOnesBC(),
-"unsteadyVortexBC" --> unsteadyVortexBC()
+"isentropicVortexBC" => isentropicVortexBC(),
+"noPenetrationBC" => noPenetrationBC(),
+"Rho1E2U3BC" => Rho1E2U3BC(),
+"isentropicVortexBC_physical" => isentropicVortexBC_physical(),
+"FreeStreamBC" => FreeStreamBC(),
+"allOnesBC" => allOnesBC(),
+"unsteadyVortexBC" => unsteadyVortexBC()
 )
 
 @doc """
