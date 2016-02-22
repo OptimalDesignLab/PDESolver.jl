@@ -8,5 +8,5 @@ BinDeps 0.3.19
 NaNMath 0.1.1
 Calculus 0.1.14
 DualNumbers 0.1.5
-ForwardDiff 0.1.4
+ForwardDiff 0.1.2
 Debug 0.1.6
