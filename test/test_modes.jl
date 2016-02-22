@@ -7,7 +7,7 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
 #  ARGS[1] = "input_vals_vortex5.jl"
   include("../src/solver/euler/startup.jl")
 
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
 
   println("\n\n----- Testing jacobian vector product -----")
@@ -30,7 +30,7 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
 
   # check the two products are equal
   for i=1:mesh.numDof
-    @fact result1[i] => roughly(result2[i], atol=1e-13)
+    @fact result1[i] --> roughly(result2[i], atol=1e-13)
   end
 
 #  results_all = hcat(result1, result2)
@@ -46,41 +46,41 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   println("\n\ntesting ", ARGS[1])
   include(STARTUP_PATH)
 
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
   
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex2.jl"
   println("\n\ntesting ", ARGS[1])
   include(STARTUP_PATH)
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
   # test entropy variables
   ARGS[1] = "input_vals_vortex2a.jl"
   include(STARTUP_PATH)
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex3.jl"
   println("\n\ntesting ", ARGS[1])
   include(STARTUP_PATH)
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
   # test entropy variables
   ARGS[1] = "input_vals_vortex3a.jl"
   include(STARTUP_PATH)
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex4.jl"
   println("\n\ntesting ", ARGS[1])
   include(STARTUP_PATH)
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
   # test entropy variables
   ARGS[1] = "input_vals_vortex4a.jl"
   include(STARTUP_PATH)
-  @fact calcNorm(eqn, eqn.res_vec) => less_than(1e-9)
+  @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
 end
 

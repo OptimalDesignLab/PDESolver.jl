@@ -303,8 +303,8 @@ end
 
 
 global const filter_dict = Dict{ASCIIString, Function}(
-"raisedCosineFilter" => calcRaisedCosineFilter,
-"lowPassFilter" => calcLowPassFilter,
+"raisedCosineFilter" --> calcRaisedCosineFilter,
+"lowPassFilter" --> calcLowPassFilter,
 )
 
 

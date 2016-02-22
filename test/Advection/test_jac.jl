@@ -59,7 +59,7 @@ facts("----- Testing Jacobian -----") do
       eqn.q[1, i, el] -= eps_c
     end
 
-    @fact jac_c => roughly(jac_fd, atol=1e-6)
+    @fact jac_c --> roughly(jac_fd, atol=1e-6)
   end
 
   # back to finite differences
@@ -92,7 +92,7 @@ facts("----- Testing Jacobian -----") do
   jac_diff = jac - jac_sparsefull
   for i=1:mesh.numDof
     for j=1:mesh.numDof
-      @fact abs(jac_diff[j, i]) => roughly(0.0, atol=1e-6)
+      @fact abs(jac_diff[j, i]) --> roughly(0.0, atol=1e-6)
     end
   end
 
@@ -121,7 +121,7 @@ facts("----- Testing Jacobian -----") do
   jac_diff = jac_c - jac_csparsefull
   for i=1:mesh.numDof
     for j=1:mesh.numDof
-      @fact abs(jac_diff[j, i]) => roughly(0.0, atol=1e-12)
+      @fact abs(jac_diff[j, i]) --> roughly(0.0, atol=1e-12)
     end
   end
 
@@ -129,7 +129,7 @@ facts("----- Testing Jacobian -----") do
   # now check FD vs Complex step
   for i=1:mesh.numDof
     for j=1:mesh.numDof
-      @fact abs(jac_c[i, j] - jac[i,j]) => roughly(0.0, atol=1e-6)
+      @fact abs(jac_c[i, j] - jac[i,j]) --> roughly(0.0, atol=1e-6)
     end
   end
 

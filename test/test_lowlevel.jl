@@ -3,47 +3,47 @@ fill!(eqn.res_vec, 0.0)
 using ArrayViews
 facts("--- Testing Mesh --- ") do
 
-  @fact mesh.numVert => 4
-  @fact mesh.numEdge => 5
-  @fact mesh.numEl => 2
-  @fact mesh.order => 1
-  @fact mesh.numDof => 16
-  @fact mesh.numNodes => 4
-  @fact mesh.numDofPerNode => 4
-  @fact mesh.numBoundaryEdges => 4
-  @fact mesh.numInterfaces => 1
-  @fact mesh.numNodesPerElement => 3
-  @fact mesh.numNodesPerType => [1, 0 , 0]
+  @fact mesh.numVert --> 4
+  @fact mesh.numEdge --> 5
+  @fact mesh.numEl --> 2
+  @fact mesh.order --> 1
+  @fact mesh.numDof --> 16
+  @fact mesh.numNodes --> 4
+  @fact mesh.numDofPerNode --> 4
+  @fact mesh.numBoundaryEdges --> 4
+  @fact mesh.numInterfaces --> 1
+  @fact mesh.numNodesPerElement --> 3
+  @fact mesh.numNodesPerType --> [1, 0 , 0]
 
-  @fact mesh.bndry_funcs[1] => EulerEquationMod.Rho1E2U3BC()
-  @fact mesh.bndryfaces[1].element => 1
-  @fact mesh.bndryfaces[1].face => 2
-  @fact mesh.bndryfaces[2].element => 2
-  @fact mesh.bndryfaces[2].face => 2
-  @fact mesh.bndryfaces[3].element => 1
-  @fact mesh.bndryfaces[3].face => 1
-  @fact mesh.bndryfaces[4].element => 2
-  @fact mesh.bndryfaces[4].face => 3
+  @fact mesh.bndry_funcs[1] --> EulerEquationMod.Rho1E2U3BC()
+  @fact mesh.bndryfaces[1].element --> 1
+  @fact mesh.bndryfaces[1].face --> 2
+  @fact mesh.bndryfaces[2].element --> 2
+  @fact mesh.bndryfaces[2].face --> 2
+  @fact mesh.bndryfaces[3].element --> 1
+  @fact mesh.bndryfaces[3].face --> 1
+  @fact mesh.bndryfaces[4].element --> 2
+  @fact mesh.bndryfaces[4].face --> 3
 
-  @fact mesh.interfaces[1].elementL => 2
-  @fact mesh.interfaces[1].elementR => 1
-  @fact mesh.interfaces[1].faceL => 1
-  @fact mesh.interfaces[1].faceR => 3
+  @fact mesh.interfaces[1].elementL --> 2
+  @fact mesh.interfaces[1].elementR --> 1
+  @fact mesh.interfaces[1].faceL --> 1
+  @fact mesh.interfaces[1].faceR --> 3
 
-  @fact mesh.coords[:, :, 1] => roughly([-1.0 1 1; -1 -1 1])
-  @fact mesh.coords[:, :, 2] => roughly([-1.0 1 -1; -1 1 1])
+  @fact mesh.coords[:, :, 1] --> roughly([-1.0 1 1; -1 -1 1])
+  @fact mesh.coords[:, :, 2] --> roughly([-1.0 1 -1; -1 1 1])
 
-  @fact mesh.dxidx[:, :, 1, 1] => roughly([1.0 -1; 0 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 1, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
 
-  @fact mesh.dxidx[:, :, 1, 1] => roughly([1.0 -1; 0 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 2, 1] => roughly([1.0 -1; 0 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 3, 1] => roughly([1.0 -1; 0 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 1, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 2, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 3, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
 
-  @fact mesh.dxidx[:, :, 1, 2] => roughly([1.0 0; -1 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 2, 2] => roughly([1.0 0; -1 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 3, 2] => roughly([1.0 0; -1 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 1, 2] --> roughly([1.0 0; -1 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 2, 2] --> roughly([1.0 0; -1 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 3, 2] --> roughly([1.0 0; -1 1], atol=1e-14)
 
-  @fact mesh.jac => roughly(ones(3,2))
+  @fact mesh.jac --> roughly(ones(3,2))
 
 
 end
@@ -72,20 +72,20 @@ facts("--- Testing Euler Low Level Functions --- ") do
    v = zeros(4)
    EulerEquationMod.convertToEntropy(eqn.params, q, v)
    v_analytic = [-2*4.99528104378295, 4., 6, -2*1]
-   @fact v => roughly(v_analytic)
+   @fact v --> roughly(v_analytic)
    # test inplace operation
    q2 = copy(q)
    EulerEquationMod.convertToEntropy(eqn.params, q2, q2)
-   @fact q2 => v_analytic
+   @fact q2 --> v_analytic
    println("v = ", v)
    q_ret = zeros(4)
    EulerEquationMod.convertToConservative(e_params, v, q_ret)
-   @fact q_ret => roughly(q)
+   @fact q_ret --> roughly(q)
    
    # test inplace operation
    v2 = copy(v)
    EulerEquationMod.convertToConservative(e_params, v2, v2)
-   @fact v2 => roughly(q)
+   @fact v2 --> roughly(q)
 
    # test inv(A0)
    A0inv = zeros(4,4)
@@ -95,7 +95,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 	     24 -8  -12 4]
    EulerEquationMod.calcA0Inv(e_params, v, A0inv)
 
-   @fact A0inv => roughly(A0inv2)
+   @fact A0inv --> roughly(A0inv2)
 
    # test A0
    A0 = zeros(4,4)
@@ -103,23 +103,23 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcA0(e_params, v, A0)
   
    for i=1:16
-     @fact A0[i] => roughly(A02[i], atol=1e-10)
+     @fact A0[i] --> roughly(A02[i], atol=1e-10)
    end
 
 
    A0inv_c = zeros(4,4)
    EulerEquationMod.calcA0(eqn.params, q, A0inv_c)
-   @fact A0inv_c => eye(4)
+   @fact A0inv_c --> eye(4)
 
    A0_c = zeros(4,4)
    EulerEquationMod.calcA0Inv(eqn.params, q, A0_c)
-   @fact A0_c => eye(4)
+   @fact A0_c --> eye(4)
 
      # test A1
    A1 = zeros(4,4)
    q_tmp = ones(Tsol, 4)
    EulerEquationMod.calcA1(eqn.params, q_tmp, A1)
-   @fact A1 => roughly([0.0 1.0 0.0  0.0
+   @fact A1 --> roughly([0.0 1.0 0.0  0.0
                          -0.6 1.6 -0.4 0.4
                          -1.0 1.0 1.0 0.0
                          -0.6 0.6 -0.4 1.4])
@@ -137,14 +137,14 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    A1_diff = A1 - A1_analytic
    for i=1:16
-     @fact A1[i] => roughly(A1_analytic[i], atol=1e-10)
+     @fact A1[i] --> roughly(A1_analytic[i], atol=1e-10)
    end
 
    
    A2 = zeros(4,4)
    A2 = zeros(4,4)
    EulerEquationMod.calcA2(eqn.params, q_tmp, A2)
-   @fact A2 => roughly([0.0 0.0 1.0 0.0
+   @fact A2 --> roughly([0.0 0.0 1.0 0.0
                        -1.0 1.0 1.0 0.0
                        -0.6 -0.4 1.6 0.4
                        -0.6 -0.4 0.6 1.4])
@@ -159,13 +159,13 @@ facts("--- Testing Euler Low Level Functions --- ") do
    A2_diff = A2 - A2_analytic
 
    for i=1:16
-     @fact A2[i] => roughly(A2_analytic[i], atol=1e-10)
+     @fact A2[i] --> roughly(A2_analytic[i], atol=1e-10)
    end
 
 
    # check that checkDensity and checkPresure work
-   @fact_throws EulerEquationMod.checkDensity(eqn) => nothing
-   @fact_throws EulerEquationMod.checkPressure(eqn) => nothing
+   @fact_throws EulerEquationMod.checkDensity(eqn) --> nothing
+   @fact_throws EulerEquationMod.checkPressure(eqn) --> nothing
 
    println("\n\neqn.q = ", eqn.q, "\n")
 
@@ -180,7 +180,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
      # test conversion to entropy variables
      for i=1:mesh.numEl
        for j=1:mesh.numNodesPerElement
-	 @fact v_arr[:, j, i] => v2
+	 @fact v_arr[:, j, i] --> v2
        end
      end
 
@@ -189,7 +189,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
      v_vec = copy(eqn.q_vec)
      EulerEquationMod.convertToEntropy(mesh, sbp, eqn, opts, v_vec)
      for i=1:4:mesh.numDof
-       @fact v_vec[i:(i+3)] => v2
+       @fact v_vec[i:(i+3)] --> v2
      end
 
      eqn_e.q_vec = v_vec
@@ -202,7 +202,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
      EulerEquationMod.matVecA0inv(mesh, sbp, eqn_e, opts, v_arr2)
      for i=1:mesh.numEl
        for j=1:mesh.numNodesPerElement
-         @fact v_arr2[:, j, i] => roughly(v2)
+         @fact v_arr2[:, j, i] --> roughly(v2)
        end
      end
 
@@ -213,7 +213,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
      EulerEquationMod.matVecA0(mesh, sbp, eqn_e, opts, v_arr3)
      for i=1:mesh.numEl
        for j=1:mesh.numNodesPerElement
-         @fact v_arr3[:, j, i] => roughly(v3)
+         @fact v_arr3[:, j, i] --> roughly(v3)
        end
      end
 
@@ -225,13 +225,13 @@ facts("--- Testing Euler Low Level Functions --- ") do
      EulerEquationMod.convertToConservative(mesh, sbp, eqn_e, opts, v_arr)
      for i =1:mesh.numEl
        for j=1:mesh.numNodesPerElement
-	 @fact v_arr[:, j, i] => roughly(eqn.q[:, j, i])
+	 @fact v_arr[:, j, i] --> roughly(eqn.q[:, j, i])
        end
      end
 
      EulerEquationMod.convertToConservative(mesh, sbp, eqn_e, opts, v_vec)
      for i=1:mesh.numDof
-       @fact v_vec[i] => roughly(eqn.q_vec[i])
+       @fact v_vec[i] --> roughly(eqn.q_vec[i])
      end
 
      # test multiplying an entire array by A0inv
@@ -240,17 +240,17 @@ facts("--- Testing Euler Low Level Functions --- ") do
    end
  context("--- Testing calc functions ---") do
 
-   @fact EulerEquationMod.calcPressure(eqn.params, q) => roughly(0.2)
-   @fact EulerEquationMod.calcPressure(e_params, v) => roughly(0.2)
+   @fact EulerEquationMod.calcPressure(eqn.params, q) --> roughly(0.2)
+   @fact EulerEquationMod.calcPressure(e_params, v) --> roughly(0.2)
    a_cons = EulerEquationMod.calcSpeedofSound(eqn.params, q)
    a_ent = EulerEquationMod.calcSpeedofSound(e_params, v)
    println("a_cosn = ", a_cons)
    println("a_ent = ", a_ent)
-   @fact a_cons => roughly(a_ent)
+   @fact a_cons --> roughly(a_ent)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
    EulerEquationMod.calcEulerFlux(e_params, v, aux_vars, dir, Fe)
-   @fact F => roughly([2.0, 4.2, 6, 14.4], atol=1e-14)
-   @fact Fe => roughly(F)
+   @fact F --> roughly([2.0, 4.2, 6, 14.4], atol=1e-14)
+   @fact Fe --> roughly(F)
  end
 
   context("--- Testing Boundary Function ---") do
@@ -270,7 +270,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
 
    EulerEquationMod.RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, dir, F_roe, eqn.params)
-   @fact F_roe => roughly(-F) 
+   @fact F_roe --> roughly(-F) 
 
 
    # test that roe flux = euler flux of BC functions
@@ -287,7 +287,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
-   @fact F_roe => roughly(-F) 
+   @fact F_roe --> roughly(-F) 
 
    q[3] = 0  # make flow parallel to wall
    func1 = EulerEquationMod.noPenetrationBC()
@@ -300,7 +300,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
-   @fact F_roe => roughly(-F) 
+   @fact F_roe --> roughly(-F) 
 
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
    func1 = EulerEquationMod.Rho1E2U3BC()
@@ -313,7 +313,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
-   @fact F_roe => roughly(-F) 
+   @fact F_roe --> roughly(-F) 
 
 
 
@@ -325,45 +325,45 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    fill!(F, 0.0)
    EulerEquationMod.calcRho1Energy2(coords, eqn.params, F)
-   @fact F[1] => 1.0
-   @fact F[4] => 2.0
+   @fact F[1] --> 1.0
+   @fact F[4] --> 2.0
 
    fill!(F, 0.0)
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, F)
-   @fact F[1] => roughly(1.0, atol=1e-4)
-   @fact F[2] => roughly(0.35355, atol=1e-4)
-   @fact F[3] => roughly(0.35355, atol=1e-4)
-   @fact F[4] => roughly(2.0, atol=1e-4)
+   @fact F[1] --> roughly(1.0, atol=1e-4)
+   @fact F[2] --> roughly(0.35355, atol=1e-4)
+   @fact F[3] --> roughly(0.35355, atol=1e-4)
+   @fact F[4] --> roughly(2.0, atol=1e-4)
 
    fill!(F, 0.0)
    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, F)
-   @fact F[1] => roughly(2.000, atol=1e-4)
-   @fact F[2] => roughly(0.000, atol=1e-4)
-   @fact F[3] => roughly(-1.3435, atol=1e-4)
-   @fact F[4] => roughly(2.236960, atol=1e-4)
+   @fact F[1] --> roughly(2.000, atol=1e-4)
+   @fact F[2] --> roughly(0.000, atol=1e-4)
+   @fact F[3] --> roughly(-1.3435, atol=1e-4)
+   @fact F[4] --> roughly(2.236960, atol=1e-4)
 
 
    level = EulerEquationMod.getPascalLevel(1)
-   @fact level => 1
+   @fact level --> 1
 
    for i=2:3
      level = EulerEquationMod.getPascalLevel(i)
-     @fact level => 2
+     @fact level --> 2
    end
 
    for i=4:6
      level = EulerEquationMod.getPascalLevel(i)
-     @fact level => 3
+     @fact level --> 3
    end
 
    for i=7:10
      level = EulerEquationMod.getPascalLevel(i)
-     @fact level => 4
+     @fact level --> 4
    end
 
    for i=11:15
      level = EulerEquationMod.getPascalLevel(i)
-     @fact level => 5
+     @fact level --> 5
    end
 
 
@@ -383,7 +383,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    # test disassembleSolution
    for i=1:mesh.numEl
      for j=1:mesh.numNodesPerElement
-       @fact eqn.q[:, j, i] => roughly([1.0, 0.35355, 0.35355, 2.0], atol=1e-5)
+       @fact eqn.q[:, j, i] --> roughly([1.0, 0.35355, 0.35355, 2.0], atol=1e-5)
      end
    end
 
@@ -395,7 +395,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
        aux_vars_i = eqn.aux_vars[ :, j, i]
        println("aux_vars_i = ", aux_vars_i)
        p = EulerEquationMod.@getPressure(aux_vars_i)
-       @fact p => roughly(0.750001, atol=1e-5)
+       @fact p --> roughly(0.750001, atol=1e-5)
      end
    end
    =#
@@ -403,37 +403,37 @@ facts("--- Testing Euler Low Level Functions --- ") do
    # test calcEulerFlux
    for i=1:mesh.numNodesPerElement
 #     println("eq.flux_parametric[:, $i, 1, 1] = ", eqn.flux_parametric[:, i, 1, 1])
-     @fact eqn.flux_parametric[:, i, 1, 1] => roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 1, 1] --> roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.flux_parametric[:, i, 2, 1] => roughly([0.35355, 0.874999, 0.12499, 0.972263], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 2, 1] --> roughly([0.35355, 0.874999, 0.12499, 0.972263], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.flux_parametric[:, i, 1, 2] => roughly([0.35355, 0.124998, 0.874999, 0.972263], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 1, 2] --> roughly([0.35355, 0.124998, 0.874999, 0.972263], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.flux_parametric[:, i, 2, 2] => roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 2, 2] --> roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
    end
 
 
    # test getBCFluxes
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 1] => roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 1] --> roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 2] => roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 2] --> roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 3] => roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 3] --> roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 4] => roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 4] --> roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
      end
 
 
@@ -454,8 +454,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
 		-0.874999 0.124998 0.75001;
 		-0.972263  0.972263 0]
  
-    @fact eqn.res[:, :, 1] => roughly(el1_res, atol=1e-4)
-    @fact eqn.res[:, :, 2] => roughly(el2_res, atol=1e-4)
+    @fact eqn.res[:, :, 1] --> roughly(el1_res, atol=1e-4)
+    @fact eqn.res[:, :, 2] --> roughly(el2_res, atol=1e-4)
 
 
 
@@ -476,8 +476,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
 	       0.124998  -0.874999  -0.750001;
 	       0.972263  -0.972263  0]
 
-    @fact eqn.res[:, :, 1] => roughly(el1_res, atol=1e-5)
-    @fact eqn.res[:, :, 2] => roughly(el2_res, atol=1e-5)
+    @fact eqn.res[:, :, 1] --> roughly(el1_res, atol=1e-5)
+    @fact eqn.res[:, :, 2] --> roughly(el2_res, atol=1e-5)
 
   end
 
@@ -488,7 +488,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
     EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
     for i=1:mesh.numDof
-      eqn.res_vec[i] => roughly(0.0, atol=1e-14)
+      eqn.res_vec[i] --> roughly(0.0, atol=1e-14)
     end
 
   end

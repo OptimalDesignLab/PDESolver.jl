@@ -195,6 +195,6 @@ end
 
 
 global const dissipation_dict = Dict{ASCIIString, Function}(
-"damp1" => damp1
+"damp1" --> damp1
 )
 

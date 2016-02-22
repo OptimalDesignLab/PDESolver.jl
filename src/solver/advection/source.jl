@@ -148,16 +148,16 @@ end
   directions, and t is the current time
 """->
 global const SRCDict = Dict{ASCIIString, SRCType}(
-"SRC0" => SRC0(),
-"SRC1" => SRC1(),
-"SRCx" => SRCx(),
-"SRCmms1" => SRCmms1(),
-"SRCx4" => SRCx4(),
-"SRCp1" => SRCp1(),
-"SRCp2" => SRCp2(),
-"SRCp3" => SRCp3(),
-"SRCp4" => SRCp4(),
-"SRCp5" => SRCp5(),
+"SRC0" --> SRC0(),
+"SRC1" --> SRC1(),
+"SRCx" --> SRCx(),
+"SRCmms1" --> SRCmms1(),
+"SRCx4" --> SRCx4(),
+"SRCp1" --> SRCp1(),
+"SRCp2" --> SRCp2(),
+"SRCp3" --> SRCp3(),
+"SRCp4" --> SRCp4(),
+"SRCp5" --> SRCp5(),
 )
 
 @doc """
