@@ -8,10 +8,10 @@ function installPDESolver()
   # these packages are always installed manually
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
-  std_pkgs = ["SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "c72ccc564d165e7e4fed5dba12da908fbb6dba27";
+  std_pkgs = ["SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "64c445922a7146ac53012eb594ea91fb3cdc7990";
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "HEAD"
-              "MPI" "git@github.com:JuliaParallel/MPI.jl.git" "909b61426dc802a332109d729b8540f730377499"
+              "MPI" "git@github.com:JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73cv"
               ]
 
 
@@ -74,6 +74,20 @@ function installPDESolver()
   #------------------------------------------------------------------------------
 
   # array of [pkg_name, commit_hash]
+  pkg_list = ["Compat" "aa23cb98dbdba0eab82d465f87b1a936685548c0";
+              "URIParser" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
+              "FactCheck" "e3caf3143b13d4ce9bc576579d5ed9cd4aaefb11";
+              "ArrayViews" "4ec55697fc4f9cba522a5137b96d502230269910";
+              "SHA" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
+              "BinDeps" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
+              "NaNMath" "969151c5ff8022487379279ebac4a239a400dd44";
+              "Calculus" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
+              "DualNumbers" "34ae2b236f4853028fc60a5efed42bd17a33230f";
+              "Debug" "0e733093cd71c67bd40ac1295e54153c3db0c751";
+              "MPI" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
+              "ForwardDiff" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
+  
+#=
   pkg_list = ["Compat"  "5b03745a6a948781329c444f08ad67cff63f91f7";
   "URIParser" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
   "FactCheck" "e3caf3143b13d4ce9bc576579d5ed9cd4aaefb11";
@@ -84,8 +98,9 @@ function installPDESolver()
   "Calculus" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
   "DualNumbers" "7d4eedfa1bd6c0af7d844d085d0c2ce6b2357aa7";
   "Debug" "0e733093cd71c67bd40ac1295e54153c3db0c751";
-  "MPI" "c546ee896f314340dc61e8bf7ab71f979c57d73c"]
-
+  "MPI" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
+  "ForwardDiff" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
+=#
     println(f, "\n---Considering manual package installations---\n")
     for i=1:size(pkg_list, 1)
 
