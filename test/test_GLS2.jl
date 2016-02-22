@@ -68,13 +68,13 @@ facts ("----- Testing GLS2 -----") do
 
 
           EulerEquationMod.calcA0Inv(params, q_i, A0inv)
-          @fact isSymmetric(A0inv) => true
+          @fact isSymmetric(A0inv) --> true
           D, V = eig(tau_i)
           D2 = diagm(D.^(-0.5))
           new_tau = V*D2*inv(V)
           new_tau2 = A0inv*new_tau
           tau[idx_i, idx_i] = real(new_tau2)
-          @fact isSymmetric(new_tau2, 1e-10) => true
+          @fact isSymmetric(new_tau2, 1e-10) --> true
 
           # check agains the tau calculation in EulerEquationMod
           A_mat = zeros(Tsol, 4,4,2)
@@ -84,10 +84,10 @@ facts ("----- Testing GLS2 -----") do
 
           tau_old = zeros(Tres, 4, 4)
           EulerEquationMod.getTau(params, q_i, A_mat, dxidx_i, tau_old)
-          @fact isSymmetric(tau_old, 1e-10) => true
+          @fact isSymmetric(tau_old, 1e-10) --> true
 #          println("\ntau_test = ", new_tau2)
 #          println("\ntau_code = ", tau_old)
-          @fact tau_old => roughly(new_tau2, atol=1e-14)
+          @fact tau_old --> roughly(new_tau2, atol=1e-14)
         end
       elseif params.tau_type == 2
         println("testing tau_type = 2")
@@ -104,7 +104,7 @@ facts ("----- Testing GLS2 -----") do
           EulerEquationMod.getTau(params, jac_i, tau_code)
           println("tau_test = \n", tau_i)
           println("tau_code = \n", tau_code)
-          @fact tau_code => roughly(tau_i, atol=1e-14)
+          @fact tau_code --> roughly(tau_i, atol=1e-14)
 
           tau[idx_i, idx_i] = tau_i
         end
@@ -178,7 +178,7 @@ facts ("----- Testing GLS2 -----") do
  #         println("tau_code = \n", tau_code)
  #         println("tau_i = \n", tau_i)
  #         println("diff = \n", tau_code - tau_i)
-          @fact tau_code => roughly(tau_i, atol=1e-14)
+          @fact tau_code --> roughly(tau_i, atol=1e-14)
 
           tau[idx_i, idx_i] = tau_i
         end  # end loop
@@ -298,9 +298,9 @@ facts ("----- Testing GLS2 -----") do
 #                     A2tilde*(dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta)
 
     gls_operator = weighting_term.'*H_tilde*jac_tilde*tau_tilde*trial_term
-    @fact isSymmetric(tau_tilde, 1e-14) => true
+    @fact isSymmetric(tau_tilde, 1e-14) --> true
 #    println("tau_tilde = \n", tau_tilde)
-    @fact isSymmetric(gls_operator, 1e-14) => true
+    @fact isSymmetric(gls_operator, 1e-14) --> true
     gls_test = -(gls_operator*q)
 
     # now compute it in the code
@@ -315,7 +315,7 @@ facts ("----- Testing GLS2 -----") do
     println("gls_code = ", gls_code)
     println("diff = \n", gls_code - gls_test)
 
-    @fact gls_code => roughly(gls_test, atol=1e-13)
+    @fact gls_code --> roughly(gls_test, atol=1e-13)
 
 
     # now test GLS3
@@ -341,7 +341,7 @@ facts ("----- Testing GLS2 -----") do
     println("gls_code = ", gls_code)
     println("diff = \n", gls_code - gls_test)
 
-    @fact gls_code => roughly(gls_test, atol=1e-13)
+    @fact gls_code --> roughly(gls_test, atol=1e-13)
 
    
 
@@ -420,7 +420,7 @@ facts ("----- Testing GLS2 -----") do
       end
     end
 
-    @fact res_test => roughly(gls_test, atol=1e-13)
+    @fact res_test --> roughly(gls_test, atol=1e-13)
 #    println("diff = ", gls_test - res_test)
 
     # another check of the block matrix approach
@@ -440,7 +440,7 @@ facts ("----- Testing GLS2 -----") do
     tmp13 = (dxidx_tilde_12*D_tilde_xi + dxidx_tilde_22*D_tilde_eta).'*tmp11
     res_test2 = -(tmp12 + tmp13)
 
-    @fact res_test2 => roughly(gls_test, atol=1e-13)
+    @fact res_test2 --> roughly(gls_test, atol=1e-13)
 
 
 #    println("block matrix diff = ", gls_test - res_test2)
@@ -580,7 +580,7 @@ if true
     end
 
     for j=1:12
-      @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=1e-5/norm(jac_fd[:, j], Inf))
+      @fact jac_c[:, j] --> roughly(jac_fd[:, j], atol=1e-5/norm(jac_fd[:, j], Inf))
     end
 
 #=

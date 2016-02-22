@@ -9,14 +9,14 @@ facts("----- Testing GLS2 -----") do
   dxidx_true = mesh.dxidx[:, :, 1, 1]*mesh.jac[1,1]
   println("dxidx_true = ", dxidx_true)
   tau_code = AdvectionEquationMod.getTau(2.0, 1.0, dxidx_true, 2)
-  @fact tau_code => roughly(1/sqrt(8), atol=1e-14)
+  @fact tau_code --> roughly(1/sqrt(8), atol=1e-14)
 
 
   fill!(eqn.q, 1.0)
   fill!(eqn.res, 0.0)
   AdvectionEquationMod.applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   vals_code = reshape(eqn.res[:, :, 1], 3)
-  @fact vals_code => roughly(zeros(Float64, 3), atol=1e-14)
+  @fact vals_code --> roughly(zeros(Float64, 3), atol=1e-14)
 
   function getGLS_test(mesh, sbp, eqn, opts)
 #    println("----- Entered get GLS_test -----")
@@ -50,7 +50,7 @@ facts("----- Testing GLS2 -----") do
       AdvectionEquationMod.applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
 
       gls_code = reshape(eqn.res[:, :, i], 3)
-      @fact gls_code => roughly(gls_test, atol=1e-14)
+      @fact gls_code --> roughly(gls_test, atol=1e-14)
     end
 
 #    println("----- finished get GLS_test -----")
@@ -140,7 +140,7 @@ facts("----- Testing GLS2 -----") do
     eqn.q[1, i, 1] -= eps_complex
   end
 
-  @fact jac_c => roughly(jac_fd, atol=1e-6)
+  @fact jac_c --> roughly(jac_fd, atol=1e-6)
 
 
 

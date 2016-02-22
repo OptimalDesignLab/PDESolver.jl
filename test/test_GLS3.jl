@@ -120,14 +120,14 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
     fancy_L  = A1_tilde*Dx_tilde + A2_tilde*Dy_tilde
     gls_operator = fancy_L.'*middle_tilde*fancy_L
     
-    @fact isSymmetric(gls_operator, 1e-12) => true
+    @fact isSymmetric(gls_operator, 1e-12) --> true
     #println("max asymmetry = ", maximum(abs(gls_operator - gls_operator.')))
 
     gls_test = -gls_operator*q_el
 
     gls_code = reshape(copy(eqn.res[:, :, el]), size_block)
 
-    @fact gls_code => roughly(gls_test, atol=1e-12)
+    @fact gls_code --> roughly(gls_test, atol=1e-12)
 #    println("gls_test = \n", gls_test)
 #    println("gls_code = \n", gls_code)
 
@@ -138,12 +138,12 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
 #    println("elemetn $el middle_term = \n", middle_term)
 #    println("element $el gls_term = \n", gls_term)
 
-    @fact gls_term => roughly(gls_test, atol=1e-12)
+    @fact gls_term --> roughly(gls_test, atol=1e-12)
     # test matrix transpose
     tmp1 = A1_tilde.'*middle_term
     tmp2 = A2_tilde.'*middle_term
     gls_test2 = -(Dx_tilde.'*tmp1 + Dy_tilde.'*tmp2)
-    @fact gls_test2 => roughly(gls_test, atol=1e-12)
+    @fact gls_test2 --> roughly(gls_test, atol=1e-12)
 
 
   end  # end loop over elements
@@ -263,7 +263,7 @@ if true
 
     for j=1:len
       tol = 5e-5
-      @fact jac_c[:, j] => roughly(jac_fd[:, j], atol=tol)
+      @fact jac_c[:, j] --> roughly(jac_fd[:, j], atol=tol)
     end
 
 #=

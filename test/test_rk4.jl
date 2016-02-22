@@ -41,4 +41,4 @@ println("at end of rk4, q_vec_rk[1] = ", f_approx)
 println("true_f(t) = ", f_exact)
 println("error = ", err)
 
-@fact err => less_than(1e-14)  # machine precision
+@fact err --> less_than(1e-14)  # machine precision
