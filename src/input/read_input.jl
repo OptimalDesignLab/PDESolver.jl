@@ -163,6 +163,7 @@ get!(arg_dict, "write_coords", false)
 get!(arg_dict, "write_sparsity", false)
 get!(arg_dict, "write_sparsity_nodebnds", false)
 get!(arg_dict, "write_offsets", false)
+get!(arg_dict, "write_dofs", false)
 get!(arg_dict, "verify_coloring", true)
 get!(arg_dict, "write_counts", false)
 
