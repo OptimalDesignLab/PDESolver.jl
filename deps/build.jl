@@ -17,7 +17,7 @@ function installPDESolver()
 
   # manually install MPI until the package matures
   # handle Petsc specially until we are using the new version
-  petsc_git = "https://github.com/JuliaParallel/PETSc.jl.git"
+  petsc_git = "https://github.com/JaredCrean2/Petsc.git"
 
   pkg_dict = Pkg.installed()  # get dictionary of installed package names to version numbers
 
@@ -50,7 +50,7 @@ function installPDESolver()
       start_dir = pwd()
       cd(Pkg.dir() )
       run(`git clone $petsc_git`)
-      mv("./PETSc.jl", "./PETSc")
+      mv("./Petsc", "./PETSc")
       Pkg.build("PETSc")
       cd(start_dir)
       println(f, "  Installation appears to have completed sucessfully")
