@@ -39,6 +39,8 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
 
+  evalInteriorFlux(mesh, sbp, eqn, opts)
+
 
 
   if opts["use_GLS2"]
