@@ -17,7 +17,7 @@
 
 """
 function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                              sbp::SBPOperator, 
+                                              sbp::AbstractSBP, 
                                               eqn::EulerData{Tsol, Tres, Tdim})
   
   # Create the Artificial Viscosity flux matrix
@@ -118,7 +118,7 @@ function calcEpsilonHat{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
 return nothing
 end
 
-function EpsilonPDE{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+function EpsilonPDE{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::EulerData{Tsol, Tres, Tdim})
 
   # epsilon = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
@@ -203,7 +203,7 @@ end
 
 #=
 function AVSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                             sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim})
+                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 
 epsilon
 end =#

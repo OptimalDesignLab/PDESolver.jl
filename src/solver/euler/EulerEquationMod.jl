@@ -445,7 +445,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 # minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor
-  function EulerData_(mesh::AbstractMesh, sbp::SBPOperator, opts)
+  function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
 
     println("\nConstruction EulerData object")
     println("  Tsol = ", Tsol)
@@ -546,7 +546,7 @@ end  # end of type declaration
 # used by EulerData Constructor
 # mid level functions
 function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                                  sbp::SBPOperator, 
+                                                  sbp::AbstractSBP, 
                                                   eqn::EulerData{Tsol, Tres, Tdim})
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
@@ -589,7 +589,7 @@ end     # end of calcMassMatrixInverse function
 
 """->
 function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                           sbp::SBPOperator, 
+                                           sbp::AbstractSBP, 
                                            eqn::EulerData{Tsol, Tres, Tdim})
 # calculate the (diagonal) mass matrix as a vector
 # return the vector M

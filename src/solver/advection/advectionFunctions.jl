@@ -21,7 +21,7 @@ Pass this function as an input argument to the RK4 solver just like evalAdvectio
 """->
 
 function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                       sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                       sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
 
 #  println("entered evalAdvection")
@@ -68,7 +68,7 @@ integrals) this only works for triangular meshes, where are elements are same
 """->
 
 function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                    sbp::SBPOperator, 
+                                    sbp::AbstractSBP, 
                                     eqn::AdvectionData{Tsol, Tres, Tdim}, 
                                     alpha_x::AbstractArray{Tsol, 3}, 
                                     alpha_y::AbstractArray{Tsol, 3})
@@ -116,7 +116,7 @@ Evaluate boundary integrals for advection equation
 """->
 #TODO: get rid of alpha_x and alpha_y arguments: they are not used
 function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                   sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                    alpha_x::AbstractArray{Tsol, 3}, alpha_y::AbstractArray{Tsol, 3})
 
 #  println("----- Entered evalBndry -----")
@@ -160,7 +160,7 @@ end # end function evalBndry
 
 """->
 function evalSRCTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                     sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, 
+                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, 
                      opts)
 
 
@@ -233,7 +233,7 @@ end
 
   Aliasing restrictions: none
 """->
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
               eqn::AbstractAdvectionData{Tsol, Tres}, opts)
 
   println("Entering Advection Module")
@@ -264,7 +264,7 @@ end
 
 """->
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::SBPOperator, eqn::AbstractAdvectionData, opts)
+                                sbp::AbstractSBP, eqn::AbstractAdvectionData, opts)
 
   println("Performing major Iteration Callback for iteration ", itr)
 
@@ -310,7 +310,7 @@ end
 
 """->
 function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                         sbp::SBPOperator, eqn::AbstractAdvectionData{Tsol}, opts, 
+                         sbp::AbstractSBP, eqn::AbstractAdvectionData{Tsol}, opts, 
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec

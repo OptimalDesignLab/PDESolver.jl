@@ -13,7 +13,7 @@
 
   Aliasing restrictions: none
 """->
-function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, 2}, opts, src_func::SRCType)
+function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, 2}, opts, src_func::SRCType)
 
 #  println("----- entered applyGLS2 -----")
   Dx = zeros(Float64, mesh.numNodesPerElement, mesh.numNodesPerElement)

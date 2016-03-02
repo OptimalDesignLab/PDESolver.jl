@@ -1,6 +1,6 @@
 # solver code for the Euler equation
 
-function evalSCResidual(mesh::AbstractMesh, operator::SBPOperator, u::AbstractVector, u0, alpha_x::FloatingPoint, alpha_y::FloatingPoint)
+function evalSCResidual(mesh::AbstractMesh, operator::AbstractSBP, u::AbstractVector, u0, alpha_x::FloatingPoint, alpha_y::FloatingPoint)
 # evaluate the residual using summation by parts (not including boundary integrals)
 # this only works for triangular meshes, where are elements are same
 # mesh : mesh type
@@ -102,7 +102,7 @@ end  # end loop over elements
 end  # end function
 
 
-function evalBndry(mesh::PumiMesh2, operator::SBPOperator, u::AbstractVector, u0, alpha_x::FloatingPoint, alpha_y::FloatingPoint)
+function evalBndry(mesh::PumiMesh2, operator::AbstractSBP, u::AbstractVector, u0, alpha_x::FloatingPoint, alpha_y::FloatingPoint)
 # evaluate boundary integrals for advection equation
 # mesh : mesh type, must be PumiMesh (need adjacency information
 # operator : SBP operator

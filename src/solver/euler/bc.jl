@@ -13,7 +13,7 @@ include("bc_solvers.jl")
   This is a mid level function
 """->
 # this is a mid level function
-function getBCFluxes(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)
+function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
   #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
@@ -104,7 +104,7 @@ end
 
   Inputs:
   mesh : AbstractMesh
-  sbp : SBPOperator
+  sbp : AbstractSBP
   eqn : EulerEquation
   functor : a callable object that calculates the boundary flux at a node
   bndry_facenums:  An array with elements of type Boundary that tell which
@@ -125,7 +125,7 @@ end
 """->
 # mid level function
 function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
-                          sbp::SBPOperator, eqn::EulerData{Tsol}, 
+                          sbp::AbstractSBP, eqn::EulerData{Tsol}, 
                           functor::BCType, 
                           bndry_facenums::AbstractArray{Boundary,1}, 
                           bndryflux::AbstractArray{Tres, 3})
@@ -441,7 +441,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
   This is a high level function.
 """->
 # use this function to populate access the needed values in BCDict
-function getBCFunctors(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)
+function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
 #  println("Entered getBCFunctors")
