@@ -51,7 +51,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   src_func::SRCType  # functor for source term
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_(mesh::PumiMesh2, sbp::SBPOperator, opts)
+  function AdvectionData_(mesh::PumiMesh2, sbp::AbstractSBP, opts)
     println("\nConstruction AdvectionData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
@@ -105,7 +105,7 @@ include("source.jl")
 """->
 
 function assembleSolution{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                          sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                           opts, arr::AbstractArray{Tres,3}, 
                           res_vec::AbstractArray{Tres,1}, zero_resvec=true)
 
@@ -148,7 +148,7 @@ dimension.
 """->
 
 function disassembleSolution{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::SBPOperator,eqn::AdvectionData{Tsol, Tres, Tdim},
+                            sbp::AbstractSBP,eqn::AdvectionData{Tsol, Tres, Tdim},
                             opts, array1::AbstractArray{Tsol, 3},
                             array2::AbstractArray{Tres, 1})
   
@@ -182,7 +182,7 @@ end
 
 """->
 function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                        sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim})
+                        sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
 # calculate the (diagonal) mass matrix as a vector
 # return the vector M
 
@@ -223,7 +223,7 @@ end     # end of calcMassMatrix function
 # used by AdvectionData Constructor
 # mid level functions
 function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                                  sbp::SBPOperator, 
+                                                  sbp::AbstractSBP, 
                                                   eqn::AdvectionData{Tsol, Tres, Tdim})
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
@@ -251,14 +251,14 @@ end     # end of calcMassMatrixInverse function
 
 # functions needed to make it compatible with the NonLinearSolvers module
 function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                     sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
+                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                      opts, res_arr::AbstractArray{Tsol, 3})
 
   return nothing
 end
 
 function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                  sbp::SBPOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+                  sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
                   res_arr::AbstractArray{Tsol, 3})
 
   return nothing

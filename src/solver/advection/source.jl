@@ -181,7 +181,7 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
   it to the equation object.  Currently one 1 source functor is allowed.
 
 """->
-function getSRCFunctors(mesh::AbstractMesh, sbp::SBPOperator, 
+function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, 
                         eqn::AdvectionData, opts)
 
   # currently we only allow 1 source functor

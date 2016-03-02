@@ -9,7 +9,7 @@
 
   Inputs:
   mesh : AbstractMesh
-  sbp : SBPOperator
+  sbp : AbstractSBP
   eqn : AdvectionEquation
   functor : a callable object that calculates the boundary flux at a node
   bndry_facenums:  An array with elements of type Boundary that tell which
@@ -30,7 +30,7 @@
 """->
 # mid level function
 function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
-                          sbp::SBPOperator, eqn::AdvectionData{Tsol}, 
+                          sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
                           functor::BCType, 
                           bndry_facenums::AbstractArray{Boundary,1}, 
                           bndryflux::AbstractArray{Tres, 3})
@@ -392,7 +392,7 @@ This is a high level function.
 
 """->
 # use this function to populate access the needed values in BCDict
-function getBCFunctors{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+function getBCFunctors{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
                        eqn::AdvectionData{Tsol, Tdim}, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 

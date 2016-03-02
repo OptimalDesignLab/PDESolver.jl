@@ -53,7 +53,7 @@
 ### EulerEquationMod General Description
 This module is organized into 3 levels of functions: high, middle, and low.
 
-The high level functions take the mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerEquation, and opts (options dictionary), They do not know the types their 
+The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, and opts (options dictionary), They do not know the types their 
 arguments are paramaterized on. There is only one method for each high level function.  All they do is call mid level functions.
 
 Mid level functions take the same arguments as high level functions but know
@@ -106,7 +106,7 @@ export evalEuler, init
 """->
 # this function is what the timestepper calls
 # high level function
-function evalEuler(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, 
+function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts, 
                    t=0.0)
 
   eqn.params.t = t  # record t to params
@@ -165,7 +165,7 @@ end  # end evalEuler
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
 
   println("\nInitializing Euler module")
@@ -179,7 +179,7 @@ end
 
 
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::SBPOperator, eqn::AbstractEulerData, opts)
+                                sbp::AbstractSBP, eqn::AbstractEulerData, opts)
 
 #  println("Performing major Iteration Callback")
 
@@ -260,7 +260,7 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator,
+function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
@@ -394,7 +394,7 @@ end
 """
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                             sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
   
   if opts["Q_transpose"] == true
     for i=1:Tdim
@@ -424,7 +424,7 @@ end  # end evalVolumeIntegrals
   eqn.res is updates with the result
 
 """->
-function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, eqn::EulerData{Tsol, Tdim}, opts)
+function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::EulerData{Tsol, Tdim}, opts)
 
   for i=1:Tdim
     differentiate!(sbp, i, 
@@ -441,7 +441,7 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SB
 """->
 # mid level function
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim})
+                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 
   boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
 
@@ -463,7 +463,7 @@ end  # end evalBoundaryIntegrals
 """->
 # mid level function
 function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::SBPOperator, eqn::EulerData{Tsol}, opts)
+                          sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
 #  println("==== start of addStabilization ====")
 
@@ -586,7 +586,7 @@ end
 """->
 # mid level function (although it doesn't need Tdim)
 function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                         sbp::SBPOperator, eqn::EulerData{Tsol}, opts, 
+                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts, 
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec
@@ -612,7 +612,7 @@ end
 
 # mid level function (although it doesn't need Tdim)
 function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                         sbp::SBPOperator, eqn::EulerData{Tsol}, opts, 
+                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts, 
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec

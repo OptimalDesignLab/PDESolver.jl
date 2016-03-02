@@ -21,7 +21,7 @@ export ICDict
 
 """->
 function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
                 u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -76,7 +76,7 @@ end  # end function
 """->
 
 function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts,
+                operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts,
                 u0::AbstractVector{Tsol})
 
   numEl = getNumEl(mesh)
@@ -130,7 +130,7 @@ end # end function ICOnes
 
 
 function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                  operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
                   u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -185,7 +185,7 @@ end  # end function
 
 
 function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, 
+                    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
                     opts, u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -243,7 +243,7 @@ end  # end function
 
 
 function ICFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                      operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                      operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
                       u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -284,7 +284,7 @@ end  # end function
 
 # what is this? how is it different than ICIsentropic Vortex?
 function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                  operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
                   u0::AbstractVector{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -340,7 +340,7 @@ end  # end function
 
 """->
 function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                              operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol},
+                              operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol},
                               opts, u0::AbstractVector{Tsol})
 # calculate the value of the smooth heaviside function derivative at a location x
 # x0 is specified within this function
@@ -406,7 +406,7 @@ end
 
 """->
 function ICsmoothHeaviside{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                           operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, 
+                           operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
                            opts, u0::AbstractArray{Tsol, 1})
 # calculate the value of the smooth heaviside function at a location x
 # x0 is specified within this function
@@ -467,7 +467,7 @@ end
 
 """->
 function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, 
+                            operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
                             opts, u0::AbstractArray{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -519,7 +519,7 @@ end  # end function
 
 """->
 function ICIsentropicVortexWithNoise{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
-                                     operator::SBPOperator{Tsbp}, 
+                                     operator::AbstractSBP{Tsbp}, 
                                      eqn::EulerData{Tsol}, 
                                      opts, u0::AbstractVector{Tsol})
 # populate u0 with initial values
@@ -566,7 +566,7 @@ end  # end function
 
 """->
 function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                          operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, 
+                          operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
                           opts, u0::AbstractArray{Tsol})
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -622,7 +622,7 @@ end  # end function
 
 """->
 function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                operator::SBPOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
                 u0::AbstractVector{Tsol})
 # populate u0 with initial values from a disk file
 # the file name comes from opts["ICfname"]
