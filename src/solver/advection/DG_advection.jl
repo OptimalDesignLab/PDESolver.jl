@@ -1,6 +1,6 @@
 # DG.jl
 
-function evalInteriorFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+function evalInteriorFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
                          eqn::AdvectionData{Tsol, Tres, Tdim}, opts)
 
   fluxface = zeros(Tsol, 1, sbp.numfacenodes, size(mesh.interfaces,1))
