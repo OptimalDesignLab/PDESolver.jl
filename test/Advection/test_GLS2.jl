@@ -6,7 +6,7 @@ facts("----- Testing GLS2 -----") do
 
   fill!(eqn.alpha_x, 2.0)
   fill!(eqn.alpha_y, 1.0)
-  dxidx_true = mesh.dxidx[:, :, 1, 1]*mesh.jac[1,1]
+  dxidx_true = mesh.dxidx[:, :, 1, 2]*mesh.jac[1,2]
   println("dxidx_true = ", dxidx_true)
   tau_code = AdvectionEquationMod.getTau(2.0, 1.0, dxidx_true, 2)
   @fact tau_code --> roughly(1/sqrt(8), atol=1e-14)
