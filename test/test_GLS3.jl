@@ -262,7 +262,7 @@ if true
     end
 
     for j=1:len
-      tol = 5e-4
+      tol = 7.5e-4
       for k = 1:len
         @fact abs((jac_c[k, j] - jac_fd[k, j])/jac_c[k,j]) --> less_than(tol)
       end
