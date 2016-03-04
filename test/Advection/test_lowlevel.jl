@@ -29,36 +29,38 @@ facts("--- Testing Mesh --- ") do
 
 #  println("mesh.bndryfaces = ", mesh.bndryfaces)
   @fact mesh.bndry_funcs[1] --> AdvectionEquationMod.x5plusy5BC()
+  println("mesh.bndryfaces = ", mesh.bndryfaces)
   @fact mesh.bndryfaces[1].element --> 1
-  @fact mesh.bndryfaces[1].face --> 1
+  @fact mesh.bndryfaces[1].face --> 3
   @fact mesh.bndryfaces[2].element --> 1
-  @fact mesh.bndryfaces[2].face --> 2
+  @fact mesh.bndryfaces[2].face --> 1
   @fact mesh.bndryfaces[3].element --> 2
-  @fact mesh.bndryfaces[3].face --> 1
+  @fact mesh.bndryfaces[3].face --> 2
   @fact mesh.bndryfaces[4].element --> 2
-  @fact mesh.bndryfaces[4].face --> 3
+  @fact mesh.bndryfaces[4].face --> 1
 
 #  println("mesh.interfaces = ",  mesh.interfaces)
-  @fact mesh.interfaces[1].elementL --> 2
-  @fact mesh.interfaces[1].elementR --> 1
+  @fact mesh.interfaces[1].elementL --> 1
+  @fact mesh.interfaces[1].elementR --> 2
   @fact mesh.interfaces[1].faceL --> 2
   @fact mesh.interfaces[1].faceR --> 3
 
   jac_fac = 0.25
   fac = 2
+  println("mesh.coords = ", mesh.coords)
 #  println("mesh.coords = ", mesh.coords)
-  @fact mesh.coords[:, :, 1] --> roughly([4 4 0; 0 4 4.0])
-  @fact mesh.coords[:, :, 2] --> roughly([0.0 4 0; 0 0 4])
+  @fact mesh.coords[:, :, 2] --> roughly([4 4 0; 0 4 4.0])
+  @fact mesh.coords[:, :, 1] --> roughly([0.0 4 0; 0 0 4])
 
 #  println("mesh.dxidx = \n", mesh.dxidx)
 
-  @fact mesh.dxidx[:, :, 1, 1] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
-  @fact mesh.dxidx[:, :, 2, 1] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
-  @fact mesh.dxidx[:, :, 3, 1] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
+  @fact mesh.dxidx[:, :, 1, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
+  @fact mesh.dxidx[:, :, 2, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
+  @fact mesh.dxidx[:, :, 3, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
 
-  @fact mesh.dxidx[:, :, 1, 2] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
-  @fact mesh.dxidx[:, :, 2, 2] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
-  @fact mesh.dxidx[:, :, 3, 2] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
+  @fact mesh.dxidx[:, :, 1, 1] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
+  @fact mesh.dxidx[:, :, 2, 1] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
+  @fact mesh.dxidx[:, :, 3, 1] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
 
   @fact mesh.jac --> roughly(jac_fac*ones(3,2))
 
@@ -72,24 +74,24 @@ facts("--- Testing Functions Within AdvectionData_--- ") do
 
   # checking disassembleSolution
   eqn.disassembleSolution(mesh, sbp, eqn, opts, u, u_vec)
+  @fact u[1,1,2] --> roughly(2.0)
+  @fact u[1,2,2] --> roughly(4.0)
+  @fact u[1,3,2] --> roughly(3.0)
   @fact u[1,1,1] --> roughly(1.0)
   @fact u[1,2,1] --> roughly(2.0)
   @fact u[1,3,1] --> roughly(3.0)
-  @fact u[1,1,2] --> roughly(4.0)
-  @fact u[1,2,2] --> roughly(1.0)
-  @fact u[1,3,2] --> roughly(3.0)
 
   #checking assembleSolution
   fill!(u_vec, 0.0)
   eqn.assembleSolution(mesh, sbp, eqn, opts, u, u_vec)
-  @fact u_vec --> roughly([2.0,2.0,6.0,4.0])
+  @fact u_vec --> roughly([1.0,4.0,6.0,4.0])
 
   # check mass matrix
   # just for testing, make jac != 1
   w_val = sbp.w[1]  # all of sbp.w entries are the same
   jac_val = 0.25
-  M1 = 2*w_val/jac_val
-  M2 = w_val/jac_val
+  M1 = w_val/jac_val
+  M2 = 2*w_val/jac_val
   M3 = 2*w_val/jac_val
   M4 = w_val/jac_val
   M_test = [M1, M2, M3, M4]
@@ -299,10 +301,6 @@ end
       @fact val_code --> roughly(val_test, atol=1e-14)
     end
 
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    val_test =[-1., 2/3, 1, -2, 1/3, -1, 1, 2/3, 1/3]
-    @fact eqn.res_vec --> roughly(val_test, atol=1e-12)
-
     println("----- Checking q=2*x^2 + 5 case -----")
     
     x1 = zeros(Tmsh, 3)
@@ -394,17 +392,22 @@ end
         eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], alpha_x, alpha_y, 0.25)
       end
     end
-
+    println("finished calculating sinwave")
     mesh.bndry_funcs[1] = AdvectionEquationMod.sinwave_BC()
     fill!(eqn.res, 0.0)
     fill!(eqn.alpha_x, 1.0)
     fill!(eqn.alpha_y, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+    println("called eval SCResidual")
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
+      println("check iteration ", i)
+      if norm(val_code - val_test) > 1e-14
+        println("fact was false")
+      end
       @fact val_code --> roughly(val_test, atol=1e-14)
     end
 
@@ -430,3 +433,5 @@ end
 
 end # end facts block
 =#
+
+

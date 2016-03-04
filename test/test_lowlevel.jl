@@ -16,6 +16,24 @@ facts("--- Testing Mesh --- ") do
   @fact mesh.numNodesPerType --> [1, 0 , 0]
 
   @fact mesh.bndry_funcs[1] --> EulerEquationMod.Rho1E2U3BC()
+  println("bndryfaces = ", mesh.bndryfaces)
+  @fact mesh.bndryfaces[1].element --> 1
+  @fact mesh.bndryfaces[1].face --> 3
+  @fact mesh.bndryfaces[2].element --> 2
+  @fact mesh.bndryfaces[2].face --> 1
+  @fact mesh.bndryfaces[3].element --> 1
+  @fact mesh.bndryfaces[3].face --> 2
+  @fact mesh.bndryfaces[4].element --> 2
+  @fact mesh.bndryfaces[4].face --> 2
+
+  println("mesh.interfaces = ",  mesh.interfaces)
+  @fact mesh.interfaces[1].elementL --> 1
+  @fact mesh.interfaces[1].elementR --> 2
+  @fact mesh.interfaces[1].faceL --> 1
+  @fact mesh.interfaces[1].faceR --> 3
+
+
+#=
   @fact mesh.bndryfaces[1].element --> 1
   @fact mesh.bndryfaces[1].face --> 2
   @fact mesh.bndryfaces[2].element --> 2
@@ -29,19 +47,19 @@ facts("--- Testing Mesh --- ") do
   @fact mesh.interfaces[1].elementR --> 1
   @fact mesh.interfaces[1].faceL --> 1
   @fact mesh.interfaces[1].faceR --> 3
+=#
+  @fact mesh.coords[:, :, 2] --> roughly([-1.0 1 1; -1 -1 1])
+  @fact mesh.coords[:, :, 1] --> roughly([-1.0 1 -1; -1 1 1])
 
-  @fact mesh.coords[:, :, 1] --> roughly([-1.0 1 1; -1 -1 1])
-  @fact mesh.coords[:, :, 2] --> roughly([-1.0 1 -1; -1 1 1])
+  @fact mesh.dxidx[:, :, 1, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
 
-  @fact mesh.dxidx[:, :, 1, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 1, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 2, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 3, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
 
-  @fact mesh.dxidx[:, :, 1, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 2, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 3, 1] --> roughly([1.0 -1; 0 1], atol=1e-14)
-
-  @fact mesh.dxidx[:, :, 1, 2] --> roughly([1.0 0; -1 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 2, 2] --> roughly([1.0 0; -1 1], atol=1e-14)
-  @fact mesh.dxidx[:, :, 3, 2] --> roughly([1.0 0; -1 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 1, 1] --> roughly([1.0 0; -1 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 2, 1] --> roughly([1.0 0; -1 1], atol=1e-14)
+  @fact mesh.dxidx[:, :, 3, 1] --> roughly([1.0 0; -1 1], atol=1e-14)
 
   @fact mesh.jac --> roughly(ones(3,2))
 
@@ -403,37 +421,37 @@ facts("--- Testing Euler Low Level Functions --- ") do
    # test calcEulerFlux
    for i=1:mesh.numNodesPerElement
 #     println("eq.flux_parametric[:, $i, 1, 1] = ", eqn.flux_parametric[:, i, 1, 1])
-     @fact eqn.flux_parametric[:, i, 1, 1] --> roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 1, 2] --> roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.flux_parametric[:, i, 2, 1] --> roughly([0.35355, 0.874999, 0.12499, 0.972263], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 2, 2] --> roughly([0.35355,  0.12499, 0.874999 ,0.972263], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.flux_parametric[:, i, 1, 2] --> roughly([0.35355, 0.124998, 0.874999, 0.972263], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 1, 1] --> roughly([0.35355,  0.874999, 00.124998,.972263], atol=1e-5)
    end
 
    for i=1:mesh.numNodesPerElement
-     @fact eqn.flux_parametric[:, i, 2, 2] --> roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
+     @fact eqn.flux_parametric[:, i, 2, 1] --> roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
    end
 
 
    # test getBCFluxes
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 1] --> roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 1] --> roughly(-[-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 2] --> roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 2] --> roughly(-[-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 3] --> roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 3] --> roughly(-[0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 4] --> roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 4] --> roughly(-[0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
      end
 
 
@@ -454,8 +472,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
 		-0.874999 0.124998 0.75001;
 		-0.972263  0.972263 0]
  
-    @fact eqn.res[:, :, 1] --> roughly(el1_res, atol=1e-4)
-    @fact eqn.res[:, :, 2] --> roughly(el2_res, atol=1e-4)
+    @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-4)
+    @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-4)
 
 
 
@@ -476,8 +494,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
 	       0.124998  -0.874999  -0.750001;
 	       0.972263  -0.972263  0]
 
-    @fact eqn.res[:, :, 1] --> roughly(el1_res, atol=1e-5)
-    @fact eqn.res[:, :, 2] --> roughly(el2_res, atol=1e-5)
+    @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-5)
+    @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-5)
 
   end
 
@@ -501,3 +519,6 @@ facts("--- Testing Euler Low Level Functions --- ") do
 #  end
 
 end # end facts block
+
+
+
