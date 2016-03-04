@@ -216,7 +216,7 @@ if true
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     test_GLS(mesh, sbp, eqn, opts)
     jac_fd = zeros(len, len)
-    eps_fd = 1e-7
+    eps_fd = 1e-8
     res0 = copy(reshape(eqn.res[:, :, 1], len))  # use res from previous run
     println("doing finite differences")
     for j=1:mesh.numNodesPerElement
@@ -262,8 +262,10 @@ if true
     end
 
     for j=1:len
-      tol = 5e-5
-      @fact jac_c[:, j] --> roughly(jac_fd[:, j], atol=tol)
+      tol = 5e-4
+      for k = 1:len
+        @fact abs((jac_c[k, j] - jac_fd[k, j])/jac_c[k,j]) --> less_than(tol)
+      end
     end
 
 #=
