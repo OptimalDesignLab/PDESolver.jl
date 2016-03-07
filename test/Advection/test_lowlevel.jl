@@ -66,7 +66,7 @@ facts("--- Testing Mesh --- ") do
 
 end
 
-
+#=
 facts("--- Testing Functions Within AdvectionData_--- ") do
   Tsol = Float64
   u_vec = Tsol[1,2,3,4]
@@ -410,11 +410,20 @@ end
       end
       @fact val_code --> roughly(val_test, atol=1e-14)
     end
+  end # end context("--- Testing Volume Integrals ---")
 
-
-
+  #=
+  context("--- Testing evalInteriorFlux ---") do
+    
+    fill!(eqn.res, 0.0)
+    fill!(eqn.alpha_x, 1.0)
+    fill!(eqn.alpha_y, 1.0)
+    
+    nbrnodeindex = Array(sbp.numfacenodes:-1:1)
 
   end
+  =#
+
 
 
 
@@ -435,3 +444,4 @@ end # end facts block
 =#
 
 
+=#

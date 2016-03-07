@@ -161,7 +161,6 @@ if opts["test_GLS2"]
   calcResidual(mesh, sbp, eqn, opts, evalAdvection)
 end
 
-
 #------------------------------------------------------------------------------
 #=
 # Calculate the recommended delta t
