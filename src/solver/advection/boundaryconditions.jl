@@ -104,7 +104,7 @@ function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol,
               alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_x5plusy5(coords) # Calculate the actual analytic value of u at the bondary
+  u_bc = calc_x5plusy5(coords, alpha_x, alpha_y, t) # Calculate the actual analytic value of u at the bondary
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
   return bndryflux
