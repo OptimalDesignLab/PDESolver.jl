@@ -66,7 +66,7 @@ facts("--- Testing Mesh --- ") do
 
 end
 
-#=
+
 facts("--- Testing Functions Within AdvectionData_--- ") do
   Tsol = Float64
   u_vec = Tsol[1,2,3,4]
@@ -441,7 +441,4 @@ end
   context("--- Testing evalEuler --- ")  do
 
 end # end facts block
-=#
-
-
 =#

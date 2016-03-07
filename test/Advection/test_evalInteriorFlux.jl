@@ -18,7 +18,13 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_channel.jl"
 include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
+include("../../src/solver/advection/DG_advection.jl")
+include("../../src/solver/advection/bc_solvers.jl")
+include("../../src/solver/euler/complexify.jl")
+
 fill!(eqn.res_vec, 0.0)
+println("eqn.q_vec = \n", eqn.q_vec)
+println("eqn.q = \n", eqn.q)
 
 facts("--- Testing evalInteriorFlux ---") do
 
@@ -40,7 +46,8 @@ facts("--- Testing evalInteriorFlux ---") do
     @fact iR[1] --> 1
     @fact iR[2] --> 3
 
-    
+    evalInteriorFlux(mesh, sbp, eqn, opts)
+    println("eqn.res = \n", eqn.res)
     #=
   	for j = 1:sbp.numfacenodes
 	  il = sbp.facenodes[j, face.faceL]::Int
