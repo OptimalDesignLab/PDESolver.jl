@@ -23,11 +23,13 @@ function evalInteriorFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp:
 
       # Calculate the upwind flux across the interface. negative sign because 
       # the way residual is calculated volumeintegrate! has a +ve sign
-      fluxface[1,j,findex] = RoeSolver(qR, qL, alpha_x, alpha_y, nrm, dxidx) 
+      fluxface[1,j,findex] = RoeSolver(qR, qL, alpha_x, alpha_y, nrm, dxidx)
+      # println("fluxface[1,j,findex] = ", fluxface[1,j,findex]) 
     
     end # end for j = 1:sbp.numfacenodes
   end # end for (findex, face) in enumerate(interfaces)
-
+  
+  # println("fluxface = " fluxface)
   interiorfaceintegrate!(sbp, mesh.interfaces, fluxface, eqn.res)
 
   return nothing
