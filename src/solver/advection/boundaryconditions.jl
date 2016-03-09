@@ -104,14 +104,14 @@ function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol,
               alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_x5plusy5(coords) # Calculate the actual analytic value of u at the bondary
+  u_bc = calc_x5plusy5(coords, alpha_x, alpha_y, t) # Calculate the actual analytic value of u at the bondary
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 
   return bndryflux
 end
 
 @doc """
-### AdvectionEquationMod.x5plusy5BC
+### AdvectionEquationMod.exp_xplusyBC
 
 Calculates q at the boundary which is equal to exp(x+y). It is a nodal 
 level function.
@@ -133,7 +133,7 @@ level function.
 type exp_xplusyBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol, 
+function call{Tmsh, Tsol}(obj::exp_xplusyBC, u::Tsol, 
               alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 

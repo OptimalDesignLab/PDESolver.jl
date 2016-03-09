@@ -103,7 +103,7 @@ Note that for Continuous Galerkin type discretization (as opposed to Discontinuo
 This function is used to do output and logging.
 The function must have the signature:
 
-`function majorIterationCallback(itr, mesh::AbstractMesh, sbp::SBPOperator, eqn::AbstractEulerData, opts)`
+`function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)`
 
 `params`:  user defined type that inherits from `AbstractParamType`.
 The purpose of this type is to store any variables that need to be quickly accessed or updated.
@@ -314,7 +314,7 @@ Only when low level functions need to dispatch based on which implementation is 
 ###Residual Evaluation
 In addition to the `AbstractSolutionData` implementation, each physics module must define and export a function with the signature
 
-`function_name(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts)`
+`function_name(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)`
 
 where `EulerData` should be replaced with an appropriate type name for the physics module implementation of `AbstractSolutionData`.
 This function should use the `eqn.q` array to populate `eqn.res` with `dq/dt = f(q)`.
@@ -324,7 +324,7 @@ The physics module should *never* use `q_vec` or `res_vec`.
 ###Initialization
 The physics module should also define and export an initialization function with the signature:
 
-`init(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, pmesh=mesh)`
+`init(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts, pmesh=mesh)`
 
 that performs all initialization required by the module.
 It must also do any initialization for the objects that could not be done during their construction.
@@ -339,7 +339,7 @@ This function is called before the first residual evaluation, just after the `me
 The physics module must export a dictionary called ICDict that maps strings to the functions that apply the initial condition to the entire mesh.
 These functions must have the signature:
 
-`fname(mesh::AbstractMesh, sbp::SBPOperator, eqn::EulerData, opts, u0::AbstractVector)`
+`fname(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts, u0::AbstractVector)`
 
 where `u0` is a vector of length `numDof` that is populated with the initial condition.
 

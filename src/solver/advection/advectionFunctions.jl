@@ -31,6 +31,8 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
 
+  evalInteriorFlux(mesh, sbp, eqn, opts)
+
   # Does not work, should remove
 #  if opts["use_GLS"]
 #    GLS(mesh, sbp, eqn)
@@ -38,6 +40,8 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   evalSRCTerm(mesh, sbp, eqn, opts)
 
   evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+
+  
 
 
 
