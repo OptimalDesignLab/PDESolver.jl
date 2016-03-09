@@ -34,6 +34,7 @@ end
 
 facts("----- Testing using manufactured polynomials -----") do
 
+  println("  -----testing degree 1 polynomial -----")
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_mms.jl"
   include(STARTUP_PATH)
@@ -45,6 +46,7 @@ facts("----- Testing using manufactured polynomials -----") do
   @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
 
 
+  println("  -----testing degree 2 polynomial -----")
   fname = make_input(2)
   ARGS[1] = fname
   include(STARTUP_PATH)
@@ -55,6 +57,8 @@ facts("----- Testing using manufactured polynomials -----") do
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
 
+
+  println("  -----testing degree 3 polynomial -----")
   fname = make_input(3)
   ARGS[1] = fname
   include(STARTUP_PATH)
@@ -66,6 +70,8 @@ facts("----- Testing using manufactured polynomials -----") do
   @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
 
 
+
+  println("  -----testing degree 4 polynomial -----")
   fname = make_input(4)
   ARGS[1] = fname
   include(STARTUP_PATH)

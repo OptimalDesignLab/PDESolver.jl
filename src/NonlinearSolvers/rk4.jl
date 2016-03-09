@@ -28,7 +28,7 @@ rk4
     * h  : time step size
     * t_max : time value to stop time stepping (time starts at 0)
     * mesh : AbstractMesh
-    * sbp : SBPOperator 
+    * sbp : AbstractSBP 
     * eqn : AbstractSolutionData
     * opts : options dictionary
     * res_tol : keyword arg, residual topping tolerance

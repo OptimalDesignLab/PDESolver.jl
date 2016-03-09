@@ -58,7 +58,7 @@ For a 2-dimensional problem, it can be computed as follows:
       end
 
 """->
-function edgestabilize!{T, Tres}(sbp::SBPOperator{T}, ifaces::Array{Interface},
+function edgestabilize!{T, Tres}(sbp::AbstractSBP{T}, ifaces::Array{Interface},
                            u::AbstractArray{T,2}, x::AbstractArray{T,3},
                            dxidx::AbstractArray{T,4}, jac::AbstractArray{T,2},
                            alpha::AbstractArray{T,4}, 
@@ -139,7 +139,7 @@ end
 
 # for vector equations
 
-function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::SBPOperator, 
+function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::AbstractSBP, 
                         ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
                         x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4},
                         jac::AbstractArray{Tmsh,2}, 
@@ -238,7 +238,7 @@ end
 # for vector equations
 # WIP: uses res_edge
 #TODO: cleanup function signature
-function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::SBPOperator, eqn, 
+function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn, 
                         ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
                         x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4}, 
                         jac::AbstractArray{Tmsh,2}, 
@@ -552,7 +552,7 @@ function stabscale{Tmsh, Tsol}(q::AbstractArray{Tsol,1},
   This is a mid level function
 """->
 # mid level function
-function stabscale{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::SBPOperator, 
+function stabscale{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
                                 eqn::EulerData{Tsol})
 # calculate stabscale for entire mesh
 
@@ -587,7 +587,7 @@ end
 # used by EulerData Constructor - not that that matters for any reason
 # mid level function
 function calcEdgeStabAlpha{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                           sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim})
+                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 # calculate alpha, needed by edge stabilization
 
   numEl = mesh.numEl

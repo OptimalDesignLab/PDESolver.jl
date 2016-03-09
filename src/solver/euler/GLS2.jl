@@ -5,7 +5,7 @@
 
 # this *should* work for both conservative and entropy variables, I think
 function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                   sbp::SBPOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+                   sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
 #  println("----- Entered applyGLS2 -----")
   # extract some constants
