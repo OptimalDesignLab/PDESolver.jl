@@ -28,8 +28,12 @@ function calc_numerical_bndryforces()
       nrm = view(sbp.facenormal, :, bndry_i.face)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
       ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+      boundary_press[1,j,i] = 
   	end
   end
+
+  boundaryintegrate!(sbp, bndry_facenums, boundary_press, boundary_force)
 
   return nothing
 end

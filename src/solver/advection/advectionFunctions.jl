@@ -31,7 +31,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
 
-  evalInteriorFlux(mesh, sbp, eqn, opts)
+  # evalInteriorFlux(mesh, sbp, eqn, opts)
 
   # Does not work, should remove
 #  if opts["use_GLS"]
@@ -286,7 +286,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 end
 
 
-@doc """"
+@doc """
 ### AdvectionEquationMod.assembleArray
 
   This function performs an assignment reduction of a 3D array to a vector.

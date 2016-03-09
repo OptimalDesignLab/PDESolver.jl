@@ -145,7 +145,21 @@ function call(obj::SRCexp_xplusy, coords::AbstractVector, alpha_x, alpha_y, t)
   return alpha_x*u + alpha_y*u 
 end
 
+@doc """
+### AdvectionEquationMod.SRCx5plusy5
 
+  This is a source term that returns a source term for e^(x+y)
+"""->
+type SRCx5plusy5 <: SRCType
+end
+
+function call(obj::SRCx5plusy5, coords::AbstractVector, alpha_x, alpha_y, t)
+  # u = calc_x5plusy5(coords, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+
+  return alpha_x*5*(x^4) + alpha_y*5*(y^4)
+end
 @doc """
 ### AdvectionEquationMod.SRCDict
 
@@ -172,6 +186,7 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCp4" => SRCp4(),
 "SRCp5" => SRCp5(),
 "SRCexp_xplusy" => SRCexp_xplusy(),
+"SRCx5plusy5" => SRCx5plusy5(),
 )
 
 @doc """
