@@ -1,10 +1,12 @@
 module AdvectionEquationMod
 
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+using Utils
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 export evalAdvection, init # exported from advectionFunctions.jl
 export ICDict              # exported from ic.jl
@@ -89,81 +91,6 @@ include("GLS.jl")
  include("GLS2.jl")
 include("../euler/complexify.jl")
 include("source.jl")
-
-@doc """
-### AdvectionEquationMod.assembleSolution
-
-  This function takes the 2D array of variables in arr and 
-  reassmbles is into the vector res_vec.  Note that
-  This is a reduction operation and requires eqn.res_vec to be zerod before
-  calling this function.
-
-  This is a mid level function, and does the right thing regardless of
-  equation dimension
-
-"""->
-
-function assembleSolution{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                          opts, arr::AbstractArray{Tres,3}, 
-                          res_vec::AbstractArray{Tres,1}, zero_resvec=true)
-
-  if zero_resvec
-    fill!(res_vec, 0.0)
-  end
-
-  for i=1:mesh.numEl  # loop over elements
-    for j=1:mesh.numNodesPerElement
-      dofnum_k = mesh.dofs[1, j, i]
-      res_vec[dofnum_k] += arr[1,j,i]
-    end
-  end
-
-  return nothing
-end # end function assembleSolution
-
-@doc """
-### AdvectionEquationMod.disassembleSolution
-
-This takes eqn.u_vec (the initial state), and disassembles it into eqn.q, the
-3 dimensional array of conservative variables.  This function uses mesh.dofs
-to speed the process.
-
-This is a mid level function, and does the right thing regardless of equation
-dimension.
-
-**Inputs**
-
-*  `mesh` : Mesh object
-*  `sbp`  : Summation-by-parts operator
-*  `eqn`  : Advection equation object
-*  `opts` : Options dictionary
-*  `array`:
-
-**Outputs**
-
-*  None
-
-"""->
-
-function disassembleSolution{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP,eqn::AdvectionData{Tsol, Tres, Tdim},
-                            opts, array1::AbstractArray{Tsol, 3},
-                            array2::AbstractArray{Tres, 1})
-  
-  # disassemble q_vec into eqn.
-  for i=1:mesh.numEl  # loop over elements
-    for j = 1:mesh.numNodesPerElement
-      dofnum_k = mesh.dofs[1, j, i]
-      array1[1, j, i] = array2[dofnum_k]
-    end
-  end
-
-  # writeQ(mesh, sbp, eqn, opts)
-
-  return nothing
-end
-
 @doc """
 ### AdvectionEquationMod.calcMassMatrix
 

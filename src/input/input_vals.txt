@@ -32,6 +32,8 @@ where input_file_name.jl is in your current directory.
             :conservative
 
 # Solver options
+"use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
+          default false
 "res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
 "res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
 "res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0

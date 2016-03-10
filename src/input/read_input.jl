@@ -51,6 +51,7 @@ R = get!(arg_dict, "R", 287.058)
 cv = R/gamma_1
 
 get!(arg_dict, "dimensions", 2)
+get!(arg_dict, "use_DG", false)
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)

@@ -4,6 +4,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
 using PdePumiInterface     # common mesh interface - pumi
 using SummationByParts     # SBP operators
@@ -11,6 +12,7 @@ using AdvectionEquationMod # Advection equation module
 using ForwardDiff
 using NonlinearSolvers     # non-linear solvers
 using ArrayViews
+using Utils
 
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
@@ -123,7 +125,7 @@ if opts["calc_havg"]
   # calculate the average mesh size
   jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
   jac_vec = zeros(Tmsh, mesh.numNodes)
-  AdvectionEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+  assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
   # scale by the minimum distance between nodes on a reference element
   # this is a bit of an assumption, because for distorted elements this
   # might not be entirely accurate
