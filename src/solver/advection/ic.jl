@@ -83,8 +83,8 @@ function ICsinwave{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
   	  u0[dofnums_j] = calc_sinwave(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
   end
@@ -102,8 +102,8 @@ function ICsinwavey{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_sinwavey(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -122,8 +122,8 @@ function ICsinwavey_pert{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_sinwavey_pert(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -141,8 +141,8 @@ function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_mms1(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -160,8 +160,8 @@ function ICx4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_x4(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -180,8 +180,8 @@ function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_p1(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -199,8 +199,8 @@ function ICp2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_p2(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -218,8 +218,8 @@ function ICp3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_p3(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -237,8 +237,8 @@ function ICp4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_p4(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end
@@ -257,8 +257,8 @@ function ICp5{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = view(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x[1, j, i]
-          alpha_y, = eqn.alpha_y[1, j, i]
+          alpha_x = eqn.alpha_x
+          alpha_y, = eqn.alpha_y
 
   	  u0[dofnums_j] = calc_p5(mesh.coords[:, j, i], alpha_x, alpha_y, eqn.t)
   	end

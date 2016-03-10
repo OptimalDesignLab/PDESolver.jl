@@ -52,8 +52,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
 
       # get components
       q = eqn.q[ 1, k, bndry_i.element]
-      alpha_x = eqn.alpha_x[1, k, bndry_i.element]
-      alpha_y = eqn.alpha_y[ 1, k, bndry_i.element]
+      alpha_x = eqn.alpha_x
+      alpha_y = eqn.alpha_y
       # flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
       # aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       coords = view(mesh.coords, :, k, bndry_i.element)

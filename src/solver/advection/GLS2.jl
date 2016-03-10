@@ -37,8 +37,8 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     jac = view(mesh.jac, :, i)
     res = view(eqn.res, :, :, i)
     # constant coefficient advection only!
-    alpha_x = eqn.alpha_x[1, 1, i]
-    alpha_y = eqn.alpha_y[1, 1, i]
+    alpha_x = eqn.alpha_x
+    alpha_y = eqn.alpha_y
     # calclate the true dxidx (not scaled by the mapping jacobian)
     for j=1:mesh.numNodesPerElement
       for k=1:2

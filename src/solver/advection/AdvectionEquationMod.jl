@@ -33,8 +33,8 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   # params::ParamType{Tdim}
   t::Float64
   res_type::DataType  # type of res
-  alpha_x::Array{Tsol, 3}
-  alpha_y::Array{Tsol, 3}
+  alpha_x::Float64
+  alpha_y::Float64
   q::Array{Tsol, 3}
   qface::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
@@ -64,8 +64,8 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn = new()  # incomplete initilization
     eqn.t = 0.0
     eqn.res_type = Tres
-    eqn.alpha_x = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.alpha_y = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.alpha_x = 0.0
+    eqn.alpha_y = 0.0
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.majorIterationCallback = majorIterationCallback
@@ -89,7 +89,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       mesh.flux_face = zeros(Tres, 1, sbp.numfacenodes, mesh.numInterfaces)
     else
       eqn.qface = Array(Tres, 0, 0, 0, 0)
-      mesh.flux_face = Array(Tres, 0, 0, 0)
+      eqn.flux_face = Array(Tres, 0, 0, 0)
     end
 
     return eqn

@@ -29,7 +29,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
  
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   
-  evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+  evalSCResidual(mesh, sbp, eqn)
 
   # Does not work, should remove
 #  if opts["use_GLS"]
@@ -37,7 +37,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  end
   evalSRCTerm(mesh, sbp, eqn, opts)
 
-  evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+  evalBndry(mesh, sbp, eqn)
 
 
 
@@ -69,17 +69,15 @@ integrals) this only works for triangular meshes, where are elements are same
 
 function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                     sbp::AbstractSBP, 
-                                    eqn::AdvectionData{Tsol, Tres, Tdim}, 
-                                    alpha_x::AbstractArray{Tsol, 3}, 
-                                    alpha_y::AbstractArray{Tsol, 3})
+                                    eqn::AdvectionData{Tsol, Tres, Tdim}) 
 
 
   #  println("----- Entered evalSCResidual -----")
   Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-      alpha_x = eqn.alpha_x[1, j, i]
-      alpha_y = eqn.alpha_y[1, j, i]
+      alpha_x = eqn.alpha_x
+      alpha_y = eqn.alpha_y
       alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + 
                  mesh.dxidx[1, 2, j, i]*alpha_y
       alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + 
@@ -107,7 +105,6 @@ Evaluate boundary integrals for advection equation
 *  `mesh` : Abstract mesh type
 *  `sbp`  : Summation-by-parts operator
 *  `eqn`  : Advection equation object
-*  `alpha_x` & `alpha_y` : advection veocities in x & y directions
 
 **Outputs**
 
@@ -116,8 +113,7 @@ Evaluate boundary integrals for advection equation
 """->
 #TODO: get rid of alpha_x and alpha_y arguments: they are not used
 function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                   alpha_x::AbstractArray{Tsol, 3}, alpha_y::AbstractArray{Tsol, 3})
+                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
 
 #  println("----- Entered evalBndry -----")
   for i=1:mesh.numBC
@@ -204,8 +200,8 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
     res_i = view(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
       coords_j = view(mesh.coords, :, j, i)
-      alpha_x = eqn.alpha_x[1, j, i]
-      alpha_y = eqn.alpha_y[1, j, i]
+      alpha_x = eqn.alpha_x
+      alpha_y = eqn.alpha_y
 
       src_val = src_func(coords_j, alpha_x, alpha_y, t)
       res_i[j] += weights[j]*src_val/jac_i[j]
@@ -239,8 +235,8 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   println("Entering Advection Module")
   getBCFunctors(mesh, sbp, eqn, opts)
   getSRCFunctors(mesh, sbp, eqn, opts)
-  fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
-  fill!(eqn.alpha_y, 1.0) # advection velocity in y direction
+  eqn.alpha_x = 1.0
+  eqn.alpha_y = 1.0
   
   return nothing
 end
