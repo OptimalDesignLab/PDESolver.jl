@@ -33,6 +33,11 @@ function disassembleSolution{T}(mesh::AbstractMesh, sbp,
                              eqn::AbstractSolutionData, opts, 
                              q_arr::AbstractArray{T, 3}, 
                              q_vec::AbstractArray{T, 1})
+  if mesh.isDG
+    return nothing
+    writeQ(mesh, sbp, eqn ,opts)
+  end
+
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -90,6 +95,9 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 # arr is the array to be assembled into res_vec
 
 #  println("in assembleSolution")
+  if mesh.isDG
+    return nothing
+  end
 
   if zero_resvec
     fill!(res_vec, 0.0)

@@ -36,8 +36,10 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   alpha_x::Array{Tsol, 3}
   alpha_y::Array{Tsol, 3}
   q::Array{Tsol, 3}
+  qface::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi direction
+  flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   res::Array{Tres, 3}      # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
   res_edge::Array{Tres, 4} # edge based residual storage
@@ -71,11 +73,24 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.res_vec = zeros(Tres, mesh.numDof)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
-    eqn.q_vec = zeros(Tres, mesh.numDof)
+    if mesh.isDG
+      eqn.q_vec = reshape(eqn.q, mesh.numDof)
+      eqn.res_vec = reshape(eqn.res, mesh.numDof)
+    else
+      eqn.q_vec = zeros(Tres, mesh.numDof)
+      eqn.res_vec = zeros(Tres, mesh.numDof)
+    end
     eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
     eqn.multiplyA0inv = matVecA0inv
+
+    if mesh.isDG
+      eqn.qface = zeros(Tsol, 1, 2, sbp.numfacenodes, mesh.numInterfaces)
+      mesh.flux_face = zeros(Tres, 1, sbp.numfacenodes, mesh.numInterfaces)
+    else
+      eqn.qface = Array(Tres, 0, 0, 0, 0)
+      mesh.flux_face = Array(Tres, 0, 0, 0)
+    end
 
     return eqn
   end # ends the constructer AdvectionData_
@@ -91,6 +106,7 @@ include("GLS.jl")
  include("GLS2.jl")
 include("../euler/complexify.jl")
 include("source.jl")
+
 @doc """
 ### AdvectionEquationMod.calcMassMatrix
 
