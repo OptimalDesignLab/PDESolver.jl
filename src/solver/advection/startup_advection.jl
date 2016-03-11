@@ -162,6 +162,11 @@ if opts["test_GLS2"]
 end
 
 #------------------------------------------------------------------------------
+eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+g_edge_number = 3
+include("bndry_forces.jl")
+calcBndryforces(mesh, sbp, eqn, opts, g_edge_number)
+
 #=
 # Calculate the recommended delta t
 CFLMax = 1      # Maximum Recommended CFL Value
@@ -323,6 +328,11 @@ if opts["solve"]
     #  println("h_avg = ", h_avg)
 
 
+      #----  Calculate forces on a boundary  -----
+      geometric_edge_number = 1
+      norm_force_error = AdvectionEquationMod.calcForceErrorNorm(mesh, sbp,
+                         eqn, opts, geometric_edge_number)
+      println("\nError in Force = ", norm_force_error, '\n')
 
 
       # print to file
