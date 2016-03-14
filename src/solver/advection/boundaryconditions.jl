@@ -37,7 +37,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
                           bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
-#  println("enterted calcBoundaryFlux")
+  println("enterted calcBoundaryFlux CG")
   
   t = eqn.t
   nfaces = length(bndry_facenums)
@@ -71,7 +71,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
-#  println("enterted calcBoundaryFlux")
+  println("enterted calcBoundaryFlux DG")
   
   t = eqn.t
   nfaces = length(bndry_facenums)

@@ -49,7 +49,6 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   end
 
-  println("eqn.res = \n", eqn.res)
   return nothing
 end
 
@@ -77,7 +76,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                     eqn::AdvectionData{Tsol, Tres, Tdim}) 
 
 
-  #  println("----- Entered evalSCResidual -----")
+    println("----- Entered evalSCResidual -----")
   Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -154,8 +153,6 @@ function evalFaceTerm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
 
 
   # interpolate solution to faces
-  println("size(eqn.qface) = ", size(eqn.qface))
-  println("size(sbpface.interp) = ", size(mesh.sbpface.interp))
   interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.qface)
 
   # calculate face fluxes

@@ -79,6 +79,8 @@ if opts["use_DG"]
   sbpface = TriFace{Float64}(1, sbp.cub, ref_verts.')
 
   # create linear mesh with 4 dof per node
+
+  println("constructing DG mesh")
   mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
                    dofpernode=1, coloring_distance=opts["coloring_distance"])
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
@@ -93,6 +95,8 @@ else  # continuous Galerkin
   println("\nConstructing SBP Operator")
   sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
   # create linear mesh with 4 dof per node
+
+  println("constructing CG mesh")
   mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=1, coloring_distance=opts["coloring_distance"])
 
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
@@ -102,7 +106,9 @@ else  # continuous Galerkin
   end
 end
 
-
+println("\ntypeof(mesh) = ", typeof(mesh))
+println("is subtype of DG mesh = ", typeof(mesh) <: AbstractDGMesh)
+println("mesh.isDG = ", mesh.isDG)
 
 # Create advection equation object
 Tdim = 2
