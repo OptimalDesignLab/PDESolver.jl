@@ -46,6 +46,10 @@ where input_file_name.jl is in your current directory.
                 for computing the relative residual for solver stopping 
                 criteria, "ASCIIString", default "none".
 
+# DG Flux options
+"Flux_name" : the name of the flux to use, (ASCIIString)
+"LFalpha" : the alpha parameter for the Lax-Friedrich flux, 1 = centered, 
+            0 = upwinded, (Float64), default 1.0
 
 # boundary condition specification
 "numBC" : number of boundary condtions used

@@ -80,10 +80,12 @@ if opts["use_DG"]
   println("\nConstructing SBP Operator")
   # create DG SBP operator with internal nodes only
   sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-  interp_op = buildinterpolation(sbp, mesh.ref_verts)
+  ref_verts = [0. 1 0; 0 0 1]
+  interp_op = buildinterpolation(sbp, ref_verts)
+  sbpface = TriFace{Float64}(1, sbp.cub, ref_verts.')
 
   # create linear mesh with 4 dof per node
-  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op; 
+  mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
                    dofpernode=4, coloring_distance=opts["coloring_distance"])
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
     pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 

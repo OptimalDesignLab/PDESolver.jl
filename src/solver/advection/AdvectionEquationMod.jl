@@ -15,6 +15,17 @@ export ICDict              # exported from ic.jl
 # include("getMass.jl")
 
 
+type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
+  LFalpha::Float64  # alpha for the Lax-Friedrich flux
+
+  function ParamType(mesh, sbp, opts)
+    LFalpha = opts["LFalpha"]
+
+    return new(LFalpha)
+  end
+end
+
+
 abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
 
@@ -27,10 +38,10 @@ abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 
 """->
-
 type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
+  params::ParamType{Tsol, Tres, Tdim}
   t::Float64
   res_type::DataType  # type of res
   alpha_x::Float64
@@ -44,6 +55,8 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   res_vec::Array{Tres, 1}  # result of computation in vector form
   res_edge::Array{Tres, 4} # edge based residual storage
   q_vec::Array{Tres,1}     # initial condition in vector form
+  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
+                          # the boundaries with boundary conditions
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
@@ -53,15 +66,23 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
                                 # is the coefficient matrix of the time 
                                 # derivative
   src_func::SRCType  # functor for source term
+  flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_(mesh::PumiMesh2, sbp::AbstractSBP, opts)
+  function AdvectionData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
     println("\nConstruction AdvectionData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
     println("  Tdim = ", Tdim)
     println("  Tmsh = ", Tmsh)
+    if mesh.isDG
+      numfacenodes = mesh.sbpface.numnodes
+    else
+      numfacenodes = sbp.numfacenodes
+    end
+
     eqn = new()  # incomplete initilization
+    eqn.params = ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts)
     eqn.t = 0.0
     eqn.res_type = Tres
     eqn.alpha_x = 0.0
@@ -81,12 +102,13 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_vec = zeros(Tres, mesh.numDof)
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
-    eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
+    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
     eqn.multiplyA0inv = matVecA0inv
 
     if mesh.isDG
-      eqn.qface = zeros(Tsol, 1, 2, sbp.numfacenodes, mesh.numInterfaces)
-      mesh.flux_face = zeros(Tres, 1, sbp.numfacenodes, mesh.numInterfaces)
+      eqn.qface = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
+      eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
+      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
     else
       eqn.qface = Array(Tres, 0, 0, 0, 0)
       eqn.flux_face = Array(Tres, 0, 0, 0)
@@ -106,6 +128,7 @@ include("GLS.jl")
  include("GLS2.jl")
 include("../euler/complexify.jl")
 include("source.jl")
+include("flux.jl")
 
 @doc """
 ### AdvectionEquationMod.calcMassMatrix

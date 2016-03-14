@@ -29,15 +29,10 @@ export disassembleSolution, writeQ, assembleSolution, assembleArray
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{T}(mesh::AbstractMesh, sbp,
+function disassembleSolution{T}(mesh::AbstractCGMesh, sbp,
                              eqn::AbstractSolutionData, opts, 
                              q_arr::AbstractArray{T, 3}, 
                              q_vec::AbstractArray{T, 1})
-  if mesh.isDG
-    return nothing
-    writeQ(mesh, sbp, eqn ,opts)
-  end
-
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -51,6 +46,17 @@ function disassembleSolution{T}(mesh::AbstractMesh, sbp,
   writeQ(mesh, sbp, eqn, opts)
 
   return nothing
+end
+
+
+function disassembleSolution{T}(mesh::AbstractDGMesh, sbp,
+                             eqn::AbstractSolutionData, opts, 
+                             q_arr::AbstractArray{T, 3}, 
+                             q_vec::AbstractArray{T, 1})
+                             
+  # no need to do any disassembly for DG
+  writeQ(mesh, sbp, eqn ,opts)
+
 end
 
 @doc """
@@ -88,7 +94,7 @@ end
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh}, 
                          sbp, eqn::AbstractSolutionData{Tsol}, opts, 
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
@@ -115,6 +121,17 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   
   return nothing
 end
+
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh}, 
+                         sbp, eqn::AbstractSolutionData{Tsol}, opts, 
+                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         zero_resvec=true)
+
+  # no need to do anything for DG meshes
+end
+
+
+
 
 # mid level function (although it doesn't need Tdim)
 function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 

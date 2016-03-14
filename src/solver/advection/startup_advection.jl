@@ -70,14 +70,39 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 
-# create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=1, 
-                       coloring_distance=opts["coloring_distance"])
-if opts["jac_type"] == 3 || opts["jac_type"] == 4
-  pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
-else
-  pmesh = mesh
+if opts["use_DG"]
+  println("\nConstructing SBP Operator")
+  # create DG SBP operator with internal nodes only
+  sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
+  ref_verts = [0. 1 0; 0 0 1]
+  interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
+  sbpface = TriFace{Float64}(1, sbp.cub, ref_verts.')
+
+  # create linear mesh with 4 dof per node
+  mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
+                   dofpernode=1, coloring_distance=opts["coloring_distance"])
+  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+    pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
+                   coloring_distance=opts["coloring_distance_prec"])
+  else
+    pmesh = mesh
+  end
+
+else  # continuous Galerkin
+  # create SBP object
+  println("\nConstructing SBP Operator")
+  sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
+  # create linear mesh with 4 dof per node
+  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=1, coloring_distance=opts["coloring_distance"])
+
+  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+    pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+  else
+    pmesh = mesh
+  end
 end
+
+
 
 # Create advection equation object
 Tdim = 2

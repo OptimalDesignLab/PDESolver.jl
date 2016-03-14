@@ -5,7 +5,8 @@
 
   This function calculates the boundary flux for the portion of the boundary
   with a particular boundary condition.  The eqn.q are converted to 
-  conservative variables if needed
+  conservative variables if needed.  For the DG version, eqn.q_bndry must
+  already be populated with the q variables interpolated to the boundary
 
   Inputs:
   mesh : AbstractMesh
@@ -29,7 +30,7 @@
   This is a mid level function.
 """->
 # mid level function
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
                           functor::BCType, 
                           bndry_facenums::AbstractArray{Boundary,1}, 
@@ -42,39 +43,58 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
   nfaces = length(bndry_facenums)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
-#    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
-#    println("face ", i)
-
-#      println("evaluating boundary flux for element ", bndry_i.element, " face ", bndry_i.face)
     for j = 1:sbp.numfacenodes
-#      println("  node ", j)
       k = sbp.facenodes[j, bndry_i.face]
 
       # get components
       q = eqn.q[ 1, k, bndry_i.element]
       alpha_x = eqn.alpha_x
       alpha_y = eqn.alpha_y
-      # flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
-      # aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       coords = view(mesh.coords, :, k, bndry_i.element)
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = view(sbp.facenormal, :, bndry_i.face)
-      #println("eqn.bndryflux = ", eqn.bndryflux)
-      # functor(u, flux_parametric, aux_vars, coords, dxidx, nrm, bndryflux_i, eqn.params)
-#      println("  q = ", q)
-#      println("  alpha_x = ", alpha_x)
-#      println("  alpha_Y = ", alpha_y)
-#      println("  coords = ", coords)
-#      println("  dxidx = ", dxidx)
-#      println("  nrm = ", nrm)
-#      println("  t = ", t)
       bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
-#      println("  bndryflux = ", bndryflux[1, j, i])
     end
   end
 
   return nothing
 end
+
+
+# DG version
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
+                          sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+                          functor::BCType, 
+                          bndry_facenums::AbstractArray{Boundary,1}, 
+                          bndryflux::AbstractArray{Tres, 3})
+
+  
+# calculate the boundary flux for the boundary condition evaluated by the functor
+
+#  println("enterted calcBoundaryFlux")
+  
+  t = eqn.t
+  nfaces = length(bndry_facenums)
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    for j = 1:sbp.numfacenodes
+      k = sbp.facenodes[j, bndry_i.face]
+
+      # get components
+      q = eqn.q_face[ 1, k, i]
+      alpha_x = eqn.alpha_x
+      alpha_y = eqn.alpha_y
+      coords = view(mesh.coords, :, k, bndry_i.element)
+      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
+      bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
+    end
+  end
+
+  return nothing
+end
+
+
 
 @doc """
 ### AdvectionEquationMod.x5plusy5BC

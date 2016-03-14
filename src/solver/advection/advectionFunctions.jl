@@ -39,12 +39,17 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   evalBndry(mesh, sbp, eqn)
 
+  if mesh.isDG
+    evalFaceTerm(mesh, sbp, eqn, opts)
+  end
+
 
 
   if opts["use_GLS2"]
     applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   end
 
+  println("eqn.res = \n", eqn.res)
   return nothing
 end
 
@@ -116,6 +121,11 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                    sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
 
 #  println("----- Entered evalBndry -----")
+
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
   for i=1:mesh.numBC
   #  println("computing flux for boundary condition ", i)
     functor_i = mesh.bndry_funcs[i]
@@ -129,12 +139,37 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
   end
 
-  boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  if mesh.isDG
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  else
+    boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  end
 
 #  println("----- Finished evalBndry -----")
   return nothing
 end # end function evalBndry
 
+function evalFaceTerm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
+                      opts)
+
+
+  # interpolate solution to faces
+  println("size(eqn.qface) = ", size(eqn.qface))
+  println("size(sbpface.interp) = ", size(mesh.sbpface.interp))
+  interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.qface)
+
+  # calculate face fluxes
+  calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+
+  # integrate and interpolate back to solution points
+  if mesh.isDG
+    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+  else
+    interiorfaceintegrate!(sbp, mesh.interfaces, eqn.flux_face, eqn.res)
+  end
+
+  return nothing
+end
 
 @doc """
 ### AdvectionEquationMod.evalSRCTerm
@@ -235,6 +270,9 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   println("Entering Advection Module")
   getBCFunctors(mesh, sbp, eqn, opts)
   getSRCFunctors(mesh, sbp, eqn, opts)
+  if mesh.isDG
+    getFluxFunctors(mesh, sbp, eqn, opts)
+  end
   eqn.alpha_x = 1.0
   eqn.alpha_y = 1.0
   

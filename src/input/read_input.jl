@@ -148,6 +148,10 @@ get!(arg_dict, "write_entropy_fname", "entropy.dat")
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
 
+
+# DG Flux options
+get!(arg_dict, "LFalpha", 1.0)
+
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
