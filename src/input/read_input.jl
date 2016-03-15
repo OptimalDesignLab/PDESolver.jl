@@ -215,6 +215,7 @@ get!(arg_dict, "solve", true)
 
 
 # postprocessing options
+get!(arg_dict, "calc_force", false)
 get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 

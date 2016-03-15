@@ -16,14 +16,13 @@ function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
   # offset array. Then proceed the same as bndryflux to get the forces using 
   # boundaryintegrate!
 
-  # g_edge_number = 1 # Geometric boundary edge on which the force needs to be computed
-  println("mesh.bndry_offsets = \n", mesh.bndry_offsets)
+  # println("mesh.bndry_offsets = \n", mesh.bndry_offsets)
   start_index = mesh.bndry_offsets[g_edge_number]
-  println("start_index = ", start_index)
+  # println("start_index = ", start_index)
   end_index = mesh.bndry_offsets[g_edge_number+1]
-  println("end_index = ", end_index)
+  # println("end_index = ", end_index)
   bndry_facenums = view(mesh.bndryfaces, start_index:(end_index - 1)) # faces on geometric edge i
-  println("bndry_facenums = ", bndry_facenums)
+  # println("bndry_facenums = ", bndry_facenums)
 
   nfaces = length(bndry_facenums)
   boundary_press = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
@@ -35,60 +34,51 @@ function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
   	for j = 1:sbp.numfacenodes
       k = sbp.facenodes[j, bndry_i.face]
       q = eqn.q[1,k,bndry_i.element]
-      println("\nq = ", q)
+      #println("\nq = ", q)
       x = view(mesh.coords, :, k, bndry_i.element)
-      println("coordinates = ", x)
+      #println("coordinates = ", x)
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      println("dxidx = \n", round(dxidx,3))
+      #println("dxidx = \n", round(dxidx,3))
       nrm = view(sbp.facenormal, :, bndry_i.face)
-      println("sbp.facenormal = ", nrm)
+      #println("sbp.facenormal = ", nrm)
       alpha_x = eqn.alpha_x[1, k, bndry_i.element]
       alpha_y = eqn.alpha_y[1, k, bndry_i.element]
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
       ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      println("normal = ", round([nx, ny],3))
+      #println("normal = ", round([nx, ny],3))
       # analytical_force[j,i] = calcAnalyticalForce(alpha_x, alpha_y, [nx, ny], x)
-      println("bndry_i.element = ", bndry_i.element)
-      # boundary_press[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
-      boundary_press[1,j,i] = 1
-      println("boundary_press[1,j,i] = ", boundary_press[1,j,i], '\n')
+      #println("bndry_i.element = ", bndry_i.element)
+      boundary_press[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
+      # boundary_press[1,j,i] = 1
+      #println("boundary_press[1,j,i] = ", boundary_press[1,j,i], '\n')
   	end
   end
 
   boundaryintegrate!(sbp, mesh.bndryfaces[start_index:(end_index - 1)], boundary_press, boundary_force)
 
-  # Print the boundary faces
-  # println("boundary_force = \n", boundary_force)
-  # println('\n')
-  
+  #=
   for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
     for i = 1:sbp.numnodes
       @printf("boundary_force[1,%d,%d] = %f\n", i, bndry.element, boundary_force[1,i,bndry.element])
     end
     println("\nboundary_press[1,:,bndry.element] = ", boundary_press[1,:,bindex])
-
   end # end enumerate
+  =#
+  # Add all boundary_force nodal values along the edge to get the nodal force value
+  numerical_force = 0.0::Tsol
+  for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
+    for i = 1:sbp.numfacenodes
+      k = sbp.facenodes[i, bndry.face]
+      numerical_force += boundary_force[1,k,bndry.element]
+    end
+  end  # end enumerate
 
-
-  #= 
-  for i = 1:nfaces
-    bndry_i = bndry_facenums[i]
-    println("\nboundary_press[1,:,i] = ", boundary_press[1,:,i])
-    println("boundary_force[1,:,i] = ", boundary_force[1,:,i])
-    # println("analytical_force[:,i] = ", analytical_force[:,i])
-    
-    #=for j = 1:sbp.numfacenodes
-      k = sbp.facenodes[j, bndry_i.face]
-      dofnum = mesh.dofs[1,k, bndry_i.element]
-      println("Boundary force for dofnum ", dofnum, " = ", boundary_force[1,k,bndry_i.element])
-    end =#
-  end =#
-  
+  println("numerical_force = ", numerical_force)
   # Compare the residual of the solution
   # error_force = zeros(boundary_force)
 
 
-  return nothing
+  return numerical_force
 end
 
 function calcAnalyticalForce(alpha_x, alpha_y, nrm, coords)

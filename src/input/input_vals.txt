@@ -204,6 +204,7 @@ Note that any values associated with these options are shared with the regular
 
 
 # postprocessing options
+"calc_force" : calculate force on a geometric boundary edge
 "do_postproc" : do postprocessing of any kind, (Bool), default false
 "exact_soln_func" : one of the IC functions used to compute the exact solution,
                     (ASCIIString), default "nothing"
