@@ -153,7 +153,7 @@ function evalFaceTerm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
 
 
   # interpolate solution to faces
-  interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.qface)
+  interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
 
   # calculate face fluxes
   calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
@@ -162,7 +162,7 @@ function evalFaceTerm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
   if mesh.isDG
     interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
   else
-    interiorfaceintegrate!(sbp, mesh.interfaces, eqn.flux_face, eqn.res)
+    error("cannot evalFaceTerm for non DG mesh")
   end
 
   return nothing

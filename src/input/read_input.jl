@@ -29,7 +29,7 @@
 function read_input(fname::AbstractString)
 
 println("pwd = ", pwd())
-
+println("fname = ", fname)
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
 #include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary

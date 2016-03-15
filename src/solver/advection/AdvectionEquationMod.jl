@@ -47,7 +47,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   alpha_x::Float64
   alpha_y::Float64
   q::Array{Tsol, 3}
-  qface::Array{Tsol, 4}  # store solution values interpolated to faces
+  q_face::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi direction
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
@@ -106,11 +106,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.multiplyA0inv = matVecA0inv
 
     if mesh.isDG
-      eqn.qface = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
+      eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
       eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
     else
-      eqn.qface = Array(Tres, 0, 0, 0, 0)
+      eqn.q_face = Array(Tres, 0, 0, 0, 0)
       eqn.flux_face = Array(Tres, 0, 0, 0)
     end
 
