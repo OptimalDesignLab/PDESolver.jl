@@ -1,13 +1,25 @@
 # Calculate boundary "forces" in advection
+@doc"""
+AdvectionEquationMod.calcBndryforces
 
-#=
-function calcForceErrorNorm(mesh, sbp, eqn, g_edge_number)
+This function calculates the forces on a geometric boundary of a the 
+computational space. There is no need to call this function withing the 
+nonlinear solve while computing eqn.q
 
-  
+**Inputs**
 
-  return norm_force_error
-end
-=#
+*  `mesh` :  Abstract mesh object
+*  `sbp`  : Summation-By-Parts operator
+*  `eqn`  : Advection equation object
+*  `opts` : Options dictionary
+*  `g_edge_number` : Geometric edge number
+
+**Outputs**
+
+*  `numerical_force` : computed numerical force at the boundary.
+
+"""->
+
 function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
                          eqn::AdvectionData{Tsol}, opts, g_edge_number)
 
@@ -74,13 +86,11 @@ function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
   end  # end enumerate
 
   println("numerical_force = ", numerical_force)
-  # Compare the residual of the solution
-  # error_force = zeros(boundary_force)
-
-
+  
   return numerical_force
 end
 
+#=
 function calcAnalyticalForce(alpha_x, alpha_y, nrm, coords)
 
   # specialized function to do integration over edge 1 (Integration along dx)
@@ -93,3 +103,4 @@ function calcAnalyticalForce(alpha_x, alpha_y, nrm, coords)
 
   return int_value
 end
+=#

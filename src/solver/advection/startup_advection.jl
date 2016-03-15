@@ -163,10 +163,12 @@ end
 
 #------------------------------------------------------------------------------
 #=
+geometric_edge_number = 4
 eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-g_edge_number = 1
-include("bndry_forces.jl")
-calcBndryforces(mesh, sbp, eqn, opts, g_edge_number)
+force = AdvectionEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 
+        geometric_edge_number)
+@printf("\nNumerical force on geometric edge %d = %f\n", 
+        geometric_edge_number, force)
 =#
 #=
 # Calculate the recommended delta t
@@ -337,7 +339,7 @@ if opts["solve"]
                 geometric_edge_number)
         @printf("\nNumerical force on geometric edge %d = %f\n", 
                 geometric_edge_number, force)
-        analytical_force = 123.3
+        analytical_force = -123.3
         force_error = abs(analytical_force - force)
         
         # write force error to file
