@@ -34,7 +34,6 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           interfaces::AbstractArray{Interface,1}, 
                           face_flux::AbstractArray{Tres, 3})
 
-  println("enterted calcFaceFlux")
   
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
@@ -42,21 +41,16 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     for j = 1:mesh.sbpface.numnodes
       eL = interface_i.elementL
       fL = interface_i.faceL
-      println("interface_i = ", interface_i)
 
       # get components
       qL = eqn.q_face[1, 1, j, i]
       qR = eqn.q_face[1, 2, j, i]
-      println("qL = ", qL, ", qR = ", qR)
       alpha_x = eqn.alpha_x
       alpha_y = eqn.alpha_y
       dxidx = view(mesh.dxidx_face, :, :, j, i)
-      println("dxidx = ", dxidx)
       nrm = view(sbp.facenormal, :, fL)
 
-      println("nrm = ", nrm)
       face_flux[1, j, i] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, eqn.params)
-      println("face_flux = ", face_flux)
     end
   end
 
@@ -123,12 +117,10 @@ function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
               alpha_x, alpha_y, dxidx::AbstractArray{Tmsh,2}, 
               nrm::AbstractArray{Tmsh,1}, params::ParamType)
 
-  println("calculating LF flux")
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
   alpha_LF = params.LFalpha
-  println("alpha_n = ", alpha_n)
   u = alpha_n*(uL + uR)*0.5 + absvalue(alpha_n)*(1 - alpha_LF)*0.5*(uL - uR)
   return u
 end

@@ -130,12 +130,13 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
-    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+    idx_range_i = start_index:(end_index-1)
+    bndry_facenums_i = view(mesh.bndryfaces, idx_range_i)
+    bndryflux_i = view(eqn.bndryflux, :, :, idx_range_i)
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
-    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+  calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
   end
 
   if mesh.isDG

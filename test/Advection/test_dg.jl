@@ -25,6 +25,7 @@ include(STARTUP_PATH)
 
 arg_dict["use_DG"] = true
 arg_dict["Flux_name"] = "LFFlux"
+arg_dict["BC1_name"] = "p1BC"
 
 make_input(arg_dict, "input_vals_channelDG")
 ARGS[1] = "input_vals_channelDG.jl"
@@ -33,12 +34,9 @@ include(STARTUP_PATH)
 facts("----- Testing DG Flux ------") do
 
   dxidx1 = mesh.dxidx_face[:, :, 1, 1]
-  println("dxidx = ", dxidx1)
   nrm = view(sbp.facenormal, :, mesh.interfaces[1].faceL)
-  println("nrm = ", nrm)
   alpha = [eqn.alpha_x, eqn.alpha_y]
   alpha_n = sum((dxidx1*alpha).*nrm)
-  println("alpha_n = ", alpha_n)
   qL = 1.0
   qR = 2.0
   flux_test = alpha_n*(qL + qR)/2
@@ -48,8 +46,8 @@ facts("----- Testing DG Flux ------") do
 
   @fact flux_code --> roughly(flux_test, atol=1e-13)
 
-  eqn.q_bndry[1, 1, :, 1] = 1.0
-  eqn.q_bndry[1, 2, :, 1] = 2.0
+  eqn.q_face[1, 1, :, 1] = 1.0
+  eqn.q_face[1, 2, :, 1] = 2.0
 
   AdvectionEquationMod.calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
 
@@ -60,16 +58,38 @@ facts("----- Testing DG Flux ------") do
 
 end
 
-facts("----- Testing DG Boundary Condition -----") do
+facts("\n----- Testing DG Boundary Condition -----") do
 
   for i=1:mesh.sbpface.numnodes
-    eqn.q_face[1, i, 1] = 2.0
+    eqn.q_bndry[1, i, :] = 2.0
   end
 
-  AdvectionEquationMod.calcBoundaryFlux(mesh, sbp, eqn, mesh.bndry_funcs[1], mesh.bndryfaces, eqn.bndryflux)
+  # test use of eqn.q_bndry for BC
+  eqn.alpha_x = -1.0
+  eqn.alpha_y = -1.0
+  range_idx = 1:mesh.numBoundaryEdges
+  AdvectionEquationMod.calcBoundaryFlux(mesh, sbp, eqn, mesh.bndry_funcs[1], range_idx, mesh.bndryfaces, eqn.bndryflux)
 
-  val_code = dot(mesh.sbpface.wface, eqn.bndryflux[1, :, 1])
-  val_test = 4*eqn.q_face[1,1,1]*mesh.alpha_x
+  val_code = 0.0
+  for i=1:mesh.sbpface.numnodes
+    val_code += mesh.sbpface.wface[i]*eqn.bndryflux[1, i, 1]
+  end
+  val_test = 4*eqn.q_bndry[1,1,1]*eqn.alpha_x
+  @fact val_code --> roughly(val_test, atol=1e-13)
+
+
+  # test use of the boundary condition value
+  eqn.alpha_x = 1.0
+  eqn.alpha_y = 1.0
+  bndry_coords = mesh.coords_bndry[:, :, 1]
+
+  AdvectionEquationMod.calcBoundaryFlux(mesh, sbp, eqn, mesh.bndry_funcs[1], range_idx, mesh.bndryfaces, eqn.bndryflux)
+  val_code = 0.0
+  for i=1:mesh.sbpface.numnodes
+    val_code += mesh.sbpface.wface[i]*eqn.bndryflux[1, i, 1]
+  end
+  val_test = 12.0
+
   @fact val_code --> roughly(val_test, atol=1e-13)
 
 

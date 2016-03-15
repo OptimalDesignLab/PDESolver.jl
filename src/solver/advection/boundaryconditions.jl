@@ -13,13 +13,18 @@
   sbp : AbstractSBP
   eqn : AdvectionEquation
   functor : a callable object that calculates the boundary flux at a node
+  idx_range: the Range describing which Boundaries have the current BC
   bndry_facenums:  An array with elements of type Boundary that tell which
                    element faces have the boundary condition
   Outputs:
   bndryflux : the array to store the boundary flux, corresponds to 
               bndry_facenums
 
-  The functor must have the signature
+  note that bndry_facenums and bndryflux must be only the portion of the 
+  their parent arrays that correspond to the Boundaries that have the 
+  current boundary condition applied.
+
+  The functor must have the signature:
   functor( q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
   where q are the *conservative* variables.
   where all arguments (except params and nrm) are vectors of values at a node.
@@ -32,7 +37,7 @@
 # mid level function
 function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
-                          functor::BCType, 
+                          functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}, 
                           bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
@@ -64,27 +69,26 @@ end
 # DG version
 function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
-                          functor::BCType, 
+                          functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}, 
                           bndryflux::AbstractArray{Tres, 3})
 
   
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
-  println("enterted calcBoundaryFlux DG")
-  
   t = eqn.t
   nfaces = length(bndry_facenums)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
-    for j = 1:mesh.sbpface.numfacenodes
+    global_facenum = idx_range[i]
+    for j = 1:mesh.sbpface.numnodes
 
       # get components
       q = eqn.q_bndry[ 1, j, i]
       alpha_x = eqn.alpha_x
       alpha_y = eqn.alpha_y
-      coords = view(mesh.coords_bndry, :, j, bndry_i.element)
-      dxidx = view(mesh.dxidx_bndry, :, :, j, bndry_i.element)
+      coords = view(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
       nrm = view(sbp.facenormal, :, bndry_i.face)
       bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
     end
