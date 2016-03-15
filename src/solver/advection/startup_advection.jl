@@ -337,6 +337,15 @@ if opts["solve"]
                 geometric_edge_number)
         @printf("\nNumerical force on geometric edge %d = %f\n", 
                 geometric_edge_number, force)
+        analytical_force = 123.3
+        force_error = abs(analytical_force - force)
+        
+        # write force error to file
+        outname = opts["force_error_outfname"]
+        println("preinted force error = ", force_error, " to file ", outname)
+        f = open(outname, "w")
+        println(f, force_error, " ", h_avg)
+        close(f)
       end
 
       # print to file

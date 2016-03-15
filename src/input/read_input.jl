@@ -119,6 +119,7 @@ end
 get!(arg_dict, "calc_error", false)
 get!(arg_dict, "calc_error_infname", "none")
 get!(arg_dict, "calc_error_outfname", "error_calc.dat")
+get!(arg_dict, "force_error_outfname", "force_error.dat")
 get!(arg_dict, "calc_trunc_error", false)
 get!(arg_dict, "calc_havg", false)
 

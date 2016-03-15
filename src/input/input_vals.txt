@@ -62,6 +62,8 @@ where input_file_name.jl is in your current directory.
 "calc_error"  : calculate error norm of values in a file compared to the initial condition, number of values in the file must equal the number of dofs in the mesh, (Bool), default false
 "calc_error_infname"  : name of file to load, (ASCIIString), 
 "calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat
+"force_error_outfname" : name of file which stores the error in force at a 
+                         geometric boundary, (ASCIIString), default force_error.dat
 "calc_trunc_error"  : calculate truncation error, IC must be exact solution for this to work, writes value to file error_trunc.dat, (Bool), default false
 "calc_havg" : calculate the average minimum distance between nodes (ie. the 
               mesh spacing) and write it to the file "havg.dat", (Bool), default
