@@ -163,7 +163,7 @@ end
 
 #------------------------------------------------------------------------------
 #=
-geometric_edge_number = 4
+geometric_edge_number = 1
 eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 force = AdvectionEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 
         geometric_edge_number)

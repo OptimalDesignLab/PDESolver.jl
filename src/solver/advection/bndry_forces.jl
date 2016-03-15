@@ -1,5 +1,5 @@
 # Calculate boundary "forces" in advection
-@doc"""
+@doc """
 AdvectionEquationMod.calcBndryforces
 
 This function calculates the forces on a geometric boundary of a the 
@@ -85,7 +85,7 @@ function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
     end
   end  # end enumerate
 
-  println("numerical_force = ", numerical_force)
+  # println("numerical_force = ", numerical_force)
   
   return numerical_force
 end
