@@ -30,21 +30,21 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   
   evalSCResidual(mesh, sbp, eqn)
-#  println("after volume integrals, res = \n", eqn.res)
+  println("after volume integrals, res = \n", eqn.res)
 
   # Does not work, should remove
 #  if opts["use_GLS"]
 #    GLS(mesh, sbp, eqn)
 #  end
   evalSRCTerm(mesh, sbp, eqn, opts)
-#  println("\nafter source term, res = \n", eqn.res)
+  println("\nafter source term, res = \n", eqn.res)
 
   evalBndry(mesh, sbp, eqn)
-#  println("\nafter boundary integrals, res = \n", eqn.res)
+  println("\nafter boundary integrals, res = \n", eqn.res)
 
   if mesh.isDG
     evalFaceTerm(mesh, sbp, eqn, opts)
-#    println("\nafter face integrals, res = \n", eqn.res)
+    println("\nafter face integrals, res = \n", eqn.res)
   end
 
 

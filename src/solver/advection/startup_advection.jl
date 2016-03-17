@@ -76,7 +76,7 @@ if opts["use_DG"]
   sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
   ref_verts = [0. 1 0; 0 0 1]
   interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
-  sbpface = TriFace{Float64}(1, sbp.cub, ref_verts.')
+  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
 
   # create linear mesh with 4 dof per node
 
