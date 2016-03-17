@@ -76,15 +76,17 @@ function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
     println("\nboundary_press[1,:,bndry.element] = ", boundary_press[1,:,bindex])
   end # end enumerate
   =#
+  
   # Add all boundary_force nodal values along the edge to get the nodal force value
-  numerical_force = 0.0::Tsol
+  numerical_force = 0.0
+
   for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
     for i = 1:sbp.numfacenodes
       k = sbp.facenodes[i, bndry.face]
       numerical_force += boundary_force[1,k,bndry.element]
     end
   end  # end enumerate
-
+  
   # println("numerical_force = ", numerical_force)
   
   return numerical_force

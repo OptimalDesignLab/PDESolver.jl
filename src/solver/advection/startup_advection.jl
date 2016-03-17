@@ -160,7 +160,7 @@ global int_advec = 1
 if opts["test_GLS2"]
   calcResidual(mesh, sbp, eqn, opts, evalAdvection)
 end
-
+println("mesh.min_node_dist = ", mesh.min_node_dist)
 #------------------------------------------------------------------------------
 #=
 geometric_edge_number = 1
@@ -337,14 +337,15 @@ if opts["solve"]
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         force = AdvectionEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 
                 geometric_edge_number)
-        @printf("\nNumerical force on geometric edge %d = %f\n", 
-                geometric_edge_number, force)
-        analytical_force = -123.3
+        println("\nNumerical force on geometric edge ", geometric_edge_number, 
+                " = ", force)
+        analytical_force = -exp(4) + exp(2)
+        println("analytical_force = ", analytical_force)
         force_error = abs(analytical_force - force)
         
         # write force error to file
         outname = opts["force_error_outfname"]
-        println("preinted force error = ", force_error, " to file ", outname)
+        println("printed force error = ", force_error, " to file ", outname)
         f = open(outname, "w")
         println(f, force_error, " ", h_avg)
         close(f)
