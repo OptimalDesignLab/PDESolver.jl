@@ -140,6 +140,10 @@ Note that any values associated with these options are shared with the regular
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
+"writeqface" : write the solution at the face nodes to file qface.dat,
+               space delimited, (Bool), default false
+"writefluxface:" write the flux at the face nodes to file fluxface.dat, space
+                 delmited, (Bool), default false
 
 # mesh debugging options
 "write_edge_vertnums"  : writes the vertex numbers of every edge to edge_vertnusm.dat (Bool), default false

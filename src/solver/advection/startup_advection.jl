@@ -301,11 +301,14 @@ if opts["solve"]
 
   println("total solution time printed above")
   # evaluate residual at final q value
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  evalAdvection(mesh, sbp, eqn, opts, eqn.t)
+  need_res = false
+  if need_res
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    evalAdvection(mesh, sbp, eqn, opts, eqn.t)
 
-  eqn.res_vec[:] = 0.0
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    eqn.res_vec[:] = 0.0
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  end
 
 
   if opts["write_finalsolution"]
@@ -346,7 +349,7 @@ if opts["solve"]
       # calculate the average mesh size
       jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
       jac_vec = zeros(Tmsh, mesh.numNodes)
-      AdvectionEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+      assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
       # scale by the minimum distance between nodes on a reference element
       # this is a bit of an assumption, because for distorted elements this
       # might not be entirely accurate

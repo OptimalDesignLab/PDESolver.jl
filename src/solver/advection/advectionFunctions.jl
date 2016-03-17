@@ -24,23 +24,27 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
 
-#  println("entered evalAdvection")
+#  println("----- entered evalAdvection -----")
   eqn.t = t
  
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   
   evalSCResidual(mesh, sbp, eqn)
+#  println("after volume integrals, res = \n", eqn.res)
 
   # Does not work, should remove
 #  if opts["use_GLS"]
 #    GLS(mesh, sbp, eqn)
 #  end
   evalSRCTerm(mesh, sbp, eqn, opts)
+#  println("\nafter source term, res = \n", eqn.res)
 
   evalBndry(mesh, sbp, eqn)
+#  println("\nafter boundary integrals, res = \n", eqn.res)
 
   if mesh.isDG
     evalFaceTerm(mesh, sbp, eqn, opts)
+#    println("\nafter face integrals, res = \n", eqn.res)
   end
 
 
@@ -49,6 +53,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   end
 
+#  println("----- finished evalAdvection -----")
   return nothing
 end
 
@@ -76,7 +81,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                     eqn::AdvectionData{Tsol, Tres, Tdim}) 
 
 
-    println("----- Entered evalSCResidual -----")
+#    println("----- Entered evalSCResidual -----")
   Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -126,7 +131,6 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   for i=1:mesh.numBC
-  #  println("computing flux for boundary condition ", i)
     functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
@@ -152,20 +156,32 @@ end # end function evalBndry
 function evalFaceTerm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
                       opts)
 
-
+#  println("----- Entered evalFaceTerm -----")
   # interpolate solution to faces
   interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
+
+  if opts["writeqface"]
+    writedlm("qface.dat", eqn.q_face)
+  end
 
   # calculate face fluxes
   calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
 
+  if opts["write_fluxface"]
+    writedlm("fluxface.dat", eqn.flux_face)
+  end
+
   # integrate and interpolate back to solution points
   if mesh.isDG
-    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+    #TODO: undo the reshaping once SBP is fixed
+    flux_face_reshape = reshape(eqn.flux_face, mesh.sbpface.numnodes, mesh.numInterfaces)
+    res_reshape = reshape(eqn.res, mesh.numNodesPerElement, mesh.numEl)
+    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, flux_face_reshape, res_reshape)
   else
     error("cannot evalFaceTerm for non DG mesh")
   end
 
+#  println("----- Finished evalFaceTerm -----")
   return nothing
 end
 

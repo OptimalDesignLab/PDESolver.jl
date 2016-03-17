@@ -76,6 +76,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
+#  println("entered calcBoundaryFlux DG")
   t = eqn.t
   nfaces = length(bndry_facenums)
   for i=1:nfaces  # loop over faces with this BC
@@ -84,7 +85,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     for j = 1:mesh.sbpface.numnodes
 
       # get components
-      q = eqn.q_bndry[ 1, j, i]
+      q = eqn.q_bndry[ 1, j, global_facenum]
       alpha_x = eqn.alpha_x
       alpha_y = eqn.alpha_y
       coords = view(mesh.coords_bndry, :, j, global_facenum)
@@ -284,7 +285,6 @@ function call{Tmsh, Tsol}(obj::p1BC, u::Tsol, alpha_x, alpha_y,
   u_bc = calc_p1(coords, alpha_x, alpha_y, t)
 #  println("  u_bc = ", u_bc)
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
-
   return bndryflux
 end
 

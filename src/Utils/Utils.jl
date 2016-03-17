@@ -146,13 +146,18 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
     fill!(res_vec, 0.0)
   end
 
+  if mesh.numDofPerNode == 1
+    offset = 0
+  else
+    offset = 1
+  end
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
       for k=1:size(arr, 1)  # loop over dofs on the node
 
         dofnum_k = mesh.dofs[k, j, i]
-        dofnum_k1 = div(dofnum_k, mesh.numDofPerNode) + 1 # get node number
+        dofnum_k1 = div(dofnum_k, mesh.numDofPerNode) + offset # get node number
 
         res_vec[dofnum_k1] = arr[k,j,i]
       end

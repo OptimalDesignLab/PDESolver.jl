@@ -93,4 +93,21 @@ facts("\n----- Testing DG Boundary Condition -----") do
   @fact val_code --> roughly(val_test, atol=1e-13)
 
 
+  # check that the interpolation and coordinates match
+  fill!(eqn.q_bndry, 0.0)
+  AdvectionEquationMod.ICp1(mesh, sbp, eqn, opts, eqn.q_vec)
+  mesh.bndry_funcs[1] = AdvectionEquationMod.BCDict["p1BC"]
+  AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
+
+  for i=1:mesh.numBoundaryEdges
+    for j=1:mesh.sbpface.numnodes
+      coords = mesh.coords_bndry[:, j, i]
+      q_test = AdvectionEquationMod.calc_p1(coords, eqn.alpha_x, eqn.alpha_y, 0.0)
+      q_code = eqn.q_bndry[1, j, i]
+      @fact q_code --> roughly(q_test, atol=1e-13)
+    end
+  end
+
+
+
 end

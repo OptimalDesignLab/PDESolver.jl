@@ -156,6 +156,8 @@ get!(arg_dict, "LFalpha", 1.0)
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
 get!(arg_dict, "writeq", false)
+get!(arg_dict, "writeqface", false)
+get!(arg_dict, "write_fluxface", false)
 
 #DEBUGGING
 get!(arg_dict, "test_GLS2", false)
