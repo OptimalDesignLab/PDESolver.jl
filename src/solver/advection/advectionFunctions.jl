@@ -30,21 +30,17 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   
   evalSCResidual(mesh, sbp, eqn)
-#  println("after volume integrals, res = \n", eqn.res)
 
   # Does not work, should remove
 #  if opts["use_GLS"]
 #    GLS(mesh, sbp, eqn)
 #  end
   evalSRCTerm(mesh, sbp, eqn, opts)
-#  println("\nafter source term, res = \n", eqn.res)
 
   evalBndry(mesh, sbp, eqn)
-#  println("\nafter boundary integrals, res = \n", eqn.res)
 
   if mesh.isDG
     evalFaceTerm(mesh, sbp, eqn, opts)
-#    println("\nafter face integrals, res = \n", eqn.res)
   end
 
 
@@ -75,7 +71,6 @@ integrals) this only works for triangular meshes, where are elements are same
 *  None
 
 """->
-
 function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                     sbp::AbstractSBP, 
                                     eqn::AdvectionData{Tsol, Tres, Tdim}) 
@@ -153,7 +148,22 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function evalBndry
 
-function evalFaceTerm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
+@doc """
+### AdvectionEquationMod.evalFaceTerm
+
+  This function evaluates the interior face integrals for DG methods, using
+  the flux function from eqn.flux_func.  The solution variables are interpolated
+  to the faces, the flux computed, and then interpolated back to the
+  solution points.
+
+  Inputs:
+    mesh:  an AbstractDGMesh
+    sbp
+    eqn
+    opts
+
+"""->
+function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData,
                       opts)
 
 #  println("----- Entered evalFaceTerm -----")
