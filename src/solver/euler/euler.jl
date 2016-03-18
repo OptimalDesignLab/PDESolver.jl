@@ -264,6 +264,8 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
+# this is almost the exact list of everything we *shouldn't* be storing, but
+# rather recalculating on the fly
 
 #println("Entered dataPrep()")
 
@@ -296,7 +298,9 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #  println("getEulerFlux @time printed above")
 
 
-
+  if mesh.isDG
+    interpolateBoundary(mesh, sbp, eqn, eqn.q, eqn.q_bndry) 
+  end
    getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
   

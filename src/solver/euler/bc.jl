@@ -93,6 +93,32 @@ function writeBoundary(mesh, sbp, eqn, opts)
   return nothing
 end
 
+@doc """
+### EulerEquationMod.interpolateBoundary
+
+  Interpolates the solution variables to the exterior boundary of the mesh.
+  DG only
+
+  Inputs:
+    mesh: an AbstractDGMesh
+    sbp
+    eqn
+    opts
+    q : the 3D array of solution variables for all elements, numdofpernode x 
+        numNodesPerElement x numEl
+
+  Inputs/Outputs:
+    q_bndry: the array to be populated with the solution interpolated to
+             the boundary, numdofpernode x numNodesPerFace x num boundary faces
+
+    Aliasing restrictions: none
+"""->
+function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray)
+
+
+  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+
+end
 
 
 @doc """
