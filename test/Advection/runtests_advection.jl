@@ -27,7 +27,7 @@ include("test_lowlevel.jl")
 include("test_mms.jl")
 include("test_jac.jl")
 include("test_GLS2.jl")
-include("test_forces.jl")
+# include("test_forces.jl")
 include("test_dg.jl")
 #=
 cd("./convergence")

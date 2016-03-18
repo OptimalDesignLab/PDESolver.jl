@@ -200,8 +200,8 @@ geometric_edge_number = 1
 eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 force = AdvectionEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 
         geometric_edge_number)
-@printf("\nNumerical force on geometric edge %d = %f\n", 
-        geometric_edge_number, force)
+println("\nNumerical force on geometric edge ", geometric_edge_number, 
+                " = ", force)
 =#
 #=
 # Calculate the recommended delta t
@@ -381,7 +381,7 @@ if opts["solve"]
         
         # write force error to file
         outname = opts["force_error_outfname"]
-        println("printed force error = ", force_error, " to file ", outname)
+        println("printed force error = ", force_error, " to file ", outname, '\n')
         f = open(outname, "w")
         println(f, force_error, " ", h_avg)
         close(f)

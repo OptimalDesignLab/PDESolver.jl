@@ -237,7 +237,7 @@ if opts["test_GLS2"]
 end
 
 #------------------------------------------------------------------------------
-# include("boundary_forces.jl")
+#=
 geometric_edge_number = 4
 eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 force = EulerEquationMod.calcNumericalForce(mesh, sbp, eqn, opts, geometric_edge_number)
@@ -245,7 +245,7 @@ println("\nNumerical force on geometric edge ", geometric_edge_number,
         " = ", norm(force,2))
 println("force in the X-direction = ", force[1])
 println("force in the Y-direction = ", force[2])
-
+=#
 #=
 include("checkEigenValues.jl")
 # include("artificialViscosity.jl")
