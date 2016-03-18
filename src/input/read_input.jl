@@ -150,7 +150,7 @@ get!(arg_dict, "check_pressure", true)
 
 
 # DG Flux options
-get!(arg_dict, "LFalpha", 1.0)
+get!(arg_dict, "LFalpha", 0.0)
 
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
