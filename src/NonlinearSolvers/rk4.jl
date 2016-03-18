@@ -289,7 +289,6 @@ function pde_pre_func(mesh, sbp, eqn, opts)
 end
 
 function pde_post_func(mesh, sbp, eqn, opts)
-  fill!(eqn.res_vec, 0.0)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end

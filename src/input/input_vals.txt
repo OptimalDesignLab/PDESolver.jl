@@ -32,6 +32,8 @@ where input_file_name.jl is in your current directory.
             :conservative
 
 # Solver options
+"use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
+          default false
 "res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
 "res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
 "res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
@@ -44,6 +46,10 @@ where input_file_name.jl is in your current directory.
                 for computing the relative residual for solver stopping 
                 criteria, "ASCIIString", default "none".
 
+# DG Flux options
+"Flux_name" : the name of the flux to use, (ASCIIString)
+"LFalpha" : the alpha parameter for the Lax-Friedrich flux, 1 = centered, 
+            0 = upwinded, (Float64), default 0.0
 
 # boundary condition specification
 "numBC" : number of boundary condtions used
@@ -136,6 +142,10 @@ Note that any values associated with these options are shared with the regular
 "writeboundary" : write boundary faces and fluxes to files using the writeBoundary()  function, to files named boundaryfaces.dat, boundaryflux.dat, boundaryflux2.dat, (bool), default false
 "writeflux"  : writes the equation flux to the file Fxi.dat, space delimted, default false
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
+"writeqface" : write the solution at the face nodes to file qface.dat,
+               space delimited, (Bool), default false
+"writefluxface:" write the flux at the face nodes to file fluxface.dat, space
+                 delmited, (Bool), default false
 
 # mesh debugging options
 "write_edge_vertnums"  : writes the vertex numbers of every edge to edge_vertnusm.dat (Bool), default false

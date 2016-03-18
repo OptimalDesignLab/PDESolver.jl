@@ -5,12 +5,14 @@
 module EulerEquationMod
 
 include("complexify.jl")
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
 using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+using Utils
 #using Debugging
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation

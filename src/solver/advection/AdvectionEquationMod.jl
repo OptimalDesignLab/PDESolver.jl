@@ -1,16 +1,29 @@
 module AdvectionEquationMod
 
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+using Utils
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 export evalAdvection, init # exported from advectionFunctions.jl
 export ICDict              # exported from ic.jl
 
 # include("advectionFunctions.jl")
 # include("getMass.jl")
+
+
+type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
+  LFalpha::Float64  # alpha for the Lax-Friedrich flux
+
+  function ParamType(mesh, sbp, opts)
+    LFalpha = opts["LFalpha"]
+
+    return new(LFalpha)
+  end
+end
 
 
 abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
@@ -25,21 +38,25 @@ abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 
 """->
-
 type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
+  params::ParamType{Tsol, Tres, Tdim}
   t::Float64
   res_type::DataType  # type of res
-  alpha_x::Array{Tsol, 3}
-  alpha_y::Array{Tsol, 3}
+  alpha_x::Float64
+  alpha_y::Float64
   q::Array{Tsol, 3}
+  q_face::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
   flux_parametric::Array{Tsol,4}  # flux in xi direction
+  flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   res::Array{Tres, 3}      # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
   res_edge::Array{Tres, 4} # edge based residual storage
   q_vec::Array{Tres,1}     # initial condition in vector form
+  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
+                          # the boundaries with boundary conditions
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
@@ -49,19 +66,27 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
                                 # is the coefficient matrix of the time 
                                 # derivative
   src_func::SRCType  # functor for source term
+  flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_(mesh::PumiMesh2, sbp::AbstractSBP, opts)
+  function AdvectionData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
     println("\nConstruction AdvectionData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
     println("  Tdim = ", Tdim)
     println("  Tmsh = ", Tmsh)
+    if mesh.isDG
+      numfacenodes = mesh.sbpface.numnodes
+    else
+      numfacenodes = sbp.numfacenodes
+    end
+
     eqn = new()  # incomplete initilization
+    eqn.params = ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts)
     eqn.t = 0.0
     eqn.res_type = Tres
-    eqn.alpha_x = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.alpha_y = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.alpha_x = 0.0
+    eqn.alpha_y = 0.0
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.majorIterationCallback = majorIterationCallback
@@ -69,11 +94,25 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.res_vec = zeros(Tres, mesh.numDof)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
-    eqn.q_vec = zeros(Tres, mesh.numDof)
-    eqn.bndryflux = zeros(Tsol, 1, sbp.numfacenodes, mesh.numBoundaryEdges)
+    if mesh.isDG
+      eqn.q_vec = reshape(eqn.q, mesh.numDof)
+      eqn.res_vec = reshape(eqn.res, mesh.numDof)
+    else
+      eqn.q_vec = zeros(Tres, mesh.numDof)
+      eqn.res_vec = zeros(Tres, mesh.numDof)
+    end
+    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
     eqn.multiplyA0inv = matVecA0inv
+
+    if mesh.isDG
+      eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
+      eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
+      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
+    else
+      eqn.q_face = Array(Tres, 0, 0, 0, 0)
+      eqn.flux_face = Array(Tres, 0, 0, 0)
+    end
 
     return eqn
   end # ends the constructer AdvectionData_
@@ -91,80 +130,7 @@ include("GLS2.jl")
 include("bndry_forces.jl")
 include("../euler/complexify.jl")
 include("source.jl")
-
-@doc """
-### AdvectionEquationMod.assembleSolution
-
-  This function takes the 2D array of variables in arr and 
-  reassmbles is into the vector res_vec.  Note that
-  This is a reduction operation and requires eqn.res_vec to be zerod before
-  calling this function.
-
-  This is a mid level function, and does the right thing regardless of
-  equation dimension
-
-"""->
-
-function assembleSolution{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                          opts, arr::AbstractArray{Tres,3}, 
-                          res_vec::AbstractArray{Tres,1}, zero_resvec=true)
-
-  if zero_resvec
-    fill!(res_vec, 0.0)
-  end
-
-  for i=1:mesh.numEl  # loop over elements
-    for j=1:mesh.numNodesPerElement
-      dofnum_k = mesh.dofs[1, j, i]
-      res_vec[dofnum_k] += arr[1,j,i]
-    end
-  end
-
-  return nothing
-end # end function assembleSolution
-
-@doc """
-### AdvectionEquationMod.disassembleSolution
-
-This takes eqn.u_vec (the initial state), and disassembles it into eqn.q, the
-3 dimensional array of conservative variables.  This function uses mesh.dofs
-to speed the process.
-
-This is a mid level function, and does the right thing regardless of equation
-dimension.
-
-**Inputs**
-
-*  `mesh` : Mesh object
-*  `sbp`  : Summation-by-parts operator
-*  `eqn`  : Advection equation object
-*  `opts` : Options dictionary
-*  `array`:
-
-**Outputs**
-
-*  None
-
-"""->
-
-function disassembleSolution{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP,eqn::AdvectionData{Tsol, Tres, Tdim},
-                            opts, array1::AbstractArray{Tsol, 3},
-                            array2::AbstractArray{Tres, 1})
-  
-  # disassemble q_vec into eqn.
-  for i=1:mesh.numEl  # loop over elements
-    for j = 1:mesh.numNodesPerElement
-      dofnum_k = mesh.dofs[1, j, i]
-      array1[1, j, i] = array2[dofnum_k]
-    end
-  end
-
-  # writeQ(mesh, sbp, eqn, opts)
-
-  return nothing
-end
+include("flux.jl")
 
 @doc """
 ### AdvectionEquationMod.calcMassMatrix

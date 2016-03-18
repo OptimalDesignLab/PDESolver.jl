@@ -4,6 +4,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
 using PdePumiInterface     # common mesh interface - pumi
 using SummationByParts     # SBP operators
@@ -11,6 +12,7 @@ using AdvectionEquationMod # Advection equation module
 using ForwardDiff
 using NonlinearSolvers     # non-linear solvers
 using ArrayViews
+using Utils
 
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
@@ -68,14 +70,45 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 
-# create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=1, 
-                       coloring_distance=opts["coloring_distance"])
-if opts["jac_type"] == 3 || opts["jac_type"] == 4
-  pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
-else
-  pmesh = mesh
+if opts["use_DG"]
+  println("\nConstructing SBP Operator")
+  # create DG SBP operator with internal nodes only
+  sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
+  ref_verts = [0. 1 0; 0 0 1]
+  interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
+  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+
+  # create linear mesh with 4 dof per node
+
+  println("constructing DG mesh")
+  mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
+                   dofpernode=1, coloring_distance=opts["coloring_distance"])
+  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+    pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
+                   coloring_distance=opts["coloring_distance_prec"])
+  else
+    pmesh = mesh
+  end
+
+else  # continuous Galerkin
+  # create SBP object
+  println("\nConstructing SBP Operator")
+  sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
+  # create linear mesh with 4 dof per node
+
+  println("constructing CG mesh")
+  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=1, coloring_distance=opts["coloring_distance"])
+
+  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+    pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+  else
+    pmesh = mesh
+  end
 end
+
+println("\ntypeof(mesh) = ", typeof(mesh))
+println("is subtype of DG mesh = ", typeof(mesh) <: AbstractDGMesh)
+println("mesh.isDG = ", mesh.isDG)
 
 # Create advection equation object
 Tdim = 2
@@ -123,7 +156,7 @@ if opts["calc_havg"]
   # calculate the average mesh size
   jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
   jac_vec = zeros(Tmsh, mesh.numNodes)
-  AdvectionEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+  assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
   # scale by the minimum distance between nodes on a reference element
   # this is a bit of an assumption, because for distorted elements this
   # might not be entirely accurate
@@ -275,11 +308,14 @@ if opts["solve"]
 
   println("total solution time printed above")
   # evaluate residual at final q value
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  evalAdvection(mesh, sbp, eqn, opts, eqn.t)
+  need_res = false
+  if need_res
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    evalAdvection(mesh, sbp, eqn, opts, eqn.t)
 
-  eqn.res_vec[:] = 0.0
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    eqn.res_vec[:] = 0.0
+    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  end
 
 
   if opts["write_finalsolution"]
@@ -320,7 +356,7 @@ if opts["solve"]
       # calculate the average mesh size
       jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
       jac_vec = zeros(Tmsh, mesh.numNodes)
-      AdvectionEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+      assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
       # scale by the minimum distance between nodes on a reference element
       # this is a bit of an assumption, because for distorted elements this
       # might not be entirely accurate

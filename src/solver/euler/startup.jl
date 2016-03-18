@@ -5,6 +5,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 #include("complexify.jl")   # TODO: include location needs to be reconsidered
 
 using ODLCommonTools
@@ -14,6 +15,7 @@ using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+using Utils
 #using Debugging   # some debugging utils.
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
@@ -70,21 +72,40 @@ opts["Tsbp"] = Tsbp
 opts["Tsol"] = Tsol
 opts["Tres"] = Tres
 
-# create SBP object
-println("\nConstructing SBP Operator")
-sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
-
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 Tdim = opts["dimensions"]
 
-# create linear mesh with 4 dof per node
-mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
+if opts["use_DG"]
+  println("\nConstructing SBP Operator")
+  # create DG SBP operator with internal nodes only
+  sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
+  ref_verts = [0. 1 0; 0 0 1]
+  interp_op = buildinterpolation(sbp, ref_verts)
+  sbpface = TriFace{Float64}(1, sbp.cub, ref_verts.')
 
-if opts["jac_type"] == 3 || opts["jac_type"] == 4
-  pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
-else
-  pmesh = mesh
+  # create linear mesh with 4 dof per node
+  mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
+                   dofpernode=4, coloring_distance=opts["coloring_distance"])
+  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+    pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
+                   coloring_distance=opts["coloring_distance_prec"])
+  else
+    pmesh = mesh
+  end
+
+else  # continuous Galerkin
+  # create SBP object
+  println("\nConstructing SBP Operator")
+  sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
+  # create linear mesh with 4 dof per node
+  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
+
+  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+    pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
+  else
+    pmesh = mesh
+  end
 end
 
 # TODO: input argument for dofpernode
@@ -162,7 +183,7 @@ if opts["calc_error"]
   # calculate avg mesh size
   jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
   jac_vec = zeros(Tmsh, mesh.numNodes)
-  EulerEquationMod.assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+  assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
   # scale by the minimum distance between nodes on a reference element
   # this is a bit of an assumption, because for distorted elements this
   # might not be entirely accurate

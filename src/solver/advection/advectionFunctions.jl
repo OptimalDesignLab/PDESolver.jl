@@ -24,12 +24,12 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
 
-#  println("entered evalAdvection")
+#  println("----- entered evalAdvection -----")
   eqn.t = t
  
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
   
-  evalSCResidual(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+  evalSCResidual(mesh, sbp, eqn)
 
   # evalInteriorFlux(mesh, sbp, eqn, opts)
 
@@ -39,7 +39,11 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  end
   evalSRCTerm(mesh, sbp, eqn, opts)
 
-  evalBndry(mesh, sbp, eqn, eqn.alpha_x, eqn.alpha_y)
+  evalBndry(mesh, sbp, eqn)
+
+  if mesh.isDG
+    evalFaceTerm(mesh, sbp, eqn, opts)
+  end
 
   
 
@@ -49,6 +53,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   end
 
+#  println("----- finished evalAdvection -----")
   return nothing
 end
 
@@ -70,20 +75,17 @@ integrals) this only works for triangular meshes, where are elements are same
 *  None
 
 """->
-
 function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                     sbp::AbstractSBP, 
-                                    eqn::AdvectionData{Tsol, Tres, Tdim}, 
-                                    alpha_x::AbstractArray{Tsol, 3}, 
-                                    alpha_y::AbstractArray{Tsol, 3})
+                                    eqn::AdvectionData{Tsol, Tres, Tdim}) 
 
 
-  #  println("----- Entered evalSCResidual -----")
+#    println("----- Entered evalSCResidual -----")
   Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-      alpha_x = eqn.alpha_x[1, j, i]
-      alpha_y = eqn.alpha_y[1, j, i]
+      alpha_x = eqn.alpha_x
+      alpha_y = eqn.alpha_y
       alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + 
                  mesh.dxidx[1, 2, j, i]*alpha_y
       alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + 
@@ -111,7 +113,6 @@ Evaluate boundary integrals for advection equation
 *  `mesh` : Abstract mesh type
 *  `sbp`  : Summation-by-parts operator
 *  `eqn`  : Advection equation object
-*  `alpha_x` & `alpha_y` : advection veocities in x & y directions
 
 **Outputs**
 
@@ -120,29 +121,83 @@ Evaluate boundary integrals for advection equation
 """->
 #TODO: get rid of alpha_x and alpha_y arguments: they are not used
 function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                   alpha_x::AbstractArray{Tsol, 3}, alpha_y::AbstractArray{Tsol, 3})
+                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
 
 #  println("----- Entered evalBndry -----")
+
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
   for i=1:mesh.numBC
-  #  println("computing flux for boundary condition ", i)
     functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
-    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+    idx_range_i = start_index:(end_index-1)
+    bndry_facenums_i = view(mesh.bndryfaces, idx_range_i)
+    bndryflux_i = view(eqn.bndryflux, :, :, idx_range_i)
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
-    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+  calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
   end
 
-  boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  if mesh.isDG
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  else
+    boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  end
 
 #  println("----- Finished evalBndry -----")
   return nothing
 end # end function evalBndry
 
+@doc """
+### AdvectionEquationMod.evalFaceTerm
+
+  This function evaluates the interior face integrals for DG methods, using
+  the flux function from eqn.flux_func.  The solution variables are interpolated
+  to the faces, the flux computed, and then interpolated back to the
+  solution points.
+
+  Inputs:
+    mesh:  an AbstractDGMesh
+    sbp
+    eqn
+    opts
+
+"""->
+function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData,
+                      opts)
+
+#  println("----- Entered evalFaceTerm -----")
+  # interpolate solution to faces
+  interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
+
+  if opts["writeqface"]
+    writedlm("qface.dat", eqn.q_face)
+  end
+
+  # calculate face fluxes
+  calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+
+  if opts["write_fluxface"]
+    writedlm("fluxface.dat", eqn.flux_face)
+  end
+
+  # integrate and interpolate back to solution points
+  if mesh.isDG
+    #TODO: undo the reshaping once SBP is fixed
+    flux_face_reshape = reshape(eqn.flux_face, mesh.sbpface.numnodes, mesh.numInterfaces)
+    res_reshape = reshape(eqn.res, mesh.numNodesPerElement, mesh.numEl)
+    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, flux_face_reshape, res_reshape)
+  else
+    error("cannot evalFaceTerm for non DG mesh")
+  end
+
+#  println("----- Finished evalFaceTerm -----")
+  return nothing
+end
 
 @doc """
 ### AdvectionEquationMod.evalSRCTerm
@@ -208,8 +263,8 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
     res_i = view(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
       coords_j = view(mesh.coords, :, j, i)
-      alpha_x = eqn.alpha_x[1, j, i]
-      alpha_y = eqn.alpha_y[1, j, i]
+      alpha_x = eqn.alpha_x
+      alpha_y = eqn.alpha_y
 
       src_val = src_func(coords_j, alpha_x, alpha_y, t)
       res_i[j] += weights[j]*src_val/jac_i[j]
@@ -243,8 +298,11 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   println("Entering Advection Module")
   getBCFunctors(mesh, sbp, eqn, opts)
   getSRCFunctors(mesh, sbp, eqn, opts)
-  fill!(eqn.alpha_x, 1.0) # advection velocity in x direction
-  fill!(eqn.alpha_y, 1.0) # advection velocity in y direction
+  if mesh.isDG
+    getFluxFunctors(mesh, sbp, eqn, opts)
+  end
+  eqn.alpha_x = 1.0
+  eqn.alpha_y = 1.0
   
   return nothing
 end
@@ -284,7 +342,6 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
  
   return nothing
 end
-
 
 @doc """
 ### AdvectionEquationMod.assembleArray
@@ -339,6 +396,3 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   
   return nothing
 end
-
-
-

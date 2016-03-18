@@ -29,7 +29,7 @@
 function read_input(fname::AbstractString)
 
 println("pwd = ", pwd())
-
+println("fname = ", fname)
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
 #include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary
@@ -51,6 +51,7 @@ R = get!(arg_dict, "R", 287.058)
 cv = R/gamma_1
 
 get!(arg_dict, "dimensions", 2)
+get!(arg_dict, "use_DG", false)
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
@@ -148,10 +149,16 @@ get!(arg_dict, "write_entropy_fname", "entropy.dat")
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
 
+
+# DG Flux options
+get!(arg_dict, "LFalpha", 0.0)
+
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
 get!(arg_dict, "writeq", false)
+get!(arg_dict, "writeqface", false)
+get!(arg_dict, "write_fluxface", false)
 
 #DEBUGGING
 get!(arg_dict, "test_GLS2", false)

@@ -28,5 +28,6 @@ arg_dict = Dict{Any, Any}(
 "step_tol" => 1e-9,
 "itermax" => 20,
 "write_face_vertnums" => true,
+"write_edge_vertnums" => true,
 "solve" => false
 )

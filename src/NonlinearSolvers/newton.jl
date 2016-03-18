@@ -631,7 +631,6 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
   func(mesh, sbp, eqn, opts)
 
-  fill!(eqn.res_vec, 0.0)
   # gather into eqn.res_vec
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
   
@@ -900,7 +899,6 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
     # evaluate residual
     func(mesh, sbp, eqn, opts)
 
-    fill!(eqn.res_vec, 0.0)
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
     calcJacCol(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
     
@@ -1344,7 +1342,6 @@ function newton_check(func, mesh, sbp, eqn, opts)
    v = readdlm("randvec.txt")
 
   epsilon = 1e-20  # complex step perturbation
-  fill!(eqn.res_vec, 0.0)  # zero out res_vec
   # compute directional derivative
   for i=1:mesh.numDof
     eqn.q_vec[i] += complex(0, epsilon*v[i])  # apply perturbation
@@ -1438,7 +1435,6 @@ function newton_check(func, mesh, sbp, eqn, opts, j)
       # evaluate residual
       func(mesh, sbp, eqn, opts)
 
-      fill!(eqn.res_vec, 0.0)
       assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
       calcJacCol(jac_col, eqn.res_vec, epsilon)
@@ -1462,7 +1458,6 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
 
      disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
      func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
-     fill!(eqn.res_vec, 0.0)
      assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
      res_0 = copy(eqn.res_vec)
 
@@ -1475,7 +1470,6 @@ function newton_check_fd(func, mesh, sbp, eqn, opts, j)
       # evaluate residual
       func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
 
-      fill!(eqn.res_vec, 0.0)
       assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
 
