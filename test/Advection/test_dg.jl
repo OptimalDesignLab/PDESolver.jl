@@ -4,7 +4,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-
+#=
 using PDESolver
 #using Base.Test
 using FactCheck
@@ -17,6 +17,7 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
+=#
 # insert a command line argument
 resize!(ARGS, 1)
 
@@ -33,6 +34,7 @@ include(STARTUP_PATH)
 
 facts("----- Testing DG Flux ------") do
 
+  eqn.params.LFalpha = 1.0
   dxidx1 = mesh.dxidx_face[:, :, 1, 1]
   nrm = view(sbp.facenormal, :, mesh.interfaces[1].faceL)
   alpha = [eqn.alpha_x, eqn.alpha_y]
