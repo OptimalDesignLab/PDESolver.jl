@@ -1,7 +1,7 @@
 # Calculate the analytical force on the inner boundary of the isentropic vortex
-
+#=
 function calc_analytical_forces{Tmsh}(mesh::AbstractMesh{Tmsh}, params::ParamType{2},
-	                                  coords::AbstractArray{Tmsh})
+	                                    coords::AbstractArray{Tmsh})
 
   q = zeros(mesh.numDofPerNode)
   calcIsentropicVortex(coords, params, q)  # Get analytical q ath the coordinates
@@ -11,10 +11,31 @@ function calc_analytical_forces{Tmsh}(mesh::AbstractMesh{Tmsh}, params::ParamTyp
 
   return force
 end
+=#
+@doc """
+EulerEquationMod.calcNumericalForce
 
-function calc_numerical_forces{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::SBPOperator, 
-                               eqn::EulerData{Tsol, Tres, Tdim}, opts)
+This function calculates the forces on a geometric boundary of a the 
+computational space. There is no need to call this function withing the 
+nonlinear solve while computing eqn.q
+
+**Inputs**
+
+*  `mesh` :  Abstract mesh object
+*  `sbp`  : Summation-By-Parts operator
+*  `eqn`  : Advection equation object
+*  `opts` : Options dictionary
+*  `g_edge_number` : Geometric edge number
+
+**Outputs**
+
+*  `numerical_force` : computed numerical force at the boundary.
+
+"""->
+
+function calcNumericalForce{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                            opts, g_edge_number)
 
   # Specify the boundary conditions for the edge on which the force needs to be computed 
   # separately in the input dictionary. Use that boundary number to access the boundary 
@@ -22,48 +43,60 @@ function calc_numerical_forces{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # boundaryintegrate!
 
 
-  g_edge_number = 1 # Geometric boundary edge on which the force needs to be computed
+  # g_edge_number = 1 # Geometric boundary edge on which the force needs to be computed
   start_index = mesh.bndry_offsets[g_edge_number]
   end_index = mesh.bndry_offsets[g_edge_number+1]
   bndry_facenums = view(mesh.bndryfaces, start_index:(end_index - 1)) # faces on geometric edge i
-  
+  # println("bndry_facenums = ", bndry_facenums)
 
   nfaces = length(bndry_facenums)
   boundary_press = zeros(Tsol, Tdim, sbp.numfacenodes, nfaces)
-  boundary_force = zeros(Tsol, Tdim, sbp.numfacenodes, nfaces)
-  analytical_force = zeros(Tsol, sbp.numfacenodes, nfaces)
+  boundary_force = zeros(Tsol, Tdim, sbp.numnodes, mesh.numEl)
+  q2 = zeros(Tsol, mesh.numDofPerNode)
+  # analytical_force = zeros(Tsol, sbp.numfacenodes, nfaces)
   
-  
-
 
   for i = 1:nfaces
     bndry_i = bndry_facenums[i]
     for j = 1:sbp.numfacenodes
       k = sbp.facenodes[j, bndry_i.face]
       q = view(eqn.q, :, k, bndry_i.element)
+      convertToConservative(eqn.params, q, q2)
       aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       x = view(mesh.coords, :, k, bndry_i.element)
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = view(sbp.facenormal, :, bndry_i.face)
 
-      analytical_force[k,bndry_i.element] = calc_analytical_forces(mesh, eqn.params, x)
+      # analytical_force[k,bndry_i.element] = calc_analytical_forces(mesh, eqn.params, x)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
       ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
       # Calculate euler flux for the current iteration
       euler_flux = zeros(Tsol, mesh.numDofPerNode)
-      calcEulerFlux(eqn.params, q, aux_vars, [nx, ny], euler_flux)
+      calcEulerFlux(eqn.params, q2, aux_vars, [nx, ny], euler_flux)
       
       # Boundary pressure in "ndimensions" direcion
       boundary_press[:,j,i] =  euler_flux[2:3]
     end # end for j = 1:sbp.numfacenodes
   end   # end for i = 1:nfaces
-  boundaryintegrate!(sbp, bndry_facenums, boundary_press, boundary_force)
+  boundaryintegrate!(sbp, mesh.bndryfaces[start_index:(end_index - 1)], 
+                     boundary_press, boundary_force)
+
+  numerical_force = zeros(Tsol,2)
+
+  for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
+    for i = 1:sbp.numfacenodes
+      k = sbp.facenodes[i, bndry.face]
+      numerical_force[:] += boundary_force[:,k,bndry.element]
+    end
+  end  # end enumerate
 
 
-  return nothing
+  return numerical_force
 end
 
+
+#=
 function calcForceError()
 
   #--- Getting nodal errors
@@ -120,3 +153,5 @@ function calcPhysicalEulerFlux{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol
 
   return nothing
 end
+
+=#

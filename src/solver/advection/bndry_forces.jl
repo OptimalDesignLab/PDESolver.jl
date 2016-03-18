@@ -39,7 +39,7 @@ function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
   nfaces = length(bndry_facenums)
   boundary_press = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
   boundary_force = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-  analytical_force = zeros(Tsol, sbp.numfacenodes, nfaces)
+  # analytical_force = zeros(Tsol, sbp.numfacenodes, nfaces)
 
   for i = 1:nfaces
   	bndry_i = bndry_facenums[i]
