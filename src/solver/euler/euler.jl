@@ -299,7 +299,8 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 
   if mesh.isDG
-    interpolateBoundary(mesh, sbp, eqn, eqn.q, eqn.q_bndry) 
+    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
   end
    getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
