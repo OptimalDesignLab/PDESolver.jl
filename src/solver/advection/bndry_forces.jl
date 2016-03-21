@@ -16,29 +16,26 @@ nonlinear solve while computing eqn.q
 
 **Outputs**
 
-*  `numerical_force` : computed numerical force at the boundary.
+*  `functional_val` : computed numerical functional at the boundary.
 
 """->
 
-function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
+function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::AdvectionData{Tsol}, opts, g_edge_number)
 
-  # Specify the boundary conditions for the edge on which the force needs to be computed 
-  # separately in the input dictionary. Use that boundary number to access the boundary 
+  # Specify the boundary conditions for the edge on which the force needs to be
+  # computed separately. Use that boundary number to access the boundary 
   # offset array. Then proceed the same as bndryflux to get the forces using 
   # boundaryintegrate!
 
-  # println("mesh.bndry_offsets = \n", mesh.bndry_offsets)
   start_index = mesh.bndry_offsets[g_edge_number]
-  # println("start_index = ", start_index)
   end_index = mesh.bndry_offsets[g_edge_number+1]
-  # println("end_index = ", end_index)
-  bndry_facenums = view(mesh.bndryfaces, start_index:(end_index - 1)) # faces on geometric edge i
-  # println("bndry_facenums = ", bndry_facenums)
+  idx_range = start_index:(end_index-1)  # Index range
+  bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
   nfaces = length(bndry_facenums)
-  boundary_press = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
-  boundary_force = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+  boundary_integrand = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
+  boundary_functional = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
   alpha_x = eqn.alpha_x
   alpha_y = eqn.alpha_y
 
@@ -47,50 +44,67 @@ function calcBndryforces{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},sbp::AbstractSBP,
   	for j = 1:sbp.numfacenodes
       k = sbp.facenodes[j, bndry_i.face]
       q = eqn.q[1,k,bndry_i.element]
-      #println("\nq = ", q)
       x = view(mesh.coords, :, k, bndry_i.element)
-      #println("coordinates = ", x)
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      #println("dxidx = \n", round(dxidx,3))
       nrm = view(sbp.facenormal, :, bndry_i.face)
-      #println("sbp.facenormal = ", nrm)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
       ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      #println("normal = ", round([nx, ny],3))
-      # analytical_force[j,i] = calcAnalyticalForce(alpha_x, alpha_y, [nx, ny], x)
-      #println("bndry_i.element = ", bndry_i.element)
-      boundary_press[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
-      # boundary_press[1,j,i] = 1
-      #println("boundary_press[1,j,i] = ", boundary_press[1,j,i], '\n')
+      boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
   	end
   end
 
-  boundaryintegrate!(sbp, mesh.bndryfaces[start_index:(end_index - 1)], boundary_press, boundary_force)
-
-  #=
-  for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
-    for i = 1:sbp.numnodes
-      @printf("boundary_force[1,%d,%d] = %f\n", i, bndry.element, boundary_force[1,i,bndry.element])
-    end
-    println("\nboundary_press[1,:,bndry.element] = ", boundary_press[1,:,bindex])
-  end # end enumerate
-  =#
-  
+  boundaryintegrate!(sbp, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
   # Add all boundary_force nodal values along the edge to get the nodal force value
-  numerical_force = 0.0
-
-  for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
+  functional_val = 0.0
+  for (bindex, bndry) in enumerate(mesh.bndryfaces[idx_range])
     for i = 1:sbp.numfacenodes
       k = sbp.facenodes[i, bndry.face]
-      numerical_force += boundary_force[1,k,bndry.element]
+      functional_val += boundary_functional[1,k,bndry.element]
     end
   end  # end enumerate
   
-  # println("numerical_force = ", numerical_force)
-  
-  return numerical_force
+  return functional_val
 end
 
+function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+                         eqn::AdvectionData{Tsol}, opts, g_edge_number)
+
+  # Specify the boundary conditions for the edge on which the force needs to be
+  # computed separately. Use that boundary number to access the boundary 
+  # offset array. Then proceed the same as bndryflux to get the integrand. Then
+  # use integratefunctional! to get the solution.
+
+  start_index = mesh.bndry_offsets[g_edge_number]
+  end_index = mesh.bndry_offsets[g_edge_number+1]
+  idx_range = start_index:(end_index-1)
+  bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
+  nfaces = length(bndry_facenums)
+  boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
+  # boundary_force = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
+  for i = 1:nfaces
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+    for j = 1:mesh.sbpface.numnodes
+      q = eqn.q_bndry[ 1, j, global_facenum]
+      coords = view(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
+      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+      boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
+    end
+  end
+
+  functional_val = zeros(Tsol, 1)
+  integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
+                       boundary_integrand, functional_val)
+  
+  return functional_val[1]
+end
 #=
 function calcAnalyticalForce(alpha_x, alpha_y, nrm, coords)
 

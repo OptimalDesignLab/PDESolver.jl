@@ -196,14 +196,6 @@ end
 println("mesh.min_node_dist = ", mesh.min_node_dist)
 #------------------------------------------------------------------------------
 #=
-geometric_edge_number = 1
-eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-force = AdvectionEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 
-        geometric_edge_number)
-println("\nNumerical force on geometric edge ", geometric_edge_number, 
-                " = ", force)
-=#
-#=
 # Calculate the recommended delta t
 CFLMax = 1      # Maximum Recommended CFL Value
 const alpha_x = 1.0 # advection velocity in x direction
@@ -369,21 +361,25 @@ if opts["solve"]
 
       #----  Calculate forces on a boundary  -----
       if opts["calc_force"]
-        geometric_edge_number = 1
+        if mesh.isDG
+          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+        end
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        force = AdvectionEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 
-                geometric_edge_number)
-        println("\nNumerical force on geometric edge ", geometric_edge_number, 
-                " = ", force)
-        analytical_force = -exp(4) + exp(2)
-        println("analytical_force = ", analytical_force)
-        force_error = abs(analytical_force - force)
+        
+        geometric_edge_number = 1  # geometric edge at which the functional needs to be integrated
+        functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
+                         opts, geometric_edge_number)
+        println("\nNumerical functional value on geometric edge ", 
+                geometric_edge_number, " = ", functional_val)
+        analytical_functional_val = -exp(4) + exp(2)
+        println("analytical_functional_val = ", analytical_functional_val)
+        functional_error = norm(analytical_functional_val - functional_val, 2)
         
         # write force error to file
         outname = opts["force_error_outfname"]
-        println("printed force error = ", force_error, " to file ", outname, '\n')
+        println("printed functional error = ", functional_error, " to file ", outname, '\n')
         f = open(outname, "w")
-        println(f, force_error, " ", h_avg)
+        println(f, functional_error, " ", h_avg)
         close(f)
       end
 
