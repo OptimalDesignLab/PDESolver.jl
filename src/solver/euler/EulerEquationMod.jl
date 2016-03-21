@@ -417,6 +417,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
+  aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
+                                  # to interior faces
+  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
+                                  # to the boundaries
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
@@ -537,10 +541,14 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, mesh.numInterfaces)
       eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, mesh.numBoundaryEdges)
+      eqn.aux_vars_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
+      eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryEdges)
     else
       eqn.q_face = Array(Tres, 0, 0, 0, 0)
       eqn.flux_face = Array(Tres, 0, 0, 0)
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
+      eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
+      eqn.aux_vars_bndry = zeros(tres, 0, 0, 0)
     end
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
                           mesh.numBoundaryEdges)

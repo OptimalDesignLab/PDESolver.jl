@@ -23,12 +23,13 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
+    idx_range = start_index:end_index
     bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
     bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
-    calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
+    calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
   end
 
   writeBoundary(mesh, sbp, eqn, opts)
@@ -96,7 +97,8 @@ end
 @doc """
 ### EulerEquationMod.interpolateBoundary
 
-  Interpolates the solution variables to the exterior boundary of the mesh.
+  Interpolates the solution variables to the exterior boundary of the mesh
+  and calculates any additional quantities at the boundary of the mesh.
   DG only
 
   Inputs:
@@ -111,12 +113,22 @@ end
     q_bndry: the array to be populated with the solution interpolated to
              the boundary, numdofpernode x numNodesPerFace x num boundary faces
 
+    eqn.aux_vars_bndry is also populated
+
     Aliasing restrictions: none
 """->
 function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray)
 
-
+  # interpolate solutions
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+
+  # calculate aux_vars
+  for i=1:mesh.numBoundaryEdges
+    for j=1:mesh.sbpface.numnodes
+      q_vals = view(eqn.q_bndry, :, j, i)
+      eqn.aux_vars_bnry[1, j, i] = calcPressure(q_vals, eqn.params)
+    end
+  end
 
 end
 
@@ -133,6 +145,7 @@ end
   sbp : AbstractSBP
   eqn : EulerEquation
   functor : a callable object that calculates the boundary flux at a node
+  idx_range: the Range describing which Boundaries have the current BC
   bndry_facenums:  An array with elements of type Boundary that tell which
                    element faces have the boundary condition
   Outputs:
@@ -152,7 +165,7 @@ end
 # mid level function
 function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, 
-                          functor::BCType, 
+                          functor::BCType, idx_range::UnitRange, 
                           bndry_facenums::AbstractArray{Boundary,1}, 
                           bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
@@ -173,6 +186,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       q = view(eqn.q, :, k, bndry_i.element)
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
+      flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
       aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       x = view(mesh.coords, :, k, bndry_i.element)
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
@@ -180,12 +194,50 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = view(bndryflux, :, j, i)
 
-      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      functor(q2, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
     end
 
   end
 
+
+  return nothing
+end
+
+# DG version
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
+                          sbp::AbstractSBP, eqn::EulerData{Tsol}, 
+                          functor::BCType, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1}, 
+                          bndryflux::AbstractArray{Tres, 3})
+# calculate the boundary flux for the boundary condition evaluated by the functor
+
+#  println("enterted calcBoundaryFlux")
+  
+
+  nfaces = length(bndry_facenums)
+  q2 = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+#    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
+#    println("interface ", i)
+    for j = 1:sbp.numfacenodes
+
+      # get components
+      q = view(eqn.q_bndry, :, j, global_facenum)
+      # convert to conservative variables if needed
+      convertToConservative(eqn.params, q, q2)
+      aux_vars = view(eqn.aux_vars_bndry, :, j, global_facenum)
+      x = view(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm = view(sbp.facenormal, :, bndry_i.face)
+      #println("eqn.bndryflux = ", eqn.bndryflux)
+      bndryflux_i = view(bndryflux, :, j, i)
+
+      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+    end
+  end
 
   return nothing
 end
