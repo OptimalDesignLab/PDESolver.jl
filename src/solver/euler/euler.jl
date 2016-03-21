@@ -145,6 +145,10 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
 
   addStabilization(mesh, sbp, eqn, opts)
+
+  if mesh.isDG
+    evalFaceIntegrals(mesh, sbp, eqn, opts)
+  end
 #  println("stabilizing @time printed above")
 
 
@@ -301,6 +305,7 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if mesh.isDG
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
     interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+    calcFaceFlux(mesh, sbp, eqn, opts, eqn.flux_func, mesh.interfaces, eqn.flux_face)
   end
    getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
@@ -510,7 +515,33 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
 
 end
 
+@doc """
+### EulerEquationMod.evalFaceIntegrals
 
+  This function evaluates the face integrals in a DG formulation and
+  updates the residual.  The array eqn.flux_face must already be populated
+  with the face flux.
+
+  Inputs:
+    mesh: an AbstractDGMesh
+    sbp: an SBP operator
+    eqn: an EulerData object
+    opts: the options dictonary
+
+  Outputs:
+    none
+
+"""->
+function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+
+  interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+
+  # do some output here?
+  return nothing
+
+end
+                            
 
 
 
