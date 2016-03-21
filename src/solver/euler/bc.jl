@@ -173,7 +173,6 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       q = view(eqn.q, :, k, bndry_i.element)
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
-      flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
       aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
       x = view(mesh.coords, :, k, bndry_i.element)
       dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
@@ -181,7 +180,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = view(bndryflux, :, j, i)
 
-      functor(q2, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
     end
 
@@ -207,7 +206,7 @@ end
 
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
-              q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres}, 
+              q::AbstractArray{Tsol,1}, 
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
@@ -218,7 +217,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   # getting qg
   qg = params.qg
   calcIsentropicVortex(x, params, qg)
-  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   return nothing
 
@@ -238,7 +237,7 @@ type isentropicVortexBC_physical <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical, 
-              q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres}, 
+              q::AbstractArray{Tsol,1}, 
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
@@ -266,7 +265,7 @@ type noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, flux_parametric::AbstractArray{Tres},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -331,9 +330,7 @@ type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
-              flux_parametric::AbstractArray{Tres},  
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},                aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
@@ -345,7 +342,7 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
   qg = params.qg
   calcUnsteadyVortex(x, params, qg)
 
-  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   return nothing
 
@@ -367,8 +364,7 @@ type Rho1E2U3BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1}, 
-              flux_parametric::AbstractArray{Tres},  
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1},  
               aux_vars::AbstractArray{Tres, 1},  
               x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, 
               nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, 
@@ -383,7 +379,7 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1},
 
   #println("qg = ", qg)
   # call Roe solver
-  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
 return nothing
 
@@ -402,7 +398,6 @@ type FreeStreamBC <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
-              flux_parametric::AbstractArray{Tres},  
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
@@ -410,7 +405,7 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
   qg = params.qg
 
   calcFreeStream(x, params, qg)
-  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
   
   return nothing
 end
@@ -429,7 +424,6 @@ type allOnesBC <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
-              flux_parametric::AbstractArray{Tres},  
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
@@ -437,7 +431,7 @@ function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
   qg = zeros(Tsol, 4)
   calcOnes(x, params, qg)
 
-  RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   # println("bndryflux = ", bndryflux)
   return nothing

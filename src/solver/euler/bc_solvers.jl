@@ -28,7 +28,6 @@
 """->
 function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, 
                                      qg::AbstractArray{Tsol, 1}, 
-                                     flux_parametric::AbstractArray{Tres}, 
                                      aux_vars::AbstractArray{Tres, 1}, 
                                      dxidx::AbstractArray{Tmsh,2}, 
                                      nrm::AbstractArray{Tmsh,1}, 
@@ -39,6 +38,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   # similar to upwinding which adds dissipation to the problem. SATs on the 
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
+
 
   E1dq = params.res_vals1
   E2dq = params.res_vals2
