@@ -126,7 +126,7 @@ function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3D
   for i=1:mesh.numBoundaryEdges
     for j=1:mesh.sbpface.numnodes
       q_vals = view(eqn.q_bndry, :, j, i)
-      eqn.aux_vars_bnry[1, j, i] = calcPressure(q_vals, eqn.params)
+      eqn.aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end
 

@@ -1,7 +1,7 @@
 # functions for calculating the flux for interior face integrals
 
 @doc """
-### AdvectionEquationMod.calcFaceFlux
+### EulerEquationMod.calcFaceFlux
 
   This function calculates the DG flux between a specified set of faces,
   using the solution data at the faces stored in eqn.q_face.
@@ -23,17 +23,18 @@
                x length(interfaces)
 
   The functor must have the signature:
-  func( uL, qR, alpha_x, alpha_y, dxidx, nrm, params)
+  func( uL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params
 
   where uL and uR are the solution values for a node on the left and right
-  elements, alpha_x and alpha_y are the x and y advection velocities,
+  elements, aux_vars are the auxiliary variables for the node,
   dxidx is the scaled mapping jacobian for elementL, and nrm is the face
-  normal in reference space.  params is eqn.params
+  normal in reference space. flux_j is the array of length numDofPerNode to be
+  populated with the flux. params is eqn.params. 
 
 """->
 function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh}, 
                           sbp::AbstractSBP, 
-                          eqn::AdvectionData{Tsol, Tres, Tdim, :conservative}, 
+                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
                           functor::FluxType, 
                           interfaces::AbstractArray{Interface,1}, 
                           face_flux::AbstractArray{Tres, 3})
@@ -87,16 +88,16 @@ end
 
     eqn.aux_vars_face is also populated
 """->
-function interpolateFace(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_face::AbstractArray{Tsol, 4})
+function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_face::AbstractArray{Tsol, 4})
 
   # interpolate solution
-  interiorfaceinterpolate!(mesh.sbpface, mesh.interface, q, q_face)
+  interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, q, q_face)
 
   # recalculte aux_vars
-  for i=1:mesh.numInterface
+  for i=1:mesh.numInterfaces
     for j=1:mesh.sbpface.numnodes
       q_vals = view(q_face, :, 1, j, i) # always use elementL
-      eqn.aux_vars_face[1, j, i] = calcPressure(q_vals, eqn.params)
+      eqn.aux_vars_face[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end
 
@@ -107,11 +108,39 @@ end
 type RoeFlux <: FluxType
 end
 
-#TODO: get rid of flux_parametric, aux_vars
 function call{Tsol, Tres, Tmsh}(obj::RoeFlux, uL::AbstractArray{Tsol,1}, 
               uR::AbstractArray{Tsol,1}, 
               aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
-              F::AbstractVector, params::ParamType)
+              F::AbstractVector{Tres}, params::ParamType)
 
   RoeSolver(uL, uR, aux_vars, dxidx, nrm, F, params)
+end
+
+@doc """
+### EulerEquationMod.FluxDict
+
+  This dictonary maps the names of the fluxes (ASCIIStrings) to the
+  functor object itself.  All flux functors should be added to the dictionary.
+"""->
+global const FluxDict = Dict{ASCIIString, FluxType}(
+"RoeFlux" => RoeFlux(),
+)
+
+@doc """
+### EulerEquationMod.getFluxFunctors
+
+  This function retrieves the flux functors from the dictonary and
+  stores them to eqn.flux_func.
+
+  Inputs:
+    mesh: an AbstractDGMesh
+    sbp
+    eqn
+    opts
+"""->
+function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  name = opts["Flux_name"]
+  eqn.flux_func = FluxDict[name]
+  return nothing
 end

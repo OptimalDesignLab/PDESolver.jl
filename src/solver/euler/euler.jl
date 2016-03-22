@@ -177,6 +177,10 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   getBCFunctors(mesh, sbp, eqn, opts)
   getBCFunctors(pmesh, sbp, eqn, opts)
 
+  if mesh.isDG
+    getFluxFunctors(mesh, sbp, eqn, opts)
+  end
+
 
   return nothing
 end
@@ -305,7 +309,7 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if mesh.isDG
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
     interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-    calcFaceFlux(mesh, sbp, eqn, opts, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+    calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
   end
    getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
@@ -453,7 +457,11 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Ab
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 
-  boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  if mesh.isDG
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  else
+    boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  end
 
 
   return nothing

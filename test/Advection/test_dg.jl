@@ -1,5 +1,5 @@
 # test the basic DG functions
-
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -17,6 +17,7 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
+=#
 # insert a command line argument
 resize!(ARGS, 1)
 
@@ -32,7 +33,7 @@ ARGS[1] = "input_vals_channelDG.jl"
 include(STARTUP_PATH)
 
 facts("----- Testing DG Flux ------") do
-
+  eqn.params.LFalpha = 1.0
   dxidx1 = mesh.dxidx_face[:, :, 1, 1]
   nrm = view(sbp.facenormal, :, mesh.interfaces[1].faceL)
   alpha = [eqn.alpha_x, eqn.alpha_y]
@@ -59,6 +60,8 @@ facts("----- Testing DG Flux ------") do
 end
 
 facts("\n----- Testing DG Boundary Condition -----") do
+
+  eqn.params.LFalpha = 1.0
 
   for i=1:mesh.sbpface.numnodes
     eqn.q_bndry[1, i, :] = 2.0

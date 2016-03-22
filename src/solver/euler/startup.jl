@@ -88,7 +88,7 @@ if opts["use_DG"]
 
   println("constructing DG mesh")
   mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
-                   dofpernode=1, coloring_distance=opts["coloring_distance"])
+                   dofpernode=4, coloring_distance=opts["coloring_distance"])
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
     pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
                    coloring_distance=opts["coloring_distance_prec"])
