@@ -31,6 +31,7 @@ make_input(arg_dict, "input_vals_channel_dg")
 ARGS[1] = "input_vals_channel_dg.jl"
 include(STARTUP_PATH)
 
+
 facts("----- Testing DG flux -----") do
 
   # test the Roe Flux
@@ -65,6 +66,7 @@ facts("----- Testing DG flux -----") do
     for j=1:mesh.sbpface.numnodes
       eqn.q_face[:, 1, j, i] = uL
       eqn.q_face[:, 2, j, i] = uL
+      eqn.aux_vars_face[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
     end
   end
 
@@ -73,7 +75,6 @@ facts("----- Testing DG flux -----") do
     iface = mesh.interfaces[i]
     for j=1:mesh.sbpface.numnodes
       dxidx = mesh.dxidx_face[:, :, j, i]
-      eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
       aux_vars = eqn.aux_vars_face[:, j, i]
       nrm = sbp.facenormal[:, iface.faceL]
 
@@ -89,7 +90,42 @@ facts("----- Testing DG flux -----") do
 
 
 
+end
 
+
+facts("----- Testing DG Boundary -----") do
+
+  EulerEquationMod.ICRho1E2U3(mesh, sbp, eqn, opts, eqn.q_vec)
+  EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+  mesh.bndry_funcs[1:end] = EulerEquationMod.BCDict["Rho1E2U3BC"]
+
+  # check that the interpolation worked
+  for i=1:mesh.numBoundaryEdges
+    for j=1:mesh.sbpface.numnodes
+      @fact eqn.q_bndry[:, j, i] --> roughly( [1.0, 0.35355, 0.35355, 2.0], atol=1e-13)
+    end
+  end
+
+  uL = eqn.q_bndry[:, 1, 1]
+  flux_euler = zeros(4)
+  EulerEquationMod.getBCFluxes(mesh, sbp, eqn, opts)
+
+  for i=1:mesh.numBoundaryEdges
+    bndry_i = mesh.bndryfaces[i]
+    for j=1:mesh.sbpface.numnodes
+      dxidx = mesh.dxidx_bndry[:, :, j, i]
+      eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q_bndry[:, j, i])
+      aux_vars = eqn.aux_vars_bndry[:, j, i]
+      nrm = sbp.facenormal[:, bndry_i.face]
+
+      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+      nrm_scaled = [nx, ny]
+      EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
+
+      @fact eqn.bndryflux[:, j, i] --> roughly(-flux_euler, atol=1e-13)
+    end
+  end
 
 
 end

@@ -212,9 +212,6 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
-#  println("enterted calcBoundaryFlux")
-  
-
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
@@ -222,7 +219,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     global_facenum = idx_range[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
 #    println("interface ", i)
-    for j = 1:sbp.numfacenodes
+    for j = 1:mesh.sbpface.numnodes
 
       # get components
       q = view(eqn.q_bndry, :, j, global_facenum)
