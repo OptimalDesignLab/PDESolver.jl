@@ -548,7 +548,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.flux_face = Array(Tres, 0, 0, 0)
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
       eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
-      eqn.aux_vars_bndry = zeros(tres, 0, 0, 0)
+      eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
                           mesh.numBoundaryEdges)

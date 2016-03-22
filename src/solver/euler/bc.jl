@@ -163,7 +163,7 @@ end
   This is a mid level function.
 """->
 # mid level function
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, 
                           functor::BCType, idx_range::UnitRange, 
                           bndry_facenums::AbstractArray{Boundary,1}, 
@@ -194,7 +194,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = view(bndryflux, :, j, i)
 
-      functor(q2, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
     end
 
@@ -205,7 +205,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh},
 end
 
 # DG version
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractMesh{Tmsh}, 
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, 
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}, 

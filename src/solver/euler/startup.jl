@@ -80,7 +80,7 @@ if opts["use_DG"]
   println("\nConstructing SBP Operator")
   # create DG SBP operator with internal nodes only
   sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-  ref_verts = [0. 1 0; 0 0 1]
+  ref_verts = [-1. 1 -1; -1 -1 1]
   interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
   sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
 

@@ -272,7 +272,9 @@ facts("--- Testing Euler Low Level Functions --- ") do
  end
 
   context("--- Testing Boundary Function ---") do
-  
+ 
+   println("q = ", q)
+
    nx = dxidx[1,1]*dir[1] + dxidx[2,1]*dir[2]
    ny = dxidx[1,2]*dir[1] + dxidx[2,2]*dir[2]
    nrm = [nx, ny]
