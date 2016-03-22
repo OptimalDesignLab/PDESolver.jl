@@ -307,10 +307,14 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 
   if mesh.isDG
+    fill!(eqn.q_bndry, 0.0)
+    fill!(eqn.q_face, 0.0)
+    fill!(eqn.flux_face, 0.0)
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
     interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
     calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
   end
+  fill!(eqn.bndryflux, 0.0)
    getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
   
