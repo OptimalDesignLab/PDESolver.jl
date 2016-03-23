@@ -184,9 +184,9 @@ function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData
   # integrate and interpolate back to solution points
   if mesh.isDG
     #TODO: undo the reshaping once SBP is fixed
-    flux_face_reshape = reshape(eqn.flux_face, mesh.sbpface.numnodes, mesh.numInterfaces)
-    res_reshape = reshape(eqn.res, mesh.numNodesPerElement, mesh.numEl)
-    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, flux_face_reshape, res_reshape)
+#    flux_face_reshape = reshape(eqn.flux_face, mesh.sbpface.numnodes, mesh.numInterfaces)
+#    res_reshape = reshape(eqn.res, mesh.numNodesPerElement, mesh.numEl)
+    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
   else
     error("cannot evalFaceTerm for non DG mesh")
   end

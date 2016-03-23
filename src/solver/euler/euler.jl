@@ -116,6 +116,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
 
   evalVolumeIntegrals(mesh, sbp, eqn, opts)
+#  println("after volume integrals res = \n", eqn.res)
 #  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
@@ -141,13 +142,15 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   #----------------------------------------------------------------------------
 
   evalBoundaryIntegrals(mesh, sbp, eqn)
+#  println("after boundary integrals res = \n", eqn.res)
 #  println("boundary integral @time printed above")
 
 
   addStabilization(mesh, sbp, eqn, opts)
-
+#  println("after stabilization res = \n", eqn.res)
   if mesh.isDG
     evalFaceIntegrals(mesh, sbp, eqn, opts)
+#    println("after face integrals res = \n", eqn.res)
   end
 #  println("stabilizing @time printed above")
 
@@ -193,7 +196,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 
 
     if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
-      vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
+      vals = real(eqn.q_vec)  # remove unneded imaginary part
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
@@ -315,7 +318,7 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
   end
   fill!(eqn.bndryflux, 0.0)
-   getBCFluxes(mesh, sbp, eqn, opts)
+  getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
   
    stabscale(mesh, sbp, eqn)

@@ -130,6 +130,16 @@ facts("----- Testing DG Boundary -----") do
 
 end
 
+# reset eqn
 
+include(STARTUP_PATH)
 
+facts("----- Testing Uniform Channel -----") do
 
+  calcResidual(mesh, sbp, eqn, opts, evalEuler)
+
+  for i=1:mesh.numDof
+    @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-13)
+  end
+
+end

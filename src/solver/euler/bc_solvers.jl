@@ -8,7 +8,6 @@
   Inputs:
   q  : conservative variables of the fluid
   qg : conservative variables of the boundary
-  flux_parametric : (scaled) Euler flux in the xi and eta directions
   aux_vars : vector of all auxiliary variables at this node
   dxidx : dxidx matrix at the node
   nrm : sbp face normal vector
@@ -16,10 +15,6 @@
 
   Outputs:
     flux : vector to populate with solution
-
-  flux_parametric is accessed using *linear* indexing only.  The first 4 entries must be
-  the xi direction flux, the next 4 must be the eta direction flux.  This
-  makes it possible to pass view(flux_parametric, :, j, i :) and have it work correctly
 
   Aliasing restrictions:  none of the inputs can alias params.res_vals1,
                           params.res_vals2, params.q_vals, params.flux_vals1

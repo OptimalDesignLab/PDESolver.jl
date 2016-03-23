@@ -102,7 +102,7 @@ if arg_dict["use_filter"]
 end
 
 # figure out coloring distances
-if arg_dict["use_edgestab"]
+if arg_dict["use_edgestab"] || arg_dict["use_DG"]
   get!(arg_dict, "coloring_distance", 2)
 else
   get!(arg_dict, "coloring_distance", 0)
