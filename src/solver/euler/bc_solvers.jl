@@ -162,3 +162,52 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
 end # ends the function eulerRoeSAT
 
 
+function LFSolver(qL, qR, aux_vars, dxidx, nrm, flux, params)
+
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+  # determine if the left state is entering or existing the element
+  l_to_r = nx*qL[2] + ny*qL[3]
+
+  if l_to_r > 0
+    calcEulerFlux(params, qL, aux_vars, [nx, ny], flux)
+  else
+    aux_vars[1] = calcPressure(params, qR)
+    calcEulerFlux(params, qR, aux_vars, [nx, ny], flux)
+  end
+
+  # negate it
+  for i=1:length(flux)
+    flux[i] = -flux[i]
+  end
+
+  return nothing
+end
+
+
+function AvgSolver(qL, qR, aux_vars, dxidx, nrm, flux, params)
+
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+
+  for i=1:length(qL)
+    params.q_vals[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  aux_vars[1] = calcPressure(params, params.q_vals)
+  calcEulerFlux(params, params.q_vals, aux_vars, [nx, ny], flux)
+
+  # negate it
+  for i=1:length(flux)
+    flux[i] = -flux[i]
+  end
+
+
+
+  return nothing
+end
+
+
+

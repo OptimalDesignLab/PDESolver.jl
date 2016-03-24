@@ -182,7 +182,7 @@ if opts["calc_error"]
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
 
-  err_vec = vals - eqn.q_vec
+  err_vec = abs(vals - eqn.q_vec)
   err = calcNorm(eqn, err_vec)
 
   # calculate avg mesh size
@@ -203,6 +203,10 @@ if opts["calc_error"]
   f = open(outname, "w")
   println(f, err, " ", h_avg)
   close(f)
+
+  # write visualization
+  saveSolutionToMesh(mesh, vec(err_vec))
+  writeVisFiles(mesh, "solution_error")
 end
 
 if opts["calc_trunc_error"]  # calculate truncation error

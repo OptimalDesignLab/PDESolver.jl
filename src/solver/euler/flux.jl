@@ -116,6 +116,18 @@ function call{Tsol, Tres, Tmsh}(obj::RoeFlux, uL::AbstractArray{Tsol,1},
   RoeSolver(uL, uR, aux_vars, dxidx, nrm, F, params)
 end
 
+type AvgFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::AvgFlux, uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres}, params::ParamType)
+
+  AvgSolver(uL, uR, aux_vars, dxidx, nrm, F, params)
+end
+
+
 @doc """
 ### EulerEquationMod.FluxDict
 
@@ -124,6 +136,7 @@ end
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
+"AvgFlux" => AvgFlux(),
 )
 
 @doc """

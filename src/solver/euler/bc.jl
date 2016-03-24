@@ -177,7 +177,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
   q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
-#    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
+#    println("boundary ", i, "element = ", bndry_i.element, ", face = ", bndry_i.face)
 #    println("interface ", i)
     for j = 1:sbp.numfacenodes
       k = sbp.facenodes[j, bndry_i.face]
@@ -216,10 +216,12 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
+#    println("boundary ", i, "element = ", bndry_i.element, ", face = ", bndry_i.face)
     global_facenum = idx_range[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
 #    println("interface ", i)
     for j = 1:mesh.sbpface.numnodes
+#      println("  node ", j)
 
       # get components
       q = view(eqn.q_bndry, :, j, global_facenum)
@@ -267,6 +269,8 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   qg = params.qg
   calcIsentropicVortex(x, params, qg)
   RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+#  LFSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+#  AvgSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   return nothing
 
