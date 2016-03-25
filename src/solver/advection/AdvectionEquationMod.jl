@@ -75,11 +75,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     println("  Tres = ", Tres)
     println("  Tdim = ", Tdim)
     println("  Tmsh = ", Tmsh)
-    if mesh.isDG
-      numfacenodes = mesh.sbpface.numnodes
-    else
-      numfacenodes = sbp.numfacenodes
-    end
+    numfacenodes = mesh.numNodesPerFace
 
     eqn = new()  # incomplete initilization
     eqn.params = ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts)
