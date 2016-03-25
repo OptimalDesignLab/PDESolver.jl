@@ -2,7 +2,7 @@
 facts("--- Testing Sparse/Dense Jacobian ---") do
 
   resize!(ARGS, 1)
-  ARGS[1] = "input_vals_vortex.jl"
+  ARGS[1] = "input_vals_vortex1.jl"
   println("\n\ntesting ", ARGS[1])
 #  ARGS[1] = "input_vals_vortex5.jl"
   include("../src/solver/euler/startup.jl")
