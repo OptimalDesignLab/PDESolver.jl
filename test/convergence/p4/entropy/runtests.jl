@@ -30,13 +30,13 @@ data = readdlm("err_data.dat")
 err_vals = data[:, 2]
 #println("err_vals = ", err_vals)
 
-slope_val = 4.04
+slope_val = 4.60
 slope_margin = 0.1
 
 @fact slope => greater_than(slope_val - slope_margin)
 @fact slope => less_than(slope_val + slope_margin)
 
-err_val = 3.0e-6
+err_val = 4.89e-6
 slope_fac = 1.25
 println("err_vals[1] = ", err_vals[1])
 @fact err_vals[1] => greater_than(err_val/slope_fac)

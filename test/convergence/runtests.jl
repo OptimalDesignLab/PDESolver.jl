@@ -10,6 +10,11 @@ facts("----- testing convergence rates -----") do
   include(joinpath(pwd(), "runtests.jl"))
 
   cd(start_dir)
+  cd("./p1/conservative_dg")
+  include(joinpath(pwd(), "runtests.jl"))
+
+
+  cd(start_dir)
   cd("./p1/entropy")
   include(joinpath(pwd(), "runtests.jl"))
 
@@ -18,6 +23,10 @@ facts("----- testing convergence rates -----") do
   # test p2 elements
   cd(start_dir)
   cd("./p2/conservative")
+  include(joinpath(pwd(), "runtests.jl"))
+
+  cd(start_dir)
+  cd("./p2/conservative_dg")
   include(joinpath(pwd(), "runtests.jl"))
 
 
@@ -30,6 +39,10 @@ facts("----- testing convergence rates -----") do
   cd("./p3/conservative")
   include(joinpath(pwd(), "runtests.jl"))
 
+  cd(start_dir)
+  cd("./p3/conservative_dg")
+  include(joinpath(pwd(), "runtests.jl"))
+
 
   cd(start_dir)
   cd("./p3/entropy")
@@ -38,6 +51,10 @@ facts("----- testing convergence rates -----") do
   # test p2 elements
   cd(start_dir)
   cd("./p4/conservative")
+  include(joinpath(pwd(), "runtests.jl"))
+
+  cd(start_dir)
+  cd("./p4/conservative_dg")
   include(joinpath(pwd(), "runtests.jl"))
 
 
