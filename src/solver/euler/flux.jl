@@ -42,7 +42,7 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
     interface_i = interfaces[i]
-    for j = 1:mesh.sbpface.numnodes
+    for j = 1:mesh.numNodesPerFace
       eL = interface_i.elementL
       fL = interface_i.faceL
 
@@ -95,7 +95,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract
 
   # recalculte aux_vars
   for i=1:mesh.numInterfaces
-    for j=1:mesh.sbpface.numnodes
+    for j=1:mesh.numNodesPerFace
       q_vals = view(q_face, :, 1, j, i) # always use elementL
       eqn.aux_vars_face[1, j, i] = calcPressure(eqn.params, q_vals)
     end

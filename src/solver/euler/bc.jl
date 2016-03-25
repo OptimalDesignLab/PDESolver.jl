@@ -124,7 +124,7 @@ function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3D
 
   # calculate aux_vars
   for i=1:mesh.numBoundaryEdges
-    for j=1:mesh.sbpface.numnodes
+    for j=1:mesh.numNodesPerFace
       q_vals = view(eqn.q_bndry, :, j, i)
       eqn.aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
     end
@@ -220,7 +220,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     global_facenum = idx_range[i]
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
 #    println("interface ", i)
-    for j = 1:mesh.sbpface.numnodes
+    for j = 1:mesh.numNodesPerFace
 #      println("  node ", j)
 
       # get components

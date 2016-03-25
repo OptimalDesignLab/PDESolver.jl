@@ -467,11 +467,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
-    if mesh.isDG
-      numfacenodes = mesh.sbpface.numnodes
-    else
-      numfacenodes = sbp.numfacenodes
-    end
+    numfacenodes = mesh.numNodesPerFace
 
     vars_orig = opts["variable_type"]
     opts["variable_type"] = :conservative
