@@ -3,7 +3,7 @@ using FactCheck
 
 #run(`cptest.sh`)
 #run(`cperr.sh`)
-facts("---- P1 Conservative Convergence Tests -----") do
+facts("---- P1 Conservative DG Convergence Tests -----") do
 start_dir = pwd()
 
 resize!(ARGS, 1)
