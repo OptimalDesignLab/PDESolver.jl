@@ -80,11 +80,13 @@ if opts["use_DG"]
   println("\nConstructing SBP Operator")
   # create DG SBP operator with internal nodes only
   sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-  ref_verts = [0. 1 0; 0 0 1]
-  interp_op = buildinterpolation(sbp, ref_verts)
-  sbpface = TriFace{Float64}(1, sbp.cub, ref_verts.')
+  ref_verts = [-1. 1 -1; -1 -1 1]
+  interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
+  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
 
   # create linear mesh with 4 dof per node
+
+  println("constructing DG mesh")
   mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
                    dofpernode=4, coloring_distance=opts["coloring_distance"])
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
@@ -99,6 +101,8 @@ else  # continuous Galerkin
   println("\nConstructing SBP Operator")
   sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
   # create linear mesh with 4 dof per node
+
+  println("constructing CG mesh")
   mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
 
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
@@ -107,6 +111,7 @@ else  # continuous Galerkin
     pmesh = mesh
   end
 end
+
 
 # TODO: input argument for dofpernode
 
@@ -177,7 +182,7 @@ if opts["calc_error"]
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
 
-  err_vec = vals - eqn.q_vec
+  err_vec = abs(vals - eqn.q_vec)
   err = calcNorm(eqn, err_vec)
 
   # calculate avg mesh size
@@ -198,6 +203,10 @@ if opts["calc_error"]
   f = open(outname, "w")
   println(f, err, " ", h_avg)
   close(f)
+
+  # write visualization
+  saveSolutionToMesh(mesh, vec(err_vec))
+  writeVisFiles(mesh, "solution_error")
 end
 
 if opts["calc_trunc_error"]  # calculate truncation error

@@ -360,6 +360,7 @@ include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
+include("flux.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
 include("GLS2.jl")
@@ -411,11 +412,19 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
+  q_face::Array{Tsol, 4}  # store solution values interpolated to faces
+  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
   q_vec::Array{Tres,1}            # initial condition in vector form
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
+  aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
+                                  # to interior faces
+  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
+                                  # to the boundaries
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
+
+  flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   res::Array{Tres, 3}             # result of computation
   res_vec::Array{Tres, 1}         # result of computation in vector form
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
@@ -444,6 +453,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                                   # is the coefficient matrix of the time 
 				  # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
+
+  flux_func::FluxType  # functor for the face flux
 # minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor
@@ -455,6 +466,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     println("  Tdim = ", Tdim)
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
+
+    numfacenodes = mesh.numNodesPerFace
 
     vars_orig = opts["variable_type"]
     opts["variable_type"] = :conservative
@@ -495,6 +508,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     # Taking a view(A,...) of undefined values is illegal
     # I think its a bug that Array(Float64, ...) initializes values
     eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+
+    #TODO: don't store these, recalculate as needed
     eqn.Axi = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, sbp.numnodes,
                     mesh.numEl)
     eqn.Aeta = zeros(eqn.Axi)
@@ -502,7 +517,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, 
                                 mesh.numEl, Tdim)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
-    eqn.res_vec = zeros(Tres, mesh.numDof)
 
     if opts["use_edge_res"]
       eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, 
@@ -511,13 +525,33 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
     end
 
-    eqn.q_vec = zeros(Tres, mesh.numDof)
+    if mesh.isDG
+      eqn.q_vec = reshape(eqn.q, mesh.numDof)
+      eqn.res_vec = reshape(eqn.res, mesh.numDof)
+    else
+      eqn.q_vec = zeros(Tres, mesh.numDof)
+      eqn.res_vec = zeros(Tres, mesh.numDof)
+    end
 
     eqn.edgestab_alpha = zeros(Tmsh,2,2,sbp.numnodes, mesh.numEl)
-    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, sbp.numfacenodes, 
+    if mesh.isDG
+      eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
+      eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, mesh.numInterfaces)
+      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, mesh.numBoundaryEdges)
+      eqn.aux_vars_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
+      eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryEdges)
+    else
+      eqn.q_face = Array(Tres, 0, 0, 0, 0)
+      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.q_bndry = Array(Tsol, 0, 0, 0)
+      eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
+      eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
+    end
+    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
                           mesh.numBoundaryEdges)
-    eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
-    
+
+    #TODO: don't allocate these arrays if not needed
+    eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
     calcEdgeStabAlpha(mesh, sbp, eqn)
 
     println("Tres = ", Tres)

@@ -82,7 +82,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
-    for j = 1:mesh.sbpface.numnodes
+    for j = 1:mesh.numNodesPerFace
 
       # get components
       q = eqn.q_bndry[ 1, j, global_facenum]

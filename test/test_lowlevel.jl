@@ -272,7 +272,9 @@ facts("--- Testing Euler Low Level Functions --- ") do
  end
 
   context("--- Testing Boundary Function ---") do
-  
+ 
+   println("q = ", q)
+
    nx = dxidx[1,1]*dir[1] + dxidx[2,1]*dir[2]
    ny = dxidx[1,2]*dir[1] + dxidx[2,2]*dir[2]
    nrm = [nx, ny]
@@ -287,7 +289,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    nrm2 = [dxidx[2,1], dxidx[2,2]]
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
 
-   EulerEquationMod.RoeSolver(q, qg, flux_parametric, aux_vars, dxidx, dir, F_roe, eqn.params)
+   EulerEquationMod.RoeSolver(q, qg, aux_vars, dxidx, dir, F_roe, eqn.params)
    @fact F_roe --> roughly(-F) 
 
 
@@ -303,7 +305,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    println("q = ", q)
    func1 = EulerEquationMod.isentropicVortexBC()
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
    @fact F_roe --> roughly(-F) 
 
@@ -316,7 +318,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
 
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
    @fact F_roe --> roughly(-F) 
 
@@ -329,7 +331,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
 
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-   func1(q, flux_parametric, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+   func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
    @fact F_roe --> roughly(-F) 
 
