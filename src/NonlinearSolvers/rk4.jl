@@ -110,10 +110,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     
     for j=1:m
       k1[j] = res_vec[j]
+      x2[j] = x_old[j] + (h/2)*k1[j]
+      q_vec[j] = x2[j]
     end
-    # TODO: make this faster
-    x2[:] = x_old + (h/2)*k1
-
 
      majorIterationCallback(i, ctx..., opts)
    
@@ -143,20 +142,17 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 
     # stage 2
-    q_vec[:] = x2
     pre_func(ctx..., opts) 
     if real_time  treal = t + h/2 end
     f( ctx..., opts, treal)
     post_func(ctx..., opts)
     for j=1:m
       k2[j] = res_vec[j]
+      x3[j] = x_old[j] + (h/2)*k2[j]
+      q_vec[j] = x3[j]
     end
 
-    # TODO: make this faster
-    x3[:] = x_old + (h/2)*k2
-
     # stage 3
-    q_vec[:] = x3
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
     f( ctx..., opts, treal)
@@ -164,11 +160,11 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     for j=1:m
       k3[j] = res_vec[j]
+      x4[j] = x_old[j] + h*k3[j]
+      q_vec[j] = x4[j]
     end
-    x4[:] = x_old + h*k3
 
     # stage 4
-    q_vec[:] = x4
     pre_func(ctx..., opts)
     if real_time treal = t + h end
     f( ctx..., opts, treal)
@@ -186,8 +182,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 =#
     # update
     # TODO: make this faster
-    x_old[:] = x_old + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
-    q_vec[:] = x_old
+    for j=1:m
+      x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
+      q_vec[j] = x_old[j]
+    end
 
 
     fill!(k1, 0.0)
