@@ -92,7 +92,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end  # end loop over elements
 
   for i = 1:Tdim
-    weakdifferentiate!(sbp,i,view(Adq_dxi,:,:,:,i), eqn.res, trans = true)
+    weakdifferentiate!(sbp,i,sview(Adq_dxi,:,:,:,i), eqn.res, trans = true)
   end
 
   #  println("----- Finished evalSCResidual -----")
@@ -130,8 +130,8 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
     idx_range_i = start_index:(end_index-1)
-    bndry_facenums_i = view(mesh.bndryfaces, idx_range_i)
-    bndryflux_i = view(eqn.bndryflux, :, :, idx_range_i)
+    bndry_facenums_i = sview(mesh.bndryfaces, idx_range_i)
+    bndryflux_i = sview(eqn.bndryflux, :, :, idx_range_i)
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
@@ -252,10 +252,10 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
   weights = sbp.w
   t = eqn.t
   for i=1:mesh.numEl
-    jac_i = view(mesh.jac, :, i)
-    res_i = view(eqn.res, :, :, i)
+    jac_i = sview(mesh.jac, :, i)
+    res_i = sview(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
-      coords_j = view(mesh.coords, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
       alpha_x = eqn.alpha_x
       alpha_y = eqn.alpha_y
 

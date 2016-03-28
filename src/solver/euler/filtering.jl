@@ -37,7 +37,7 @@ function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  
   len = mesh.numNodesPerElement*mesh.numDofPerNode
   for i=1:mesh.numEl
-    q_vals = view(arr, :, :, i)  # mesh.numDof x sbp.numnodes
+    q_vals = sview(arr, :, :, i)  # mesh.numDof x sbp.numnodes
     # apply filter matrix to q_vals transposed, so it is applied to
     # all the rho components, then all the x momentum, etc.
     smallmatmatT!(filter_mat, q_vals, q_filt)

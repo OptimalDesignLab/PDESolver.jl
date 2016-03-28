@@ -55,9 +55,9 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       q = eqn.q[ 1, k, bndry_i.element]
       alpha_x = eqn.alpha_x
       alpha_y = eqn.alpha_y
-      coords = view(mesh.coords, :, k, bndry_i.element)
-      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
+      coords = sview(mesh.coords, :, k, bndry_i.element)
+      dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
       bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
     end
   end
@@ -88,9 +88,9 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       q = eqn.q_bndry[ 1, j, global_facenum]
       alpha_x = eqn.alpha_x
       alpha_y = eqn.alpha_y
-      coords = view(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
+      coords = sview(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
       bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
     end
   end

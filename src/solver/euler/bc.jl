@@ -24,8 +24,8 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:end_index
-    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = view(eqn.bndryflux, :, :, start_index:(end_index - 1))
+    bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
@@ -125,7 +125,7 @@ function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3D
   # calculate aux_vars
   for i=1:mesh.numBoundaryEdges
     for j=1:mesh.numNodesPerFace
-      q_vals = view(eqn.q_bndry, :, j, i)
+      q_vals = sview(eqn.q_bndry, :, j, i)
       eqn.aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end
@@ -183,16 +183,16 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       k = sbp.facenodes[j, bndry_i.face]
 
       # get components
-      q = view(eqn.q, :, k, bndry_i.element)
+      q = sview(eqn.q, :, k, bndry_i.element)
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
-      flux_parametric = view(eqn.flux_parametric, :, k, bndry_i.element, :)
-      aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
-      x = view(mesh.coords, :, k, bndry_i.element)
-      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
+      flux_parametric = sview(eqn.flux_parametric, :, k, bndry_i.element, :)
+      aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
+      x = sview(mesh.coords, :, k, bndry_i.element)
+      dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
-      bndryflux_i = view(bndryflux, :, j, i)
+      bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
@@ -224,15 +224,15 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 #      println("  node ", j)
 
       # get components
-      q = view(eqn.q_bndry, :, j, global_facenum)
+      q = sview(eqn.q_bndry, :, j, global_facenum)
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
-      aux_vars = view(eqn.aux_vars_bndry, :, j, global_facenum)
-      x = view(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
+      aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+      x = sview(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
-      bndryflux_i = view(bndryflux, :, j, i)
+      bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
     end

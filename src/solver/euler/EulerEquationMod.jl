@@ -505,7 +505,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     
     # Must initialize them because some datatypes (BigFloat) 
     #   don't automatically initialize them
-    # Taking a view(A,...) of undefined values is illegal
+    # Taking a sview(A,...) of undefined values is illegal
     # I think its a bug that Array(Float64, ...) initializes values
     eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 

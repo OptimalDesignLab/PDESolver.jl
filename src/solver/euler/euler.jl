@@ -247,7 +247,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     # calculate the entropy norm
     val = zero(Float64)
     for i=1:mesh.numDofPerNode:mesh.numDof
-      q_vals = view(eqn.q_vec, i:(i+3))
+      q_vals = sview(eqn.q_vec, i:(i+3))
       s = calcEntropy(eqn.params, q_vals)
       val += real(s)*eqn.M[i]*real(s)
     end
@@ -304,7 +304,7 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # calculate fluxes
-#  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(flux_parametric, :, :, :, 1), view(flux_parametric, :, :, :, 2))
+#  getEulerFlux(eqn, eqn.q, mesh.dxidx, sview(flux_parametric, :, :, :, 1), sview(flux_parametric, :, :, :, 2))
   getEulerFlux(mesh, sbp,  eqn, opts)
 #  println("getEulerFlux @time printed above")
 
@@ -356,7 +356,7 @@ function checkDensity{Tsol}(eqn::EulerData{Tsol})
 q_cons = zeros(Tsol, ndof)  # conservative variables
 for i=1:numel
   for j=1:nnodes
-    convertToConservative(eqn.params, view(eqn.q, :, j, i), q_cons)
+    convertToConservative(eqn.params, sview(eqn.q, :, j, i), q_cons)
     if real(q_cons[1]) < 0.0
       println("q_conservative = ", q_cons)
     end
@@ -388,7 +388,7 @@ function checkPressure(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
-    aux_vars = view(eqn.aux_vars,:, j, i)
+    aux_vars = sview(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
     @assert( real(press) > 0.0, "element $i, node $j")
   end
@@ -419,12 +419,12 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   if opts["Q_transpose"] == true
     for i=1:Tdim
-      weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
     end
   else
     for i=1:Tdim
       #TODO: do this more efficiently
-      weakdifferentiate!(sbp, i, -1*view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
+      weakdifferentiate!(sbp, i, -1*sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
     end
   end  # end if
 

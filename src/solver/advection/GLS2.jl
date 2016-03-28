@@ -33,9 +33,9 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   for i=1:mesh.numEl
     # calculate the quantities needed for this element
-    dxidx_hat = view(mesh.dxidx[:, :, :, i])  
-    jac = view(mesh.jac, :, i)
-    res = view(eqn.res, :, :, i)
+    dxidx_hat = sview(mesh.dxidx[:, :, :, i])  
+    jac = sview(mesh.jac, :, i)
+    res = sview(eqn.res, :, :, i)
     # constant coefficient advection only!
     alpha_x = eqn.alpha_x
     alpha_y = eqn.alpha_y
@@ -58,7 +58,7 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
    for j=1:mesh.numNodesPerElement 
 #     alpha_xj = eqn.alpha_x[1, j, i]
 #     alpha_yj = eqn.alpha_y[1, j, i]
-     dxidx_j = view(dxidx, :, :, j)
+     dxidx_j = sview(dxidx, :, :, j)
      p = 2
 #     tau_vec[j] = getTau(alpha_xj, alpha_yj, dxidx_j, p)
 
@@ -83,7 +83,7 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
    # add source term
    for j=1:mesh.numNodesPerElement
-     coords_j = view(mesh.coords, :, j, i)
+     coords_j = sview(mesh.coords, :, j, i)
      red_vec1[j] -= src_func(coords_j, alpha_x, alpha_y, eqn.t)
    end
 

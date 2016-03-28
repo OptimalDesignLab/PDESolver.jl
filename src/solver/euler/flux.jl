@@ -47,13 +47,13 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       fL = interface_i.faceL
 
       # get components
-      qL = view(eqn.q_face, :, 1, j, i)
-      qR = view(eqn.q_face, :, 2, j, i)
-      dxidx = view(mesh.dxidx_face, :, :, j, i)
-      aux_vars = view(eqn.aux_vars_face, :, j, i)
-      nrm = view(sbp.facenormal, :, fL)
+      qL = sview(eqn.q_face, :, 1, j, i)
+      qR = sview(eqn.q_face, :, 2, j, i)
+      dxidx = sview(mesh.dxidx_face, :, :, j, i)
+      aux_vars = sview(eqn.aux_vars_face, :, j, i)
+      nrm = sview(sbp.facenormal, :, fL)
 
-      flux_j = view(face_flux, :, j, i)
+      flux_j = sview(face_flux, :, j, i)
       functor(qL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params)
 #      # add the negative sign
 #      for k=1:mesh.numDofPerNode
@@ -96,7 +96,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract
   # recalculte aux_vars
   for i=1:mesh.numInterfaces
     for j=1:mesh.numNodesPerFace
-      q_vals = view(q_face, :, 1, j, i) # always use elementL
+      q_vals = sview(q_face, :, 1, j, i) # always use elementL
       eqn.aux_vars_face[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end

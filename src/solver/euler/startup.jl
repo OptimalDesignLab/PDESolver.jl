@@ -141,7 +141,7 @@ if haskey(ICDict, Relfunc_name)
   if var_type == :entropy
     println("converting to entropy variables")
     for i=1:mesh.numDofPerNode:mesh.numDof
-      q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+      q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
       convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
     end
   end
@@ -169,7 +169,7 @@ ICfunc(mesh, sbp, eqn, opts, q_vec)
 
 if var_type == :entropy
   for i=1:mesh.numDofPerNode:mesh.numDof
-    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
     convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
   end
 end
@@ -265,7 +265,7 @@ for i = 1:mesh.numEl
     velocities[1] = eqn.q[2,j,i]/eqn.q[1,j,i]
     velocities[2] = eqn.q[3,j,i]/eqn.q[1,j,i] 
     vmax = norm(velocities)
-    q = view(eqn.q,:,j,i)
+    q = sview(eqn.q,:,j,i)
     T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
     c = sqrt(eqn.params.gamma*eqn.params.R*T) # Speed of sound
     Dt[j,i] = CFLMax*h/(vmax + c)
@@ -378,7 +378,7 @@ if opts["solve"]
 #    if var_type == :entropy
 #      println("converting to entropy variables")
 #      for i=1:mesh.numDofPerNode:mesh.numDof
-#        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+#        q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
 #        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
 #      end
 #    end

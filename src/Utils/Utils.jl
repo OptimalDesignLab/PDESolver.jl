@@ -5,8 +5,9 @@ Module Utils:
 module Utils
 
 using ODLCommonTools
+using ArrayViews
 
-export disassembleSolution, writeQ, assembleSolution, assembleArray
+export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 
 @doc """
 ### Utils.disassembleSolution
@@ -167,6 +168,20 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+
+# it would be better if this used @boundscheck
+@doc """
+### Utils.safe_views
+
+  This bool value controls whether the function named sview refers to 
+  view or unsafe_view from the ArrayViews package
+"""->
+global const safe_views = true
+if safe_views
+  global const sview = ArrayViews.view
+else
+  global const sview = ArrayViews.unsafe_view
+end
 
 end  # end module
 
