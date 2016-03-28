@@ -233,12 +233,13 @@ writedlm("IC.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
-
-wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
-println("max wave speed = ", wave_speed)
-delta_t = opts["CFL"]*opts["mesh_size"]/wave_speed
-println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
-opts["delta_t"] = delta_t
+if opts["calc_dt"]
+  wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
+  println("max wave speed = ", wave_speed)
+  delta_t = opts["CFL"]*mesh.min_el_size/wave_speed
+  println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
+  opts["delta_t"] = delta_t
+end
 
 #DEBUGGING
 if opts["test_GLS2"]
@@ -292,7 +293,7 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 if opts["solve"]
   
   if flag == 1 # normal run
-   @time rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+   @time rk4(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 #   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
 #              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
 #              res_tol=opts["res_abstol"], real_time=opts["real_time"])

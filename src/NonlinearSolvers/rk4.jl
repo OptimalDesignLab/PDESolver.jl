@@ -70,6 +70,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # unpack options
   output_freq = opts["output_freq"]::Int
   write_vis = opts["write_vis"]::Bool
+  use_itermax = opts["use_itermax"]::Bool
+  if use_itermax
+    itermax = opts["itermax"]
+  end
 
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
@@ -123,12 +127,20 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
 
-
+    # check stopping conditions
     if (sol_norm < res_tol)
       println("breaking due to res_tol")
       flush(f1)
       break
     end
+
+    if use_itermax && i > itermax
+      println("breaking due to itermax")
+      flush(f1)
+      break
+    end
+
+
 
     # stage 2
     q_vec[:] = x2

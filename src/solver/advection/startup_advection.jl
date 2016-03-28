@@ -190,6 +190,12 @@ saveSolutionToMesh(mesh, q_vec)
 writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
 
+if opts["calc_dt"]
+  alpha_net = sqrt(eqn.alpha_x^2 + eqn.alpha_y^2)
+  opts["delta_t"] = opts["CFL"]*mesh.min_el_size/alpha_net
+end
+
+
 if opts["test_GLS2"]
   calcResidual(mesh, sbp, eqn, opts, evalAdvection)
 end
