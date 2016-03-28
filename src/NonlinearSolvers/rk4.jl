@@ -84,17 +84,11 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   f1 = open("convergence.dat", "a+")
 
-  x_old = zeros(q_vec)
-  x_old[:] = q_vec
+  x_old = copy(q_vec)
   k1 = zeros(x_old)
   k2 = zeros(x_old)
   k3 = zeros(x_old)
   k4 = zeros(x_old)
-
-  # the algorithm could be implemented without explicitly storing these
-  x2 = zeros(x_old)
-  x3 = zeros(x_old)
-  x4 = zeros(x_old)
 
 
   for i=2:(t_steps + 1)
@@ -110,8 +104,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     
     for j=1:m
       k1[j] = res_vec[j]
-      x2[j] = x_old[j] + (h/2)*k1[j]
-      q_vec[j] = x2[j]
+      q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
      majorIterationCallback(i, ctx..., opts)
@@ -148,8 +141,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     post_func(ctx..., opts)
     for j=1:m
       k2[j] = res_vec[j]
-      x3[j] = x_old[j] + (h/2)*k2[j]
-      q_vec[j] = x3[j]
+      q_vec[j] = x_old[j] + (h/2)*k2[j]
     end
 
     # stage 3
@@ -160,8 +152,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     for j=1:m
       k3[j] = res_vec[j]
-      x4[j] = x_old[j] + h*k3[j]
-      q_vec[j] = x4[j]
+      q_vec[j] = x_old[j] + h*k3[j]
     end
 
     # stage 4
