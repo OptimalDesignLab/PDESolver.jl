@@ -216,6 +216,22 @@ function call(obj::SRCexp2xplus2y, coords::AbstractVector, alpha_x, alpha_y, t)
 end
 
 @doc """
+### AdvectionEquationMod.SRCexp_xy
+
+Calculates the source term for q = exp(x*y)
+"""->
+
+type SRCexp_xy <: SRCType
+end
+
+function call(obj::SRCexp_xy, coords::AbstractVector, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  u = calc_exp_xy(coords, alpha_x, alpha_y, t)
+  return alpha_x*y*u + alpha_y*x*u
+end
+
+@doc """
 ### AdvectionEquationMod.SRCDict
 
   It stores all the possible boundary condition dictionary options. Whenever a 
@@ -246,6 +262,7 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCexp5xplusy" => SRCexp5xplusy(),
 "SRCexp3xplusy" => SRCexp3xplusy(),
 "SRCexp2xplus2y" => SRCexp2xplus2y(),
+"SRCexp_xy" => SRCexp_xy(),
 )
 
 @doc """

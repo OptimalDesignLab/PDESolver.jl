@@ -388,10 +388,10 @@ if opts["solve"]
         end
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         
-        # calculate functional over edges
-        num_functionals = opts["num_functional"]
+        # Calculate functional over edges
+        num_functionals = opts["num_functionals"]
         for j = 1:num_functionals
-          # geometric edge at which the functional needs to be integrated
+          # Geometric edge at which the functional needs to be integrated
           key_j = string("geom_edges_functional", j)
           functional_edges = opts[key_j]
           
@@ -400,7 +400,7 @@ if opts["solve"]
             geometric_edge_number = functional_edges[k]  
             functional_val += AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
                              opts, geometric_edge_number)
-          end # end for k = 1:length(functional_edges)
+          end # End for k = 1:length(functional_edges)
 
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
