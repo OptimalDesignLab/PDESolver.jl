@@ -103,7 +103,46 @@ function write_dummy(fout)
   close(fw)
 end
 
+@doc """
+### write_arbitrary_keys
+
+Function that allows you to write multiple instances of any key that one wants
+in a file. The output will appear as the desired string value appended by a 
+number.
+
+**Inputs**
+
+*  `fout` : File to which the key is to be written
+*  `stringval` : String value of the key
+*  `counts` : Number of instances of the key value desired
+
+Example: 
+If you want 3 keys like `hello1`, `hello2` and `hello3` in a file 
+`fout.jl`, The arguent will be as follows
+
+`write_arbitrary_keys("fout.jl", "hello", 3)`
+
+The corresponding output to file is
+`
+"hello1" => true
+"hello2" => true
+"hello3" => true
+`
+"""->
+function write_arbitrary_keys(fout, stringval::ASCIIString, counts::Int)
+
+  fw = open(fout, "a")
+  for i = 1:counts
+    key = string("\"", stringval, "$i\"", " => true,\n")
+    write(fw, key)
+    # key = string("\"", stringval, "$i", "_name\"", " => true,\n")
+    # write(fw, key)
+  end
+  
+  close(fw)
+end
    
 extractKeys("input_vals.txt", "known_keys.jl", header=true, footer=false)
 write_dummy("known_keys.jl")
+write_arbitrary_keys("known_keys.jl", "geom_edges_functional", 10)
 extractKeys("input_vals_internal.txt", "known_keys.jl", header=false, footer=true)

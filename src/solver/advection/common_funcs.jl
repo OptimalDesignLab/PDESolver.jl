@@ -272,8 +272,50 @@ function calc_p5dy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   return 5*y^4 + 4*y^3 + 3*y^2 + 2*y + 1
 end
 
+@doc """
+### AdvectionEquationMod.calc_exp5xplus4yplus2
 
+Calculates and returns the expression u = exp(5*x + 4*y +2)
+"""->
 
+function calc_exp5xplus4yplus2{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return exp(5*x + 4*y +2)
+end
 
+@doc """
+### AdvectionEquationMod.calc_exp5xplusy
 
+Calculates and return the expression u = exp(5*x + y)
+"""->
 
+function calc_exp5xplusy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return exp(5*x + y)
+end
+
+@doc """
+### AdvectionEquationMod.calc_exp3xplusy
+
+Calculates and return the expression u = exp(3*x + y)
+"""->
+
+function calc_exp3xplusy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return exp(3*x + y)
+end
+
+@doc """
+### AdvectionEquationMod.calc_exp2xplus2y
+
+Calculates and return the expression u = exp(2*x + 2*y)
+"""->
+
+function calc_exp2xplus2y{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return exp(2*x + 2*y)
+end

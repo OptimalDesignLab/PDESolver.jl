@@ -370,6 +370,89 @@ function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, alpha_x, alpha_y,
   return bndryflux
 end
 
+@doc """
+### AdvectionEquationMod.exp5xplus4yplus2BC
+
+Uses the Roe solver to calculate the boundary flux using calc_exp5xplus4yplus2 
+to get the boundary state.
+
+"""->
+
+type exp5xplus4yplus2BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::exp5xplus4yplus2BC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_exp5xplus4yplus2(coords, alpha_x, alpha_y, t)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+@doc """
+### AdvectionEquationMod.exp5xplusyBC
+
+Uses the Roe solver to calculate the boundary flux using calc_exp5xplusy to get
+the boundary state.
+
+"""->
+
+type exp5xplusyBC <:BCType
+end
+
+function call{Tmsh, Tsol}(obj::exp5xplusyBC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_exp5xplusy(coords, alpha_x, alpha_y, t)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+@doc """
+### AdvectionEquationMod.exp3xplusyBC
+
+Uses the Roe solver to calculate the boundary flux using calc_exp3xplusy to get
+the boundary state.
+
+"""->
+
+type exp3xplusyBC <:BCType
+end
+
+function call{Tmsh, Tsol}(obj::exp3xplusyBC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_exp3xplusy(coords, alpha_x, alpha_y, t)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+@doc """
+### AdvectionEquationMod.exp2xplus2yBC
+
+Uses the Roe solver to calculate the boundary flux using calc_exp2xplus2y to get
+the boundary state.
+
+"""->
+
+type exp2xplus2yBC <:BCType
+end
+
+function call{Tmsh, Tsol}(obj::exp2xplus2yBC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_exp2xplus2y(coords, alpha_x, alpha_y, t)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
 
 @doc """
 ### AdvectionEquationMod.BCDict
@@ -391,6 +474,10 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "p3BC" => p3BC(),
 "p4BC" => p4BC(),
 "p5BC" => p5BC(),
+"exp5xplus4yplus2BC" => exp5xplus4yplus2BC(),
+"exp5xplusyBC" => exp5xplusyBC(),
+"exp3xplusyBC" => exp3xplusyBC(),
+"exp2xplus2yBC" => exp2xplus2yBC(),
 )
 
 

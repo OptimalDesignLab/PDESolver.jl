@@ -160,6 +160,61 @@ function call(obj::SRCx5plusy5, coords::AbstractVector, alpha_x, alpha_y, t)
 
   return alpha_x*5*(x^4) + alpha_y*5*(y^4)
 end
+
+@doc """
+### AdvectionEquationMod.SRCexp5xplus4yplus2
+
+Calculates the source term for q = exp(5*x + 4*y +2)
+
+"""->
+type SRCexp5xplus4yplus2 <: SRCType
+end
+
+function call(obj::SRCexp5xplus4yplus2, coords::AbstractVector, alpha_x, alpha_y, t)
+
+  u = calc_exp5xplus4yplus2(coords, alpha_x, alpha_y, t)
+  return alpha_x*5*u + alpha_y*4*u
+end
+
+@doc """
+### AdvectionEquationMod.SRCexp5xplusy
+
+Calculates the source term for q = exp(5*x + y)
+"""->
+type SRCexp5xplusy <: SRCType
+end
+
+function call(obj::SRCexp5xplusy, coords::AbstractVector, alpha_x, alpha_y, t)
+  u = calc_exp5xplusy(coords, alpha_x, alpha_y, t)
+  return alpha_x*5*u + alpha_y*u
+end
+
+@doc """
+### AdvectionEquationMod.SRCexp3xplusy
+
+Calculates the source term for q = exp(3*x + y)
+"""->
+type SRCexp3xplusy <: SRCType
+end
+
+function call(obj::SRCexp3xplusy, coords::AbstractVector, alpha_x, alpha_y, t)
+  u = calc_exp3xplusy(coords, alpha_x, alpha_y, t)
+  return alpha_x*3*u + alpha_y*u
+end
+
+@doc """
+### AdvectionEquationMod.SRCexp2xplus2y
+
+Calculates the source term for q = exp(2*x + 2*y)
+"""->
+type SRCexp2xplus2y <: SRCType
+end
+
+function call(obj::SRCexp2xplus2y, coords::AbstractVector, alpha_x, alpha_y, t)
+  u = calc_exp2xplus2y(coords, alpha_x, alpha_y, t)
+  return alpha_x*2*u + alpha_y*2*u
+end
+
 @doc """
 ### AdvectionEquationMod.SRCDict
 
@@ -187,6 +242,10 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCp5" => SRCp5(),
 "SRCexp_xplusy" => SRCexp_xplusy(),
 "SRCx5plusy5" => SRCx5plusy5(),
+"SRCexp5xplus4yplus2" => SRCexp5xplus4yplus2(),
+"SRCexp5xplusy" => SRCexp5xplusy(),
+"SRCexp3xplusy" => SRCexp3xplusy(),
+"SRCexp2xplus2y" => SRCexp2xplus2y(),
 )
 
 @doc """
