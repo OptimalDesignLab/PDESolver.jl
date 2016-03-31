@@ -120,7 +120,6 @@ end
 get!(arg_dict, "calc_error", false)
 get!(arg_dict, "calc_error_infname", "none")
 get!(arg_dict, "calc_error_outfname", "error_calc.dat")
-get!(arg_dict, "force_error_outfname", "force_error.dat")
 get!(arg_dict, "calc_trunc_error", false)
 get!(arg_dict, "calc_havg", false)
 
@@ -223,7 +222,6 @@ get!(arg_dict, "solve", true)
 
 
 # postprocessing options
-get!(arg_dict, "calc_force", false)
 get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 
@@ -235,6 +233,10 @@ f = open(fname, "a+")
 println(f, "arg_dict = Dict{Any, Any}(")
 arg_keys = keys(arg_dict)
 
+# Functional computational options
+get!(arg_dict, "calc_functional", false)
+get!(arg_dict, "num_functionals", 0)
+get!(arg_dict, "functional_error_outfname", "functional_error")
 
 
 for key_i in arg_keys

@@ -389,29 +389,37 @@ if opts["solve"]
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         
         # calculate functional over edges
-        functional_edges = [2,3] # geometric edge at which the functional needs to be integrated
-        functional_val = 0.0
-        for k = 1:length(functional_edges)
-          geometric_edge_number = functional_edges[k]  
-          functional_val += AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
-                           opts, geometric_edge_number)
-        end
-        println("\nNumerical functional value on geometric edges ", 
-                functional_edges, " = ", functional_val)
-        analytical_functional_val = (exp(6+6) - exp(6+2))
-        # analytical_functional_val = 3^6 + (3^6)/6 - 3^5 - 1/6
-        println("analytical_functional_val = ", analytical_functional_val)
-        absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
-        relative_functional_error = absolute_functional_error/norm(analytical_functional_val, 2)
-        
-        # write force error to file
-        outname = opts["force_error_outfname"]
-        println("printed relative functional error = ", 
-                relative_functional_error, " to file ", outname, '\n')
-        f = open(outname, "w")
-        println(f, relative_functional_error, " ", h_avg)
-        close(f)
-      end
+        num_functionals = opts["num_functional"]
+        for j = 1:num_functionals
+          # geometric edge at which the functional needs to be integrated
+          key_j = string("geom_edges_functional", j)
+          functional_edges = opts[key_j]
+          
+          functional_val = 0.0
+          for k = 1:length(functional_edges)
+            geometric_edge_number = functional_edges[k]  
+            functional_val += AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
+                             opts, geometric_edge_number)
+          end # end for k = 1:length(functional_edges)
+
+          println("\nNumerical functional value on geometric edges ", 
+                  functional_edges, " = ", functional_val)
+          analytical_functional_val = (exp(6+6) - exp(6+2))
+          # analytical_functional_val = 3^6 + (3^6)/6 - 3^5 - 1/6
+          println("analytical_functional_val = ", analytical_functional_val)
+          
+          absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
+          relative_functional_error = absolute_functional_error/norm(analytical_functional_val, 2)
+          
+          # write force error to file
+          outname = string(opts["force_error_outfname"], j, ".dat")
+          println("printed relative functional error = ", 
+                  relative_functional_error, " to file ", outname, '\n')
+          f = open(outname, "w")
+          println(f, relative_functional_error, " ", h_avg)
+          close(f)
+        end  # End for j = 1:num_functional
+      end    # End if opts["calc_force"]
 
       # print to file
       outname = opts["calc_error_outfname"]
