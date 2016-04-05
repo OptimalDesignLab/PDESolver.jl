@@ -382,7 +382,7 @@ if opts["solve"]
       close(file_object)
       =#
 
-      if opts["calc_force"]
+      if opts["calc_functional"]
         if mesh.isDG
           boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
         end
@@ -404,7 +404,7 @@ if opts["solve"]
 
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
-          analytical_functional_val = (exp(6+6) - exp(6+2))
+          analytical_functional_val = 2*(exp(1) - 1)
           # analytical_functional_val = 3^6 + (3^6)/6 - 3^5 - 1/6
           println("analytical_functional_val = ", analytical_functional_val)
           
@@ -412,11 +412,11 @@ if opts["solve"]
           relative_functional_error = absolute_functional_error/norm(analytical_functional_val, 2)
           
           # write force error to file
-          outname = string(opts["force_error_outfname"], j, ".dat")
+          outname = string(opts["functional_error_outfname"], j, ".dat")
           println("printed relative functional error = ", 
                   relative_functional_error, " to file ", outname, '\n')
           f = open(outname, "w")
-          println(f, relative_functional_error, " ", h_avg)
+          println(f, relative_functional_error, " ", h_avg/mesh.min_node_dist)
           close(f)
         end  # End for j = 1:num_functional
       end    # End if opts["calc_force"]
