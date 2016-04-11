@@ -8,7 +8,7 @@ facts("--- Testing Boundary Functional Computation on CG mesh ---") do
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
   	               opts, geometric_edge_number)
-  @fact functional_val --> roughly(-47.33907493660998, atol=1e-12)
+  @fact functional_val --> roughly(-1.7539310924648246, atol=1e-10)
 end
 
 ARGS[1] = "input_vals_functional_DG.jl"
@@ -20,5 +20,5 @@ facts("--- Testing Boundary Functional Computation on DG mesh ---") do
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn, opts, 
           geometric_edge_number)
-  @fact functional_val --> roughly(-47.18786881412863, atol=1e-12)
+  @fact functional_val --> roughly(-1.712670952981824, atol=1e-12)
 end
