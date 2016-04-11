@@ -366,27 +366,32 @@ if opts["solve"]
         #file_name = "./jacobian1.dat"
         #res_jac = readdlm(file_name) # get the residual Jacobian
         #@assert size(res_jac) == (mesh.numDof, mesh.numDof)
-      #=
+      
       newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
       res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
       pert = complex(0, opts["epsilon"])
       NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, evalAdvection, pert, res_jac)
       
-      func_deriv = ones(Tsol, mesh.numDof)
-      adjoint_vec = -res_jac\func_deriv
+      func_deriv = 2*ones(Tsol, mesh.numDof)
+      adjoint_vec = -(res_jac.')\func_deriv
       
+      # Write adjoint vector to file and mesh
       file_object = open("adjoint_vector.dat", "w")
       for iter = 1:length(adjoint_vec)
-        println(file_object, adjoint_vec[iter])
+        println(file_object, real(adjoint_vec[iter]))
       end
       close(file_object)
-      =#
+      saveSolutionToMesh(mesh, real(adjoint_vec))
+      writeVisFiles(mesh, "adjoint_field")
+      
+      
 
       if opts["calc_functional"]
+        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         if mesh.isDG
           boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
         end
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        
         
         # Calculate functional over edges
         num_functionals = opts["num_functionals"]
@@ -410,13 +415,13 @@ if opts["solve"]
           
           absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
           relative_functional_error = absolute_functional_error/norm(analytical_functional_val, 2)
-          
+          mesh_metric = 1/sqrt(mesh.numEl/2)  # Only for a square domain with triangular elements
           # write force error to file
           outname = string(opts["functional_error_outfname"], j, ".dat")
           println("printed relative functional error = ", 
                   relative_functional_error, " to file ", outname, '\n')
           f = open(outname, "w")
-          println(f, relative_functional_error, " ", h_avg/mesh.min_node_dist)
+          println(f, relative_functional_error, " ", mesh_metric)
           close(f)
         end  # End for j = 1:num_functional
       end    # End if opts["calc_force"]
