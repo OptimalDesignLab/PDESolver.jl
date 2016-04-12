@@ -21,47 +21,53 @@ nonlinear solve while computing eqn.q
 """->
 
 function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::AdvectionData{Tsol}, opts, g_edge_number)
+                         eqn::AdvectionData{Tsol}, opts, functional_edges)
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary 
   # offset array. Then proceed the same as bndryflux to get the forces using 
   # boundaryintegrate!
 
-  start_index = mesh.bndry_offsets[g_edge_number]
-  end_index = mesh.bndry_offsets[g_edge_number+1]
-  idx_range = start_index:(end_index-1)  # Index range
-  bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+  functional_val = zero(Tsol)
+  for itr = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
+    start_index = mesh.bndry_offsets[g_edge_number]
+    end_index = mesh.bndry_offsets[g_edge_number+1]
+    idx_range = start_index:(end_index-1)  # Index range
+    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
-  nfaces = length(bndry_facenums)
-  boundary_integrand = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
-  boundary_functional = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
+    nfaces = length(bndry_facenums)
+    boundary_integrand = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
+    boundary_functional = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    alpha_x = eqn.alpha_x
+    alpha_y = eqn.alpha_y
 
-  for i = 1:nfaces
-  	bndry_i = bndry_facenums[i]
-  	for j = 1:sbp.numfacenodes
-      k = sbp.facenodes[j, bndry_i.face]
-      q = eqn.q[1,k,bndry_i.element]
-      x = view(mesh.coords, :, k, bndry_i.element)
-      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
-      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
-  	end
-  end
-
-  boundaryintegrate!(sbp, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
-  # Add all boundary_force nodal values along the edge to get the nodal force value
-  functional_val = 0.0
-  for (bindex, bndry) in enumerate(mesh.bndryfaces[idx_range])
-    for i = 1:sbp.numfacenodes
-      k = sbp.facenodes[i, bndry.face]
-      functional_val += boundary_functional[1,k,bndry.element]
+    for i = 1:nfaces
+    	bndry_i = bndry_facenums[i]
+    	for j = 1:sbp.numfacenodes
+        k = sbp.facenodes[j, bndry_i.face]
+        q = eqn.q[1,k,bndry_i.element]
+        x = view(mesh.coords, :, k, bndry_i.element)
+        dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
+        nrm = view(sbp.facenormal, :, bndry_i.face)
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
+    	end
     end
-  end  # end enumerate
+
+    boundaryintegrate!(sbp, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
+    # Add all boundary_force nodal values along the edge to get the nodal force value
+    edge_functional_val = zero(Tsol) # functional value over a geometric edge
+    for (bindex, bndry) in enumerate(mesh.bndryfaces[idx_range])
+      for i = 1:sbp.numfacenodes
+        k = sbp.facenodes[i, bndry.face]
+        edge_functional_val += boundary_functional[1,k,bndry.element]
+      end  # end for i = 1:sbp.numfacenodes
+    end    # end enumerate
+  
+    functional_val += edge_functional_val
+  end      # for itr = 1:length(functional_edges)
   
   return functional_val
 end
@@ -78,6 +84,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   functional_val = zero(Tsol)
 
   for itr = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
     start_index = mesh.bndry_offsets[g_edge_number]
     end_index = mesh.bndry_offsets[g_edge_number+1]
     idx_range = start_index:(end_index-1)
