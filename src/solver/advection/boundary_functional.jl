@@ -71,7 +71,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary 
-  # offset array. Then proceed the same as bndryflux to get the integrand. Then
+  # offset array. Then proceed the same as bndryflux to get the integrand. Finally
   # use integratefunctional! to get the solution.
 
   start_index = mesh.bndry_offsets[g_edge_number]
@@ -95,6 +95,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
       nrm = view(sbp.facenormal, :, bndry_i.face)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
       ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+      # println("[nx, ny] = ", [nx, ny])
       boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
     end
   end
@@ -105,17 +106,3 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   
   return functional_val[1]
 end
-#=
-function calcAnalyticalForce(alpha_x, alpha_y, nrm, coords)
-
-  # specialized function to do integration over edge 1 (Integration along dx)
-  # for exp(x+y)
-
-  x = coords[1]
-  y = coords[2]
-  # int_value = (alpha_x*nrm[1] + alpha_y*nrm[2])*exp(x+y)
-  int_value = (alpha_x*nrm[1] + alpha_y*nrm[2])*((x^6)/6 + x*(y^5))
-
-  return int_value
-end
-=#
