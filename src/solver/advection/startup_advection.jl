@@ -400,13 +400,16 @@ if opts["solve"]
           key_j = string("geom_edges_functional", j)
           functional_edges = opts[key_j]
           
-          functional_val = 0.0
+          functional_val = zero(Tsol)
+          functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
+                           opts, functional_edges)
+#=
           for k = 1:length(functional_edges)
             geometric_edge_number = functional_edges[k]  
             functional_val += AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
                              opts, geometric_edge_number)
           end # End for k = 1:length(functional_edges)
-
+=#
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
           analytical_functional_val = 2*(exp(1) - 1)
@@ -416,6 +419,7 @@ if opts["solve"]
           absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
           relative_functional_error = absolute_functional_error/norm(analytical_functional_val, 2)
           mesh_metric = 1/sqrt(mesh.numEl/2)  # Only for a square domain with triangular elements
+          
           # write force error to file
           outname = string(opts["functional_error_outfname"], j, ".dat")
           println("printed relative functional error = ", 
