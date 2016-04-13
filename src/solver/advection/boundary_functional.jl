@@ -107,7 +107,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         # println("[nx, ny] = ", [nx, ny])
-        boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
+        boundary_integrand[1,j,i] = calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
       end
     end
 
@@ -123,8 +123,73 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   return functional_val
 end
 
+@doc """
+###AdvectionEquationMod.calcFunctionalIntegrand
+
+Calculates the functional integrand for a particular q.
+
+**Inputs**
+
+*  `alpha_x` : eqn.alpha_x
+*  `alpha_y` : eqn.alpha_y
+*  `nx`      : x-component of normal vector
+*  `ny`      : y-component of normal vector
+*  `q`       : eqn.q or eqn.q_bndry at the particular node
+
+**Outputs**
+
+*  `functional_integrand` : value of the functional integrand at that node 
+
+"""->
+
+function calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q)
+  
+  return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
+
+end
+
+function getFunctionalBoundaryq()
+
+  n_functional_faces = 0  # Total length of the interpolated q values across all geometric functional edges
+  for i = 1:length(functional_edges)
+    nfaces = 0
+    g_edge_number = functional_edges[i]
+    start_index = mesh.bndry_offsets[g_edge_number]
+    end_index = mesh.bndry_offsets[g_edge_number+1]
+    idx_range = start_index:(end_index-1)  # Index range
+    nfaces = length(mesh.bndryfaces[idx_range])
+    n_functional_faces += nfaces
+  end  # End for i = 1:length(functional_edges)
+
+  fq_bndry_vec = zeros(Tsol,n_functional_faces)
+
+  # Populate fq_bndry
+  for i = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
+    start_index = mesh.bndry_offsets[g_edge_number]
+    end_index = mesh.bndry_offsets[g_edge_number+1]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+    nfaces = length(bndry_facenums)
+
+    for j = 1:nfaces
+      bndry_j = bndry_facenums[j]
+      global_facenum = idx_range[j]
+      for k  = 1:mesh.sbpface.numnodes
+        # indexing to jump nfaces per geometric edge and populate q_values
+        fq_bndry_vec[(i-1)*nfaces + k] = eqn.q_bndry[1, k, global_facenum]
+      end  # End for j = 1:nfaces
+    end    # End for j = 1:nfaces
+  end      # End for i = 1:length(functional_edges)
+
+  return nothing
+end
+
 
 function functionalIntegration()
+
+  # disassemble fq_bndry_vec
+  for i = 1:length(functional_edges)
 
 
   return nothing
