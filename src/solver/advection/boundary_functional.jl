@@ -123,45 +123,9 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   return functional_val
 end
 
-#=
-function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::AdvectionData{Tsol}, opts, g_edge_number)
 
-  # Specify the boundary conditions for the edge on which the force needs to be
-  # computed separately. Use that boundary number to access the boundary 
-  # offset array. Then proceed the same as bndryflux to get the integrand. Finally
-  # use integratefunctional! to get the solution.
+function functionalIntegration()
 
-  start_index = mesh.bndry_offsets[g_edge_number]
-  end_index = mesh.bndry_offsets[g_edge_number+1]
-  idx_range = start_index:(end_index-1)
-  bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
-  nfaces = length(bndry_facenums)
-  boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
-  # boundary_force = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
-
-  for i = 1:nfaces
-    bndry_i = bndry_facenums[i]
-    global_facenum = idx_range[i]
-    for j = 1:mesh.sbpface.numnodes
-      q = eqn.q_bndry[ 1, j, global_facenum]
-      coords = view(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
-      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      # println("[nx, ny] = ", [nx, ny])
-      boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
-    end
-  end
-
-  functional_val = zeros(Tsol, 1)
-  integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
-                       boundary_integrand, functional_val)
-  
-  return functional_val[1]
+  return nothing
 end
-=# 
