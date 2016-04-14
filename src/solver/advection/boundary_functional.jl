@@ -148,6 +148,14 @@ function calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q)
 
 end
 
+#=
+function functionalIntegration()
+
+
+  return nothing
+end
+=#
+#=
 function getFunctionalBoundaryq()
 
   n_functional_faces = 0  # Total length of the interpolated q values across all geometric functional edges
@@ -184,13 +192,35 @@ function getFunctionalBoundaryq()
 
   return nothing
 end
+=#
 
 
-function functionalIntegration()
+# Code for storing q_bndry for functional as an vector
+#=
+# create an array to store all q_bndry values for that functional 
+  fq_bndry = zeros(Tsol,mesh.sbpface.numnodes*n_functional_faces)
 
-  # disassemble fq_bndry_vec
-  for i = 1:length(functional_edges)
+  # Populate fq_bndry
+  starting_idx = 0 # starting index of fq_bndry for a geometric edge
+  nfaces_prev = 0 # for the first geometric edge in the loop
+  for itr = 1:length(functional_edges)  # loop over functional edges
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
+    start_index = mesh.bndry_offsets[g_edge_number]
+    end_index = mesh.bndry_offsets[g_edge_number+1]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
+    nfaces = length(bndry_facenums)
+    
+    for i = 1:nfaces  # loop over faces in the geometric edge
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+      for j = 1:mesh.sbpface.numnodes
+        fq_bndry[starting_index + (i-1)*mesh.sbpface.numnodes + j] = 
+                                             eqn.q_bndry[ 1, j, global_facenum]
+      end  # end for j = 1:mesh.sbpface.numnodes
+    end  # end for i = 1:nfaces
+    nfaces_prev = nfaces # nfaces for the previous geometric edge
+    starting_idx += (nfaces_prev)*mesh.sbpface.numnodes
 
-  return nothing
-end
+=#
