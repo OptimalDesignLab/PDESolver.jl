@@ -6,8 +6,10 @@ module Utils
 
 using ODLCommonTools
 using ArrayViews
+using MPI
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
+export exchangeFaceData, verifyCommunication
 
 @doc """
 ### Utils.disassembleSolution

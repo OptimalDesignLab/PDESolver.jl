@@ -148,11 +148,13 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
   addStabilization(mesh, sbp, eqn, opts)
 #  println("after stabilization res = \n", eqn.res)
+#  println("stabilizing @time printed above")
+
   if mesh.isDG
     evalFaceIntegrals(mesh, sbp, eqn, opts)
+#    println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
-#  println("stabilizing @time printed above")
 
 
   
@@ -295,12 +297,12 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   if opts["check_density"]
     checkDensity(eqn)
-    # println("checkDensity @time printed above")
+#    println("checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
     checkPressure(eqn)
-    # println("checkPressure @time printed above")
+#    println("checkPressure @time printed above")
   end
 
   # calculate fluxes

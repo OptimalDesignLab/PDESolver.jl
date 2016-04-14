@@ -87,7 +87,7 @@ get!(arg_dict, "CFL", 0.4)
 get!(arg_dict, "use_itermax", haskey(arg_dict, "itermax"))
 
 # stabilization options
-get!(arg_dict, "use_edgestab", true)
+get!(arg_dict, "use_edgestab", false)
 get!(arg_dict, "edgestab_gamma", -0.1)
 get!(arg_dict, "use_filter", false)
 get!(arg_dict, "use_res_filter", false)
