@@ -239,6 +239,9 @@ get!(arg_dict, "num_functionals", 0)
 get!(arg_dict, "functional_error_outfname", "functional_error")
 
 
+# Adjoint computation options
+get!(arg_dict, "calc_adjoint", false)
+
 for key_i in arg_keys
   show(f, key_i)
   print(f, " => ")

@@ -225,3 +225,6 @@ Note that any values associated with these options are shared with the regular
                          geometric boundary, (ASCIIString), default functional_error, while
                          writing the file a numerical suffix and .dat extension is added
 "geom_edges_functionali" : Array of geometric edges (2D) where functional is being calculated
+
+# Adjoint computation options
+"calc_adjoint" : calculates the adjoint vector for a particular functional, default false
