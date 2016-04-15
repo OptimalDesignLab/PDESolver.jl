@@ -30,7 +30,6 @@ global const TAG_ELEMENT = 2  # exchanging element data
 
   Aliasing Restrictions:  none of the arrays can alias each other
 """->
-
 function exchangeFaceData{T}(mesh::AbstractMesh, opts, 
                          in_data::Array{Array{T}, 1}, 
                          out_data::Array{Array{T}, 1}, tag=TAG_FACE,
@@ -81,6 +80,40 @@ function verifyCommunication{T}(mesh::AbstractMesh, opts, buff::Array{T}, peer::
   return nothing
 end
 
+@doc """
+### Utils.getSendData
 
+  This function interpolates the data that will be sent to peer processes
+  and puts it into a buffer array.  This function waits for mesh.send_reqs
+  to finish before overwriting the buffer.
 
+  Inputs:
+    mesh:: an AbstractDGMesh
+    opts: options dictonary
+    q: a 3D array numDofPerNode x numNodesPerElement x numEl holding the 
+        original copy of the data
+    interfaces: an array of Boundary types (not Interface) that describe
+                the element and face owned by this process
+
+  Inputs/Outputs:
+    buff: array numDofPerNode x numNodesPerFace x length(interfaces) to put
+         the resulting data into
+
+  Aliasing restrictions: all bets are off if q and buff alias
+"""->
+function getSendData{T}(mesh::AbstractDGMesh, opts, q::AbstractArray{T, 3}, 
+                    interfaces::Array{Boundary, 1}, buff::AbstractArray{T, 3})
+
+# get data out of the q array (which must be ndofPerNode x numNodesPerElement 
+# x numEl), interpolate it to the shared interfaces, and store to buff
+
+  @assert mesh.isInterpolated
+
+  # wait for the previous send to complete before overwritting the
+  # buffer
+  MPI.waitall!(mesh.send_reqs)
+  boundaryinterpolate!(mesh.sbpface, interfaces, q, buff)
+
+  return nothing
+end
 

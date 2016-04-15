@@ -28,7 +28,10 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   eqn.t = t
  
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
-  
+
+  # start communication right away
+  sendParallelData(mesh, sbp, eqn, opts)
+
   evalSCResidual(mesh, sbp, eqn)
 
   # Does not work, should remove
@@ -43,11 +46,12 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     evalFaceTerm(mesh, sbp, eqn, opts)
   end
 
-
-
   if opts["use_GLS2"]
     applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   end
+
+  # do parallel computation last
+  evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 
 #  println("----- finished evalAdvection -----")
   return nothing
@@ -268,6 +272,49 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
 end
 
 
+@doc """
+### AdvectionEquationMod.sendParallelData
+
+  This function interpolates the data into the send buffer and post
+  the Isends and Irecvs.  It does not wait for them to finish
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""->
+function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  for i=1:npeers
+    # interpolate
+    getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i])
+  end
+
+  exchangeFaceData(mesh, opts, eqn.q_face_send, eqn.q_face_recv)
+
+  return nothing
+end
+
+@doc """
+### AdvectionEquationMod.evalSharedFaceIntegrals
+
+  This function does the computation that needs the parallel
+  communication to have finished already, namely the face integrals
+  for the shared faces
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""->
+function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+
+  return nothing
+end
 
 @doc """
 ### AdvectionEquationMod.init

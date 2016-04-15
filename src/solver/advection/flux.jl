@@ -57,7 +57,63 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+@doc """
+### AdvectionEquationMod.calcSharedFaceIntegrals
 
+  This function waits for the MPI receives to complete and then calculates
+  the integrals over the shared interfaces.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    functor: the FluxType to use for the face flux
+
+"""->
+function calcSharedFaceIntegrals{Tmsh, Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            functor::FluxType)
+# calculate the face flux and do the integration for the shared interfaces
+
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
+  for i=1:mesh.npeers
+    idx, stat = MPI.Waitany!(mesh.recv_reqs)
+    mesh.recv_stats[idx] = stat
+    mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
+
+    # calculate the flux
+    interfaces = mesh.shared_interfaces[idx]
+    qL_arr = eqn.q_face_send[idx]
+    qR_arr = eqn.q_face_recv[idx]
+    dxidx_arr = mesh.dxidx_sharedface[idx]
+    flux_arr = eqn.flux_sharedface[idx]
+
+    # permute the received nodes to be in the elementR orientation
+    permuteinterface!(mesh.sbpface, interfaces, qR_arr)
+    for i=1:length(interfaces)
+      interface_i = interfaces[i]
+      for j=1:mesh.numNodesPerFace
+        eL = interface_i.elementL
+        fL = interface_i.faceL
+
+        qL = qL_arr[1, j, i]
+        qR = qR_arr[1, j, i]
+        dxidx = sview(dxidx_arr, :, :, j, i)
+        nrm = sview(sbp.facenormal, :, fL)
+        flux_arr[1,j,i] = - functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
+                                    eqn.params)
+      end
+    end
+    # end flux calculation
+
+    # do the integration
+    boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res)
+  end  # end loop over npeers
+
+  return nothing
+end
 
 @doc """
 ### AdvectionEquationMod.avgFlux

@@ -7,6 +7,7 @@ module Utils
 using ODLCommonTools
 using ArrayViews
 using MPI
+using SummationByParts
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export exchangeFaceData, verifyCommunication

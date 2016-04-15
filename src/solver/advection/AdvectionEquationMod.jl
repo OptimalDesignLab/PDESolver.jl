@@ -57,6 +57,10 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   q_vec::Array{Tres,1}     # initial condition in vector form
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
                           # the boundaries with boundary conditions
+  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
+                                         # to other processes
+  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
+  flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
@@ -105,10 +109,24 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
       eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
+      eqn.flux_sharedface = Array(Array{Tres, 3}, 1)
+      for i=1:mesh.npeers
+        eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes, 
+                                       mesh.peer_face_counts[i])
+      end
     else
       eqn.q_face = Array(Tres, 0, 0, 0, 0)
       eqn.flux_face = Array(Tres, 0, 0, 0)
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
+    end
+
+    eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
+    eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
+    for i=1:mesh.npeers
+      eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, numfacenodes, 
+                                 mesh.peer_face_counts[i])
+      eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, numfacenodes,
+                                 mesh.peer_face_counts[i])
     end
 
     return eqn
