@@ -428,7 +428,10 @@ if opts["solve"]
         key = string("geom_edges_functional", 1)
         functional_edges = opts[key]
         adjoint_vec = zeros(Tsol, mesh.numDof)
-        calcAdjoint(mesh, sbp, eqn, opts, 1, adjoint_vec)
+        functional_number = 1
+        AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, functional_number, adjoint_vec)
+        # println("\n\n In startup_advection.jl, adjoint_vec = \n", adjoint_vec, "\n typeof = ", typeof(adjoint_vec))
+
 
         # Write adjoint vector to file and mesh
         file_object = open("adjoint_vector.dat", "w")
