@@ -55,10 +55,8 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   # do parallel computation last
-  MPI.Barrier(mesh.comm)
   evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 
-  MPI.Barrier( mesh.comm)
 #=
   f = open("pfout_$myrank.dat", "a+")
   println(f, "----- finished evalAdvection -----")
