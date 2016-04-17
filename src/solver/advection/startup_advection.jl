@@ -13,10 +13,14 @@ using ForwardDiff
 using NonlinearSolvers     # non-linear solvers
 using ArrayViews
 using Utils
-
+using MPI
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 
+
+if !MPI.Initialized()
+  MPI.Init()
+end
 
 #function runtest(flag::Int)
 println("ARGS = ", ARGS)
@@ -106,6 +110,8 @@ else  # continuous Galerkin
   end
 end
 
+myrank = mesh.myrank
+
 println("\ntypeof(mesh) = ", typeof(mesh))
 println("is subtype of DG mesh = ", typeof(mesh) <: AbstractDGMesh)
 println("mesh.isDG = ", mesh.isDG)
@@ -135,21 +141,26 @@ if opts["calc_error"]
   @assert length(vals) == mesh.numDof
 
   err_vec = vals - eqn.q_vec
-  err = calcNorm(eqn, err_vec)
-  outname = opts["calc_error_outfname"]
-  println("printed err = ", err, " to file ", outname)
-  f = open(outname, "w")
-  println(f, err)
-  close(f)
+  err_local = calcNorm(eqn, err_vec)
+  err_global = MPI.Allreduce(err_local*err_local, MPI.SUM, mesh.comm)
+  err = sqrt(err_global)
+  if myrank == 0
+    outname = opts["calc_error_outfname"]
+    println("printed err = ", err, " to file ", outname)
+    f = open(outname, "w")
+    println(f, err)
+    close(f)
+  end
 end
 
 if opts["calc_trunc_error"]  # calculate truncation error
   println("\nCalculating residual for truncation error")
   tmp = calcResidual(mesh, sbp, eqn, opts, evalAdvection)
-
-  f = open("error_trunc.dat", "w")
-  println(f, tmp)
-  close(f)
+  if myrank == 0
+    f = open("error_trunc.dat", "w")
+    println(f, tmp)
+    close(f)
+  end
 end
 
 if opts["calc_havg"]
@@ -166,10 +177,12 @@ if opts["calc_havg"]
   h_avg *= mesh.min_node_dist
 #  println("h_avg = ", h_avg)
 
-  rmfile("havg.dat")
-  f = open("havg.dat", "w")
-  println(f, h_avg)
-  close(f)
+  if myrank == 0  # TODO: make this globally accurate
+    rmfile("havg.dat")
+    f = open("havg.dat", "w")
+    println(f, h_avg)
+    close(f)
+  end
 end
 
 
@@ -184,8 +197,8 @@ end
 
 res_vec_exact = deepcopy(q_vec)
 
-rmfile("IC.dat")
-writedlm("IC.dat", real(q_vec))
+rmfile("IC_$myrank.dat")
+writedlm("IC_$myrank.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
@@ -218,7 +231,7 @@ end   # end for i = mesh.numEl
 RecommendedDT = minimum(Dt)
 println("Recommended delta t = ", RecommendedDT) =#
 #------------------------------------------------------------------------------
-
+MPI.Barrier( mesh.comm)
 # evalAdvection(mesh, sbp, eqn, opts, t)
 if opts["solve"]
   
@@ -319,11 +332,11 @@ if opts["solve"]
 
   if opts["write_finalsolution"]
     println("writing final solution")
-    writedlm("solution_final.dat", real(eqn.q_vec))
+    writedlm("solution_final_$myrank.dat", real(eqn.q_vec))
   end
 
   if opts["write_finalresidual"]
-    writedlm("residual_final.dat", real(eqn.res_vec))
+    writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
   end
 
 
@@ -339,16 +352,26 @@ if opts["solve"]
       q_diff = eqn.q_vec - q_exact
 #      diff_norm = norm(q_diff, Inf)
       diff_norm = calcNorm(eqn, q_diff)
+      global_norm = MPI.Allreduce(diff_norm*diff_norm, MPI.SUM, mesh.comm)
+      diff_norm = sqrt(global_norm)
       discrete_norm = norm(q_diff/length(q_diff))
+      global_norm = MPI.Allreduce(discrete_norm*discrete_norm, MPI.SUM, mesh.comm)
+      discrete_norm = sqrt(global_norm)
 
-      println("solution error norm = ", diff_norm)
-      println("solution discrete L2 norm = ", discrete_norm)
+      if myrank == 0
+        println("solution error norm = ", diff_norm)
+        println("solution discrete L2 norm = ", discrete_norm)
+      end
 
 #      sol_norm = norm(eqn.q_vec, Inf)
 #      exact_norm = norm(q_exact)
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
+      global_norm = MPI.Allreduce(sol_norm*sol_norm, MPI.SUM, mesh.comm)
+      sol_norm = sqrt(global_norm)
       exact_norm = calcNorm(eqn, q_exact)
+      global_norm = MPI.Allreduce(exact_norm*exact_norm, MPI.SUM, mesh.comm)
+      exact_norm = sqrt(global_norm)
       println("numerical solution norm = ", sol_norm)
       println("exact solution norm = ", exact_norm)
 
@@ -359,7 +382,6 @@ if opts["solve"]
       # scale by the minimum distance between nodes on a reference element
       # this is a bit of an assumption, because for distorted elements this
       # might not be entirely accurate
-      println("mesh.min_node_distance = ", mesh.min_node_dist)
       h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
     #  println("h_avg = ", h_avg)
       h_avg *= mesh.min_node_dist
@@ -367,13 +389,15 @@ if opts["solve"]
 
 
 
-
-      # print to file
-      outname = opts["calc_error_outfname"]
-      println("printed err = ", diff_norm, " to file ", outname)
-      f = open(outname, "w")
-      println(f, diff_norm, " ", h_avg)
-      close(f)
+      if myrank == 0
+        println("mesh.min_node_distance = ", mesh.min_node_dist)
+        # print to file
+        outname = opts["calc_error_outfname"]
+        println("printed err = ", diff_norm, " to file ", outname)
+        f = open(outname, "w")
+        println(f, diff_norm, " ", h_avg)
+        close(f)
+      end
 
 
 #=
@@ -390,4 +414,6 @@ if opts["solve"]
   printCoordinates(mesh)
   writeVisFiles(mesh, "solution_done")
 
+  MPI.Barrier(mesh.comm)
+#  MPI.Finalize()
 end  # end if (opts[solve])

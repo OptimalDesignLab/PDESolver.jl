@@ -160,7 +160,12 @@ Note that any values associated with these options are shared with the regular
                    to file entity_offsets.dat, (Bool), default false
 "verify_coloring"  : verify coloring worked correctly, (Bool), default true
 "write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
-
+"write_interfaces": writes the contents of mesh.interfaces to file interface.dat
+                    (Bool), default false
+"write_boundaries": writes the contents of mesh.bndryfaces to file boundary.dat,                    (Bool), default false
+"write_sharedboundaries": write contents of mesh.bndries_local[i] to file
+                          sharedboundaries_i.dat for all i, (Bool) default 
+                          false
 
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are 

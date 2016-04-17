@@ -64,8 +64,13 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
-  println("\nEntered rk4")
+  comm_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+  if comm_rank == 0
+    println("\nEntered rk4")
+    println("res_tol = ", res_tol)
+  end
 # res_tol is alternative stopping criteria
+
 
   # unpack options
   output_freq = opts["output_freq"]::Int
@@ -82,7 +87,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   (m,) = size(q_vec)
 
-  f1 = open("convergence.dat", "a+")
+  if comm_rank == 0
+    f1 = open("convergence.dat", "a+")
+  end
 
   x_old = copy(q_vec)
   k1 = zeros(x_old)
@@ -93,7 +100,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i=2:(t_steps + 1)
 
-    if i % output_freq == 0
+    if i % output_freq == 0 && comm_rank == 0
        println("\ntimestep ",i)
     end
 
@@ -109,11 +116,11 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
      majorIterationCallback(i, ctx..., opts)
    
-    if i % 1 == 0
+    if i % 1 == 0 && comm_rank == 0
       println(f1, i, " ", sol_norm)
     end
     
-    if i % output_freq == 0
+    if i % output_freq == 0 && comm_rank == 0
       println("flushing convergence.dat to disk")
       flush(f1)
     end
@@ -121,18 +128,20 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # check stopping conditions
     if (sol_norm < res_tol)
-      println("breaking due to res_tol")
-      flush(f1)
+      if comm_rank == 0
+        println("breaking due to res_tol")
+        flush(f1)
+      end
       break
     end
 
     if use_itermax && i > itermax
-      println("breaking due to itermax")
-      flush(f1)
+      if comm_rank == 0
+        println("breaking due to itermax")
+        flush(f1)
+      end
       break
     end
-
-
 
     # stage 2
     pre_func(ctx..., opts) 
@@ -172,7 +181,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     println("q_old = \n", x_old)
 =#
     # update
-    # TODO: make this faster
     for j=1:m
       x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
       q_vec[j] = x_old[j]
@@ -189,7 +197,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   end
 
-  close(f1)
+  if comm_rank == 0
+    close(f1)
+  end
 
   return t
 
@@ -294,7 +304,10 @@ function pde_post_func(mesh, sbp, eqn, opts)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
-  return calcNorm(eqn, eqn.res_vec)
+  local_norm = calcNorm(eqn, eqn.res_vec)
+  global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
+
+  return sqrt(global_norm)
 end
 
 

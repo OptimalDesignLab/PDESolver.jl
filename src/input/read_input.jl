@@ -180,6 +180,9 @@ get!(arg_dict, "write_offsets", false)
 get!(arg_dict, "write_dofs", false)
 get!(arg_dict, "verify_coloring", true)
 get!(arg_dict, "write_counts", false)
+get!(arg_dict, "write_interfaces", false)
+get!(arg_dict, "write_boundaries", false)
+get!(arg_dict, "write_sharedboundaries", false)
 
 # mesh options
 get!(arg_dict, "reordering_algorithm", "default")
@@ -233,25 +236,27 @@ get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 
 # write complete dictionary to file
-fname = "arg_dict_output.jl"
-rmfile(fname)
-f = open(fname, "a+")
+myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+if myrank == 0
+  fname = "arg_dict_output.jl"
+  rmfile(fname)
+  f = open(fname, "a+")
 
-println(f, "arg_dict = Dict{Any, Any}(")
-arg_keys = keys(arg_dict)
+  println(f, "arg_dict = Dict{Any, Any}(")
+  arg_keys = keys(arg_dict)
 
 
 
-for key_i in arg_keys
-  show(f, key_i)
-  print(f, " => ")
-  show(f, arg_dict[key_i])
-  println(f, ",")
-#  println(f, show(key_i), " => ", show(arg_dict[key_i]), ",")
+  for key_i in arg_keys
+    show(f, key_i)
+    print(f, " => ")
+    show(f, arg_dict[key_i])
+    println(f, ",")
+  #  println(f, show(key_i), " => ", show(arg_dict[key_i]), ",")
+  end
+  println(f, ")")
+  close(f)
 end
-println(f, ")")
-close(f)
-
 
 # do some sanity checks here
 # deal with boundary conditions

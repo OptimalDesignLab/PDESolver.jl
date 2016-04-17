@@ -4,6 +4,21 @@
 global const TAG_FACE = 1  # exchanging face data
 global const TAG_ELEMENT = 2  # exchanging element data
 
+function initMPIStructures(mesh::AbstractMesh, opts)
+
+  # set all requests to REQUEST_NULL, Status to match
+  # the MPI standard requires a Wait on a REQUEST_NULL to return immediately
+  for i=1:mesh.npeers
+    mesh.send_reqs[i] = MPI.REQUEST_NULL
+    mesh.recv_reqs[i] = MPI.REQUEST_NULL
+    mesh.send_stats[i] = MPI.Wait!(mesh.send_reqs[i])
+    mesh.recv_stats[i] = MPI.Wait!(mesh.recv_reqs[i])
+  end
+
+  return nothing
+end
+
+
 @doc """
 ### Utils.exchangeFaceData
   
@@ -17,11 +32,11 @@ global const TAG_ELEMENT = 2  # exchanging element data
   Inputs/Outputs:
     mesh:  an AbstractMehs
     opts:  options dictonary
-    in_data: an array of arrays, where the number of arrays is the number
+    send_data: an array of arrays, where the number of arrays is the number
              of peers processes and the length of each array is the number of
              faces shared with that peer.  Tese arrays contain the data to be
              send to the other processes
-    out_data: same as in_data, except the data received from the peer processes
+    recv_data: same as in_data, except the data received from the peer processes
               will be stored here
 
   Keyword arguments:
@@ -30,16 +45,16 @@ global const TAG_ELEMENT = 2  # exchanging element data
 
   Aliasing Restrictions:  none of the arrays can alias each other
 """->
-function exchangeFaceData{T}(mesh::AbstractMesh, opts, 
-                         in_data::Array{Array{T}, 1}, 
-                         out_data::Array{Array{T}, 1}, tag=TAG_FACE,
+function exchangeFaceData{T, N}(mesh::AbstractMesh, opts, 
+                         send_data::Array{Array{T, N}, 1}, 
+                         recv_data::Array{Array{T, N}, 1}; tag=TAG_FACE,
                          wait=false)
 # post sends and receives for face data exchange
 
   for i=1:mesh.npeers
     peer_i = mesh.peer_parts[i]
-    send_buff = in_data[i]
-    recv_buff = out_data[i]
+    send_buff = send_data[i]
+    recv_buff = recv_data[i]
     mesh.recv_reqs[i] = MPI.Irecv!(recv_buff, peer_i, tag, mesh.comm)
     mesh.send_reqs[i] = MPI.Isend(send_buff, peer_i, tag, mesh.comm)
   end
@@ -84,7 +99,7 @@ end
 ### Utils.getSendData
 
   This function interpolates the data that will be sent to peer processes
-  and puts it into a buffer array.  This function waits for mesh.send_reqs
+  and puts it into a buffer array.  This function waits for the Request
   to finish before overwriting the buffer.
 
   Inputs:
@@ -94,6 +109,8 @@ end
         original copy of the data
     interfaces: an array of Boundary types (not Interface) that describe
                 the element and face owned by this process
+    req: an MPI.Request object corresponding to the previous send using this
+         buffer
 
   Inputs/Outputs:
     buff: array numDofPerNode x numNodesPerFace x length(interfaces) to put
@@ -102,16 +119,17 @@ end
   Aliasing restrictions: all bets are off if q and buff alias
 """->
 function getSendData{T}(mesh::AbstractDGMesh, opts, q::AbstractArray{T, 3}, 
-                    interfaces::Array{Boundary, 1}, buff::AbstractArray{T, 3})
+                    interfaces::Array{Boundary, 1}, buff::AbstractArray{T, 3},
+                    req::MPI.Request)
 
 # get data out of the q array (which must be ndofPerNode x numNodesPerElement 
 # x numEl), interpolate it to the shared interfaces, and store to buff
-
   @assert mesh.isInterpolated
-
   # wait for the previous send to complete before overwritting the
   # buffer
-  MPI.waitall!(mesh.send_reqs)
+
+  MPI.Wait!(req)
+#  MPI.Waitall!(mesh.send_reqs)
   boundaryinterpolate!(mesh.sbpface, interfaces, q, buff)
 
   return nothing

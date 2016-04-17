@@ -37,9 +37,10 @@ function calcResidual(mesh, sbp, eqn, opts, func)
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
 
   res_0_norm = calcNorm(eqn, eqn.res_vec, strongres=true)
+  res_norm_global = MPI.Allreduce(res_0_norm*res_0_norm, MPI.SUM, mesh.comm)
 #  println("residual norm = ", res_0_norm)
 
- return res_0_norm
+ return sqrt(res_norm_global)
 end
 
 

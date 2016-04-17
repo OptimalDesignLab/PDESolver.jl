@@ -24,7 +24,11 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
 
-#  println("----- entered evalAdvection -----")
+  myrank = mesh.myrank
+  #f = open("pfout_$myrank.dat", "a+")
+  #println(f, "----- entered evalAdvection -----")
+  #close(f)
+
   eqn.t = t
  
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
@@ -51,9 +55,15 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   # do parallel computation last
+  MPI.Barrier(mesh.comm)
   evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 
-#  println("----- finished evalAdvection -----")
+  MPI.Barrier( mesh.comm)
+#=
+  f = open("pfout_$myrank.dat", "a+")
+  println(f, "----- finished evalAdvection -----")
+  close(f)
+=#
   return nothing
 end
 
@@ -174,15 +184,16 @@ function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData
   # interpolate solution to faces
   interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
 
+  myrank = mesh.myrank
   if opts["writeqface"]
-    writedlm("qface.dat", eqn.q_face)
+    writedlm("qface_$myrank.dat", eqn.q_face)
   end
 
   # calculate face fluxes
   calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
 
   if opts["write_fluxface"]
-    writedlm("fluxface.dat", eqn.flux_face)
+    writedlm("fluxface_$myrank.dat", eqn.flux_face)
   end
 
   # integrate and interpolate back to solution points
@@ -286,9 +297,9 @@ end
 """->
 function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  for i=1:npeers
+  for i=1:mesh.npeers
     # interpolate
-    getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i])
+    getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i])
   end
 
   exchangeFaceData(mesh, opts, eqn.q_face_send, eqn.q_face_recv)
@@ -343,7 +354,8 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
   eqn.alpha_x = 1.0
   eqn.alpha_y = 1.0
-  
+
+  initMPIStructures(mesh, opts)
   return nothing
 end
 
@@ -367,11 +379,12 @@ end
 """->
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
                                 sbp::AbstractSBP, eqn::AbstractAdvectionData, opts)
-
-  println("Performing major Iteration Callback for iteration ", itr)
-
+#=
+  if mesh.myrank == 0
+    println("Performing major Iteration Callback for iteration ", itr)
+  end
+=#
   if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
-    println("writing vtk file")
     vals = real(eqn.q_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
 #    cd("./SolutionFiles")

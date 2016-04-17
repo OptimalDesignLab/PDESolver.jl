@@ -8,9 +8,9 @@ using ODLCommonTools
 using ArrayViews
 using MPI
 using SummationByParts
-
+include("parallel.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
-export exchangeFaceData, verifyCommunication
+export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 
 @doc """
 ### Utils.disassembleSolution

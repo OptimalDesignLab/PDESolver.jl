@@ -6,6 +6,7 @@ using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+using MPI
 using Utils
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 export evalAdvection, init # exported from advectionFunctions.jl
@@ -109,7 +110,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
       eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
-      eqn.flux_sharedface = Array(Array{Tres, 3}, 1)
+      eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
       for i=1:mesh.npeers
         eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes, 
                                        mesh.peer_face_counts[i])

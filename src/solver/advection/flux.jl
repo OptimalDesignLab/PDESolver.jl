@@ -33,7 +33,6 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           functor::FluxType, 
                           interfaces::AbstractArray{Interface,1}, 
                           face_flux::AbstractArray{Tres, 3})
-
   
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
@@ -70,9 +69,9 @@ end
     functor: the FluxType to use for the face flux
 
 """->
-function calcSharedFaceIntegrals{Tmsh, Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
-                            functor::FluxType)
+                            opts, functor::FluxType)
 # calculate the face flux and do the integration for the shared interfaces
 
   alpha_x = eqn.alpha_x
@@ -102,7 +101,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
         qR = qR_arr[1, j, i]
         dxidx = sview(dxidx_arr, :, :, j, i)
         nrm = sview(sbp.facenormal, :, fL)
-        flux_arr[1,j,i] = - functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
+        flux_arr[1,j,i] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
                                     eqn.params)
       end
     end
@@ -111,6 +110,32 @@ function calcSharedFaceIntegrals{Tmsh, Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     # do the integration
     boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res)
   end  # end loop over npeers
+
+  if opts["writeqface"]
+    myrank = mesh.myrank
+    for i=1:mesh.npeers
+      tmp_arr = zeros(Tsol, mesh.numDofPerNode, 2, mesh.numNodesPerFace, mesh.peer_face_counts[i])
+      qL_arr = eqn.q_face_send[i]
+      qR_arr = eqn.q_face_recv[i]
+      for j = 1:mesh.peer_face_counts[i]
+        for k=1:mesh.numNodesPerFace
+          tmp_arr[:, 1, k, j] = qL_arr[:, k, j]
+          tmp_arr[:, 2, k, j] = qR_arr[:, k, j]
+        end
+      end
+
+      fname = string("qsharedface_", i, "_", myrank, ".dat")
+      writedlm(fname, tmp_arr)
+    end  # end loop over peers
+
+  end  # end if
+
+  if opts["write_fluxface"]
+    for i=1:mesh.npeers
+      fname = string("fluxsharedface_", i, "_", myrank, ".dat")
+      writedlm(fname, eqn.flux_sharedface[i])
+    end
+  end
 
   return nothing
 end
