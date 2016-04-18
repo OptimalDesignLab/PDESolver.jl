@@ -86,7 +86,7 @@ function verifyCommunication{T}(mesh::AbstractMesh, opts, buff::Array{T}, peer::
 # verify a communication occured correctly by checking the fields of the 
 # Status object
 # if the Status came from a send, then peer should be comm_rank ?
-  sender = getsource(stat)
+  sender = MPI.Get_source(stat)
   @assert sender == peer
 
   ndata = MPI.Get_count(stat, T)
