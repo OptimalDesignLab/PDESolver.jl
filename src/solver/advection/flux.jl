@@ -81,7 +81,6 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
     idx, stat = MPI.Waitany!(mesh.recv_reqs)
     mesh.recv_stats[idx] = stat
     mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
-
     # calculate the flux
     interfaces = mesh.shared_interfaces[idx]
     qL_arr = eqn.q_face_send[idx]
