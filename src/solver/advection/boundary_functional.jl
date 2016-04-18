@@ -99,6 +99,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
+      # println("global_facenum = ", global_facenum)
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
         coords = view(mesh.coords_bndry, :, j, global_facenum)
