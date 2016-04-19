@@ -16,9 +16,16 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
+using MPI
+
 #using Debugging   # some debugging utils.
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+
+
+if !MPI.Initialized()
+  MPI.Init()
+end
 
 #function runtest()
 println("ARGS = ", ARGS)

@@ -34,7 +34,9 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
   # start communication right away
-  sendParallelData(mesh, sbp, eqn, opts)
+  if mesh.commsize > 1
+    sendParallelData(mesh, sbp, eqn, opts)
+  end
 
   evalSCResidual(mesh, sbp, eqn)
 
@@ -55,7 +57,9 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   # do parallel computation last
-  evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+  if mesh.commsize > 1
+    evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+  end
 
 #=
   f = open("pfout_$myrank.dat", "a+")
