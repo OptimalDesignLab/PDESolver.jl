@@ -130,4 +130,21 @@ facts("----- Testing Parallel Functions -----") do
   end
 
 
+  # to a serial rk4 run to compare against later
+  start_dir = pwd()
+  cd ("./rk4/serial")
+  opts["order"] = 1
+  opts["solve"] = true
+  fname = "input_vals_parallel_run"
+  make_input(opts, fname)
+
+  ARGS[1] = string(fname, ".jl")
+  include(STARTUP_PATH)
+  cd(start_dir)
+
+  # make the parallel version
+  opts["smb_name"] = "src/mesh_files/psquare2.smb"
+  opts["dmg_name"] = "src/mesh_files/psquare2.dmg"
+  make_input( opts, string("./rk4/parallel/", fname, "p"))
+
 end
