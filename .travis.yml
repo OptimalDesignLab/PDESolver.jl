@@ -20,6 +20,8 @@ script:
   - source ~/.julia/v0.4/PumiInterface/src/evars.sh
   - cd ~/.julia/v0.4/PDESolver/test
   - julia --check-bounds=yes -e 'Pkg.test("PDESolver"; coverage=true)'
+  - cd ./Advection
+  - julia --check-bounds=yes --inline=no --code-coverage=user ./runtest.jl
   - runtests_parallel.sh
 after_success:
   - julia -e 'cd(Pkg.dir("PDESolver")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
