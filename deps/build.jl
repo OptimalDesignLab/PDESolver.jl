@@ -8,7 +8,8 @@ function installPDESolver()
   # these packages are always installed manually
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
-  std_pkgs = ["SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "8d512b3e7678da6dbf567815fdfac5db6b6d0d50";
+  std_pkgs = [ "ArrayViews" "git@github.com:JaredCrean2/ArrayViews.jl.git", "4dspeed";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "8d512b3e7678da6dbf567815fdfac5db6b6d0d50";
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "HEAD"
               "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c"
@@ -77,7 +78,7 @@ function installPDESolver()
   pkg_list = ["Compat" "aa23cb98dbdba0eab82d465f87b1a936685548c0";
               "URIParser" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
               "FactCheck" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
-              "ArrayViews" "4ec55697fc4f9cba522a5137b96d502230269910";
+#              "ArrayViews" "4ec55697fc4f9cba522a5137b96d502230269910";
               "SHA" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
               "BinDeps" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
               "NaNMath" "969151c5ff8022487379279ebac4a239a400dd44";
