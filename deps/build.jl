@@ -8,7 +8,7 @@ function installPDESolver()
   # these packages are always installed manually
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
-  std_pkgs = [ "ArrayViews" "git@github.com:JaredCrean2/ArrayViews.jl.git", "4dspeed";
+  std_pkgs = [ "ArrayViews" "git@github.com:JaredCrean2/ArrayViews.jl.git" "4dspeed";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "HEAD"
