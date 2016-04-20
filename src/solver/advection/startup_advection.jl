@@ -359,26 +359,8 @@ if opts["solve"]
     #  println("h_avg = ", h_avg)
 
 
-      #----  Calculate functional on a boundary  -----
+      #----  Calculate functional on a boundary  -----#
       
-      # Create the adjoint vector
-      
-        #file_name = "./jacobian1.dat"
-        #res_jac = readdlm(file_name) # get the residual Jacobian
-        #@assert size(res_jac) == (mesh.numDof, mesh.numDof)
-      
-      #=
-      newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
-      res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
-      pert = complex(0, opts["epsilon"])
-      NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, evalAdvection, pert, res_jac)
-      
-      func_deriv = 2*ones(Tsol, mesh.numDof)
-      adjoint_vec = -(res_jac.')\func_deriv
-      =#
-      
-      
-
       if opts["calc_functional"]
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         if mesh.isDG
@@ -391,10 +373,11 @@ if opts["solve"]
           # Geometric edge at which the functional needs to be integrated
           key_j = string("geom_edges_functional", j)
           functional_edges = opts[key_j]
-          
+          functional_name = getFunctionalName(opts, j)
+
           functional_val = zero(Tsol)
           functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
-                           opts, functional_edges)
+                           opts, functional_name, functional_edges)
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
           analytical_functional_val = 2*(exp(1) - 1)
@@ -416,7 +399,8 @@ if opts["solve"]
       end    # End if opts["calc_functional"]
 
 
-      
+      #-----  Calculate adjoint vector for a functional  -----#
+
       if opts["calc_adjoint"]
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         if mesh.isDG

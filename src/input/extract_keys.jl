@@ -145,4 +145,5 @@ end
 extractKeys("input_vals.txt", "known_keys.jl", header=true, footer=false)
 write_dummy("known_keys.jl")
 write_arbitrary_keys("known_keys.jl", "geom_edges_functional", 10)
+write_arbitrary_keys("known_keys.jl", "functional_name", 10)
 extractKeys("input_vals_internal.txt", "known_keys.jl", header=false, footer=true)

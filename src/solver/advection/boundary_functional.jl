@@ -1,4 +1,6 @@
 # Calculate boundary "forces" in advection
+export getFunctionalName
+
 @doc """
 AdvectionEquationMod.calcBndryforces
 
@@ -74,7 +76,7 @@ end
 
 
 function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::AdvectionData{Tsol}, opts, functional_edges)
+                         eqn::AdvectionData{Tsol}, opts, functor, functional_edges)
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary 
@@ -108,7 +110,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         # println("[nx, ny] = ", [nx, ny])
-        boundary_integrand[1,j,i] = calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
+        boundary_integrand[1,j,i] = functor(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
       end
     end
 
@@ -149,79 +151,51 @@ function calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q)
 
 end
 
-#=
-function functionalIntegration()
+@doc """
+### AdvectionEquationMod.qflux
 
+Computes the flux direction and multiplies it with eqn.q_bndry. This is nodal
+level operation
 
-  return nothing
+"""->
+
+type qflux <: FunctionalType
 end
-=#
-#=
-function getFunctionalBoundaryq()
 
-  n_functional_faces = 0  # Total length of the interpolated q values across all geometric functional edges
-  for i = 1:length(functional_edges)
-    nfaces = 0
-    g_edge_number = functional_edges[i]
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
-    idx_range = start_index:(end_index-1)  # Index range
-    nfaces = length(mesh.bndryfaces[idx_range])
-    n_functional_faces += nfaces
-  end  # End for i = 1:length(functional_edges)
-
-  fq_bndry_vec = zeros(Tsol,n_functional_faces)
-
-  # Populate fq_bndry
-  for i = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
-    idx_range = start_index:(end_index-1)
-    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
-    nfaces = length(bndry_facenums)
-
-    for j = 1:nfaces
-      bndry_j = bndry_facenums[j]
-      global_facenum = idx_range[j]
-      for k  = 1:mesh.sbpface.numnodes
-        # indexing to jump nfaces per geometric edge and populate q_values
-        fq_bndry_vec[(i-1)*nfaces + k] = eqn.q_bndry[1, k, global_facenum]
-      end  # End for j = 1:nfaces
-    end    # End for j = 1:nfaces
-  end      # End for i = 1:length(functional_edges)
-
-  return nothing
+function call(obj::qflux, alpha_x, alpha_y, nx, ny, q)
+  return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
 end
-=#
 
+@doc """
+### AdvectionEquationMod.FunctionalDict
 
-# Code for storing q_bndry for functional as an vector
-#=
-# create an array to store all q_bndry values for that functional 
-  fq_bndry = zeros(Tsol,mesh.sbpface.numnodes*n_functional_faces)
+It stores the names of all possible functional options that can be computed. 
+Whenever a new functional is created, it should be added to FunctionalDict.
 
-  # Populate fq_bndry
-  starting_idx = 0 # starting index of fq_bndry for a geometric edge
-  nfaces_prev = 0 # for the first geometric edge in the loop
-  for itr = 1:length(functional_edges)  # loop over functional edges
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
-    idx_range = start_index:(end_index-1)
-    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+"""->
+global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
+"qflux" => qflux(),
+)
 
-    nfaces = length(bndry_facenums)
-    
-    for i = 1:nfaces  # loop over faces in the geometric edge
-      bndry_i = bndry_facenums[i]
-      global_facenum = idx_range[i]
-      for j = 1:mesh.sbpface.numnodes
-        fq_bndry[starting_index + (i-1)*mesh.sbpface.numnodes + j] = 
-                                             eqn.q_bndry[ 1, j, global_facenum]
-      end  # end for j = 1:mesh.sbpface.numnodes
-    end  # end for i = 1:nfaces
-    nfaces_prev = nfaces # nfaces for the previous geometric edge
-    starting_idx += (nfaces_prev)*mesh.sbpface.numnodes
+@doc """
+### AdvectionEquationMod.getFunctionalName
 
-=#
+Gets the name of the functional that needs to be computed at a particular point
+
+**Inputs**
+
+*  `opts`     : Input dictionary
+*  `f_number` : Number of the functional in the input dictionary
+
+**Outputs**
+
+*  `functional` : Returns the functional name in the dictionary
+
+"""->
+function getFunctionalName(opts, f_number)
+
+  key = string("functional_name", f_number)
+  val = opts[key]
+
+  return functional = FunctionalDict[val]
+end
