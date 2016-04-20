@@ -16,6 +16,7 @@ Calcualtes the adjoint vector for a single functional
 *  `opts` : Options dictionary
 *  `functional_number` : The functional for which the adjoint vector is being
                          computed
+*  `adjoint_vec` : Adjoint vector corresponding to the particular functional
 
 **Outputs**
 
@@ -67,6 +68,27 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 end  # End function calcAdjoint
 
 
+@doc """
+### AdvectionEquationMod.calcFunctionalDeriv
+
+Computes a 3D array of the derivative of a functional w.r.t eqn.q on all
+mesh nodes.
+
+**Inputs**
+
+*  `mesh`  : Abstract mesh object
+*  `sbp`   : Summation-By-Parts operator
+*  `eqn`   : Advection equation object
+*  `opts`  : Options dictionary
+*  `functional_edges` : Array of geometric edges over which a functional acts
+*  `func_deriv_arr`   : 3D array that stors the derivative of functional w.r.t
+                        eqn.q. It has a structure [1, numnodes_per_element, numEl]
+
+**Outputs**
+
+*  None
+
+"""->
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn ::AdvectionData{Tsol}, opts, functional_edges, 
                              func_deriv_arr)
@@ -127,8 +149,9 @@ end    # End function calcFunctionalDeriv
 @doc """
 ### AdvectionEquationMod.calcIntegrandDeriv
 
-Compute the analytical derivative of the integrand at a point
+Compute the derivative of the integrand at a point.
 
+**Inputs**
 """->
 
 function calcIntegrandDeriv(opts, alpha_x, alpha_y, nx, ny, q)
@@ -216,6 +239,24 @@ function functionalBoundaryInfo{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abs
 end
 
 
+@doc """
+###AdvectionEquationMod.boundaryToVolumeInterpolation
+
+Interpolates values from a array based on Summation-By-Parts sbpface boundary
+to the interior nodes of the SBP Omega operator.
+
+**Inputs**
+
+*  `sbpface` : Summation-By-Parts face operator
+*  `bndryfaces` : Array of type mesh.bndryfaces
+*  `uvol`    : Array into which the values have to be interpolated
+*  `uface`   : Array which has to be interpolated.
+
+**Outputs**
+
+*  None
+
+"""->
 function boundaryToVolumeInterpolation{Tsbp,Tsol}(sbpface::TriFace{Tsbp},
                                          bndryfaces::Array{Boundary},
                                          uvol::AbstractArray{Tsol,3},
