@@ -23,7 +23,7 @@ nonlinear solve while computing eqn.q
 """->
 
 function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::AdvectionData{Tsol}, opts, functional_edges)
+                         eqn::AdvectionData{Tsol}, opts, functor, functional_edges)
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary 
@@ -31,19 +31,20 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
   # boundaryintegrate!
 
   functional_val = zero(Tsol)
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
     start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
+    end_index = mesh.bndry_offsets[g_edge_number + 1]
     idx_range = start_index:(end_index-1)  # Index range
     bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
     boundary_integrand = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
     boundary_functional = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    alpha_x = eqn.alpha_x
-    alpha_y = eqn.alpha_y
-
+    
     for i = 1:nfaces
     	bndry_i = bndry_facenums[i]
     	for j = 1:sbp.numfacenodes
@@ -54,7 +55,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
         nrm = view(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        boundary_integrand[1,j,i] = (alpha_x*nx + alpha_y*ny)*q # Boundary Flux
+        boundary_integrand[1,j,i] = functor(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
     	end
     end
 
@@ -84,6 +85,8 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   # use integratefunctional! to get the solution.
 
   functional_val = zero(Tsol)
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
@@ -95,9 +98,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
     nfaces = length(bndry_facenums)
     boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
     # boundary_force = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    alpha_x = eqn.alpha_x
-    alpha_y = eqn.alpha_y
-
+    
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
