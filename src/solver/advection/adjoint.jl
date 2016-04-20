@@ -127,17 +127,19 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
     end    # End for i = 1:nfaces
   end
 
-  # for i = 1:mesh.numEl
-    for (bindex, bndry) in enumerate (mesh.bndryfaces)
-      for j = 1:mesh.sbpface.numnodes
-        wflux = mesh.sbpface.wface[j]*integrand[1,j,bindex]
-        for k = 1:mesh.sbpface.stencilsize
-          func_deriv_arr[1, mesh.sbpface.perm[k,bndry.face], bndry.element] += 
-                                              mesh.sbpface.interp[k,j]*wflux
-        end
-      end  # End for j = 1:mesh.sbpface.numnodes
-    end    # End enumerate
-  # end      # End for i = 1:mesh.numEl
+  #=
+  for (bindex, bndry) in enumerate (mesh.bndryfaces)
+    for i = 1:mesh.sbpface.numnodes
+      wflux = mesh.sbpface.wface[i]*integrand[1,i,bindex]
+      for j = 1:mesh.sbpface.stencilsize
+        func_deriv_arr[1, mesh.sbpface.perm[j,bndry.face], bndry.element] += 
+                                            mesh.sbpface.interp[j,i]*wflux
+      end
+    end  # End for j = 1:mesh.sbpface.numnodes
+  end    # End enumerate
+  =#
+
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, integrand, func_deriv_arr)
 
   #=
   for i = 1:mesh.numEl
