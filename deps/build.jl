@@ -139,11 +139,13 @@ function installPDESolver()
   close(f)
 
   # generate the known_keys dictonary
-  start_dir = pwd()
-  input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
-  cd(input_path)
-  include(joinpath(input_path, "extract_keys.jl"))
-  cd(start_dir)
+  if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+    start_dir = pwd()
+    input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
+    cd(input_path)
+    include(joinpath(input_path, "extract_keys.jl"))
+    cd(start_dir)
+  end
 
 end  # end function
 
