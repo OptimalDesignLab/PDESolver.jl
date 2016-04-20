@@ -34,6 +34,9 @@ function installPDESolver()
     pkgdir = Pkg.dir()
   end
 
+  println(f, "PDESOLVER_BUNDLE_DEPS = ", haskey(ENV, "PDESOLVER_BUNDLE_DEPS"))
+  println(f, "PDESOLVER_PKGDIR = ", haskey(ENV, "PDESOLVER_PKGDIR"))
+
   println(f, "\n---Installing non METADATA packages---\n")
   for i=1:size(std_pkgs, 1)
     pkg_name = std_pkgs[i, 1]
@@ -120,7 +123,7 @@ function installPDESolver()
       pkg_name = pkg_list[i, 1]
       git_commit = pkg_list[i, 2]
 
-      if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL") || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
+      if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL") || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") || FORCE_INSTALL_ALL
 
         install_pkg(pkgdir, pkg_name, git_url, git_commit, pkg_dict, f, force=true)
       if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
