@@ -63,7 +63,7 @@ function installPDESolver()
       start_dir = pwd()
       cd(pkgdir )
       run(`git clone $petsc_git`)
-      mv("./Petsc", "./PETSc")
+      run(`mv -v ./Petsc, ./PETSc`)
       if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
         Pkg.build("PETSc")
       end
