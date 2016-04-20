@@ -5,7 +5,7 @@ function set_hash(pkg_dir::AbstractString, hash::AbstractString)
   new_branchname = "pdesolver_version"
 
   start_dir = pwd()
-  cd(Pkg.dir(pkg_name))
+  cd(pkg_dir)
   branch_name = readall(`git rev-parse --abbrev-ref HEAD`)
   if branch_name[1:end-1] != new_branchname
     run(`git checkout -b pdesolver_version $hash`)
