@@ -126,12 +126,11 @@ function installPDESolver()
       if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL") || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") || FORCE_INSTALL_ALL
 
         install_pkg(pkgdir, pkg_name, git_url, git_commit, pkg_dict, f, force=true)
+      end
       if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
         bundle_pkg(pkgdir, pkg_name, git_url, git_commit, f)
       end
 
-
-      end
     end
 
     println(f, "\n---Finished manual package installations---\n")
