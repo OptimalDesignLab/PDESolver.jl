@@ -1,15 +1,20 @@
 
-function set_hash(pkg_name::AbstractString, hash::AbstractString)
+function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 # this function checks out a particular git hash of a particular package
+
+  new_branchname = "pdesolver_version"
 
   start_dir = pwd()
   cd(Pkg.dir(pkg_name))
-  run(`git checkout -b pdesolver_version $hash`)
+  branch_name = readall(`git rev-parse --abbrev-ref HEAD`)
+  if branch_name[1:end-1] != new_branchname
+    run(`git checkout -b pdesolver_version $hash`)
+  end
   cd(start_dir)
 
 end
 
-function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_commit::AbstractString, pkg_dict, f; force=false)
+function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::AbstractString, git_commit::AbstractString, pkg_dict, f; force=false)
 # pkg_name = name of package
 # git_url: value to be passed to Pkg.clone()
 # git_commit: commit has to check out
@@ -18,16 +23,18 @@ function install_pkg(pkg_name::AbstractString, git_url::AbstractString, git_comm
 # force: install the package regardless of other flags, default false
 
   already_installed = haskey(pkg_dict, pkg_name) 
+  pkg_path = joinpath(dir, pkg_name)
   force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
   if !already_installed || force_specific || FORCE_INSTALL_ALL || force
     println(f, "Installing package $pkg_name")
     try 
-      if !isdir(Pkg.dir(pkg_name))  # if package not already present
+      if !isdir(pkg_path)  # if package not already present
         Pkg.clone(git_url)
-      else
-        reset_repo(pkg_name)
+        set_hash(pkg_path, git_commit)
       end
-      set_hash(pkg_name, git_commit)
+#      else
+#        reset_repo(pkg_name)
+#      end
       Pkg.build(pkg_name)
       println(f, "  Installation appears to have completed sucessfully")
     catch x
@@ -50,3 +57,34 @@ function reset_repo(pkg_name::AbstractString)
   run(`git reset --hard`)  # remove changes to files under version control
   run(`git clean -x -f -d`) # remove any files not under version control
 end
+
+
+function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::AbstractString, git_commit::AbstractString, f)
+# clone all packages into a specified directory, without installing any of them
+  println(f, "Bundling package $pkg_name")
+
+  start_dir = pwd()
+  cd(dir)
+
+  # check if package already exists
+  if isdir(pkg_name)
+    println(f, "package $pkg_name is already present, skipping...")
+    return
+  end
+
+  try
+    run(`git clone $git_url`)
+    name_ext = string(pkg_name, ".jl")
+    run(`mv -v ./$name_ext ./$pkg_name`)
+    set_hash("./$pkg_name", git_commit)
+    println(f, "Bundling of package $pkg_name appears to have completed successfully")
+  catch x
+    println(f, "Error bundling package $pkg_name")
+    println(f, "error is $x")
+  end
+
+  flush(f)
+  cd(start_dir)
+end
+
+  

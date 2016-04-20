@@ -27,14 +27,23 @@ function installPDESolver()
 
   global const FORCE_INSTALL_ALL = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_ALL")
 
+  # figure out the package directory
+  if haskey(ENV, "PDESOLVER_PKGDIR")
+    pkgdir = ENV["PDESOLVER_PKGDIR"]
+  else
+    pkgdir = Pkg.dir()
+  end
 
   println(f, "\n---Installing non METADATA packages---\n")
   for i=1:size(std_pkgs, 1)
     pkg_name = std_pkgs[i, 1]
     git_url = std_pkgs[i, 2]
     git_commit = std_pkgs[i, 3]
-
-    install_pkg(pkg_name, git_url, git_commit, pkg_dict, f)
+    if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+      bundle_pkg(pkgdir, pkg_name, git_url, git_commit, f)
+    else  # do regular install
+      install_pkg(pkgdir, pkg_name, git_url, git_commit, pkg_dict, f)
+    end
   end
 
 
@@ -49,10 +58,12 @@ function installPDESolver()
     try 
 
       start_dir = pwd()
-      cd(Pkg.dir() )
+      cd(pkgdir )
       run(`git clone $petsc_git`)
       mv("./Petsc", "./PETSc")
-      Pkg.build("PETSc")
+      if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+        Pkg.build("PETSc")
+      end
       cd(start_dir)
       println(f, "  Installation appears to have completed sucessfully")
     catch x
@@ -102,6 +113,7 @@ function installPDESolver()
   "MPI" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
   "ForwardDiff" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
 =#
+
     println(f, "\n---Considering manual package installations---\n")
     for i=1:size(pkg_list, 1)
 
@@ -110,7 +122,12 @@ function installPDESolver()
 
       if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL") || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
 
-        install_pkg(pkg_name, pkg_name, git_commit, pkg_dict, f, force=true)
+        install_pkg(pkgdir, pkg_name, git_url, git_commit, pkg_dict, f, force=true)
+      if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+        bundle_pkg(pkgdir, pkg_name, git_url, git_commit, f)
+      end
+
+
       end
     end
 
