@@ -476,6 +476,27 @@ function call{Tmsh, Tsol}(obj::exp_xyBC, u::Tsol, alpha_x, alpha_y,
 end
 
 @doc """
+### AdvectionEquationMod.xplusyBC
+
+Uses Roe solver to calculate the boundary flux using calc_xplusy to get the 
+boundary state
+
+"""->
+
+type xplusyBC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::xplusyBC, u::Tsol, alpha_x, alpha_y,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_xplusy(coords, alpha_x, alpha_y, t)
+  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+
+  return bndryflux
+end
+
+@doc """
 ### AdvectionEquationMod.BCDict
 
 It stores all the possible boundary condition dictionary options. Whenever a 
@@ -500,6 +521,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "exp3xplusyBC" => exp3xplusyBC(),
 "exp2xplus2yBC" => exp2xplus2yBC(),
 "exp_xyBC" => exp_xyBC(),
+"xplusyBC" => xplusyBC(),
 )
 
 

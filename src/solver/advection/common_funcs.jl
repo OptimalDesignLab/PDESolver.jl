@@ -331,3 +331,15 @@ function calc_exp_xy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
   y = coords[2]
   return exp(x*y)
 end
+
+@doc """
+### AdvectionEquationMod.calc_x5plusy5
+
+Calculates and returns u = x+y
+"""->
+
+function calc_xplusy{Tmsh}(coords::AbstractArray{Tmsh}, alpha_x, alpha_y, t)
+  x = coords[1]
+  y = coords[2]
+  return x + y
+end

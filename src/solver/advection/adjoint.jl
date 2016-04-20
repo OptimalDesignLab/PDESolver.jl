@@ -36,7 +36,10 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::Abs
   res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
   pert = complex(0, opts["epsilon"])
   NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, evalAdvection, pert, res_jac)
-
+  
+  # Re-interpolate interior q to q_bndry. This is done because the above step
+  # pollutes the existing eqn.q_bndry with complex values.
+  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
 
   # calculate the derivative of the function w.r.t q_vec
   func_deriv = zeros(Tsol, mesh.numDof)
@@ -55,42 +58,10 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::Abs
     n_functional_faces += nfaces
   end  # End for i = 1:length(functional_edges)
   
-  # Create a book-keeping array of tuples for storing information on 
-  # 1. sbpface.numnodes index
-  # 2. global facenum
-  # 3. functional edge number
+  # Create a book-keeping array for the funcitonal
   fq_bndry_info = Array{Tuple{Int, Int, Int, Int}}(n_functional_faces*mesh.sbpface.numnodes)
   functionalBoundaryInfo(mesh, sbp, eqn, fq_bndry_info, functional_edges)
 
-  #=
-  println("tupeof fq_bndry_info = ", typeof(fq_bndry_info))
-  starting_index = 0
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr]
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
-    idx_range = start_index:(end_index-1)
-    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
-    nfaces = length(mesh.bndryfaces[idx_range])
-
-    for i = 1:nfaces
-      bndry_i = bndry_facenums[i]
-      global_facenum = idx_range[i]
-      
-      for j = 1:mesh.sbpface.numnodes
-
-        sbpface_faceno = bndry_i.face  # Face number of the edge (for 2D Tri 
-                                       # element: 1, 2, or 3)
-        fq_bndry_info[starting_index + (i-1)*mesh.sbpface.numnodes + j] = 
-                               (j,global_facenum,g_edge_number, sbpface_faceno)
-      
-      end   # End for j = 1:mesh.sbpface.numnodes
-    end     # End for i = 1:nfaces
-    
-    nfaces_prev = nfaces
-    starting_index += nfaces_prev*mesh.sbpface.numnodes
-  end       # End for itr = 1:length(functional_edges)
-  =#
   # Calculate df/dq_bndry on edges where the functional is calculated and put 
   # it back in func_deriv_arr
   calcFunctionalDeriv(mesh, sbp, eqn, opts, fq_bndry_info, functional_edges, 
@@ -100,7 +71,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::Abs
   assembleArray(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
   # println("\nAfter Assemble array in calcAdjoint")
   # println("func_deriv_arr = \n", func_deriv_arr)
-  # println("\nfunc_deriv = \n", func_deriv)
+  # println("\nfunc_deriv = \n", real(func_deriv))
 
   # Solve for adjoint vector
   # println("\n\n res_jac = \n", res_jac)
@@ -124,12 +95,75 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
   alpha_y = eqn.alpha_y
 
   # Initialize array of derivative of functional integrand over all edges
+  # func_deriv_arr = zeros(eqn.q)  # 3D array that holds df/dq_bndry on ALL edges
+
+  # Obtain the derivative of the integrand at all meh.bndry
+  integrand = zeros(eqn.q_bndry)
+  # println("\nsize of q_bndry = ", size(eqn.q_bndry))
+
+  # Populate integrand
+  for itr = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
+    start_index = mesh.bndry_offsets[g_edge_number]
+    end_index = mesh.bndry_offsets[g_edge_number+1]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
+    nfaces = length(bndry_facenums)
+
+    for i = 1:nfaces
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+      for j = 1:mesh.sbpface.numnodes
+        q = eqn.q_bndry[ 1, j, global_facenum]
+        # println("eqn.q_bndry[1,$j,$global_facenum] = ", q)
+        coords = view(mesh.coords_bndry, :, j, global_facenum)
+        dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
+        nrm = view(sbp.facenormal, :, bndry_i.face)
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, alpha_x, alpha_y, nx, ny, q)
+      end  # End for j = 1:mesh.sbpface.numnodes
+    end    # End for i = 1:nfaces
+  end
+
+  # for i = 1:mesh.numEl
+    for (bindex, bndry) in enumerate (mesh.bndryfaces)
+      for j = 1:mesh.sbpface.numnodes
+        wflux = mesh.sbpface.wface[j]*integrand[1,j,bindex]
+        for k = 1:mesh.sbpface.stencilsize
+          func_deriv_arr[1, mesh.sbpface.perm[k,bndry.face], bndry.element] += 
+                                              mesh.sbpface.interp[k,j]*wflux
+        end
+      end  # End for j = 1:mesh.sbpface.numnodes
+    end    # End enumerate
+  # end      # End for i = 1:mesh.numEl
+
+  #=
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      println("func_deriv_arr[1,$j,$i] = ", func_deriv_arr[1,j,i])
+    end
+  end
+  =#
+  return nothing
+end    # End function calcFunctionalDeriv
+
+#=
+function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+                             eqn ::AdvectionData{Tsol}, opts, fq_bndry_info, 
+                             functional_edges, func_deriv_arr)
+
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
+  # Initialize array of derivative of functional integrand over all edges
   # dfunctional_integrand = zeros(eqn.q_bndry)
   func_deriv_arr_bndry = zeros(eqn.q_bndry)  # 3D array that holds df/dq_bndry on ALL edges
   
   # Populate dfunctional_integrand
-  for i = 1:length(fq_bndry_info)
-    sbpface_nodenum, g_facenum, geom_edge_number, sbpface_faceno = fq_bndry_info[i]
+  for ctr = 1:length(fq_bndry_info)
+    sbpface_nodenum, g_facenum, geom_edge_number, sbpface_faceno = fq_bndry_info[ctr]
     # @printf("sbpface_nodenum = %d, global_facenum,= %d g_edge_number = %d, sbpface_faceno =%d\n",
     #  sbpface_nodenum, global_facenum, g_edge_number, sbpface_faceno)
     
@@ -150,23 +184,26 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         global_facenum = idx_range[i]
         for j = 1:mesh.sbpface.numnodes
           q = eqn.q_bndry[ 1, j, global_facenum]
+          println("eqn.q_bndry[1,$j,$global_facenum] = ", q)
           coords = view(mesh.coords_bndry, :, j, global_facenum)
           dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
           nrm = view(sbp.facenormal, :, bndry_i.face)
           nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
           ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-          integrand[1,j,i] = calcIntegrandDeriv(alpha_x, alpha_y, nx, ny, q)
+          integrand[1,j,i] = calcIntegrandDeriv(opts, alpha_x, alpha_y, nx, ny, q)
+          # intln("integrand[1,$j,$i] = ", integrand[1,j,i])
         end  # End for j = 1:mesh.sbpface.numnodes
+        println("new face \n")
       end    # End for i = 1:nfaces
-    val_per_geom_edge = zeros(Tsol, 1)
-    integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
+      val_per_geom_edge = zeros(Tsol, 1)
+      integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
                          integrand, val_per_geom_edge)
 
-    functional_deriv_val += val_per_geom_edge[1]
+      functional_deriv_val += val_per_geom_edge[1]
     end   # End for itr = 1:length(functional_edges)
     
     func_deriv_arr_bndry[1,sbpface_nodenum,g_facenum] = functional_deriv_val
-  end  # end for i = 1:n_functional_q
+  end  # End for ctr = 1:length(fq_bndry_info)
 
   # Transfer those values to the interior nodes
   boundaryToVolumeInterpolation(mesh.sbpface, mesh.bndryfaces, func_deriv_arr,
@@ -186,13 +223,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
       println("func_deriv_arr_bndry[1,$i,$bindex] = ", func_deriv_arr_bndry[1,i,bindex]) 
     end
   end
-  
-
   #=
-  # Integrate the derivative of functional integrand and put in func_deriv_arr
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, dfunctional_integrand, 
-                     func_deriv_arr)
-  
   # println func_deriv_arr
   for (bindex, bndry) in enumerate(mesh.bndryfaces)
     for i = 1:mesh.sbpface.numnodes
@@ -202,7 +233,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
   =#
   return nothing
 end
-
+=#
 @doc """
 ### AdvectionEquationMod.calcIntegrandDeriv
 
@@ -210,10 +241,15 @@ Compute the analytical derivative of the integrand at a point
 
 """->
 
-function calcIntegrandDeriv(alpha_x, alpha_y, nx, ny, q)
+function calcIntegrandDeriv(opts, alpha_x, alpha_y, nx, ny, q)
 
-  return alpha_x*nx + alpha_y*ny
+  pert = complex(0, opts["epsilon"])  # complex perturbation
+  q += pert
+  val = calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q)
+  integrand_deriv = imag(val)/norm(pert)
 
+  
+  return integrand_deriv
 end
 
 
