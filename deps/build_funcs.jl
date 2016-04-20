@@ -29,7 +29,9 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
     println(f, "Installing package $pkg_name")
     try 
       if !isdir(pkg_path)  # if package not already present
-        Pkg.clone(git_url)
+        run(`git clone $git_url`)
+	name_ext = string(pkg_name, ".jl")
+	run(`mv -v ./$name_ext ./$pkg_name`)
         set_hash(pkg_path, git_commit)
       end
 #      else
@@ -66,6 +68,7 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
   start_dir = pwd()
   cd(dir)
 
+  println(f, "now in directory ", pwd())
   # check if package already exists
   if isdir(pkg_name)
     println(f, "package $pkg_name is already present, skipping...")
@@ -74,6 +77,7 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
 
   try
     run(`git clone $git_url`)
+    println(f, "ls of pwd() = ", readall(`ls`))
     name_ext = string(pkg_name, ".jl")
     run(`mv -v ./$name_ext ./$pkg_name`)
     set_hash("./$pkg_name", git_commit)

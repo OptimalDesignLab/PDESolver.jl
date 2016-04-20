@@ -56,17 +56,14 @@ function installPDESolver()
   already_installed = haskey(pkg_dict, pkg_name) 
   force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
 
-  if !already_installed  || force_specific  || FORCE_INSTALL_ALL
+  if !already_installed  || force_specific  || FORCE_INSTALL_ALL && !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
     println(f, "Installing package $pkg_name")
     try 
-
       start_dir = pwd()
-      cd(pkgdir )
+      cd(pkgdir)
       run(`git clone $petsc_git`)
       run(`mv -v ./Petsc, ./PETSc`)
-      if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
-        Pkg.build("PETSc")
-      end
+      Pkg.build("PETSc")
       cd(start_dir)
       println(f, "  Installation appears to have completed sucessfully")
     catch x
@@ -74,10 +71,18 @@ function installPDESolver()
       println(f, "Error is $x")
     end
 
+  elseif haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+    start_dir = pwd()
+    cd(pkgdir )
+    println(f, "current directory is now ", pwd() )
+    run(`git clone $petsc_git`)
+    run(`mv -v ./Petsc ./PETSc`)
+    cd(start_dir)
+
   else
+    println(f, "bundle deps = ", haskey(ENV, "PDESOLVER_BUNDLE_DEPS"))
     println(f, "Skipping installation of package $pkg_name")
-    println(f, "  already installed: ", already_installed, ", specifically forced: ", force_specific,
-               ", force general: ", FORCE_INSTALL_ALL)
+    println(f, "  already installed: ", already_installed, ", specifically forced: ", force_specific, ", force general: ", FORCE_INSTALL_ALL)
   end
 
 
@@ -89,18 +94,18 @@ function installPDESolver()
   #------------------------------------------------------------------------------
 
   # array of [pkg_name, commit_hash]
-  pkg_list = ["Compat" "aa23cb98dbdba0eab82d465f87b1a936685548c0";
-              "URIParser" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
-              "FactCheck" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
-#              "ArrayViews" "4ec55697fc4f9cba522a5137b96d502230269910";
-              "SHA" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
-              "BinDeps" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
-              "NaNMath" "969151c5ff8022487379279ebac4a239a400dd44";
-              "Calculus" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
-              "DualNumbers" "34ae2b236f4853028fc60a5efed42bd17a33230f";
-              "Debug" "0e733093cd71c67bd40ac1295e54153c3db0c751";
-              "MPI" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
-              "ForwardDiff" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
+  pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "aa23cb98dbdba0eab82d465f87b1a936685548c0";
+              "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
+              "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
+#              "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "4ec55697fc4f9cba522a5137b96d502230269910";
+              "SHA" "https://github.com/staticfloat/SHA.jl.git" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
+              "BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
+              "NaNMath" "https://github.com/mlubin/NaNMath.jl.git" "969151c5ff8022487379279ebac4a239a400dd44";
+              "Calculus" "https://github.com/johnmyleswhite/Calculus.jl.git" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
+              "DualNumbers" "https://github.com/JuliaDiff/DualNumbers.jl.git" "34ae2b236f4853028fc60a5efed42bd17a33230f";
+              "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
+              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
+              "ForwardDiff" "https://github.com/JuliaDiff/ForwardDiff.jl.git" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
   
 #=
   pkg_list = ["Compat"  "5b03745a6a948781329c444f08ad67cff63f91f7";
@@ -121,7 +126,8 @@ function installPDESolver()
     for i=1:size(pkg_list, 1)
 
       pkg_name = pkg_list[i, 1]
-      git_commit = pkg_list[i, 2]
+      git_url = pkg_list[i, 2]
+      git_commit = pkg_list[i, 3]
 
       if haskey(ENV, "PDESOLVER_INSTALL_DEPS_MANUAL") || haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") || FORCE_INSTALL_ALL
 
