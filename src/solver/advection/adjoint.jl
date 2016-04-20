@@ -118,7 +118,6 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
-        # println("eqn.q_bndry[1,$j,$global_facenum] = ", q)
         coords = view(mesh.coords_bndry, :, j, global_facenum)
         dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm = view(sbp.facenormal, :, bndry_i.face)
