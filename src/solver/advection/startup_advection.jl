@@ -409,12 +409,14 @@ if opts["solve"]
 
         # TODO: Presently adjoint computation only for 1 functional. Figure out
         # API based on future use.
-        key = string("geom_edges_functional", 1)
+        j = 1
+        key = string("geom_edges_functional", j)
         functional_edges = opts[key]
+        functional_number = j
+        functional_name = getFunctionalName(opts, j)
+        
         adjoint_vec = zeros(Tsol, mesh.numDof)
-        functional_number = 1
-        AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, functional_number, adjoint_vec)
-        # println("\n\n In startup_advection.jl, adjoint_vec = \n", adjoint_vec, "\n typeof = ", typeof(adjoint_vec))
+        calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
 
 
         # Write adjoint vector to file and mesh

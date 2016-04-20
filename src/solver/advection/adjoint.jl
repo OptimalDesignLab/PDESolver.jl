@@ -2,6 +2,7 @@
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 using NonlinearSolvers
 
+export calcAdjoint
 
 @doc """
 ### AdvectionEquationMod.calcAdjoint
@@ -25,7 +26,7 @@ Calcualtes the adjoint vector for a single functional
 """->
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                    opts, functional_number, adjoint_vec::Array{Tsol,1})
+                    opts, functor, functional_number, adjoint_vec::Array{Tsol,1})
 
   # Get information corresponding to functional_number
   key = string("geom_edges_functional", functional_number)
@@ -51,7 +52,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Calculate df/dq_bndry on edges where the functional is calculated and put 
   # it back in func_deriv_arr
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functional_edges, 
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functor, functional_edges, 
                       func_deriv_arr)  # populate df_dq_bndry
 
   # Assemble func_deriv
@@ -90,7 +91,7 @@ mesh nodes.
 
 """->
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
-                             eqn ::AdvectionData{Tsol}, opts, functional_edges, 
+                             eqn ::AdvectionData{Tsol}, opts, functor, functional_edges, 
                              func_deriv_arr)
 
   alpha_x = eqn.alpha_x
@@ -123,7 +124,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         nrm = view(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, alpha_x, alpha_y, nx, ny, q)
+        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, alpha_x, alpha_y, nx, ny, q)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
   end
@@ -149,16 +150,28 @@ end    # End function calcFunctionalDeriv
 @doc """
 ### AdvectionEquationMod.calcIntegrandDeriv
 
-Compute the derivative of the integrand at a point.
+Compute the derivative of the integrand at a point. It presently uses complex
+step to compute the derivative
 
 **Inputs**
+
+*  `opts`    : Input dictionary
+*  `functor` : Functional name
+*  `alpha_x` & `alpha_y` : Advection velocities in X & Y directions
+*  `nx` & `ny` : Normal vectors
+*  `q`       : Solution variable
+
+**Outputs**
+
+*  `integrand_deriv` : derivative of the functor w.r.t q
+
 """->
 
-function calcIntegrandDeriv(opts, alpha_x, alpha_y, nx, ny, q)
+function calcIntegrandDeriv(opts, functor, alpha_x, alpha_y, nx, ny, q)
 
   pert = complex(0, opts["epsilon"])  # complex perturbation
   q += pert
-  val = calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q)
+  val = functor(alpha_x, alpha_y, nx, ny, q)
   integrand_deriv = imag(val)/norm(pert)
 
   
