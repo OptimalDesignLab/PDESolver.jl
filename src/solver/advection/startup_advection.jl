@@ -376,7 +376,7 @@ if opts["solve"]
           functional_name = getFunctionalName(opts, j)
 
           functional_val = zero(Tsol)
-          functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
+          functional_val = calcBndryfunctional(mesh, sbp, eqn,
                            opts, functional_name, functional_edges)
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
