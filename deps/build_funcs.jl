@@ -81,11 +81,14 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
     name_ext = string(pkg_name, ".jl")
     run(`mv -v ./$name_ext ./$pkg_name`)
     set_hash("./$pkg_name", git_commit)
-    cd("./$pkg_name/deps")
 
-    # perform any needed downloads
-    if isfile("./download.sh")
-      run(`./download.sh`)
+    if isdir("./$pkg_name/deps")
+      cd("./$pkg_name/deps")
+
+      # perform any needed downloads
+      if isfile("./download.sh")
+        run(`./download.sh`)
+      end
     end
 
     println(f, "Bundling of package $pkg_name appears to have completed successfully")

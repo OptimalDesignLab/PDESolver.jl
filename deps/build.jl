@@ -77,6 +77,10 @@ function installPDESolver()
     println(f, "current directory is now ", pwd() )
     run(`git clone $petsc_git`)
     run(`mv -v ./Petsc ./PETSc`)
+    
+    cd("./PETSc/deps")
+    println(f, "pwd = ", pwd())
+    run(`./download.sh`)
     cd(start_dir)
 
   else
