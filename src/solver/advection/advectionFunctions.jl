@@ -149,6 +149,7 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
+#  println("    boundaryinterpolate @time printed above")
 
   for i=1:mesh.numBC
     functor_i = mesh.bndry_funcs[i]
@@ -161,7 +162,7 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
    calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
-#   println("  calcBoundaryflux @time printed above")
+#   println("    calcBoundaryflux @time printed above")
   end
 
   if mesh.isDG
