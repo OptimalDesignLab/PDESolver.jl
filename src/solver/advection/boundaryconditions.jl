@@ -366,6 +366,7 @@ function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, alpha_x, alpha_y,
   u_bc = calc_p5(coords, alpha_x, alpha_y, t)
 #  println("  u_bc = ", u_bc)
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+#  println("    RoeSolver @time printed above")
 
   return bndryflux
 end

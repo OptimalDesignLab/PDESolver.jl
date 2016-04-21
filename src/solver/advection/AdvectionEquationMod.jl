@@ -94,6 +94,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
     if mesh.isDG

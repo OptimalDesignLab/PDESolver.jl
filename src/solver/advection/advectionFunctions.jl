@@ -37,29 +37,36 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   if mesh.commsize > 1
     sendParallelData(mesh, sbp, eqn, opts)
   end
+#  println("send parallel data @time printed above")
 
   evalSCResidual(mesh, sbp, eqn)
+#  println("evalSCResidual @time printed above")
 
   # Does not work, should remove
 #  if opts["use_GLS"]
 #    GLS(mesh, sbp, eqn)
 #  end
   evalSRCTerm(mesh, sbp, eqn, opts)
+#  println("evalSRCTerm @time printed above")
 
   evalBndry(mesh, sbp, eqn)
+#  println("evalBndry @time printed above")
 
   if mesh.isDG
     evalFaceTerm(mesh, sbp, eqn, opts)
   end
+#  println("evalFaceTerm @time printed above")
 
   if opts["use_GLS2"]
     applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   end
+#  println("applyGLS2 @time printed above")
 
   # do parallel computation last
   if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
   end
+#  println("evalSharedFaceIntegrals @time printed above")
 
 #=
   f = open("pfout_$myrank.dat", "a+")
@@ -93,11 +100,13 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 
 #    println("----- Entered evalSCResidual -----")
-  Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
+  Adq_dxi = eqn.flux_parametric
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
+#  Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
       alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + 
                  mesh.dxidx[1, 2, j, i]*alpha_y
       alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + 
@@ -151,7 +160,8 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
-  calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
+   calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
+#   println("  calcBoundaryflux @time printed above")
   end
 
   if mesh.isDG
@@ -159,6 +169,7 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   else
     boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   end
+#  println("    boundaryintegrate! @time printed above")
 
 #  println("----- Finished evalBndry -----")
   return nothing
@@ -267,15 +278,15 @@ end  # end function
 function applySRCTerm(mesh,sbp, eqn, opts, src_func)
 
   weights = sbp.w
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
   t = eqn.t
   for i=1:mesh.numEl
     jac_i = sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
       coords_j = sview(mesh.coords, :, j, i)
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
-
       src_val = src_func(coords_j, alpha_x, alpha_y, t)
       res_i[j] += weights[j]*src_val/jac_i[j]
     end
