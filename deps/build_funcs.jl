@@ -29,10 +29,13 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
     println(f, "Installing package $pkg_name")
     try 
       if !isdir(pkg_path)  # if package not already present
+        start_dir = pwd()
+        cd(dir)
         run(`git clone $git_url`)
 	name_ext = string(pkg_name, ".jl")
 	run(`mv -v ./$name_ext ./$pkg_name`)
         set_hash(pkg_path, git_commit)
+        cd(start_dir)
       end
 #      else
 #        reset_repo(pkg_name)
