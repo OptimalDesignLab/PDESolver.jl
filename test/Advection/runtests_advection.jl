@@ -19,6 +19,7 @@ using ArrayViews
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
 # insert a command line argument
 resize!(ARGS, 1)
+#=
 ARGS[1] = "input_vals_channel.jl"
 include("test_empty.jl")
 #include("test_input.jl")
@@ -27,6 +28,7 @@ include("test_mms.jl")
 include("test_jac.jl")
 include("test_GLS2.jl")
 include("test_dg.jl")
+=#
 include("test_functional_integrate.jl")
 #=
 cd("./convergence")

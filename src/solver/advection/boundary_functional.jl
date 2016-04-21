@@ -127,30 +127,8 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   return functional_val
 end
 
-@doc """
-###AdvectionEquationMod.calcFunctionalIntegrand
 
-Calculates the functional integrand for a particular q.
-
-**Inputs**
-
-*  `alpha_x` : eqn.alpha_x
-*  `alpha_y` : eqn.alpha_y
-*  `nx`      : x-component of normal vector
-*  `ny`      : y-component of normal vector
-*  `q`       : eqn.q or eqn.q_bndry at the particular node
-
-**Outputs**
-
-*  `functional_integrand` : value of the functional integrand at that node 
-
-"""->
-
-function calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q)
-  
-  return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
-
-end
+#-----    Computing Functional Integrand    -----#
 
 @doc """
 ### AdvectionEquationMod.qflux
@@ -200,3 +178,30 @@ function getFunctionalName(opts, f_number)
 
   return functional = FunctionalDict[val]
 end
+
+#=
+@doc """
+###AdvectionEquationMod.calcFunctionalIntegrand
+
+Calculates the functional integrand for a particular q.
+
+**Inputs**
+
+*  `alpha_x` : eqn.alpha_x
+*  `alpha_y` : eqn.alpha_y
+*  `nx`      : x-component of normal vector
+*  `ny`      : y-component of normal vector
+*  `q`       : eqn.q or eqn.q_bndry at the particular node
+
+**Outputs**
+
+*  `functional_integrand` : value of the functional integrand at that node 
+
+"""->
+
+function calcFunctionalIntegrand(alpha_x, alpha_y, nx, ny, q)
+  
+  return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
+
+end
+=# 

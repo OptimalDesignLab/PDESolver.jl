@@ -63,7 +63,9 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   # TODO: The following operation creates a temporary copy of adjoint_vec, does
   #       the '\' computation and then puts it back into adjoint_vec. This
   #       needs to change.
-  adjoint_vec[:] = -(res_jac.')\func_deriv
+  adjoint_vec[:] = (res_jac.')\func_deriv # There is no negative sign because 
+                                          # the weak residual is computed on
+                                          # the right hand side
   
   return nothing
 end  # End function calcAdjoint

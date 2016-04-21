@@ -376,16 +376,19 @@ if opts["solve"]
           functional_name = getFunctionalName(opts, j)
 
           functional_val = zero(Tsol)
-          functional_val = calcBndryfunctional(mesh, sbp, eqn,
-                           opts, functional_name, functional_edges)
+          functional_val = calcBndryfunctional(mesh, sbp, eqn, opts, 
+                           functional_name, functional_edges)
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
-          analytical_functional_val = 2*(exp(1) - 1)
+          analytical_functional_val = opts["analytical_functional_val"]
           # analytical_functional_val = 3^6 + (3^6)/6 - 3^5 - 1/6
           println("analytical_functional_val = ", analytical_functional_val)
           
-          absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
-          relative_functional_error = absolute_functional_error/norm(analytical_functional_val, 2)
+          absolute_functional_error = norm((functional_val - 
+                                           analytical_functional_val), 2)
+          relative_functional_error = absolute_functional_error/
+                                      norm(analytical_functional_val, 2)
+          
           mesh_metric = 1/sqrt(mesh.numEl/2)  # Only for a square domain with triangular elements
           
           # write force error to file

@@ -237,6 +237,7 @@ arg_keys = keys(arg_dict)
 get!(arg_dict, "calc_functional", false)
 get!(arg_dict, "num_functionals", 0)
 get!(arg_dict, "functional_error_outfname", "functional_error")
+get!(arg_dict, "analytical_functional_val", 0.0)
 
 
 # Adjoint computation options
