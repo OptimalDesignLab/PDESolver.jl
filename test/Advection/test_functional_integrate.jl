@@ -1,31 +1,51 @@
 # test boundary forces
-
 ARGS[1] = "input_vals_functional_CG.jl"
 include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
 
-facts("--- Testing Boundary Functional Computation on CG mesh ---") do
-  println("geomedges = ", opts["geom_edges_functional1"])
-  geometric_edge_number = 1
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn,
-  	               opts, geometric_edge_number)
-  @fact functional_val --> roughly(-1.7539310924648246, atol=1e-10)
+facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
+
+  @fact mesh.isDG --> false
+  @fact opts["functional_name1"] --> "qflux"
+  @fact opts["analytical_functional_val"] --> roughly(2*(exp(1) - 1), atol=1e-12)
+  @fact opts["geom_edges_functional1"] --> [2,3]
+  
+  fname = "./functional_error1.dat"
+  error = readdlm(fname)
+
+  @fact error[1] --> roughly(0.0060826244541961885, atol=1e-6)
+
+  rm("./functional_error1.dat") # Delete the file
 end
 
 ARGS[1] = "input_vals_functional_DG.jl"
 include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
 
-facts("--- Testing Boundary Functional Computation on DG mesh ---") do
+facts("--- Testing Boundary Functional Computation on DG Mesh ---") do
+
   @fact mesh.isDG --> true
-  geometric_edge_number = 1
-  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-  functional_val = AdvectionEquationMod.calcBndryfunctional(mesh, sbp, eqn, opts, 
-          geometric_edge_number)
-  @fact functional_val --> roughly(-1.712670952981824, atol=1e-12)
+  @fact opts["functional_name1"] --> "qflux"
+  @fact opts["analytical_functional_val"] --> roughly(2*(exp(1) - 1), atol=1e-12)
+  @fact opts["geom_edges_functional1"] --> [2,3]
+  
+  fname = "./functional_error1.dat"
+  error = readdlm(fname)
+
+  @fact error[1] --> roughly(1.657574600175115e-5, atol=1e-6)
+
+  rm("./functional_error1.dat") # Delete the file
 end
 
-facts("--- Testing Adjoint Computation ---") do
+facts("--- Testing Adjoint Computation on DG Mesh ---") do
+  
   @fact mesh.isDG --> true
-  println("functional name = ", opts["functional_name1"])
+  @fact opts["calc_adjoint"] --> true
 
+  fname = "./adjoint_vector.dat"
+  adjoint_vec = readdlm(fname)
+  for i = 1:length(adjoint_vec)
+    @fact adjoint_vec[i] --> roughly(-1.0 , atol=1e-10)
+  end
+
+  rm("./adjoint_vector.dat")
+  
 end
