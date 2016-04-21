@@ -58,8 +58,9 @@ function installPDESolver()
   already_installed = haskey(pkg_dict, pkg_name) 
   force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
 
-  if !already_installed  || force_specific  || FORCE_INSTALL_ALL && !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+  if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS") && !already_installed  || force_specific  || FORCE_INSTALL_ALL
     println(f, "Installing package $pkg_name")
+
     try 
       start_dir = pwd()
       cd(pkgdir)
@@ -74,15 +75,22 @@ function installPDESolver()
     end
 
   elseif haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+    println(f, "Bundling package PETSc")
     start_dir = pwd()
-    cd(pkgdir )
-    println(f, "current directory is now ", pwd() )
-    run(`git clone $petsc_git`)
-    run(`mv -v ./Petsc ./PETSc`)
-    
-    cd("./PETSc/deps")
-    println(f, "pwd = ", pwd())
-    run(`./download.sh`)
+    try
+      cd(pkgdir )
+      println(f, "current directory is now ", pwd() )
+      run(`git clone $petsc_git`)
+      run(`mv -v ./Petsc ./PETSc`)
+      
+      cd("./PETSc/deps")
+      println(f, "pwd = ", pwd())
+      run(`./download.sh`)
+      println(f, "Bundling of package PETSc appears to have completed sucessfully")
+    catch x
+      print(f, "Bunding of backapge PETSc failed")a
+      println(f, "Error is $x")
+    end
     cd(start_dir)
   elseif haskey(ENV, "PDESOLVER_UNBUNDLE_DEPS")
     unbundle_pkg(pkgdir, pkg_name, f)
