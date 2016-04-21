@@ -104,4 +104,36 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
   cd(start_dir)
 end
 
-  
+function unbundle_pkg(dir::AbstractString, pkg_name::AbstractString, f)
+# install a package by directly calling the build.jl script
+# this bypasses the REQUIRE file, and therefore any internet access
+# the dependencies must be installed in order for this to work
+
+  println(f, "unbundling package $pkg_name")
+  start_dir = pwd()
+  pkgdir = joinpath(dir, pkg_name)
+  cd(pkgdir)
+  if isdir("./deps")
+    cd("./deps")
+
+    if isfile("./build.jl")
+      try
+        include("build.jl")
+        println(f, "unbundling package $pkg_name appears to have completed successfully")
+      catch x
+        println(f, "Error unbundling package $pkg_name")
+        println(f, "Error is $x")
+      end
+
+    else
+      println(f, "No build.jl file for this package, skipping...")
+
+    end   # end if isfile()
+
+  else  
+    println(f, "No deps directory for this package, skipping...")
+  end  # end isdir()
+
+  flush(f)
+end
+

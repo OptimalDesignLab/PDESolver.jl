@@ -47,12 +47,9 @@ PDESOLVER_BUNDLE_DEPS to tell the build script to perform bundling instead of
 installation, and set the path to the directory where the deps should be stored
 in the variable PDESOLVER_PKGDIR.
 
-After running the build script, copy the contents of teh PDESOLVER_PKGDIR to
-the package directory on the target machine, set PDEOSLVER_FORCE_INSTALL_ALL, and
-run the build script as usual.
-
-The only difficulty is packages that internally perform additional downloads.
-These downloads will have to be done before copying to the target machine.
+After running the build script, copy the contents of the PDESOLVER_PKGDIR to
+the package directory on the target machine, set PDESOLVER_UNBUNDLE_DEPS, and
+run the PDESolver/build.jl.
 
 ## Logging
 The file `deps/install.log` is created and written to with the progress of the

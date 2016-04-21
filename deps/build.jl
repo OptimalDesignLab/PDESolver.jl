@@ -44,6 +44,8 @@ function installPDESolver()
     git_commit = std_pkgs[i, 3]
     if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
       bundle_pkg(pkgdir, pkg_name, git_url, git_commit, f)
+    elseif haskey(ENV, "PDESOLVER_UNBUNDLE_DEPS")
+      unbundle_pkg(pkgdir, pkg_name, f)
     else  # do regular install
       install_pkg(pkgdir, pkg_name, git_url, git_commit, pkg_dict, f)
     end
@@ -82,7 +84,8 @@ function installPDESolver()
     println(f, "pwd = ", pwd())
     run(`./download.sh`)
     cd(start_dir)
-
+  elseif haskey(ENV, "PDESOLVER_UNBUNDLE_DEPS")
+    unbundle_pkg(pkgdir, pkg_name, f)
   else
     println(f, "bundle deps = ", haskey(ENV, "PDESOLVER_BUNDLE_DEPS"))
     println(f, "Skipping installation of package $pkg_name")
@@ -139,6 +142,8 @@ function installPDESolver()
       end
       if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
         bundle_pkg(pkgdir, pkg_name, git_url, git_commit, f)
+      elseif haskey(ENV, "PDESOLVER_UNBUNDLE_DEPS")
+        unbundle_pkg(pkgdir, pkg_name, f)
       end
 
     end
