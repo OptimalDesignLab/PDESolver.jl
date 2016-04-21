@@ -33,10 +33,23 @@ manually, forcefully.
  of the non-standard packages, even if already installed
 `PDESOLVER_FORCE_DEP_INSTALL_pkg_name`: force the checkout and re-installation
 of the package named `pkg_name`.
- 
 
 For all these environmental variables, the value is not important, only the 
 existance of the variable.
+
+
+## Offline Installation
+If the internet is not accessible from the machine where the code is to be 
+installed, it is possible to download the packages to a specified 
+directory on another machine and then copy them to the machine where they
+will be installed.  To do this, set the envinronmental variable 
+PDESOLVER_BUNDLE_DEPS to tell the build script to perform bundling instead of 
+installation, and set the path to the directory where the deps should be stored
+in the variable PDESOLVER_PKGDIR.
+
+After running the build script, copy the contents of the PDESOLVER_PKGDIR to
+the package directory on the target machine, set PDESOLVER_UNBUNDLE_DEPS, and
+run the PDESolver/build.jl.
 
 ## Logging
 The file `deps/install.log` is created and written to with the progress of the
