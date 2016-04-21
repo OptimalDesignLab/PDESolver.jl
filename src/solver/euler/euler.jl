@@ -111,13 +111,13 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
   eqn.params.t = t  # record t to params
   
-  dataPrep(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  @time dataPrep(mesh, sbp, eqn, opts)
+  println("dataPrep @time printed above")
 
 
-  evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  @time evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #  println("after volume integrals res = \n", eqn.res)
-#  println("volume integral @time printed above")
+  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -141,18 +141,18 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   =#
   #----------------------------------------------------------------------------
 
-  evalBoundaryIntegrals(mesh, sbp, eqn)
+  @time evalBoundaryIntegrals(mesh, sbp, eqn)
 #  println("after boundary integrals res = \n", eqn.res)
-#  println("boundary integral @time printed above")
+  println("boundary integral @time printed above")
 
 
-  addStabilization(mesh, sbp, eqn, opts)
+  @time addStabilization(mesh, sbp, eqn, opts)
 #  println("after stabilization res = \n", eqn.res)
-#  println("stabilizing @time printed above")
+  println("stabilizing @time printed above")
 
   if mesh.isDG
-    evalFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("face integral @time printed above")
+    @time evalFaceIntegrals(mesh, sbp, eqn, opts)
+    println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
 
@@ -293,22 +293,22 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   fill!(eqn.res_edge, 0.0)
  
   getAuxVars(mesh, eqn)
-#  println("getAuxVars @time printed above")
+#  println("  getAuxVars @time printed above")
 
   if opts["check_density"]
     checkDensity(eqn)
-#    println("checkDensity @time printed above")
+#    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
     checkPressure(eqn)
-#    println("checkPressure @time printed above")
+#    println("  checkPressure @time printed above")
   end
 
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, sview(flux_parametric, :, :, :, 1), sview(flux_parametric, :, :, :, 2))
   getEulerFlux(mesh, sbp,  eqn, opts)
-#  println("getEulerFlux @time printed above")
+#  println("  getEulerFlux @time printed above")
 
 
   if mesh.isDG
@@ -321,10 +321,10 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
   fill!(eqn.bndryflux, 0.0)
   getBCFluxes(mesh, sbp, eqn, opts)
-#   println("getBCFluxes @time printed above")
+#   println("  getBCFluxes @time printed above")
   
-   stabscale(mesh, sbp, eqn)
-#  println("stabscale @time printed above")
+  stabscale(mesh, sbp, eqn)
+#  println("  stabscale @time printed above")
 
 #  println("finished dataPrep()")
   return nothing

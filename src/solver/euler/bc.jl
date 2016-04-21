@@ -26,10 +26,12 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     idx_range = start_index:end_index
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
     bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
+#    println("    eqn.bndryflux view @time printed above")
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
     calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
+#    println("    calcBoundaryFlux @time printed above")
   end
 
   writeBoundary(mesh, sbp, eqn, opts)
@@ -184,19 +186,25 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
 
       # get components
       q = sview(eqn.q, :, k, bndry_i.element)
+#      println("q view @time printed above")
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
-      flux_parametric = sview(eqn.flux_parametric, :, k, bndry_i.element, :)
+#      println("convertToConservative @time printed above")
+#      @time flux_parametric = sview(eqn.flux_parametric, :, k, bndry_i.element, :)
+#      println("    flux_parametric view @time printed above")
       aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
+#      println("dxidx @time printed above")
       nrm = sview(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+#      println("functor @time printed above")
 
     end
+#    println("inner loop @time printed above")
 
   end
 

@@ -17,7 +17,7 @@
     flux : vector to populate with solution
 
   Aliasing restrictions:  none of the inputs can alias params.res_vals1,
-                          params.res_vals2, params.q_vals, params.flux_vals1
+                          params.res_vals2, params.q_vals, params.flux_vals1, or                          params.sat, or params.nrm
 
 
 """->
@@ -95,7 +95,8 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   dq4 = q[4] - qg[4]
 
   #-- diagonal matrix multiply
-  sat = zeros(Tres, 4)
+#  sat = zeros(Tres, 4)
+  sat = params.sat_vals
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
@@ -148,8 +149,12 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
   v_vals = params.q_vals
+  nrm2 = params.nrm
+  nrm2[1] = nx
+  nrm2[2] = ny
+
   convertFromNaturalToWorkingVars(params, q, v_vals)
-  calcEulerFlux(params, v_vals, aux_vars, [nx, ny], euler_flux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
 
   for i=1:4  # ArrayViews does not support flux[:] = .
 
