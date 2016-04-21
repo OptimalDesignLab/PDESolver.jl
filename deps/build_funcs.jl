@@ -84,8 +84,8 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
     cd("./$pkg_name/deps")
 
     # perform any needed downloads
-    if isfile("./download.jl")
-      include("download.jl")
+    if isfile("./download.sh")
+      run(`./download.sh`)
     end
 
     println(f, "Bundling of package $pkg_name appears to have completed successfully")
