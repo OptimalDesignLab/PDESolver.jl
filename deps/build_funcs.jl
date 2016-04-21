@@ -118,7 +118,7 @@ function unbundle_pkg(dir::AbstractString, pkg_name::AbstractString, f)
 
     if isfile("./build.jl")
       try
-        buildpath = joinpath(dir, "deps", "build.jl")
+        buildpath = joinpath(dir, pkg_name, "deps", "build.jl")
         include(buildpath)
         println(f, "unbundling package $pkg_name appears to have completed successfully")
       catch x
