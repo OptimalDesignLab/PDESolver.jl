@@ -1,3 +1,4 @@
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -15,8 +16,9 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-
+=#
 resize!(ARGS, 1)
+
 ARGS[1] = "input_vals_parallel.jl"
 include(STARTUP_PATH)
 
