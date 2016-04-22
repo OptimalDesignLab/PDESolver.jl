@@ -88,7 +88,7 @@ function installPDESolver()
       run(`./download.sh`)
       println(f, "Bundling of package PETSc appears to have completed sucessfully")
     catch x
-      print(f, "Bunding of backapge PETSc failed")a
+      print(f, "Bunding of backapge PETSc failed")
       println(f, "Error is $x")
     end
     cd(start_dir)

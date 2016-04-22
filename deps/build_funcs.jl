@@ -84,6 +84,7 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
     name_ext = string(pkg_name, ".jl")
     run(`mv -v ./$name_ext ./$pkg_name`)
     set_hash("./$pkg_name", git_commit)
+    println(f, "set hash to ", git_commit)
 
     if isdir("./$pkg_name/deps")
       cd("./$pkg_name/deps")
