@@ -34,8 +34,10 @@ rk4
                 q_vec but before the function f is evaluated.  Mut have
                 signature: post_func(ctx..., opts)
     * post_func: function called immediately after f is called.  The function
-                 must have the signature res_norm = post_func(ctx..., opts),
-                 where res_norm is a norm of res_vec
+                 must have the signature res_norm = post_func(ctx..., opts, 
+                 calc_norm=true),
+                 where res_norm is a norm of res_vec, and calc_norm determins
+                 whether or not to calculate the norm.
     * ctx: a tuple (or any iterable container) of the objects needed by
            f, pre_func, and post func.  The tuple is splatted before being
            passed to the functions.
@@ -147,7 +149,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     pre_func(ctx..., opts) 
     if real_time  treal = t + h/2 end
     f( ctx..., opts, treal)
-    post_func(ctx..., opts)
+    post_func(ctx..., opts, calc_norm=false)
     for j=1:m
       k2[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k2[j]
@@ -157,7 +159,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
     f( ctx..., opts, treal)
-    post_func(ctx..., opts)
+    post_func(ctx..., opts, calc_norm=false)
 
     for j=1:m
       k3[j] = res_vec[j]
@@ -168,7 +170,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     pre_func(ctx..., opts)
     if real_time treal = t + h end
     f( ctx..., opts, treal)
-    post_func(ctx..., opts)
+    post_func(ctx..., opts, calc_norm=false)
     for j=1:m
       k4[j] = res_vec[j]
     end
@@ -300,14 +302,17 @@ end
     opts
 
 """->
-function pde_post_func(mesh, sbp, eqn, opts)
+function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
-  local_norm = calcNorm(eqn, eqn.res_vec)
-  global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
+  if calc_norm
+    local_norm = calcNorm(eqn, eqn.res_vec)
+    global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
+    return sqrt(global_norm)
+  end
 
-  return sqrt(global_norm)
+   return nothing
 end
 
 

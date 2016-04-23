@@ -319,7 +319,7 @@ if opts["solve"]
       eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     end
 
-    function test_post_func(mesh, sbp, eqn, opts)
+    function test_post_func(mesh, sbp, eqn, opts, calc_norm=true)
       return calcNorm(eqn, eqn.res_vec)
     end
 
