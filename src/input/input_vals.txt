@@ -225,3 +225,5 @@ Note that any values associated with these options are shared with the regular
 "do_postproc" : do postprocessing of any kind, (Bool), default false
 "exact_soln_func" : one of the IC functions used to compute the exact solution,
                     (ASCIIString), default "nothing"
+"write_timing" : write the mesh initialization and compute times to the file
+                 timing.dat, (Bool), default false

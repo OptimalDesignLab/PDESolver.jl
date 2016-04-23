@@ -74,7 +74,7 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 
-if opts["use_DG"]
+mesh_time = @elapsed if opts["use_DG"]
   println("\nConstructing SBP Operator")
   # create DG SBP operator with internal nodes only
   sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
@@ -107,6 +107,15 @@ else  # continuous Galerkin
     pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
   else
     pmesh = mesh
+  end
+end
+
+if opts["write_timing"]
+  MPI.Barrier(mesh.comm)
+  if mesh.myrank == 0
+    f = open("timing.dat", "a+")
+    println(f, mesh_time)
+    close(f)
   end
 end
 
@@ -235,7 +244,7 @@ MPI.Barrier( mesh.comm)
 # evalAdvection(mesh, sbp, eqn, opts, t)
 if opts["solve"]
   
-  if flag == 1 # normal run
+  solve_time = @elapsed if flag == 1 # normal run
     # RK4 solver
     @time rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn, opts, 
               res_tol=opts["res_abstol"], real_time=opts["real_time"])
@@ -316,9 +325,18 @@ if opts["solve"]
 
 
     rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func, test_post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
-  end       # end of if/elseif blocks checking flag
+end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")
+
+  if opts["write_timing"]
+    MPI.Barrier(mesh.comm)
+    if mesh.myrank == 0
+      f = open("timing.dat", "a+")
+      println(f, solve_time)
+      close(f)
+    end
+  end
   # evaluate residual at final q value
   need_res = false
   if need_res
