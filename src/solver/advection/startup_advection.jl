@@ -433,5 +433,7 @@ end       # end of if/elseif blocks checking flag
   writeVisFiles(mesh, "solution_done")
 
   MPI.Barrier(mesh.comm)
-#  MPI.Finalize()
+  if opts["finalize_mpi"]
+    MPI.Finalize()
+  end
 end  # end if (opts[solve])

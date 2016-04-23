@@ -227,3 +227,4 @@ Note that any values associated with these options are shared with the regular
                     (ASCIIString), default "nothing"
 "write_timing" : write the mesh initialization and compute times to the file
                  timing.dat, (Bool), default false
+"finalize_mpi" : whether or not to finalize MPI, (Bool), default false

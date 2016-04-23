@@ -235,6 +235,7 @@ get!(arg_dict, "solve", true)
 get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 get!(arg_dict, "write_timing", false)
+get!(arg_dict, "finalize_mpi", false)
 
 # write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
