@@ -128,6 +128,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
 
+    println("sol_norm = ", sol_norm)
+    println("res_tol = ", res_tol)
+    println("sol_norm < res_tol = ", sol_norm < res_tol)
     # check stopping conditions
     if (sol_norm < res_tol)
       if comm_rank == 0
