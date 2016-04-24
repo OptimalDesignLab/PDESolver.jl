@@ -21,7 +21,7 @@ script:
   - cd ~/.julia/v0.4/PDESolver/test
   - julia --check-bounds=yes -e 'Pkg.test("PDESolver"; coverage=true)'
   - cd ./Advection
-  - julia --check-bounds=yes --code-coverage=user ./runtests_advection.jl
+#  - julia --check-bounds=yes --code-coverage=user ./runtests_advection.jl
   - cd ..
 #  - ./runtests_parallel.sh
 after_success:
