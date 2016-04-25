@@ -28,8 +28,8 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   nrm = zeros(Tmsh, 2)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement  # loop over nodes on current element
-      q_vals = view(eqn.q, :, j, i)
-      aux_vars = view(eqn.aux_vars, :, j, i)
+      q_vals = sview(eqn.q, :, j, i)
+      aux_vars = sview(eqn.aux_vars, :, j, i)
       # put this loop here (rather than outside) to we don't have to fetch
       # q_vals twice, even though writing to the flux vector is slower
       # it might be worth copying the normal vector rather than
@@ -38,7 +38,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         # don't do an array view because strided views are type-unstable
         nrm[1] = mesh.dxidx[k, 1, j, i]
         nrm[2] = mesh.dxidx[k, 2, j, i]
-        flux = view(eqn.flux_parametric, :, j, i, k)
+        flux = sview(eqn.flux_parametric, :, j, i, k)
 
 	# this will dispatch to the proper calcEulerFlux
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
@@ -100,8 +100,8 @@ function getEulerFlux2{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 q = eqn.q
 dxidx = mesh.dxidx
-flux_parametric = view(eqn.flux_parametric, :, :, :, 1)
-F_eta = view(eqn.flux_parametric, :, :, :, 2)
+flux_parametric = sview(eqn.flux_parametric, :, :, :, 1)
+F_eta = sview(eqn.flux_parametric, :, :, :, 2)
 
 (ncomp, nnodes, nel) = size(q)  # get sizes of things
 
@@ -283,7 +283,7 @@ function getAuxVars{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      q_vals = view(eqn.q, :, j, i)
+      q_vals = sview(eqn.q, :, j, i)
 
       # calculate pressure
       press = calcPressure(eqn.params, q_vals)
@@ -674,7 +674,7 @@ function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 	res_vals[k] = res_arr[k, j, i]
       end
 
-      res_view = view(res_arr, :, j, i)
+      res_view = sview(res_arr, :, j, i)
       # get A0Inv for this node
       calcA0Inv(eqn.params, q_vals, A0inv)
 
@@ -718,7 +718,7 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 	res_vals[k] = res_arr[k, j, i]
       end
 
-      res_view = view(res_arr, :, j, i)
+      res_view = sview(res_arr, :, j, i)
       # get A0Inv for this node
       calcA0(eqn.params, q_vals, A0)
 
@@ -961,7 +961,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
   q = eqn.q
   max_speed = zero(eltype(q))
   for i=1:4:length(q)
-    q_i = view(q, i:(i+3))
+    q_i = sview(q, i:(i+3))
     a = calcSpeedofSound(eqn.params, q_i)
     ux = q_i[2]/q_i[1]
     uy = q_i[3]/q_i[1]
@@ -987,7 +987,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
  
   max_speed = zero(eltype(q))
   for i=1:4:length(q)
-    q_i = view(q, i:(i+3))
+    q_i = sview(q, i:(i+3))
     a = calcSpeedofSound(eqn.params, q_i)
 
    

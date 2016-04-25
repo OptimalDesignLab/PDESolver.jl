@@ -32,8 +32,8 @@ function applyDissipation{Tmsh, Tsol, T}(mesh::AbstractMesh{Tmsh},
   q_filt = zeros(Tsol, mesh.numNodesPerElement, mesh.numDofPerNode)  
   len = mesh.numNodesPerElement*mesh.numDofPerNode
   for i=1:mesh.numEl
-    filt_i = view(eqn.dissipation_mat, :, :, i)
-    q_vals = view(eqn.q, :, :, i)  # mesh.numDofPerNode x sbp.numnodes
+    filt_i = sview(eqn.dissipation_mat, :, :, i)
+    q_vals = sview(eqn.q, :, :, i)  # mesh.numDofPerNode x sbp.numnodes
     # apply filter matrix to q_vals transposed, so it is applied to
     # all the rho components, then all the x momentum, etc.
     smallmatmatT!(filt_i, q_vals, q_filt)

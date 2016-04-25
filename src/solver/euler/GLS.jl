@@ -55,8 +55,8 @@ function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     # println("eqn.q = \n", round(eqn.q,2))
     # println("u = \n", round(u,2))
     Axidxi = zeros(Tsol, endof, endof)
-    Axi = view(eqn.Axi,:,:,:,i) # Get flux jacobians for all nodes in an element
-    Aeta = view(eqn.Aeta,:,:,:,i)
+    Axi = sview(eqn.Axi,:,:,:,i) # Get flux jacobians for all nodes in an element
+    Aeta = sview(eqn.Aeta,:,:,:,i)
     calcAxidxi(Axidxi, shapefuncderiv, Axi, Aeta, ndof, mesh.numNodesPerElement)
     # println("Axidxi = \n", round(Axidxi,2))
     
@@ -116,8 +116,8 @@ function parametricFluxJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      q = view(eqn.q,:, j, i)
-      dxidx = view(mesh.dxidx,:,:,j,i)
+      q = sview(eqn.q,:, j, i)
+      dxidx = sview(mesh.dxidx,:,:,j,i)
       # Calculate the flux jacobian get Ax & Ay
       Ax= zeros(Tsol, 4, 4) # Flux jacobian in the x direction
       Ay = zeros(Ax)        # Flux jacobian in the y direction
@@ -235,8 +235,8 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      q = view(eqn.q,:,j,i)
-      dxidx = view(mesh.dxidx,:,:,j,i) # get mapping jacobian at node j
+      q = sview(eqn.q,:,j,i)
+      dxidx = sview(mesh.dxidx,:,:,j,i) # get mapping jacobian at node j
       for k = 1:mesh.numNodesPerElement
         for l = 1:Tdim
           jac_vector = Tsol[dxidx[l,1];dxidx[l,2]] # get a jacobian vector for eigen value factorization
@@ -256,9 +256,9 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     # Get the normal vectors at the nodes
     for j = 1:mesh.numNodesPerElement
-      q = view(eqn.q,:,j,i)
-      dxidx = view(mesh.dxidx,:,:,j,i)
-      jac = view(mesh.jac,j,i)
+      q = sview(eqn.q,:,j,i)
+      dxidx = sview(mesh.dxidx,:,:,j,i)
+      jac = sview(mesh.jac,j,i)
       Ax= zeros(Tsol, 4, 4) # Flux jacobian in the x direction
       Ay = zeros(Ax)        # Flux jacobian in the y direction
       calcFluxJacobian(eqn, q, Ax, Ay)
@@ -289,7 +289,7 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      q = view(eqn.q,:,j,i)
+      q = sview(eqn.q,:,j,i)
       T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
       c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
       ux = q[2]/q[1]
@@ -332,8 +332,8 @@ function calcAxidxi{Tsol}(Axidxi::AbstractArray{Tsol, 2},
     for j = 1:nnpe
       m = (i-1)*ndof+1
       n = (j-1)*ndof+1
-      nAxi = view(Axi,:,:,i) # Flux Jacobian at a node in xi direction
-      nAeta = view(Aeta,:,:,i)
+      nAxi = sview(Axi,:,:,i) # Flux Jacobian at a node in xi direction
+      nAeta = sview(Aeta,:,:,i)
       Axidxi[m:(m+ndof-1),n:(n+ndof-1)] = nAxi*shapefuncderiv[i,j,1] + 
                                           nAeta*shapefuncderiv[i,j,2] 
     end # end for j = 1:nnpe
@@ -523,7 +523,7 @@ function SUPG{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP
   # Calculate strong residual
   strong_res = zeros(eqn.res)
   for i = 1:Tdim
-    flux_parametric_i = view(eqn.flux_parametric,:,:,:,i)
+    flux_parametric_i = sview(eqn.flux_parametric,:,:,:,i)
     differentiate!(sbp, i, flux_parametric_i, strong_res)
   end
   =#
@@ -542,8 +542,8 @@ function SUPG{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP
       for k = 1:mesh.numDofPerNode
         strong_res[k] = JHinverse*eqn.res[k,j,i]
       end
-      Axi = view(eqn.Axi,:,:,j,i)
-      Aeta = view(eqn.Aeta,:,:,j,i)
+      Axi = sview(eqn.Axi,:,:,j,i)
+      Aeta = sview(eqn.Aeta,:,:,j,i)
       intvec[:,j,i,1] = (tau[j,i]*Axi).'*strong_res # [:,j,i]
       intvec[:,j,i,2] = (tau[j,i]*Aeta).'*strong_res # [:,j,i]
     end # end for j = 1:mesh.numNodesPerElement
@@ -551,7 +551,7 @@ function SUPG{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP
     
   # calculate the SUPG residual  
   for i = 1:Tdim
-    intvec_i = view(intvec,:,:,:,i)
+    intvec_i = sview(intvec,:,:,:,i)
     weakdifferentiate!(sbp, i, intvec_i,supg_res, trans=true)
   end
   
@@ -624,7 +624,7 @@ function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      q = view(eqn.q,:,j,i)
+      q = sview(eqn.q,:,j,i)
       T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
       c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
       ux = q[2]/q[1]
@@ -653,8 +653,8 @@ function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      q = view(eqn.q,:,j,i)
-      dxidx = view(mesh.dxidx,:,:,j,i)
+      q = sview(eqn.q,:,j,i)
+      dxidx = sview(mesh.dxidx,:,:,j,i)
       rhoe = q[4] -0.5*(q[2]*q[2] + q[3]*q[3])/(q[1]*q[1]) 
       uxi = (q[2]*dxidx[1,1] + q[3]*dxidx[1,2])/q[1]
       ueta = (q[2]*dxidx[2,1] + q[3]*dxidx[2,2])/q[1]
@@ -684,7 +684,7 @@ function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     h = sqrt(2*elem_area)
     for j = 1:mesh.numNodesPerElement
       beta[:,j,i] = beta[:,j,i]/norm(beta[:,j,i],2)
-      q = view(eqn.q,:,j,i)
+      q = sview(eqn.q,:,j,i)
       T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
       c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
       uxi = zeros(Tsol,2) # Array of velocities in the xi & eta direction
@@ -713,12 +713,12 @@ function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     for j = 1:mesh.numNodesPerElement
       C = 2 # for 2D quad with ref. coord [-1,1] 
             # for 2D tri with ref coord [0,1], C = 1
-      q = view(eqn.q,:,j,i)
+      q = sview(eqn.q,:,j,i)
       T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
       c = sqrt(eqn.params.gamma*eqn.params.R*T)  # Speed of sound
       ux = q[2]/q[1]
       uy = q[3]/q[1]
-      dxidx = view(mesh.dxidx,:,:, j, i)
+      dxidx = sview(mesh.dxidx,:,:, j, i)
       if abs(ux) < 1e-13 || abs(uy) < 1e-13
         tau[j,i] = 0.0
       else
@@ -763,8 +763,8 @@ function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      Axi = view(eqn.Axi,:,:,j,i)
-      Aeta = view(eqn.Aeta,:,:,j,i)
+      Axi = sview(eqn.Axi,:,:,j,i)
+      Aeta = sview(eqn.Aeta,:,:,j,i)
       invtau = zeros(mesh.numDofPerNode, mesh.numDofPerNode)
       for k = 1:sbp.numnodes
         invtau += shapefuncderiv[j,k,1]*Axi + shapefuncderiv[j,k,2]*Aeta
@@ -795,8 +795,8 @@ function getPhysBCFluxes(mesh, sbp, eqn, opts, bndryfluxPhysical)
     # functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
-    bndry_facenums_i = view(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = view(bndryfluxPhysical, :, :, start_index:(end_index - 1))
+    bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = sview(bndryfluxPhysical, :, :, start_index:(end_index - 1))
     #functor_i(q, flux_parametric, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
 
     calcBoundaryFlux(mesh, sbp, eqn, functor_i, bndry_facenums_i, bndryflux_i)
@@ -813,7 +813,7 @@ function residualComparison(mesh, sbp, eqn, opts)
   differentiation_strong_res = zeros(eqn.res)
   
   for i = 1:Tdim
-    flux_parametric_i = view(eqn.flux_parametric,:,:,:,i)
+    flux_parametric_i = sview(eqn.flux_parametric,:,:,:,i)
     differentiate!(sbp, i, flux_parametric_i, differentiation_strong_res)
   end
   

@@ -21,3 +21,7 @@
 
 "use_src_term" : whether to call the source term routin, (Bool), false if 
                  the source term is the zero source term, otherwise true
+"calc_dt": calculate the timestep based on the CFL, (Bool), false if delta_t
+           is specified, otherwise true
+"use_itermax": whether or not use itermax to halt rk4, (Bool), true if
+               itermax is specified, otherwise false

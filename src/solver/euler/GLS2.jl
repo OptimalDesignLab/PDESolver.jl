@@ -53,20 +53,20 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   # calculate D
   for d=1:Tdim
-    smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(D, :, :, d))
+    smallmatmat!(diagm(1./sbp.w), sview(sbp.Q, :, :, d), sview(D, :, :, d))
     Dtranspose[:, :, d] = D[:, :, d].'
   end
 
 #   for el =1:1  #DEBUGGING 
   for el = 1:mesh.numEl
     # get all the quantities for this element
-    dxidx_hat = view(mesh.dxidx, :, :, :, el)
-    jac = view(mesh.jac, :, el)
-    aux_vars = view(eqn.aux_vars, :, :, el)
-    getGLSVars(eqn.params, eqn.params_conservative, view(eqn.q, :, :, el), aux_vars, dxidx_hat, view(mesh.jac, :, el), D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
+    dxidx_hat = sview(mesh.dxidx, :, :, :, el)
+    jac = sview(mesh.jac, :, el)
+    aux_vars = sview(eqn.aux_vars, :, :, el)
+    getGLSVars(eqn.params, eqn.params_conservative, sview(eqn.q, :, :, el), aux_vars, dxidx_hat, sview(mesh.jac, :, el), D, A_mats, qtranspose, qxitranspose, qxi, dxidx, taus)
 #=
     if el == 1
-      println("q = ", view(eqn.q, :, :, el))
+      println("q = ", sview(eqn.q, :, :, el))
       println("dxidx_hat = ", dxidx_hat)
       println("D = ", D)
       println("A_mats = ", A_mats)
@@ -75,10 +75,10 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     end
 =#
     for i=1:numNodesPerElement
-      res_i = view(eqn.res, :, i, el)
+      res_i = sview(eqn.res, :, i, el)
       #DEBUGGING
-      gls_res_i = view(gls_res, :, i, el)
-      gls_full_i = view(gls_full, :, i, el)
+      gls_res_i = sview(gls_res, :, i, el)
+      gls_full_i = sview(gls_full, :, i, el)
       for j=1:numNodesPerElement
 
         # zero  out some things
@@ -98,16 +98,16 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
         # multiply qx, qy  flux jacobians Ax, Ay
         for d1=1:Tdim
-          A_d1 = view(A_mats, :, :, d1, j)
-          q_d1 = view(qx, :, d1)
-          tmp_d1= view(tmps, :, d1)
+          A_d1 = sview(A_mats, :, :, d1, j)
+          q_d1 = sview(qx, :, d1)
+          tmp_d1= sview(tmps, :, d1)
           smallmatvec!(A_d1, q_d1, tmp_d1)
         end
 
 #        println("\n  trial space terms = \n", tmps[:, 1:2])
 
         # now add them together
-        tmp1 = view(tmps, :, 1)
+        tmp1 = sview(tmps, :, 1)
         for d1=2:Tdim
           for n=1:numDofPerNode
             tmp1[n] += tmps[n, d1]
@@ -123,9 +123,9 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         
 #        println("\n trial space term = \n", tmp1)
         # now multiply by tau
-        tau_j = view(taus, :, :, j)
+        tau_j = sview(taus, :, :, j)
 #        println("  \ntau = \n", tau_j) 
-        tmp2 = view(tmps, :, 2)  # store result of multiplication here
+        tmp2 = sview(tmps, :, 2)  # store result of multiplication here
         smallmatvec!(tau_j, tmp1, tmp2)  # this overwrites tmp2
 
 #        println("\n  after multiplication by tau, reduction vector = \n", tmp2)
@@ -143,9 +143,9 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         # now do weighting space 
          # now multiply by flux jacobians transposed
          for d1=1:Tdim
-           A_d1 = view(A_mats, :, :, d1, j)
-           x_d1 = view(tmps, :, d1)
-           b_d1 = view(tmps, :, d1+Tdim)  # now we use the second half of tmps
+           A_d1 = sview(A_mats, :, :, d1, j)
+           x_d1 = sview(tmps, :, d1)
+           b_d1 = sview(tmps, :, d1+Tdim)  # now we use the second half of tmps
            smallmatTvec!(A_d1, x_d1, b_d1)
          end
 
@@ -188,7 +188,7 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 
       # DEBUGGING
-      Dvals, V = eig(view(taus, :, :, i))
+      Dvals, V = eig(sview(taus, :, :, i))
       tau_eval_sum += real(Dvals[1])
       tau_eval_cnt += 1
 
@@ -288,7 +288,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
   # multiply by Dxi, Deta ...
   for d=1:Tdim
-    smallmatmatT!(view(D, :, :, d), q, view(qxitranspose, :, :, d))
+    smallmatmatT!(sview(D, :, :, d), q, sview(qxitranspose, :, :, d))
   end
 
   # un-transpose while putting into qx
@@ -316,15 +316,15 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     q_c = params_c.q_vals
     fill!(q_c, 0.0)
     for k=1:numNodesPerElement
-      q_k = view(q, :, k)
+      q_k = sview(q, :, k)
       convertToConservative(params, q_k, q_c)
-      A1_k = view(A_mats, :, :, 1, k)
+      A1_k = sview(A_mats, :, :, 1, k)
       calcA1(params_c, q_c, A1_k)
-      A2_k = view(A_mats, :, :, 2, k)
+      A2_k = sview(A_mats, :, :, 2, k)
       calcA2(params_c, q_c, A2_k)
 
       if Tdim == 3  # three cheers for static analysis
-        A3_k = view(A_mats, :, :, 3, k)
+        A3_k = sview(A_mats, :, :, 3, k)
         calcA3(params_c, q_c, A3_k)
       end
     end
@@ -332,17 +332,17 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 #    println("getting entropy variable flux jacobians")
     # get entropy variable  flux jacobian 
     for k=1:numNodesPerElement
-      q_k = view(q, :, k)
+      q_k = sview(q, :, k)
 #      println("q_k code = ", q_k)
-      A1_k = view(A_mats, :, :, 1, k)
+      A1_k = sview(A_mats, :, :, 1, k)
       calcA1(params, q_k, A1_k)
 #      println("A1 code = \n", A1_k)
-      A2_k = view(A_mats, :, :, 2, k)
+      A2_k = sview(A_mats, :, :, 2, k)
       calcA2(params, q_k, A2_k)
 #      println("A2 code = \n", A2_k)
 
       if Tdim == 3  # three cheers for static analysis
-        A3_k = view(A_mats, :, :, 3, k)
+        A3_k = sview(A_mats, :, :, 3, k)
         calcA3(params, q_k, A3_k)
       end
     end
@@ -353,10 +353,10 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
   # get tau for each node - using conservative variable flux jacobian
   for k=1:numNodesPerElement
-    q_k = view(q, :, k)
-    tau_k = view(tau, :, :, k)
-    A_mat_k = view(A_mats, :, :, :, k)
-    dxidx_k = view(dxidx, :, :, k)
+    q_k = sview(q, :, k)
+    tau_k = sview(tau, :, :, k)
+    A_mat_k = sview(A_mats, :, :, :, k)
+    dxidx_k = sview(dxidx, :, :, k)
 
     # dance branch prediction, dance
     if tau_type == 1
@@ -381,14 +381,14 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
   if tau_type == 1
     # get entropy variable  flux jacobian 
     for k=1:numNodesPerElement
-      q_k = view(q, :, k)
-      A1_k = view(A_mats, :, :, 1, k)
+      q_k = sview(q, :, k)
+      A1_k = sview(A_mats, :, :, 1, k)
       calcA1(params, q_k, A1_k)
-      A2_k = view(A_mats, :, :, 2, k)
+      A2_k = sview(A_mats, :, :, 2, k)
       calcA2(params, q_k, A2_k)
 
       if Tdim == 3  # three cheers for static analysis
-        A3_k = view(A_mats, :, :, 3, k)
+        A3_k = sview(A_mats, :, :, 3, k)
         calcA3(params, q_k, A3_k)
       end
     end
@@ -446,7 +446,7 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
   # calculate Dxi
   # calculate D
   for d=1:Tdim
-    smallmatmat!(diagm(1./sbp.w), view(sbp.Q, :, :, d), view(Dxi, :, :, d))
+    smallmatmat!(diagm(1./sbp.w), sview(sbp.Q, :, :, d), sview(Dxi, :, :, d))
   end
 
   # DEBUGGING
@@ -465,10 +465,10 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
 #   for el = 1:1  # DEBUGGING
   for el = 1:mesh.numEl
 
-    q_el = view(eqn.q, :, :, el)
-    aux_vars_el = view(eqn.aux_vars, :, :, el)
-    dxidx_hat_el = view(mesh.dxidx, :, :, :, el)
-    jac_el = view(mesh.jac, :, el)
+    q_el = sview(eqn.q, :, :, el)
+    aux_vars_el = sview(eqn.aux_vars, :, :, el)
+    dxidx_hat_el = sview(mesh.dxidx, :, :, :, el)
+    jac_el = sview(mesh.jac, :, el)
    
     fill!(Dx, 0.0)
     fill!(taus, 0.0)
@@ -481,20 +481,20 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
     fill!(complete_term, 0.0)
 
     for i=1:mesh.numNodesPerElement  # row index  (free index)
-      gls_res_debug_i = view(gls_res, :, i, el)
+      gls_res_debug_i = sview(gls_res, :, i, el)
 
       # variable to accumulate the trial term at node i
-      trial_term_i = view(trial_term, :, i)
+      trial_term_i = sview(trial_term, :, i)
       for j=1:mesh.numNodesPerElement  # column index  (summed index)
         fill!(tmps, 0.0)
-        q_j = view(eqn.q, :, j, el)
+        q_j = sview(eqn.q, :, j, el)
 
         ### Trial space term ###
 
         # multiply q_j by entries of the Dx and store in the lower half of
         # tmps
         for d1 = 1:Tdim
-          tmp_d1 = view(tmps, :, d1)
+          tmp_d1 = sview(tmps, :, d1)
           d_val = Dx[i, j, d1]
           for n=1:numDofPerNode
             tmp_d1[n] = d_val*q_j[n]
@@ -504,9 +504,9 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
         # now multiply by flux jacobian evaluated at i, storing in upper
         # half of tmps
         for d1 = 1:Tdim
-          A_i = view(A_mats, :, :, d1, i)
-          tmp_1 = view(tmps, :, d1)
-          tmp_2 = view(tmps, :, d1 + Tdim)
+          A_i = sview(A_mats, :, :, d1, i)
+          tmp_1 = sview(tmps, :, d1)
+          tmp_2 = sview(tmps, :, d1 + Tdim)
           smallmatvec!(A_i, tmp_1, tmp_2)
         end
 
@@ -530,9 +530,9 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
 
     for i=1:mesh.numNodesPerElement
       # multiply by integration weight, jacobian factor
-      trial_term_i = view(trial_term, :, i)
-      middle_term_i = view(middle_term, :, i)
-      middle_terms_debug_i = view(middle_terms, :, i, el)
+      trial_term_i = sview(trial_term, :, i)
+      middle_term_i = sview(middle_term, :, i)
+      middle_terms_debug_i = sview(middle_terms, :, i, el)
 
       fac = w[i]/jac_el[i]
       for n=1:numDofPerNode
@@ -540,7 +540,7 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
       end
 
       # multiply by tau
-      tau_i = view(taus, :, :, i)
+      tau_i = sview(taus, :, :, i)
       smallmatvec!(tau_i, trial_term_i, middle_term_i)
 
       # DEBUGGING
@@ -555,26 +555,26 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
     ### now do weighting space term ###
 
     for i=1:mesh.numNodesPerElement  # free index
-      complete_term_i = view(complete_term, :, i)
-      res_i = view(eqn.res, :, i, el)
-      gls_full_debug_i = view(gls_full, :, i, el)
+      complete_term_i = sview(complete_term, :, i)
+      res_i = sview(eqn.res, :, i, el)
+      gls_full_debug_i = sview(gls_full, :, i, el)
 
       for j=1:mesh.numNodesPerElement  # summed index
         fill!(tmps, 0.0)
-        middle_term_j = view(middle_term, :, j)
+        middle_term_j = sview(middle_term, :, j)
 
 
         # multiply by transposed flux jacobian, store in lower half of tmps
         for d1 = 1:Tdim
-          A_d1 = view(A_mats, :, :, d1, j)
-          tmp_d1 = view(tmps, :, d1)
+          A_d1 = sview(A_mats, :, :, d1, j)
+          tmp_d1 = sview(tmps, :, d1)
           smallmatTvec!(A_d1, middle_term_j, tmp_d1)
         end
 
         # multiply by entries of the Dx
         for d1 = 1:Tdim
           d_d1 = Dx[j, i, d1]
-          tmp_d1 = view(tmps, :, d1)
+          tmp_d1 = sview(tmps, :, d1)
           for n=1:numDofPerNode
             tmp_d1[n] *= d_d1
           end
@@ -583,7 +583,7 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
         # sum into complete_term
         for n=1:numDofPerNode
           for d1=1:Tdim
-            tmp_d1 = view(tmps, :, d1)
+            tmp_d1 = sview(tmps, :, d1)
             complete_term_i[n] += tmp_d1[n]
           end
         end
@@ -647,9 +647,9 @@ function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
   # calculate Dx, Dy, Dz
   for d_phys = 1:Tdim  # loop over x, y, z directions
-    D_phys = view(Dx, :, :, d_phys)
+    D_phys = sview(Dx, :, :, d_phys)
     for d_param = 1:Tdim  # loop for xi, eta, ...
-      D_param = view(D, :, :, d_param)
+      D_param = sview(D, :, :, d_param)
       for j=1:numNodesPerElement
         for i=1:numNodesPerElement
           fac = dxidx[d_param, d_phys, i]  # get jacobian term
@@ -665,15 +665,15 @@ function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
     q_c = params_c.q_vals
     fill!(q_c, 0.0)
     for k=1:numNodesPerElement
-      q_k = view(q, :, k)
+      q_k = sview(q, :, k)
       convertToConservative(params, q_k, q_c)
-      A1_k = view(A_mats, :, :, 1, k)
+      A1_k = sview(A_mats, :, :, 1, k)
       calcA1(params_c, q_c, A1_k)
-      A2_k = view(A_mats, :, :, 2, k)
+      A2_k = sview(A_mats, :, :, 2, k)
       calcA2(params_c, q_c, A2_k)
 
       if Tdim == 3  # three cheers for static analysis
-        A3_k = view(A_mats, :, :, 3, k)
+        A3_k = sview(A_mats, :, :, 3, k)
         calcA3(params_c, q_c, A3_k)
       end
     end
@@ -681,17 +681,17 @@ function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 #    println("getting entropy variable flux jacobians")
     # get entropy variable  flux jacobian 
     for k=1:numNodesPerElement
-      q_k = view(q, :, k)
+      q_k = sview(q, :, k)
 #      println("q_k code = ", q_k)
-      A1_k = view(A_mats, :, :, 1, k)
+      A1_k = sview(A_mats, :, :, 1, k)
       calcA1(params, q_k, A1_k)
 #      println("A1 code = \n", A1_k)
-      A2_k = view(A_mats, :, :, 2, k)
+      A2_k = sview(A_mats, :, :, 2, k)
       calcA2(params, q_k, A2_k)
 #      println("A2 code = \n", A2_k)
 
       if Tdim == 3  # three cheers for static analysis
-        A3_k = view(A_mats, :, :, 3, k)
+        A3_k = sview(A_mats, :, :, 3, k)
         calcA3(params, q_k, A3_k)
       end
     end
@@ -699,10 +699,10 @@ function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
   # get tau for each node - using conservative variable flux jacobian
   for k=1:numNodesPerElement
-    q_k = view(q, :, k)
-    tau_k = view(tau, :, :, k)
-    A_mat_k = view(A_mats, :, :, :, k)
-    dxidx_k = view(dxidx, :, :, k)
+    q_k = sview(q, :, k)
+    tau_k = sview(tau, :, :, k)
+    A_mat_k = sview(A_mats, :, :, :, k)
+    dxidx_k = sview(dxidx, :, :, k)
 
     # dance branch prediction, dance
     if tau_type == 1
@@ -727,14 +727,14 @@ function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
   if tau_type == 1
     # get entropy variable  flux jacobian 
     for k=1:numNodesPerElement
-      q_k = view(q, :, k)
-      A1_k = view(A_mats, :, :, 1, k)
+      q_k = sview(q, :, k)
+      A1_k = sview(A_mats, :, :, 1, k)
       calcA1(params, q_k, A1_k)
-      A2_k = view(A_mats, :, :, 2, k)
+      A2_k = sview(A_mats, :, :, 2, k)
       calcA2(params, q_k, A2_k)
 
       if Tdim == 3  # three cheers for static analysis
-        A3_k = view(A_mats, :, :, 3, k)
+        A3_k = sview(A_mats, :, :, 3, k)
         calcA3(params, q_k, A3_k)
       end
     end
@@ -770,12 +770,12 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
   # testing: only do one element
   for el =1:mesh.numEl
 #    println("testing element ", el)
-    res_el = view(eqn.res, :, :, el)
+    res_el = sview(eqn.res, :, :, el)
 
     # constant mapping elements only
     dxidx = zeros(2,2)
-    dxidx_hat_el = view(mesh.dxidx, :, :, 1, el)
-    jac_el = view(mesh.jac, :, el)
+    dxidx_hat_el = sview(mesh.dxidx, :, :, 1, el)
+    jac_el = sview(mesh.jac, :, el)
     q_el = reshape(copy(eqn.q[:, :, el]), size_block)
 
     for i=1:2
@@ -818,10 +818,10 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
       idx_i = idx_range[i]
       q_i = q_el[idx_i]
 
-      A1 = view(A1_tilde, idx_i, idx_i)
+      A1 = sview(A1_tilde, idx_i, idx_i)
       EulerEquationMod.calcA1(eqn.params, q_i, A1)
 
-      A2 = view(A2_tilde, idx_i, idx_i)
+      A2 = sview(A2_tilde, idx_i, idx_i)
       EulerEquationMod.calcA2(eqn.params, q_i, A2)
     end
 
@@ -899,8 +899,8 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
  
   for k=1:Tdim
     for j=1:Tdim
-      Aj = view(A_mat, :, :, j)
-      Ak = view(A_mat, :, :, k)
+      Aj = sview(A_mat, :, :, j)
+      Ak = sview(A_mat, :, :, k)
       smallmatmat!(Aj, Ak, AjAk)  # Aj*Ak
 
       # calculate factor of dxidx*dxidx + dxidx*dxidx ...
@@ -985,8 +985,8 @@ function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy},
   # calculate the A_i hats = inv(L)*flux_jacobian_i*inv(L).'
   tmp_mat = params.A1
   for d1=1:Tdim
-    A_hat_d1 = view(A_mat_hat, :, :, d1)
-    A_d1 = view(A_mat, :, :, d1)
+    A_hat_d1 = sview(A_mat_hat, :, :, d1)
+    A_d1 = sview(A_mat, :, :, d1)
     smallmatmat!(Linv, A_d1, tmp_mat)
     smallmatmatT!(tmp_mat, Linv, A_hat_d1)
   end
@@ -997,7 +997,7 @@ function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy},
     fill!(B_d, 0.0)
 
     for d2=1:Tdim  # summed index dxi_d1/dx_d2 A_d2
-      A_hat_d2 = view(A_mat_hat, :, :, d2)
+      A_hat_d2 = sview(A_mat_hat, :, :, d2)
       dxidx_d2 = dxidx[d1, d2]
       # accumulate into B_d
       for i=1:size(B_d, 1)
@@ -1020,7 +1020,7 @@ function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy},
  #   println("before update, B_p = \n", B_p)
     # take absolute value, raise to  power p while accumulating into B_p
     for k=1:length(D)  # for each eigenvalue, do  outer product
-      v_k = view(V, :, k)
+      v_k = sview(V, :, k)
       val_k = absvalue(D[k])^p
       for i=1:size(B_p, 1)
         for j=1:size(B_p, 2)
@@ -1040,7 +1040,7 @@ function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy},
   fac = 1.0
   fill!(tau, 0.0)
   for k=1:length(D2)
-    v_k = view(V2, :, k)
+    v_k = sview(V2, :, k)
     val_k = D2[k]^(-1/p)
     for i=1:size(B_p, 1)
       for j=1:size(B_p, 2)

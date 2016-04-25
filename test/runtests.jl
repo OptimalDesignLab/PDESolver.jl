@@ -2,6 +2,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 
+
 using PDESolver
 #using Base.Test
 using FactCheck
@@ -26,11 +27,11 @@ include("test_lowlevel.jl")
 include("test_GLS3.jl")
 include("test_modes.jl")
 
-#=
+
 cd("./convergence")
 include(joinpath(pwd(), "runtests.jl"))
 cd("..")
-=#
+
 
 FactCheck.exitstatus()
 

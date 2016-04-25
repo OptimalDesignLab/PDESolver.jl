@@ -62,8 +62,6 @@ arg_dict["aoa"] = aoa*pi/180  # convert to radians
 get!(arg_dict, "vortex_x0", 0.0)
 get!(arg_dict, "vortex_strength", 1.0)
 
-# should this really have a default value?
-get!(arg_dict, "CFL", 0.4)
 get!(arg_dict, "mesh_size", 1.0)  # this key should not exist
 get!(arg_dict, "Relfunc_name", "none")
 
@@ -78,6 +76,15 @@ else
   get!(arg_dict, "use_src_term", true)
 end
 
+# timestepping options
+if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
+  arg_dict["calc_dt"] = true
+else
+  arg_dict["calc_dt"] = false
+end
+# should this really have a default value?
+get!(arg_dict, "CFL", 0.4)
+get!(arg_dict, "use_itermax", haskey(arg_dict, "itermax"))
 
 # stabilization options
 get!(arg_dict, "use_edgestab", true)

@@ -89,7 +89,7 @@ function elementEigenValues{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       # println("elem_res_vec - eqn.res_vec = \n", elem_res_vec - eqn.res_vec)
       # println("orig_res_vec - eqn.res_vec = \n", orig_res_vec - eqn.res_vec)
 
-      nl_solvers.calcJacRow(unsafe_view(elem_jac, :, j), elemRes0, elem_res_vec, pert)
+      nl_solvers.calcJacRow(sview(elem_jac, :, j), elemRes0, elem_res_vec, pert)
     end  # End for j = = 1:numDofPerElement
     
     # println("elem_res_vec = \n", elem_res_vec)

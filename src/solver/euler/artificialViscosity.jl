@@ -29,8 +29,8 @@ function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # Populate qbar
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
-  	  q_vals = view(eqn.q, :, j, i)
-  	  calcArtViscosityFluxComp(eqn.params,q_vals,view(qbar,:,j,i))
+  	  q_vals = sview(eqn.q, :, j, i)
+  	  calcArtViscosityFluxComp(eqn.params,q_vals,sview(qbar,:,j,i))
   	end
   end
 
@@ -50,7 +50,7 @@ function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   for k = 1:Tdim # compute dqbar/dx
     # differentiate! differentiates wrt to ξ and η
-    differentiate!(sbp,k,view(phi,:,:,:,k),view(Fav,:,:,:,1)) 
+    differentiate!(sbp,k,sview(phi,:,:,:,k),sview(Fav,:,:,:,1)) 
   end
   
   phi = zeros(Fav)
@@ -62,13 +62,13 @@ function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
   
   for k = 1:Tdim # compute dqbar/dy
-    differentiate!(sbp,k,view(phi,:,:,:,k),view(Fav,:,:,:,2))
+    differentiate!(sbp,k,sview(phi,:,:,:,k),sview(Fav,:,:,:,2))
   end
   
   Fav = -epsilonHat*(hi/h)*Fav
 
   for k = 1:Tdim # Assemble into the weak form
-    weakdifferentiate!(sbp,k, view(Fav,:,:,:,k), eqn.res, trans=true)
+    weakdifferentiate!(sbp,k, sview(Fav,:,:,:,k), eqn.res, trans=true)
   end
 
 
@@ -177,7 +177,7 @@ function AverageMeshDimen{Tmsh, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     for j = 1:nadjElements  
       elemNum = getNumberJ(mesh.el_Nptr, adjElements, 0, 0) # Get the global element number
       coordinate = mesh.coords[:,:,elemNum]  # get element nodal coordinates
-      boundingBox(coordinate, view(hArray,:,j)) # Get the bounding box
+      boundingBox(coordinate, sview(hArray,:,j)) # Get the bounding box
     end
     hBar[i] = sum(hArray)/(Tdim*nadjacencies) # Calculate the average mesh metric for the three vertices
   end
@@ -193,7 +193,7 @@ function AvgMeshSize{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::Eule
     (vertices, nvertices) = getDownward(mesh.m_ptr, element, 0)
     elemNum = getNumberJ(mesh.el_Nptr, element, 0, 0) # Get the global element number
     nodal_coordinates = mesh.coords[:,:,elemNum+1]  # get element nodal coordinates
-    boundingBox(nodal_coordinates, view(hArray,:,i)) # Get the bounding box
+    boundingBox(nodal_coordinates, sview(hArray,:,i)) # Get the bounding box
     incrementFaceIt() # Increment face iterator
   end
   hAverage = sum(hArray)/(Tdim*mesh.numEl)

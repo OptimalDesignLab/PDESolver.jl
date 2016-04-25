@@ -35,9 +35,9 @@ function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     for j = 1:mesh.numNodesPerElement
       u[j] = eqn.q[1,j,i]  
     end
-    alpha_x = view(eqn.alpha_x, 1, :, i)
-    alpha_y = view(eqn.alpha_y, 1, :, i)
-    dxidx = view(mesh.dxidx, :, :, :, i)
+    alpha_x = sview(eqn.alpha_x, 1, :, i)
+    alpha_y = sview(eqn.alpha_y, 1, :, i)
+    dxidx = sview(mesh.dxidx, :, :, :, i)
     AxiDxi = calcAxiDxi(mesh, dxidx, alpha_x, alpha_y, shapefuncderiv)
     intArr = zeros(AxiDxi) # intermediate array for storing H*tau*AxiDxi
     for j = 1:mesh.numNodesPerElement

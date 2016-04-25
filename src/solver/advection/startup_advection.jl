@@ -74,7 +74,7 @@ if opts["use_DG"]
   println("\nConstructing SBP Operator")
   # create DG SBP operator with internal nodes only
   sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-  ref_verts = [0. 1 0; 0 0 1]
+  ref_verts = [-1. 1 -1; -1 -1 1]
   interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
   sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
 
@@ -189,6 +189,12 @@ writedlm("IC.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
+
+if opts["calc_dt"]
+  alpha_net = sqrt(eqn.alpha_x^2 + eqn.alpha_y^2)
+  opts["delta_t"] = opts["CFL"]*mesh.min_el_size/alpha_net
+end
+
 
 if opts["test_GLS2"]
   calcResidual(mesh, sbp, eqn, opts, evalAdvection)

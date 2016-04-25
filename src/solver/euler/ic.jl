@@ -32,8 +32,8 @@ dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
 
   for j=1:nnodes
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
@@ -84,8 +84,8 @@ function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   dofpernode = getNumDofPerNode(mesh)
   for i=1:numEl
     for j=1:nnodes
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
@@ -140,8 +140,8 @@ nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
   for j=1:nnodes
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
@@ -197,8 +197,8 @@ sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
 
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
       dofnum_rhou = dofnums_j[2]
@@ -254,8 +254,8 @@ dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
@@ -295,8 +295,8 @@ dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
@@ -356,12 +356,12 @@ numEl = getNumEl(mesh)
 nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
-#  dofnums_i = view(mesh, i)  # get dof nums for this element
-#  coords = view(mesh, [i])
+#  dofnums_i = sview(mesh, i)  # get dof nums for this element
+#  coords = sview(mesh, [i])
 
   for j=1:nnodes
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
@@ -423,8 +423,8 @@ nnodes = operator.numnodes
 dofpernode = getNumDofPerNode(mesh)
 for i=1:numEl
   for j=1:nnodes
-      coords = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
       # get dof numbers for each variable
       dofnum_rho = dofnums_j[1]
@@ -480,11 +480,11 @@ dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
 #  println("i = ", i)
-#  coords = view(mesh, [i])
+#  coords = sview(mesh, [i])
 
   for j=1:nnodes
-      dofnums_j = view(mesh.dofs, :, j, i)
-      coords_j = view(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
       calcIsentropicVortex(coords_j, eqn.params, sol)
 
       # apply initial conditions here
@@ -531,8 +531,8 @@ dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
-      coords_j = view(mesh.coords, :, j, i)
-      dofnums_j = view(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       calcIsentropicVortex(coords_j, eqn.params, sol)
 
       # apply initial conditions here
@@ -579,9 +579,9 @@ dofpernode = getNumDofPerNode(mesh)
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
-      dofnums_j = view(mesh.dofs, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
  
-      coords_j = view(mesh.coords, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
       calcUnsteadyVortex(coords_j, eqn.params, sol)
 
       for k=1:dofpernode

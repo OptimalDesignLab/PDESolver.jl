@@ -15,8 +15,8 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-
 =#
+
 
 facts("----- Testing GLS3 -----") do
 
@@ -208,6 +208,11 @@ if true
     ARGS[1] = "input_vals_vortex3_gls.jl"
     include(STARTUP_PATH)
 
+    # rescale the problem
+    for i = 1:length(eqn.q)
+      eqn.q[i] = 1000*eqn.q[i]
+    end
+
     # trick code into only doing the first element
     mesh.numEl = 1
 
@@ -222,7 +227,6 @@ if true
     for j=1:mesh.numNodesPerElement
       for i=1:mesh.numDofPerNode
         pos = (j-1)*mesh.numDofPerNode + i
-        println("pos = ", pos)
         eqn.q[i, j, 1] += eps_fd
         test_GLS(mesh, sbp, eqn, opts)
         res_ij = copy(reshape(eqn.res[:, :, 1], len))
@@ -241,6 +245,12 @@ if true
     close(f)
     ARGS[1] = "input_vals_vortex3c_gls.jl"
     include(STARTUP_PATH)
+
+    # rescale the problem
+    for i = 1:length(eqn.q)
+      eqn.q[i] = 1000*eqn.q[i]
+    end
+
 
     # trick code into only doing 1 element
     mesh.numEl = 1
@@ -262,9 +272,11 @@ if true
     end
 
     for j=1:len
-      tol = 7.5e-4
+      tol = 0.001
       for k = 1:len
-        @fact abs((jac_c[k, j] - jac_fd[k, j])/jac_c[k,j]) --> less_than(tol)
+        if abs(jac_fd[k,j]) > 1e-4
+          @fact abs((jac_c[k, j] - jac_fd[k, j])/jac_c[k,j]) --> less_than(tol)
+        end
       end
     end
 

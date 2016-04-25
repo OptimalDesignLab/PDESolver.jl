@@ -404,10 +404,6 @@ end
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-      println("check iteration ", i)
-      if norm(val_code - val_test) > 1e-14
-        println("fact was false")
-      end
       @fact val_code --> roughly(val_test, atol=1e-14)
     end
   end # end context("--- Testing Volume Integrals ---")

@@ -190,7 +190,7 @@ function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-	q_view = view(q_arr, :, j, i)  # reuse memory
+	q_view = sview(q_arr, :, j, i)  # reuse memory
 	convertToConservative(eqn.params, q_view, q_view)
     end
   end
@@ -215,7 +215,7 @@ function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                                opts, q_vec::AbstractArray{Tsol, 1})
 
   for i=1:mesh.numDofPerNode:mesh.numDof
-    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
     convertToConservative(eqn.params, q_view, q_view)
   end
 
@@ -323,7 +323,7 @@ function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-	q_view = view(q_arr, :, j, i)  # reuse memory
+	q_view = sview(q_arr, :, j, i)  # reuse memory
 	convertToEntropy(eqn.params, q_view, q_view)
     end
   end
@@ -350,7 +350,7 @@ function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                           q_vec::AbstractArray{Tsol, 1})
 
   for i=1:mesh.numDofPerNode:mesh.numDof
-    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
     convertToEntropy_(eqn.params, q_view, q_view)
   end
 

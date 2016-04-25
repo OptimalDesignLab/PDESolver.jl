@@ -80,11 +80,13 @@ if opts["use_DG"]
   println("\nConstructing SBP Operator")
   # create DG SBP operator with internal nodes only
   sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-  ref_verts = [0. 1 0; 0 0 1]
-  interp_op = buildinterpolation(sbp, ref_verts)
-  sbpface = TriFace{Float64}(1, sbp.cub, ref_verts.')
+  ref_verts = [-1. 1 -1; -1 -1 1]
+  interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
+  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
 
   # create linear mesh with 4 dof per node
+
+  println("constructing DG mesh")
   mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
                    dofpernode=4, coloring_distance=opts["coloring_distance"])
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
@@ -99,6 +101,8 @@ else  # continuous Galerkin
   println("\nConstructing SBP Operator")
   sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
   # create linear mesh with 4 dof per node
+
+  println("constructing CG mesh")
   mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
 
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
@@ -107,6 +111,7 @@ else  # continuous Galerkin
     pmesh = mesh
   end
 end
+
 
 # TODO: input argument for dofpernode
 
@@ -136,7 +141,7 @@ if haskey(ICDict, Relfunc_name)
   if var_type == :entropy
     println("converting to entropy variables")
     for i=1:mesh.numDofPerNode:mesh.numDof
-      q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+      q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
       convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
     end
   end
@@ -164,7 +169,7 @@ ICfunc(mesh, sbp, eqn, opts, q_vec)
 
 if var_type == :entropy
   for i=1:mesh.numDofPerNode:mesh.numDof
-    q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+    q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
     convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
   end
 end
@@ -177,7 +182,7 @@ if opts["calc_error"]
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
 
-  err_vec = vals - eqn.q_vec
+  err_vec = abs(vals - eqn.q_vec)
   err = calcNorm(eqn, err_vec)
 
   # calculate avg mesh size
@@ -198,6 +203,10 @@ if opts["calc_error"]
   f = open(outname, "w")
   println(f, err, " ", h_avg)
   close(f)
+
+  # write visualization
+  saveSolutionToMesh(mesh, vec(err_vec))
+  writeVisFiles(mesh, "solution_error")
 end
 
 if opts["calc_trunc_error"]  # calculate truncation error
@@ -224,12 +233,13 @@ writedlm("IC.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
-
-wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
-println("max wave speed = ", wave_speed)
-delta_t = opts["CFL"]*opts["mesh_size"]/wave_speed
-println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
-opts["delta_t"] = delta_t
+if opts["calc_dt"]
+  wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
+  println("max wave speed = ", wave_speed)
+  delta_t = opts["CFL"]*mesh.min_el_size/wave_speed
+  println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
+  opts["delta_t"] = delta_t
+end
 
 #DEBUGGING
 if opts["test_GLS2"]
@@ -264,7 +274,7 @@ for i = 1:mesh.numEl
     velocities[1] = eqn.q[2,j,i]/eqn.q[1,j,i]
     velocities[2] = eqn.q[3,j,i]/eqn.q[1,j,i] 
     vmax = norm(velocities)
-    q = view(eqn.q,:,j,i)
+    q = sview(eqn.q,:,j,i)
     T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
     c = sqrt(eqn.params.gamma*eqn.params.R*T) # Speed of sound
     Dt[j,i] = CFLMax*h/(vmax + c)
@@ -292,7 +302,7 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 if opts["solve"]
   
   if flag == 1 # normal run
-   @time rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+   @time rk4(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 #   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
 #              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
 #              res_tol=opts["res_abstol"], real_time=opts["real_time"])
@@ -377,7 +387,7 @@ if opts["solve"]
 #    if var_type == :entropy
 #      println("converting to entropy variables")
 #      for i=1:mesh.numDofPerNode:mesh.numDof
-#        q_view = view(q_vec, i:(i+mesh.numDofPerNode-1))
+#        q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
 #        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
 #      end
 #    end

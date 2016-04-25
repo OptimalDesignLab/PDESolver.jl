@@ -116,6 +116,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
 
   evalVolumeIntegrals(mesh, sbp, eqn, opts)
+#  println("after volume integrals res = \n", eqn.res)
 #  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
@@ -141,10 +142,16 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   #----------------------------------------------------------------------------
 
   evalBoundaryIntegrals(mesh, sbp, eqn)
+#  println("after boundary integrals res = \n", eqn.res)
 #  println("boundary integral @time printed above")
 
 
   addStabilization(mesh, sbp, eqn, opts)
+#  println("after stabilization res = \n", eqn.res)
+  if mesh.isDG
+    evalFaceIntegrals(mesh, sbp, eqn, opts)
+#    println("after face integrals res = \n", eqn.res)
+  end
 #  println("stabilizing @time printed above")
 
 
@@ -173,6 +180,10 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   getBCFunctors(mesh, sbp, eqn, opts)
   getBCFunctors(pmesh, sbp, eqn, opts)
 
+  if mesh.isDG
+    getFluxFunctors(mesh, sbp, eqn, opts)
+  end
+
 
   return nothing
 end
@@ -185,7 +196,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 
 
     if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
-      vals = abs(real(eqn.q_vec))  # remove unneded imaginary part
+      vals = real(eqn.q_vec)  # remove unneded imaginary part
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
@@ -236,7 +247,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     # calculate the entropy norm
     val = zero(Float64)
     for i=1:mesh.numDofPerNode:mesh.numDof
-      q_vals = view(eqn.q_vec, i:(i+3))
+      q_vals = sview(eqn.q_vec, i:(i+3))
       s = calcEntropy(eqn.params, q_vals)
       val += real(s)*eqn.M[i]*real(s)
     end
@@ -264,6 +275,8 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
+# this is almost the exact list of everything we *shouldn't* be storing, but
+# rather recalculating on the fly
 
 #println("Entered dataPrep()")
 
@@ -291,13 +304,21 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # calculate fluxes
-#  getEulerFlux(eqn, eqn.q, mesh.dxidx, view(flux_parametric, :, :, :, 1), view(flux_parametric, :, :, :, 2))
+#  getEulerFlux(eqn, eqn.q, mesh.dxidx, sview(flux_parametric, :, :, :, 1), sview(flux_parametric, :, :, :, 2))
   getEulerFlux(mesh, sbp,  eqn, opts)
 #  println("getEulerFlux @time printed above")
 
 
-
-   getBCFluxes(mesh, sbp, eqn, opts)
+  if mesh.isDG
+    fill!(eqn.q_bndry, 0.0)
+    fill!(eqn.q_face, 0.0)
+    fill!(eqn.flux_face, 0.0)
+    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+    calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+  end
+  fill!(eqn.bndryflux, 0.0)
+  getBCFluxes(mesh, sbp, eqn, opts)
 #   println("getBCFluxes @time printed above")
   
    stabscale(mesh, sbp, eqn)
@@ -335,7 +356,7 @@ function checkDensity{Tsol}(eqn::EulerData{Tsol})
 q_cons = zeros(Tsol, ndof)  # conservative variables
 for i=1:numel
   for j=1:nnodes
-    convertToConservative(eqn.params, view(eqn.q, :, j, i), q_cons)
+    convertToConservative(eqn.params, sview(eqn.q, :, j, i), q_cons)
     if real(q_cons[1]) < 0.0
       println("q_conservative = ", q_cons)
     end
@@ -367,7 +388,7 @@ function checkPressure(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
-    aux_vars = view(eqn.aux_vars,:, j, i)
+    aux_vars = sview(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
     @assert( real(press) > 0.0, "element $i, node $j")
   end
@@ -398,12 +419,12 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   if opts["Q_transpose"] == true
     for i=1:Tdim
-      weakdifferentiate!(sbp, i, view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
     end
   else
     for i=1:Tdim
       #TODO: do this more efficiently
-      weakdifferentiate!(sbp, i, -1*view(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
+      weakdifferentiate!(sbp, i, -1*sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
     end
   end  # end if
 
@@ -443,7 +464,11 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Ab
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 
-  boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  if mesh.isDG
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  else
+    boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+  end
 
 
   return nothing
@@ -505,7 +530,33 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
 
 end
 
+@doc """
+### EulerEquationMod.evalFaceIntegrals
 
+  This function evaluates the face integrals in a DG formulation and
+  updates the residual.  The array eqn.flux_face must already be populated
+  with the face flux.
+
+  Inputs:
+    mesh: an AbstractDGMesh
+    sbp: an SBP operator
+    eqn: an EulerData object
+    opts: the options dictonary
+
+  Outputs:
+    none
+
+"""->
+function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+
+  interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+
+  # do some output here?
+  return nothing
+
+end
+                            
 
 
 

@@ -846,7 +846,7 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
     func(mesh, sbp, eqn, opts)
 
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
-    calcJacCol(unsafe_view(jac, :, j), res_0, eqn.res_vec, epsilon)
+    calcJacCol(sview(jac, :, j), res_0, eqn.res_vec, epsilon)
     
   end
 
@@ -900,7 +900,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
     func(mesh, sbp, eqn, opts)
 
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
-    calcJacCol(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
+    calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
     
   end  # end loop over rows of jacobian
 
@@ -978,7 +978,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 
        # now do res_edge, if needed
         for edge = 1:size(eqn.res_edge, 4)
-	  res_edge = view(eqn.res_edge, :, :, :, edge)
+	  res_edge = sview(eqn.res_edge, :, :, :, edge)
 	  for k=1:mesh.numEl  # loop over elements in residual
 	    el_pert = mesh.pertNeighborEls_edge[k, edge] # get perturbed element
 	    if el_pert != 0   # if element was actually perturbed for this color
@@ -1275,7 +1275,7 @@ function assembleElement{Tsol <: Complex}(newton_data::NewtonData, mesh, eqn::Ab
 # dof_pert is the dof number (global) of the dof that was perturbed
 # typically either el_pert or dof_pert will be needed, not both
 
-#println(" element $el_res res = ", view(res_arr, :, :, el_res))
+#println(" element $el_res res = ", sview(res_arr, :, :, el_res))
 
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
@@ -1374,7 +1374,7 @@ function newton_check(func, mesh, sbp, eqn, opts)
       fill!(eqn.res_vec, 0.0)
       func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
  #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
-      calcJacCol(unsafe_view(jac, :, j), eqn.res_vec, epsilon)
+      calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
 #      println("res_vec norm = ", norm(res_vec)/m)
       
     end  # end loop over rows of jacobian

@@ -8,7 +8,6 @@
   Inputs:
   q  : conservative variables of the fluid
   qg : conservative variables of the boundary
-  flux_parametric : (scaled) Euler flux in the xi and eta directions
   aux_vars : vector of all auxiliary variables at this node
   dxidx : dxidx matrix at the node
   nrm : sbp face normal vector
@@ -17,10 +16,6 @@
   Outputs:
     flux : vector to populate with solution
 
-  flux_parametric is accessed using *linear* indexing only.  The first 4 entries must be
-  the xi direction flux, the next 4 must be the eta direction flux.  This
-  makes it possible to pass view(flux_parametric, :, j, i :) and have it work correctly
-
   Aliasing restrictions:  none of the inputs can alias params.res_vals1,
                           params.res_vals2, params.q_vals, params.flux_vals1
 
@@ -28,7 +23,6 @@
 """->
 function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, 
                                      qg::AbstractArray{Tsol, 1}, 
-                                     flux_parametric::AbstractArray{Tres}, 
                                      aux_vars::AbstractArray{Tres, 1}, 
                                      dxidx::AbstractArray{Tmsh,2}, 
                                      nrm::AbstractArray{Tmsh,1}, 
@@ -39,6 +33,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   # similar to upwinding which adds dissipation to the problem. SATs on the 
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
+
 
   E1dq = params.res_vals1
   E2dq = params.res_vals2
@@ -165,5 +160,54 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   return nothing
 
 end # ends the function eulerRoeSAT
+
+
+function LFSolver(qL, qR, aux_vars, dxidx, nrm, flux, params)
+
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+  # determine if the left state is entering or existing the element
+  l_to_r = nx*qL[2] + ny*qL[3]
+
+  if l_to_r > 0
+    calcEulerFlux(params, qL, aux_vars, [nx, ny], flux)
+  else
+    aux_vars[1] = calcPressure(params, qR)
+    calcEulerFlux(params, qR, aux_vars, [nx, ny], flux)
+  end
+
+  # negate it
+  for i=1:length(flux)
+    flux[i] = -flux[i]
+  end
+
+  return nothing
+end
+
+
+function AvgSolver(qL, qR, aux_vars, dxidx, nrm, flux, params)
+
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+
+  for i=1:length(qL)
+    params.q_vals[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  aux_vars[1] = calcPressure(params, params.q_vals)
+  calcEulerFlux(params, params.q_vals, aux_vars, [nx, ny], flux)
+
+  # negate it
+  for i=1:length(flux)
+    flux[i] = -flux[i]
+  end
+
+
+
+  return nothing
+end
+
 
 
