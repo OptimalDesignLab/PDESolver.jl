@@ -394,10 +394,49 @@ if opts["solve"]
       f = open(outname, "w")
       println(f, mesh.numEl, " ", diff_norm, " ", discrete_norm)
       close(f)
+
+      #---- Calculate functional on a boundary  -----#
+      if opts["calc_functional"]
+        
+        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        # Calculate functional over edges
+        num_functionals = opts["num_functionals"]
+        for i = 1:num_functionals
+          # Geometric edge at which the functional needs to be integrated
+          key_j = string("geom_edges_functional", j)
+          functional_edges = opts[key_j]
+          functional_name = getFunctionalName(opts, j)
+
+          functional_val = zero(Tsol)
+          functional_val = calcBndryfunctional(mesh, sbp, eqn, opts, 
+                           functional_name, functional_edges)
+          println("\nNumerical functional value on geometric edges ", 
+                  functional_edges, " = ", functional_val)
+
+          analytical_functional_val = opts["analytical_functional_val"]
+          println("analytical_functional_val = ", analytical_functional_val)
+
+          absolute_functional_error = norm((functional_val - 
+                                           analytical_functional_val), 2)
+          relative_functional_error = absolute_functional_error/
+                                      norm(analytical_functional_val, 2)
+
+          mesh_metric = h_avg   # TODO: Find a suitable mesh metric
+
+          # write functional error to file
+          outname = string(opts["functional_error_outfname"], j, ".dat")
+          println("printed relative functional error = ", 
+                  relative_functional_error, " to file ", outname, '\n')
+          f = open(outname, "w")
+          println(f, relative_functional_error, " ", mesh_metric)
+          close(f)
+        end  # End for i = 1:num_functionals
+      end    # End if opts["calc_functional"]
+
       
       #=
       #----  Calculate forces on a boundary  -----
-      if opts["calc_force"]
+      if opts["calc_functional"]
         geometric_edge_number = 4
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         force = EulerEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 

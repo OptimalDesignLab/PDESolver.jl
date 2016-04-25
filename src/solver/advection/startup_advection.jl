@@ -380,8 +380,8 @@ if opts["solve"]
                            functional_name, functional_edges)
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
+          
           analytical_functional_val = opts["analytical_functional_val"]
-          # analytical_functional_val = 3^6 + (3^6)/6 - 3^5 - 1/6
           println("analytical_functional_val = ", analytical_functional_val)
           
           absolute_functional_error = norm((functional_val - 
@@ -391,7 +391,7 @@ if opts["solve"]
           
           mesh_metric = 1/sqrt(mesh.numEl/2)  # Only for a square domain with triangular elements
           
-          # write force error to file
+          # write functional error to file
           outname = string(opts["functional_error_outfname"], j, ".dat")
           println("printed relative functional error = ", 
                   relative_functional_error, " to file ", outname, '\n')

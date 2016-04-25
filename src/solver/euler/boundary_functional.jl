@@ -23,7 +23,7 @@ nonlinear solve while computing eqn.q
 
 *  `mesh` :  Abstract mesh object
 *  `sbp`  : Summation-By-Parts operator
-*  `eqn`  : Advection equation object
+*  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
 *  `g_edge_number` : Geometric edge number
 
@@ -95,6 +95,55 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
   return functional_val
 end
 
+
+function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+                         eqn::EulerData{Tsol}, opts, functor, functional_edges)
+
+  functional_val = zero(Tsol)
+
+  for itr = 1:length(functional_edges)
+
+
+  end  # End for itr = 1:length(functional_edges)
+
+
+  return functional_val
+end
+
+@doc """
+### EulerEquationMod.FunctionalDict
+
+It stores the names of all possible functional options that can be computed. 
+Whenever a new functional is created, it should be added to FunctionalDict.
+
+"""->
+global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
+# "qflux" => qflux(),
+)
+
+
+@doc """
+### EulerEquationMod.getFunctionalName
+
+Gets the name of the functional that needs to be computed at a particular point
+
+**Inputs**
+
+*  `opts`     : Input dictionary
+*  `f_number` : Number of the functional in the input dictionary
+
+**Outputs**
+
+*  `functional` : Returns the functional name in the dictionary
+
+"""->
+function getFunctionalName(opts, f_number)
+
+  key = string("functional_name", f_number)
+  val = opts[key]
+
+  return functional = FunctionalDict[val]
+end
 
 #=
 function calcForceError()
