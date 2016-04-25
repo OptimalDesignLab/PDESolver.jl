@@ -1,0 +1,10 @@
+rm -v ./*vtu
+rm -v ./convergence.dat
+rm -v ./coords_output.dat
+rm -v ./edge_vertnums.dat
+rm -v ./face_vertnums.dat
+rm -v ./IC.dat
+rm -v ./jacobian*.dat
+rm -v ./newton_solution.dat
+rm -v ./solution.dat
+rm -v ./sparsity_bnds.dat
