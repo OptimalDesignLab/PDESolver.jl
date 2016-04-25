@@ -132,7 +132,7 @@ mesh nodes.
 *  None
 
 """->
-
+#=
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn ::AdvectionData{Tsol}, opts, functor, functional_edges, 
                              func_deriv_arr)
@@ -169,31 +169,16 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
   
-  #=
-  println("\nsbp.numfacenodes = ", sbp.numfacenodes)
-  for i = 1:mesh.numBoundaryEdges
-    for j = 1:sbp.numfacenodes
-      println("integrand[1,$j,$i] = ", integrand[1,j,i])
-    end
-  end
-  =#
      
   println("mesh.bndryfaces = \n", mesh.bndryfaces)
 
   boundaryintegrate!(sbp, mesh.bndryfaces, integrand, func_deriv_arr)
 
-  #=
-  for i = 1:mesh.numEl
-    for j = 1:sbp.numnodes
-      println("func_deriv_arr[1,$j,$i] = ", func_deriv_arr[1,j,i])
-    end
-  end
-  =#
-
   return nothing
 end
+=#
 
-
+# DG Version
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn ::AdvectionData{Tsol}, opts, functor, functional_edges, 
                              func_deriv_arr)
