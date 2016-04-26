@@ -24,7 +24,7 @@ Calcualtes the adjoint vector for a single functional
 *  None
 
 """->
-
+#=
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
                     opts, functor, functional_number, adjoint_vec::Array{Tsol,1})
@@ -62,7 +62,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
 
   return nothing
 end
-
+=#
 
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
@@ -132,7 +132,7 @@ mesh nodes.
 *  None
 
 """->
-#=
+
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn ::AdvectionData{Tsol}, opts, functor, functional_edges, 
                              func_deriv_arr)
@@ -170,17 +170,16 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
   end      # End for itr = 1:length(functional_edges)
   
      
-  println("mesh.bndryfaces = \n", mesh.bndryfaces)
+  # println("mesh.bndryfaces = \n", mesh.bndryfaces)
 
   boundaryintegrate!(sbp, mesh.bndryfaces, integrand, func_deriv_arr)
 
   return nothing
 end
-=#
 
 # DG Version
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
-                             eqn ::AdvectionData{Tsol}, opts, functor, functional_edges, 
+                             eqn::AdvectionData{Tsol}, opts, functor, functional_edges, 
                              func_deriv_arr)
 
   alpha_x = eqn.alpha_x

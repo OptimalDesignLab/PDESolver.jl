@@ -1,4 +1,4 @@
-export calcBndryFunctional
+export calcBndryFunctional, getFunctionalName
 
 # Calculate the analytical force on the inner boundary of the isentropic vortex
 #=
@@ -36,9 +36,9 @@ nonlinear solve while computing eqn.q
 """->
 
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol}, opts, functional_edges)
+                         eqn::EulerData{Tsol}, opts, functor, functional_edges)
 
-  functional_val = zeros(Tsol, 2)
+  functional_val = zero(Tsol)
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
@@ -48,7 +48,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
-    boundary_integrand = zeros(Tsol, 2, mesh.sbpface.numnodes, nfaces) # For integrand in the x & y direction
+    boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
     q2 = zeros(Tsol, mesh.numDofPerNode)
 
     for i = 1:nfaces
@@ -64,21 +64,59 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         
-        euler_flux = zeros(Tsol, mesh.numDofPerNode)
-        calcEulerFlux(eqn.params, q, aux_vars, [nx, ny], euler_flux)
-        boundary_integrand[:,j,i] = euler_flux[2:3]
+        # euler_flux = zeros(Tsol, mesh.numDofPerNode)
+        # calcEulerFlux(eqn.params, q, aux_vars, [nx, ny], euler_flux)
+        # boundary_integrand[:,j,i] = euler_flux[2:3]
+
+        boundary_integrand[1,j,i] = functor(eqn.params, q, aux_vars, [nx, ny])
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
-  val_per_geom_edge = zeros(Tsol, 2)
+  # val_per_geom_edge = zeros(Tsol, 2)
+  val_per_geom_edge = zeros(Tsol, 1)
+
   integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
                          boundary_integrand, val_per_geom_edge)
 
-  functional_val[:] += val_per_geom_edge[:]
+  functional_val += val_per_geom_edge[1]
   end  # End for itr = 1:length(functional_edges)
 
   return functional_val
 end
+
+@doc """
+### EulerEquationMod.drag
+
+Computes the force in the X-direction.
+
+"""->
+
+type drag <: FunctionalType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh})
+
+  euler_flux = zeros(Tsol, length(q))
+  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
+  val = euler_flux[2]
+
+  return val
+end
+
+type lift <: FunctionalType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::lift, params, q::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh})
+
+  euler_flux = zeros(Tsol, length(q))
+  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
+  val = euler_flux[3]
+
+  return val
+end
+
 
 @doc """
 ### EulerEquationMod.FunctionalDict
@@ -89,6 +127,8 @@ Whenever a new functional is created, it should be added to FunctionalDict.
 """->
 global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
 # "qflux" => qflux(),
+"drag" => drag(),
+"lift" => lift(),
 )
 
 

@@ -28,3 +28,6 @@ rm -v ./sparsity_bnds.dat
 rm -v ./counts*.txt
 rm -v ./edge_vertdofs.txt
 rm -v ./*vtu
+rm -v ./coords_output.dat
+rm -v ./functional_error*.dat
+rm -v ./newton_solution*.dat

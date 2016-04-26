@@ -419,18 +419,19 @@ if opts["solve"]
           # Geometric edge at which the functional needs to be integrated
           key_j = string("geom_edges_functional", j)
           functional_edges = opts[key_j]
-          # functional_name = getFunctionalName(opts, j)
+          functional_name = getFunctionalName(opts, j)
 
-          functional_val = zeros(Tsol, 2)
+          functional_val = zero(Tsol)
           functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
-                          functional_edges)
+                           functional_name, functional_edges)
+          
           println("\nNumerical functional value on geometric edges ", 
-                  functional_edges, " = ", functional_val[1])
+                  functional_edges, " = ", functional_val)
 
           analytical_functional_val = opts["analytical_functional_val"]
           println("analytical_functional_val = ", analytical_functional_val)
 
-          absolute_functional_error = norm((functional_val[1] - 
+          absolute_functional_error = norm((functional_val - 
                                            analytical_functional_val), 2)
           relative_functional_error = absolute_functional_error/
                                       norm(analytical_functional_val, 2)
