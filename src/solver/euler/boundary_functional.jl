@@ -63,16 +63,12 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        
-        # euler_flux = zeros(Tsol, mesh.numDofPerNode)
-        # calcEulerFlux(eqn.params, q, aux_vars, [nx, ny], euler_flux)
-        # boundary_integrand[:,j,i] = euler_flux[2:3]
 
         boundary_integrand[1,j,i] = functor(eqn.params, q, aux_vars, [nx, ny])
+      
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
-  # val_per_geom_edge = zeros(Tsol, 2)
   val_per_geom_edge = zeros(Tsol, 1)
 
   integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
@@ -89,6 +85,17 @@ end
 
 Computes the force in the X-direction.
 
+**Inputs**
+
+*  `params` : Parameter type
+*  `q`      : Solution at a node
+*  `aux_vars` : Vector of auxiliary variables
+*  `nrm`    : Normal vector in the physical space
+
+**Outputs**
+
+*  `val`    : Momentum derivative in the X-direction
+
 """->
 
 type drag <: FunctionalType
@@ -103,6 +110,24 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
 
   return val
 end
+
+@doc """
+### EulerEquationMod.lift
+
+Computes the force in the Y-direction.
+
+**Inputs**
+
+*  `params` : Parameter type
+*  `q`      : Solution at a node
+*  `aux_vars` : Vector of auxiliary variables
+*  `nrm`    : Normal vector in the physical space
+
+**Outputs**
+
+*  `val`    : Momentum derivative in the Y-direction
+
+"""->
 
 type lift <: FunctionalType
 end
@@ -126,7 +151,6 @@ Whenever a new functional is created, it should be added to FunctionalDict.
 
 """->
 global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
-# "qflux" => qflux(),
 "drag" => drag(),
 "lift" => lift(),
 )
