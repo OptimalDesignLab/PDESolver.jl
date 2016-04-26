@@ -273,7 +273,7 @@ function ICexp5xplus4yplus2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      dofnums_j = view(mesh.dofs, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       x = mesh.coords[1,j,i]
       y = mesh.coords[2,j,i]
       alpha_x = eqn.alpha_x
@@ -292,7 +292,7 @@ function ICexp5xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      dofnums_j = view(mesh.dofs, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       x = mesh.coords[1,j,i]
       y = mesh.coords[2,j,i]
       alpha_x = eqn.alpha_x
@@ -311,7 +311,7 @@ function ICexp3xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      dofnums_j = view(mesh.dofs, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       x = mesh.coords[1,j,i]
       y = mesh.coords[2,j,i]
       alpha_x = eqn.alpha_x
@@ -330,7 +330,7 @@ function ICexp2xplus2y{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      dofnums_j = view(mesh.dofs, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       x = mesh.coords[1,j,i]
       y = mesh.coords[2,j,i]
       alpha_x = eqn.alpha_x
@@ -349,7 +349,7 @@ function ICexp_xy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      dofnums_j = view(mesh.dofs, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       x = mesh.coords[1,j,i]
       y = mesh.coords[2,j,i]
       alpha_x = eqn.alpha_x
@@ -367,7 +367,7 @@ function ICxplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
-      dofnums_j = view(mesh.dofs, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
       x = mesh.coords[1,j,i]
       y = mesh.coords[2,j,i]
       alpha_x = eqn.alpha_x

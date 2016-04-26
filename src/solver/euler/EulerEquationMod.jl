@@ -364,7 +364,7 @@ include("flux.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
 include("GLS2.jl")
-# include("boundary_forces.jl")
+include("boundary_functional.jl")
 
 
 @doc """

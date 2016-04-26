@@ -149,7 +149,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
     start_index = mesh.bndry_offsets[g_edge_number]
     end_index = mesh.bndry_offsets[g_edge_number + 1]
     idx_range = start_index:(end_index-1)  # Index range
-    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
     
@@ -159,9 +159,9 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
       for j = 1:sbp.numfacenodes
         k = sbp.facenodes[j, bndry_i.face]
         q = eqn.q[1,k,bndry_i.element]
-        x = view(mesh.coords, :, k, bndry_i.element)
-        dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-        nrm = view(sbp.facenormal, :, bndry_i.face)
+        x = sview(mesh.coords, :, k, bndry_i.element)
+        dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
+        nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, alpha_x, alpha_y, nx, ny, q)
@@ -195,7 +195,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
     start_index = mesh.bndry_offsets[g_edge_number]
     end_index = mesh.bndry_offsets[g_edge_number+1]
     idx_range = start_index:(end_index-1)
-    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
 
@@ -204,9 +204,9 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
-        coords = view(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = view(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = view(sbp.facenormal, :, bndry_i.face)
+        coords = sview(mesh.coords_bndry, :, j, global_facenum)
+        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+        nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, alpha_x, alpha_y, nx, ny, q)
@@ -312,7 +312,7 @@ function functionalBoundaryInfo{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abs
     start_index = mesh.bndry_offsets[g_edge_number]
     end_index = mesh.bndry_offsets[g_edge_number+1]
     idx_range = start_index:(end_index-1)
-    bndry_facenums = view(mesh.bndryfaces, idx_range) # faces on geometric edge i
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
     nfaces = length(mesh.bndryfaces[idx_range])
 
     for i = 1:nfaces
