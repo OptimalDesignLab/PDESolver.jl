@@ -447,28 +447,6 @@ if opts["solve"]
         end  # End for i = 1:num_functionals
       end    # End if opts["calc_functional"]
 
-      
-      #=
-      #----  Calculate forces on a boundary  -----
-      if opts["calc_functional"]
-        geometric_edge_number = 4
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        force = EulerEquationMod.calcBndryforces(mesh, sbp, eqn, opts, 
-                geometric_edge_number)
-        println("\nNumerical force on geometric edge ", geometric_edge_number, 
-                " = ", force)
-        # analytical_force = -exp(4) + exp(2)
-        # println("analytical_force = ", analytical_force)
-        # force_error = abs(analytical_force - force)
-        
-        # write force error to file
-        outname = opts["force_error_outfname"]
-        println("printed force error = ", force_error, " to file ", outname)
-        f = open(outname, "w")
-        println(f, force_error, " ", h_avg)
-        close(f)
-      end      
-      =#
     end
   end
 
