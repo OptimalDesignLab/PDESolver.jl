@@ -185,7 +185,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
   alpha_x = eqn.alpha_x
   alpha_y = eqn.alpha_y
 
-  # Obtain the derivative of the integrand at all meh.bndry
+  # Obtain the derivative of the integrand at all mesh.bndry
   integrand = zeros(eqn.q_bndry)
 
   # Populate integrand

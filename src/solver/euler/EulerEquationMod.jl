@@ -365,6 +365,7 @@ include("flux.jl")
 # include("constant_diff.jl")
 include("GLS2.jl")
 include("boundary_functional.jl")
+include("adjoint.jl")
 
 
 @doc """

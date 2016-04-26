@@ -424,7 +424,7 @@ if opts["solve"]
           functional_val = zero(Tsol)
           functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
                            functional_name, functional_edges)
-          
+
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
 
@@ -447,6 +447,38 @@ if opts["solve"]
           close(f)
         end  # End for i = 1:num_functionals
       end    # End if opts["calc_functional"]
+
+
+      #----- Calculate Adjoint Vector For A Functional -----#
+      if opts["calc_adjoint"]
+        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        if mesh.isDG
+          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+        end
+
+        # TODO: Presently adjoint computation only for 1 functional. Figure out
+        # API based on future use.
+        j = 1
+        key = string("geom_edges_functional", j)
+        functional_edges = opts[key]
+        functional_number = j
+        functional_name = getFunctionalName(opts, j)
+        
+        adjoint_vec = zeros(Tsol, mesh.numDof)
+        calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
+
+
+        # Write adjoint vector to file and mesh
+        file_object = open("adjoint_vector.dat", "w")
+        for iter = 1:length(adjoint_vec)
+          println(file_object, real(adjoint_vec[iter]))
+        end
+        close(file_object)
+        saveSolutionToMesh(mesh, real(adjoint_vec))
+        writeVisFiles(mesh, "adjoint_field")
+
+      end  # End if opts["calc_adjoint"]
+
 
     end
   end
