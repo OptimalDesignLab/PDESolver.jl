@@ -22,7 +22,7 @@ macro debug1(expr1)
 #    println("at compile time, in DB_Level >=", DB_LEVEL)
     return quote
 #      println("runtime expression")
-        $expr1
+        $(esc(expr1))
     end
   else
     return nothing
@@ -35,7 +35,7 @@ end  # end macro
 ### PDESolver.debug2
 
   This macro returns the expression if the debug level is greater than or 
-  equal to 12
+  equal to 2
 
   Inputs/Outputs:
     expr1: an expression to be executed only if the debug level is greater
@@ -48,7 +48,7 @@ macro debug1(expr1)
 #    println("at compile time, in DB_Level >=", DB_LEVEL)
     return quote
 #      println("runtime expression")
-        $expr1
+        $(esc(expr1))
     end
   else
     return nothing

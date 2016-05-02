@@ -450,7 +450,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       writedlm("q$i.dat", eqn.q)
     end
 
-
+    exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv)
 
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i

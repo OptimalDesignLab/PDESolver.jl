@@ -166,6 +166,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
 end # End type AdvectionData_
 
+include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("advectionFunctions.jl")
 include("common_funcs.jl")
 include("boundaryconditions.jl")

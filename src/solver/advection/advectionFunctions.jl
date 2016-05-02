@@ -34,6 +34,13 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   params.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
+  # start communication right away
+  if opts["parallel_type"] == 1
+    params.t_send += @elapsed if mesh.commsize > 1
+      sendParallelData(mesh, sbp, eqn, opts)
+    end
+    #  println("send parallel data @time printed above")
+  end
 
   params.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn)
 #  println("evalSCResidual @time printed above")
@@ -65,11 +72,6 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  println("applyGLS2 @time printed above")
 
 #  params.t_barriers[5] += @elapsed MPI.Barrier(mesh.comm) 
-  # start communication right away
-  params.t_send += @elapsed if mesh.commsize > 1
-    sendParallelData(mesh, sbp, eqn, opts)
-  end
-#  println("send parallel data @time printed above")
 
 #  params.t_barriers[6] += @elapsed MPI.Barrier(mesh.comm) 
   # do parallel computation last
@@ -350,7 +352,11 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+  if opts["parallel_type"] == 1
+    calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+  else
+    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+  end
 
   return nothing
 end

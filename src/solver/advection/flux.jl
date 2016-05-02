@@ -112,16 +112,108 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
     boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res)
   end  # end loop over npeers
 
+  sharedFaceLogging(mesh, sbp, eqn, opts, eqn.qL_arr, eqn.qR_arr)
+
+# element parallel version
+function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            opts, functor::FluxType)
+
+  q = eqn.q
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
+  @debug1 begin
+    qL_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
+    qR_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
+    for i=1:mesh.npeers
+      qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+                                   mesh.peer_face_counts[i])
+      qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+                                   mesh.peer_face_counts[i])
+    end
+  end
+
+  npeers = mesh.npeers
+  val = sum(eqn.recv_waited)
+  if val !=  mesh.npeers || val != 0
+    throw(ErrorException("Receive waits in inconsistent state: $val / $npeers already waited on"))
+  end
+  # TODO: make these fields of params
+  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  for i=1:mesh.npeers
+    if val == 0
+      params.t_wait += @elapsed idx, stat = MPI.Waitany!(mesh.recv_reqs)
+      mesh.recv_stats[idx] = stat
+      mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
+      mesh.recv_waited[idx] = true
+    else
+      idx = i
+    end
+
+    interfaces = mesh.shared_interfaces[idx]
+    bndries_local = mesh.bndries_local[idx]
+    bndries_remote = mesh.bndries_remote[idx]
+#    qL_arr = eqn.q_face_send[i]
+    qR_arr = eqn.q_face_recv[idx]
+    dxidx_arr = mesh.dxidx_sharedface[idx]
+    flux_arr = eqn.flux_sharedface[i]
+
+    start_elnum = mesh.shared_element_offsets[idx]
+
+    @debug1 qL_face_arr_i = qL_face_arr[i]
+    @debug1 qR_face_arr_i = qR_face_arr[i]
+
+    for j=1:length(interfaces)
+      iface_j = interfaces[j]
+      bndryL_j = bndries_local[j]
+      bndryR_j = bndries_remove[j]
+
+      # interpolate to face
+      qL = sview(q, :, :, iface_j.elementL)
+      el_r = iface_j.elementR - start_elnum + 1
+      qR = sview(qR_arr, :, :, el_r)
+
+      boundaryinterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
+      boundaryinterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
+
+      @debug1 qL_face_arr_i[:, :, j] = q_faceL
+      @debug1 qR_face_arr_i[:, :, j] = q_faceR
+
+      # calculate flux
+      for k=1:mesh.numNodesPerFace
+        qL_k = qL[k]
+        qR_k = qR[k]
+        dxidx = sview(dxidx_arr, :, :, k, j)
+        nrm = sview(sbp.facenormal, :, fL)
+
+        flux_arr[1,k,j] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
+                                      eqn.params)
+       end
+     end  # end loop over interfaces
+
+    # evaluate integral
+    boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)
+  end  # end loop over peers
+
+  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, qL_face_arr, qR_face_arr)
+
+  return nothing
+end
+
+function sharedFaceLogging(mesh, sbp, eqn, opts, qL_arr, qR_arr)
+
   if opts["writeqface"]
     myrank = mesh.myrank
     for i=1:mesh.npeers
       tmp_arr = zeros(Tsol, mesh.numDofPerNode, 2, mesh.numNodesPerFace, mesh.peer_face_counts[i])
-      qL_arr = eqn.q_face_send[i]
-      qR_arr = eqn.q_face_recv[i]
+      qL_arr_i = qL_arr[i]
+      qR_arr_i = qR_arr[i]
       for j = 1:mesh.peer_face_counts[i]
         for k=1:mesh.numNodesPerFace
-          tmp_arr[:, 1, k, j] = qL_arr[:, k, j]
-          tmp_arr[:, 2, k, j] = qR_arr[:, k, j]
+          tmp_arr[:, 1, k, j] = qL_arr_i[:, k, j]
+          tmp_arr[:, 2, k, j] = qR_arr_i[:, k, j]
         end
       end
 
@@ -137,60 +229,6 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
       writedlm(fname, eqn.flux_sharedface[i])
     end
   end
-
-  return nothing
-end
-
-# element parallel version
-function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
-                            opts, functor::FluxType)
-
-  q = eqn.q
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
-
-  # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  for i=1:mesh.npeers
-    interfaces = mesh.shared_interfaces[i]
-    bndries_local = mesh.bndries_local[i]
-    bndries_remote = mesh.bndries_remote[i]
-#    qL_arr = eqn.q_face_send[i]
-    qR_arr = eqn.q_face_recv[i]
-    dxidx_arr = mesh.dxidx_sharedface[i]
-    flux_arr = eqn.flux_sharedface[i]
-
-    start_elnum = mesh.shared_element_offsets[i]
-    for j=1:length(interfaces)
-      iface_j = interfaces[j]
-      bndryL_j = bndries_local[j]
-      bndryR_j = bndries_remove[j]
-
-      # interpolate to face
-      qL = sview(q, :, :, iface_j.elementL)
-      el_r = iface_j.elementR - start_elnum + 1
-      qR = sview(qR_arr, :, :, el_r)
-
-      boundaryinterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
-      boundaryinterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
-
-      # calculate flux
-      for k=1:mesh.numNodesPerFace
-        qL_k = qL[k]
-        qR_k = qR[k]
-        dxidx = sview(dxidx_arr, :, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
-
-        flux_arr[1,k,j] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
-                                      eqn.params)
-       end
-     end  # end loop over interfaces
-
-    # evaluate integral
-    boundaryintegrate!(mesh.sbpface, bndries_local[idx], flux_arr, eqn.res)
-  end  # end loop over peers
 
   return nothing
 end
