@@ -92,17 +92,17 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
     # permute the received nodes to be in the elementR orientation
     permuteinterface!(mesh.sbpface, interfaces, qR_arr)
-    for i=1:length(interfaces)
-      interface_i = interfaces[i]
-      for j=1:mesh.numNodesPerFace
+    for j=1:length(interfaces)
+      interface_i = interfaces[j]
+      for k=1:mesh.numNodesPerFace
         eL = interface_i.elementL
         fL = interface_i.faceL
 
-        qL = qL_arr[1, j, i]
-        qR = qR_arr[1, j, i]
-        dxidx = sview(dxidx_arr, :, :, j, i)
+        qL = qL_arr[1, k, j]
+        qR = qR_arr[1, k, j]
+        dxidx = sview(dxidx_arr, :, :, k, j)
         nrm = sview(sbp.facenormal, :, fL)
-        flux_arr[1,j,i] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
+        flux_arr[1,k,j] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
                                     eqn.params)
       end
     end
@@ -140,6 +140,62 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+
+# element parallel version
+function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            opts, functor::FluxType)
+
+  q = eqn.q
+  alpha_x = eqn.alpha_x
+  alpha_y = eqn.alpha_y
+
+  # TODO: make these fields of params
+  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  for i=1:mesh.npeers
+    interfaces = mesh.shared_interfaces[i]
+    bndries_local = mesh.bndries_local[i]
+    bndries_remote = mesh.bndries_remote[i]
+#    qL_arr = eqn.q_face_send[i]
+    qR_arr = eqn.q_face_recv[i]
+    dxidx_arr = mesh.dxidx_sharedface[i]
+    flux_arr = eqn.flux_sharedface[i]
+
+    start_elnum = mesh.shared_element_offsets[i]
+    for j=1:length(interfaces)
+      iface_j = interfaces[j]
+      bndryL_j = bndries_local[j]
+      bndryR_j = bndries_remove[j]
+
+      # interpolate to face
+      qL = sview(q, :, :, iface_j.elementL)
+      el_r = iface_j.elementR - start_elnum + 1
+      qR = sview(qR_arr, :, :, el_r)
+
+      boundaryinterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
+      boundaryinterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
+
+      # calculate flux
+      for k=1:mesh.numNodesPerFace
+        qL_k = qL[k]
+        qR_k = qR[k]
+        dxidx = sview(dxidx_arr, :, :, k, j)
+        nrm = sview(sbp.facenormal, :, fL)
+
+        flux_arr[1,k,j] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
+                                      eqn.params)
+       end
+     end  # end loop over interfaces
+
+    # evaluate integral
+    boundaryintegrate!(mesh.sbpface, bndries_local[idx], flux_arr, eqn.res)
+  end  # end loop over peers
+
+  return nothing
+end
+
+
 
 @doc """
 ### AdvectionEquationMod.avgFlux

@@ -120,9 +120,10 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
 
   for i=1:mesh.npeers
     # wait for previous send to finish
-    if val == npeers
+    if val == 0
       idx, stat = MPI.Waitany!(mesh.send_reqs)
       mesh.send_stats[idx] = stat
+      mesh.send_waited[idx] = true
     else
       idx = i
     end
@@ -140,7 +141,7 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     end
 
     # send it
-    peer_i = mesh.peer_parts[dx]
+    peer_i = mesh.peer_parts[idx]
     mesh.send_reqs[idx] = MPI.Isend(send_buff_i, peer_i, tag, mesh.comm)
     mesh.send_waited[idx] = false
   end
