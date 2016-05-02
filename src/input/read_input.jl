@@ -40,6 +40,12 @@ include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include th
 # record fname in dictionary
 arg_dict["fname"] = fname
 
+if arg_dict["run_type"] == 1
+  get!(arg_dict, "parallel_type", 1)
+else
+  get!(arg_dict, "parallel_type", 2)
+end
+
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
 
