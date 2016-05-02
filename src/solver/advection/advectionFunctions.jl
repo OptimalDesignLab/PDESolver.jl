@@ -327,7 +327,7 @@ function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   for i=1:mesh.npeers
     # interpolate
-    getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i])
+    mesh.send_waited[i] = getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i], mesh.send_waited[i])
   end
 
   exchangeFaceData(mesh, opts, eqn.q_face_send, eqn.q_face_recv)

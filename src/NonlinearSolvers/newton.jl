@@ -1087,12 +1087,12 @@ function assembleElement{Tsol <: Real}(newton_data::NewtonData, mesh, eqn::Abstr
 local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
 
 # get row number
-newton_data.idy_tmp[1] = dof_pert - 1
+newton_data.idy_tmp[1] = dof_pert - 1 + mesh.dof_offset
 
 pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
-    newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
+    newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1 + mesh.dof_offset
 
     tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
     newton_data.vals_tmp[pos] = tmp
@@ -1142,10 +1142,10 @@ function assembleElement{Tsol <: Real}(newton_data::NewtonData, mesh, eqn::Abstr
 
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
-    row_idx = mesh.dofs[i_i, j_j, el_res]
+    row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
 
     tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
-    jac[row_idx, dof_pert] += tmp
+    jac[row_idx, dof_pert + mesh.dof_offset] += tmp
 
   end
 end
@@ -1223,12 +1223,12 @@ function assembleElement{Tsol <: Complex}(newton_data::NewtonData, mesh, eqn::Ab
 # typically either el_pert or dof_pert will be needed, not both
 
 # get row number
-newton_data.idy_tmp[1] = dof_pert - 1
+newton_data.idy_tmp[1] = dof_pert - 1 + mesh.dof_offset
 
 pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
-    newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1
+    newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1 + mesh.dof_offset
 
     newton_data.vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
 
@@ -1279,8 +1279,8 @@ function assembleElement{Tsol <: Complex}(newton_data::NewtonData, mesh, eqn::Ab
 
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
-    row_idx = mesh.dofs[i_i, j_j, el_res]
-    jac[row_idx, dof_pert] += imag(res_arr[i_i,j_j, el_res])/epsilon
+    row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
+    jac[row_idx, dof_pert + mesh.dof_offset] += imag(res_arr[i_i,j_j, el_res])/epsilon
   end
 end
 

@@ -11,6 +11,7 @@ using SummationByParts
 include("parallel.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
+export exchangeElementData
 
 @doc """
 ### Utils.disassembleSolution
