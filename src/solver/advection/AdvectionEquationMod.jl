@@ -136,13 +136,28 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
     end
 
+    # send and receive buffers
+    #TODO: rename buffers to not include face
     eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
     eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
+    if opts["parallel_type"] == 1
+      dim2 = numfacenodes
+      dim3_send = mesh.peer_face_counts
+      dim3_recv = mesh.peer_face_counts
+    elseif opts["parallel_type"] == 2
+      dim2 = mesh.numNodesPerElement
+      dim3_send = mesh.local_element_counts
+      dim3_recv = mesh.remote_element_counts
+    else
+      ptype = opts["parallel_type"]
+      throw(ErrorException("Unsupported parallel type requested: $ptype"))
+    end
+      
     for i=1:mesh.npeers
-      eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, numfacenodes, 
-                                 mesh.peer_face_counts[i])
-      eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, numfacenodes,
-                                 mesh.peer_face_counts[i])
+      eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
+                                       dim3_send[i])
+      eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
+                                      dim3_recv[i])
     end
 
     return eqn

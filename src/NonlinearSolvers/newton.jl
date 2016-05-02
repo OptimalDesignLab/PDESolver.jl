@@ -958,7 +958,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 	# apply perturbation to q
-        applyPerturbation(eqn.q, mesh.color_masks[color], pert, i, j)
+        applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j)
 
 	# evaluate residual
         func(mesh, sbp, eqn, opts)
@@ -991,7 +991,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
       end  # end loop over local edges
 
       # undo perturbation
-      applyPerturbation(eqn.q, mesh.color_masks[color], -pert, i, j)
+      applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
 
       end  # end loop i
     end  # end loop j
@@ -1011,19 +1011,21 @@ end  # end function
   on each element according to a mask.
 
   Inputs:
-    mask:  vector of values of length numEl, used to mask the application of
-           the perturbation.
+    mesh: an AbstractMesh
+    color: the color to perturb
     pert: perturbation to apply.  Can be any datatype
     i: local degree of freedom number (in range 1:numDofPerNode) to perturb
     j: local node number (in range 1:numNodesPerElement) to perturb
 
   Inputs/Outputs:
     arr: element based (3D) array of values to perturb
+    arr_shared: array of 3D arrays for ghost elements to be perturbed
 
   Aliasing restrictions: none
 """->
-function applyPerturbation(arr::Abstract3DArray, mask::AbstractVector, pert, i, j)
-  # applys perturbation puert to array arr according to mask mask
+function applyPerturbation(mesh::AbstractMesh, arr::Abstract3DArray, arr_shared::Array{Abstract3DArray, 1},  color::Integer, pert, i, j; perturb_shared=true)
+  # applys perturbation pert to array arr according to a mask
+  # color is the color currently being perturbed, used to select the mask
   # i, j specify the dof, node number within arr
   # the length of mask must equal the third dimension of arr
   # this function is independent of the type of pert
@@ -1033,9 +1035,19 @@ function applyPerturbation(arr::Abstract3DArray, mask::AbstractVector, pert, i, 
   @assert j <= size(arr, 2)
 
   (ndof, nnodes, numel) = size(arr)
-
+  mask = mesh.color_masks[color]
   for k=1:numel
     arr[i, j, k] += pert*mask[k]
+  end
+
+  if perturb_shared
+    for peer=1:mesh.npeers
+      mask_i = mesh.shared_element_colormasks[peer][color]
+      arr_i = arr_shared[peer]
+      for k=1:length(masks_i)
+        arr_shared[i, j, k] += pert*mask_i[k]
+      end
+    end
   end
 
   return nothing
