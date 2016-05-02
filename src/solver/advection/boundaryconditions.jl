@@ -362,8 +362,9 @@ end
 function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, alpha_x, alpha_y,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
-
+  # this is really slow: use Horner's rule!
   u_bc = calc_p5(coords, alpha_x, alpha_y, t)
+#  println("calc_p5 @time printed above")
 #  println("  u_bc = ", u_bc)
   bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
 #  println("    RoeSolver @time printed above")

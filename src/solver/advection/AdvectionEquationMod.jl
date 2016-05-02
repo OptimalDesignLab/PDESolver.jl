@@ -19,10 +19,24 @@ export ICDict              # exported from ic.jl
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
 
+  # timings
+  t_volume::Float64  # time for volume integrals
+  t_face::Float64 # time for surface integrals (interior)
+  t_source::Float64  # time spent doing source term
+  t_sharedface::Float64  # time for shared face integrals
+  t_bndry::Float64  # time spent doing boundary integrals
+  t_send::Float64  # time spent sending data
+  t_wait::Float64  # time spent in MPI_Wait
+  t_allreduce::Float64 # time spent in allreduce
+  t_barrier::Float64  # time spent in MPI_Barrier
+  t_barrier2::Float64
+  t_barrier3::Float64
+  t_barriers::Array{Float64, 1}
+
   function ParamType(mesh, sbp, opts)
     LFalpha = opts["LFalpha"]
 
-    return new(LFalpha)
+    return new(LFalpha, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, zeros(Float64, 7))
   end
 end
 

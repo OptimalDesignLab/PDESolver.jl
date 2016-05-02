@@ -239,6 +239,7 @@ get!(arg_dict, "finalize_mpi", false)
 
 # write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+#=
 if myrank == 0
   fname = "arg_dict_output.jl"
   rmfile(fname)
@@ -259,7 +260,7 @@ if myrank == 0
   println(f, ")")
   close(f)
 end
-
+=#
 # do some sanity checks here
 # deal with boundary conditions
 # "numBC" must be dictionary key whose value is the number of boundary conditions

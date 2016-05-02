@@ -91,6 +91,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   if comm_rank == 0
     f1 = open("convergence.dat", "a+")
+    fbuf = IOBuffer(10*output_freq*3*sizeof(eltype(q_vec)))
   end
 
   x_old = copy(q_vec)
@@ -119,22 +120,20 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
      majorIterationCallback(i, ctx..., opts)
    
     if i % 1 == 0 && comm_rank == 0
-      println(f1, i, " ", sol_norm)
+      println(fbuf, i, " ", sol_norm)
     end
     
     if i % output_freq == 0 && comm_rank == 0
       println("flushing convergence.dat to disk")
+      write(f1, takebuf_array(fbuf))
       flush(f1)
     end
 
-
-    println("sol_norm = ", sol_norm)
-    println("res_tol = ", res_tol)
-    println("sol_norm < res_tol = ", sol_norm < res_tol)
     # check stopping conditions
     if (sol_norm < res_tol)
       if comm_rank == 0
         println("breaking due to res_tol")
+        write(f1, takebuf_array(fbuf))
         flush(f1)
       end
       break
@@ -143,6 +142,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if use_itermax && i > itermax
       if comm_rank == 0
         println("breaking due to itermax")
+        write(f1, takebuf_array(fbuf))
         flush(f1)
       end
       break
@@ -203,7 +203,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end
 
   if comm_rank == 0
-    close(f1)
+#    close(f1)
   end
 
   return t
@@ -311,7 +311,7 @@ function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   if calc_norm
     local_norm = calcNorm(eqn, eqn.res_vec)
-    global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
+    eqn.params.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
     return sqrt(global_norm)
   end
 

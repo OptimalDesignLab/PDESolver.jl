@@ -206,10 +206,10 @@ end
 
 res_vec_exact = deepcopy(q_vec)
 
-rmfile("IC_$myrank.dat")
-writedlm("IC_$myrank.dat", real(q_vec))
-saveSolutionToMesh(mesh, q_vec)
-writeVisFiles(mesh, "solution_ic")
+#rmfile("IC_$myrank.dat")
+#writedlm("IC_$myrank.dat", real(q_vec))
+#saveSolutionToMesh(mesh, q_vec)
+#writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
 
 if opts["calc_dt"]
@@ -249,7 +249,7 @@ if opts["solve"]
     @time rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn, opts, 
               res_tol=opts["res_abstol"], real_time=opts["real_time"])
     println("finish rk4")
-    printSolution("rk4_solution.dat", eqn.res_vec)
+#    printSolution("rk4_solution.dat", eqn.res_vec)
   
   elseif flag == 2 # forward diff dR/du
     
@@ -427,10 +427,21 @@ end       # end of if/elseif blocks checking flag
     end
   end
 
+  myrank = mesh.myrank
+  f = open("profile_$myrank.dat", "a+")
+  Profile.print(f, format=:flat, C=true)
+  close(f)
+
   saveSolutionToMesh(mesh, real(eqn.q_vec))
-  printSolution(mesh, real(eqn.q_vec))
-  printCoordinates(mesh)
+#  printSolution(mesh, real(eqn.q_vec))
+#  printCoordinates(mesh)
   writeVisFiles(mesh, "solution_done")
+
+  # write timings
+  params = eqn.params
+  myrank = mesh.myrank
+  timings = [params.t_volume, params.t_face, params.t_source, params.t_sharedface, params.t_bndry, params.t_send, params.t_wait, params.t_allreduce, params.t_barrier, params.t_barrier2, params.t_barrier3]
+  writedlm("timing_breakdown_$myrank.dat", vcat(timings, params.t_barriers))
 
   MPI.Barrier(mesh.comm)
   if opts["finalize_mpi"]

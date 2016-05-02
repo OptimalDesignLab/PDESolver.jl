@@ -25,49 +25,60 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                        opts, t = 0.0)
 
   myrank = mesh.myrank
+  params = eqn.params
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalAdvection -----")
   #close(f)
 
   eqn.t = t
- 
+  params.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
-  # start communication right away
-  if mesh.commsize > 1
-    sendParallelData(mesh, sbp, eqn, opts)
-  end
-#  println("send parallel data @time printed above")
 
-  evalSCResidual(mesh, sbp, eqn)
+  params.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn)
 #  println("evalSCResidual @time printed above")
 
+#  params.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
+  params.t_face += @elapsed if mesh.isDG
+    evalFaceTerm(mesh, sbp, eqn, opts)
+  end
+
+#  println("evalFaceTerm @time printed above")
+#
   # Does not work, should remove
 #  if opts["use_GLS"]
 #    GLS(mesh, sbp, eqn)
 #  end
-  evalSRCTerm(mesh, sbp, eqn, opts)
+
+#  params.t_barriers[3] += @elapsed MPI.Barrier(mesh.comm) 
+  params.t_source += @elapsed evalSRCTerm(mesh, sbp, eqn, opts)
 #  println("evalSRCTerm @time printed above")
 
-  evalBndry(mesh, sbp, eqn)
+#  params.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
+  params.t_bndry += @elapsed evalBndry(mesh, sbp, eqn)
 #  println("evalBndry @time printed above")
 
-  if mesh.isDG
-    evalFaceTerm(mesh, sbp, eqn, opts)
-  end
-#  println("evalFaceTerm @time printed above")
 
   if opts["use_GLS2"]
     applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
   end
 #  println("applyGLS2 @time printed above")
 
+#  params.t_barriers[5] += @elapsed MPI.Barrier(mesh.comm) 
+  # start communication right away
+  params.t_send += @elapsed if mesh.commsize > 1
+    sendParallelData(mesh, sbp, eqn, opts)
+  end
+#  println("send parallel data @time printed above")
+
+#  params.t_barriers[6] += @elapsed MPI.Barrier(mesh.comm) 
   # do parallel computation last
-  if mesh.commsize > 1
+  params.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
   end
 #  println("evalSharedFaceIntegrals @time printed above")
 
+#  params.t_barriers[7] += @elapsed MPI.Barrier(mesh.comm) 
 #=
   f = open("pfout_$myrank.dat", "a+")
   println(f, "----- finished evalAdvection -----")
@@ -197,6 +208,7 @@ function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData
 #  println("----- Entered evalFaceTerm -----")
   # interpolate solution to faces
   interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
+#  println("    interiorface interpolate @time printed above")
 
   myrank = mesh.myrank
   if opts["writeqface"]
@@ -205,6 +217,7 @@ function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData
 
   # calculate face fluxes
   calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+#  println("    calcFaceFlux @time printed above")
 
   if opts["write_fluxface"]
     writedlm("fluxface_$myrank.dat", eqn.flux_face)
@@ -216,6 +229,7 @@ function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData
   else
     error("cannot evalFaceTerm for non DG mesh")
   end
+#  println("    interiorfaceintegrate @time printed above")
 
 #  println("----- Finished evalFaceTerm -----")
   return nothing

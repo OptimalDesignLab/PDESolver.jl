@@ -117,6 +117,18 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
 
+  # timings
+  t_volume::Float64  # time for volume integrals
+  t_face::Float64 # time for surface integrals (interior)
+  t_source::Float64  # time spent doing source term
+  t_sharedface::Float64  # time for shared face integrals
+  t_bndry::Float64  # time spent doing boundary integrals
+  t_send::Float64  # time spent sending data
+  t_wait::Float64  # time spent in MPI_Wait
+  t_allreduce::Float64 # time spent in allreduce
+  t_barrier::Float64  # time spent in MPI_Barrier
+
+
   function ParamType(sbp, opts, order::Integer)
   # create values, apply defaults
     
@@ -199,7 +211,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
                use_dissipation, dissipation_const, tau_type, vortex_x0, 
                vortex_strength, 
-               krylov_itr, krylov_type)
+               krylov_itr, krylov_type,
+               0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     end   # end of ParamType function
 
