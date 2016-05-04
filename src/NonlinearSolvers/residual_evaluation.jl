@@ -32,6 +32,11 @@ function calcResidual(mesh, sbp, eqn, opts, func)
 # calculate the residual and its norm
 
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+
+  if opts["parallel_type"] == 2
+    exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv)
+  end
+
   func(mesh, sbp, eqn, opts)
 
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)

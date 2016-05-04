@@ -87,7 +87,7 @@ mesh_time = @elapsed if opts["use_DG"]
   println("constructing DG mesh")
   mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
                    dofpernode=1, coloring_distance=opts["coloring_distance"])
-  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+  if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
     pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
                    coloring_distance=opts["coloring_distance_prec"])
   else
@@ -208,8 +208,8 @@ res_vec_exact = deepcopy(q_vec)
 
 #rmfile("IC_$myrank.dat")
 #writedlm("IC_$myrank.dat", real(q_vec))
-#saveSolutionToMesh(mesh, q_vec)
-#writeVisFiles(mesh, "solution_ic")
+saveSolutionToMesh(mesh, q_vec)
+writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
 
 if opts["calc_dt"]

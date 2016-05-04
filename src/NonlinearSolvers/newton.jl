@@ -147,14 +147,14 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   epsilon = opts["epsilon"]::Float64
   globalize_euler = opts["newton_globalize_euler"]::Bool
   recalc_prec_freq = opts["recalc_prec_freq"]::Int
-
+  use_jac_precond = opts["use_jac_precond"]::Bool
   println("step_tol = ", step_tol)
   println("res_abstol = ", res_abstol)
   println("res_reltol = ", res_reltol)
   println("res_reltol0 = ", res_reltol0)
 
   newton_data = NewtonData(mesh, sbp, eqn, opts)
-
+  myrank = mesh.myrank
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
@@ -208,15 +208,15 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
   # post-residual iteration 0 output
   if write_rhs
-    writedlm("rhs0.dat", res_0)
+    writedlm("rhs0_$myrank.dat", res_0)
   end
 
   if write_qic
-    writedlm("q0.dat", eqn.q)
+    writedlm("q0_$myrank.dat", eqn.q)
   end
 
   if write_res
-    writedlm("res0.dat", eqn.res)
+    writedlm("res0_$myrank.dat", eqn.res)
   end
 
   # check if initial residual satisfied absolute or relative tolerances
@@ -262,7 +262,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
     # calculate jacobian using selected method
     if jac_method == 1
-#      println("calculating finite difference jacobian")
+      println("calculating finite difference jacobian")
 
       if jac_type == 1  # dense jacobian
 	println("calculating dense FD jacobian")
@@ -282,8 +282,9 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 #	use_edgestab_orig = eqn.params.use_edgestab
 #        eqn.params.use_dissipation = opts["use_dissipation_prec"]
 #	eqn.params.use_edgestab = opts["use_edgestab_prec"]
-
-        @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
+        if use_jac_precond
+          @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
+        end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 #	eqn.params.use_dissipation = use_dissipation_orig
@@ -293,7 +294,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       println("FD jacobian calculation @time printed above")
 
     elseif jac_method == 2
-#      println("calculating complex step jacobian")
+      println("calculating complex step jacobian")
 
       if jac_type == 1  # dense jacobian
 	      println("calculating dense complex step jacobian")
@@ -304,18 +305,29 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
       elseif jac_type == 3 # Petsc sparse jacobian
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+        println("calculating explicit Petsc jacobian")
 #	use_dissipation_orig = eqn.params.use_dissipation
 #	use_edgestab_orig = eqn.params.use_edgestab
 #        eqn.params.use_dissipation = opts["use_dissipation_prec"]
 #	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
-        @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
-        
+        if  use_jac_precond
+          println("calculating preconditioning jacobian")
+          @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+        end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 #	eqn.params.use_dissipation = use_dissipation_orig
 #	eqn.params.use_edgestab = use_edgestab_orig
+        println("calculating main jacobain")
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+        println("finished calculating jacobain")
+        PetscMatAssemblyBegin(jac)
+        println("assmbling jacobian")
+        PetscMatAssemblyEnd(jac)
+        println("about to view matrix")
+        PetscView(jac, 0)
+        println("finished viewing matrix")
 
       elseif jac_type == 4 # Petsc jacobian-vector product
 	# calculate preconditioner matrix only
@@ -426,12 +438,16 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc jacobian
-      @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec)
+      @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
     end
-    
+ 
     println("matrix solve @time printed above")
-    step_norm = norm(delta_res_vec)/m
-    println("step_norm = ", step_norm)
+    step_norm = norm(delta_res_vec)
+    #TODO: make this a regular reduce?
+    step_norm = MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm)
+    if myrank == 0
+      println("step_norm = ", step_norm)
+    end
 
     # perform Newton update
     for j=1:m
@@ -442,15 +458,13 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
  
     # write starting values for next iteration to file
     if write_sol
-      writedlm("q_vec$i.dat", eqn.q_vec)
+      writedlm("q_vec$i_$myrank.dat", eqn.q_vec)
     end
 
     if write_q
       disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-      writedlm("q$i.dat", eqn.q)
+      writedlm("q$i_$myrank.dat", eqn.q)
     end
-
-    exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv)
 
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
@@ -460,8 +474,10 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       res_0[j] = real(eqn.res_vec[j])
     end
 
-    println("residual norm = ", res_0_norm)
-    println("relative residual ", res_0_norm/res_reltol_0)
+    if myrank == 0
+      println("residual norm = ", res_0_norm)
+      println("relative residual ", res_0_norm/res_reltol_0)
+    end
 
 
     # write to convergence file
@@ -473,11 +489,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 #    tmp = i+1
     # write rhs to file
     if write_rhs
-      writedlm("rhs$i.dat", res_0)
+      writedlm("rhs$i_$myrank.dat", res_0)
     end
 
     if write_res
-      writedlm("res$i.dat", eqn.res)
+      writedlm("res$i_$myrank.dat", eqn.res)
     end
 
 
@@ -953,21 +969,27 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 
   epsilon = norm(pert)  # get magnitude of perturbation
    m = length(res_0)
-
+  myrank = mesh.myrank
+  f = eqn.params.f
+  println(f, "numcolors = ", mesh.numColors)
   for color=1:mesh.numColors  # loop over colors
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
+        println(f, "perturbing color $color, node $j, dof $i")
+
 	# apply perturbation to q
-        applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j)
+        applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
 
 	# evaluate residual
         func(mesh, sbp, eqn, opts)
-#	
+#
+        println(f, "eqn.res = \n", eqn.res)
 	# assemble res into jac
 	for k=1:mesh.numEl  # loop over elements in residual
 	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
           #TODO: find a way to get rid of this if statement
           # Solution: make pertNeighbor Els only hold the perturbed elements
+          println(f, "for element $k, perturbed element number = ", el_pert)
           if el_pert != 0   # if element was actually perturbed for this color
 
             col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
@@ -993,10 +1015,13 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
       # undo perturbation
       applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
 
+      println(f, "finished perturbation")
+
       end  # end loop i
     end  # end loop j
   end  # end loop over colors
 
+  println(f, "finished applying all perturbations")
   # now jac is complete
 #  eqn.params.use_filter = filter_orig # reset filter
   return nothing
@@ -1023,14 +1048,13 @@ end  # end function
 
   Aliasing restrictions: none
 """->
-function applyPerturbation(mesh::AbstractMesh, arr::Abstract3DArray, arr_shared::Array{Abstract3DArray, 1},  color::Integer, pert, i, j; perturb_shared=true)
+function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray, arr_shared::Array{Array{T, 3}, 1},  color::Integer, pert, i, j, f=STDOUT; perturb_shared=true)
   # applys perturbation pert to array arr according to a mask
   # color is the color currently being perturbed, used to select the mask
   # i, j specify the dof, node number within arr
   # the length of mask must equal the third dimension of arr
   # this function is independent of the type of pert
 
-  @assert size(arr,3) == length(mask)
   @assert i <= size(arr, 1)
   @assert j <= size(arr, 2)
 
@@ -1043,9 +1067,10 @@ function applyPerturbation(mesh::AbstractMesh, arr::Abstract3DArray, arr_shared:
   if perturb_shared
     for peer=1:mesh.npeers
       mask_i = mesh.shared_element_colormasks[peer][color]
+      println(f, "peer $i mask = \n", mask_i)
       arr_i = arr_shared[peer]
-      for k=1:length(masks_i)
-        arr_shared[i, j, k] += pert*mask_i[k]
+      for k=1:length(mask_i)
+        arr_i[i, j, k] += pert*mask_i[k]
       end
     end
   end
@@ -1236,13 +1261,16 @@ function assembleElement{Tsol <: Complex}(newton_data::NewtonData, mesh, eqn::Ab
 
 # get row number
 newton_data.idy_tmp[1] = dof_pert - 1 + mesh.dof_offset
-
+println(eqn.params.f, "column = ", newton_data.idy_tmp[1])
+println(eqn.params.f, "res = ", res_arr[:, :, el_res])
 pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1 + mesh.dof_offset
+    println(eqn.params.f, "row = ", newton_data.idx_tmp[pos])
 
     newton_data.vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
+    println(eqn.params.f, "val = ", newton_data.vals_tmp[pos])
 
     pos += 1
   end

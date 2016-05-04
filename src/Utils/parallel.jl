@@ -13,6 +13,9 @@ function initMPIStructures(mesh::AbstractMesh, opts)
     mesh.recv_reqs[i] = MPI.REQUEST_NULL
     mesh.send_stats[i] = MPI.Wait!(mesh.send_reqs[i])
     mesh.recv_stats[i] = MPI.Wait!(mesh.recv_reqs[i])
+    # do not wait on these requests
+    mesh.recv_waited[i] = true 
+    mesh.send_waited[i] = true
   end
 
   return nothing

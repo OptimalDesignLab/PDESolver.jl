@@ -26,14 +26,16 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
+  println(params.f, "-----entered evalAdvection -----")
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalAdvection -----")
   #close(f)
 
   eqn.t = t
-  params.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
+#  params.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
+  println(params.f, "q = \n", eqn.q)
   # start communication right away
   if opts["parallel_type"] == 1
     params.t_send += @elapsed if mesh.commsize > 1
@@ -44,10 +46,12 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   params.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn)
 #  println("evalSCResidual @time printed above")
+  println(params.f, "finished volume integrals")
 
 #  params.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
   params.t_face += @elapsed if mesh.isDG
     evalFaceTerm(mesh, sbp, eqn, opts)
+    println(params.f, "finished face integrals")
   end
 
 #  println("evalFaceTerm @time printed above")
@@ -59,10 +63,12 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 #  params.t_barriers[3] += @elapsed MPI.Barrier(mesh.comm) 
   params.t_source += @elapsed evalSRCTerm(mesh, sbp, eqn, opts)
+  println(params.f, "finished source integrals")
 #  println("evalSRCTerm @time printed above")
 
 #  params.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
   params.t_bndry += @elapsed evalBndry(mesh, sbp, eqn)
+  println(params.f, "finished boundary integrals")
 #  println("evalBndry @time printed above")
 
 
@@ -77,6 +83,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # do parallel computation last
   params.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+    println(params.f, "finished shared face integrals")
   end
 #  println("evalSharedFaceIntegrals @time printed above")
 
@@ -86,6 +93,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   println(f, "----- finished evalAdvection -----")
   close(f)
 =#
+  println(params.f, "----- finished evalAdvection -----")
   return nothing
 end
 
@@ -327,6 +335,7 @@ end
 """->
 function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
 
+  println(eqn.params.f, "sending parallel face data")
   for i=1:mesh.npeers
     # interpolate
     mesh.send_waited[i] = getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i], mesh.send_waited[i])
@@ -353,8 +362,10 @@ end
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   if opts["parallel_type"] == 1
+    println(eqn.params.f, "doing face integrals using face data")
     calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
   else
+    println(eqn.params.f, "doing face integrals using element data")
     calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
   end
 

@@ -34,24 +34,26 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 
 jac_type = opts["jac_type"]::Int
 
+const vectype = VECMPI
+const mattype = PETSc.MATMPIAIJ
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "kspout",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
 comm = MPI.COMM_WORLD
 
 obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
 println("creating b")
 b = PetscVec(comm)
-PetscVecSetType(b, VECSEQ)
-PetscVecSetSizes(b, obj_size, obj_size)
+PetscVecSetType(b, vectype)
+PetscVecSetSizes(b, obj_size, PETSC_DECIDE)
 
 println("creating x")
 x = PetscVec(comm)
-PetscVecSetType(x, VECSEQ)
-PetscVecSetSizes(x, obj_size, obj_size)
+PetscVecSetType(x, vectype)
+PetscVecSetSizes(x, obj_size, PETSC_DECIDE)
 
 # tuple of all the objects needed to evaluate the residual
 # only used by Mat Shell
@@ -61,13 +63,13 @@ if jac_type == 3  # explicit sparse jacobian
   println("creating A")
   A = PetscMat(comm)
   PetscMatSetFromOptions(A)
-  PetscMatSetType(A, PETSc.MATSEQBAIJ)
-  PetscMatSetSizes(A, obj_size, obj_size, obj_size, obj_size)
+  PetscMatSetType(A, mattype)
+  PetscMatSetSizes(A, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
 
 elseif jac_type == 4  # jacobian-vector product
   # create matrix shell
   ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple
-  A = MatCreateShell(comm, obj_size, obj_size, obj_size, obj_size, ctx_ptr)
+  A = MatCreateShell(comm, obj_size, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
   PetscMatSetFromOptions(A)  # necessary?
   PetscSetUp(A)
 
@@ -82,19 +84,24 @@ end
 
 println("type of A = ", MatGetType(A))
 
-println("creating Ap")  # used for preconditioner
-Ap = PetscMat(comm)
-PetscMatSetFromOptions(Ap)
-PetscMatSetType(Ap, PETSc.MATSEQBAIJ)
-PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+if jac_type == 4 || opts["use_jac_precond"]
+  println("creating Ap")  # used for preconditioner
+  Ap = PetscMat(comm)
+  PetscMatSetFromOptions(Ap)
+  PetscMatSetType(Ap, mattype)
+  PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
-println("type of Ap = ", MatGetType(Ap))
-
+  println("type of Ap = ", MatGetType(Ap))
+else
+  Ap = A
+end
 
 println("preallocating Petsc Matrices")
 # prellocate matrix
 dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
-onnz = zeros(PetscInt, mesh.numDof)  # there is no off diagonal part for single proc case
+onnz = zeros(PetscInt, mesh.numDof)
+# TODO: get a tighter bound for the off diagonal nonzeros
+fill!(onnz, mesh.numNodesPerElement*mesh.numDofPerNode)
 dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 bs = PetscInt(mesh.numDofPerNode)  # block size
@@ -108,6 +115,7 @@ for i=1:mesh.numNodes
 #  println("row ", i," has ", nnz_i, " non zero entries")
 end
 
+# preallocate A
 if jac_type == 3
 
   PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
@@ -121,28 +129,30 @@ if jac_type == 3
   PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
 end
 
-# calculate number of nonzeros per row for A[
-for i=1:mesh.numNodes
-  max_dof = pmesh.sparsity_nodebnds[2, i]
-  min_dof = pmesh.sparsity_nodebnds[1, i]
-  nnz_i = max_dof - min_dof + 1
-  dnnz[i] = nnz_i
-#  println("row ", i," has ", nnz_i, " non zero entries")
+# preallocate Ap
+if jac_type == 4 || opts["use_jac_precond"]
+  # calculate number of nonzeros per row for A[
+  for i=1:mesh.numNodes
+    max_dof = pmesh.sparsity_nodebnds[2, i]
+    min_dof = pmesh.sparsity_nodebnds[1, i]
+    nnz_i = max_dof - min_dof + 1
+    dnnz[i] = nnz_i
+  #  println("row ", i," has ", nnz_i, " non zero entries")
+  end
+
+  PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
+
+  MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+  matinfo = PetscMatGetInfo(Ap, Int32(1))
+  println("Ap block size = ", matinfo.block_size)
+
+  # zero initialize the matrix just in case
+  println("zeroing Ap")
+  PetscMatZeroEntries(Ap)
+
+  PetscMatAssemblyBegin(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
+  PetscMatAssemblyEnd(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
 end
-
-PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
-
-MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
-matinfo = PetscMatGetInfo(Ap, Int32(1))
-println("Ap block size = ", matinfo.block_size)
-
-# zero initialize the matrix just in case
-println("zeroing Ap")
-PetscMatZeroEntries(Ap)
-
-PetscMatAssemblyBegin(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
-PetscMatAssemblyEnd(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
-
 
 
 # set some options
@@ -201,7 +211,9 @@ function destroyPetsc(A::PetscMat, Ap::PetscMat, x::PetscVec,  b::PetscVec, ksp:
 # destory Petsc data structures, finalize Petsc
 
 PetscDestroy(A)
-PetscDestroy(Ap)
+if A.pobj != Ap.pobj
+  PetscDestroy(Ap)
+end
 PetscDestroy(x)
 PetscDestroy(b)
 PetscDestroy(ksp)
@@ -234,7 +246,7 @@ end
   Aliasing restrictions: none
 
 """->
-function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector )
+function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector, dof_offset::Integer=0 )
 
   # solve the system for the newton step, write it to delta_res_vec
   # writing it to delta_res_vec is an unecessary copy, becasue we could
@@ -248,7 +260,7 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   println("copying res_0 to b")
   idx = zeros(PetscInt, numDof)
   for i=1:numDof
-    idx[i] = i - 1
+    idx[i] = i - 1 + dof_offset
   end
 
   # copy into Petsc and assemble
