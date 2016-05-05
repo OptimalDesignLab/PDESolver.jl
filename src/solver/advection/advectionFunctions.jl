@@ -26,7 +26,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-  println(params.f, "-----entered evalAdvection -----")
+#  println(params.f, "-----entered evalAdvection -----")
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalAdvection -----")
   #close(f)
@@ -327,7 +327,6 @@ end
 """->
 function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  println(eqn.params.f, "sending parallel face data")
   for i=1:mesh.npeers
     # interpolate
     mesh.send_waited[i] = getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i], mesh.send_waited[i])
@@ -354,10 +353,10 @@ end
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   if opts["parallel_type"] == 1
-    println(eqn.params.f, "doing face integrals using face data")
+#    println(eqn.params.f, "doing face integrals using face data")
     calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
   else
-    println(eqn.params.f, "doing face integrals using element data")
+#    println(eqn.params.f, "doing face integrals using element data")
     calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
   end
 

@@ -35,7 +35,7 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 jac_type = opts["jac_type"]::Int
 
 const vectype = VECMPI
-const mattype = PETSc.MATMPIAIJ
+const mattype = PETSc.MATMPIAIJ # should this be BAIJ?
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
@@ -100,35 +100,34 @@ println("preallocating Petsc Matrices")
 # prellocate matrix
 dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
 onnz = zeros(PetscInt, mesh.numDof)
-dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
-onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
+#dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
+#onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 bs = PetscInt(mesh.numDofPerNode)  # block size
 
 # calculate number of non zeros per row for A
-for i=1:mesh.numNodes
+for i=1:mesh.numDof
 #  max_dof = mesh.sparsity_nodebnds[2, i]
 #  min_dof = mesh.sparsity_nodebnds[1, i]
 #  nnz_i = max_dof - min_dof + 1
-  dnnz[i] = mesh.sparsity_counts_node[1, i]
-  onnz[i] = mesh.sparsity_counts_node[2, i]
+  dnnz[i] = mesh.sparsity_counts[1, i]
+  onnz[i] = mesh.sparsity_counts[2, i]
 #  println("row ", i," has ", nnz_i, " non zero entries")
 end
 myrank = mesh.myrank
-writedlm("dnnz_$myrank.dat", dnnz)
-writedlm("onnz_$myrank.dat", onnz)
+
 
 # preallocate A
 if jac_type == 3
 
-  PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
+  PetscMatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
 
   MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
   PetscMatZeroEntries(A)
   matinfo = PetscMatGetInfo(A, Int32(1))
   println("A block size = ", matinfo.block_size)
 
-  PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
-  PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
+#  PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
+#  PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
 end
 
 # preallocate Ap
@@ -257,6 +256,7 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   # writing it to delta_res_vec is an unecessary copy, becasue we could
   # write it directly to eqn.q, but for consistency we do it anyways
 
+#  return nothing
   jac_type = opts["jac_type"]::Int
 
   # copy res_0 into b

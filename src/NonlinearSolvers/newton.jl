@@ -322,6 +322,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
         println("calculating main jacobain")
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
 
+
       elseif jac_type == 4 # Petsc jacobian-vector product
 	# calculate preconditioner matrix only
 	res_dummy = Array(Float64, 0, 0, 0)
@@ -961,7 +962,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 #  eqn.params.use_filter = false  # don't repetatively filter
 
   epsilon = norm(pert)  # get magnitude of perturbation
-   m = length(res_0)
+  m = length(res_0)
   myrank = mesh.myrank
   f = eqn.params.f
   for color=1:mesh.numColors  # loop over colors
@@ -1249,13 +1250,16 @@ pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1 + mesh.dof_offset
+    row = newton_data.idx_tmp[pos]
+    col = newton_data.idy_tmp[1]
+
 
     newton_data.vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
+    val = newton_data.vals_tmp[pos]
 
     pos += 1
   end
 end
-
 PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
 
 return nothing
