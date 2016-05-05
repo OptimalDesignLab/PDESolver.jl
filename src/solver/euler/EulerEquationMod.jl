@@ -128,6 +128,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   t_allreduce::Float64 # time spent in allreduce
   t_barrier::Float64  # time spent in MPI_Barrier
   t_jacobian::Float64 # time spend computing Jacobian
+  t_solve::Float64 # linear solve time
 
 
   function ParamType(sbp, opts, order::Integer)

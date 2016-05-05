@@ -440,7 +440,7 @@ end       # end of if/elseif blocks checking flag
   # write timings
   params = eqn.params
   myrank = mesh.myrank
-  timings = [params.t_volume, params.t_face, params.t_source, params.t_sharedface, params.t_bndry, params.t_send, params.t_wait, params.t_allreduce, params.t_jacobian, params.t_barrier, params.t_barrier2, params.t_barrier3]
+  timings = [params.t_volume, params.t_face, params.t_source, params.t_sharedface, params.t_bndry, params.t_send, params.t_wait, params.t_allreduce, params.t_jacobian, params.t_solve, params.t_barrier, params.t_barrier2, params.t_barrier3]
   writedlm("timing_breakdown_$myrank.dat", vcat(timings, params.t_barriers))
 
   MPI.Barrier(mesh.comm)

@@ -122,10 +122,20 @@ end
 function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
                             opts, functor::FluxType)
+
   q = eqn.q
   alpha_x = eqn.alpha_x
   alpha_y = eqn.alpha_y
   params = eqn.params
+
+  println(params.f, "----- entered calcSharedFaceIntegrals_element -----")
+  println(params.f, "npeers = ", mesh.npeers)
+  println(params.f, "peer_parts = ", mesh.peer_parts)
+  println(params.f, "mesh.peer_face_counts = ", mesh.peer_face_counts)
+  println(params.f, "local_element_counts = ", mesh.local_element_counts)
+  println(params.f, "remote_element_counts = ", mesh.remote_element_counts)
+  println(params.f, "shared_interfaces = ", mesh.shared_interfaces)
+  flush(params.f)
   @debug1 begin
     qL_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
     qR_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
@@ -149,27 +159,33 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
   workarr = zeros(q_faceR)
   for i=1:mesh.npeers
     if val == 0
+      println(eqn.params.f, "waiting on MPI_Request"); flush(eqn.params.f)
       params.t_wait += @elapsed idx, stat = MPI.Waitany!(mesh.recv_reqs)
       mesh.recv_stats[idx] = stat
       mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
       mesh.recv_waited[idx] = true
     else
+      println(eqn.params.f, "not waiting on MPI_Request"); flush(eqn.params.f)
       idx = i
     end
 
+    println(params.f, "peer ", idx)
     interfaces = mesh.shared_interfaces[idx]
     bndries_local = mesh.bndries_local[idx]
     bndries_remote = mesh.bndries_remote[idx]
 #    qL_arr = eqn.q_face_send[i]
     qR_arr = eqn.q_face_recv[idx]
     dxidx_arr = mesh.dxidx_sharedface[idx]
-    flux_arr = eqn.flux_sharedface[i]
+    flux_arr = eqn.flux_sharedface[idx]
 
     start_elnum = mesh.shared_element_offsets[idx]
 
     @debug1 qL_face_arr_i = qL_face_arr[i]
     @debug1 qR_face_arr_i = qR_face_arr[i]
 
+    println(params.f, "size(qR_arr) = ", size(qR_arr))
+    println(params.f, "size(flux_arr) = ", size(flux_arr))
+    flush(params.f)
     for j=1:length(interfaces)
       iface_j = interfaces[j]
       bndryL_j = bndries_local[j]

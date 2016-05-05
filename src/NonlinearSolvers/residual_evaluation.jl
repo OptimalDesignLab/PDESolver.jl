@@ -34,7 +34,7 @@ function calcResidual(mesh, sbp, eqn, opts, func)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
 
   if opts["parallel_type"] == 2
-    exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv)
+    exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
 
   func(mesh, sbp, eqn, opts)

@@ -113,6 +113,9 @@ for i=1:mesh.numNodes
   onnz[i] = mesh.sparsity_counts_node[2, i]
 #  println("row ", i," has ", nnz_i, " non zero entries")
 end
+myrank = mesh.myrank
+writedlm("dnnz_$myrank.dat", dnnz)
+writedlm("onnz_$myrank.dat", onnz)
 
 # preallocate A
 if jac_type == 3

@@ -104,13 +104,16 @@ end
 """->
 function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
                                    send_buff::Array{Array{T, N}, 1},
-                                   recv_buff::Array{Array{T, N}, 1};
+                                   recv_buff::Array{Array{T, N}, 1}, 
+                                   f::IOStream=STDOUT;
                                    tag=TAG_ELEMENT, wait=false)
 
+  println(f, "----- Entered exchangeElementData -----")
   # post recieves
   for i=1:mesh.npeers
     peer_i = mesh.peer_parts[i]
     recv_buff_i = recv_buff[i]
+    println(f, "posting receive of ", length(recv_buff_i), " data from process ", peer_i)
     mesh.recv_reqs[i] = MPI.Irecv!(recv_buff_i, peer_i, tag, mesh.comm)
     mesh.recv_waited[i] = false
   end
@@ -122,14 +125,12 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
   end
 
   for i=1:mesh.npeers
-    # wait for previous send to finish
-    if val == 0
-      idx, stat = MPI.Waitany!(mesh.send_reqs)
-      mesh.send_stats[idx] = stat
-      mesh.send_waited[idx] = true
-    else
-      idx = i
-    end
+    # wait for these in order because doing the waitany trick doesn't work
+    # these should have completed long ago, so it shouldn't be a performance
+    # problem
+    MPI.Wait!(mesh.send_reqs[i])
+    idx = i
+    println(f, "idx = ", idx); flush(f)
 
     # copy data into send buffer
     local_els = mesh.local_element_lists[idx]
@@ -145,6 +146,7 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
 
     # send it
     peer_i = mesh.peer_parts[idx]
+    println(f, "posting send of ", length(send_buff_i), " data from process ", peer_i)
     mesh.send_reqs[idx] = MPI.Isend(send_buff_i, peer_i, tag, mesh.comm)
     mesh.send_waited[idx] = false
   end
@@ -156,6 +158,7 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     fill!(mesh.send_waited, true)
   end
 
+  flush(f)
 
   return nothing
 end

@@ -427,11 +427,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
    
     # calculate Newton step
     if jac_type == 1 || jac_type == 2  # julia jacobian
-      @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
+      eqn.params.t_solve += @elapsed @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc jacobian
-      @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
+      eqn.params.t_solve += @elapsed @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
     end
  
     println("matrix solve @time printed above")

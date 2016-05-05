@@ -26,7 +26,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-#  println(params.f, "-----entered evalAdvection -----")
+  println(params.f, "-----entered evalAdvection -----")
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalAdvection -----")
   #close(f)
@@ -427,6 +427,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 #    cd("./SolutionFiles")
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
+    println(eqn.params.f, "finished writing vis file"); flush(eqn.params.f)
 #    cd("../")
   end
  
