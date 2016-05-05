@@ -127,6 +127,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   t_wait::Float64  # time spent in MPI_Wait
   t_allreduce::Float64 # time spent in allreduce
   t_barrier::Float64  # time spent in MPI_Barrier
+  t_jacobian::Float64 # time spend computing Jacobian
 
 
   function ParamType(sbp, opts, order::Integer)
@@ -212,7 +213,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
                use_dissipation, dissipation_const, tau_type, vortex_x0, 
                vortex_strength, 
                krylov_itr, krylov_type,
-               0, 0, 0, 0, 0, 0, 0, 0, 0)
+               0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     end   # end of ParamType function
 

@@ -100,18 +100,17 @@ println("preallocating Petsc Matrices")
 # prellocate matrix
 dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
 onnz = zeros(PetscInt, mesh.numDof)
-# TODO: get a tighter bound for the off diagonal nonzeros
-fill!(onnz, mesh.numNodesPerElement*mesh.numDofPerNode)
 dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 bs = PetscInt(mesh.numDofPerNode)  # block size
 
 # calculate number of non zeros per row for A
 for i=1:mesh.numNodes
-  max_dof = mesh.sparsity_nodebnds[2, i]
-  min_dof = mesh.sparsity_nodebnds[1, i]
-  nnz_i = max_dof - min_dof + 1
-  dnnz[i] = nnz_i
+#  max_dof = mesh.sparsity_nodebnds[2, i]
+#  min_dof = mesh.sparsity_nodebnds[1, i]
+#  nnz_i = max_dof - min_dof + 1
+  dnnz[i] = mesh.sparsity_counts_node[1, i]
+  onnz[i] = mesh.sparsity_counts_node[2, i]
 #  println("row ", i," has ", nnz_i, " non zero entries")
 end
 
@@ -133,10 +132,13 @@ end
 if jac_type == 4 || opts["use_jac_precond"]
   # calculate number of nonzeros per row for A[
   for i=1:mesh.numNodes
-    max_dof = pmesh.sparsity_nodebnds[2, i]
-    min_dof = pmesh.sparsity_nodebnds[1, i]
-    nnz_i = max_dof - min_dof + 1
-    dnnz[i] = nnz_i
+#    max_dof = pmesh.sparsity_nodebnds[2, i]
+#    min_dof = pmesh.sparsity_nodebnds[1, i]
+#    nnz_i = max_dof - min_dof + 1
+#    dnnz[i] = nnz_i
+    dnnz[i] = mesh.sparsity_counts_node[1, i]
+    onnz[i] = mesh.sparsity_counts_node[2, i]
+
   #  println("row ", i," has ", nnz_i, " non zero entries")
   end
 

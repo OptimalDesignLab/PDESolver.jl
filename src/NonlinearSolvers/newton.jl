@@ -261,7 +261,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     println("step_fac = ", step_fac)
 
     # calculate jacobian using selected method
-    if jac_method == 1
+    eqn.params.t_jacobian += @elapsed if jac_method == 1
       println("calculating finite difference jacobian")
 
       if jac_type == 1  # dense jacobian

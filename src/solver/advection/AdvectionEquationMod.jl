@@ -29,6 +29,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   t_send::Float64  # time spent sending data
   t_wait::Float64  # time spent in MPI_Wait
   t_allreduce::Float64 # time spent in allreduce
+  t_jacobian::Float64  # time spent computing jacobian
   t_barrier::Float64  # time spent in MPI_Barrier
   t_barrier2::Float64
   t_barrier3::Float64
@@ -38,7 +39,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     f = open("log_$myrank.dat", "w")
-    return new(LFalpha, f, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, zeros(Float64, 7))
+    return new(LFalpha, f, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, zeros(Float64, 7))
   end
 end
 
