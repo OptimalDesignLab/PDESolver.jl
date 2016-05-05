@@ -34,8 +34,6 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           interfaces::AbstractArray{Interface,1}, 
                           face_flux::AbstractArray{Tres, 3})
  
-  println(eqn.params.f, "size(q_face) = ", size(eqn.q_face))
-  println(eqn.params.f, "q_face = \n", eqn.q_face)
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
     interface_i = interfaces[i]
@@ -55,7 +53,6 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     end
   end
 
-  println(eqn.params.f, "flux_arr = \n", face_flux)
   return nothing
 end
 
@@ -129,7 +126,6 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
   alpha_x = eqn.alpha_x
   alpha_y = eqn.alpha_y
   params = eqn.params
-  println(params.f, "entered calcSharedFaceIntegrals_element")
   @debug1 begin
     qL_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
     qR_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
@@ -152,15 +148,12 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
   q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   workarr = zeros(q_faceR)
   for i=1:mesh.npeers
-    println(eqn.params.f, "processing peer ", i)
     if val == 0
-      println(eqn.params.f, "waiting on MPI_Request")
       params.t_wait += @elapsed idx, stat = MPI.Waitany!(mesh.recv_reqs)
       mesh.recv_stats[idx] = stat
       mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
       mesh.recv_waited[idx] = true
     else
-      println(eqn.params.f, "not waiting on MPI_Request")
       idx = i
     end
 
@@ -171,7 +164,6 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
     qR_arr = eqn.q_face_recv[idx]
     dxidx_arr = mesh.dxidx_sharedface[idx]
     flux_arr = eqn.flux_sharedface[i]
-    println(params.f, "operating on qR = \n", qR_arr)
 
     start_elnum = mesh.shared_element_offsets[idx]
 
@@ -211,7 +203,6 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
          flux_arr[1,k,j] = flux_tmp
        end
      end  # end loop over interfaces
-     println(eqn.params.f, "flux_arr = \n", flux_arr)
 
     # evaluate integral
     boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)

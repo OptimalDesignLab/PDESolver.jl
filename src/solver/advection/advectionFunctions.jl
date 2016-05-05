@@ -26,7 +26,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-  println(params.f, "-----entered evalAdvection -----")
+#  println(params.f, "-----entered evalAdvection -----")
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalAdvection -----")
   #close(f)
@@ -35,7 +35,6 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  params.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
-  println(params.f, "q = \n", eqn.q)
   # start communication right away
   if opts["parallel_type"] == 1
     params.t_send += @elapsed if mesh.commsize > 1
@@ -46,14 +45,11 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   params.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn)
 #  println("evalSCResidual @time printed above")
-  println(params.f, "finished volume integrals")
 
 #  params.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
   params.t_face += @elapsed if mesh.isDG
     evalFaceTerm(mesh, sbp, eqn, opts)
-    println(params.f, "finished face integrals")
   end
-
 #  println("evalFaceTerm @time printed above")
 #
   # Does not work, should remove
@@ -63,12 +59,10 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 #  params.t_barriers[3] += @elapsed MPI.Barrier(mesh.comm) 
   params.t_source += @elapsed evalSRCTerm(mesh, sbp, eqn, opts)
-  println(params.f, "finished source integrals")
 #  println("evalSRCTerm @time printed above")
 
 #  params.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
   params.t_bndry += @elapsed evalBndry(mesh, sbp, eqn)
-  println(params.f, "finished boundary integrals")
 #  println("evalBndry @time printed above")
 
 
@@ -83,9 +77,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # do parallel computation last
   params.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-    println(params.f, "finished shared face integrals")
   end
-#  println("evalSharedFaceIntegrals @time printed above")
 
 #  params.t_barriers[7] += @elapsed MPI.Barrier(mesh.comm) 
 #=
@@ -93,7 +85,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   println(f, "----- finished evalAdvection -----")
   close(f)
 =#
-  println(params.f, "----- finished evalAdvection -----")
+#  println(params.f, "----- finished evalAdvection -----")
   return nothing
 end
 

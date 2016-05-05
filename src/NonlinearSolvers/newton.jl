@@ -321,13 +321,6 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 #	eqn.params.use_edgestab = use_edgestab_orig
         println("calculating main jacobain")
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
-        println("finished calculating jacobain")
-        PetscMatAssemblyBegin(jac)
-        println("assmbling jacobian")
-        PetscMatAssemblyEnd(jac)
-        println("about to view matrix")
-        PetscView(jac, 0)
-        println("finished viewing matrix")
 
       elseif jac_type == 4 # Petsc jacobian-vector product
 	# calculate preconditioner matrix only
@@ -971,11 +964,9 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
    m = length(res_0)
   myrank = mesh.myrank
   f = eqn.params.f
-  println(f, "numcolors = ", mesh.numColors)
   for color=1:mesh.numColors  # loop over colors
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
-        println(f, "perturbing color $color, node $j, dof $i")
 
 	# apply perturbation to q
         applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
@@ -983,13 +974,11 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 	# evaluate residual
         func(mesh, sbp, eqn, opts)
 #
-        println(f, "eqn.res = \n", eqn.res)
 	# assemble res into jac
 	for k=1:mesh.numEl  # loop over elements in residual
 	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
           #TODO: find a way to get rid of this if statement
           # Solution: make pertNeighbor Els only hold the perturbed elements
-          println(f, "for element $k, perturbed element number = ", el_pert)
           if el_pert != 0   # if element was actually perturbed for this color
 
             col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
@@ -1014,14 +1003,10 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 
       # undo perturbation
       applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
-
-      println(f, "finished perturbation")
-
       end  # end loop i
     end  # end loop j
   end  # end loop over colors
 
-  println(f, "finished applying all perturbations")
   # now jac is complete
 #  eqn.params.use_filter = filter_orig # reset filter
   return nothing
@@ -1067,7 +1052,6 @@ function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray, arr_shar
   if perturb_shared
     for peer=1:mesh.npeers
       mask_i = mesh.shared_element_colormasks[peer][color]
-      println(f, "peer $i mask = \n", mask_i)
       arr_i = arr_shared[peer]
       for k=1:length(mask_i)
         arr_i[i, j, k] += pert*mask_i[k]
@@ -1261,16 +1245,12 @@ function assembleElement{Tsol <: Complex}(newton_data::NewtonData, mesh, eqn::Ab
 
 # get row number
 newton_data.idy_tmp[1] = dof_pert - 1 + mesh.dof_offset
-println(eqn.params.f, "column = ", newton_data.idy_tmp[1])
-println(eqn.params.f, "res = ", res_arr[:, :, el_res])
 pos = 1
 for j_j = 1:mesh.numNodesPerElement
   for i_i = 1:mesh.numDofPerNode
     newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1 + mesh.dof_offset
-    println(eqn.params.f, "row = ", newton_data.idx_tmp[pos])
 
     newton_data.vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
-    println(eqn.params.f, "val = ", newton_data.vals_tmp[pos])
 
     pos += 1
   end
