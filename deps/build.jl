@@ -10,9 +10,9 @@ function installPDESolver()
   # [pkg_name, git url, commit identified]
   std_pkgs = [ "ArrayViews" "https://github.com/JaredCrean2/ArrayViews.jl.git" "204cc23138cacbd5fc19e861c8038937541952b6";
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "9dba0bdbd7af062266770964f1d15236f88b54c3";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "d9ecb572979af9280e5359751d51c6d879932ad0";
-              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "a1eee816122dd323452db991842cab66290c9692"
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "bbbfe37e14a89432dd311c803391de0717d312e3";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "eec844306c99ab9dbf10bee673020b479e24dc65";
+              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "d68859248ddeed79abe9005a5c75caa35f10885e"
               ]
 
 
@@ -119,7 +119,7 @@ function installPDESolver()
               "Calculus" "https://github.com/johnmyleswhite/Calculus.jl.git" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
               "DualNumbers" "https://github.com/JuliaDiff/DualNumbers.jl.git" "34ae2b236f4853028fc60a5efed42bd17a33230f";
               "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
-              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
+#              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
               "ForwardDiff" "https://github.com/JuliaDiff/ForwardDiff.jl.git" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
   
 #=
