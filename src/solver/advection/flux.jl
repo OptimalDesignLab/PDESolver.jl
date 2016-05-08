@@ -112,7 +112,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
     boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res)
   end  # end loop over npeers
 
-  sharedFaceLogging(mesh, sbp, eqn, opts, eqn.qL_arr, eqn.qR_arr)
+  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, eqn.q_face_send, eqn.q_face_recv)
 
   return nothing
 end

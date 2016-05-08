@@ -60,8 +60,13 @@ function exchangeFaceData{T, N}(mesh::AbstractMesh, opts,
     recv_buff = recv_data[i]
     mesh.recv_reqs[i] = MPI.Irecv!(recv_buff, peer_i, tag, mesh.comm)
     mesh.recv_waited[i] = false
+    
+    if !(mesh.send_waited[i])
+      mesh.send_stats[i] = MPI.Wait!(mesh.send_reqs[i])
+      mesh.send_waited[i] = true
+    end
     mesh.send_reqs[i] = MPI.Isend(send_buff, peer_i, tag, mesh.comm)
-    mesh.recv_waited[i] = false
+    mesh.send_waited[i] = false
   end
 
   if wait
