@@ -29,6 +29,8 @@ facts("----- Testing Parallel Functions -----") do
   mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
   mesh.send_stats = Array(MPI.Status, mesh.npeers)
   mesh.recv_stats = Array(MPI.Status, mesh.npeers)
+  mesh.send_waited = Array(Bool, mesh.npeers)
+  mesh.recv_waited = Array(Bool, mesh.npeers)
 
   initMPIStructures(mesh, opts)
 
@@ -38,7 +40,7 @@ facts("----- Testing Parallel Functions -----") do
   end
 
   buff = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, length(mesh.bndryfaces))
-  getSendData(mesh, opts, eqn.q, mesh.bndryfaces, buff, MPI.REQUEST_NULL)
+  getSendData(mesh, opts, eqn.q, mesh.bndryfaces, buff, MPI.REQUEST_NULL, true)
 
   # verify that the inteperpolation was exact
   for i=1:length(mesh.bndryfaces)
@@ -74,6 +76,9 @@ facts("----- Testing Parallel Functions -----") do
   mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
   mesh.send_stats = Array(MPI.Status, mesh.npeers)
   mesh.recv_stats = Array(MPI.Status, mesh.npeers)
+  mesh.send_waited = Array(Bool, mesh.npeers)
+  mesh.recv_waited = Array(Bool, mesh.npeers)
+
 
   initMPIStructures(mesh, opts)
 

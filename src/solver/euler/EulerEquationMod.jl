@@ -56,6 +56,7 @@ export AbstractEulerData, EulerData, EulerData_
  
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
+  f::IOStream
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
@@ -131,11 +132,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   t_solve::Float64 # linear solve time
 
 
-  function ParamType(sbp, opts, order::Integer)
+  function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
     
     t = 0.0
-
+    myrank = mesh.myrank
+    f = open("log_$myrank.dat", "w")
     q_vals = Array(Tsol, 4)
     qg = Array(Tsol, 4)
     v_vals = Array(Tsol, 4)
@@ -205,7 +207,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
-    return new(t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
+    return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
                flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
@@ -445,6 +447,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
                                   # to the boundaries
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
+  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
+                                         # to other processes
+  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   res::Array{Tres, 3}             # result of computation
@@ -494,10 +499,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     vars_orig = opts["variable_type"]
     opts["variable_type"] = :conservative
     eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}(
-                                       sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order)
     opts["variable_type"] = :entropy
     eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
-                                       sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order)
 
     opts["variable_type"] = vars_orig
     if vars_orig == :conservative
@@ -572,6 +577,25 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
                           mesh.numBoundaryEdges)
 
+    # send and receive buffers
+    #TODO: rename buffers to not include face
+    eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
+    eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
+    if mesh.isDG
+      if opts["parallel_type"] == 1 
+        dim2 = numfacenodes
+        dim3_send = mesh.peer_face_counts
+        dim3_recv = mesh.peer_face_counts
+      elseif opts["parallel_type"] == 2
+        dim2 = mesh.numNodesPerElement
+        dim3_send = mesh.local_element_counts
+        dim3_recv = mesh.remote_element_counts
+      else
+        ptype = opts["parallel_type"]
+        throw(ErrorException("Unsupported parallel type requested: $ptype"))
+      end
+    end
+   
     #TODO: don't allocate these arrays if not needed
     eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
     calcEdgeStabAlpha(mesh, sbp, eqn)
