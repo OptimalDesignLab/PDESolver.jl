@@ -12,7 +12,13 @@ Calculated the adjoint vector for a single functional
 
 **Inputs**
 
-
+*  `mesh` : Abstract DG mesh type
+*  `sbp`  : Summation-By-parts operator
+*  `eqn`  : Euler equation object
+*  `functor` : functional to be evaluated
+*  `functional_number` : Numerical identifier to obtain geometric edges on
+                         which a functional acts
+*  `adjoint_vec` : Resulting adjoint vector
 
 **Outputs**
 
@@ -74,6 +80,14 @@ mesh nodes.
 
 **Inputs**
 
+*  `mesh` : Abstract DG mesh type
+*  `sbp`  : Summation-By-parts operator
+*  `eqn`  : Euler equation object
+*  `opts` : Options dictionary
+*  `functor` : Functional name which is to be evaluated
+*  `functional_edges` : Numerical identifier to obtain geometric edges on
+                         which a functional acts
+
 **Outputs**
 
 *  None
@@ -129,7 +143,13 @@ degrees of freedom at the node.
 
 **Inputs**
 
-*
+*  `opts`   : Options dictionary
+*  `params` : parameter type
+*  `q`      : Solution variable at a node
+*  `aux_vars` : Auxiliary variables
+*  `nrm`    : normal vector in the physical space
+*  `integrand_deriv` : Derivative of the integrand at that particular node
+*  `functor`: Functional that is to be evaluated
 
 **Outputs**
 
