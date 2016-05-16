@@ -110,7 +110,7 @@ end
 function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
                                    send_buff::Array{Array{T, N}, 1},
                                    recv_buff::Array{Array{T, N}, 1}, 
-                                   f::IOStream=STDOUT;
+                                   f::IO=STDOUT;
                                    tag=TAG_ELEMENT, wait=false)
 
 #  println(f, "----- Entered exchangeElementData -----")

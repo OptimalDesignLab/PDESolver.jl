@@ -187,6 +187,11 @@ else
   global const sview = ArrayViews.unsafe_view
 end
 
+import Base.flush
+function flush(f::IOBuffer)
+
+end
+
 end  # end module
 
   
