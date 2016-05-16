@@ -21,13 +21,7 @@ function BufferedIO(f::IOStream)
 end
 
 # only provide write functionality, for now
-import Base.print, Base.println, Base.write, Base.flush
-
-#print(io::BufferedIO, x::UInt8) = print(io.fbuf, x)
-#print(io::BufferedIO, x, y, args...) = print(io.fbuf, x, y, args...)
-
-#println(io::BufferedIO, x) = println(io.fbuf, x)
-#println(io::BufferedIO, x, y, args...) = println(io.fbuf, x, y, args...)
+import Base.write, Base.flush
 
 # I think this is all that needs to be implemented, because it is the job of
 # functions like println and print to convert things to arrays of UInt8s
