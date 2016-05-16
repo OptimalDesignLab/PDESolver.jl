@@ -9,6 +9,7 @@ using ArrayViews
 using MPI
 using SummationByParts
 include("parallel.jl")
+include("io.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export exchangeElementData
