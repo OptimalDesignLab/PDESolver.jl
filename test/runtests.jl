@@ -32,6 +32,7 @@ cd("./convergence")
 include(joinpath(pwd(), "runtests.jl"))
 cd("..")
 
+include("Utils.jl")
 
 FactCheck.exitstatus()
 
