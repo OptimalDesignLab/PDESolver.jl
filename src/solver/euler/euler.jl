@@ -192,7 +192,7 @@ end
 
 
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::AbstractSBP, eqn::AbstractEulerData, opts)
+                                sbp::AbstractSBP, eqn::AbstractEulerData, opts, f::IO)
 
 #  println("Performing major Iteration Callback")
 

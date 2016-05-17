@@ -244,6 +244,7 @@ function sharedFaceLogging{Tsol}(mesh, sbp, eqn::AdvectionData{Tsol}, opts, qL_a
     end
   end
 
+  flush(params.f)
   return nothing
 end
 

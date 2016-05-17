@@ -242,3 +242,12 @@ function getSendData{T}(mesh::AbstractDGMesh, opts, q::AbstractArray{T, 3},
 end
 
 
+macro mpi_master(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(myrank == 0)))
+      $(esc(ex))
+    end
+  end
+end
+

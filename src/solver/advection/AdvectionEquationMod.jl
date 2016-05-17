@@ -19,7 +19,7 @@ export ICDict              # exported from ic.jl
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
 
-  f::IOBuffer
+  f::BufferedIO{IOStream}
   # timings
   t_volume::Float64  # time for volume integrals
   t_face::Float64 # time for surface integrals (interior)
@@ -40,10 +40,11 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
-      f = open("log_$myrank.dat", "w")
+      _f = open("log_$myrank.dat", "w")
     else
-      f = IOBuffer()
+      _f = fdio(0, false) # create dummy IOStream
     end
+    f = BufferedIO(_f)
     return new(LFalpha, f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, zeros(Float64, 7))
   end
 end

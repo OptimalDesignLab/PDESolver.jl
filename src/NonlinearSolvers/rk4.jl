@@ -66,8 +66,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
-  comm_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-  if comm_rank == 0
+  myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+  if myrank == 0
     println("\nEntered rk4")
     println("res_tol = ", res_tol)
   end
@@ -89,10 +89,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   (m,) = size(q_vec)
 
-  if comm_rank == 0
+  if myrank == 0
     _f1 = open("convergence.dat", "a+")
-    fbuf = IOBuffer(10*output_freq*3*sizeof(eltype(q_vec)))
-    f1 = BufferedIO(_f1, fbuf)
+    f1 = BufferedIO(_f1)
   end
 
   x_old = copy(q_vec)
@@ -104,7 +103,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i=2:(t_steps + 1)
 
-    if i % output_freq == 0 && comm_rank == 0
+    @mpi_master if i % output_freq == 0
        println("\ntimestep ",i)
     end
 
@@ -118,20 +117,20 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
-     majorIterationCallback(i, ctx..., opts)
+     majorIterationCallback(i, ctx..., opts, f1)
    
-    if i % 1 == 0 && comm_rank == 0
+    @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
     end
     
-    if i % output_freq == 0 && comm_rank == 0
+    @mpi_master if i % output_freq == 0
       println("flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
     if (sol_norm < res_tol)
-      if comm_rank == 0
+      if myrank == 0
         println("breaking due to res_tol")
         close(f1)
       end
@@ -139,7 +138,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     if use_itermax && i > itermax
-      if comm_rank == 0
+      if myrank == 0
         println("breaking due to itermax")
         close(f1)
       end
@@ -200,7 +199,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   end
 
-  if comm_rank == 0
+  if myrank == 0
     close(f1)
   end
 

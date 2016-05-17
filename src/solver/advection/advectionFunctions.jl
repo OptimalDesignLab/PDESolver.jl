@@ -85,6 +85,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   println(f, "----- finished evalAdvection -----")
   close(f)
 =#
+  @debug1 flush(params.f)
 #  println(params.f, "----- finished evalAdvection -----")
   return nothing
 end
@@ -414,7 +415,7 @@ end
 
 """->
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::AbstractSBP, eqn::AbstractAdvectionData, opts)
+                                sbp::AbstractSBP, eqn::AbstractAdvectionData, opts, f::IO)
 #=
   if mesh.myrank == 0
     println("Performing major Iteration Callback for iteration ", itr)
@@ -426,7 +427,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 #    cd("./SolutionFiles")
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
-    println(eqn.params.f, "finished writing vis file"); flush(eqn.params.f)
+    println(f, "finished writing vis file"); flush(f)
 #    cd("../")
   end
  
