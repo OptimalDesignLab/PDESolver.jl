@@ -154,6 +154,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   println("res_reltol0 = ", res_reltol0)
 
   newton_data = NewtonData(mesh, sbp, eqn, opts)
+  fstdout = BufferedIO(STDOUT)
+
   myrank = mesh.myrank
   if jac_method == 1  # finite difference
     pert = epsilon
@@ -175,7 +177,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data, func)
   end
 
-  println("typeof(jac) = ", typeof(jac))
+  println(fstdout, "typeof(jac) = ", typeof(jac))
 
   step_fac = 1.0 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
@@ -190,13 +192,14 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   ##### Write iteration 0 output #####
   # open file to write convergence data to
   # append to be on the safe side
-  fconv = open("convergence.dat", "a+")
+  _fconv = open("convergence.dat", "a+")
+  fconv = BufferedIO(_fconv)
   eqn.majorIterationCallback(0, mesh, sbp, eqn, opts)
 
   # evaluating residual at initial condition
-  println("evaluating residual at initial condition")
+  println(fstdout, "evaluating residual at initial condition"); flush(fstdout)
   res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func)
-  println("res_0_norm = ", res_0_norm)
+  println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
 
   # extract the real components to res_0
   for i=1:m
@@ -225,14 +228,15 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
     # print which criteria was statisfied
     if res_0_norm/res_reltol0 < res_reltol
-      println("Initial condition satisfied res_reltol with relative residual ", res_0_norm/res_reltol0)
-      println("Residual ", res_0_norm)
+      println(fstdout, "Initial condition satisfied res_reltol with relative residual ", res_0_norm/res_reltol0)
+      println(fstdout, "Residual ", res_0_norm)
     else
-     println("Initial condition satisfies res_tol with residual norm ", res_0_norm)
+     println(fstdot, "Initial condition satisfies res_tol with residual norm ", res_0_norm)
     end
     # no need to assemble q into q_vec because it never changed
 
     close(fconv)
+    flush(fstdout)
 
     if jac_type == 3
       destroyPetsc(jac, jacp, x, b, ksp)
@@ -242,40 +246,40 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
    return nothing
  end  # end if tolerances satisfied
 
- println("res_reltol0 = ", res_reltol0)
+ println(fstdout, "res_reltol0 = ", res_reltol0)
  if res_reltol0 > 0  # use the supplied res_reltol0 value
-   println("using supplied value for relative residual")
+   println(fstdout, "using supplied value for relative residual")
    res_reltol_0 = res_reltol0
  else
-   println("using initial residual for relative residual")
+   println(fstdout, "using initial residual for relative residual")
    res_reltol_0 = res_0_norm
  end
 
 
   # do Newton's method if not converged
-  print("\n")
+  print(fstdout, "\n")
 
 
   for i=1:itermax
-    println("Newton iteration: ", i)
-    println("step_fac = ", step_fac)
+    println(fstdout, "Newton iteration: ", i)
+    println(fstdout, "step_fac = ", step_fac)
 
     # calculate jacobian using selected method
     eqn.params.t_jacobian += @elapsed if jac_method == 1
-      println("calculating finite difference jacobian")
+      println(fstdout, "calculating finite difference jacobian")
 
       if jac_type == 1  # dense jacobian
-	println("calculating dense FD jacobian")
+	println(fstdout, "calculating dense FD jacobian")
         @time calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
       elseif jac_type == 2  # Julia sparse jacobian
-	println("calculating sparse FD jacobian")
+	println(fstdout, "calculating sparse FD jacobian")
         #TODO: don't copy the giant array!
         res_copy = copy(eqn.res)  # copy unperturbed residual
  
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       elseif jac_type == 3  # Petsc sparse jacobian
-	println("calculating sparse FD jacobian")
+	println(fstdout, "calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
         # use artificial dissipation for the preconditioner 
 #	use_dissipation_orig = eqn.params.use_dissipation
@@ -291,35 +295,35 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 #	eqn.params.use_edgestab = use_edgestab_orig
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
-      println("FD jacobian calculation @time printed above")
+      println(fstdout, "FD jacobian calculation @time printed above")
 
     elseif jac_method == 2
-      println("calculating complex step jacobian")
+      println(fstdout, "calculating complex step jacobian")
 
       if jac_type == 1  # dense jacobian
-	      println("calculating dense complex step jacobian")
+	      println(fstdout, "calculating dense complex step jacobian")
         @time calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac)
       elseif jac_type == 2  # Julia sparse jacobian 
-	      println("calculating sparse complex step jacobian")
+	      println(fstdout, "calculating sparse complex step jacobian")
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
       elseif jac_type == 3 # Petsc sparse jacobian
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-        println("calculating explicit Petsc jacobian")
+        println(fstdout, "calculating explicit Petsc jacobian")
 #	use_dissipation_orig = eqn.params.use_dissipation
 #	use_edgestab_orig = eqn.params.use_edgestab
 #        eqn.params.use_dissipation = opts["use_dissipation_prec"]
 #	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
         if  use_jac_precond
-          println("calculating preconditioning jacobian")
+          println(fstdout, "calculating preconditioning jacobian")
           @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
         end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 #	eqn.params.use_dissipation = use_dissipation_orig
 #	eqn.params.use_edgestab = use_edgestab_orig
-        println("calculating main jacobain")
+        println(fstdout, "calculating main jacobain")
         @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
 
 
@@ -343,7 +347,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       end
 
       if ((i % recalc_prec_freq)) == 0 || i == 1
-        println("complex step jacobian calculate @time printed above")
+        println(fstdout, "complex step jacobian calculate @time printed above")
       end
     end
 
@@ -351,13 +355,13 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     if globalize_euler
 
       if jac_type == 3 || jac_type == 4
-	println("applying Euler globalization to jacp")
-	println("tau = ", newton_data.tau_l)
+	println(fstdout, "applying Euler globalization to jacp")
+	println(fstdout, "tau = ", newton_data.tau_l)
         applyEuler(mesh, sbp, eqn, opts, newton_data, jacp)
       end
 
       if jac_type != 4
-	println("applying Euler gloablization to jac")
+	println(fstdout, "applying Euler gloablization to jac")
         applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
       end
     end
@@ -371,16 +375,14 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
         PetscMatAssemblyEnd(jac, PETSC_MAT_FINAL_ASSEMBLY)
       end
       writedlm("jacobian$i.dat", full(jac))
-      println("finished printing jacobian")
+      println(fstdout, "finished printing jacobian"); flush(fstdout)
     end
-    #println(jac)
-
     
     # calculate Jacobian condition number
     if print_cond
-      println("calculating condition number of jacobian")
+      println(fstdout, "calculating condition number of jacobian"); flush(fstdout)
       cond_j = cond(full(jac))
-      println("Condition number of jacobian = ", cond_j)
+      println(fstdout, "Condition number of jacobian = ", cond_j); flush(fstdout);
     end
 
 
@@ -388,11 +390,12 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     if (( print_eigs || write_eigs) && (jac_type == 1 || jac_type == 2))
       eigs_i = reverse(eigvals(jac))
       if print_eigs
-	println("eigenvalues =")
+	println(fstdout, "eigenvalues =")
 	for i=1:length(eigs_i)
-	  println(eigs_i[i])
+	  println(fstdout, eigs_i[i])
 	end
       end
+      flush(fstdout)
 
       if write_eigs
 	writedlm("eigs$i.dat", eigs_i)
@@ -403,7 +406,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     # do the full eigenvalue decomposition
     # if requested and if julia owns the Jacobian matrix
     if  write_eigdecomp && ( jac_type == 1 || jac_type == 2)
-      println("doing eigen decomposition")
+      println(fstdout, "doing eigen decomposition"); flush(fstdout)
       # make a dense jacobian so we can get *all* the eigenvalues and vectors
       # the algorithm for sparse matrices can get all - 2 of them, and might
       # have problems for matrices with a wide range of eigenvalues
@@ -427,6 +430,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     end
    
     # calculate Newton step
+    flush(fstdout)
     if jac_type == 1 || jac_type == 2  # julia jacobian
       eqn.params.t_solve += @elapsed @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
@@ -435,12 +439,12 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       eqn.params.t_solve += @elapsed @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
     end
  
-    println("matrix solve @time printed above")
+    println(fstdout, "matrix solve @time printed above")
     step_norm = norm(delta_res_vec)
     #TODO: make this a regular reduce?
     step_norm = MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm)
     if myrank == 0
-      println("step_norm = ", step_norm)
+      println(fstdout, "step_norm = ", step_norm)
     end
 
     # perform Newton update
@@ -469,15 +473,15 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     end
 
     if myrank == 0
-      println("residual norm = ", res_0_norm)
-      println("relative residual ", res_0_norm/res_reltol_0)
+      println(fstdout, "residual norm = ", res_0_norm)
+      println(fstdout, "relative residual ", res_0_norm/res_reltol_0)
     end
 
 
     # write to convergence file
     println(fconv, i, " ", res_0_norm, " ", step_norm)
-    println("printed to convergence.dat")
-    flush(fconv)
+    println(fstdout, "printed to convergence.dat")
+    flush(fconv); flush(fstdout)
 
 
 #    tmp = i+1
@@ -493,10 +497,10 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
    if res_0_norm < res_abstol || res_0_norm/res_reltol_0 < res_reltol
      if res_0_norm < res_abstol 
-       println("Newton iteration converged with residual norm ", res_0_norm)
+       println(fstdout, "Newton iteration converged with residual norm ", res_0_norm)
      end
      if res_0_norm/res_reltol_0 < res_reltol
-      println("Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
+      println(fstdout, "Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
     end
 
      # put residual into eqn.res_vec
@@ -506,17 +510,18 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
      close(fconv)
 
+
      if jac_type == 3
 	destroyPetsc(jac, jacp, x, b, ksp)
-      end
+     end
+     flush(fstdout)
 
-    
      return nothing
    end  # end if tolerances satisfied
 
     if (step_norm < step_tol)
-      println("Newton iteration converged with step_norm = ", step_norm)
-      println("Final residual = ", res_0_norm)
+      println(fstdout, "Newton iteration converged with step_norm = ", step_norm)
+      println(fstdout, "Final residual = ", res_0_norm)
 
       # put residual into eqn.res_vec
       for j=1:m
@@ -527,6 +532,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       if jac_type == 3
 	destroyPetsc(jac, jacp, x, b, ksp)
       end
+      flush(fstdout)
 
       return nothing
     end
@@ -565,11 +571,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
   println(STDERR, "Warning: Newton iteration did not converge")
 
-  println("Warning: Newton iteration did not converge in ", itermax, " iterations")
-  println("  Final step size: ", step_norm)
-  println("  Final residual: ", res_0_norm)
-  println("  Final relative residual: ", res_0_norm/res_reltol_0)
-  close(fconv)
+  println(fstdout, "Warning: Newton iteration did not converge in ", itermax, " iterations")
+  println(fstdout, "  Final step size: ", step_norm)
+  println(fstdout, "  Final residual: ", res_0_norm)
+  println(fstdout, "  Final relative residual: ", res_0_norm/res_reltol_0)
+  close(fconv); flush(fstdout)
 
 
    # put residual into eqn.res_vec
