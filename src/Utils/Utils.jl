@@ -13,7 +13,7 @@ include("io.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export exchangeElementData
-export @mpi_master
+export @mpi_master, @time_all
 export Timings, write_timings
 
 @doc """

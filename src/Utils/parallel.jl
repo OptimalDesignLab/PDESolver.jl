@@ -241,7 +241,14 @@ function getSendData{T}(mesh::AbstractDGMesh, opts, q::AbstractArray{T, 3},
   return req_waited
 end
 
+@doc """
+### Utils.mpi_master
 
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable myrank is equal to zero.  myrank must exist
+  in the scope of the caller
+
+"""->
 macro mpi_master(ex)
   return quote
 #    println("myrank = ", esc(myrank))
@@ -251,3 +258,19 @@ macro mpi_master(ex)
   end
 end
 
+@doc """
+### Utils.time_all 
+
+  This macro returns the value produced by the expression as well as 
+  the execution time, the GC time, and the amount of memory allocated
+"""->
+macro time_all(ex)
+  quote
+    local stats = Base.gc_num()
+    local elapsedtime = time_ns()
+    local val = $(esc(ex))
+    elapsedtime = time_ns() - elapsedtime
+    local diff = Base.GC_Diff(Base.gc_num(), stats)
+    (val, elapsedtime/1e9, diff.total_time, diff.allocd)
+  end
+end

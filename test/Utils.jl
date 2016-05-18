@@ -46,4 +46,17 @@ facts("----- Testing Timings -----") do
     @fact vals[i] --> roughly(Float64(i))
   end
 
+
+  function mysleep(t)
+    sleep(t)
+    return 42
+  end
+
+  @time_all mysleep(0.0001)
+  gc()
+  val, telapsed, gc_time, alloced = @time_all mysleep(0.1)
+  @fact val --> 42
+  @fact telapsed --> roughly(0.1, atol=0.05)
+  @fact gc_time --> roughly( 0.0)
+
 end
