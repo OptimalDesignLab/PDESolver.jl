@@ -15,10 +15,24 @@ type BufferedIO{T <: IO}  <: IO
 
 end
 
-function BufferedIO(f::IO)
+@doc """
+### Utils.BufferedIO
+
+  Constructor for BufferedIO type.  Takes an IOStream and creates an IOBuffer.
+  If no IOStream is given, a dummy stream is created.  If a dummy stream is
+  used, flush must never be called on the returned BufferedIO object
+
+  Inputs:
+    f: and IOStream object, defaults to a dummy stream
+
+  Outputs:
+    a BufferedIO object
+"""->
+function BufferedIO(f::IO= fdio(0, false))
   fbuf = IOBuffer()
   return BufferedIO{typeof(f)}(f, fbuf)
 end
+
 
 # only provide write functionality, for now
 import Base.write, Base.flush, Base.close

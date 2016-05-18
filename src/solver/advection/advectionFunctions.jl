@@ -32,22 +32,22 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   #close(f)
 
   eqn.t = t
-#  params.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
+#  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
   # start communication right away
   if opts["parallel_type"] == 1
-    params.t_send += @elapsed if mesh.commsize > 1
+    params.time.t_send += @elapsed if mesh.commsize > 1
       sendParallelData(mesh, sbp, eqn, opts)
     end
     #  println("send parallel data @time printed above")
   end
 
-  params.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn)
+  params.time.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn)
 #  println("evalSCResidual @time printed above")
 
-#  params.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
-  params.t_face += @elapsed if mesh.isDG
+#  params.time.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
+  params.time.t_face += @elapsed if mesh.isDG
     evalFaceTerm(mesh, sbp, eqn, opts)
   end
 #  println("evalFaceTerm @time printed above")
@@ -57,12 +57,12 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #    GLS(mesh, sbp, eqn)
 #  end
 
-#  params.t_barriers[3] += @elapsed MPI.Barrier(mesh.comm) 
-  params.t_source += @elapsed evalSRCTerm(mesh, sbp, eqn, opts)
+#  params.time.t_barriers[3] += @elapsed MPI.Barrier(mesh.comm) 
+  params.time.t_source += @elapsed evalSRCTerm(mesh, sbp, eqn, opts)
 #  println("evalSRCTerm @time printed above")
 
-#  params.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
-  params.t_bndry += @elapsed evalBndry(mesh, sbp, eqn)
+#  params.time.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
+  params.time.t_bndry += @elapsed evalBndry(mesh, sbp, eqn)
 #  println("evalBndry @time printed above")
 
 
@@ -71,15 +71,15 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 #  println("applyGLS2 @time printed above")
 
-#  params.t_barriers[5] += @elapsed MPI.Barrier(mesh.comm) 
+#  params.time.t_barriers[5] += @elapsed MPI.Barrier(mesh.comm) 
 
-#  params.t_barriers[6] += @elapsed MPI.Barrier(mesh.comm) 
+#  params.time.t_barriers[6] += @elapsed MPI.Barrier(mesh.comm) 
   # do parallel computation last
-  params.t_sharedface += @elapsed if mesh.commsize > 1
+  params.time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
   end
 
-#  params.t_barriers[7] += @elapsed MPI.Barrier(mesh.comm) 
+#  params.time.t_barriers[7] += @elapsed MPI.Barrier(mesh.comm) 
 #=
   f = open("pfout_$myrank.dat", "a+")
   println(f, "----- finished evalAdvection -----")

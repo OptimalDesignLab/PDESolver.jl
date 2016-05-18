@@ -14,6 +14,7 @@ export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export exchangeElementData
 export @mpi_master
+export Timings, write_timings
 
 @doc """
 ### Utils.disassembleSolution
@@ -189,10 +190,88 @@ else
   global const sview = ArrayViews.unsafe_view
 end
 
+#=
 import Base.flush
 function flush(f::IOBuffer)
 
 end
+=#
+
+@doc """
+### Utils.Timings
+
+  This type accumulates the time spent in each part of the code.
+"""->
+type Timings
+  # timings
+  t_volume::Float64  # time for volume integrals
+  t_face::Float64 # time for surface integrals (interior)
+  t_source::Float64  # time spent doing source term
+  t_sharedface::Float64  # time for shared face integrals
+  t_bndry::Float64  # time spent doing boundary integrals
+  t_send::Float64  # time spent sending data
+  t_wait::Float64  # time spent in MPI_Wait
+  t_allreduce::Float64 # time spent in allreduce
+  t_jacobian::Float64  # time spent computing jacobian
+  t_solve::Float64  # linear solve time
+  t_barrier::Float64  # time spent in MPI_Barrier
+  t_barrier2::Float64
+  t_barrier3::Float64
+  t_barriers::Array{Float64, 1}
+
+  function Timings()
+    nbarriers = 7
+    barriers = zeros(Float64, nbarriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+  end
+end
+
+@doc """
+### Utils.write_timings
+
+  Write the values in a Timings object to a file.  Also writes the names of
+  fields to a separate file.
+
+  Inputs:
+    t: a  Timings object
+    fname: the file name, without extension
+
+  The values are written to the file fname.dat, and the names are written to
+  fname_names.dat
+"""->
+function write_timings(t::Timings, fname::AbstractString)
+  timing_names = fieldnames(t)
+  nbarriers = length(t.t_barriers)
+  nvals = length(timing_names) + nbarriers - 1
+  vals = Array(Float64, nvals)
+  val_names = Array(ASCIIString, nvals)
+
+  # put all values except those from t_barriers into array
+  pos = 1
+  for i=1:length(timing_names)
+    tname_i = timing_names[i]
+    tname_i_str = string(tname_i)
+    if tname_i_str != "t_barriers"
+      vals[pos] = getfield(t, tname_i)
+      val_names[pos] = tname_i_str
+      pos += 1
+    end
+  end
+
+  for i=1:length(t.t_barriers)
+    vals[pos] = t.t_barriers[i]
+    val_names[pos] = string("t_barriers_", i)
+    pos += 1
+  end
+
+  fname_ext = string(fname, ".dat")
+  writedlm(fname_ext, vals)
+
+  fname2_ext = string(fname, "_names.dat")
+  writedlm(fname2_ext, val_names)
+end
+
+
 
 end  # end module
 

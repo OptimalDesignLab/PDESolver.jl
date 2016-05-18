@@ -67,9 +67,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+  fstdout = BufferedIO(STDOUT)
   if myrank == 0
-    println("\nEntered rk4")
-    println("res_tol = ", res_tol)
+    println(fstdout, "\nEntered rk4")
+    println(fstdout, "res_tol = ", res_tol)
   end
 # res_tol is alternative stopping criteria
 
@@ -85,7 +86,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/h)
-  println("t_steps: ",t_steps)
+  println(fstdout, "t_steps: ",t_steps)
 
   (m,) = size(q_vec)
 
@@ -94,6 +95,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     f1 = BufferedIO(_f1)
   end
 
+
   x_old = copy(q_vec)
   k1 = zeros(x_old)
   k2 = zeros(x_old)
@@ -101,10 +103,14 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   k4 = zeros(x_old)
 
 
+  flush(fstdout)
   for i=2:(t_steps + 1)
 
     @mpi_master if i % output_freq == 0
-       println("\ntimestep ",i)
+       println(fstdout, "\ntimestep ",i)
+       if i % 5*output_freq == 0
+         flush(fstdout)
+       end
     end
 
     pre_func(ctx..., opts)
@@ -117,30 +123,32 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
-     majorIterationCallback(i, ctx..., opts, f1)
+    majorIterationCallback(i, ctx..., opts, fstdout)
    
     @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
     end
     
     @mpi_master if i % output_freq == 0
-      println("flushing convergence.dat to disk")
+      println(fstdout, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
     if (sol_norm < res_tol)
       if myrank == 0
-        println("breaking due to res_tol")
+        println(fstdout, "breaking due to res_tol")
         close(f1)
+        flush(fstdout)
       end
       break
     end
 
     if use_itermax && i > itermax
       if myrank == 0
-        println("breaking due to itermax")
+        println(fstdout, "breaking due to itermax")
         close(f1)
+        flush(fstdout)
       end
       break
     end
@@ -308,7 +316,7 @@ function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   if calc_norm
     local_norm = calcNorm(eqn, eqn.res_vec)
-    eqn.params.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
+    eqn.params.time.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
     return sqrt(global_norm)
   end
 

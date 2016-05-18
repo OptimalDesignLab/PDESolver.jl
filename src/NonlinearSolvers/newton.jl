@@ -269,7 +269,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
     # calculate jacobian using selected method
-    eqn.params.t_jacobian += @elapsed if jac_method == 1
+    eqn.params.time.t_jacobian += @elapsed if jac_method == 1
       @mpi_master println(fstdout, "calculating finite difference jacobian")
 
       if jac_type == 1  # dense jacobian
@@ -435,11 +435,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     # calculate Newton step
     flush(fstdout)
     if jac_type == 1 || jac_type == 2  # julia jacobian
-      eqn.params.t_solve += @elapsed @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
+      eqn.params.time.t_solve += @elapsed @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc jacobian
-      eqn.params.t_solve += @elapsed @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
+      eqn.params.time.t_solve += @elapsed @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
     end
  
     println(fstdout, "matrix solve @time printed above")

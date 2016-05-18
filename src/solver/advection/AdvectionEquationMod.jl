@@ -20,6 +20,8 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
 
   f::BufferedIO{IOStream}
+  time::Timings
+  #=
   # timings
   t_volume::Float64  # time for volume integrals
   t_face::Float64 # time for surface integrals (interior)
@@ -35,17 +37,18 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   t_barrier2::Float64
   t_barrier3::Float64
   t_barriers::Array{Float64, 1}
-
+  =#
   function ParamType(mesh, sbp, opts)
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
       _f = open("log_$myrank.dat", "w")
+      f = BufferedIO(_f)
     else
-      _f = fdio(0, false) # create dummy IOStream
+      f = BufferedIO()  # create a dummy IOStream
     end
-    f = BufferedIO(_f)
-    return new(LFalpha, f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, zeros(Float64, 7))
+    t = Timings()
+    return new(LFalpha, f, t)
   end
 end
 
