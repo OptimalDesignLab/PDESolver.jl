@@ -274,3 +274,7 @@ macro time_all(ex)
     (val, elapsedtime/1e9, diff.total_time, diff.allocd)
   end
 end
+
+function print_time_all(f, t_elapsed, t_gc, alloc)
+    println(f, t_elapsed, " seconds, ", t_gc, " GC seconds, ", alloc, " bytes allocated")
+end

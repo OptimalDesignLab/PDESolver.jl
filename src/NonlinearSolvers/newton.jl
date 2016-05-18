@@ -274,14 +274,14 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
       if jac_type == 1  # dense jacobian
 	@mpi_master println(fstdout, "calculating dense FD jacobian")
-        @time calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac)
+        tmp, t_jac, t_gc, alloc = @time_all calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac)
 
       elseif jac_type == 2  # Julia sparse jacobian
 	@mpi_master println(fstdout, "calculating sparse FD jacobian")
         #TODO: don't copy the giant array!
         res_copy = copy(eqn.res)  # copy unperturbed residual
  
-        @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       elseif jac_type == 3  # Petsc sparse jacobian
 	@mpi_master println(fstdout, "calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
@@ -291,26 +291,30 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 #        eqn.params.use_dissipation = opts["use_dissipation_prec"]
 #	eqn.params.use_edgestab = opts["use_edgestab_prec"]
         if use_jac_precond
-          @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
+          tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
+          print(fstdout, "preconditining jacobian: ")
+          print_time_all(fstdout, t_jac, t_gc, t_alloc)
         end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 #	eqn.params.use_dissipation = use_dissipation_orig
 #	eqn.params.use_edgestab = use_edgestab_orig
-        @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
-      @mpi_master println(fstdout, "FD jacobian calculation @time printed above")
+
+      print(fstdout, "jacobian calculation: ")
+      print_time_all(fstdout, t_jac, t_gc, alloc)
 
     elseif jac_method == 2
       @mpi_master println(fstdout, "calculating complex step jacobian")
 
       if jac_type == 1  # dense jacobian
 	@mpi_master println(fstdout, "calculating dense complex step jacobian")
-        @time calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac)
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac)
       elseif jac_type == 2  # Julia sparse jacobian 
 	@mpi_master println(fstdout, "calculating sparse complex step jacobian")
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-        @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
       elseif jac_type == 3 # Petsc sparse jacobian
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
         @mpi_master println(fstdout, "calculating explicit Petsc jacobian")
@@ -321,14 +325,16 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
         if  use_jac_precond
           @mpi_master println(fstdout, "calculating preconditioning jacobian")
-          @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+          tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+          @mpi_master print("preconditioning jacobian: ")
+          @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
         end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
 #	eqn.params.use_dissipation = use_dissipation_orig
 #	eqn.params.use_edgestab = use_edgestab_orig
         @mpi_master println(fstdout, "calculating main jacobain")
-        @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
 
       elseif jac_type == 4 # Petsc jacobian-vector product
 	# calculate preconditioner matrix only
@@ -340,7 +346,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
 	if ((i % recalc_prec_freq)) == 0 || i == 1
 
-          @time calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
+          tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
 	end
 #        addDiagonal(mesh, sbp, eqn, jacp)        
 	# use normal stabilization for the real jacobian
@@ -350,7 +356,9 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       end
 
       if ((i % recalc_prec_freq)) == 0 || i == 1
-        println(fstdout, "complex step jacobian calculate @time printed above")
+        print(fstdout, "jacobian calculation: ")
+        print_time_all(fstdout, t_jac, t_gc, alloc)
+
       end
     end
 
@@ -435,14 +443,14 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     # calculate Newton step
     flush(fstdout)
     if jac_type == 1 || jac_type == 2  # julia jacobian
-      eqn.params.time.t_solve += @elapsed @time delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
+      tmp, t_solve, t_gc, alloc = @time_all delta_res_vec[:] = jac\(res_0)  #  calculate Newton update
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc jacobian
-      eqn.params.time.t_solve += @elapsed @time petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
+      tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
     end
- 
-    println(fstdout, "matrix solve @time printed above")
+    eqn.params.time.t_solve += t_solve
+    print(fstdout, "matrix solve: "); print_time_all(fstdout, t_solve, t_gc, alloc)
     step_norm = norm(delta_res_vec)
     #TODO: make this a regular reduce?
     step_norm = MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm)
