@@ -9,7 +9,11 @@ export newton, newton_check, newton_check_fd
   the C callback used by Petsc
 """->
 type NewtonData{Tsol, Tres}
- 
+
+  # MPI info
+  myrank::Int
+  commsize::Int
+
   # inexact Newton-Krylov parameters
   reltol::Float64
   abstol::Float64
@@ -38,6 +42,9 @@ function NewtonData(mesh, sbp, eqn, opts)
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
 
+  myrank = mesh.myrank
+  commsize = mesh.commsize
+
   reltol = opts["krylov_reltol"]
   abstol = opts["krylov_abstol"]
   dtol = opts["krylov_dtol"]
@@ -60,7 +67,8 @@ function NewtonData(mesh, sbp, eqn, opts)
   idy_tmp = zeros(PetscInt, 1)  # column indices
 
 
-  return NewtonData{Tsol, Tres}(reltol, abstol, dtol, itermax, krylov_gamma, 
+  return NewtonData{Tsol, Tres}(myrank, commsize, reltol, abstol, dtol, 
+                    itermax, krylov_gamma, 
                     res_norm_i, res_norm_i_1, tau_l, tau_vec, vals_tmp, 
                     idx_tmp, idy_tmp)
 end
@@ -128,7 +136,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   # the dispatch to the backslash solver and possibly the jacobian calculation
   # function will be runtime dispatched
 
-  println("\nEntered Newtons Method")
+  myrank = mesh.myrank
+  newton_data = NewtonData(mesh, sbp, eqn, opts)
+  fstdout = BufferedIO(STDOUT)
+
+  @mpi_master println(fstdout, "\nEntered Newtons Method")
   # options
   write_rhs = opts["write_rhs"]::Bool
   write_jac = opts["write_jac"]::Bool
@@ -148,15 +160,13 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   globalize_euler = opts["newton_globalize_euler"]::Bool
   recalc_prec_freq = opts["recalc_prec_freq"]::Int
   use_jac_precond = opts["use_jac_precond"]::Bool
-  println("step_tol = ", step_tol)
-  println("res_abstol = ", res_abstol)
-  println("res_reltol = ", res_reltol)
-  println("res_reltol0 = ", res_reltol0)
+  @mpi_master begin
+    println("step_tol = ", step_tol)
+    println("res_abstol = ", res_abstol)
+    println("res_reltol = ", res_reltol)
+    println("res_reltol0 = ", res_reltol0)
+  end
 
-  newton_data = NewtonData(mesh, sbp, eqn, opts)
-  fstdout = BufferedIO(STDOUT)
-
-  myrank = mesh.myrank
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
@@ -302,8 +312,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
 
-      print(fstdout, "jacobian calculation: ")
-      print_time_all(fstdout, t_jac, t_gc, alloc)
+      @mpi_master print(fstdout, "jacobian calculation: ")
+      @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
 
     elseif jac_method == 2
       @mpi_master println(fstdout, "calculating complex step jacobian")
@@ -356,8 +366,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       end
 
       if ((i % recalc_prec_freq)) == 0 || i == 1
-        print(fstdout, "jacobian calculation: ")
-        print_time_all(fstdout, t_jac, t_gc, alloc)
+        @mpi_master print(fstdout, "jacobian calculation: ")
+        @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
 
       end
     end
@@ -450,7 +460,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
     end
     eqn.params.time.t_solve += t_solve
-    print(fstdout, "matrix solve: "); print_time_all(fstdout, t_solve, t_gc, alloc)
+    @mpi_master print(fstdout, "matrix solve: "); print_time_all(fstdout, t_solve, t_gc, alloc)
     step_norm = norm(delta_res_vec)
     #TODO: make this a regular reduce?
     step_norm = MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm)
@@ -489,6 +499,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
     # write to convergence file
     @mpi_master begin
+      flush(fstdout)
       println(fconv, i, " ", res_0_norm, " ", step_norm)
       println(fstdout, "printed to convergence.dat")
       flush(fconv)
@@ -581,21 +592,22 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     
   end  # end loop over newton iterations
 
-  println(STDERR, "Warning: Newton iteration did not converge")
+  @mpi_master begin
+    println(STDERR, "Warning: Newton iteration did not converge")
 
-  println(fstdout, "Warning: Newton iteration did not converge in ", itermax, " iterations")
-  println(fstdout, "  Final step size: ", step_norm)
-  println(fstdout, "  Final residual: ", res_0_norm)
-  println(fstdout, "  Final relative residual: ", res_0_norm/res_reltol_0)
-  close(fconv); flush(fstdout)
-
+    println(fstdout, "Warning: Newton iteration did not converge in ", itermax, " iterations")
+    println(fstdout, "  Final step size: ", step_norm)
+    println(fstdout, "  Final residual: ", res_0_norm)
+    println(fstdout, "  Final relative residual: ", res_0_norm/res_reltol_0)
+    close(fconv); 
+  end
+  flush(fstdout)
 
    # put residual into eqn.res_vec
    for j=1:m
      eqn.res_vec[j] = res_0[j]
    end
  
-
   if jac_type == 3
     destroyPetsc(jac, jacp,  x, b, ksp)
   end
@@ -983,49 +995,61 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   m = length(res_0)
   myrank = mesh.myrank
   f = eqn.params.f
-  for color=1:mesh.numColors  # loop over colors
+  for color=1:mesh.maxColors  # loop over max colors, only do calculation for numColors
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
 	# apply perturbation to q
-        applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
+        if color <= mesh.numColors
+          applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
+        end
 
 	# evaluate residual
         func(mesh, sbp, eqn, opts)
 #
+        if color != 1 && j != 1 && i != 1
+          PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
+        end
 	# assemble res into jac
-	for k=1:mesh.numEl  # loop over elements in residual
-	  el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
-          #TODO: find a way to get rid of this if statement
-          # Solution: make pertNeighbor Els only hold the perturbed elements
-          if el_pert != 0   # if element was actually perturbed for this color
+        if color <= mesh.numColors
+          for k=1:mesh.numEl  # loop over elements in residual
+            el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
+            #TODO: find a way to get rid of this if statement
+            # Solution: make pertNeighbor Els only hold the perturbed elements
+            if el_pert != 0   # if element was actually perturbed for this color
 
-            col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
-	    #TODO: make an immutable type to hold the bookeeping info
-	    assembleElement(newton_data, mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
-	 end  # end if el_pert != 0
-       end  # end loop over k
+              col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
+              #TODO: make an immutable type to hold the bookeeping info
+              assembleElement(newton_data, mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
+            end  # end if el_pert != 0
+          end  # end loop over k
 
-       # now do res_edge, if needed
-        for edge = 1:size(eqn.res_edge, 4)
-	  res_edge = sview(eqn.res_edge, :, :, :, edge)
-	  for k=1:mesh.numEl  # loop over elements in residual
-	    el_pert = mesh.pertNeighborEls_edge[k, edge] # get perturbed element
-	    if el_pert != 0   # if element was actually perturbed for this color
+          # now do res_edge, if needed
+          for edge = 1:size(eqn.res_edge, 4)
+            res_edge = sview(eqn.res_edge, :, :, :, edge)
+            for k=1:mesh.numEl  # loop over elements in residual
+              el_pert = mesh.pertNeighborEls_edge[k, edge] # get perturbed element
+              if el_pert != 0   # if element was actually perturbed for this color
 
-	      col_idx = mesh.dofs[i, j, el_pert] # = dof_pert
-	      #TODO: make an immutable type to hold the bookeeping info
-	      assembleElement(newton_data, mesh, eqn, res_edge, res_0, k, el_pert, col_idx, epsilon, jac)
-	   end  # end if el_pert != 0
-        end  # end loop over k
-      end  # end loop over local edges
+                col_idx = mesh.dofs[i, j, el_pert] # = dof_pert
+                #TODO: make an immutable type to hold the bookeeping info
+                assembleElement(newton_data, mesh, eqn, res_edge, res_0, k, el_pert, col_idx, epsilon, jac)
+              end  # end if el_pert != 0
+            end  # end loop over k
+          end  # end loop over local edges
+        end
 
-      # undo perturbation
-      applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
+        PetscMatAssemblyBegin(jac, PETSC_MAT_FLUSH_ASSEMBLY)
+
+        # undo perturbation
+        if color <= mesh.numColors
+          applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
+        end
       end  # end loop i
     end  # end loop j
   end  # end loop over colors
 
+  PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
   # now jac is complete
 #  eqn.params.use_filter = filter_orig # reset filter
   return nothing

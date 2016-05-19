@@ -33,6 +33,7 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 # func residual evaluation function
 
 jac_type = opts["jac_type"]::Int
+myrank = newton_data.myrank
 
 const vectype = VECMPI
 const mattype = PETSc.MATMPIAIJ # should this be BAIJ?
@@ -45,12 +46,12 @@ PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "kspout",  "-pc_typ
 comm = MPI.COMM_WORLD
 
 obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
-println("creating b")
+@mpi_master println("creating b")
 b = PetscVec(comm)
 PetscVecSetType(b, vectype)
 PetscVecSetSizes(b, obj_size, PETSC_DECIDE)
 
-println("creating x")
+@mpi_master println("creating x")
 x = PetscVec(comm)
 PetscVecSetType(x, vectype)
 PetscVecSetSizes(x, obj_size, PETSC_DECIDE)
@@ -60,7 +61,7 @@ PetscVecSetSizes(x, obj_size, PETSC_DECIDE)
 ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects needed to evalute the
                                     # residual
 if jac_type == 3  # explicit sparse jacobian
-  println("creating A")
+  @mpi_master println("creating A")
   A = PetscMat(comm)
   PetscMatSetFromOptions(A)
   PetscMatSetType(A, mattype)
@@ -82,21 +83,20 @@ else
   println(STDERR, "jac_type = ", jac_type)
 end
 
-println("type of A = ", MatGetType(A))
 
 if jac_type == 4 || opts["use_jac_precond"]
-  println("creating Ap")  # used for preconditioner
+  @mpi_master println("creating Ap")  # used for preconditioner
   Ap = PetscMat(comm)
   PetscMatSetFromOptions(Ap)
   PetscMatSetType(Ap, mattype)
   PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
 
-  println("type of Ap = ", MatGetType(Ap))
+  @mpi_master println("type of Ap = ", MatGetType(Ap))
 else
   Ap = A
 end
 
-println("preallocating Petsc Matrices")
+@mpi_master println("preallocating Petsc Matrices")
 # prellocate matrix
 dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
 onnz = zeros(PetscInt, mesh.numDof)
@@ -124,7 +124,7 @@ if jac_type == 3
   MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
   PetscMatZeroEntries(A)
   matinfo = PetscMatGetInfo(A, Int32(1))
-  println("A block size = ", matinfo.block_size)
+  @mpi_master println("A block size = ", matinfo.block_size)
 
 #  PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
 #  PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
@@ -148,10 +148,9 @@ if jac_type == 4 || opts["use_jac_precond"]
 
   MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
   matinfo = PetscMatGetInfo(Ap, Int32(1))
-  println("Ap block size = ", matinfo.block_size)
+  @mpi_master println("Ap block size = ", matinfo.block_size)
 
   # zero initialize the matrix just in case
-  println("zeroing Ap")
   PetscMatZeroEntries(Ap)
 
   PetscMatAssemblyBegin(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
@@ -176,7 +175,7 @@ KSPSetOperators(ksp, A, Ap)  # this was A, Ap
 
 pc = KSPGetPC(ksp)
 pc_type = PCGetType(pc)
-println("pc_type = ", pc_type)
+@mpi_master println("pc_type = ", pc_type)
 #=
 if pc_type == "bjacobi"
   n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
@@ -258,11 +257,10 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
 
 #  return nothing
   jac_type = opts["jac_type"]::Int
-
+  myrank = newton_data.myrank
   # copy res_0 into b
   # create the index array
   numDof = length(delta_res_vec)
-  println("copying res_0 to b")
   idx = zeros(PetscInt, numDof)
   for i=1:numDof
     idx[i] = i - 1 + dof_offset
@@ -284,7 +282,6 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   # assemble matrix
   # should this be overlapped with the vector assembly?
   if jac_type != 4
-    println("assembling A")
     PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
     PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
   end
@@ -294,7 +291,6 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
 
   if jac_type != 4
     matinfo = PetscMatGetInfo(A, MAT_LOCAL)
-    println("number of mallocs for A = ", matinfo.mallocs)
     if matinfo.mallocs > 0.5  # if any mallocs
       println("Caution: non zero number of mallocs for A")
       println("  number of mallocs = ", matinfo.mallocs)
@@ -323,15 +319,11 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
 
   nx = PetscVecGetSize(x)
   nb = PetscVecGetSize(b)
-  println("size of x = ", nx)
-  println("size of y = ", nb)
-
-  println("solving system")
   KSPSolve(ksp, b, x)
   reason = KSPGetConvergedReason(ksp)
-  println("KSP converged reason = ", KSPConvergedReasonDict[reason])
+  @mpi_master println("KSP converged reason = ", KSPConvergedReasonDict[reason])
   rnorm = KSPGetResidualNorm(ksp)
-  println("Linear residual = ", rnorm)
+  @mpi_master println("Linear residual = ", rnorm)
 
   # copy solution from x into delta_res_vec
   arr, ptr_arr = PetscVecGetArray(x)

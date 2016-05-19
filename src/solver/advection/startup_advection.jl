@@ -110,6 +110,7 @@ else  # continuous Galerkin
   end
 end
 
+
 if opts["write_timing"]
   MPI.Barrier(mesh.comm)
   if mesh.myrank == 0
@@ -390,8 +391,8 @@ end       # end of if/elseif blocks checking flag
       exact_norm = calcNorm(eqn, q_exact)
       global_norm = MPI.Allreduce(exact_norm*exact_norm, MPI.SUM, mesh.comm)
       exact_norm = sqrt(global_norm)
-      println("numerical solution norm = ", sol_norm)
-      println("exact solution norm = ", exact_norm)
+      @mpi_master println("numerical solution norm = ", sol_norm)
+      @mpi_master println("exact solution norm = ", exact_norm)
 
       # calculate the average mesh size
       jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
@@ -428,9 +429,9 @@ end       # end of if/elseif blocks checking flag
   end
 
   myrank = mesh.myrank
-  f = open("profile_$myrank.dat", "a+")
-  Profile.print(f, format=:flat, C=true)
-  close(f)
+#  f = open("profile_$myrank.dat", "a+")
+#  Profile.print(f, format=:flat, C=true)
+#  close(f)
 
   saveSolutionToMesh(mesh, real(eqn.q_vec))
 #  printSolution(mesh, real(eqn.q_vec))
