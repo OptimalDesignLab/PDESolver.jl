@@ -999,26 +999,25 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   myrank = mesh.myrank
   f = eqn.params.f
   time = eqn.params.time
-  for color=1:mesh.maxColors  # loop over max colors, only do calculation for numColors
+  time.t_color += @elapsed for color=1:mesh.maxColors  # loop over max colors, only do calculation for numColors
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
 	# apply perturbation to q
-        time.t_pert += @elapsed if color <= mesh.numColors
+        if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
+  	  # evaluate residual
+          time.t_func += @elapsed func(mesh, sbp, eqn, opts)
         end
 
-	# evaluate residual
-        func(mesh, sbp, eqn, opts)
-#
-        color_bool = color != 1
 
         if !(color == 1 && j == 1 && i == 1) 
           PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
         end
+
 	# assemble res into jac
         if color <= mesh.numColors
-          for k=1:mesh.numEl  # loop over elements in residual
+          time.t_insert += @elapsed for k=1:mesh.numEl  # loop over elements in residual
             el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
             #TODO: find a way to get rid of this if statement
             # Solution: make pertNeighbor Els only hold the perturbed elements
@@ -1048,7 +1047,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
         PetscMatAssemblyBegin(jac, PETSC_MAT_FLUSH_ASSEMBLY)
 
         # undo perturbation
-        time.t_pert += @elapsed if color <= mesh.numColors
+        if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
         end
       end  # end loop i
@@ -1056,7 +1055,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   end  # end loop over colors
 
   PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
-  flush(f)
+#  flush(f)
   # now jac is complete
 #  eqn.params.use_filter = filter_orig # reset filter
   return nothing
@@ -1309,7 +1308,7 @@ for j_j = 1:mesh.numNodesPerElement
     pos += 1
   end
 end
-eqn.params.time.t_insert += @elapsed PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
+PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
 
 return nothing
 

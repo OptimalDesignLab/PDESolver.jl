@@ -215,6 +215,8 @@ type Timings
   t_pert::Float64  # time spent applying peraturbation
   t_insert::Float64  # time spent inserting values into matrix
   t_jacobian::Float64  # time spent computing jacobian
+  t_func::Float64  # time spent evaluating the residual
+  t_color::Float64  # time spent evaluating the colors
   t_solve::Float64  # linear solve time
   t_barrier::Float64  # time spent in MPI_Barrier
   t_barrier2::Float64
@@ -224,7 +226,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 

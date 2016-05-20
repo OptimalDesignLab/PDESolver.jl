@@ -32,8 +32,8 @@ function calcResidual(mesh, sbp, eqn, opts, func)
 # calculate the residual and its norm
 
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-
-  if opts["parallel_type"] == 2 && mesh.npeers > 0
+  time = eqn.params.time
+  time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
     exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
 
@@ -42,7 +42,7 @@ function calcResidual(mesh, sbp, eqn, opts, func)
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
 
   res_0_norm = calcNorm(eqn, eqn.res_vec, strongres=true)
-  res_norm_global = MPI.Allreduce(res_0_norm*res_0_norm, MPI.SUM, mesh.comm)
+  time.t_allreduce += @elapsed res_norm_global = MPI.Allreduce(res_0_norm*res_0_norm, MPI.SUM, mesh.comm)
 #  println("residual norm = ", res_0_norm)
 
  return sqrt(res_norm_global)

@@ -42,7 +42,7 @@ const mattype = PETSc.MATMPIAIJ # should this be BAIJ?
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "kspout",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30", "-log_summary" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "kspout",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
 comm = MPI.COMM_WORLD
 
 obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
