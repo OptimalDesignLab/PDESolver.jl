@@ -212,6 +212,8 @@ type Timings
   t_send::Float64  # time spent sending data
   t_wait::Float64  # time spent in MPI_Wait
   t_allreduce::Float64 # time spent in allreduce
+  t_pert::Float64  # time spent applying peraturbation
+  t_insert::Float64  # time spent inserting values into matrix
   t_jacobian::Float64  # time spent computing jacobian
   t_solve::Float64  # linear solve time
   t_barrier::Float64  # time spent in MPI_Barrier
@@ -222,7 +224,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 

@@ -2,7 +2,7 @@
 # includes residual_evaluation.jl and petsc_funcs.jl
 
 export newton, newton_check, newton_check_fd
-
+global const insert_freq = 1
 @doc """
   This type holds all the data the might be needed for Newton's method,
   including globalization.  This simplifies the data handling and 
@@ -28,6 +28,8 @@ type NewtonData{Tsol, Tres}
   tau_vec::Array{Float64, 1}  # array of solution at previous pseudo-timestep
 
   # temporary arrays used to for Petsc MatSetValues
+  insert_idx::Int
+  localsize::Int
   vals_tmp::Array{Float64, 2}
   idx_tmp::Array{PetscInt, 1}
   idy_tmp::Array{PetscInt, 1}
@@ -60,16 +62,17 @@ function NewtonData(mesh, sbp, eqn, opts)
     tau_vec = []
   end
 
-
-  local_size = mesh.numNodesPerElement*mesh.numDofPerNode
+  
+  local_size = mesh.numNodesPerElement*mesh.numDofPerNode*insert_freq
   vals_tmp = zeros(1, local_size) # values
   idx_tmp = zeros(PetscInt, local_size)  # row index
   idy_tmp = zeros(PetscInt, 1)  # column indices
+  localsize = mesh.numNodesPerElement*mesh.numDofPerNode
 
 
   return NewtonData{Tsol, Tres}(myrank, commsize, reltol, abstol, dtol, 
                     itermax, krylov_gamma, 
-                    res_norm_i, res_norm_i_1, tau_l, tau_vec, vals_tmp, 
+                    res_norm_i, res_norm_i_1, tau_l, tau_vec, 1, localsize, vals_tmp, 
                     idx_tmp, idy_tmp)
 end
 
@@ -995,19 +998,22 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   m = length(res_0)
   myrank = mesh.myrank
   f = eqn.params.f
+  time = eqn.params.time
   for color=1:mesh.maxColors  # loop over max colors, only do calculation for numColors
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
 	# apply perturbation to q
-        if color <= mesh.numColors
+        time.t_pert += @elapsed if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
         end
 
 	# evaluate residual
         func(mesh, sbp, eqn, opts)
 #
-        if color != 1 && j != 1 && i != 1
+        color_bool = color != 1
+
+        if !(color == 1 && j == 1 && i == 1) 
           PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
         end
 	# assemble res into jac
@@ -1042,7 +1048,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
         PetscMatAssemblyBegin(jac, PETSC_MAT_FLUSH_ASSEMBLY)
 
         # undo perturbation
-        if color <= mesh.numColors
+        time.t_pert += @elapsed if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
         end
       end  # end loop i
@@ -1050,6 +1056,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   end  # end loop over colors
 
   PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
+  flush(f)
   # now jac is complete
 #  eqn.params.use_filter = filter_orig # reset filter
   return nothing
@@ -1302,7 +1309,7 @@ for j_j = 1:mesh.numNodesPerElement
     pos += 1
   end
 end
-PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
+eqn.params.time.t_insert += @elapsed PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
 
 return nothing
 

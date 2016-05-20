@@ -42,7 +42,7 @@ const mattype = PETSc.MATMPIAIJ # should this be BAIJ?
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "kspout",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "kspout",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30", "-log_summary" ])
 comm = MPI.COMM_WORLD
 
 obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
@@ -261,16 +261,22 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   # copy res_0 into b
   # create the index array
   numDof = length(delta_res_vec)
-  idx = zeros(PetscInt, numDof)
+#  idx = zeros(PetscInt, numDof)
+#  for i=1:numDof
+#    idx[i] = i - 1 + dof_offset
+#  end
+
+  b_petsc, b_ptr = PetscVecGetArray(b)
   for i=1:numDof
-    idx[i] = i - 1 + dof_offset
+    b_petsc[i] = res_0[i]
   end
+  PetscVecRestoreArray(b, b_ptr)
 
   # copy into Petsc and assemble
   # should do this by direct array access
-  PetscVecSetValues(b, idx, res_0, PETSC_INSERT_VALUES)
-  PetscVecAssemblyBegin(b)
-  PetscVecAssemblyEnd(b)
+#  PetscVecSetValues(b, idx, res_0, PETSC_INSERT_VALUES)
+#  PetscVecAssemblyBegin(b)
+#  PetscVecAssemblyEnd(b)
 
   #=
   PetscVecSetValues(x, idx, res_0, PETSC_INSERT_VALUES)
@@ -280,14 +286,15 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
 
 
   # assemble matrix
+  PetscMatAssemblyBegin(Ap, PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(Ap, PETSC_MAT_FINAL_ASSEMBLY)
+
+
   # should this be overlapped with the vector assembly?
-  if jac_type != 4
+  if jac_type != 4  && !(A === Ap)
     PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
     PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
   end
-
-  PetscMatAssemblyBegin(Ap, PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(Ap, PETSC_MAT_FINAL_ASSEMBLY)
 
   if jac_type != 4
     matinfo = PetscMatGetInfo(A, MAT_LOCAL)

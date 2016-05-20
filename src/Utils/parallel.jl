@@ -70,9 +70,9 @@ function exchangeFaceData{T, N}(mesh::AbstractMesh, opts,
   end
 
   if wait
-    mesh.recv_stats = MPI.waitall!(mesh.recv_reqs)
+    mesh.recv_stats = MPI.Waitall!(mesh.recv_reqs)
     fill!(mesh.recv_waited, true)
-    mesh.send_stats = MPI.waitall!(mesh.send_reqs)
+    mesh.send_stats = MPI.Waitall!(mesh.send_reqs)
     fill!(mesh.send_waited, true)
   end
 

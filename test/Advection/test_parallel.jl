@@ -137,7 +137,7 @@ facts("----- Testing Parallel Functions -----") do
   end
 
 
-  # to a serial rk4 run to compare against later
+  # do a serial rk4 run to compare against later
   start_dir = pwd()
   cd ("./rk4/serial")
   opts["order"] = 1
