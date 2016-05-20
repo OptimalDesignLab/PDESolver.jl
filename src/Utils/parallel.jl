@@ -132,8 +132,12 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     # wait for these in order because doing the waitany trick doesn't work
     # these should have completed long ago, so it shouldn't be a performance
     # problem
-    MPI.Wait!(mesh.send_reqs[i])
+
     idx = i
+    if !mesh.send_waited[i]
+      MPI.Wait!(mesh.send_reqs[i])
+      mesh.send_waited[idx] = true
+    end
 
     # copy data into send buffer
     local_els = mesh.local_element_lists[idx]
@@ -154,9 +158,9 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
   end
 
   if wait
-    mesh.recv_stats = MPI.waitall!(mesh.recv_reqs)
+    mesh.recv_stats = MPI.Waitall!(mesh.recv_reqs)
     fill!(mesh.recv_waited, true)
-    mesh.send_stats = MPI.waitall!(mesh.send_reqs)
+    mesh.send_stats = MPI.Waitall!(mesh.send_reqs)
     fill!(mesh.send_waited, true)
   end
 

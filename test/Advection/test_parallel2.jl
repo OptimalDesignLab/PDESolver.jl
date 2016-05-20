@@ -41,6 +41,11 @@ facts("----- Testing Parallel Communication -----") do
 
   mesh.npeers = 2
   mesh.peer_parts = [peer_down, peer_up]
+  mesh.send_reqs = Array(MPI.Request, mesh.npeers)
+  mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
+  mesh.recv_waited= Array(Bool, mesh.npeers)
+  mesh.send_waited = Array(Bool, mesh.npeers)
+
   initMPIStructures(mesh, opts)
 
   send_data = Array(Array{Float64, 1}, mesh.npeers)
@@ -61,6 +66,33 @@ facts("----- Testing Parallel Communication -----") do
   data = recv_data[2]
   @fact data[1] --> peer_up + 1
   @fact data[2] --> peer_up + 2
+
+
+  # test exchangeElementData
+  send_buffs = Array(Array{Float64, 3}, mesh.npeers)
+  recv_buffs = Array(Array{Float64, 3}, mesh.npeers)
+#  fill!(eqn.q, 42)
+  for i=1:mesh.npeers
+    mesh.local_element_lists[i] = [i]
+    send_buffs[i] = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
+    recv_buffs[i] = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
+    
+    eqn.q[:,:, i] = i + myrank
+  end
+  fill!(mesh.recv_waited, true)
+  fill!(mesh.send_waited, true)
+
+  exchangeElementData(mesh, opts, eqn.q, send_buffs, recv_buffs, wait=true)
+
+  data = recv_buffs[1]
+  for j in data
+    @fact j --> peer_down + 2
+  end
+  data = recv_buffs[2]
+  for j in data
+    @fact j --> peer_up + 1
+  end
+
 
 end
 
