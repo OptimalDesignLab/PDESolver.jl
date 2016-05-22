@@ -11,7 +11,7 @@ function installPDESolver()
   std_pkgs = [ "ArrayViews" "https://github.com/JaredCrean2/ArrayViews.jl.git" "204cc23138cacbd5fc19e861c8038937541952b6";
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "bbbfe37e14a89432dd311c803391de0717d312e3";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "eec844306c99ab9dbf10bee673020b479e24dc65";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "8d23a7b66b4093c9314bb1121fc92fe8d2248f01";
               "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "d68859248ddeed79abe9005a5c75caa35f10885e"
               ]
 
