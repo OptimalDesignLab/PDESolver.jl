@@ -61,9 +61,6 @@ facts("----- Testing using manufactured polynomials -----") do
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
 
-
-
-
   println("  -----testing degree 2 polynomial -----")
   fname = make_input_mms(2)
   ARGS[1] = fname

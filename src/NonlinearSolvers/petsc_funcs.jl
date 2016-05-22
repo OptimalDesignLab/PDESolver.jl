@@ -311,7 +311,7 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
       println("  number of mallocs = ", matinfo.mallocs)
     end
  
-  return nothing
+#  return nothing
   # only call this first time?
   # what happens when A and Ap change?
   # this is not truely necessary for the common case, because KSPSolve

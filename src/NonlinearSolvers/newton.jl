@@ -534,7 +534,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
        eqn.res_vec[j] = res_0[j]
      end
 
-     close(fconv)
+     @mpi_master close(fconv)
 
 
      if jac_type == 3
@@ -553,7 +553,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       for j=1:m
         eqn.res_vec[j] = res_0[j]
       end
-      close(fconv)
+      @mpi_master close(fconv)
       
       if jac_type == 3
 	destroyPetsc(jac, jacp, x, b, ksp)
@@ -1010,7 +1010,6 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
           time.t_func += @elapsed func(mesh, sbp, eqn, opts)
         end
 
-
         if !(color == 1 && j == 1 && i == 1) 
           PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
         end
@@ -1308,6 +1307,7 @@ for j_j = 1:mesh.numNodesPerElement
     pos += 1
   end
 end
+
 PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
 
 return nothing

@@ -110,8 +110,8 @@ else  # continuous Galerkin
   end
 end
 
-mesh.numColors = 4
-mesh.maxColors = 4
+#mesh.numColors = 4
+#mesh.maxColors = 4
 
 if opts["write_timing"]
   MPI.Barrier(mesh.comm)

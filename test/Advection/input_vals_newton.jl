@@ -5,7 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any}(
-"run_type" => 5,
+"run_type" => 4,
 "jac_type" => 2,
 "order" => 1,
 "IC_name" => "ICp1",
@@ -13,9 +13,11 @@ arg_dict = Dict{Any, Any}(
 #"ICfname" => "q_vec1.dat_old",
 "numBC" => 1,
 #"BC1" => [4, 10, 7, 13],
-"BC1" => [ 0 ],
-"BC1_name" => "p1BC",
-"SRCname" => "SRCp1",
+"BC1" => [ 0,1,2,3 ],
+"BC1_name" => "p5BC",
+"SRCname" => "SRCp5",
+"use_DG" => true,
+"Flux_name" => "LFFlux",
 #"BC2" => [7, 13],
 #"BC2_name" => "noPenetrationBC",
 #"BC2_name" => "Rho1E2U3BC",
@@ -26,9 +28,13 @@ arg_dict = Dict{Any, Any}(
 "smb_name" => "src/mesh_files/tri8l.smb",
 #"dmg_name" => ".null",
 "res_abstol" => 1e-12,
-"res_restol" => -1.0,
+"res_reltol" => -1.0,
+"krylov_reltol" => 1.0e-40,
+"krylov_abstol" => 1e-16,
 "step_tol" => 1e-9,
 "itermax" => 20,
 "write_face_vertnums" => true,
-"solve" => false
+"solve" => true,
+"do_postproc" => true,
+"exact_soln_func" => "ICp5",
 )

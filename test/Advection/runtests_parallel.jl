@@ -29,6 +29,15 @@ facts("----- Testing Parallel -----") do
   datap = readdlm("error_calc.dat")
 
   @fact datas[1] --> roughly(datap[1], atol=1e-13)
+  cd("../../")
+
+  cd("./newton/parallel")
+  ARGS[1] = "input_vals_parallel.jl"
+  include(STARTUP_PATH)
+
+  datas = readdlm("../serial/error_calc.dat")
+  datap = readdlm("./error_calc.dat")
+  @fact datap[1] --> roughly(datap[1], atol=1e-13)
 
   cd(start_dir)
 
