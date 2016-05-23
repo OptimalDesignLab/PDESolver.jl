@@ -73,10 +73,10 @@ each boundary. It is called at the nodal level
 """->
 function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, alpha_x, alpha_y, nrm, 
                                dxidx::AbstractArray{Tmsh,2})
-  alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
-  alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
-  alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
-  bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
+    alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
+    alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
+    alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
+    bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
 
   return bndryflux
 end # end function AdvectionRoeSolver

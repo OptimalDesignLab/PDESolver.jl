@@ -16,8 +16,9 @@ function printSolution(mesh::AbstractMesh, u::AbstractVector)
 # print solution to file
 # format = for each element, node, print u rho*u rho*v E
 
+myrank = mesh.myrank
 println("entered printSolution")
-f = open("solution.dat", "w")
+f = open("solution_$myrank.dat", "w")
 
 for i=1:mesh.numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)
@@ -49,8 +50,9 @@ function printCoordinates(mesh::AbstractMesh)
 # print solution to file
 # format = for each element, node, print u rho*u rho*v E
 
+myrank = mesh.myrank
 println("entered printCoordinates")
-f = open("coords_output.dat", "w")
+f = open("coords_output_$myrank.dat", "w")
 
 for i=1:mesh.numEl
   dofnums_i = getGlobalNodeNumbers(mesh, i)
@@ -70,6 +72,7 @@ return nothing
 
 end
 
+#TODO: automate adding _$myrank to file names
 @doc """
 ### AdvectionEquationMod.printSolution
 

@@ -16,9 +16,16 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
+using MPI
+
 #using Debugging   # some debugging utils.
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/euler/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+
+
+if !MPI.Initialized()
+  MPI.Init()
+end
 
 #function runtest()
 println("ARGS = ", ARGS)
@@ -105,7 +112,7 @@ else  # continuous Galerkin
   println("constructing CG mesh")
   mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
 
-  if opts["jac_type"] == 3 || opts["jac_type"] == 4
+  if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
     pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
   else
     pmesh = mesh

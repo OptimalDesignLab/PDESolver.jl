@@ -8,7 +8,7 @@ function calc_line()
   for i in dirs
     println("i = ", i)
     fname = "m$i/error_calc.dat"
-    fname2 = "m$i/counts.txt"
+    fname2 = "m$i/counts_0.txt"
     val_i = readdlm(fname)
     err_vals[i] = val_i[1]
 

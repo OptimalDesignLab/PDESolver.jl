@@ -27,11 +27,11 @@ macro getPressure(vars)
   return :($vars[$pressure_index])
 end
 
-#=
+
 function getPressure(aux_vars)
   return aux_vars[1]
 end
-=#
+
 
 
 @doc """

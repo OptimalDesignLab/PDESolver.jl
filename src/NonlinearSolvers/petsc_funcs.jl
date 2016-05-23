@@ -33,41 +33,46 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 # func residual evaluation function
 
 jac_type = opts["jac_type"]::Int
+myrank = newton_data.myrank
 
+const vectype = VECMPI
+const mattype = PETSc.MATMPIAIJ # should this be BAIJ?
 # initialize Petsc
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4" ])
 
 #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
 numDofPerNode = mesh.numDofPerNode
-PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-ksp_monitor", "-pc_type", "ilu", "-pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "kspout",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
 comm = MPI.COMM_WORLD
 
 obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
-println("creating b")
+@mpi_master println("creating b")
 b = PetscVec(comm)
-PetscVecSetType(b, VECSEQ)
-PetscVecSetSizes(b, obj_size, obj_size)
+PetscVecSetType(b, vectype)
+PetscVecSetSizes(b, obj_size, PETSC_DECIDE)
 
-println("creating x")
+@mpi_master println("creating x")
 x = PetscVec(comm)
-PetscVecSetType(x, VECSEQ)
-PetscVecSetSizes(x, obj_size, obj_size)
+PetscVecSetType(x, vectype)
+PetscVecSetSizes(x, obj_size, PETSC_DECIDE)
 
 # tuple of all the objects needed to evaluate the residual
 # only used by Mat Shell
 ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects needed to evalute the
                                     # residual
 if jac_type == 3  # explicit sparse jacobian
-  println("creating A")
+  @mpi_master println("creating A")
   A = PetscMat(comm)
   PetscMatSetFromOptions(A)
-  PetscMatSetType(A, PETSc.MATSEQBAIJ)
-  PetscMatSetSizes(A, obj_size, obj_size, obj_size, obj_size)
-
+  PetscMatSetType(A, mattype)
+  PetscMatSetSizes(A, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
+  if mesh.isDG
+    MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
+  end
 elseif jac_type == 4  # jacobian-vector product
   # create matrix shell
   ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple
-  A = MatCreateShell(comm, obj_size, obj_size, obj_size, obj_size, ctx_ptr)
+  A = MatCreateShell(comm, obj_size, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
   PetscMatSetFromOptions(A)  # necessary?
   PetscSetUp(A)
 
@@ -80,69 +85,82 @@ else
   println(STDERR, "jac_type = ", jac_type)
 end
 
-println("type of A = ", MatGetType(A))
 
-println("creating Ap")  # used for preconditioner
-Ap = PetscMat(comm)
-PetscMatSetFromOptions(Ap)
-PetscMatSetType(Ap, PETSc.MATSEQBAIJ)
-PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+if jac_type == 4 || opts["use_jac_precond"]
+  @mpi_master println("creating Ap")  # used for preconditioner
+  Ap = PetscMat(comm)
+  PetscMatSetFromOptions(Ap)
+  PetscMatSetType(Ap, mattype)
+  PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+  if mesh.isDG
+    MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
+  end
 
-println("type of Ap = ", MatGetType(Ap))
+  @mpi_master println("type of Ap = ", MatGetType(Ap))
+else
+  Ap = A
+end
 
-
-println("preallocating Petsc Matrices")
+@mpi_master println("preallocating Petsc Matrices")
 # prellocate matrix
 dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
-onnz = zeros(PetscInt, mesh.numDof)  # there is no off diagonal part for single proc case
-dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
-onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
+onnz = zeros(PetscInt, mesh.numDof)
+#dnnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
+#onnzu = zeros(PetscInt, 1)  # only needed for symmetric matrices
 bs = PetscInt(mesh.numDofPerNode)  # block size
 
 # calculate number of non zeros per row for A
-for i=1:mesh.numNodes
-  max_dof = mesh.sparsity_nodebnds[2, i]
-  min_dof = mesh.sparsity_nodebnds[1, i]
-  nnz_i = max_dof - min_dof + 1
-  dnnz[i] = nnz_i
+for i=1:mesh.numDof
+#  max_dof = mesh.sparsity_nodebnds[2, i]
+#  min_dof = mesh.sparsity_nodebnds[1, i]
+#  nnz_i = max_dof - min_dof + 1
+  dnnz[i] = mesh.sparsity_counts[1, i]
+  onnz[i] = mesh.sparsity_counts[2, i]
 #  println("row ", i," has ", nnz_i, " non zero entries")
 end
+myrank = mesh.myrank
 
+
+# preallocate A
 if jac_type == 3
 
-  PetscMatXAIJSetPreallocation(A, bs, dnnz, onnz, dnnzu, onnzu)
+  PetscMatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
 
   MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
   PetscMatZeroEntries(A)
   matinfo = PetscMatGetInfo(A, Int32(1))
-  println("A block size = ", matinfo.block_size)
+  @mpi_master println("A block size = ", matinfo.block_size)
 
-  PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
-  PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
+#  PetscMatAssemblyBegin(A, PETSC_MAT_FLUSH_ASSEMBLY)
+#  PetscMatAssemblyEnd(A, PETSC_MAT_FLUSH_ASSEMBLY)
 end
 
-# calculate number of nonzeros per row for A[
-for i=1:mesh.numNodes
-  max_dof = pmesh.sparsity_nodebnds[2, i]
-  min_dof = pmesh.sparsity_nodebnds[1, i]
-  nnz_i = max_dof - min_dof + 1
-  dnnz[i] = nnz_i
-#  println("row ", i," has ", nnz_i, " non zero entries")
+# preallocate Ap
+if jac_type == 4 || opts["use_jac_precond"]
+  # calculate number of nonzeros per row for A[
+  for i=1:mesh.numNodes
+#    max_dof = pmesh.sparsity_nodebnds[2, i]
+#    min_dof = pmesh.sparsity_nodebnds[1, i]
+#    nnz_i = max_dof - min_dof + 1
+#    dnnz[i] = nnz_i
+    dnnz[i] = mesh.sparsity_counts_node[1, i]
+    onnz[i] = mesh.sparsity_counts_node[2, i]
+
+  #  println("row ", i," has ", nnz_i, " non zero entries")
+  end
+
+  PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
+
+  MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+  matinfo = PetscMatGetInfo(Ap, Int32(1))
+  @mpi_master println("Ap block size = ", matinfo.block_size)
+
+  # zero initialize the matrix just in case
+  PetscMatZeroEntries(Ap)
+
+  PetscMatAssemblyBegin(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
+  PetscMatAssemblyEnd(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
 end
-
-PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
-
-MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
-matinfo = PetscMatGetInfo(Ap, Int32(1))
-println("Ap block size = ", matinfo.block_size)
-
-# zero initialize the matrix just in case
-println("zeroing Ap")
-PetscMatZeroEntries(Ap)
-
-PetscMatAssemblyBegin(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
-PetscMatAssemblyEnd(Ap, PETSC_MAT_FLUSH_ASSEMBLY)
-
 
 
 # set some options
@@ -162,7 +180,7 @@ KSPSetOperators(ksp, A, Ap)  # this was A, Ap
 
 pc = KSPGetPC(ksp)
 pc_type = PCGetType(pc)
-println("pc_type = ", pc_type)
+@mpi_master println("pc_type = ", pc_type)
 #=
 if pc_type == "bjacobi"
   n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
@@ -201,7 +219,9 @@ function destroyPetsc(A::PetscMat, Ap::PetscMat, x::PetscVec,  b::PetscVec, ksp:
 # destory Petsc data structures, finalize Petsc
 
 PetscDestroy(A)
-PetscDestroy(Ap)
+if A.pobj != Ap.pobj
+  PetscDestroy(Ap)
+end
 PetscDestroy(x)
 PetscDestroy(b)
 PetscDestroy(ksp)
@@ -234,28 +254,34 @@ end
   Aliasing restrictions: none
 
 """->
-function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector )
+function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::PetscVec, b::PetscVec, ksp::KSP, opts, res_0::AbstractVector, delta_res_vec::AbstractVector, dof_offset::Integer=0 )
 
   # solve the system for the newton step, write it to delta_res_vec
   # writing it to delta_res_vec is an unecessary copy, becasue we could
   # write it directly to eqn.q, but for consistency we do it anyways
 
+#  return nothing
   jac_type = opts["jac_type"]::Int
-
+  myrank = newton_data.myrank
   # copy res_0 into b
   # create the index array
   numDof = length(delta_res_vec)
-  println("copying res_0 to b")
-  idx = zeros(PetscInt, numDof)
+#  idx = zeros(PetscInt, numDof)
+#  for i=1:numDof
+#    idx[i] = i - 1 + dof_offset
+#  end
+
+  b_petsc, b_ptr = PetscVecGetArray(b)
   for i=1:numDof
-    idx[i] = i - 1
+    b_petsc[i] = res_0[i]
   end
+  PetscVecRestoreArray(b, b_ptr)
 
   # copy into Petsc and assemble
   # should do this by direct array access
-  PetscVecSetValues(b, idx, res_0, PETSC_INSERT_VALUES)
-  PetscVecAssemblyBegin(b)
-  PetscVecAssemblyEnd(b)
+#  PetscVecSetValues(b, idx, res_0, PETSC_INSERT_VALUES)
+#  PetscVecAssemblyBegin(b)
+#  PetscVecAssemblyEnd(b)
 
   #=
   PetscVecSetValues(x, idx, res_0, PETSC_INSERT_VALUES)
@@ -265,19 +291,18 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
 
 
   # assemble matrix
+  PetscMatAssemblyBegin(Ap, PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(Ap, PETSC_MAT_FINAL_ASSEMBLY)
+
+
   # should this be overlapped with the vector assembly?
-  if jac_type != 4
-    println("assembling A")
+  if jac_type != 4  && !(A === Ap)
     PetscMatAssemblyBegin(A, PETSC_MAT_FINAL_ASSEMBLY)
     PetscMatAssemblyEnd(A, PETSC_MAT_FINAL_ASSEMBLY)
   end
 
-  PetscMatAssemblyBegin(Ap, PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(Ap, PETSC_MAT_FINAL_ASSEMBLY)
-
   if jac_type != 4
     matinfo = PetscMatGetInfo(A, MAT_LOCAL)
-    println("number of mallocs for A = ", matinfo.mallocs)
     if matinfo.mallocs > 0.5  # if any mallocs
       println("Caution: non zero number of mallocs for A")
       println("  number of mallocs = ", matinfo.mallocs)
@@ -291,7 +316,7 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
       println("  number of mallocs = ", matinfo.mallocs)
     end
  
-
+#  return nothing
   # only call this first time?
   # what happens when A and Ap change?
   # this is not truely necessary for the common case, because KSPSolve
@@ -306,15 +331,11 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
 
   nx = PetscVecGetSize(x)
   nb = PetscVecGetSize(b)
-  println("size of x = ", nx)
-  println("size of y = ", nb)
-
-  println("solving system")
   KSPSolve(ksp, b, x)
   reason = KSPGetConvergedReason(ksp)
-  println("KSP converged reason = ", KSPConvergedReasonDict[reason])
+  @mpi_master println("KSP converged reason = ", KSPConvergedReasonDict[reason])
   rnorm = KSPGetResidualNorm(ksp)
-  println("Linear residual = ", rnorm)
+  @mpi_master println("Linear residual = ", rnorm)
 
   # copy solution from x into delta_res_vec
   arr, ptr_arr = PetscVecGetArray(x)

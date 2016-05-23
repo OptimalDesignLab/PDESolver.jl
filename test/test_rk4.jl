@@ -27,7 +27,10 @@ q_vec_rk = [1.0]
 res_vec_rk = [0.0]
 ctx = (q_vec_rk, res_vec_rk)
 pre_func = (a...) -> 3
-post_func = (q_vec, res_vec, opts) -> norm(res_vec)
+function post_func(q_vec, res_vec, opts; calc_norm=true) 
+  return norm(res_vec)
+end
+
 delta_t = 0.1
 t_max = 1.0
 
