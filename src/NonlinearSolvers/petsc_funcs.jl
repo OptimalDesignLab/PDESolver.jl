@@ -66,7 +66,9 @@ if jac_type == 3  # explicit sparse jacobian
   PetscMatSetFromOptions(A)
   PetscMatSetType(A, mattype)
   PetscMatSetSizes(A, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
-
+  if mesh.isDG
+    MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
+  end
 elseif jac_type == 4  # jacobian-vector product
   # create matrix shell
   ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple
@@ -90,6 +92,9 @@ if jac_type == 4 || opts["use_jac_precond"]
   PetscMatSetFromOptions(Ap)
   PetscMatSetType(Ap, mattype)
   PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+  if mesh.isDG
+    MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
+  end
 
   @mpi_master println("type of Ap = ", MatGetType(Ap))
 else

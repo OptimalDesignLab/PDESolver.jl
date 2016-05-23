@@ -1303,7 +1303,12 @@ for j_j = 1:mesh.numNodesPerElement
 
     newton_data.vals_tmp[pos] = imag(res_arr[i_i,j_j, el_res])/epsilon
     val = newton_data.vals_tmp[pos]
-
+#=
+    low,  high = PetscMatGetOwnershipRange(jac)
+    if row < low || row > high
+      println("inserting into non-local location ", row, ", ", col)
+    end
+=#
     pos += 1
   end
 end
