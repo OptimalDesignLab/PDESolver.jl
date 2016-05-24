@@ -26,9 +26,9 @@ function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
 
   for j=1:nnodes
@@ -79,9 +79,9 @@ function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                 operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts,
                 u0::AbstractVector{Tsol})
 
-  numEl = getNumEl(mesh)
+  numEl = mesh.numEl
   nnodes = operator.numnodes
-  dofpernode = getNumDofPerNode(mesh)
+  dofpernode = mesh.numDofPerNode
   for i=1:numEl
     for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
@@ -135,9 +135,9 @@ function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
   for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
@@ -289,9 +289,9 @@ function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
@@ -352,9 +352,9 @@ function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
 #  dofnums_i = sview(mesh, i)  # get dof nums for this element
 #  coords = sview(mesh, [i])
@@ -418,9 +418,9 @@ function ICsmoothHeaviside{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
   for j=1:nnodes
       coords = sview(mesh.coords, :, j, i)
@@ -474,9 +474,9 @@ function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 println("entered ICIsentropicVortex")
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
 #  println("i = ", i)
@@ -525,9 +525,9 @@ function ICIsentropicVortexWithNoise{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
@@ -573,9 +573,9 @@ function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 println("entered ICIsentropicVortex")
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
