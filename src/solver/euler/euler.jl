@@ -108,14 +108,23 @@ export evalEuler, init
 # high level function
 function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts, 
                    t=0.0)
-
+  time = eqn.params.time
   eqn.params.t = t  # record t to params
-  
-  dataPrep(mesh, sbp, eqn, opts)
+  myrank = mesh.myrank
+
+  if opts["parallel_type"] == 1
+    params.time.t_send += @elapsed if mesh.commsize > 1
+      sendParallelData(mesh, sbp, eqn, opts)
+    end
+    #  println("send parallel data @time printed above")
+  end
+ 
+
+  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
   #println("dataPrep @time printed above")
 
 
-  evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #  println("after volume integrals res = \n", eqn.res)
 #  println("volume integral @time printed above")
 
@@ -141,16 +150,16 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   =#
   #----------------------------------------------------------------------------
 
-  evalBoundaryIntegrals(mesh, sbp, eqn)
+  time.t_boundary += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
 #  println("after boundary integrals res = \n", eqn.res)
 #  println("boundary integral @time printed above")
 
 
-  addStabilization(mesh, sbp, eqn, opts)
+  time.t_stab += @elapsed addStabilization(mesh, sbp, eqn, opts)
 #  println("after stabilization res = \n", eqn.res)
 #  println("stabilizing @time printed above")
 
-  if mesh.isDG
+  time.t_face += @elapsed if mesh.isDG
     evalFaceIntegrals(mesh, sbp, eqn, opts)
 #    println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
@@ -197,7 +206,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
 #  println("Performing major Iteration Callback")
 
 
-    if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
+    if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
       vals = real(eqn.q_vec)  # remove unneded imaginary part
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
@@ -273,7 +282,7 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
@@ -559,6 +568,30 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
 end
                             
+
+@doc """
+### EulerEquationMod.sendParallelData
+
+  This function interpolates the data into the send buffer and post
+  the Isends and Irecvs.  It does not wait for them to finish
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""->
+function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  for i=1:mesh.npeers
+    # interpolate
+    mesh.send_waited[i] = getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i], mesh.send_waited[i])
+  end
+
+  exchangeFaceData(mesh, opts, eqn.q_face_send, eqn.q_face_recv)
+
+  return nothing
+end
 
 
 

@@ -182,7 +182,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 #  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
 
 
-  if jac_type == 1  # dense
+  eqn.params.time.t_alloc += @elapsed if jac_type == 1  # dense
     jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   elseif jac_type == 2  # sparse
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
@@ -277,7 +277,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   @mpi_master print(fstdout, "\n")
 
 
-  for i=1:itermax
+  eqn.params.time.t_newton += @elapsed for i=1:itermax
     @mpi_master println(fstdout, "Newton iteration: ", i)
     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
@@ -463,7 +463,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
     end
     eqn.params.time.t_solve += t_solve
-    @mpi_master print(fstdout, "matrix solve: "); print_time_all(fstdout, t_solve, t_gc, alloc)
+    @mpi_master print(fstdout, "matrix solve: ")
+    @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
     step_norm = norm(delta_res_vec)
     #TODO: make this a regular reduce?
     step_norm = MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm)
@@ -590,7 +591,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       updateKrylov(newton_data)
     end
 
-    print("\n")
+    @mpi_master print(fstdout, "\n")
     step_norm_1 = step_norm
     
   end  # end loop over newton iterations

@@ -448,6 +448,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
   aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
                                   # to interior faces
+  aux_vars_sharedface::Array{Tres, 3}  # storage for aux varables interpolate
+                                       # to shared faces
   aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
                                   # to the boundaries
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
@@ -456,6 +458,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
+  flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   res::Array{Tres, 3}             # result of computation
   res_vec::Array{Tres, 1}         # result of computation in vector form
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
@@ -585,6 +588,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     #TODO: rename buffers to not include face
     eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
     eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
+    eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+    eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     if mesh.isDG
       if opts["parallel_type"] == 1 
         dim2 = numfacenodes
@@ -597,6 +602,16 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       else
         ptype = opts["parallel_type"]
         throw(ErrorException("Unsupported parallel type requested: $ptype"))
+      end
+      for i=1:mesh.npeers
+        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
+                                         dim3_send[i])
+        eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
+                                        dim3_recv[i])
+        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes, 
+                                       mesh.peer_face_counts[i])
+        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode, 
+                                        numfacenodes, mesh.peer_face_counts[i])
       end
     end
    

@@ -315,6 +315,8 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
       println("Caution: non zero number of mallocs for Ap")
       println("  number of mallocs = ", matinfo.mallocs)
     end
+
+  return nothing
  
 #  return nothing
   # only call this first time?

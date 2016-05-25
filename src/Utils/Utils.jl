@@ -10,11 +10,13 @@ using MPI
 using SummationByParts
 include("parallel.jl")
 include("io.jl")
+include("logging.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export exchangeElementData
 export @mpi_master, @time_all, print_time_all
 export Timings, write_timings
+export sharedFaceLogging
 
 @doc """
 ### Utils.disassembleSolution
@@ -209,15 +211,19 @@ type Timings
   t_source::Float64  # time spent doing source term
   t_sharedface::Float64  # time for shared face integrals
   t_bndry::Float64  # time spent doing boundary integrals
+  t_dataprep::Float64  # time spent preparing data
+  t_stab::Float64  # time spent adding stabilization
   t_send::Float64  # time spent sending data
   t_wait::Float64  # time spent in MPI_Wait
   t_allreduce::Float64 # time spent in allreduce
   t_pert::Float64  # time spent applying peraturbation
+  t_alloc::Float64  # time spent allocating the Jacobian
   t_insert::Float64  # time spent inserting values into matrix
-  t_jacobian::Float64  # time spent computing jacobian
   t_func::Float64  # time spent evaluating the residual
   t_color::Float64  # time spent evaluating the colors
+  t_jacobian::Float64  # time spent computing jacobian
   t_solve::Float64  # linear solve time
+  t_newton::Float64  # time spent in newton loop
   t_barrier::Float64  # time spent in MPI_Barrier
   t_barrier2::Float64
   t_barrier3::Float64
@@ -226,7 +232,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 

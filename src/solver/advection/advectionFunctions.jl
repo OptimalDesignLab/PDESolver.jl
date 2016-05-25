@@ -416,7 +416,7 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     println("Performing major Iteration Callback for iteration ", itr)
   end
 =#
-  if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
+  if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
     vals = real(eqn.q_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
 #    cd("./SolutionFiles")

@@ -78,12 +78,23 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   alpha_y = eqn.alpha_y
   params = eqn.params
 
+  npeers = mesh.npeers
+  val = sum(mesh.recv_waited)
+  if val !=  mesh.npeers && val != 0
+    throw(ErrorException("Receive waits in inconsistent state: $val / $npeers already waited on"))
+  end
+
   for i=1:mesh.npeers
-    params.time.t_wait += @elapsed idx, stat = MPI.Waitany!(mesh.recv_reqs)
-    mesh.recv_stats[idx] = stat
-    mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
-    mesh.recv_waited[idx] = true
-    # calculate the flux
+    if val == 0
+      params.time.t_wait += @elapsed idx, stat = MPI.Waitany!(mesh.recv_reqs)
+      mesh.recv_stats[idx] = stat
+      mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
+      mesh.recv_waited[idx] = true
+    else
+      idx = i
+    end
+
+      # calculate the flux
     interfaces = mesh.shared_interfaces[idx]
     qL_arr = eqn.q_face_send[idx]
     qR_arr = eqn.q_face_recv[idx]
@@ -213,38 +224,6 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, qL_face_arr, qR_face_arr)
 
-  return nothing
-end
-
-function sharedFaceLogging{Tsol}(mesh, sbp, eqn::AdvectionData{Tsol}, opts, qL_arr, qR_arr)
-
-  if opts["writeqface"]
-    myrank = mesh.myrank
-    for i=1:mesh.npeers
-      tmp_arr = zeros(Tsol, mesh.numDofPerNode, 2, mesh.numNodesPerFace, mesh.peer_face_counts[i])
-      qL_arr_i = qL_arr[i]
-      qR_arr_i = qR_arr[i]
-      for j = 1:mesh.peer_face_counts[i]
-        for k=1:mesh.numNodesPerFace
-          tmp_arr[:, 1, k, j] = qL_arr_i[:, k, j]
-          tmp_arr[:, 2, k, j] = qR_arr_i[:, k, j]
-        end
-      end
-      println(eqn.params.f, "q_sharedface $i = \n", tmp_arr)
-      fname = string("qsharedface_", i, "_", myrank, ".dat")
-      writedlm(fname, tmp_arr)
-    end  # end loop over peers
-
-  end  # end if
-
-  if opts["write_fluxface"]
-    for i=1:mesh.npeers
-      fname = string("fluxsharedface_", i, "_", myrank, ".dat")
-      writedlm(fname, eqn.flux_sharedface[i])
-    end
-  end
-
-  flush(params.f)
   return nothing
 end
 
