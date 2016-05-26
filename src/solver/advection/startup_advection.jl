@@ -154,8 +154,6 @@ if opts["calc_error"]
 
   err_vec = vals - eqn.q_vec
   err_local = calcNorm(eqn, err_vec)
-  err_global = MPI.Allreduce(err_local*err_local, MPI.SUM, mesh.comm)
-  err = sqrt(err_global)
   if myrank == 0
     outname = opts["calc_error_outfname"]
     println("printed err = ", err, " to file ", outname)
