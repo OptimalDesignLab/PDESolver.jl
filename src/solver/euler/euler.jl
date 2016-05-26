@@ -113,7 +113,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   myrank = mesh.myrank
 
   if opts["parallel_type"] == 1
-    params.time.t_send += @elapsed if mesh.commsize > 1
+    time.t_send += @elapsed if mesh.commsize > 1
       sendParallelData(mesh, sbp, eqn, opts)
     end
     #  println("send parallel data @time printed above")
@@ -150,7 +150,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   =#
   #----------------------------------------------------------------------------
 
-  time.t_boundary += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
+  time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
 #  println("after boundary integrals res = \n", eqn.res)
 #  println("boundary integral @time printed above")
 
@@ -164,6 +164,11 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 #    println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
+
+  time.t_sharedface += @elapsed if mesh.commsize > 1
+    evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+  end
+
 
 
   
@@ -589,6 +594,32 @@ function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
   end
 
   exchangeFaceData(mesh, opts, eqn.q_face_send, eqn.q_face_recv)
+
+  return nothing
+end
+
+@doc """
+### EulerEquationMod.evalSharedFaceIntegrals
+
+  This function does the computation that needs the parallel
+  communication to have finished already, namely the face integrals
+  for the shared faces
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""->
+function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  if opts["parallel_type"] == 1
+#    println(eqn.params.f, "doing face integrals using face data")
+    calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+#  else
+#    println(eqn.params.f, "doing face integrals using element data")
+#    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+  end
 
   return nothing
 end

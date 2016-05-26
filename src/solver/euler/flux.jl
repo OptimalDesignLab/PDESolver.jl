@@ -178,7 +178,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract
     end
   end
 
-  if opts["paralle_type"] == 1  
+  if opts["parallel_type"] == 1  
     for peer=1:mesh.npeers
       q_vals_p = eqn.q_face_send[peer]
       aux_vars = eqn.aux_vars_sharedface[peer]

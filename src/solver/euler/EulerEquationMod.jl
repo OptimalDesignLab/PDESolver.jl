@@ -13,6 +13,7 @@ using SummationByParts
 using PdePumiInterface
 using ForwardDiff
 using Utils
+using MPI
 #using Debugging
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
@@ -431,6 +432,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # this is the ParamType object that uses the same variables as
   # the EulerData_ object
   params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
+  comm::MPI.Comm
+  commsize::Int
+  myrank::Int
 
   # we include a ParamType object of all variable types, because occasionally
   # we need to do a calculation in  variables other than var_type
@@ -448,7 +452,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
   aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
                                   # to interior faces
-  aux_vars_sharedface::Array{Tres, 3}  # storage for aux varables interpolate
+  aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
                                        # to shared faces
   aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
                                   # to the boundaries
@@ -500,6 +504,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     println("  Tdim = ", Tdim)
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
+
+    eqn.comm = mesh.comm
+    eqn.commsize = mesh.commsize
+    eqn.myrank = mesh.myrank
 
     numfacenodes = mesh.numNodesPerFace
 

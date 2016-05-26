@@ -69,6 +69,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
   params::ParamType{Tsol, Tres, Tdim}
+
+  comm::MPI.Comm
+  commsize::Int
+  myrank::Int
+
   t::Float64
   res_type::DataType  # type of res
   alpha_x::Float64
@@ -109,6 +114,10 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     numfacenodes = mesh.numNodesPerFace
 
     eqn = new()  # incomplete initilization
+    eqn.comm = mesh.comm
+    eqn.commsize = mesh.commsize
+    eqn.myrank = mesh.myrank
+
     eqn.params = ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts)
     eqn.t = 0.0
     eqn.res_type = Tres

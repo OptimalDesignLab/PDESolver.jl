@@ -1,7 +1,7 @@
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using Utils
 using FactCheck
-
+using ODLCommonTools
 facts("---- Testing IO -----") do
   fname = "iotest.dat"
   f = open(fname, "w")
@@ -60,3 +60,46 @@ facts("----- Testing Timings -----") do
   @fact gc_time --> roughly( 0.0)
 
 end
+
+type TestParams
+  time::Timings
+end
+
+# test the tools
+  type TestData <: AbstractSolutionData
+    params::TestParams
+    M::Array{Float64, 1}
+    Minv::Array{Float64, 1}
+    comm::MPI.Comm
+  end
+
+facts("----- Testing calcNorm -----") do
+  M = rand(10)
+  Minv = 1./M
+  params = TestParams(Timings())
+  obj = TestData(params, M, Minv, MPI.COMM_WORLD)
+  data = rand(10)
+
+  norm1 = calcNorm(obj, data)
+  norm2 = sqrt(sum(data.*M.*data))
+
+  @fact norm1 --> roughly(norm2)
+
+  norm1 = calcNorm(obj, data, strongres=true)
+  norm2 = sqrt(sum(data.*Minv.*data))
+
+
+  data = complex(rand(10), rand(10))
+  norm1 = calcNorm(obj, data)
+  norm2 = sqrt(sum(real(data).*M.*real(data)))
+
+  @fact norm1 --> roughly(norm2)
+
+  norm1 = calcNorm(obj, data, strongres=true)
+  norm2 = sqrt(sum(real(data).*Minv.*real(data)))
+
+  @fact norm1 --> roughly(norm2)
+end
+
+
+

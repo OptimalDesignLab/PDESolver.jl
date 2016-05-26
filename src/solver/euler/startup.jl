@@ -201,8 +201,9 @@ if opts["calc_error"]
   # might not be entirely accurate
   println("mesh.min_node_distance = ", mesh.min_node_dist)
   h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
+  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
 #  println("h_avg = ", h_avg)
-  h_avg *= mesh.min_node_dist
+  h_avg *= mesh.min_node_dist/mesh.commsize
 #  println("h_avg = ", h_avg)
 
   outname = opts["calc_error_outfname"]
@@ -399,18 +400,35 @@ if opts["solve"]
 #      end
 #    end
 
+      myrank = mesh.myrank
       q_diff = eqn.q_vec - q_exact
       diff_norm = calcNorm(eqn, q_diff)
-      discrete_norm = norm(q_diff/length(q_diff))
+      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
+      diff_norm = sqrt(diff_norm)
 
-      println("solution error norm = ", diff_norm)
-      println("solution discrete L2 norm = ", discrete_norm)
+
+      @mpi_master println("solution error norm = ", diff_norm)
+
+      jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
+      jac_vec = zeros(Tmsh, mesh.numNodes)
+      assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+      # scale by the minimum distance between nodes on a reference element
+      # this is a bit of an assumption, because for distorted elements this
+      # might not be entirely accurate
+      h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
+      h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
+    #  println("h_avg = ", h_avg)
+      h_avg *= mesh.min_node_dist/mesh.commsize
+    #  println("h_avg = ", h_avg)
+
 
       # print to file
-      outname = opts["calc_error_outfname"]
-      f = open(outname, "w")
-      println(f, mesh.numEl, " ", diff_norm, " ", discrete_norm)
-      close(f)
+      @mpi_master begin
+        outname = opts["calc_error_outfname"]
+        f = open(outname, "w")
+        println(f, diff_norm, " ", h_avg)
+        close(f)
+      end
 
       #---- Calculate functional on a boundary  -----#
       if opts["calc_functional"]
