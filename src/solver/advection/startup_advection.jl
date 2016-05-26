@@ -176,19 +176,7 @@ if opts["calc_trunc_error"]  # calculate truncation error
 end
 
 if opts["calc_havg"]
-  # calculate the average mesh size
-  jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
-  jac_vec = zeros(Tmsh, mesh.numNodes)
-  assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
-  # scale by the minimum distance between nodes on a reference element
-  # this is a bit of an assumption, because for distorted elements this
-  # might not be entirely accurate
-  println("mesh.min_node_distance = ", mesh.min_node_dist)
-  h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
-#  println("h_avg = ", h_avg)
-  h_avg *= mesh.min_node_dist
-#  println("h_avg = ", h_avg)
-
+  h_avg = calcMeshH(mesh, sbp, eqn, opts)
   if myrank == 0  # TODO: make this globally accurate
     rmfile("havg.dat")
     f = open("havg.dat", "w")
@@ -370,10 +358,7 @@ end       # end of if/elseif blocks checking flag
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
       q_diff = eqn.q_vec - q_exact
-#      diff_norm = norm(q_diff, Inf)
       diff_norm = calcNorm(eqn, q_diff)
-#      diff_norm = MPI.Allreduce(diff_norm*diff_norm, MPI.SUM, mesh.comm)
-#      diff_norm = sqrt(diff_norm)
       discrete_norm = norm(q_diff/length(q_diff))
       discrete_norm = MPI.Allreduce(discrete_norm*discrete_norm, MPI.SUM, mesh.comm)
       discrete_norm = sqrt(discrete_norm)
@@ -383,32 +368,15 @@ end       # end of if/elseif blocks checking flag
         println("solution discrete L2 norm = ", discrete_norm)
       end
 
-#      sol_norm = norm(eqn.q_vec, Inf)
-#      exact_norm = norm(q_exact)
-
       sol_norm = calcNorm(eqn, eqn.q_vec)
-#      sol_norm = MPI.Allreduce(sol_norm*sol_norm, MPI.SUM, mesh.comm)
-#      sol_norm = sqrt(sol_norm)
       exact_norm = calcNorm(eqn, q_exact)
-#      exact_norm = MPI.Allreduce(exact_norm*exact_norm, MPI.SUM, mesh.comm)
-#      exact_norm = sqrt(exact_norm)
       @mpi_master println("numerical solution norm = ", sol_norm)
       @mpi_master println("exact solution norm = ", exact_norm)
 
       # calculate the average mesh size
-      jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
-      jac_vec = zeros(Tmsh, mesh.numNodes)
-      assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
-      # scale by the minimum distance between nodes on a reference element
-      # this is a bit of an assumption, because for distorted elements this
-      # might not be entirely accurate
-      h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
-    #  println("h_avg = ", h_avg)
-      h_avg *= mesh.min_node_dist
-    #  println("h_avg = ", h_avg)
-
-    if myrank == 0
-        println("mesh.min_node_distance = ", mesh.min_node_dist)
+      h_avg = calcMeshH(mesh, sbp, eqn, opts)
+      if myrank == 0
+#        println("mesh.min_node_distance = ", mesh.min_node_dist)
         # print to file
         outname = opts["calc_error_outfname"]
         println("printed err = ", diff_norm, " to file ", outname)

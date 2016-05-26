@@ -29,6 +29,7 @@ facts("----- Testing Parallel -----") do
   datap = readdlm("error_calc.dat")
 
   @fact datas[1] --> roughly(datap[1], atol=1e-13)
+  @fact datas[2] --> roughly(datap[2], atol=1e-13)
   cd("../../")
 
   cd("./newton/parallel")

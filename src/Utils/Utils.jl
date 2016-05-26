@@ -249,7 +249,7 @@ function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
   # this is a bit of an assumption, because for distorted elements this
   # might not be entirely accurate
   h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
-  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
+  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)/mesh.commsize
   h_avg *= mesh.min_node_dist
   return h_avg
 end
