@@ -12,7 +12,7 @@ include("parallel.jl")
 include("io.jl")
 include("logging.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
-export calcNorm
+export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export exchangeElementData
 export @mpi_master, @time_all, print_time_all
@@ -227,6 +227,32 @@ function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; stron
 end     # end of calcNorm function
 
 
+@doc """
+### Utils.calcMeshH
+
+  This function calculates the average distance between nodes over the entire
+  mesh.  This function allocates a bunch of temporary memory, so don't call
+  it too often.  This is, strictly speaking, not quite accurate in parallel
+  because the divison by length happens before the allreduce.
+
+  Inputs:
+    mesh
+    eqn
+    opts
+"""->
+function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
+  jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
+  jac_vec = zeros(Tmsh, mesh.numNodes)
+  assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+
+  # scale by the minimum distance between nodes on a reference element
+  # this is a bit of an assumption, because for distorted elements this
+  # might not be entirely accurate
+  h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
+  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
+  h_avg *= mesh.min_node_dist
+  return h_avg
+end
 
 
 # it would be better if this used @boundscheck

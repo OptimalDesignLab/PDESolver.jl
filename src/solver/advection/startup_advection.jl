@@ -372,11 +372,11 @@ end       # end of if/elseif blocks checking flag
       q_diff = eqn.q_vec - q_exact
 #      diff_norm = norm(q_diff, Inf)
       diff_norm = calcNorm(eqn, q_diff)
-      global_norm = MPI.Allreduce(diff_norm*diff_norm, MPI.SUM, mesh.comm)
-      diff_norm = sqrt(global_norm)
+#      diff_norm = MPI.Allreduce(diff_norm*diff_norm, MPI.SUM, mesh.comm)
+#      diff_norm = sqrt(diff_norm)
       discrete_norm = norm(q_diff/length(q_diff))
-      global_norm = MPI.Allreduce(discrete_norm*discrete_norm, MPI.SUM, mesh.comm)
-      discrete_norm = sqrt(global_norm)
+      discrete_norm = MPI.Allreduce(discrete_norm*discrete_norm, MPI.SUM, mesh.comm)
+      discrete_norm = sqrt(discrete_norm)
 
       if myrank == 0
         println("solution error norm = ", diff_norm)
@@ -387,11 +387,11 @@ end       # end of if/elseif blocks checking flag
 #      exact_norm = norm(q_exact)
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
-      global_norm = MPI.Allreduce(sol_norm*sol_norm, MPI.SUM, mesh.comm)
-      sol_norm = sqrt(global_norm)
+#      sol_norm = MPI.Allreduce(sol_norm*sol_norm, MPI.SUM, mesh.comm)
+#      sol_norm = sqrt(sol_norm)
       exact_norm = calcNorm(eqn, q_exact)
-      global_norm = MPI.Allreduce(exact_norm*exact_norm, MPI.SUM, mesh.comm)
-      exact_norm = sqrt(global_norm)
+#      exact_norm = MPI.Allreduce(exact_norm*exact_norm, MPI.SUM, mesh.comm)
+#      exact_norm = sqrt(exact_norm)
       @mpi_master println("numerical solution norm = ", sol_norm)
       @mpi_master println("exact solution norm = ", exact_norm)
 
@@ -406,6 +406,17 @@ end       # end of if/elseif blocks checking flag
     #  println("h_avg = ", h_avg)
       h_avg *= mesh.min_node_dist
     #  println("h_avg = ", h_avg)
+
+    if myrank == 0
+        println("mesh.min_node_distance = ", mesh.min_node_dist)
+        # print to file
+        outname = opts["calc_error_outfname"]
+        println("printed err = ", diff_norm, " to file ", outname)
+        f = open(outname, "w")
+        println(f, diff_norm, " ", h_avg)
+        close(f)
+      end
+
 
 
       #----  Calculate functional on a boundary  -----#
@@ -482,16 +493,6 @@ end       # end of if/elseif blocks checking flag
       end  # end if opts["calc_adjoint"]
 
       
-
-      if myrank == 0
-        println("mesh.min_node_distance = ", mesh.min_node_dist)
-        # print to file
-        outname = opts["calc_error_outfname"]
-        println("printed err = ", diff_norm, " to file ", outname)
-        f = open(outname, "w")
-        println(f, diff_norm, " ", h_avg)
-        close(f)
-      end
 
 
 #=

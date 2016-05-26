@@ -2,6 +2,12 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using Utils
 using FactCheck
 using ODLCommonTools
+using MPI
+
+if !MPI.Initialized()
+  MPI.Init()
+end
+
 facts("---- Testing IO -----") do
   fname = "iotest.dat"
   f = open(fname, "w")
@@ -66,18 +72,32 @@ type TestParams
 end
 
 # test the tools
-  type TestData <: AbstractSolutionData
-    params::TestParams
-    M::Array{Float64, 1}
-    Minv::Array{Float64, 1}
-    comm::MPI.Comm
-  end
+type TestData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+  params::TestParams
+  M::Array{Float64, 1}
+  Minv::Array{Float64, 1}
+  comm::MPI.Comm
+end
 
-facts("----- Testing calcNorm -----") do
+type TestMesh{Tmsh} <: AbstractMesh{Tmsh}
+  jac::AbstractArray{Float64, 2}
+  dofs::AbstractArray{Int, 3}
+  comm::MPI.Comm
+  numNodes::Int
+  numNodesPerElement::Int
+  numEl::Int
+  numDofPerNode::Int
+  min_node_dist::Float64
+end
+
+type FakeSBP
+end
+
+facts("----- Testing Utility Functions -----") do
   M = rand(10)
   Minv = 1./M
   params = TestParams(Timings())
-  obj = TestData(params, M, Minv, MPI.COMM_WORLD)
+  obj = TestData{Float64, Float64}(params, M, Minv, MPI.COMM_WORLD)
   data = rand(10)
 
   norm1 = calcNorm(obj, data)
@@ -99,6 +119,22 @@ facts("----- Testing calcNorm -----") do
   norm2 = sqrt(sum(real(data).*Minv.*real(data)))
 
   @fact norm1 --> roughly(norm2)
+
+  numEl = 5
+  numNodesPerElement = 3
+  numNodes = numEl*numNodesPerElement
+  numDofPerNode = 1
+  jac = zeros(Float64, numNodesPerElement, numEl)
+  fill!(jac, 2)
+  dofs = zeros(Int, numDofPerNode, numNodesPerElement, numEl)
+  for i=1:length(dofs)
+    dofs[i] = i
+  end
+  mesh = TestMesh{Float64}(jac, dofs, MPI.COMM_WORLD, numNodes, numNodesPerElement, numEl, numDofPerNode, 0.25)
+  opts = Dict{Any, Any}()
+  @fact calcMeshH(mesh, FakeSBP(), obj, opts) --> roughly(mesh.min_node_dist*1./sqrt(2))
+
+
 end
 
 
