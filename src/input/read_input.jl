@@ -259,6 +259,7 @@ get!(arg_dict, "calc_adjoint", false)
 
 # write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+commsize = MPI.Comm_size(MPI.COMM_WORLD)
 if myrank == 0
   fname = "arg_dict_output.jl"
   rmfile(fname)
@@ -279,6 +280,13 @@ if myrank == 0
   close(f)
 end
 # do some sanity checks here
+
+if commsize > 1 && arg_dict["jac_type"] != 3 && arg_dict["run_type"] != 1
+  throw(ErrorException("Invalid jacobian type for parallel run"))
+end
+
+
+
 # deal with boundary conditions
 # "numBC" must be dictionary key whose value is the number of boundary conditions
 # for each boundary condition there must be keys BCi and BCi_name for i=1:numBC

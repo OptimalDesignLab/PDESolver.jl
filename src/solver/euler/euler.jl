@@ -618,9 +618,9 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
   if opts["parallel_type"] == 1
 #    println(eqn.params.f, "doing face integrals using face data")
     calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
-#  else
+  else
 #    println(eqn.params.f, "doing face integrals using element data")
-#    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
   end
 
   return nothing

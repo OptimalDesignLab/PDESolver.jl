@@ -38,7 +38,7 @@ facts("----- Testing Parallel -----") do
 
   datas = readdlm("../serial/error_calc.dat")
   datap = readdlm("./error_calc.dat")
-  @fact datap[1] --> roughly(datap[1], atol=1e-13)
+  @fact datas[1] --> roughly(datap[1], atol=1e-13)
 
   cd(start_dir)
 

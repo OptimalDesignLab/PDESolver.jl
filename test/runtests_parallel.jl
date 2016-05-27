@@ -22,7 +22,6 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 
 start_dir = pwd()
 resize!(ARGS, 1)
-ARGS[1] = "input_vals_parallel.jl"
 
 facts("----- Testing Parallel -----") do
 
@@ -37,17 +36,17 @@ facts("----- Testing Parallel -----") do
   @fact datas[1] --> roughly(datap[1], atol=1e-13)
   @fact datas[2] --> roughly(datap[2], atol=1e-13)
   cd("../../")
-#=
+
   cd("./newton/parallel")
   ARGS[1] = "input_vals_parallel.jl"
   include(STARTUP_PATH)
 
   datas = readdlm("../serial/error_calc.dat")
   datap = readdlm("./error_calc.dat")
-  @fact datap[1] --> roughly(datap[1], atol=1e-13)
+  @fact datas[1] --> roughly(datap[1], atol=1e-13)
 
   cd(start_dir)
-=#
+
 end
 
 
