@@ -974,6 +974,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
     end  # end if statement
   end  # end loop over vector q
 
+  max_speed = MPI.Allreduce(max_speed, MPI.MAX, mesh.comm)
   return max_speed
 end  # end function
 

@@ -191,7 +191,9 @@ end  # end evalEuler
 function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
 
-  println("\nInitializing Euler module")
+#  println("\nInitializing Euler module")
+
+  initMPIStructures(mesh, opts)
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
   getBCFunctors(pmesh, sbp, eqn, opts)

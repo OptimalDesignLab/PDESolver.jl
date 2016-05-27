@@ -119,7 +119,7 @@ else  # continuous Galerkin
   end
 end
 
-
+myrank = mesh.myrank
 # TODO: input argument for dofpernode
 
 # create euler equation
@@ -140,13 +140,13 @@ q_vec = eqn.q_vec       # solution at current timestep
 # TODO: add a boolean options here?
 Relfunc_name = opts["Relfunc_name"]
 if haskey(ICDict, Relfunc_name)
-  println("\ncalculating residual for relative residual tolerance")
+  @mpi_master println("\ncalculating residual for relative residual tolerance")
   Relfunc = ICDict[Relfunc_name]
-  println("Relfunc = ", Relfunc)
+  @mpi_master println("Relfunc = ", Relfunc)
   Relfunc(mesh, sbp, eqn, opts, q_vec)
  
   if var_type == :entropy
-    println("converting to entropy variables")
+    @mpi_master println("converting to entropy variables")
     for i=1:mesh.numDofPerNode:mesh.numDof
       q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
       convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
@@ -168,10 +168,10 @@ if haskey(ICDict, Relfunc_name)
 end
 
 # populate u0 with initial condition
-println("\nEvaluating initial condition")
+@mpi_master println("\nEvaluating initial condition")
 ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
-println("ICfunc = ", ICfunc)
+@mpi_master println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec)
 
 if var_type == :entropy
@@ -184,7 +184,7 @@ end
 # TODO: cleanup 20151009 start
 
 if opts["calc_error"]
-  println("\ncalculating error of file ", opts["calc_error_infname"], 
+  @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"], 
           " compared to initial condition")
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
@@ -193,24 +193,15 @@ if opts["calc_error"]
   err = calcNorm(eqn, err_vec)
 
   # calculate avg mesh size
-  jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
-  jac_vec = zeros(Tmsh, mesh.numNodes)
-  assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
-  # scale by the minimum distance between nodes on a reference element
-  # this is a bit of an assumption, because for distorted elements this
-  # might not be entirely accurate
-  println("mesh.min_node_distance = ", mesh.min_node_dist)
-  h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
-  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
-#  println("h_avg = ", h_avg)
-  h_avg *= mesh.min_node_dist/mesh.commsize
-#  println("h_avg = ", h_avg)
+  h_avg = calcMeshH(mesh, sbp, eqn, opts)
 
-  outname = opts["calc_error_outfname"]
-  println("printint err = ", err, " to file ", outname)
-  f = open(outname, "w")
-  println(f, err, " ", h_avg)
-  close(f)
+  @mpi_master begin
+    outname = opts["calc_error_outfname"]
+    println("printint err = ", err, " to file ", outname)
+    f = open(outname, "w")
+    println(f, err, " ", h_avg)
+    close(f)
+  end
 
   # write visualization
   saveSolutionToMesh(mesh, vec(err_vec))
@@ -218,16 +209,18 @@ if opts["calc_error"]
 end
 
 if opts["calc_trunc_error"]  # calculate truncation error
-  println("\nCalculating residual for truncation error")
+  @mpi_master println("\nCalculating residual for truncation error")
   tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
 
-  f = open("error_trunc.dat", "w")
-  println(f, tmp)
-  close(f)
+  @mpi_master begin
+    f = open("error_trunc.dat", "w")
+    println(f, tmp)
+    close(f)
+  end
 end
 
 if opts["perturb_ic"]
-  println("\nPerturbing initial condition")
+  @mpi_master println("\nPerturbing initial condition")
   perturb_mag = opts["perturb_mag"]
   for i=1:mesh.numDof
     q_vec[i] += perturb_mag*rand()
@@ -236,14 +229,14 @@ end
 
 res_vec_exact = deepcopy(q_vec)
 
-rmfile("IC.dat")
-writedlm("IC.dat", real(q_vec))
+rmfile("IC_$myrank.dat")
+writedlm("IC_$myrank.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
 if opts["calc_dt"]
   wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
-  println("max wave speed = ", wave_speed)
+  @mpi_master println("max wave speed = ", wave_speed)
   delta_t = opts["CFL"]*mesh.min_el_size/wave_speed
   println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
   opts["delta_t"] = delta_t
@@ -315,8 +308,6 @@ if opts["solve"]
 #              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
 #              res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
-   println("finish rk4")
-   printSolution("rk4_solution.dat", eqn.res_vec)
   # println("rk4 @time printed above")
   elseif flag == 2 # forward diff dR/du
 
@@ -344,8 +335,6 @@ if opts["solve"]
                  step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
-    printSolution("newton_solution.dat", eqn.res_vec)
-
   elseif flag == 6
     @time newton_check(evalEuler, mesh, sbp, eqn, opts)
     vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
@@ -356,11 +345,11 @@ if opts["solve"]
 
   elseif flag == 7
     @time jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
+    writedlm("solution_$myrank.dat", jac_col)
 
   elseif flag == 8
     @time jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
+    writedlm("solution_$myrank.dat", jac_col)
 
   end       # end of if/elseif blocks checking flag
 
@@ -374,12 +363,12 @@ if opts["solve"]
 
 
   if opts["write_finalsolution"]
-    println("writing final solution")
+    @mpi_master println("writing final solution")
     writedlm("solution_final.dat", real(eqn.q_vec))
   end
 
   if opts["write_finalresidual"]
-    writedlm("residual_final.dat", real(eqn.res_vec))
+    writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
   end
 
 
@@ -403,24 +392,12 @@ if opts["solve"]
       myrank = mesh.myrank
       q_diff = eqn.q_vec - q_exact
       diff_norm = calcNorm(eqn, q_diff)
-      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
-      diff_norm = sqrt(diff_norm)
+#      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
+#      diff_norm = sqrt(diff_norm)
 
 
       @mpi_master println("solution error norm = ", diff_norm)
-
-      jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
-      jac_vec = zeros(Tmsh, mesh.numNodes)
-      assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
-      # scale by the minimum distance between nodes on a reference element
-      # this is a bit of an assumption, because for distorted elements this
-      # might not be entirely accurate
-      h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
-      h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
-    #  println("h_avg = ", h_avg)
-      h_avg *= mesh.min_node_dist/mesh.commsize
-    #  println("h_avg = ", h_avg)
-
+      h_avg = calcMeshH(mesh, sbp, eqn, opts)
 
       # print to file
       @mpi_master begin

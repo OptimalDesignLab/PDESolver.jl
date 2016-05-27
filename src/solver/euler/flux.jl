@@ -106,6 +106,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
     interfaces = mesh.shared_interfaces[idx]
     qL_arr = eqn.q_face_send[idx]
     qR_arr = eqn.q_face_recv[idx]
+    aux_vars_arr = eqn.aux_vars_sharedface[idx]
     dxidx_arr = mesh.dxidx_sharedface[idx]
     flux_arr = eqn.flux_sharedface[idx]
 
@@ -120,7 +121,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
         qL = sview(qL_arr, :, k, j)
         qR = sview(qR_arr, :, k, j)
         dxidx = sview(dxidx_arr, :, :, k, j)
-        aux_vars = sview(eqn.aux_vars_sharedface, :, k, j)
+        aux_vars = sview(aux_vars_arr, :, k, j)
         nrm = sview(sbp.facenormal, :, fL)
         flux_j = sview(flux_arr, :, k, j)
 #        flux_arr[1,k,j] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
@@ -185,7 +186,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract
       for i=1:mesh.peer_face_counts[peer]
         for j=1:mesh.numNodesPerFace
           q_vals = sview(q_vals_p, :, j, i)
-          eqn.aux_vars_sharedface[1, j, i] = calcPressure(eqn.params, q_vals)
+          aux_vars[1, j, i] = calcPressure(eqn.params, q_vals)
         end
       end
     end
