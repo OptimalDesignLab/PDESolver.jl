@@ -22,19 +22,19 @@ unified view of the interface, respectively.  This allows treating the
 shared faces like either a special kind of boundary condition or a proper 
 interface, similar to the interior interfaces.
 
-There are 2 modes of parallel operation, one for explict time marching and
+There are 2 modes of parallel operation, one for explicit time marching and
 the other for Newton's method.
 
-##Explict Time Marching
+##Explicate Time Marching
 In this mode, each process each process sends the solution values at the 
-shared faces to the other processes.  Each process then evalutes the residual
+shared faces to the other processes.  Each process then evaluates the residual
 using the received values and updates the solution.
 
 The function `exchangeFaceData` is designed to perform the sending and 
 receiving of data.  Non-blocking communications are used, and the function
 does not wait for the communication to finish before returning.  The 
 MPI_Requests for the sends and receives are stored in the appropriate fields
-of the mesh.  It is the responsiblity of each physics module call 
+of the mesh.  It is the responsibility of each physics module call 
 `exchangeFaceData` and to wait for the communication to finish before using
 the data.  Because the receives could be completed in any order, it is 
 recommended to use `MPI_Waitany` to wait for the first receive to complete, 

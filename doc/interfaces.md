@@ -179,7 +179,7 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
   dxidx_bndry::Array{Tmsh, 4}
   jac_bndry::Array{T1, 2}
   dxidx_face::Array{Tmsh, 4}
-  jac_face::Arary{Tmsh, 2}
+  jac_face::Array{Tmsh, 2}
   
   # parallel data
   coords_sharedface::Array{Array{Tmsh, 3}, 1}
@@ -316,7 +316,7 @@ This data is required for parallelizing interpolated DG meshes
                     array is 2 x 2 x `numFaceNodes` x number of faces shared
                     with this process.
 `jac_sharedface`: similar to `coords_sharedface`, `jac` interpolated to faces
-                  betweet a local element and a non-local element. Each array
+                  between a local element and a non-local element. Each array
                   is `numFaceNodes` x number of faces shared with this process.
 
 ####Boundary Condition Data
