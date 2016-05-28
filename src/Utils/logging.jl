@@ -1,3 +1,5 @@
+# functions to log data
+
 @doc """
 ### Utils.sharedFaceLogging
 
