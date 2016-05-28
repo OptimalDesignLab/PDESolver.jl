@@ -45,6 +45,8 @@ The required fields of an `AbstractSolutionData are`:
 ```
   q::AbstractArray{Tsol, 3}
   q_vec::AbstractArray{Tsol, 1}
+  q_face_send::AbstractArray{AbstractArray{Tsol, 3}, 1}
+  q_face_recv::AbstractArray{AbstractArray{Tsol, 3}, 1}
   res::AbstractArray{Tres, 3}
   res_vec::AbstractArray{Tres, 1}
   M::AbstractArray{Float64, 1}
@@ -68,6 +70,13 @@ Even though this vector is not used by the residual evaluation, it is needed for
 There are functions to facilitate the scattering of values from `q_vec` to `q`.
 Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding "gather" operation (ie. `q` -> `q_vec`).
 
+`q_face_send`: send buffers for sending q variables to other processes.  There are `npeer` arrays, and the dimensions of the arrays depend on the parallel mode.
+If parallelizing `rk4`, the arrays are `numDofPerNode` x `numNodesPerFace` x `numSharedFaces`.
+If parallelizing Newtons method, the arrays are `numDofPerNode` x `numNodesPerElement x `numSharedElements`.
+
+`q_face_recv`: receive buffers for receiving `q` values from other processes.
+Same shape as `q_face_send`.
+
 `res`: similar to `q`, except that the residual evaluation function populates it with the residual values.  
        As with `q`, the residual evaluation function only interacts with this array, never with `res_vec`.
 
@@ -79,13 +88,12 @@ Note that for Continuous Galerkin type discretization (as opposed to Discontinuo
 
 `disassembleSolution`:  Function that takes the a vector such as `q_vec` and scatters it to an array such as `q`.
                         This function must have the signature:
-                        `disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1}`
+                        `disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})`
                         Because this variable is a field of a type, it will be dynamically dispatched.
                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.
 
 `assembleSolution`:  Function that takes an array such as `res` and performs an additive reduction to a vector such as `res_vec`.
                      This function must have the signature:
-
                      `assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)`
                      The argument `zero_resvec` determines whether `res_vec` is zeroed before the reduction is performed.
                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.
@@ -133,11 +141,48 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
   numDofPerNode::Integer
   numNodesPerElement::Integer
   order::Integer
+  numNodesPerFace::Int
+
+  # parallel counts
+  npeers::Int
+  numGlobalEl::Int 
+  numSharedEl::Int
+  peer_face_counts::Array{Int, 1}
+
+  # MPI Info
+  comm::MPI.Comm
+  myrank::Int
+  commsize::Int
+  peer_parts::Array{Int, 1}
+
+  # Send/Receive Infrastructure
+  send_waited::Array{Bool, 1}
+  send_reqs::Array{MPI.Request, 1}
+  send_stats::Array{MPI.Status, 1}
+  recv_waited::Array{Bool, 1}
+  recv_reqs::Array{MPI.Request, 1}
+  recv_stats::Array{MPI.Status, 1}
+
+  # Discretization type
+  isDG::Bool
+  isInterpolated::bool   
 
   # mesh data
   coords::AbstractArray{Tmsh, 3}
   dxidx::AbstractArray{Tmsh, 4}
   jac::AbstractArray{Tmsh, 2}
+
+  # interpolated data
+  coords_bndry::Array{Tmsh, 3}
+  dxidx_bndry::Array{Tmsh, 4}
+  jac_bndry::Array{T1, 2}
+  dxidx_face::Array{Tmsh, 4}
+  jac_face::Arary{Tmsh, 2}
+  
+  # parallel data
+  coords_sharedface::Array{Array{Tmsh, 3}, 1}
+  dxidx_sharedface::Array{Array{Tmsh, 4}, 1}
+  jac_sharedface::Array{Array{Tmsh, 2}, 1}  
 
   # boundary condition data
   numBC::Integer
@@ -157,8 +202,16 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
 
   # mesh coloring data
   numColors::Integer
-  color_masks::AbstractArray{ AbstractArray{Number, 1}, 1}, 
+  maxColors::Integer
+  color_masks::AbstractArray{ AbstractArray{Number, 1}, 1}
+  shared_element_colormasks::Array{Array{BitArray{1}, 1}, 1}
   pertNeighborEls::AbstractArray{Integer, 2}
+
+  # parallel bookkeeping
+  bndries_local::Array{Array{Boundary, 1}, 1}
+  bndries_remote::Array{Array{Boundary, 1}, 1}
+  shared_interfaces::Array{Array{Interface, 1}, 1}
+  
 ```
 ####Counts
 
@@ -176,6 +229,43 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
 
 `order`:  order of the discretization (ie. first order, second order...), where an order `p` discretization should have a convergence rate of `p+1`.
 
+`numNodesPerFace`: number of nodes on an edge in 2D or face in 3D.  For interpolated
+                   meshes it is the number of interpolation points on the face
+
+####Parallel Counts
+`npeers`: number of processes that have elements that share a face with the current
+         process
+
+`numGlobalEl`: number of locally owned elements + number of non-local elements that
+               share a face with a locally owned element
+
+`numSharedEl`: number of non-local elements that share a face with a locally owned 
+               element
+
+####MPI Info
+`comm`: the MPI Communicator the mesh is defined on
+`myrank`: rank of current MPI process (0-based)
+`commsize`: number of MPI processes on this communicator
+`peer_parts`: array of MPI proccess ranks for each process that has elements that 
+              share a face with the current process
+
+####Send/Receive Infrastructure
+`send_waited`: array of bools (length `npeers`) that indicate if MPI_Wait has
+               already been called on on each MPI send Request
+`send_reqs`: array of MPI Requests for send operations
+`send_stats`: array of MPI Status objects for send operations
+`recv_waited`: same purpose as `send_waited`, for receives
+`recv_reqs`: same purpose as `send_reqs`, for receives
+`recv_stats`: same purpose as `recv_stats`, for receives
+
+Note that some MPI implementations do not allow calling MPI_Wait on a Request
+more than once.  The `send_waited` and `receive_waited` arrays provide a way
+to guard against this.
+
+####Discretization Type
+`isDG`: true if mesh is a DG type discretization
+`isInterpolated`: true if mesh requires data to be interpolated to the faces
+                  of an element
 
 ####Mesh Data
 `coords`: `n` x `numNodesPerElement` x `numEl` array, where `n` is the dimensionality of   the equation being solved (2D or 3D typically).  `coords[:, nodenum, elnum] = [x, y, z]` coordinates of node `nodenum` of element `elnum`.
@@ -185,6 +275,39 @@ It stores the mapping jacobian scaled by `( 1/det(jac) dxi/dx )` where `xi` are 
 
 `jac`  : `numNodesPerElement` x `numEl` array, holding the determinant of the mapping jacobian `dxi/dx` at each node of each element.
 
+####Interpolated Data
+This data is used for interpolated mesh only.
+
+`coords_bndry`: coordinates of nodes on the boundary of the mesh, 
+                2 x `numFaceNodes` x `numBoundaryEdges`
+
+`dxidx_bndry`: 2 x 2 x `numFaceNodes` x `numBoundary edges array of `dxidx`
+               interpolated to the boundary of the mesh
+
+`jac_bndry`: `numFaceNodes` x `numBoundaryEdges` array of `jac` interpolated 
+              to the boundary
+
+`dxidx_face`: 2 x 2 x `numFaceNodes` x `numInterfaces` array of `dxidx`
+              interpolated to the face shared between two elements
+
+`jac_face`: `numNodesPerFace` x `numInterfaces` array of `jac` interpolated
+             to the face shared between two element
+
+####Parallel Data
+This data is required for parallelizing interpolated DG meshes
+
+`coords_sharedface`: array of arrays, one array for each peer process,
+                     containing the coordinates of the nodes on the faces
+                     shared between a local element on a non-local element.
+                     Each array is 2 x `numFaceNodes` x number of faces shared
+                     with this process.
+`dxidx_sharedface`: similar to `coords_sharedface`, `dxidx` interpolated to 
+                    faces between elements in different processes, each 
+                    array is 2 x 2 x `numFaceNodes` x number of faces shared
+                    with this process.
+`jac_sharedface`: similar to `coords_sharedface`, `jac` interpolated to faces
+                  betweet a local element and a non-local element. Each array
+                  is `numFaceNodes` x number of faces shared with this process.
 
 ####Boundary Condition Data
 The mesh object stores data related to applying boundary conditions.
@@ -260,12 +383,33 @@ Each degree of freedom on an element is perturbed independently of the other deg
 The fields required are:
 
 `numColors`:  The number of colors in the mesh.
+`maxColors`: the maximum number of colors on any process
 
 `color_masks`:  array of length `numColors`.  Each entry in the array is itself an array of length `numEl`.  Each entry of the inner array is either a 1 or a 0, indicating if the current element is perturbed or not for the current color.
 For example, in `color_mask_i = color_masks[i]; mask_elj = color_mask_i[j]`, the variable `mask_elj` is either a 1 or a zero, determining whether or not element `j` is perturbed as part of color `i`.
 
+`shared_element_colormasks`: array of BitArrays controlling when to perturb
+                             non-local elements.  There are `npeers` arrays, 
+                             each of length number of non-local elements shared
+                             with this process
 
 `pertNeighborEls`:  `numEl` x `numColors` array.  `neighbor_nums[i,j]` is the element number of of the element whose perturbation is affected element `i` when color `j` is being perturbed, or zero if element `i` is not affected by any perturbation.  
+
+#### Parallel Bookkeeping
+`bndries_local`: array of arrays of `Boundary`s describing faces shared 
+                 with non-local elements from the local side (ie. the 
+                 local element number and face).  The number of arrays is 
+                 `npeers`.
+
+`bndries_remote`: similar to `bndries_local`, except describing the faces 
+                  from the non-local side.  Note that the element numbers are
+                  from the *remote* process
+
+`shared_interfaces`: array of arrays of `Interface`s describing the faces 
+                     shared between local and non-local elements.  The local
+                     element is *always* `elementL`.  The remote element is 
+                     assigned a local number greater than `numEl`.
+
 
 ###Other Functions
 The mesh module must also define and export the functions
