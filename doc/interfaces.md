@@ -148,6 +148,8 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
   numGlobalEl::Int 
   numSharedEl::Int
   peer_face_counts::Array{Int, 1}
+  local_element_counts::Array{Int, 1}
+  remote_element_counts::array{Int, 1}
 
   # MPI Info
   comm::MPI.Comm
@@ -197,6 +199,7 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
 
   # degree of freedom number data
   dofs::AbstractArray{Integer, 2}
+  dof_offset::Int
   sparsity_bnds::AbstractArray{Integer, 2}
   sparsity_nodebnds::AbstractArray{Integer, 2}
 
@@ -211,6 +214,8 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
   bndries_local::Array{Array{Boundary, 1}, 1}
   bndries_remote::Array{Array{Boundary, 1}, 1}
   shared_interfaces::Array{Array{Interface, 1}, 1}
+  shared_element_offsets::Array{Int, 1}
+  local_element_lists::Array{Array{Int, 1}, 1}
   
 ```
 ####Counts
@@ -241,6 +246,11 @@ The static parameter `Tmsh` is used to enable differentiation with respect to th
 
 `numSharedEl`: number of non-local elements that share a face with a locally owned 
                element
+`local_element_counts`: array of length `npeers`, number of local elements 
+                        that share a face with each remote process
+
+`remote_element_counts`: array of length `npeers`, number of remote elements
+                         that share a face with with current process
 
 ####MPI Info
 `comm`: the MPI Communicator the mesh is defined on
@@ -340,8 +350,11 @@ Unlike `bndryfaces`, the entries in the array do not have to be in any particula
 
 ####Degree of Freedom Numbering Data
 `dofs`:  `numDofPerNode` x `numNodesPerElement` x `numEl` array.
-Holds the degree of freedom number of each degree of freedom.
-Although the exact method used to assign dof numbers is not critical, all degrees of freedom on a node must be number sequentially.
+Holds the local degree of freedom number of each degree of freedom.
+Although the exact method used to assign dof numbers is not critical, all degrees of freedom on a node must be numbered sequentially.
+
+`dof_offset`: offset added to the local dof number to make it a global dof 
+              number.
 
 `sparsity_bnds`:  2 x `numDof` array.
 `sparsity_bnds[:, i]` holds the maximum, minimum degree of freedom numbers associated with degree of freedom `i`.
@@ -410,7 +423,15 @@ For example, in `color_mask_i = color_masks[i]; mask_elj = color_mask_i[j]`, the
                      element is *always* `elementL`.  The remote element is 
                      assigned a local number greater than `numEl`.
 
+`shared_element_offsets`: array of length npeers+1 that contains the first 
+                          element number assigned to elements on the shared
+                          interface.  The last entry is equal to the highest
+                          element number on the last peer process + 1.  The
+                          elements numbers assigned to a given peer must form
+                          a contiguous range.
 
+`local_element_lists`: array of arrays containing the element numbers of the 
+                       elements that share a face with each peer process
 ###Other Functions
 The mesh module must also define and export the functions
 
