@@ -40,7 +40,7 @@ facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
   	Tdim = 2
   	alpha_x = ones(Tsol, mesh.numNodesPerElement)
   	alpha_y = ones(alpha_x)
-  	dxidx = view(mesh.dxidx,:,:,:,1)
+  	dxidx = sview(mesh.dxidx,:,:,:,1)
     shapefuncderiv = zeros(Tsol, sbp.numnodes, sbp.numnodes, Tdim)
     calcShapefuncDeriv(sbp, shapefuncderiv)
     AxiDxi = calcAxiDxi(mesh, dxidx, alpha_x, alpha_y, shapefuncderiv)

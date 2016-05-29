@@ -15,7 +15,7 @@ include(STARTUP_PATH)
 facts("----- Testing DG Flux ------") do
   eqn.params.LFalpha = 1.0
   dxidx1 = mesh.dxidx_face[:, :, 1, 1]
-  nrm = view(sbp.facenormal, :, mesh.interfaces[1].faceL)
+  nrm = sview(sbp.facenormal, :, mesh.interfaces[1].faceL)
   alpha = [eqn.alpha_x, eqn.alpha_y]
   alpha_n = sum((dxidx1*alpha).*nrm)
   qL = 1.0

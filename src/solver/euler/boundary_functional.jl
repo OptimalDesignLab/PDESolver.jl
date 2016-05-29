@@ -253,7 +253,7 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
   # g_edge_number = 1 # Geometric boundary edge on which the force needs to be computed
   start_index = mesh.bndry_offsets[g_edge_number]
   end_index = mesh.bndry_offsets[g_edge_number+1]
-  bndry_facenums = view(mesh.bndryfaces, start_index:(end_index - 1)) # faces on geometric edge i
+  bndry_facenums = sview(mesh.bndryfaces, start_index:(end_index - 1)) # faces on geometric edge i
   # println("bndry_facenums = ", bndry_facenums)
 
   nfaces = length(bndry_facenums)
@@ -267,12 +267,12 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
     bndry_i = bndry_facenums[i]
     for j = 1:sbp.numfacenodes
       k = sbp.facenodes[j, bndry_i.face]
-      q = view(eqn.q, :, k, bndry_i.element)
+      q = sview(eqn.q, :, k, bndry_i.element)
       convertToConservative(eqn.params, q, q2)
-      aux_vars = view(eqn.aux_vars, :, k, bndry_i.element)
-      x = view(mesh.coords, :, k, bndry_i.element)
-      dxidx = view(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = view(sbp.facenormal, :, bndry_i.face)
+      aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
+      x = sview(mesh.coords, :, k, bndry_i.element)
+      dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
 
       # analytical_force[k,bndry_i.element] = calc_analytical_forces(mesh, eqn.params, x)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]

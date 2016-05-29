@@ -285,9 +285,9 @@ facts("--- Testing Euler Low Level Functions --- ") do
    F_roe = zeros(4)
 
    nrm1 = [dxidx[1,1], dxidx[1,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
    nrm2 = [dxidx[2,1], dxidx[2,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
    EulerEquationMod.RoeSolver(q, qg, aux_vars, dxidx, dir, F_roe, eqn.params)
    @fact F_roe --> roughly(-F) 
@@ -297,9 +297,9 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, q)
 
    nrm1 = [dxidx[1,1], dxidx[1,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
    nrm2 = [dxidx[2,1], dxidx[2,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
 
    println("q = ", q)
@@ -312,9 +312,9 @@ facts("--- Testing Euler Low Level Functions --- ") do
    q[3] = 0  # make flow parallel to wall
    func1 = EulerEquationMod.noPenetrationBC()
    nrm1 = [dxidx[1,1], dxidx[1,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
    nrm2 = [dxidx[2,1], dxidx[2,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
 
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
@@ -325,9 +325,9 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
    func1 = EulerEquationMod.Rho1E2U3BC()
    nrm1 = [dxidx[1,1], dxidx[1,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, view(flux_parametric, :, 1))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
    nrm2 = [dxidx[2,1], dxidx[2,2]]
-   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, view(flux_parametric, :, 2))
+   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
 
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
