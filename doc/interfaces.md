@@ -131,6 +131,14 @@ This should make it easy to accommodate different mesh software without making a
 
 The static parameter `Tmsh` is used to enable differentiation with respect to the mesh variable in the future.
 
+It also defines
+
+`AbstractCGMesh{Tmsh} <: AbstractMesh{Tmsh}`
+and
+`AbstractDGMesh{Tmsh} <: AbstractMesh{Tmsh}`
+
+as the the supertypes for all CG and DG meshes, respectively.  
+
 ###Required Fields
 ```
   # counts
