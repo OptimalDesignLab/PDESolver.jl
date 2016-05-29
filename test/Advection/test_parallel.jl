@@ -154,4 +154,15 @@ facts("----- Testing Parallel Functions -----") do
   opts["dmg_name"] = "src/mesh_files/psquare2.dmg"
   make_input( opts, string("./rk4/parallel/", fname, "p"))
 
+  start_dir = pwd()
+  cd("./newton/serial")
+  ARGS[1] = "input_vals_serial.jl"
+  include(STARTUP_PATH)
+  cd(start_dir)
+  opts["smb_name"] = "src/mesh_files/psquare2.smb"
+  opts["dmg_name"] = "src/mesh_files/psquare2.dmg"
+  make_input(opts, string("./newton/parallel/", "input_vals_parallel"))
+
+
+
 end
