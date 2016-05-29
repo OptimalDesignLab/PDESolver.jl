@@ -22,6 +22,7 @@ script:
   - julia ./runtests.jl
   - cd ./Advection
   - julia ./runtests_advection.jl
+  - ls ./newton/parallel/
   - cd ..
   - ./runtests_parallel.sh
 after_success:
