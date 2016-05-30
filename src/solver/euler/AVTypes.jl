@@ -1,8 +1,31 @@
 using ODLCommonTools
 
 # TODO: long-form document this
-
 export ArtificialViscosityType
+
+
+@doc """
+### ArtificialViscosityType
+
+Composite type with an inner constructor for Artificial Viscosity
+
+**Members**
+
+*  `res_type` :
+*  `q`        : Solution Array (eqn.q) where Artificial viscosity is applied
+*  `aux_vars` : Auxiliary variables
+*  `flux_parametric` : flux in xi direction
+*  `res`      : Result of computation
+*  `res_vec`  : result of computation in vector form
+*  `q_vec`    : initial condition in vector form
+*  `edgestab_alpha` : alpha needed by edgestabilization
+*  `bndryflux` : boundary flux
+*  `stabscale` : stabilization scale factor
+*  `Minv`      : inverse mass matrix
+
+
+
+"""->
 
 type ArtificialViscosityType{Tsol, Tres, Tdim, Tmsh} <: AbstractSolutionData{Tsol}
 
