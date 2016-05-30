@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #jflags="--code-coverage=user"
-jflags=""
+jflags=$@
 err=0
 start_dir=`pwd`
 cd ./Advection
