@@ -19,7 +19,7 @@ script:
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd()); Pkg.build("PDESolver")'
   - source ~/.julia/v0.4/PumiInterface/src/evars.sh
   - cd ~/.julia/v0.4/PDESolver/test
-  - ./runtest.sh
+  - ./runtests.sh
 #  - julia ./runtests.jl
 #  - cd ./Advection
 #  - julia ./runtests_advection.jl
