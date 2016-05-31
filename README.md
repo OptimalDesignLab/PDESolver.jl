@@ -114,4 +114,5 @@ element was created from.
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 [![Coverage Status](https://coveralls.io/repos/OptimalDesignLab/PDESolver.jl/badge.png)](https://coveralls.io/r/OptimalDesignLab/PDESolver.jl)
 [![Documentation Status](https://readthedocs.org/projects/pdesolverjl/badge/?version=latest)](https://readthedocs.org/projects/pdesolverjl/?badge=latest)
-[![Codecov branch](https://img.shields.io/codecov/c/github/OptimalDesignLab/PDESolver/work.svg?maxAge=2592000)]()
+[![codecov](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl)
+
