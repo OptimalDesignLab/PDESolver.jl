@@ -185,7 +185,13 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   eqn.params.time.t_alloc += @elapsed if jac_type == 1  # dense
     jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   elseif jac_type == 2  # sparse
-    jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
+    if typeof(mesh) <: AbstractCGMesh
+      println("creating CG SparseMatrix")
+      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
+    else
+      println("Creating DG sparse matrix")
+      jac = SparseMatrixCSC(mesh, Tjac)
+    end
   elseif jac_type == 3 || jac_type == 4 # petsc
     jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data, func)
   end
@@ -1215,6 +1221,7 @@ for j_j = 1:mesh.numNodesPerElement
     row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
 
     tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+    println("inserting value ", tmp, " into ", row_idx,", ", dof_pert + mesh.dof_offset)
     jac[row_idx, dof_pert + mesh.dof_offset] += tmp
 
   end

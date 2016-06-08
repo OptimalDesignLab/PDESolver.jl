@@ -1,8 +1,10 @@
 # test boundary forces
-ARGS[1] = "input_vals_functional_CG.jl"
-include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
-
 facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
+  clean_dict(arg_dict)
+  ARGS[1] = "input_vals_functional_CG.jl"
+  include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
+  println("use_DG = ", arg_dict["use_DG"])
+
 
   @fact mesh.isDG --> false
   @fact opts["functional_name1"] --> "qflux"
@@ -17,10 +19,10 @@ facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
   rm("./functional_error1.dat") # Delete the file
 end
 
-ARGS[1] = "input_vals_functional_DG.jl"
-include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
-
 facts("--- Testing Boundary Functional Computation on DG Mesh ---") do
+  ARGS[1] = "input_vals_functional_DG.jl"
+  include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
+
 
   @fact mesh.isDG --> true
   @fact opts["functional_name1"] --> "qflux"

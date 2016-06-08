@@ -16,6 +16,12 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
+function clean_dict(collection)
+  for i in keys(collection)
+    delete!(collection, i)
+  end
+end
+
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
 # insert a command line argument
 resize!(ARGS, 1)
