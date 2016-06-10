@@ -10,7 +10,7 @@ facts("--- Testing Mesh --- ") do
   @fact mesh.numDof --> 16
   @fact mesh.numNodes --> 4
   @fact mesh.numDofPerNode --> 4
-  @fact mesh.numBoundaryEdges --> 4
+  @fact mesh.numBoundaryFaces --> 4
   @fact mesh.numInterfaces --> 1
   @fact mesh.numNodesPerElement --> 3
   @fact mesh.numNodesPerType --> [1, 0 , 0]

@@ -50,7 +50,7 @@ facts("\n----- Testing DG Boundary Condition -----") do
   # test use of eqn.q_bndry for BC
   eqn.alpha_x = -1.0
   eqn.alpha_y = -1.0
-  range_idx = 1:mesh.numBoundaryEdges
+  range_idx = 1:mesh.numBoundaryFaces
   AdvectionEquationMod.calcBoundaryFlux(mesh, sbp, eqn, mesh.bndry_funcs[1], range_idx, mesh.bndryfaces, eqn.bndryflux)
 
   val_code = 0.0
@@ -82,7 +82,7 @@ facts("\n----- Testing DG Boundary Condition -----") do
   mesh.bndry_funcs[1] = AdvectionEquationMod.BCDict["p1BC"]
   AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
 
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     for j=1:mesh.sbpface.numnodes
       coords = mesh.coords_bndry[:, j, i]
       q_test = AdvectionEquationMod.calc_p1(coords, eqn.alpha_x, eqn.alpha_y, 0.0)

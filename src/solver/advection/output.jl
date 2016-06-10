@@ -52,24 +52,9 @@ function printCoordinates(mesh::AbstractMesh)
 
 myrank = mesh.myrank
 println("entered printCoordinates")
-f = open("coords_output_$myrank.dat", "w")
+writedlm("coords_output_$myrank.dat", mesh.coords)
 
-for i=1:mesh.numEl
-  dofnums_i = getGlobalNodeNumbers(mesh, i)
-  coords = getElementVertCoords(mesh, [i])
-
-  for j=1:3
-    coords_j = coords[:,j]
-    str = @sprintf("%d %d %16.15e %16.15e %16.15e \n", i, j, coords_j[1], coords_j[2], coords_j[3] )  # print element number
-
-    print(f, str)
-  end
-#  print(f, "\n")
-end
-
-close(f)
 return nothing
-
 end
 
 #TODO: automate adding _$myrank to file names

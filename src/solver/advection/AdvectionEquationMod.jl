@@ -139,13 +139,13 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_vec = zeros(Tres, mesh.numDof)
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
-    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
+    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
     eqn.multiplyA0inv = matVecA0inv
 
     if mesh.isDG
       eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
-      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryEdges)
+      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
       eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
 
       for i=1:mesh.npeers

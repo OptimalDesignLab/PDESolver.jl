@@ -77,7 +77,7 @@ function writeBoundary(mesh, sbp, eqn, opts)
 
   # write boundaryflux.dat
   f = open(flux_name, "a+")
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     el = mesh.bndryfaces[i].element
     face = mesh.bndryfaces[i].face
     for j=1:sbp.numfacenodes
@@ -123,7 +123,7 @@ function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3D
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
 
   # calculate aux_vars
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     for j=1:mesh.numNodesPerFace
       q_vals = sview(eqn.q_bndry, :, j, i)
       eqn.aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)

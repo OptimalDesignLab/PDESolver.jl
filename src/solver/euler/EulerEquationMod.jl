@@ -579,9 +579,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     if mesh.isDG
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, mesh.numInterfaces)
-      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, mesh.numBoundaryEdges)
+      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, mesh.numBoundaryFaces)
       eqn.aux_vars_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
-      eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryEdges)
+      eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryFaces)
     else
       eqn.q_face = Array(Tres, 0, 0, 0, 0)
       eqn.flux_face = Array(Tres, 0, 0, 0)
@@ -590,7 +590,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
-                          mesh.numBoundaryEdges)
+                          mesh.numBoundaryFaces)
 
     # send and receive buffers
     #TODO: rename buffers to not include face
