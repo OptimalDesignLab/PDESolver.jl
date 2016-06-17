@@ -43,10 +43,12 @@ facts("----- Testing Parallel Functions -----") do
   getSendData(mesh, opts, eqn.q, mesh.bndryfaces, buff, MPI.REQUEST_NULL, true)
 
   # verify that the inteperpolation was exact
+  eqn.params.alpha_x = 1
+  eqn.params.alpha_y = 1
   for i=1:length(mesh.bndryfaces)
     for j=1:mesh.numNodesPerFace
       coords = mesh.coords_bndry[:, j, i]
-      val_exp = AdvectionEquationMod.calc_p4(coords, 1, 1, 0.0)
+      val_exp = AdvectionEquationMod.calc_p4(coords, eqn.params, 0.0)
       @fact buff[1, j, i] --> roughly(val_exp, atol=1e-13)
     end
   end

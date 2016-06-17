@@ -164,7 +164,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, alpha_x, alpha_y, nx, ny, q)
+        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, eqn.params, alpha_y, nx, ny, q)
       end  # End for j = 1:sbp.numfacenodes
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
@@ -208,7 +208,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, alpha_x, alpha_y, nx, ny, q)
+        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, eqn.params, nx, ny, q)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
   end
@@ -241,7 +241,7 @@ step to compute the derivative
 
 *  `opts`    : Input dictionary
 *  `functor` : Functional name
-*  `alpha_x` & `alpha_y` : Advection velocities in X & Y directions
+*  `params`  : the ParamType for the equation
 *  `nx` & `ny` : Normal vectors
 *  `q`       : Solution variable
 
@@ -251,11 +251,11 @@ step to compute the derivative
 
 """->
 
-function calcIntegrandDeriv(opts, functor, alpha_x, alpha_y, nx, ny, q)
+function calcIntegrandDeriv(opts, functor, params::ParamType2, nx, ny, q)
 
   pert = complex(0, opts["epsilon"])  # complex perturbation
   q += pert
-  val = functor(alpha_x, alpha_y, nx, ny, q)
+  val = functor(params, nx, ny, q)
   integrand_deriv = imag(val)/norm(pert)
 
   

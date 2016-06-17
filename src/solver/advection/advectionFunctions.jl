@@ -111,8 +111,8 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   alphas_param = zeros(Tmsh, Tdim)
   dxidx = mesh.dxidx
   q = eqn.q
-  alphas_xy[1] = eqn.alpha_x
-  alphas_xy[2] = eqn.alpha_y
+  alphas_xy[1] = eqn.params.alpha_x
+  alphas_xy[2] = eqn.params.alpha_y
   if Tdim == 3
     alpha_xy[3] = eqn.alpha_z
   end
@@ -282,7 +282,7 @@ end  # end function
     opts
     src_func:  the functor that returns the value of the source term at a node
                This functor must have the signature:
-               src_func(coords, alpha_x, alpha_y, t)
+               src_func(coords, params, t)
                where coords is a vector of length 2 containing the x and y 
                coordinates of the node, alpha_x and alpha_y are the advection
                coefficients, and t is the current time.
@@ -295,8 +295,8 @@ end  # end function
 function applySRCTerm(mesh,sbp, eqn, opts, src_func)
 
   weights = sbp.w
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
+  alpha_x = eqn.params.alpha_x
+  alpha_y = eqn.params.alpha_y
 
   t = eqn.t
   for i=1:mesh.numEl
@@ -304,7 +304,7 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
     res_i = sview(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
       coords_j = sview(mesh.coords, :, j, i)
-      src_val = src_func(coords_j, alpha_x, alpha_y, t)
+      src_val = src_func(coords_j, eqn.params, t)
       res_i[j] += weights[j]*src_val/jac_i[j]
     end
   end
@@ -388,9 +388,6 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
-  eqn.alpha_x = 1.0
-  eqn.alpha_y = 1.0
-
   initMPIStructures(mesh, opts)
   return nothing
 end

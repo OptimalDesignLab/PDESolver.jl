@@ -4,9 +4,9 @@ using ArrayViews
 
 type twoxBC <: BCType
 end
-function call(obj::twoxBC, u, alpha_x, alpha_y, coords, dxidx, nrm, t)
+function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, dxidx, nrm, t)
   u_bc = 2*coords[1]
-  bndryflux = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = AdvectionEquationMod.RoeSolver(u, u_bc, params, nrm, dxidx)
   return bndryflux
 end
 
@@ -117,13 +117,13 @@ end
    x = 1.
    y = 2.
    coords = [x, y]
-   alpha_x = 0.0
-   alpha_y = 0.0
+   eqn.params.alpha_x = 0.0
+   eqn.params.alpha_y = 0.0
    t = 0.0
-   val = AdvectionEquationMod.calc_x5plusy5(coords, alpha_x, alpha_y, t)
+   val = AdvectionEquationMod.calc_x5plusy5(coords, eqn.params, t)
    @fact val --> roughly(x^5 + y^5, atol=1e-14)
    
-   val = AdvectionEquationMod.calc_exp_xplusy(coords, alpha_x, alpha_y, t)
+   val = AdvectionEquationMod.calc_exp_xplusy(coords, eqn.params, t)
    @fact val --> roughly(exp(x + y), atol=1e-14)
 
 
@@ -136,27 +136,27 @@ end
     # testing choice of u or u_bc
     u = 5.0
     u_bc = 2.5
-    alpha_x = 1.5
-    alpha_y = 0.5
+    eqn.params.alpha_x = 1.5
+    eqn.params.alpha_y = 0.5
     dxidx = [1. 0; 0 1]
     nrm = [1., 0]
 
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
 
-    @fact val --> roughly(u*alpha_x, atol=1e-14)
+    @fact val --> roughly(u*eqn.params.alpha_x, atol=1e-14)
 
     nrm = [-1.0, 0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
-    @fact val --> roughly(-u_bc*alpha_x, atol=1e-14)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    @fact val --> roughly(-u_bc*eqn.params.alpha_x, atol=1e-14)
 
 
     nrm = [0, 1.0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
-    @fact val --> roughly(u*alpha_y, atol=1e-14)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    @fact val --> roughly(u*eqn.params.alpha_y, atol=1e-14)
 
     nrm = [0, -1.0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
-    @fact val --> roughly(-u_bc*alpha_y, atol=1e-14)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    @fact val --> roughly(-u_bc*eqn.params.alpha_y, atol=1e-14)
 
     # now test rotation using dxidx
     
@@ -167,8 +167,8 @@ end
     theta = 30*pi/180  # angle between x axis and xi axis
     flow_direction = 25*pi/180
     alpha_mag = 2.0
-    alpha_x = alpha_mag*cos(flow_direction)
-    alpha_y = alpha_mag*sin(flow_direction)
+    eqn.params.alpha_x = alpha_mag*cos(flow_direction)
+    eqn.params.alpha_y = alpha_mag*sin(flow_direction)
 
     dxidx = get_rotation_matrix( theta)
 
@@ -182,7 +182,7 @@ end
     alpha_eff = alpha_mag*cos(angle_diff)  # effective alpha in the wall normal
                                            # direction
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
@@ -190,7 +190,7 @@ end
     nrm = [0, 1.]
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = u*alpha_eff
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
@@ -202,7 +202,7 @@ end
     val_exp = alpha_eff*u_bc
 
     dxidx = get_rotation_matrix( theta)
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
     @fact val --> roughly(val_exp, atol=1e-14)
 
     # check eta direction
@@ -210,7 +210,7 @@ end
     angle_diff = theta + flow_direction
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
     @fact val --> roughly(val_exp, atol=1e-14)
 
 
@@ -223,8 +223,10 @@ end
     include(STARTUP_PATH)
 
     fill!(eqn.q, 0.0)
-    alpha_x = ones(Float64 ,1, mesh.numNodesPerElement, mesh.numEl)
-    alpha_y = zeros(alpha_x)
+    eqn.params.alpha_x = 1.0
+    eqn.params.alpha_y = 1.0
+#    eqn.params.alpha_x = ones(Float64 ,1, mesh.numNodesPerElement, mesh.numEl)
+    alpha_y = zero(eqn.params.alpha_x)
 
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
@@ -279,8 +281,8 @@ end
     end
 
     fill!(eqn.res, 0.0)
-    eqn.alpha_x = 1.0
-    eqn.alpha_y = 0.0
+    eqn.params.alpha_x = 1.0
+    eqn.params.alpha_y = 0.0
     # check the boundry contribution
     AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
 
@@ -312,8 +314,8 @@ end
     end
 
     fill!(eqn.res, 0.0)
-    eqn.alpha_x = 1.0
-    eqn.alpha_y = 0.0
+    eqn.params.alpha_x = 1.0
+    eqn.params.alpha_y = 0.0
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
@@ -337,8 +339,8 @@ end
     end
 
     fill!(eqn.res, 0.0)
-    eqn.alpha_x = 1.0
-    eqn.alpha_y = 0.0
+    eqn.params.alpha_x = 1.0
+    eqn.params.alpha_y = 0.0
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
@@ -357,16 +359,16 @@ end
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         x = mesh.coords[1, j, i]
-        alpha_x = eqn.alpha_x
-        alpha_y = eqn.alpha_y
-        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], alpha_x, alpha_y, 0.25)
+        alpha_x = eqn.params.alpha_x
+        alpha_y = eqn.params.alpha_y
+        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], eqn.params, 0.25)
       end
     end
 
     mesh.bndry_funcs[1] = AdvectionEquationMod.sinwave_BC()
     fill!(eqn.res, 0.0)
-    eqn.alpha_x = 1.0
-    eqn.alpha_y = 0.0
+    eqn.params.alpha_x = 1.0
+    eqn.params.alpha_y = 0.0
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
@@ -386,17 +388,17 @@ end
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         x = mesh.coords[1, j, i]
-        alpha_x = eqn.alpha_x
-        alpha_y, = eqn.alpha_y
+        alpha_x = eqn.params.alpha_x
+        alpha_y, = eqn.params.alpha_y
 
-        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], alpha_x, alpha_y, 0.25)
+        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], eqn.params, 0.25)
       end
     end
     println("finished calculating sinwave")
     mesh.bndry_funcs[1] = AdvectionEquationMod.sinwave_BC()
     fill!(eqn.res, 0.0)
-    eqn.alpha_x = 1.0
-    eqn.alpha_y = 0.0
+    eqn.params.alpha_x = 1.0
+    eqn.params.alpha_y = 0.0
     AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
     println("called eval SCResidual")
     for i=1:mesh.numEl
@@ -412,14 +414,13 @@ end
   context("--- Testing evalInteriorFlux ---") do
     
     fill!(eqn.res, 0.0)
-    fill!(eqn.alpha_x, 1.0)
-    fill!(eqn.alpha_y, 1.0)
+    fill!(eqn.params.alpha_x, 1.0)
+    fill!(eqn.params.alpha_y, 1.0)
     
     nbrnodeindex = Array(sbp.numfacenodes:-1:1)
 
   end
   =#
-
 
 
 

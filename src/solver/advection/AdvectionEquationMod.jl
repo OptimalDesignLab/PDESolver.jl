@@ -50,17 +50,18 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
     else
       f = BufferedIO()  # create a dummy IOStream
     end
+    alpha_x = 1.0
+    alpha_y = 1.0
+    alpha_z = 1.0
 
-    alpha_x = mesh.alpha_x
-    alpha_y = mesh.alpha_y
-    alpha_z = mesh.alpha_z
+
     t = Timings()
     return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)
   end
 end
 
-typealias ParamType2 ParamType{Tsol, Tres, 2}
-typealias ParamType3 ParamType{Tsol, Tres, 3}
+typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
+typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
 
 abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
@@ -131,9 +132,6 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.params = ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts)
     eqn.t = 0.0
     eqn.res_type = Tres
-    eqn.alpha_x = 0.0
-    eqn.alpha_y = 0.0
-    eqn.alpha_z = 0.0
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.majorIterationCallback = majorIterationCallback

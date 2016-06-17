@@ -55,7 +55,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        boundary_integrand[1,j,i] = functor(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
+        boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
     	end
     end
 
@@ -108,7 +108,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        boundary_integrand[1,j,i] = functor(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
+        boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
       end
     end
 
@@ -138,7 +138,9 @@ level operation
 type qflux <: FunctionalType
 end
 
-function call(obj::qflux, alpha_x, alpha_y, nx, ny, q)
+function call(obj::qflux, params::ParamType2, nx, ny, q)
+  alpha_x = params.alpha_x
+  alpha_y = params.alpha_y
   return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
 end
 

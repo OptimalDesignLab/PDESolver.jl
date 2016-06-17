@@ -35,11 +35,7 @@ include("test_GLS2.jl")
 include("test_dg.jl")
 include("test_functional_integrate.jl")
 include("test_parallel.jl")
-#=
-cd("./convergence")
-include(joinpath(pwd(), "runtests.jl"))
-cd("..")
-=#
+
 FactCheck.exitstatus()
 
 

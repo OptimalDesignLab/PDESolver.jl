@@ -44,12 +44,10 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # get components
       qL = eqn.q_face[1, 1, j, i]
       qR = eqn.q_face[1, 2, j, i]
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
       nrm = sview(sbp.facenormal, :, fL)
 
-      face_flux[1, j, i] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, eqn.params)
+      face_flux[1, j, i] = -functor(qL, qR, dxidx, nrm, eqn.params)
     end
   end
 
@@ -74,8 +72,6 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             opts, functor::FluxType)
 # calculate the face flux and do the integration for the shared interfaces
 
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
   params = eqn.params
 
   npeers = mesh.npeers
@@ -113,7 +109,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
         qR = qR_arr[1, k, j]
         dxidx = sview(dxidx_arr, :, :, k, j)
         nrm = sview(sbp.facenormal, :, fL)
-        flux_arr[1,k,j] = -functor(qL, qR, alpha_x, alpha_y, dxidx, nrm, 
+        flux_arr[1,k,j] = -functor(qL, qR, dxidx, nrm, 
                                     eqn.params)
       end
     end
@@ -135,8 +131,6 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
                             opts, functor::FluxType)
 
   q = eqn.q
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
   params = eqn.params
 
   @debug1 begin
@@ -212,7 +206,7 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
         dxidx = sview(dxidx_arr, :, :, k, j)
         nrm = sview(sbp.facenormal, :, fL)
 
-         flux_tmp = -functor(qL_k, qR_k, alpha_x, alpha_y, dxidx, nrm, 
+         flux_tmp = -functor(qL_k, qR_k, dxidx, nrm, 
                                       eqn.params)
          flux_arr[1,k,j] = flux_tmp
        end
@@ -249,9 +243,11 @@ type avgFlux <: FluxType
 end
 
 function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
-              alpha_x, alpha_y, dxidx::AbstractArray{Tmsh,2}, 
-              nrm::AbstractArray{Tmsh,1}, params::ParamType)
+              dxidx::AbstractArray{Tmsh,2}, 
+              nrm::AbstractArray{Tmsh,1}, params::ParamType2)
 
+  alpha_x = params.alpha_x
+  alpha_y = params.alpha_y
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
@@ -284,9 +280,11 @@ type LFFlux <: FluxType
 end
 
 function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
-              alpha_x, alpha_y, dxidx::AbstractArray{Tmsh,2}, 
-              nrm::AbstractArray{Tmsh,1}, params::ParamType)
+              dxidx::AbstractArray{Tmsh,2}, 
+              nrm::AbstractArray{Tmsh,1}, params::ParamType2)
 
+  alpha_x = params.alpha_x
+  alpha_y = params.alpha_y
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
