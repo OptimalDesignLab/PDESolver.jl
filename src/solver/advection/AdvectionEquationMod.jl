@@ -18,6 +18,9 @@ export ICDict              # exported from ic.jl
 
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
+  alpha_x::Float64
+  alpha_y::Float64
+  alpha_z::Float64
 
   f::BufferedIO{IOStream}
   time::Timings
@@ -47,11 +50,17 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
     else
       f = BufferedIO()  # create a dummy IOStream
     end
+
+    alpha_x = mesh.alpha_x
+    alpha_y = mesh.alpha_y
+    alpha_z = mesh.alpha_z
     t = Timings()
-    return new(LFalpha, f, t)
+    return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)
   end
 end
 
+typealias ParamType2 ParamType{Tsol, Tres, 2}
+typealias ParamType3 ParamType{Tsol, Tres, 3}
 
 abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
@@ -78,6 +87,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   res_type::DataType  # type of res
   alpha_x::Float64
   alpha_y::Float64
+  alpha_z::Float64
   q::Array{Tsol, 3}
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
@@ -123,6 +133,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.res_type = Tres
     eqn.alpha_x = 0.0
     eqn.alpha_y = 0.0
+    eqn.alpha_z = 0.0
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
     eqn.majorIterationCallback = majorIterationCallback
