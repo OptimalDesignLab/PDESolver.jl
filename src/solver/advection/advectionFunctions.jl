@@ -96,42 +96,46 @@ integrals) this only works for triangular meshes, where are elements are same
 *  `mesh` : mesh type
 *  `sbp`  : Summation-by-parts operator
 *  `eqn`  : Advection equation object
-*  `alpha_x` and `alpha_y` : advection velocities in x & y directions
 
 **Outputs**
 
 *  None
 
 """->
-function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                    sbp::AbstractSBP, 
-                                    eqn::AdvectionData{Tsol, Tres, Tdim}) 
+function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                                           sbp::AbstractSBP,
+                                           eqn::AdvectionData{Tsol, Tres, Tdim})
 
-
-#    println("----- Entered evalSCResidual -----")
   Adq_dxi = eqn.flux_parametric
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
-
-#  Adq_dxi = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
-  for i=1:mesh.numEl  # loop over elements
+  alphas_xy = zeros(Float64, Tdim)
+  alphas_param = zeros(Tmsh, Tdim)
+  dxidx = mesh.dxidx
+  q = eqn.q
+  alphas_xy[1] = eqn.alpha_x
+  alphas_xy[2] = eqn.alpha_y
+  if Tdim == 3
+    alpha_xy[3] = eqn.alpha_z
+  end
+  for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      alpha_xi = mesh.dxidx[1, 1, j, i]*alpha_x + 
-                 mesh.dxidx[1, 2, j, i]*alpha_y
-      alpha_eta = mesh.dxidx[2, 1, j, i]*alpha_x + 
-                  mesh.dxidx[2, 2, j, i]*alpha_y
-      Adq_dxi[1,j,i,1] = alpha_xi*eqn.q[1,j,i]
-      Adq_dxi[1,j,i,2] = alpha_eta*eqn.q[1,j,i]
+      q_val = q[1, j, i]
+      for k=1:Tdim  # loop over parametric dimensions
+        alpha_k = zero(Tmsh)
+        for p=1:Tdim  # sup up alpha in the current parametric dimension
+          alpha_k += dxidx[k, p, j, i]*alphas_xy[p]
+        end
+        Adq_dxi[1,j,i,k] = alpha_k*q_val
+      end
     end
-  end  # end loop over elements
-
-  for i = 1:Tdim
-    weakdifferentiate!(sbp,i,sview(Adq_dxi,:,:,:,i), eqn.res, trans = true)
   end
 
-  #  println("----- Finished evalSCResidual -----")
+  for i=1:Tdim
+    weakdifferentiate!(sbp, i, sview(Adq_dxi, :, :, :, i), eqn.res, trans=true)
+  end
+
   return nothing
-end  # end function
+end
+
 
 @doc """
 ### AdvectionEquationMod.evalBndry
