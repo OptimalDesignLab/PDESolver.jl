@@ -275,7 +275,7 @@ macro time_all(ex)
     local val = $(esc(ex))
     elapsedtime = time_ns() - elapsedtime
     local diff = Base.GC_Diff(Base.gc_num(), stats)
-    (val, elapsedtime/1e9, diff.total_time, diff.allocd)
+    (val, elapsedtime/1e9, diff.total_time/1e9, diff.allocd)
   end
 end
 
