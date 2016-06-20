@@ -256,6 +256,23 @@ function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
   return u
 end
 
+function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
+              dxidx::AbstractArray{Tmsh,2}, 
+              nrm::AbstractArray{Tmsh,1}, params::ParamType3)
+
+  alpha_x = params.alpha_x
+  alpha_y = params.alpha_y
+  alpha_z = params.alpha_z
+  alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y + dxidx[1,3]*alpha_z
+  alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y + dxidx[2,3]*alpha_z
+  alpha_psi = dxidx[3,1]*alpha_x + dxidx[3,2]*alpha_y + dxidx[3,3]*alpha_z
+  alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2] + alpha_psi*nrm[3]
+
+  u = alpha_n*(uL + uR)*0.5
+  return u
+end
+
+
 
 @doc """
 ### AdvectionEquationMod.LFFlux
@@ -292,6 +309,24 @@ function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
   u = alpha_n*(uL + uR)*0.5 + absvalue(alpha_n)*(1 - alpha_LF)*0.5*(uL - uR)
   return u
 end
+
+function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
+              dxidx::AbstractArray{Tmsh,2}, 
+              nrm::AbstractArray{Tmsh,1}, params::ParamType3)
+
+  alpha_x = params.alpha_x
+  alpha_y = params.alpha_y
+  alpha_z = params.alpha_z
+  alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y + dxidx[1,3]*alpha_z
+  alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y + dxidx[2,3]*alpha_z
+  alpha_psi = dxidx[3,1]*alpha_x + dxidx[3,2]*alpha_y + dxidx[3,3]*alpha_z
+
+  alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2] + alpha_psi*nrm[3]
+  alpha_LF = params.LFalpha
+  u = alpha_n*(uL + uR)*0.5 + absvalue(alpha_n)*(1 - alpha_LF)*0.5*(uL - uR)
+  return u
+end
+
 
 
 global const FluxDict = Dict{ASCIIString, FluxType}(

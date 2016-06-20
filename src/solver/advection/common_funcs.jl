@@ -296,6 +296,14 @@ function calc_exp5xplusy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, 
   return exp(5*x + y)
 end
 
+function calc_exp5xplusy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return exp(5*x + y + z)
+end
+
+
 @doc """
 ### AdvectionEquationMod.calc_exp3xplusy
 
@@ -307,6 +315,14 @@ function calc_exp3xplusy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, 
   y = coords[2]
   return exp(3*x + y)
 end
+
+function calc_exp3xplusy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return exp(3*x + y + z)
+end
+
 
 @doc """
 ### AdvectionEquationMod.calc_exp2xplus2y
@@ -320,6 +336,14 @@ function calc_exp2xplus2y{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2,
   return exp(2*x + 2*y)
 end
 
+function calc_exp2xplus2y{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return exp(2*x + 2*y + z*z)
+end
+
+
 @doc """
 ### AdvectionEquationMod.calc_exp_xy
 
@@ -332,6 +356,14 @@ function calc_exp_xy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   return exp(x*y)
 end
 
+function calc_exp_xy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return exp(x*y*z)
+end
+
+
 @doc """
 ### AdvectionEquationMod.calc_x5plusy5
 
@@ -342,4 +374,11 @@ function calc_xplusy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
   y = coords[2]
   return x + y
+end
+
+function calc_xplusy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return x + y + z
 end

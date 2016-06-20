@@ -81,4 +81,19 @@ function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, params::ParamType2, nrm,
     bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
 
   return bndryflux
-end # end function AdvectionRoeSolver
+end # end function RoeSolver
+
+function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, params::ParamType3, nrm, 
+                               dxidx::AbstractArray{Tmsh,2})
+    alpha_x = params.alpha_x
+    alpha_y = params.alpha_y
+    alpha_z = params.alpha_z
+    alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y + dxidx[1,3]*alpha_z
+    alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y + dxidx[2,3]*alpha_z
+    alpha_psi = dxidx[3,1]*alpha_x + dxidx[3,2]*alpha_y + dxidx[3,3]*alpha_z
+
+    alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2] + alpha_psi*nrm[3]
+    bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
+
+  return bndryflux
+end # end function RoeSolver
