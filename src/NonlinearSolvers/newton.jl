@@ -462,7 +462,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     # calculate Newton step
     flush(fstdout)
     if jac_type == 1 || jac_type == 2  # julia jacobian
-      tmp, t_solve, t_gc, alloc = @time begin
+      tmp, t_solve, t_gc, alloc = @time_all begin
         jac_f = factorize(jac)
         delta_res_vec[:] = jac_f\(res_0)  #  calculate Newton update
       end
