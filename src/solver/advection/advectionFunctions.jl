@@ -181,7 +181,7 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   if mesh.isDG
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   else
-    boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   end
 #  println("    boundaryintegrate! @time printed above")
 

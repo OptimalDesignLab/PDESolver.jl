@@ -286,7 +286,7 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
       boundary_press[:,j,i] =  euler_flux[2:3]
     end # end for j = 1:sbp.numfacenodes
   end   # end for i = 1:nfaces
-  boundaryintegrate!(sbp, mesh.bndryfaces[start_index:(end_index - 1)], 
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[start_index:(end_index - 1)], 
                      boundary_press, boundary_force)
 
   functional_val = zeros(Tsol,2)

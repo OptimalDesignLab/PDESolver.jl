@@ -137,7 +137,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   #println("bndryfluxPhysical = \n", bndryfluxPhysical)
   #println("eqn.bndryflux = \n", eqn.bndryflux)
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
   
   if opts["use_GLS"]
@@ -146,7 +146,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   
   #=
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
   #----------------------------------------------------------------------------
 
@@ -482,10 +482,11 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Ab
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 
+  #TODO: remove conditional
   if mesh.isDG
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   else
-    boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   end
 
 

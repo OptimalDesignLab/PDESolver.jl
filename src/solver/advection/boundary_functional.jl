@@ -59,7 +59,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
     	end
     end
 
-    boundaryintegrate!(sbp, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
     # Add all boundary_force nodal values along the edge to get the nodal force value
     edge_functional_val = zero(Tsol) # functional value over a geometric edge
     for (bindex, bndry) in enumerate(mesh.bndryfaces[idx_range])

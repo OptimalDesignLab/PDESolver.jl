@@ -172,7 +172,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
      
   # println("mesh.bndryfaces = \n", mesh.bndryfaces)
 
-  boundaryintegrate!(sbp, mesh.bndryfaces, integrand, func_deriv_arr)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, integrand, func_deriv_arr)
 
   return nothing
 end

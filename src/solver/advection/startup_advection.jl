@@ -73,21 +73,36 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 # create mesh with 1 dofpernode
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
+dim = opts["dimensions"]
 
 mesh_time = @elapsed if opts["use_DG"]
   println("\nConstructing SBP Operator")
   # create DG SBP operator with internal nodes only
-  sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-  ref_verts = [-1. 1 -1; -1 -1 1]
-  interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
-  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+  if dim == 2
+    sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
+    ref_verts = [-1. 1 -1; -1 -1 1]
+    interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
+    sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+  else 
+    sbp = TetSBP{Tsbp}(degree=order, reorder=false, internal=true)
+    interp_op = eye(sbp.numnodes)  # TODO: fix this
+    face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
+    topo = ElementTopology{3}(face_verts)
+    ref_verts = sbp.vtx.'
+    sbpface = TriFace{Tsbp}(order, sbp.cub, ref_verts.')
+  end
 
-  # create linear mesh with 4 dof per node
+  # create mesh with 4 dof per node
 
   println("constructing DG mesh")
-  mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
-                   dofpernode=1, coloring_distance=opts["coloring_distance"])
+  if dim == 2
+
+    mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; dofpernode=1, coloring_distance=opts["coloring_distance"])
+  else
+    mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; dofpernode=1, coloring_distance=opts["coloring_distance"])
+  end
   if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
+    @assert dim == 2
     pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
                    coloring_distance=opts["coloring_distance_prec"])
   else
@@ -97,11 +112,12 @@ mesh_time = @elapsed if opts["use_DG"]
 else  # continuous Galerkin
   # create SBP object
   println("\nConstructing SBP Operator")
-  sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
+  sbp = TriSBP{Tsbp}(degree=order, reorder=true)  # create linear sbp operator
+  sbpface = TriFace{Tsbp}(order, sbp.cub, sbp.vtx)
   # create linear mesh with 4 dof per node
 
   println("constructing CG mesh")
-  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=1, coloring_distance=opts["coloring_distance"])
+  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=1, coloring_distance=opts["coloring_distance"])
 
   if opts["jac_type"] == 3 || opts["jac_type"] == 4
     pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])

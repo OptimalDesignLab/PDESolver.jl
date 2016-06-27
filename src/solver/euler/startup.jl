@@ -106,11 +106,14 @@ if opts["use_DG"]
 else  # continuous Galerkin
   # create SBP object
   println("\nConstructing SBP Operator")
-  sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
+  sbp = TriSBP{Tsbp}(degree=order, reorder=true)  # create linear sbp operator
   # create linear mesh with 4 dof per node
+  ref_verts = [-1. 1 -1; -1 -1 1]
+  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+
 
   println("constructing CG mesh")
-  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts; dofpernode=4, coloring_distance=opts["coloring_distance"])
+  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=4, coloring_distance=opts["coloring_distance"])
 
   if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
     pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
