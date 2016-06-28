@@ -78,6 +78,10 @@ function call(obj::SRCp1, coords::AbstractVector, params::ParamType2, t)
 
 end
 
+function call(obj::SRCp1, coords::AbstractVector, params::ParamType3, t)
+  return params.alpha_x*calc_p1dx(coords, params, t) + params.alpha_y*calc_p1dy(coords, params, t) + params.alpha_z*calc_p1dz(coords, params, t)
+
+
 @doc """
 ### AdvectionEquationMod.SRCp3
 
@@ -91,6 +95,12 @@ function call(obj::SRCp2, coords::AbstractVector, params::ParamType2, t)
   return params.alpha_x*calc_p2dx(coords, params, t) + params.alpha_y*calc_p2dy(coords, params, t)
 
 end
+
+function call(obj::SRCp2, coords::AbstractVector, params::ParamType3, t)
+  return params.alpha_x*calc_p2dx(coords, params, t) + params.alpha_y*calc_p2dy(coords, params, t) + params.alpha_z*calc_p2dz(coords, params, t)
+
+end
+
 
 @doc """
 ### AdvectionEquationMod.SRCp3
@@ -106,6 +116,12 @@ function call(obj::SRCp3, coords::AbstractVector, params::ParamType2, t)
 
 end
 
+function call(obj::SRCp3, coords::AbstractVector, params::ParamType3, t)
+  return params.alpha_x*calc_p3dx(coords, params, t) + params.alpha_y*calc_p3dy(coords, params, t) + params.alpha_z*calc_p3dz(coords, params, t)
+
+end
+
+
 @doc """
 ### AdvectionEquationMod.SRCp4
 
@@ -119,6 +135,11 @@ function call(obj::SRCp4, coords::AbstractVector, params::ParamType2, t)
   return params.alpha_x*calc_p4dx(coords, params, t) + params.alpha_y*calc_p4dy(coords, params, t)
 end
 
+function call(obj::SRCp4, coords::AbstractVector, params::ParamType3, t)
+  return params.alpha_x*calc_p4dx(coords, params, t) + params.alpha_y*calc_p4dy(coords, params, t) + params.alpha_z*calc_p4dz(coords, params, t)
+end
+
+
 @doc """
 ### AdvectionEquationMod.SRCp5
 
@@ -131,6 +152,11 @@ end
 function call(obj::SRCp5, coords::AbstractVector, params::ParamType2, t)
   return params.alpha_x*calc_p5dx(coords, params, t) + params.alpha_y*calc_p5dy(coords, params, t)
 end
+
+function call(obj::SRCp5, coords::AbstractVector, params::ParamType3, t)
+  return params.alpha_x*calc_p5dx(coords, params, t) + params.alpha_y*calc_p5dy(coords, params, t) + params.alpha_z*calc_p5dz(coords, params, t)
+end
+
 
 @doc """
 ### AdvectionEquationMod.SRCexp_xplusy

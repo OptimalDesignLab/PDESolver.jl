@@ -122,6 +122,13 @@ function calc_p1{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   return  x + 1 + y
 end
 
+function calc_p1{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return x + y + z + 1
+end
+  
 @doc """
 ### AdvectionEquationMod.calc_p1dx
 
@@ -142,6 +149,14 @@ function calc_p1dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   return 1
 end
 
+@doc """
+### AdvectionEquationMod.calc_p1dz
+
+  Calculates and returns the z derivative of calc_p1
+"""->
+function calc_p1dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  return 1
+e
 
 @doc """
 ### AdvectionEquationMod.calc_p2
@@ -153,6 +168,14 @@ function calc_p2{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   y = coords[2]
   return x^2 + x + 1 + y^2 + y
 end
+
+function calc_p2{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return x^2 + x + 1 + y^2 + y + z^2 + z
+end
+
 
 @doc """
 ### AdvectionEquationMod.calc_p2dx
@@ -175,15 +198,35 @@ function calc_p2dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
 end
 
 @doc """
+### AdvectionEquationMod.calc_p2dz
+
+  Calculates and returns the z derivative of calc_p2
+"""->
+
+function calc_p2dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  z = coords[3]
+  return 2*z + 1
+end
+
+
+@doc """
 ### AdvectionEquationMod.calc_p3
 
-  Calculates and returns a 3rd order polynomial in x and y
+  Calculates and returns a 3rd order polynomial in x and y (and z in 3d)
 """->
 function calc_p3{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
   y = coords[2]
   return x^3 + x^2 + x + 1 + y^3 + y^2 + y
 end
+
+function calc_p3{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return x^3 + x^2 + x + 1 + y^3 + y^2 + y + z^3 + z^2 + z
+end
+
 
 @doc """
 ### AdvectionEquationMod.calc_p3dx
@@ -205,6 +248,16 @@ function calc_p3dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   return 3*y^2 + 2*y + 1
 end
 
+@doc """
+### AdvectionEquationMod.calc_p3dz
+
+  Calculates and returns the z derivative of calc_p3
+"""->
+function calc_p3dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  z = coords[3]
+  return 3*z^2 + 2*z + 1
+end
+
 
 @doc """
 ### AdvectionEquationMod.calc_p4
@@ -217,8 +270,15 @@ function calc_p4{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   return (x^4 + x^3 + x^2 + x + 1) + (y^4 + y^3 + y^2 + y)
 end
 
+function calc_p4{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return (x^4 + x^3 + x^2 + x + 1) + (y^4 + y^3 + y^2 + y) + (z^4 + z^3 + z^2 + z)
+end
+
 @doc """
-### AdvectionEquationMod.calc_p4
+### AdvectionEquationMod.calc_p4x
 
   Calculates and returns the x derivative of calc_p4
 """->
@@ -231,7 +291,7 @@ end
 @doc """
 ### AdvectionEquationMod.calc_p4dy
 
-  Calculates and returns the y derivative of calc_p4dy
+  Calculates and returns the y derivative of calc_p4
 """->
 function calc_p4dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
@@ -240,9 +300,20 @@ function calc_p4dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
 end
 
 @doc """
+### AdvectionEquationMod.calc_p4dz
+
+  Calculates and returns the z derivative of calc_p4
+"""->
+function calc_p4dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+  z = coords[3]
+  return 4*z^3 + 3*z^2 + 2*z + 1
+end
+
+
+@doc """
 ### AdvectionEquationMod.calc_p5
 
-  Calculates and returns a 5th order polynomial in x and y
+  Calculates and returns a 5th order polynomial in x and y (and z in 3d)
 """->
 function calc_p5{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
@@ -250,10 +321,18 @@ function calc_p5{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   return (x.^5 + x^4 + x^3 + x^2 + x + 1) + (y^5 + y^4 + y^3 + y^2 + y)
 end
 
+function calc_p5{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  return (x.^5 + x^4 + x^3 + x^2 + x + 1) + (y^5 + y^4 + y^3 + y^2 + y) + (z^5 + z^4 + z^3 + z^2 + z^1 + z)
+end
+
+
 @doc """
 ### AdvectionEquationMod.calc_p5dx
 
-  Calculates and returns a the x derivative of calc_p5
+  Calculates and returns the x derivative of calc_p5
 """->
 function calc_p5dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
@@ -261,16 +340,27 @@ function calc_p5dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
 end
 
 @doc """
-### AdvectionEquationMod.calc_p5
+### AdvectionEquationMod.calc_p5y
 
   Calculates and returns the y derivative of calc_p5
 """->
 
 function calc_p5dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
-  x = coords[1]
   y = coords[2]
   return 5*y^4 + 4*y^3 + 3*y^2 + 2*y + 1
 end
+
+@doc """
+### AdvectionEquationMod.calc_p5z
+
+  Calculates and returns the z derivative of calc_p5
+"""->
+
+function calc_p5dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  z = coords[3]
+  return 5*z^4 + 4*z^3 + 3*z^2 + 2*z + 1
+end
+
 
 @doc """
 ### AdvectionEquationMod.calc_exp5xplus4yplus2

@@ -85,7 +85,8 @@ mesh_time = @elapsed if opts["use_DG"]
     sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
   else 
     sbp = TetSBP{Tsbp}(degree=order, reorder=false, internal=true)
-    interp_op = eye(sbp.numnodes)  # TODO: fix this
+    ref_verts = [0. 1 0 0; 0 0 1 0; 0 0 0 1]  # TODO: confirm this
+    interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
     face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
     topo = ElementTopology{3}(face_verts)
     ref_verts = sbp.vtx.'
