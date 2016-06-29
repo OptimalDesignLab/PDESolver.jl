@@ -74,6 +74,7 @@ sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
 dmg_name = opts["dmg_name"]
 smb_name = opts["smb_name"]
 dim = opts["dimensions"]
+println("dim = ", dim)
 
 mesh_time = @elapsed if opts["use_DG"]
   println("\nConstructing SBP Operator")
@@ -85,12 +86,11 @@ mesh_time = @elapsed if opts["use_DG"]
     sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
   else 
     sbp = TetSBP{Tsbp}(degree=order, reorder=false, internal=true)
-    ref_verts = [0. 1 0 0; 0 0 1 0; 0 0 0 1]  # TODO: confirm this
+    ref_verts = sbp.vtx
     interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
     face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
     topo = ElementTopology{3}(face_verts)
-    ref_verts = sbp.vtx.'
-    sbpface = TriFace{Tsbp}(order, sbp.cub, ref_verts.')
+    sbpface = TetFace{Tsbp}(order, sbp.cub, ref_verts)
   end
 
   # create mesh with 4 dof per node

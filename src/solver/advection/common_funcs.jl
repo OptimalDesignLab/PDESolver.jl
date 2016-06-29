@@ -156,7 +156,7 @@ end
 """->
 function calc_p1dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
   return 1
-e
+end
 
 @doc """
 ### AdvectionEquationMod.calc_p2

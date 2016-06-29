@@ -80,6 +80,7 @@ end
 
 function call(obj::SRCp1, coords::AbstractVector, params::ParamType3, t)
   return params.alpha_x*calc_p1dx(coords, params, t) + params.alpha_y*calc_p1dy(coords, params, t) + params.alpha_z*calc_p1dz(coords, params, t)
+end
 
 
 @doc """

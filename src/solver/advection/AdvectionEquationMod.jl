@@ -234,7 +234,9 @@ function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 # return the vector M
 
   M = zeros(Tmsh, mesh.numDof)
-
+  println("typeof(sbp) = ", typeof(sbp))
+  println("mesh.jac = \n", mesh.jac)
+  println("sbp.w = \n", sbp.w)
   for i=1:mesh.numEl
     for j=1:sbp.numnodes
       for k=1:mesh.numDofPerNode
