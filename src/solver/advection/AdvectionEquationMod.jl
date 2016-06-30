@@ -62,7 +62,7 @@ end
 
 typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
 typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
-
+typealias ParamTypes Union{ParamType2, ParamType3}
 abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
 
@@ -86,9 +86,6 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   t::Float64
   res_type::DataType  # type of res
-  alpha_x::Float64
-  alpha_y::Float64
-  alpha_z::Float64
   q::Array{Tsol, 3}
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
@@ -138,7 +135,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, 2)
+    eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
     if mesh.isDG
@@ -234,9 +231,6 @@ function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 # return the vector M
 
   M = zeros(Tmsh, mesh.numDof)
-  println("typeof(sbp) = ", typeof(sbp))
-  println("mesh.jac = \n", mesh.jac)
-  println("sbp.w = \n", sbp.w)
   for i=1:mesh.numEl
     for j=1:sbp.numnodes
       for k=1:mesh.numDofPerNode

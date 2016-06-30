@@ -137,8 +137,8 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
                              eqn ::AdvectionData{Tsol}, opts, functor, functional_edges, 
                              func_deriv_arr)
 
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
+  alpha_x = eqn.params.alpha_x
+  alpha_y = eqn.params.alpha_y
 
   # Obtain the derivative of the integrand at all meh.bndry
   integrand = zeros(eqn.bndryflux)
@@ -182,8 +182,8 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
                              eqn::AdvectionData{Tsol}, opts, functor, functional_edges, 
                              func_deriv_arr)
 
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
+  alpha_x = eqn.params.alpha_x
+  alpha_y = eqn.params.alpha_y
 
   # Obtain the derivative of the integrand at all mesh.bndry
   integrand = zeros(eqn.q_bndry)

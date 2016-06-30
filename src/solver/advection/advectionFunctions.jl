@@ -114,14 +114,14 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   alphas_xy[1] = eqn.params.alpha_x
   alphas_xy[2] = eqn.params.alpha_y
   if Tdim == 3
-    alpha_xy[3] = eqn.alpha_z
+    alphas_xy[3] = eqn.params.alpha_z
   end
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       q_val = q[1, j, i]
       for k=1:Tdim  # loop over parametric dimensions
         alpha_k = zero(Tmsh)
-        for p=1:Tdim  # sup up alpha in the current parametric dimension
+        for p=1:Tdim  # sum up alpha in the current parametric dimension
           alpha_k += dxidx[k, p, j, i]*alphas_xy[p]
         end
         Adq_dxi[1,j,i,k] = alpha_k*q_val
@@ -153,7 +153,6 @@ Evaluate boundary integrals for advection equation
 *  None
 
 """->
-#TODO: get rid of alpha_x and alpha_y arguments: they are not used
 function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                    sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
 

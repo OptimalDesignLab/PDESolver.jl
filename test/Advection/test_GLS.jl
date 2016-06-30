@@ -50,8 +50,8 @@ facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
   end
 
   context("Check calcTau") do
-    fill!(eqn.alpha_x, 1.0)
-    fill!(eqn.alpha_y, 1.0)
+    fill!(eqn.params.alpha_x, 1.0)
+    fill!(eqn.params.alpha_y, 1.0)
     tau = zeros(Tsol,mesh.numNodesPerElement, mesh.numEl)
     calcTau(mesh, sbp, eqn, tau)
     @fact mesh.numEl --> 1
@@ -59,8 +59,8 @@ facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
   end
 
   context("Check GLS") do
-    fill!(eqn.alpha_x, 1.0)
-    fill!(eqn.alpha_y, 1.0)
+    fill!(eqn.params.alpha_x, 1.0)
+    fill!(eqn.params.alpha_y, 1.0)
     fill!(eqn.res, 0.0)
     eqn.q[1,:,1] = eqn.q_vec
     GLS(mesh, sbp, eqn)

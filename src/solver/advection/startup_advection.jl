@@ -87,7 +87,9 @@ mesh_time = @elapsed if opts["use_DG"]
   else 
     sbp = TetSBP{Tsbp}(degree=order, reorder=false, internal=true)
     ref_verts = sbp.vtx
-    interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
+    println("ref_verts = \n", ref_verts)
+    interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
+    println("interp_op = \n", interp_op)
     face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
     topo = ElementTopology{3}(face_verts)
     sbpface = TetFace{Tsbp}(order, sbp.cub, ref_verts)
@@ -146,7 +148,7 @@ println("is subtype of DG mesh = ", typeof(mesh) <: AbstractDGMesh)
 println("mesh.isDG = ", mesh.isDG)
 
 # Create advection equation object
-Tdim = 2
+Tdim = dim
 eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
 q_vec = eqn.q_vec
@@ -219,7 +221,7 @@ writeVisFiles(mesh, "solution_ic")
 global int_advec = 1
 
 if opts["calc_dt"]
-  alpha_net = sqrt(eqn.alpha_x^2 + eqn.alpha_y^2)
+  alpha_net = sqrt(eqn.params.alpha_x^2 + eqn.params.alpha_y^2)
   opts["delta_t"] = opts["CFL"]*mesh.min_el_size/alpha_net
 end
 

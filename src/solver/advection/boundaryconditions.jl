@@ -53,8 +53,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
 
       # get components
       q = eqn.q[ 1, k, bndry_i.element]
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
+      alpha_x = eqn.params.alpha_x
+      alpha_y = eqn.params.alpha_y
       coords = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = sview(sbp.facenormal, :, bndry_i.face)
@@ -86,8 +86,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 
       # get components
       q = eqn.q_bndry[ 1, j, global_facenum]
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
+      alpha_x = eqn.params.alpha_x
+      alpha_y = eqn.params.alpha_y
       coords = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
       nrm = sview(sbp.facenormal, :, bndry_i.face)
@@ -133,6 +133,20 @@ function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol,
 
   return bndryflux
 end
+
+type constantBC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::constantBC, u::Tsol, 
+              params::ParamTypes, coords::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = 2
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
+  return bndryflux
+end
+
+
 
 @doc """
 ### AdvectionEquationMod.exp_xplusyBC
@@ -278,7 +292,7 @@ end
 type p1BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p1BC, u::Tsol, params::ParamType2,
+function call{Tmsh, Tsol}(obj::p1BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
@@ -297,7 +311,7 @@ end
 type p2BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p2BC, u::Tsol, params::ParamType2,
+function call{Tmsh, Tsol}(obj::p2BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
@@ -317,7 +331,7 @@ end
 type p3BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p3BC, u::Tsol, params::ParamType2,
+function call{Tmsh, Tsol}(obj::p3BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
@@ -338,7 +352,7 @@ end
 type p4BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p4BC, u::Tsol, params::ParamType2,
+function call{Tmsh, Tsol}(obj::p4BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
@@ -359,7 +373,7 @@ end
 type p5BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, params::ParamType2,
+function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
   # this is really slow: use Horner's rule!
@@ -506,6 +520,7 @@ new boundary condition is created, it should get added to BCDict.
 
 """->
 global const BCDict = Dict{ASCIIString, BCType}(
+"constantBC" => constantBC(),
 "x5plusy5BC" => x5plusy5BC(),
 "exp_xplusyBC" => exp_xplusyBC(),
 "sinwaveBC" => sinwave_BC(),

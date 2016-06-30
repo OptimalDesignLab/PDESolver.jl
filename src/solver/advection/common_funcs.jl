@@ -134,7 +134,7 @@ end
 
   Calculates and returns the x derivative of calc_p1
 """->
-function calc_p1dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p1dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   x = coords[1]
   return 1
 end
@@ -144,7 +144,7 @@ end
 
   Calculates and returns the y derivative of calc_p1
 """->
-function calc_p1dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p1dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   y = coords[2]
   return 1
 end

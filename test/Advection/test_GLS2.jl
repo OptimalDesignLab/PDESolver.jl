@@ -4,8 +4,8 @@ facts("----- Testing GLS2 -----") do
   ARGS[1] = "input_vals_GLS2.jl"
   include(STARTUP_PATH)
 
-  eqn.alpha_x = 2.0
-  eqn.alpha_y = 1.0
+  eqn.params.alpha_x = 2.0
+  eqn.params.alpha_y = 1.0
   dxidx_true = mesh.dxidx[:, :, 1, 2]*mesh.jac[1,2]
   println("dxidx_true = ", dxidx_true)
   tau_code = AdvectionEquationMod.getTau(2.0, 1.0, dxidx_true, 2)
@@ -25,8 +25,8 @@ facts("----- Testing GLS2 -----") do
     Tres = eltype(eqn.res)
 
     for i=1:1  # DEBUGGING
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
+      alpha_x = eqn.params.alpha_x
+      alpha_y = eqn.params.alpha_y
       # do only element 1
       Dxi = diagm(1./sbp.w)*sbp.Q[:, :, 1]
       Deta = diagm(1./sbp.w)*sbp.Q[:, :, 2]
@@ -121,8 +121,8 @@ facts("----- Testing GLS2 -----") do
     end
   end
 
-  eqn.alpha_x = 2.0
-  eqn.alpha_y = 1.0
+  eqn.params.alpha_x = 2.0
+  eqn.params.alpha_y = 1.0
 
   # now we have complex equation object
   jac_c = zeros(Float64, 3,3)

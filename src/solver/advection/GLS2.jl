@@ -37,8 +37,8 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     jac = sview(mesh.jac, :, i)
     res = sview(eqn.res, :, :, i)
     # constant coefficient advection only!
-    alpha_x = eqn.alpha_x
-    alpha_y = eqn.alpha_y
+    alpha_x = eqn.params.alpha_x
+    alpha_y = eqn.params.alpha_y
     # calclate the true dxidx (not scaled by the mapping jacobian)
     for j=1:mesh.numNodesPerElement
       for k=1:2
@@ -56,8 +56,8 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     end
 
    for j=1:mesh.numNodesPerElement 
-#     alpha_xj = eqn.alpha_x[1, j, i]
-#     alpha_yj = eqn.alpha_y[1, j, i]
+#     alpha_xj = eqn.params.alpha_x[1, j, i]
+#     alpha_yj = eqn.params.alpha_y[1, j, i]
      dxidx_j = sview(dxidx, :, :, j)
      p = 2
 #     tau_vec[j] = getTau(alpha_xj, alpha_yj, dxidx_j, p)

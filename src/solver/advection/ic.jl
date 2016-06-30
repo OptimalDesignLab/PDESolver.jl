@@ -1,6 +1,16 @@
 # ic.jl
 # Needed to initialize a problem.
 
+function ICConstant(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData, opts,
+                    u0::AbstractArray)
+
+  for i=1:length(u0)
+    u0[i] = 2
+  end
+
+  return nothing
+end
+
 @doc """
 ### AdvectionEquationMod.ICx5plusy5
 
@@ -191,8 +201,8 @@ function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  dofnums_j = sview(mesh.dofs, :, j, i)
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.alpha_x
-          alpha_y, = eqn.alpha_y
+          alpha_x = eqn.params.alpha_x
+          alpha_y, = eqn.params.alpha_y
 
   	  u0[dofnums_j] = calc_p1(mesh.coords[:, j, i], eqn.params, eqn.t)
   	end
@@ -390,6 +400,7 @@ function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end
 
 global const ICDict = Dict{Any, Function}(
+"ICConstant" => ICConstant,
 "ICx5plusy5" => ICx5plusy5,
 "ICexp_xplusy" => ICexp_xplusy,
 "ICsinwave" => ICsinwave,
