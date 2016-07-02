@@ -1,3 +1,4 @@
+
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -24,6 +25,7 @@ end
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
 # insert a command line argument
+
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_3d.jl"
 include(STARTUP_PATH)
@@ -56,9 +58,6 @@ facts("----- Testing 3D -----") do
   for i=1:length(eqn.res)
     @fact eqn.res[i] --> roughly(0.0, atol=1e-13)
   end
-  println("size(eqn.res) = ", size(eqn.res))
-  writedlm("resout.dat", eqn.res)
-
 
 function test_bc(flux_exp)
 # test summing boundary condition
@@ -120,7 +119,7 @@ end
          @fact bndryflux_calc --> roughly(net_flux, atol=1e-13)
        end
      end
-
+     eqn.q = q1
    end
 
    facts("----- Testing boundary flux calculation -----") do
@@ -153,5 +152,40 @@ end
 
 
    end
+
+  facts("----- Testing face flux -----") do
+    # the interpolation should be exact for this case
+    AdvectionEquationMod.ICp1(mesh, sbp, eqn, opts, eqn.q_vec)
+    fill!(eqn.q_face, 0.0)
+    fill!(eqn.flux_face, 0.0)
+    fill!(eqn.res, 0.0)
+    AdvectionEquationMod.evalFaceTerm(mesh, sbp, eqn, opts)
+
+    for i=1:mesh.numInterfaces
+      iface_i = mesh.interfaces[i]
+      el_i = iface_i.elementL
+      face_i = iface_i.faceL
+      println("\ninterface ", i, ", elementL ", el_i, ", faceL ", face_i, ", elementR ", iface_i.elementR, ", faceR ", iface_i.faceR, ", orient ", iface_i.orient)
+      coords_el = mesh.vert_coords[:, :, el_i]
+      vertmap = mesh.topo.face_verts[:, face_i]
+      coords_faceverts = coords_el[:, vertmap].'
+      coords_face = SummationByParts.SymCubatures.calcnodes(sbpface.cub, coords_faceverts)
+      println("element coords = \n", coords_el)
+      println("face vertices = \n", coords_faceverts.')
+      println("coords_face = \n", coords_face)
+      println("q_face = \n", eqn.q[1, :, el_i])
+      for j=1:mesh.numNodesPerFace
+        coords_j = coords_face[:, j]
+        q_exp = AdvectionEquationMod.calc_p1(coords_j, eqn.params, 0.0)
+        q_calc = eqn.q_face[1, 1, j, i]
+        q_calc2 = eqn.q_face[1, 2, j, i]
+        @fact q_calc --> roughly(q_exp, atol=1e-13)
+        @fact q_calc2 --> roughly(q_exp, atol=1e-13)
+      end
+    end
+
+
+  end
+
 
 end

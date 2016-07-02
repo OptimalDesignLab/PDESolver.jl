@@ -182,7 +182,7 @@ end
 
   Calculates and returns a the x derivative of calc_p2
 """->
-function calc_p2dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p2dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   x = coords[1]
   return 2*x + 1
 end
@@ -192,7 +192,7 @@ end
 
   Calculates and returns the y derivative of calc_p2
 """->
-function calc_p2dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p2dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   y = coords[2]
   return 2*y + 1
 end
@@ -233,7 +233,7 @@ end
 
   Calculates and returns the x derivataive of calc_p3
 """->
-function calc_p3dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p3dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   x = coords[1]
   return 3*x^2 + 2*x + 1
 end
@@ -243,7 +243,7 @@ end
 
   Calculates and returns the y derivative of calc_p3
 """->
-function calc_p3dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p3dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   y = coords[2]
   return 3*y^2 + 2*y + 1
 end
@@ -283,7 +283,7 @@ end
   Calculates and returns the x derivative of calc_p4
 """->
 
-function calc_p4dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p4dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   x = coords[1]
   return 4*x^3 + 3*x^2 + 2*x + 1
 end
@@ -293,7 +293,7 @@ end
 
   Calculates and returns the y derivative of calc_p4
 """->
-function calc_p4dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p4dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   x = coords[1]
   y = coords[2]
   return 4*y^3 + 3*y^2 + 2*y + 1
@@ -304,7 +304,7 @@ end
 
   Calculates and returns the z derivative of calc_p4
 """->
-function calc_p4dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p4dz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
   z = coords[3]
   return 4*z^3 + 3*z^2 + 2*z + 1
 end
@@ -334,7 +334,7 @@ end
 
   Calculates and returns the x derivative of calc_p5
 """->
-function calc_p5dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p5dx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   x = coords[1]
   return 5*x^4 + 4*x^3 + 3*x^2 + 2*x + 1
 end
@@ -345,7 +345,7 @@ end
   Calculates and returns the y derivative of calc_p5
 """->
 
-function calc_p5dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_p5dy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamTypes, t)
   y = coords[2]
   return 5*y^4 + 4*y^3 + 3*y^2 + 2*y + 1
 end

@@ -245,10 +245,11 @@ function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
   jac_vec = zeros(Tmsh, mesh.numNodes)
   assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
 
+  dim = mesh.dim
   # scale by the minimum distance between nodes on a reference element
   # this is a bit of an assumption, because for distorted elements this
   # might not be entirely accurate
-  h_avg = sum(1./sqrt(jac_vec))/length(jac_vec)
+  h_avg = sum(1./(jac_vec.^(1/dim)))/length(jac_vec)
   h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)/mesh.commsize
   h_avg *= mesh.min_node_dist
   return h_avg

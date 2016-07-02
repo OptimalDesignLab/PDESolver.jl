@@ -130,6 +130,34 @@ facts("----- Testing using manufactured polynomials -----") do
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
 
+  println("\n  -----testing 3D -----")
+  ARGS[1] = "input_vals_3d.jl"
+  include(STARTUP_PATH)
+
+  println("  -----testing degree 1 polynomial-----")
+
+  make_input_mms(1, dg=true)
+  include(STARTUP_PATH)
+  fill!(eqn.res, 0.0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
+
+
+  println("  -----testing degree 2 polynomial-----")
+  make_input_mms(2, dg=true)
+  include(STARTUP_PATH)
+  fill!(eqn.res, 0.0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  for i=1:mesh.numDof
+    @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-12)
+  end
+
+
+
 
 
 end
