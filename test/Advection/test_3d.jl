@@ -165,15 +165,10 @@ end
       iface_i = mesh.interfaces[i]
       el_i = iface_i.elementL
       face_i = iface_i.faceL
-      println("\ninterface ", i, ", elementL ", el_i, ", faceL ", face_i, ", elementR ", iface_i.elementR, ", faceR ", iface_i.faceR, ", orient ", iface_i.orient)
       coords_el = mesh.vert_coords[:, :, el_i]
       vertmap = mesh.topo.face_verts[:, face_i]
       coords_faceverts = coords_el[:, vertmap].'
       coords_face = SummationByParts.SymCubatures.calcnodes(sbpface.cub, coords_faceverts)
-      println("element coords = \n", coords_el)
-      println("face vertices = \n", coords_faceverts.')
-      println("coords_face = \n", coords_face)
-      println("q_face = \n", eqn.q[1, :, el_i])
       for j=1:mesh.numNodesPerFace
         coords_j = coords_face[:, j]
         q_exp = AdvectionEquationMod.calc_p1(coords_j, eqn.params, 0.0)
