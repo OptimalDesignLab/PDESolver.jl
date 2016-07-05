@@ -89,6 +89,7 @@ type TestMesh{Tmsh} <: AbstractMesh{Tmsh}
   numEl::Int
   numDofPerNode::Int
   min_node_dist::Float64
+  dim::Int
 end
 
 type FakeSBP
@@ -131,7 +132,7 @@ facts("----- Testing Utility Functions -----") do
   for i=1:length(dofs)
     dofs[i] = i
   end
-  mesh = TestMesh{Float64}(jac, dofs, MPI.COMM_WORLD, MPI.Comm_size(MPI.COMM_WORLD), numNodes, numNodesPerElement, numEl, numDofPerNode, 0.25)
+  mesh = TestMesh{Float64}(jac, dofs, MPI.COMM_WORLD, MPI.Comm_size(MPI.COMM_WORLD), numNodes, numNodesPerElement, numEl, numDofPerNode, 0.25, 2)
   opts = Dict{Any, Any}()
   @fact calcMeshH(mesh, FakeSBP(), obj, opts) --> roughly(mesh.min_node_dist*1./sqrt(2))
 

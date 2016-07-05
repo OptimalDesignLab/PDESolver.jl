@@ -25,7 +25,8 @@ include("test_complexify.jl")
 include("test_lowlevel.jl")
 #include("test_simplemesh.jl")
 include("test_GLS3.jl")
-include("test_modes.jl")
+# TODO: uncomment when SBP is fixed
+#include("test_modes.jl")
 include("test_adjoint.jl")
 
 
