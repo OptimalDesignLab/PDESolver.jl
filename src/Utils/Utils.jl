@@ -4,13 +4,17 @@ Module Utils:
 """->
 module Utils
 
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
 using ArrayViews
 using MPI
 using SummationByParts
+using PdePumiInterface     # common mesh interface - pumi
+
 include("parallel.jl")
 include("io.jl")
 include("logging.jl")
+include("initialization.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
@@ -18,6 +22,7 @@ export exchangeElementData
 export @mpi_master, @time_all, print_time_all
 export Timings, write_timings
 export sharedFaceLogging
+export createMeshAndOperator
 
 @doc """
 ### Utils.disassembleSolution

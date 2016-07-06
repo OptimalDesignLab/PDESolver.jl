@@ -27,107 +27,16 @@ println("ARGS = ", ARGS)
 println("size(ARGS) = ", size(ARGS))
 opts = read_input(ARGS[1])
 
-# flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
-flag = opts["run_type"]
-
 # timestepping parameters
 delta_t = opts["delta_t"]
 t_max = opts["t_max"]
-
-order = opts["order"]  # order of accuracy
-
-if flag == 1 || flag == 8  || flag == 9 || flag == 10  # normal run
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Float64
-  Tres = Float64
-elseif flag == 2  # calculate dR/du
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Float64
-  Tres = Float64
-elseif flag == 3  # calcualte dR/dx using forward mode
-  Tmsh = Dual{Float64}
-  Tsbp = Float64
-  Tsol = Dual{Float64}
-  Tres = Dual{Float64}
-elseif flag == 4  # use Newton method using finite difference
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Float64
-  Tres = Float64
-elseif flag == 5  # use complex step dR/du
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Complex128
-  Tres = Complex128
-elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Complex128
-  Tres = Complex128
-end
-
-sbp = TriSBP{Tsbp}(degree=order)  # create linear sbp operator
-
-# create mesh with 1 dofpernode
-dmg_name = opts["dmg_name"]
-smb_name = opts["smb_name"]
 dim = opts["dimensions"]
-println("dim = ", dim)
+# flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
+flag = opts["run_type"]
 
-mesh_time = @elapsed if opts["use_DG"]
-  println("\nConstructing SBP Operator")
-  # create DG SBP operator with internal nodes only
-  if dim == 2
-    sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-    ref_verts = [-1. 1 -1; -1 -1 1]
-    interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
-    sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
-  else 
-    sbp = TetSBP{Tsbp}(degree=order, reorder=false, internal=true)
-    ref_verts = sbp.vtx
-    println("ref_verts = \n", ref_verts)
-    interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
-    println("interp_op = \n", interp_op)
-    face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
-    topo = ElementTopology{3}(face_verts)
-    sbpface = TetFace{Tsbp}(order, sbp.cub, ref_verts)
-  end
+dofpernode = 1
 
-  # create mesh with 4 dof per node
-
-  println("constructing DG mesh")
-  if dim == 2
-
-    mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; dofpernode=1, coloring_distance=opts["coloring_distance"])
-  else
-    mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; dofpernode=1, coloring_distance=opts["coloring_distance"])
-  end
-  if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
-    @assert dim == 2
-    pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
-                   coloring_distance=opts["coloring_distance_prec"])
-  else
-    pmesh = mesh
-  end
-
-else  # continuous Galerkin
-  # create SBP object
-  println("\nConstructing SBP Operator")
-  sbp = TriSBP{Tsbp}(degree=order, reorder=true)  # create linear sbp operator
-  sbpface = TriFace{Tsbp}(order, sbp.cub, sbp.vtx)
-  # create linear mesh with 4 dof per node
-
-  println("constructing CG mesh")
-  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=1, coloring_distance=opts["coloring_distance"])
-
-  if opts["jac_type"] == 3 || opts["jac_type"] == 4
-    pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
-  else
-    pmesh = mesh
-  end
-end
+sbp, mesh, pmesh, Tsol, Tres, Tmsh = createMeshAndOperator(opts, dofpernode)
 
 #mesh.numColors = 4
 #mesh.maxColors = 4
