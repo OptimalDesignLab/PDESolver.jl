@@ -177,4 +177,18 @@ facts("----- Testing Parallel Functions -----") do
   opts["smb_name"] = "src/mesh_files/ptet8cube.smb"
   make_input(opts, string("./rk4_3d/parallel/", "input_vals_parallel"))
 
+  # make the parallel newton's method
+  opts["run_type"] = 5
+  opts["jac_type"] = 3
+  opts["parallel_type"] = 2
+  make_input(opts, string("./newton_3d/parallel/", "input_vals_parallel"))
+
+  opts["smb_name"] = "src/mesh_files/tet8cube.smb"
+  make_input(opts, string("./newton_3d/serial/", "input_vals_serial"))
+
+  cd("./newton_3d/serial")
+  ARGS[1] = "input_vals_serial.jl"
+  include(STARTUP_PATH)
+
+  cd(start_dir)
 end

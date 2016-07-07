@@ -325,7 +325,7 @@ function calc_p5{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
   x = coords[1]
   y = coords[2]
   z = coords[3]
-  return (x.^5 + x^4 + x^3 + x^2 + x + 1) + (y^5 + y^4 + y^3 + y^2 + y) + (z^5 + z^4 + z^3 + z^2 + z^1 + z)
+  return (x.^5 + x^4 + x^3 + x^2 + x + 1) + (y^5 + y^4 + y^3 + y^2 + y) + (z^5 + z^4 + z^3 + z^2 + z)
 end
 
 
