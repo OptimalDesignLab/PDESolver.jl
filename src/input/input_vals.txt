@@ -17,6 +17,9 @@ where input_file_name.jl is in your current directory.
 "IC_name" : initial condition function name (string)
 "use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false
 
+"operator_type" : name of discretization operator to use for DG, currently 
+                  either SBPOmega or SBPGamma , (String), default SBPOmega
+
 # time stepping options
 "real_time" : have time marching scheme advance real time instead of pseudo-time,
              (Bool), default false

@@ -166,5 +166,15 @@ facts("----- Testing Parallel Functions -----") do
   make_input(opts, string("./newton/parallel/", "input_vals_parallel"))
 
 
+  # same thing for 3D
+  start_dir = pwd()
+  cd("./rk4_3d/serial")
+  ARGS[1] = "input_vals_rk4_3d.jl"
+  include(STARTUP_PATH)
+
+  # make the parallel version
+  cd(start_dir)
+  opts["smb_name"] = "src/mesh_files/ptet8cube.smb"
+  make_input(opts, string("./rk4_3d/parallel/", "input_vals_parallel"))
 
 end

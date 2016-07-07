@@ -51,16 +51,43 @@ function createMeshAndOperator(opts, dofpernode)
     Tres = Complex128
   end
 
+  # figure out reorder, internal args for SBP, shape_type for Pumi
+  # should shape_type live here or be encapsulated in Pumi?
+  if opts["use_DG"]
+    if opts["operator_type"] == "SBPOmega"
+      reorder = false
+      internal = true
+      shape_type = 2
+    elseif opts["operator_type"] == "SBPGamma"
+      reorder = false
+      internal = false
+      shape_type = 3
+    else
+      op_type = opts["operator_type"]
+      throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
+    end
+  else  # CG mesh
+    if opts["operator_type"] != "SBPGamma"
+      op_type = opts["operator_type"]
+      throw(ArgumentError("invalid operator type $op_type for CG"))
+    end
+    # the CG varient of SBP gamma is the only option
+    reorder = true
+    internal = false
+    shape_type = 1
+  end
+
+
   mesh_time = @elapsed if opts["use_DG"]
     println("\nConstructing SBP Operator")
     # create DG SBP operator with internal nodes only
     if dim == 2
-      sbp = TriSBP{Float64}(degree=order, reorder=false, internal=false)
+      sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       ref_verts = [-1. 1 -1; -1 -1 1]
       interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
       sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
     else 
-      sbp = TetSBP{Float64}(degree=order, reorder=false, internal=false)
+      sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       ref_verts = sbp.vtx
       println("ref_verts = \n", ref_verts)
       interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
@@ -75,9 +102,9 @@ function createMeshAndOperator(opts, dofpernode)
     println("constructing DG mesh")
     if dim == 2
 
-      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=3)
+      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=3)
+      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
     end
     if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
       @assert dim == 2
@@ -90,12 +117,12 @@ function createMeshAndOperator(opts, dofpernode)
   else  # continuous Galerkin
     # create SBP object
     println("\nConstructing SBP Operator")
-    sbp = TriSBP{Float64}(degree=order, reorder=true)  # create linear sbp operator
+    sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)  # create linear sbp operator
     sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
     # create linear mesh with 4 dof per node
 
     println("constructing CG mesh")
-    mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"])
+    mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
 
     if opts["jac_type"] == 3 || opts["jac_type"] == 4
       pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
@@ -104,6 +131,6 @@ function createMeshAndOperator(opts, dofpernode)
     end
   end
 
-  return sbp, mesh, pmesh, Tsol, Tres, Tmsh
+  return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
 end
 

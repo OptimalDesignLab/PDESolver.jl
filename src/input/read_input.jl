@@ -58,6 +58,11 @@ cv = R/gamma_1
 
 get!(arg_dict, "dimensions", 2)
 get!(arg_dict, "use_DG", false)
+if arg_dict["use_DG"]
+  get!(arg_dict, "operator_type", "SBPOmega")
+else
+  get!(arg_dict, "operator_type", "SBPGamma")
+end
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)

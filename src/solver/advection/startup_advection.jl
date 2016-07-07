@@ -36,7 +36,7 @@ flag = opts["run_type"]
 
 dofpernode = 1
 
-sbp, mesh, pmesh, Tsol, Tres, Tmsh = createMeshAndOperator(opts, dofpernode)
+sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
 #mesh.numColors = 4
 #mesh.maxColors = 4

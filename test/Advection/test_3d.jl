@@ -160,7 +160,7 @@ end
     fill!(eqn.flux_face, 0.0)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalFaceTerm(mesh, sbp, eqn, opts)
-
+    sbpface = mesh.sbpface
     for i=1:mesh.numInterfaces
       iface_i = mesh.interfaces[i]
       el_i = iface_i.elementL
