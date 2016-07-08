@@ -65,7 +65,7 @@ facts("----- Testing Flux Calculation -----") do
   F3 = [4, 8, 12, 16.2, 60.8]
   q2 = zeros(q)
   EulerEquationMod.convertToEntropy(eqn.params, q, q2)
-
+  println("q2 = \n", q2)
 
   p = EulerEquationMod.calcPressure(eqn.params, q)
   p2 = EulerEquationMod.calcPressure(params_e, q2)
