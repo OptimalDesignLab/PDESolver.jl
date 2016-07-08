@@ -18,11 +18,12 @@ using ArrayViews
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
 =#
 
-function make_input_mms(degree; dg=false)
+function make_input_mms(degree; dg=false, operator="SBPOmega")
   arg_dict["order"] = degree
   arg_dict["IC_name"] = "ICp$degree"
   arg_dict["BC1_name"] = string("p", degree, "BC")
   arg_dict["SRCname"] = "SRCp$degree"
+  arg_dict["operator_type"] = operator
 
   if dg
     arg_dict["use_DG"] = true
@@ -67,6 +68,16 @@ facts("----- Testing using manufactured polynomials -----") do
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
   println("p1 dg test finished")
+
+  fname = make_input_mms(1, dg=true, operator="SBPOmega")
+  include(STARTUP_PATH)
+  fill!(eqn.res, 0.0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
+  println("p1 dg test finished")
+
   println("  -----testing degree 2 polynomial -----")
   #=
   fname = make_input_mms(2)
@@ -144,6 +155,15 @@ facts("----- Testing using manufactured polynomials -----") do
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
 
+  make_input_mms(1, dg=true, operator="SBPGamma")
+  include(STARTUP_PATH)
+  fill!(eqn.res, 0.0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
+
+
 
   println("  -----testing degree 2 polynomial-----")
   make_input_mms(2, dg=true)
@@ -156,6 +176,40 @@ facts("----- Testing using manufactured polynomials -----") do
     @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-12)
   end
 
+  println("testing gamma")
+  make_input_mms(2, dg=true, operator="SBPGamma")
+  include(STARTUP_PATH)
+  fill!(eqn.res, 0.0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  for i=1:length(eqn.res_vec)
+    @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-11)
+  end
+
+  println("  ----- testing degree 3 polynomial-----")
+  println("testing gamma")
+  make_input_mms(3, dg=true, operator="SBPGamma")
+  include(STARTUP_PATH)
+  fill!(eqn.res, 0.0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  for i=1:length(eqn.res_vec)
+    @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-11)
+  end
+
+  println("  ----- testing degree 4 polynomial-----")
+  println("testing gamma")
+  make_input_mms(4, dg=true, operator="SBPGamma")
+  include(STARTUP_PATH)
+  fill!(eqn.res, 0.0)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  for i=1:length(eqn.res_vec)
+    @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-9)
+  end
 
 
 
