@@ -39,95 +39,17 @@ flag = opts["run_type"]
 # timestepping parameters
 t_max = opts["t_max"]       # t_max: maximum time for RK
 order = opts["order"]       # order of accuracy
-
-# types of the mesh, SBP, Equation objects
-if flag == 1 || flag == 8  # normal run
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Float64
-  Tres = Float64
-elseif flag == 2  # calculate dR/du
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Float64
-  Tres = Float64
-elseif flag == 3  # calcualte dR/dx using forward mode
-  Tmsh = Dual{Float64}
-  Tsbp = Float64
-  Tsol = Dual{Float64}
-  Tres = Dual{Float64}
-elseif flag == 4  # use Newton method using finite difference
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Float64
-  Tres = Float64
-elseif flag == 5  # use complex step dR/du
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Complex128
-  Tres = Complex128
-elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
-  Tmsh = Float64
-  Tsbp = Float64
-  Tsol = Complex128
-  Tres = Complex128
-end
-
-# record these choices in the dictionary
-opts["Tmsh"] = Tmsh
-opts["Tsbp"] = Tsbp
-opts["Tsol"] = Tsol
-opts["Tres"] = Tres
-
-dmg_name = opts["dmg_name"]
-smb_name = opts["smb_name"]
 Tdim = opts["dimensions"]
+dofpernode = 4
 
-if opts["use_DG"]
-  println("\nConstructing SBP Operator")
-  # create DG SBP operator with internal nodes only
-  sbp = TriSBP{Tsbp}(degree=order, reorder=false, internal=true)
-  ref_verts = [-1. 1 -1; -1 -1 1]
-  interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
-  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
-
-  # create linear mesh with 4 dof per node
-
-  println("constructing DG mesh")
-  mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
-                   dofpernode=4, coloring_distance=opts["coloring_distance"])
-  if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
-    pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
-                   coloring_distance=opts["coloring_distance_prec"])
-  else
-    pmesh = mesh
-  end
-
-else  # continuous Galerkin
-  # create SBP object
-  println("\nConstructing SBP Operator")
-  sbp = TriSBP{Tsbp}(degree=order, reorder=true)  # create linear sbp operator
-  # create linear mesh with 4 dof per node
-  ref_verts = [-1. 1 -1; -1 -1 1]
-  sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
-
-
-  println("constructing CG mesh")
-  mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=4, coloring_distance=opts["coloring_distance"])
-
-  if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
-    pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
-  else
-    pmesh = mesh
-  end
-end
+sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
 myrank = mesh.myrank
 # TODO: input argument for dofpernode
 
 # create euler equation
 var_type = opts["variable_type"]
-eqn = EulerData_{Tsol, Tres, 2, Tmsh, var_type}(mesh, sbp, opts)
+eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 
 # initialize physics module and populate any fields in mesh and eqn that
 # depend on the physics module
@@ -136,7 +58,7 @@ init(mesh, sbp, eqn, opts, pmesh)
 #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
 
-res_vec = eqn.res_vec         # solution at previous timestep
+res_vec = eqn.res_vec 
 q_vec = eqn.q_vec       # solution at current timestep
 
 # calculate residual of some other function for res_reltol0

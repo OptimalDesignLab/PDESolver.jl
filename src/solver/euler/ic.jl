@@ -638,8 +638,24 @@ end
 
 end
 
+"""
+  Assigns exp(k*x*y*z) as the initial condition, of each node, where k is 
+  the index of the degree of freedom of the node
+"""
+function ICExp{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
 
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = exp(k*coords[1]*coords[2]*coords[3])
+      end
+    end
+  end
 
+  return nothing
+end
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
 
@@ -656,7 +672,8 @@ global const ICDict = Dict{Any, Function}(
 "ICIsentropicVortex" => ICIsentropicVortex,
 "ICUnsteadyVortex" => ICUnsteadyVortex,
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
-"ICFile" => ICFile
+"ICFile" => ICFile,
+"ICExp" => ICExp,
 )
 
 

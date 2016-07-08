@@ -624,8 +624,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     end
    
     #TODO: don't allocate these arrays if not needed
-    eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
-    calcEdgeStabAlpha(mesh, sbp, eqn)
+    if eqn.params.use_edgestab
+      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
+      calcEdgeStabAlpha(mesh, sbp, eqn)
+    else
+      eqn.stabscale = Array(Tres, 0, 0)
+      eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
+    end
 
     println("Tres = ", Tres)
 

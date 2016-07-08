@@ -488,6 +488,26 @@ function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
   return nothing
 end # end function call
 
+type ExpBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+
+  qg = params.gq
+  for i=1:length(qg)
+    qg[i] = exp(i*x[1]*x[2]*x[3])
+  end
+
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+
+  # println("bndryflux = ", bndryflux)
+  return nothing
+end # end function call
+
+
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -500,7 +520,8 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),
 "allOnesBC" => allOnesBC(),
-"unsteadyVortexBC" => unsteadyVortexBC()
+"unsteadyVortexBC" => unsteadyVortexBC(),
+"ExpBC" => ExpBC(),
 )
 
 @doc """

@@ -220,7 +220,8 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
       writeVisFiles(mesh, fname)
     end
  
-
+    # add an option on control this or something.  Large blocks of commented
+    # out code are bad
 #=
   if itr == 0
     #----------------------------------------------------------------------------
@@ -338,7 +339,8 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   fill!(eqn.bndryflux, 0.0)
   getBCFluxes(mesh, sbp, eqn, opts)
 #   println("  getBCFluxes @time printed above")
-  
+ 
+  # is this needed for anything besides edge stabilization?
   stabscale(mesh, sbp, eqn)
 #  println("  stabscale @time printed above")
 
@@ -441,10 +443,10 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     end
   else
     for i=1:Tdim
-      #TODO: do this more efficiently
-      weakdifferentiate!(sbp, i, -1*sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
+      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract, trans=false)
     end
   end  # end if
+
 
   # artificialViscosity(mesh, sbp, eqn) 
 
@@ -456,19 +458,6 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 end  # end evalVolumeIntegrals
 
-
-#=
-@doc """
-  This function evaluates the advective terms of the strong form.
-  eqn.res is updates with the result
-
-"""->
-function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::EulerData{Tsol, Tdim}, opts)
-
-  for i=1:Tdim
-    differentiate!(sbp, i, 
-
-=#
 
 @doc """
   This function evaluates the boundary integrals in the Euler equations by 

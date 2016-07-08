@@ -84,7 +84,7 @@ end
 
   This is a mid level function
 """->
-# this function is deprecated in factor of getEulerFlux()
+# this function is deprecated in favor of getEulerFlux()
 # useful for benchmarking purposes
 function getEulerFlux2{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                    eqn::EulerData{Tsol}, opts)
@@ -196,7 +196,7 @@ end
     Calculates the Euler flux from entropy variables
 
     Inputs:
-    params : ParameterType{2, :entropy}
+    params : ParameterType{Tdim, :entropy}
     q : vector of entropy variables
     aux_vars : vector of auxiliary variables
     dir : vector specifying the direction to caculate the flux
@@ -204,9 +204,9 @@ end
     Inputs/Outputs:
     F  : vector to populate with the flux
  
-    This is a low level function.  The second static parameter of 
-    the ParameterType is used to dispatch to the right method for
-    entropy or conservative variables
+    This is a low level function.  The static parameters of 
+    the ParameterType are used to dispatch to the right method for any
+    combination of variable type or equation dimension.
 """->
 function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy}, 
                        q::AbstractArray{Tsol,1}, 
@@ -238,8 +238,10 @@ end
   This is the 3D method.  All arguments are same as the 2D version.
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3, :conservative}, 
-                       q::AbstractArray{Tsol,1}, dir::AbstractArray{Tmsh},  
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative}, 
+                       q::AbstractArray{Tsol,1}, 
+                       aux_vars::AbstractArray{Tres, 1}, 
+                       dir::AbstractArray{Tmsh},  
                        F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
@@ -262,6 +264,34 @@ function calcEulerFlux{Tmsh, Tsol}(params::ParamType{3, :conservative},
   return nothing
 
 end
+
+
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :entropy}, 
+                       q::AbstractArray{Tsol,1}, 
+                       aux_vars::AbstractArray{Tres, 1}, 
+                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  # calculate some intermediate quantities
+  k1 = 0.5*(q[2]^2 + q[3]^2 + q[4]^2 )/q[5]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+    # internal energy (rho*i in Hughes) - not specific internal energy e
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[5])^gamma))^(1/gamma_1)
+  U = q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3]
+  fac = rho_int/q[5]
+
+  # now we can actually calculate the flux
+  F[1] = q[5]*U*fac
+  F[2] = (dir[1]*gamma_1*q[5] - q[2]*U)*fac
+  F[3] = (dir[2]*gamma_1*q[5] - q[3]*U)*fac
+  F[4] = (dir[3]*gamma_1*q[5] - q[4]*U)*fac
+  F[5] = U*(k1 - gamma)*fac
+
+  return nothing
+end
+
 
 
 @doc """
@@ -303,10 +333,12 @@ end
   node in 2D.  It returns a single value.
 
   Inputs:
-    params : ParamType{2, :conservative}
+    params : ParamType{Tdim, var_type }
     q  : vector of conservative variables
 
-  The parameter of params determines whether the 2D or 3D method is dispatched.
+
+  The parameter of params determines whether the 2D or 3D, conservative 
+  or entropy method is dispatched.
 
   This is a low level function.
 
@@ -361,7 +393,18 @@ function calcPressure{Tsol}(params::ParamType{3, :conservative},
 
   return  (params.gamma_1)*(q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1])
   
+end
 
+function calcPressure{Tsol}(params::ParamType{3, :entropy}, 
+                            q::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  
+  k1 = 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[5]  # a constant from Hughes' paper
+  s = gamma - q[1] + k1    # entropy
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[5])^gamma))^(1/gamma_1)
+  return gamma_1*rho_int
 end
 
 
@@ -373,7 +416,7 @@ end
   Methods are available for both conservative and entropy variables.
 
   Inputs:
-    params:  ParamType{2, var_type}
+    params:  ParamType{Tdim, var_type}
     q  vector of solution variables at a node
 
   Returns: speed of sound
@@ -383,7 +426,7 @@ end
   Aliasing restrictions: none
 """->
 
-function calcSpeedofSound{Tsol}(params::ParamType{2, :conservative}, 
+function calcSpeedofSound{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, 
                                 q::AbstractArray{Tsol, 1})
 # calculates teh speed of sond at a node
   pressure = calcPressure(params, q)
@@ -414,15 +457,37 @@ function calcSpeedofSound{Tsol}(params::ParamType{2, :entropy},
   return sqrt((params.gamma*pressure)/rho)
 end
 
+function calcSpeedofSound{Tsol}(params::ParamType{3, :entropy}, 
+                                q::AbstractArray{Tsol, 1})
+# calculate speed of sound using the same formula as conservative variables,
+# just rewriting all variables in entropy variables
+
+#  printbacktrace()
+#  println("q = ", q)
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  k1 = 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[5]  # a constant from Hughes' paper
+  pressure = calcPressure(params, q)
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[5])^gamma))^(1/gamma_1)
+  rho = -q[5]*rho_int
+
+#  println("rho = ", rho)
+  return sqrt((params.gamma*pressure)/rho)
+end
+
+
 
 @doc """
 ### EulerEquationMod.calcEntropy
 
   This function calculates the entropy at a node and returns it.  Method are 
-  available for conservative and entropy variables
+  available for conservative and entropy variables, 2D or 3D
 
   Inputs:
-    params: ParamType{2, var_type}, used to dispatch to the right method.
+    params: ParamType{Tdim, var_type}, used to dispatch to the right method.
     q: vector of solution variables at a node.
 
   Returns: entropy
@@ -451,6 +516,26 @@ function calcEntropy{Tsol}(params::ParamType{2, :entropy},
   return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]
 end
 
+function calcEntropy{Tsol}(params::ParamType{3, :conservative}, 
+                           q::AbstractArray{Tsol,1} )
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  rho_int = q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1]
+  return log(gamma_1*rho_int/(q[1]^gamma))
+end
+
+function calcEntropy{Tsol}(params::ParamType{3, :entropy}, 
+                           q::AbstractArray{Tsol,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[5]
+end
+
+
 
 
 #------------------------------------------------------------------------------
@@ -466,12 +551,12 @@ end
   The formation of A0 is given in Hughes
 
   Inputs:
-    params : ParamType{2, :entropy}
-    q  : vector of entropy variables, length 4
+    params : ParamType{Tdim, :entropy}
+    q  : vector of entropy variables, length Tdim + 2
 
 
   Inputs/Outputs:
-  A0 : 4x4 matrix populated with A0.  Overwritten
+  A0 : (Tdim+2)x(Tdim+2) matrix populated with A0.  Overwritten
 
   Aliasing restrictions: none
 """->
@@ -524,6 +609,67 @@ function calcA0{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
     return nothing
 end
 
+function calcA0{Tsol}(params::ParamType{3, :entropy}, q::AbstractArray{Tsol,1},
+                      A0::AbstractArray{Tsol, 2})
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[5]  # a constant from Hughes' paper
+  k2 = k1 - gamma
+  k3 = k1*k1 - 2*gamma*k1 + gamma
+  s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[5])^gamma))^(1/gamma_1)
+
+  fac = rho_int/(gamma_1*q[5])
+
+  # calculate the variables used in Hughes A.1
+  c1 = gamma_1*q[5] - q[2]*q[2]
+  c2 = gamma_1*q[5] - q[3]*q[3]
+  c3 = gamma_1*q[5] - q[4]*q[4]
+  d1 = -q[2]*q[3]
+  d2 = -q[3]*q[4]
+  d3 = -q[3]*q[4]
+
+  e1 = q[2]*q[5]
+  e2 = q[3]*q[5]
+  e3 = q[4]*q[5]
+
+  # populate the matrix
+  # the matrix is symmetric, but we don't use it because I think populating
+  # the matrix will be faster if the matrix is write-only
+  A0[1,1] = -q[5]*q[5]*fac
+  A0[2,1] = e1*fac
+  A0[3,1] = e2*fac
+  A0[4,1] = e3*fac
+  A0[5,1] = q[5]*(1-k1)*fac
+  A0[1,2] = e1*fac  # symmetric
+  A0[2,2] = c1*fac
+  A0[3,2] = d1*fac
+  A0[4,2] = d2*fac
+  A0[5,2] = q[2]*k2*fac
+  A0[1,3] = e2*fac  # symmetric
+  A0[2,3] = d1*fac  # symmetric
+  A0[3,3] = c2*fac
+  A0[4,3] = d3*fac
+  A0[5,3] = q[3]*k2*fac
+  A0[1,4] = e3*fac  # symmetric
+  A0[2,4] = d2*fac  # symmetric
+  A0[3,4] = d3*fac  # symmetric
+  A0[4,4] = c3*fac
+  A0[5,4] = q[4]*k2
+  A0[1,5] = q[5]*(1-k1)*fac  # symmetric
+  A0[2,5] = q[2]*k2*fac  # symmetric
+  A0[3,5] = q[3]*k2*fac  # symmetric
+  A0[4,5] = q[4]*k2*fac  # symmetric
+  A0[5,5] = -k3*fac
+
+    return nothing
+end
+
+
 @doc """
 # EulerEquationMod.calcA0Inv
 
@@ -532,8 +678,8 @@ end
   variables.  
 
   Inputs:
-    params : ParamType{2, :entropy}
-    q  : vector (length 4) of entropy variables at a node
+    params : ParamType{Tdim, :entropy}
+    q  : vector (length 4 or 5) of entropy variables at a node
 
   Inputs/Outputs:
     A0inv : matrix to be populated with inv(A0).  Overwritten.
@@ -578,6 +724,57 @@ function calcA0Inv{Tsol}(params::ParamType{2, :entropy},
     return nothing
 end
 
+function calcA0Inv{Tsol}(params::ParamType{3, :entropy},
+                   q::AbstractArray{Tsol,1},  
+                   A0inv::AbstractArray{Tsol, 2})
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[5]  # a constant from Hughes' paper
+   s = gamma - q[1] + k1    # entropy
+
+  rho_int = exp(-s/gamma_1)*(gamma_1/((-q[5])^gamma))^(1/gamma_1)
+
+  fac = -1/(rho_int*q[5])
+
+  d1 = -q[2]*q[3]
+  d2 = -q[2]*q[4]
+
+  e1 = q[2]*q[4]
+  e2 = q[3]*q[4]
+  e3 = q[4]*q[5]
+
+
+  A0inv[1,1] = (k1*k1 + gamma)*fac
+  A0inv[2,1] = k1*q[2]*fac
+  A0inv[3,1] = k1*q[3]*fac
+  A0inv[4,1] = k1*q[4]*fac
+  A0inv[5,1] = (k1 + 1)*q[5]*fac
+  A0inv[1,2] = k1*q[2]*fac  # symmetry
+  A0inv[2,2] = (q[2]*q[2] - q[5])*fac
+  A0inv[3,2] = -d1*fac
+  A0inv[4,2] = -d2*fac
+  A0inv[5,2] = e1*fac
+  A0inv[1,3] = k1*q[3]*fac  # symmetry
+  A0inv[2,3] = -d1*fac  # symmetry
+  A0inv[3,3] = (q[3]*q[3] - q[5])*fac
+  A0inv[4,3] = -d3*fac
+  A0inv[5,3] = e2*fac
+  A0inv[1,4] = k1*q[4]*fac  # symmetry
+  A0inv[2,4] = -d2*fac  # symmetry
+  A0inv[3,4] = -d3*fac  # symmetry
+  A0inv[4,4] = (q[4]*q[4] - q[5])*fac
+  A0inv[5,4] = e3*fac
+  A0inv[1,5] = (k1 + 1)*q[5]*fac  # symmetry
+  A0inv[2,5] = e1*fac  # symmetry
+  A0inv[3,5] = e2*fac  # symmetry
+  A0inv[4,5] = e3*fac  # symmetry
+  A0inv[5,5] = q[4]*q[4]*fac
+
+    return nothing
+end
+
+
 
 @doc """
 ### EulerEquationMod.calcA0
@@ -593,11 +790,11 @@ end
 
 
   Inputs/Outputs:
-  A0 : 4x4 matrix populated with A0.  Overwritten
+  A0 : 4x4 (or 5x5 in 3D)  matrix populated with A0.  Overwritten
 
   Aliasing restrictions: none
 """->
-function calcA0{Tsol}(params::ParamType{2, :conservative}, q::AbstractArray{Tsol,1},
+function calcA0{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, q::AbstractArray{Tsol,1},
                       A0::AbstractArray{Tsol, 2})
 
 
@@ -618,14 +815,14 @@ end
 
   Inputs:
     params : ParamType{2, :entropy}
-    q  : vector (length 4) of conservative variables at a node
+    q  : vector (length Tdim + 2) of conservative variables at a node
 
   Inputs/Outputs:
     A0inv : matrix to be populated with inv(A0).  Overwritten.
 
   Aliasing restrictions: none
 """->
-function calcA0Inv{Tsol}(params::ParamType{2, :conservative},
+function calcA0Inv{Tdim, Tsol}(params::ParamType{Tdim, :conservative},
                    q::AbstractArray{Tsol,1},  
                    A0inv::AbstractArray{Tsol, 2})
 
