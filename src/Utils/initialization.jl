@@ -50,6 +50,10 @@ function createMeshAndOperator(opts, dofpernode)
     Tsol = Complex128
     Tres = Complex128
   end
+  opts["Tsol"] = Tsol
+  opts["Tres"] = Tres
+  opts["Tsbp"] = Tsbp
+  opts["Tmsh"] = Tmsh
 
   # figure out reorder, internal args for SBP, shape_type for Pumi
   # should shape_type live here or be encapsulated in Pumi?

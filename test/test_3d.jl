@@ -65,7 +65,6 @@ facts("----- Testing Flux Calculation -----") do
   F3 = [4, 8, 12, 16.2, 60.8]
   q2 = zeros(q)
   EulerEquationMod.convertToEntropy(eqn.params, q, q2)
-  println("q2 = \n", q2)
 
   p = EulerEquationMod.calcPressure(eqn.params, q)
   p2 = EulerEquationMod.calcPressure(params_e, q2)
@@ -108,5 +107,35 @@ facts("----- Testing Misc. Functions -----") do
   @fact s --> roughly(log(0.4*0.5), atol=1e-12)
   s2 = EulerEquationMod.calcEntropy(params_e, q2)
   @fact s2 --> roughly(s, atol=1e-12)
+
+end
+
+facts("----- Testing Coefficient Matrices calculations -----") do
+  q = [1., 2, 3, 4, 15]
+  q2 = zeros(q)
+  EulerEquationMod.convertToEntropy(eqn.params, q, q2)
+
+  A0 = [-4 -8 -12 -16 -60;
+         -8 -16.8 -24 -32 -121.6;
+         -12 -24 -36.8 -48 -182.4;
+         -16 -32 -48 -64.8 -243.2;
+         -60 -121.6 -182.4 -243.2 -923.6]
+  fac = -0.625
+  A0 = A0*fac
+
+  A02 = zeros(A0)
+  EulerEquationMod.calcA0(params_e, q2, A02)
+  for i=1:length(A0)
+    @fact A0[i] --> roughly(A02[i], atol=1e-10)
+  end
+
+  A0inv = inv(A0)
+  A02inv = zeros(A02)
+  EulerEquationMod.calcA0Inv(params_e, q2, A02inv)
+  for i=1:length(A0)
+    @fact A0inv[i] --> roughly(A02inv[i], atol=1e-8)
+  end
+
+
 
 end

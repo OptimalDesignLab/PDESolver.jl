@@ -341,7 +341,9 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #   println("  getBCFluxes @time printed above")
  
   # is this needed for anything besides edge stabilization?
-  stabscale(mesh, sbp, eqn)
+  if eqn.params.use_edgestab 
+    stabscale(mesh, sbp, eqn)
+  end
 #  println("  stabscale @time printed above")
 
 #  println("finished dataPrep()")

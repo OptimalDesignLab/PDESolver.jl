@@ -612,7 +612,6 @@ end
 function calcA0{Tsol}(params::ParamType{3, :entropy}, q::AbstractArray{Tsol,1},
                       A0::AbstractArray{Tsol, 2})
 
-
   gamma = params.gamma
   gamma_1 = params.gamma_1
 
@@ -622,7 +621,6 @@ function calcA0{Tsol}(params::ParamType{3, :entropy}, q::AbstractArray{Tsol,1},
   s = gamma - q[1] + k1    # entropy
 
   rho_int = exp(-s/gamma_1)*(gamma_1/((-q[5])^gamma))^(1/gamma_1)
-
   fac = rho_int/(gamma_1*q[5])
 
   # calculate the variables used in Hughes A.1
@@ -630,7 +628,7 @@ function calcA0{Tsol}(params::ParamType{3, :entropy}, q::AbstractArray{Tsol,1},
   c2 = gamma_1*q[5] - q[3]*q[3]
   c3 = gamma_1*q[5] - q[4]*q[4]
   d1 = -q[2]*q[3]
-  d2 = -q[3]*q[4]
+  d2 = -q[2]*q[4]
   d3 = -q[3]*q[4]
 
   e1 = q[2]*q[5]
@@ -659,14 +657,14 @@ function calcA0{Tsol}(params::ParamType{3, :entropy}, q::AbstractArray{Tsol,1},
   A0[2,4] = d2*fac  # symmetric
   A0[3,4] = d3*fac  # symmetric
   A0[4,4] = c3*fac
-  A0[5,4] = q[4]*k2
+  A0[5,4] = q[4]*k2*fac
   A0[1,5] = q[5]*(1-k1)*fac  # symmetric
   A0[2,5] = q[2]*k2*fac  # symmetric
   A0[3,5] = q[3]*k2*fac  # symmetric
   A0[4,5] = q[4]*k2*fac  # symmetric
   A0[5,5] = -k3*fac
 
-    return nothing
+  return nothing
 end
 
 
@@ -739,9 +737,10 @@ function calcA0Inv{Tsol}(params::ParamType{3, :entropy},
 
   d1 = -q[2]*q[3]
   d2 = -q[2]*q[4]
+  d3 = -q[3]*q[4]
 
-  e1 = q[2]*q[4]
-  e2 = q[3]*q[4]
+  e1 = q[2]*q[5]
+  e2 = q[3]*q[5]
   e3 = q[4]*q[5]
 
 
@@ -769,7 +768,7 @@ function calcA0Inv{Tsol}(params::ParamType{3, :entropy},
   A0inv[2,5] = e1*fac  # symmetry
   A0inv[3,5] = e2*fac  # symmetry
   A0inv[4,5] = e3*fac  # symmetry
-  A0inv[5,5] = q[4]*q[4]*fac
+  A0inv[5,5] = q[5]*q[5]*fac
 
     return nothing
 end
