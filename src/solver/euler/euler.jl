@@ -169,6 +169,8 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
   end
 
+  time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
+
 
 
   
@@ -198,6 +200,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   getBCFunctors(mesh, sbp, eqn, opts)
   getBCFunctors(pmesh, sbp, eqn, opts)
 
+  getSRCFunctors(mesh, sbp, eqn, opts)
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
@@ -318,6 +321,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   if opts["check_pressure"]
+#    throw(ErrorException("I'm done"))
     checkPressure(eqn)
 #    println("  checkPressure @time printed above")
   end
@@ -408,6 +412,8 @@ function checkPressure(eqn::EulerData)
 
 (ndof, nnodes, numel) = size(eqn.q)
 
+
+
 for i=1:numel
   for j=1:nnodes
     aux_vars = sview(eqn.aux_vars,:, j, i)
@@ -438,7 +444,6 @@ end
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
-  
   if opts["Q_transpose"] == true
     for i=1:Tdim
       weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
@@ -618,5 +623,37 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
+@doc """
+### EulerEquationMod.evalSourceTerm
+
+  This function performs all the actions necessary to update eqn.res
+  with the source term.  The source term is stored in eqn.src_func.  It is
+  an abstract field, so it cannot be accessed (performantly) directly, so
+  it is passed to an inner function.
+
+  Inputs:
+    mesh : Abstract mesh type
+    sbp  : Summation-by-parts operator
+    eqn  : Euler equation object
+    opts : options dictonary
+
+  Outputs: none
+
+  Aliasing restrictions: none
+
+"""->
+function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, 
+                     opts)
+
+
+  # placeholder for multiple source term functionality (similar to how
+  # boundary conditions are done)
+  if opts["use_src_term"]
+    applySourceTerm(mesh, sbp, eqn, opts, eqn.src_func)
+  end
+
+  return nothing
+end  # end function
 
 

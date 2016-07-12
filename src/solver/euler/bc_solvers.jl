@@ -75,7 +75,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   
   H = (sqL*HL + sqR*HR)*fac
   phi = d0_5*(u*u + v*v)
-  
+ 
   a = sqrt(gami*(H - phi))
   Un = u*nx + v*ny
 

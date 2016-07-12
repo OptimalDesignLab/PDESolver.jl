@@ -492,15 +492,12 @@ type ExpBC <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
-  qg = params.gq
-  for i=1:length(qg)
-    qg[i] = exp(i*x[1]*x[2]*x[3])
-  end
-
+  qg = params.qg
+  calcExp(coords, params, qg)
   RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   # println("bndryflux = ", bndryflux)

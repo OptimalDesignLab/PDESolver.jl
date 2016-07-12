@@ -393,7 +393,7 @@ include("flux.jl")
 include("GLS2.jl")
 include("boundary_functional.jl")
 include("adjoint.jl")
-
+include("source.jl")
 
 @doc """
 ### EulerEquationMod.EulerData_
@@ -492,6 +492,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 				  # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
+  src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
 # minorIterationCallback::Function # called before every residual evaluation
 

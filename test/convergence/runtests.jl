@@ -13,6 +13,11 @@ facts("----- testing convergence rates -----") do
   cd("./p1/conservative_dg")
   include(joinpath(pwd(), "runtests.jl"))
 
+  cd(start_dir)
+  cd("./p1/source_term")
+  include(joinpath(pwd(), "runtests.jl"))
+
+
 #=
   cd(start_dir)
   cd("./p1/entropy")

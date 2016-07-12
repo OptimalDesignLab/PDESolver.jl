@@ -3,7 +3,7 @@ using FactCheck
 
 #run(`cptest.sh`)
 #run(`cperr.sh`)
-facts("---- P1 Entropy Convergence Tests -----") do
+facts("---- P1 Conservative DG Convergence Tests -----") do
 start_dir = pwd()
 
 resize!(ARGS, 1)
@@ -11,13 +11,9 @@ resize!(ARGS, 1)
 cd("./m1")
 ARGS[1] = "input_vals_vortex3.jl"
 include(STARTUP_PATH)
-ARGS[1] = "input_vals_vortex4.jl"
-include(STARTUP_PATH)
 
 cd("../m2")
 ARGS[1] = "input_vals_vortex3.jl"
-include(STARTUP_PATH)
-ARGS[1] = "input_vals_vortex4.jl"
 include(STARTUP_PATH)
 
 cd("..")
@@ -30,16 +26,10 @@ data = readdlm("err_data.dat")
 err_vals = data[:, 2]
 #println("err_vals = ", err_vals)
 
-slope_val = 1.73
+slope_val = 2.30
 slope_margin = 0.1
 
 @fact slope --> greater_than(slope_val - slope_margin)
 @fact slope --> less_than(slope_val + slope_margin)
-
-err_val = 0.0194
-slope_fac = 1.25
-println("err_vals[1] = ", err_vals[1])
-@fact err_vals[1] --> greater_than(err_val/slope_fac)
-@fact err_vals[1] --> less_than(err_val*slope_fac)
 
 end

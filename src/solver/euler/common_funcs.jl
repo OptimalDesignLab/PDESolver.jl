@@ -328,5 +328,23 @@ function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   return nothing
 end
 
+"""
+  Calculates a manufactured solution based on exponentials
+"""
+function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+                    params::ParamType{2}, q::AbstractArray{Tsol,1})
 
+  x = coords[1]
+  y = coords[2]
+  # a and b are parameters determine the scale and offset of the solution
+  # the must be the same here and in the source term
+  af = 1/5  # a = 1/af
+  b = 0.01
+  gamma_1 = params.gamma_1
+  q[1] = exp(af*x*y + b)
+  q[2] = exp(af*2*x*y + b)
+  q[3] = exp(af*3*x*y + b)
+  q[4] = (1/gamma_1 + 0.5)*exp(af*5*x*y + b) + 0.5*exp(af*3*x*y + b)
 
+  return nothing
+end

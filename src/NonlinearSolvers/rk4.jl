@@ -87,6 +87,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/h)
   println(fstdout, "t_steps: ",t_steps)
+  println(fstdout, "delta_t = ", h)
 
   (m,) = size(q_vec)
 
