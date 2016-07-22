@@ -435,18 +435,30 @@ function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   x = coords[1]
   y = coords[2]
   z = coords[3]
-  af = 1/200
+  a = 1/500
   b = 0.01
-  c = 8
+  c = 20
   d = 0.25
   # af = 1/50, b = 0.01, c = 8, d = 0.5, f = 10 works
   gamma_1 = params.gamma_1
 
+  t2 = d*d;
+  t3 = a*x*y*z*5.0;
+  t4 = exp(t3);
+  t5 = a*x*y*z*2.0;
+  t6 = exp(b);
+  q[1] = exp(b+a*x*y*z);
+  q[2] = d*exp(b+t5);
+  q[3] = d*exp(b+a*x*y*z*3.0);
+  q[4] = d*exp(b+a*x*y*z*4.0);
+  q[5] = t6*(t2*t4+t2*t4*cosh(t5)*2.0)*(1.0/2.0)+(t6*exp(a*c*x*y*z))/gamma_1;
+#=
   q[1] = exp(af*x*y*z + b)
   q[2] = d*exp(2*af*x*y*z + b)
   q[3] = d*exp(3*af*x*y*z + b)
   q[4] = d*exp(4*af*x*y*z + b)
-  q[5] = exp(c*af*x*y*z + b)/gamma_1 + d*d*0.5*(exp(3*af*x*y*z + b) + exp(5*af*x*y*z + b) + exp(7*af*x*y*z + b))
-
+  #TODO: simplify this
+  q[5] = (2*exp(c*af*x*y*z + b) + d*d*gamma_1*exp(3*af*x*y*z + b) + d*d*gamma_1*exp(5*af*x*y*z + b) + d*d*gamma_1*exp(7*af*x*y*z + b))/(2*gamma_1)
+=#
   return nothing
 end
