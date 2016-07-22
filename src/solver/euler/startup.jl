@@ -40,7 +40,7 @@ flag = opts["run_type"]
 t_max = opts["t_max"]       # t_max: maximum time for RK
 order = opts["order"]       # order of accuracy
 Tdim = opts["dimensions"]
-dofpernode = 4
+dofpernode = Tdim + 2
 
 sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
@@ -316,6 +316,10 @@ if opts["solve"]
 
       myrank = mesh.myrank
       q_diff = eqn.q_vec - q_exact
+      saveSolutionToMesh(mesh, abs(real(q_diff)))
+      writeVisFiles(mesh, "solution_error")
+
+
       diff_norm = calcNorm(eqn, q_diff)
 #      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
 #      diff_norm = sqrt(diff_norm)

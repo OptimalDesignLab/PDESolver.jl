@@ -25,7 +25,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts)
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
 
-  nrm = zeros(Tmsh, 2)
+  nrm = zeros(Tmsh, Tdim)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement  # loop over nodes on current element
       q_vals = sview(eqn.q, :, j, i)
@@ -34,10 +34,14 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       # q_vals twice, even though writing to the flux vector is slower
       # it might be worth copying the normal vector rather than
       # doing an view
+      
       for k=1:Tdim  # loop over dimensions
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
         # don't do an array view because strided views are type-unstable
-        nrm[1] = mesh.dxidx[k, 1, j, i]
-        nrm[2] = mesh.dxidx[k, 2, j, i]
+#        nrm[1] = mesh.dxidx[k, 1, j, i]
+#        nrm[2] = mesh.dxidx[k, 2, j, i]
         flux = sview(eqn.flux_parametric, :, j, i, k)
 
 	# this will dispatch to the proper calcEulerFlux
@@ -390,7 +394,6 @@ function calcPressure{Tsol}(params::ParamType{3, :conservative},
                             q::AbstractArray{Tsol,1} )
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
-
   return  (params.gamma_1)*(q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1])
   
 end

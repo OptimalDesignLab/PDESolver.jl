@@ -136,6 +136,23 @@ facts("----- Testing Coefficient Matrices calculations -----") do
     @fact A0inv[i] --> roughly(A02inv[i], atol=1e-8)
   end
 
+facts("----- Testing BC Solvers -----") do
 
+  q = [1., 2, 3, 4, 15]
+  F = zeros(q)
+  F2 = zeros(q)
+  nrm = [1., 1, 1]
+  dir = mesh.dxidx[:, :, 1, 1].'*nrm
+  p = EulerEquationMod.calcPressure(eqn.params, q)
+  aux_vars = [p]
+  dxidx = mesh.dxidx[:, :, 1, 1]
+
+  EulerEquationMod.RoeSolver(q, q, aux_vars, dxidx, nrm, F2, eqn.params)
+  EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
+
+#  println("F = \n", F)
+#  println("F2 = \n", F2)
+  @fact F2 --> roughly(-F, atol=1e-13)
+end
 
 end

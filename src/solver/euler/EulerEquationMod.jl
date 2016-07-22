@@ -140,28 +140,28 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     t = 0.0
     myrank = mesh.myrank
     f = open("log_$myrank.dat", "w")
-    q_vals = Array(Tsol, 4)
-    qg = Array(Tsol, 4)
-    v_vals = Array(Tsol, 4)
+    q_vals = Array(Tsol, Tdim + 2)
+    qg = Array(Tsol, Tdim + 2)
+    v_vals = Array(Tsol, Tdim + 2)
   
-    res_vals1 = Array(Tres, 4)
-    res_vals2 = Array(Tres, 4)
+    res_vals1 = Array(Tres, Tdim + 2)
+    res_vals2 = Array(Tres, Tdim + 2)
 
-    flux_vals1 = Array(Tres, 4)
-    flux_vals2 = Array(Tres, 4)
+    flux_vals1 = Array(Tres, Tdim + 2)
+    flux_vals2 = Array(Tres, Tdim + 2)
 
-    sat_vals = Array(Tres, 4)
+    sat_vals = Array(Tres, Tdim + 2)
 
-    A0 = zeros(Tsol, 4, 4)
-    A0inv = zeros(Tsol, 4, 4)
-    A1 = zeros(Tsol, 4, 4)
-    A2 = zeros(Tsol, 4, 4)
-    A_mats = zeros(Tsol, 4, 4, Tdim)
+    A0 = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A0inv = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A1 = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A2 = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A_mats = zeros(Tsol, Tdim + 2, Tdim + 2, Tdim)
 
-    Rmat1 = zeros(Tres, 4, 4)
-    Rmat2 = zeros(Tres, 4, 4)
+    Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
+    Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
 
-    nrm = zeros(Tmsh, 2)
+    nrm = zeros(Tmsh, Tdim)
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -576,7 +576,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
 
-    eqn.edgestab_alpha = zeros(Tmsh,2,2,sbp.numnodes, mesh.numEl)
+    eqn.edgestab_alpha = zeros(Tmsh,Tdim,Tdim,sbp.numnodes, mesh.numEl)
     if mesh.isDG
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, mesh.numInterfaces)

@@ -302,6 +302,8 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 #println("Entered dataPrep()")
 
+#  println("typeof(eqn) = ", typeof(eqn))
+#  println("typeof(eqn.params) = ", typeof(eqn.params))
 
   # apply filtering to input
   if eqn.params.use_filter
@@ -314,7 +316,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
  
   getAuxVars(mesh, eqn)
 #  println("  getAuxVars @time printed above")
-
+  
   if opts["check_density"]
     checkDensity(eqn)
 #    println("  checkDensity @time printed above")

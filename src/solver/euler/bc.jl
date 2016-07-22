@@ -258,8 +258,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               q::AbstractArray{Tsol,1}, 
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
-
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
 #  println("entered isentropicOvrtexBC (low level)")
 

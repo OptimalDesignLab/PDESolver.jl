@@ -477,7 +477,7 @@ println("entered ICIsentropicVortex")
 numEl = mesh.numEl
 nnodes = operator.numnodes
 dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, 4)
+sol = zeros(Tsol, dofpernode)
 for i=1:numEl
 #  println("i = ", i)
 #  coords = sview(mesh, [i])
