@@ -36,6 +36,10 @@ cd("..")
 
 include("Utils.jl")
 include("test_parallel.jl")
+
+if MPI.Initialized()
+  MPI.Finalize()
+end
 FactCheck.exitstatus()
 
 

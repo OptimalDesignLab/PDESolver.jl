@@ -39,6 +39,10 @@ include("test_dg.jl")
 include("test_functional_integrate.jl")
 include("test_parallel.jl")
 
+if MPI.Initialized()
+  MPI.Finalize()
+end
+
 FactCheck.exitstatus()
 
 

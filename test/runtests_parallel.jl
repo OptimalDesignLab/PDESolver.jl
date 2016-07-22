@@ -49,4 +49,10 @@ facts("----- Testing Parallel -----") do
 
 end
 
+if MPI.Initialized()
+  MPI.Finalize()
+end
+
+FactCheck.exitstatus()
+
 
