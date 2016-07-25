@@ -225,10 +225,30 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   a = sqrt(gami*(H - phi))
   Un = u*nx + v*ny + w*nz
 
+
   lambda1 = Un + dA*a
   lambda2 = Un - dA*a
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
+
+  if absvalue(lambda3) < sat_Vl*rhoA 
+    println("Un = ", Un)
+    println("dA = ", dA)
+    println("q = ", q)
+    println("u, v, w = ", u, ", ", v, ", ", w)
+    println("nx, ny, nz = ", nx, ", ", ny, ", ", nz)
+    println("lambda3 = ", lambda3)
+    print("\n")
+  end
+
+  if absvalue(lambda1) < sat_Vn*rhoA
+    println("lambda1 = ", lambda1)
+  end
+
+  if absvalue(lambda2) < sat_Vn*rhoA
+    println("lambda2 = ", lambda2)
+  end
+
 #=
   println("before entropy fix:")
   println("rhoA = ", rhoA)

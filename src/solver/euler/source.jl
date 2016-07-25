@@ -77,59 +77,99 @@ function call(obj::SRCExp, q::AbstractVector, coords::AbstractVector, params::Pa
   convertFromNaturalToWorkingVars(params, q, q)
 end
 
+# declare some global variables
+# this is somewhat namespace polluting
+global const MMSExp_a = 1/500
+global const MMSExp_b = 0.01
+global const MMSExp_c1 = 1
+global const MMSExp_c2 = 2
+global const MMSExp_c3 = 3
+global const MMSExp_c4 = 4
+global const MMSExp_c5 = 20
+global const MMSExp_d1 = 1
+global const MMSExp_d2 = 0.05
+global const MMSExp_d3 = 0.15
+global const MMSExp_d4 = 0.25
+global const MMSExp_d5 = 1
+
 function call(obj::SRCExp, q::AbstractVector, coords::AbstractVector, params::ParamType{3}, t)
 
   x = coords[1]
   y = coords[2]
   z = coords[3]
+
+  # constant parameters
   gamma_1 = params.gamma_1
-  a = 1/500
-  b = 0.01
-  c = 20
-  d = 0.25
-  d3 = d*d*d
+  a = MMSExp_a
+  b = MMSExp_b
+  c1 = MMSExp_c1 
+  c2 = MMSExp_c2
+  c3 = MMSExp_c3
+  c4 = MMSExp_c4
+  c5 = MMSExp_c5
+  d1 = MMSExp_d1
+  d2 = MMSExp_d2
+  d3 = MMSExp_d3
+  d4 = MMSExp_d4
+  d5 = MMSExp_d5
 
-#  c1 = c + 1
-#  c2 = c + 2
-#  c3 = c + 3
-
-  t2 = a*x*y*z*2.0;
-  t3 = exp(t2);
-  t4 = exp(b);
-  t5 = d*d;
-  t6 = a*x*y*z*5.0;
-  t7 = exp(t6);
-  t8 = a*x*y*z*4.0;
+  t2 = exp(b);
+  t3 = a*c2*x*y*z;
+  t4 = exp(t3);
+  t5 = a*c4*x*y*z;
+  t6 = exp(t5);
+  t7 = c4*d4*t6*x*y;
+  t8 = a*c3*x*y*z;
   t9 = exp(t8);
-  t10 = a*c*x*y*z;
-  t11 = exp(t10);
-  t12 = a*x*y*z*6.0;
-  t13 = exp(t12);
-  t14 = a*x*y*z;
-  t15 = exp(t14);
-  t16 = a*x*y*z*7.0;
-  t17 = exp(t16);
-  t18 = a*x*y*z*3.0;
-  t19 = exp(t18);
-  q[1] = a*d*t3*t4*(y*z*2.0+t3*x*y*4.0+t15*x*z*3.0)
-  q[2] = a*t4*(c*t11*y*z+t5*t7*x*y*5.0+t5*t9*x*z*4.0+t5*t19*y*z*3.0)
-  q[3] = a*t4*(c*t11*x*z+t5*t13*x*y*6.0+t5*t7*x*z*5.0+t5*t9*y*z*4.0)
-  q[4] = a*t4*(c*t11*x*y+t5*t17*x*y*7.0+t5*t13*x*z*6.0+t5*t13*y*z*6.0)
-  q[5] = a*d*t4*t15*( (t11*y*z*2.0+c*t11*y*z*2.0+t5*t7*x*y*6.0+t3*t11*x*y*6.0) + (t5*t17*x*y*8.0+t5*t9*x*z*5.0+t5*t13*x*z*7.0+t11*t15*x*z*4.0) + (t5*t7*y*z*6.0+t5*t17*y*z*8.0+t5*t19*y*z*4.0+t5*x*y*exp(a*x*y*z*9.0)*1.0E1) + t5*x*z*exp(a*x*y*z*8.0)*9.0+c*t3*t11*x*y*2.0+c*t11*t15*x*z*2.0)*(1.0/2.0)+(a*d*t4*t11*t15*(y*z+c*y*z+t3*x*y*3.0+t15*x*z*2.0+c*t3*x*y+c*t15*x*z))/gamma_1
+  t10 = c3*d3*t9*x*z;
+  t11 = a*c5*x*y*z;
+  t12 = exp(t11);
+  t13 = 1.0/d1;
+  t16 = a*c1*x*y*z;
+  t14 = exp(-t16);
+  t15 = c2*d2*t4*y*z;
+  t17 = b-t16;
+  t18 = exp(t17);
+  t19 = d2*d2;
+  t20 = a*c2*x*y*z*2.0;
+  t21 = exp(t20);
+  t22 = d3*d3;
+  t23 = a*c3*x*y*z*2.0;
+  t24 = exp(t23);
+  t25 = d4*d4;
+  t26 = a*c4*x*y*z*2.0;
+  t27 = exp(t26);
+  t28 = b+t11;
+  t29 = exp(t28);
+  t30 = c2*t19*t21;
+  t31 = c3*t22*t24;
+  t32 = c4*t25*t27;
+  t33 = t30+t31+t32;
+  t34 = t19*t21;
+  t35 = t22*t24;
+  t36 = t25*t27;
+  t37 = t34+t35+t36;
+  t38 = 1.0/gamma_1;
+  t39 = c1-c4;
+  t40 = exp(-a*t39*x*y*z);
+  t41 = c1-c3;
+  t42 = exp(-a*t41*x*y*z);
+  t43 = d5*t29;
+  t44 = d5*t29*t38;
+  t45 = t13*t18*t37*(1.0/2.0);
+  t46 = t43+t44+t45;
+  t47 = c1-c2;
+  t48 = exp(-a*t47*x*y*z);
+  q[1] = a*t2*(t7+t10+t15);
 
-#=
-  q[1] = d*2*af*y*z*exp(2*af*x*y*z + b) + d*3*af*x*z*exp(3*af*x*y*z + b) + d*4*af*x*y*exp(4*af*x*y*z + b)
+  q[2] = a*c5*d5*t2*t12*y*z + a*d2*t2*t4*t13*t14*(t7+t10 - c1*d4*t6*x*y + c2*d4*t6*x*y - c1*d3*t9*x*z + c2*d3*t9*x*z - c1*d2*t4*y*z + c2*d2*t4*y*z*2.0);
 
-  q[2] = d*d*3*af*y*z*exp(3*af*x*y*z + b) + c*af*y*z*exp(c*af*x*y*z + b) + d*d*4*af*x*z*exp(4*af*x*y*z + b) + d*d*5*af*x*y*exp(5*af*x*y*z + b)
+  q[3] = a*c5*d5*t2*t12*x*z + a*d3*t2*t9*t13*t14*( (t7+t15 - c1*d4*t6*x*y + c3*d4*t6*x*y - c1*d3*t9*x*z) + (c3*d3*t9*x*z*2.0 - c1*d2*t4*y*z + c3*d2*t4*y*z) );
 
-  q[3] = d*d*4*af*y*z*exp(4*af*x*y*z + b) + d*d*5*af*x*z*exp(5*af*x*y*z + b) + c*af*x*z*exp(c*af*x*y*z + b) + d*d*6*af*x*y*exp(6*af*x*y*z + b)
+  q[4] = a*c5*d5*t2*t12*x*y + a*d4*t2*t6*t13*t14*( (t10+t15 - c1*d4*t6*x*y + c4*d4*t6*x*y*2.0 - c1*d3*t9*x*z) + (c4*d3*t9*x*z - c1*d2*t4*y*z + c4*d2*t4*y*z) );
 
-  q[4] = d*d*5*af*y*z*exp(5*af*x*y*z + b) + d*d*6*af*x*z*exp(6*af*x*y*z + b) + d*d*7*af*x*y*exp(7*af*x*y*z + b) + c*af*x*y*exp(c*af*x*y*z + b)
-  
-  q[5] = ( d*c1*af*y*z*(1/gamma_1 + 1)*exp(c1*af*x*y*z + b) + d3*2*af*y*z*exp(4*af*x*y*z + b) + d3*3*af*y*z*exp(6*af*x*y*z + b) + d3*4*af*y*z*exp(8*af*x*y*z + b) ) +
-         ( d*c2*af*x*z*(1/gamma_1 + 1)*exp(c2*af*x*y*z + b) + d3*2.5*af*x*z*exp(5*af*x*y*z + b) + d3*3.5*af*x*z*exp(7*af*x*y*z + b) + d3*4.5*af*x*z*exp(9*af*x*y*z + b) ) +
-         ( d*c3*af*x*y*(1/gamma_1 + 1)*exp(c3*af*x*y*z + b) + d3*3*af*x*y*z + b) + d3*3*af*x*y*exp(6*af*x*y*z + b) + d3*4*af*x*y*exp(8*af*x*y*z + b) + d3*5*af*x*y*exp(10*af*x*y*z + b)
-=#
+  q[5] = d4*t13*t40*(a*t13*t18*t33*x*y + a*c5*d5*t29*x*y + a*c5*d5*t29*t38*x*y - a*c1*t13*t18*t37*x*y*(1.0/2.0)) + d3*t13*t42*(a*t13*t18*t33*x*z + a*c5*d5*t29*x*z + a*c5*d5*t29*t38*x*z - a*c1*t13*t18*t37*x*z*(1.0/2.0)) + d2*t13*t48*(a*t13*t18*t33*y*z + a*c5*d5*t29*y*z + a*c5*d5*t29*t38*y*z - a*c1*t13*t18*t37*y*z*(1.0/2.0)) - a*d4*t13*t39*t40*t46*x*y - a*d3*t13*t41*t42*t46*x*z - a*d2*t13*t46*t47*t48*y*z;
+
   return nothing
 end
 
