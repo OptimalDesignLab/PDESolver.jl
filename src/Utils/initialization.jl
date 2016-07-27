@@ -18,7 +18,6 @@ function createMeshAndOperator(opts, dofpernode)
   flag = opts["run_type"]
   dim = opts["dimensions"]
 
-  println("dim = ", dim)
   if flag == 1 || flag == 8  || flag == 9 || flag == 10  # normal run
     Tmsh = Float64
     Tsbp = Float64
@@ -93,9 +92,7 @@ function createMeshAndOperator(opts, dofpernode)
     else 
       sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       ref_verts = sbp.vtx
-      println("ref_verts = \n", ref_verts)
       interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
-      println("interp_op = \n", interp_op)
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
       topo = ElementTopology{3}(face_verts)
       sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)

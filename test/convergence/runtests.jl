@@ -17,6 +17,11 @@ facts("----- testing convergence rates -----") do
   cd("./p1/source_term")
   include(joinpath(pwd(), "runtests.jl"))
 
+  cd(start_dir)
+  cd("./p1/conservative_3dg")
+  include(joinpath(pwd(), "runtests.jl"))
+
+
 
 #=
   cd(start_dir)
@@ -33,6 +38,11 @@ facts("----- testing convergence rates -----") do
   cd(start_dir)
   cd("./p2/conservative_dg")
   include(joinpath(pwd(), "runtests.jl"))
+
+  cd(start_dir)
+  cd("./p2/conservative_3dg")
+  include(joinpath(pwd(), "runtests.jl"))
+
 
 #=
   cd(start_dir)
