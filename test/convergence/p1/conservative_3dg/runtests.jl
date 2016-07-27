@@ -26,7 +26,7 @@ data = readdlm("err_data.dat")
 err_vals = data[:, 2]
 #println("err_vals = ", err_vals)
 
-slope_val = 1.84
+slope_val = 1.75
 slope_margin = 0.1
 
 @fact slope --> greater_than(slope_val - slope_margin)

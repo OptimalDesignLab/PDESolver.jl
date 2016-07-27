@@ -231,41 +231,10 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
 
-  if absvalue(lambda3) < sat_Vl*rhoA 
-    println("Un = ", Un)
-    println("dA = ", dA)
-    println("q = ", q)
-    println("u, v, w = ", u, ", ", v, ", ", w)
-    println("nx, ny, nz = ", nx, ", ", ny, ", ", nz)
-    println("lambda3 = ", lambda3)
-    print("\n")
-  end
-
-  if absvalue(lambda1) < sat_Vn*rhoA
-    println("lambda1 = ", lambda1)
-  end
-
-  if absvalue(lambda2) < sat_Vn*rhoA
-    println("lambda2 = ", lambda2)
-  end
-
-#=
-  println("before entropy fix:")
-  println("rhoA = ", rhoA)
-  println("lambda1 = ", lambda1)
-  println("lambda2 = ", lambda2)
-  println("lambda3 = ", lambda3)
-=#
-
   lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
   lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
   lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
-#=
-  println("after entropy fix:")
-  println("lambda1 = ", lambda1)
-  println("lambda2 = ", lambda2)
-  println("lambda3 = ", lambda3)
-=#
+  
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
   dq3 = q[3] - qg[3]
@@ -300,11 +269,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   tmp1 = d0_5*(lambda1 + lambda2) - lambda3
   tmp2 = gami/(a*a)
   tmp3 = d1_0/(dA*dA)
-#=
-  println("tmp1 = ", tmp1)
-  println("tmp2 = ", tmp2)
-  println("tmp3 = ", tmp3)
-=#
+  
   for i=1:5
     sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
   end
