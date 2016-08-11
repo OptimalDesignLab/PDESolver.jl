@@ -87,6 +87,9 @@ else
   get!(arg_dict, "use_src_term", true)
 end
 
+# volume integral options
+get!(arg_dict, "volume_integral_type", 1)
+
 # timestepping options
 if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
   arg_dict["calc_dt"] = true

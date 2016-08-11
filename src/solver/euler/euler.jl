@@ -445,24 +445,25 @@ end
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
-  if opts["Q_transpose"] == true
-    for i=1:Tdim
-      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
-    end
+  integral_type = opts["volume_integral_type"]
+  if integral_type == 1
+    if opts["Q_transpose"] == true
+      for i=1:Tdim
+        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+      end
+    else
+      for i=1:Tdim
+        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract, trans=false)
+      end
+    end  # end if
+  elseif integral_type == 2
+    calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts)
   else
-    for i=1:Tdim
-      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract, trans=false)
-    end
-  end  # end if
+    throw(ErrorException("Unsupported volume integral type = $integral_type"))
+  end
 
 
   # artificialViscosity(mesh, sbp, eqn) 
-
-  # hAverage = AvgMeshSize(mesh, eqn)
-  # println("Average Mesh Size = ", hAverage)
-  # need source term here
-
-
 
 end  # end evalVolumeIntegrals
 

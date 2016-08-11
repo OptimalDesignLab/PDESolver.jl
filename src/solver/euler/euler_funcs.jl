@@ -144,6 +144,69 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
 
 end
 
+function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                        sbp::AbstractSBP,  
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts)
+  dxidx = mesh.dxidx
+  res = eqn.res
+  q = eqn.q
+  nrm = zeros(Tmsh, Tdim)
+  F_d = eqn.params.flux_vals1
+
+  # DEBUG:
+  Fx_regular = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  Fx_split = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  D = zeros(sbp.Q)
+  hinv = inv(diagm(sbp.w))
+  for p=1:Tdim
+    D[:, :, p] = hinv*sbp.Q[:, :, p]
+  end
+
+  for i=1:mesh.numEl
+    # res[:, j, i] = Qjk^T*F_start(uj, uk)
+    fill!(Fx_regular, 0.0); fill!(Fx_split, 0.0)
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(q, :, j, i)
+      for k=1:mesh.numNodesPerElement
+        q_k = sview(q, :, k, i)
+        # loop over parametric dimensions at this point
+        for d=1:Tdim
+
+          # get the normal vector
+          for p=1:Tdim
+            nrm[p] = dxidx[d, p, j, i] 
+          end
+
+          #  calculate the numerical flux functions in current direction
+          calcEulerFlux_standard(eqn.params, q_j, q_k, nrm, F_d)
+
+          # update residual
+          for p=1:(Tdim+2)
+            res[p, j, i] += 2*sbp.Q[k, j, d]*F_d[p]
+            # DEBUG
+            Fx_split[p, j] += 2*D[j, k, d]*F_d[p]
+            Fx_regular[p, j] += D[j, k, d]*eqn.flux_parametric[p, k, i, d]
+          end
+
+        end  # end d loop
+      end  # end k loop
+
+      # calculate norm of difference
+      val = 0.0
+      for p=1:(Tdim + 2)
+        diff = real(Fx_split[p, j] - Fx_regular[p, j])
+        val += diff*diff
+      end
+
+      val = sqrt(val)
+      @assert val < 1e-12
+
+    end  # end j loop
+  end  # end i loop
+
+  return nothing
+end
+
 
 # calculating the Euler flux at a node
 #------------------------------------------------------------------------------
@@ -194,6 +257,61 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 
 end
 
+function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+# calculate the split form numerical flux function corresponding to the standard DG flux
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  rho_avg = 0.5*(qL[1] + qR[1])
+  rhou_avg = 0.5*(qL[2] + qR[2])
+  rhov_avg = 0.5*(qL[3] + qR[3])
+  p_avg = 0.5*(pL + pR)
+
+
+
+  F[1] = dir[1]*(rhou_avg) + dir[2]*rhov_avg
+
+  tmp1 = 0.5*(qL[2]*qL[2]/qL[1] + qR[2]*qR[2]/qR[1])
+  tmp2 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
+  F[2] = dir[1]*(tmp1 + p_avg) + dir[2]*tmp2
+
+  tmp1 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
+  tmp2 = 0.5*(qL[3]*qL[3]/qL[1] + qR[3]*qR[3]/qR[1])
+  F[3] = dir[1]*tmp1 + dir[2]*(tmp2 + p_avg)
+
+
+  tmp1 = 0.5*( (qL[4] + pL)*qL[2]/qL[1] + (qR[4] + pR)*qR[2]/qR[1])
+  tmp2 = 0.5*( (qL[4] + pL)*qL[3]/qL[1] + (qR[4] + pR)*qR[3]/qR[1])
+  F[4] = dir[1]*tmp1 + dir[2]*tmp2
+
+  return nothing
+end
+
+
+
+function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+# calculate the split form numerical flux function proposed by Ducros et al.
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
+  vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
+
+  rho_avg = 0.5*(qL[1] + qR[1])
+  rhou_avg = 0.5*(qL[2] + qR[2])
+  rhov_avg = 0.5*(qL[3] + qR[3])
+  E_avg = 0.5*(qL[4] + qR[4])
+  p_avg = 0.5*(pL + pR)
+
+  F[1] = dir[1]*rho_avg*u_avg + dir[2]*rho_avg*v_avg
+  F[2] = dir[1]*(rhou_avg*u_avg + p_avg) + dir[2]*(rhou_avg*v_avg)
+  F[3] = dir[1]*(rhov_avg*u_avg) + dir[2]*(rhov_avg*v_avg + p_avg)
+  F[4] = dir[1]*(E_avg + p_avg)*u_avg + dir[2]*(E_avg + p_avg)*v_avg
+
+  return nothing
+end
 
 @doc """
 # low level function

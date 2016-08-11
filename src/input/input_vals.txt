@@ -40,6 +40,9 @@ where input_file_name.jl is in your current directory.
 "variable_type": which set of variables to write the equation in, (Symbol), default
             :conservative
 
+"volume_integral_type": method of computing volume integrals, (Int), 
+                        default 1 (Di*Fi), 2 --> use a split form numerical flux 
+                        function
 # Solver options
 "use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
           default false
