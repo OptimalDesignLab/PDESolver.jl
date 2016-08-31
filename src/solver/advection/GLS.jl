@@ -35,8 +35,8 @@ function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     for j = 1:mesh.numNodesPerElement
       u[j] = eqn.q[1,j,i]  
     end
-    alpha_x = sview(eqn.alpha_x, 1, :, i)
-    alpha_y = sview(eqn.alpha_y, 1, :, i)
+    alpha_x = sview(eqn.params.alpha_x, 1, :, i)
+    alpha_y = sview(eqn.params.alpha_y, 1, :, i)
     dxidx = sview(mesh.dxidx, :, :, :, i)
     AxiDxi = calcAxiDxi(mesh, dxidx, alpha_x, alpha_y, shapefuncderiv)
     intArr = zeros(AxiDxi) # intermediate array for storing H*tau*AxiDxi
@@ -133,8 +133,8 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     alpha_xi = zeros(Tsol, mesh.numNodesPerElement)
     alpha_eta = zeros(alpha_xi)
   	for j = 1:mesh.numNodesPerElement
-      alpha_x = eqn.alpha_x[1, j, i]
-      alpha_y = eqn.alpha_y[1, j, i]
+      alpha_x = eqn.params.alpha_x[1, j, i]
+      alpha_y = eqn.params.alpha_y[1, j, i]
       alpha_xi[j] = mesh.dxidx[1, 1, j, i]*alpha_x + mesh.dxidx[1, 2, j, i]*alpha_y
       alpha_eta[j] = mesh.dxidx[2, 1, j, i]*alpha_x + mesh.dxidx[2, 2, j, i]*alpha_y
     end  # end for j = 1:mesh.numNodesPerElement

@@ -40,6 +40,12 @@ include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include th
 # record fname in dictionary
 arg_dict["fname"] = fname
 
+if arg_dict["run_type"] == 1
+  get!(arg_dict, "parallel_type", 1)
+else
+  get!(arg_dict, "parallel_type", 2)
+end
+
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
 
@@ -52,6 +58,11 @@ cv = R/gamma_1
 
 get!(arg_dict, "dimensions", 2)
 get!(arg_dict, "use_DG", false)
+if arg_dict["use_DG"]
+  get!(arg_dict, "operator_type", "SBPOmega")
+else
+  get!(arg_dict, "operator_type", "SBPGamma")
+end
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
@@ -87,7 +98,7 @@ get!(arg_dict, "CFL", 0.4)
 get!(arg_dict, "use_itermax", haskey(arg_dict, "itermax"))
 
 # stabilization options
-get!(arg_dict, "use_edgestab", true)
+get!(arg_dict, "use_edgestab", false)
 get!(arg_dict, "edgestab_gamma", -0.1)
 get!(arg_dict, "use_filter", false)
 get!(arg_dict, "use_res_filter", false)
@@ -180,6 +191,9 @@ get!(arg_dict, "write_offsets", false)
 get!(arg_dict, "write_dofs", false)
 get!(arg_dict, "verify_coloring", true)
 get!(arg_dict, "write_counts", false)
+get!(arg_dict, "write_interfaces", false)
+get!(arg_dict, "write_boundaries", false)
+get!(arg_dict, "write_sharedboundaries", false)
 
 # mesh options
 get!(arg_dict, "reordering_algorithm", "default")
@@ -196,9 +210,11 @@ get!(arg_dict, "write_res", false)
 get!(arg_dict, "output_freq", 1)
 get!(arg_dict, "recalc_prec_freq", 1)
 get!(arg_dict, "jac_type", 2)
+get!(arg_dict, "use_jac_precond", false)
 get!(arg_dict, "res_abstol", 1e-6)
 get!(arg_dict, "res_reltol", 1e-6)
 get!(arg_dict, "res_reltol0", -1.0)
+get!(arg_dict, "step_tol", -1.0)
 get!(arg_dict, "print_eigs", false)
 get!(arg_dict, "write_eigs", false)
 get!(arg_dict, "write_eigdecomp", false)
@@ -231,14 +247,11 @@ get!(arg_dict, "solve", true)
 # postprocessing options
 get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
+get!(arg_dict, "write_timing", false)
+get!(arg_dict, "finalize_mpi", false)
 
 # write complete dictionary to file
-fname = "arg_dict_output.jl"
-rmfile(fname)
-f = open(fname, "a+")
-
-println(f, "arg_dict = Dict{Any, Any}(")
-arg_keys = keys(arg_dict)
+myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
 # Functional computational options
 get!(arg_dict, "calc_functional", false)
@@ -246,22 +259,39 @@ get!(arg_dict, "num_functionals", 0)
 get!(arg_dict, "functional_error_outfname", "functional_error")
 get!(arg_dict, "analytical_functional_val", 0.0)
 
-
 # Adjoint computation options
 get!(arg_dict, "calc_adjoint", false)
 
-for key_i in arg_keys
-  show(f, key_i)
-  print(f, " => ")
-  show(f, arg_dict[key_i])
-  println(f, ",")
-#  println(f, show(key_i), " => ", show(arg_dict[key_i]), ",")
+# write complete dictionary to file
+myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+commsize = MPI.Comm_size(MPI.COMM_WORLD)
+if myrank == 0
+  fname = "arg_dict_output.jl"
+  rmfile(fname)
+  f = open(fname, "a+")
+
+  println(f, "arg_dict = Dict{Any, Any}(")
+  arg_keys = keys(arg_dict)
+
+
+  for key_i in arg_keys
+    show(f, key_i)
+    print(f, " => ")
+    show(f, arg_dict[key_i])
+    println(f, ",")
+  #  println(f, show(key_i), " => ", show(arg_dict[key_i]), ",")
+  end
+  println(f, ")")
+  close(f)
 end
-println(f, ")")
-close(f)
-
-
 # do some sanity checks here
+
+if commsize > 1 && arg_dict["jac_type"] != 3 && arg_dict["run_type"] != 1
+  throw(ErrorException("Invalid jacobian type for parallel run"))
+end
+
+
+
 # deal with boundary conditions
 # "numBC" must be dictionary key whose value is the number of boundary conditions
 # for each boundary condition there must be keys BCi and BCi_name for i=1:numBC

@@ -108,15 +108,23 @@ export evalEuler, init
 # high level function
 function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts, 
                    t=0.0)
-
+  time = eqn.params.time
   eqn.params.t = t  # record t to params
-  
-  dataPrep(mesh, sbp, eqn, opts)
+  myrank = mesh.myrank
+
+  if opts["parallel_type"] == 1
+    time.t_send += @elapsed if mesh.commsize > 1
+      sendParallelData(mesh, sbp, eqn, opts)
+    end
+    #  println("send parallel data @time printed above")
+  end
+ 
+
+  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
 #  println("dataPrep @time printed above")
 
 
-  evalVolumeIntegrals(mesh, sbp, eqn, opts)
-#  println("after volume integrals res = \n", eqn.res)
+  time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
@@ -128,7 +136,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   #println("bndryfluxPhysical = \n", bndryfluxPhysical)
   #println("eqn.bndryflux = \n", eqn.bndryflux)
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
   
   if opts["use_GLS"]
@@ -137,22 +145,30 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   
   #=
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(sbp, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
   =#
   #----------------------------------------------------------------------------
 
-  evalBoundaryIntegrals(mesh, sbp, eqn)
-#  println("after boundary integrals res = \n", eqn.res)
+  time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
 #  println("boundary integral @time printed above")
 
 
-  addStabilization(mesh, sbp, eqn, opts)
-#  println("after stabilization res = \n", eqn.res)
-  if mesh.isDG
+  time.t_stab += @elapsed addStabilization(mesh, sbp, eqn, opts)
+#  println("stabilizing @time printed above")
+
+  time.t_face += @elapsed if mesh.isDG
     evalFaceIntegrals(mesh, sbp, eqn, opts)
+    #println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
-#  println("stabilizing @time printed above")
+
+  time.t_sharedface += @elapsed if mesh.commsize > 1
+    evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+  end
+
+  time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
+#  println("source integral @time printed above")
+
 
 
   
@@ -175,11 +191,14 @@ end  # end evalEuler
 function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
 
-  println("\nInitializing Euler module")
+#  println("\nInitializing Euler module")
+
+  initMPIStructures(mesh, opts)
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
   getBCFunctors(pmesh, sbp, eqn, opts)
 
+  getSRCFunctors(mesh, sbp, eqn, opts)
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
@@ -190,19 +209,20 @@ end
 
 
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::AbstractSBP, eqn::AbstractEulerData, opts)
+                                sbp::AbstractSBP, eqn::AbstractEulerData, opts, f::IO)
 
 #  println("Performing major Iteration Callback")
 
 
-    if opts["write_vis"] && ((itr % opts["output_freq"])) == 0 || itr == 1
+    if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
       vals = real(eqn.q_vec)  # remove unneded imaginary part
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
     end
  
-
+    # add an option on control this or something.  Large blocks of commented
+    # out code are bad
 #=
   if itr == 0
     #----------------------------------------------------------------------------
@@ -271,7 +291,7 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
@@ -280,6 +300,8 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 #println("Entered dataPrep()")
 
+#  println("typeof(eqn) = ", typeof(eqn))
+#  println("typeof(eqn.params) = ", typeof(eqn.params))
 
   # apply filtering to input
   if eqn.params.use_filter
@@ -291,22 +313,23 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   fill!(eqn.res_edge, 0.0)
  
   getAuxVars(mesh, eqn)
-#  println("getAuxVars @time printed above")
-
+#  println("  getAuxVars @time printed above")
+  
   if opts["check_density"]
     checkDensity(eqn)
-    # println("checkDensity @time printed above")
+#    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
+#    throw(ErrorException("I'm done"))
     checkPressure(eqn)
-    # println("checkPressure @time printed above")
+#    println("  checkPressure @time printed above")
   end
 
   # calculate fluxes
 #  getEulerFlux(eqn, eqn.q, mesh.dxidx, sview(flux_parametric, :, :, :, 1), sview(flux_parametric, :, :, :, 2))
   getEulerFlux(mesh, sbp,  eqn, opts)
-#  println("getEulerFlux @time printed above")
+#  println("  getEulerFlux @time printed above")
 
 
   if mesh.isDG
@@ -317,12 +340,16 @@ function dataPrep{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
     calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
   end
+#  println("  DG dataPrep @time printed above")
   fill!(eqn.bndryflux, 0.0)
   getBCFluxes(mesh, sbp, eqn, opts)
-#   println("getBCFluxes @time printed above")
-  
-   stabscale(mesh, sbp, eqn)
-#  println("stabscale @time printed above")
+#   println("  getBCFluxes @time printed above")
+ 
+  # is this needed for anything besides edge stabilization?
+  if eqn.params.use_edgestab 
+    stabscale(mesh, sbp, eqn)
+  end
+#  println("  stabscale @time printed above")
 
 #  println("finished dataPrep()")
   return nothing
@@ -386,6 +413,8 @@ function checkPressure(eqn::EulerData)
 
 (ndof, nnodes, numel) = size(eqn.q)
 
+
+
 for i=1:numel
   for j=1:nnodes
     aux_vars = sview(eqn.aux_vars,:, j, i)
@@ -416,17 +445,16 @@ end
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
-  
   if opts["Q_transpose"] == true
     for i=1:Tdim
       weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
     end
   else
     for i=1:Tdim
-      #TODO: do this more efficiently
-      weakdifferentiate!(sbp, i, -1*sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=false)
+      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract, trans=false)
     end
   end  # end if
+
 
   # artificialViscosity(mesh, sbp, eqn) 
 
@@ -438,19 +466,6 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 end  # end evalVolumeIntegrals
 
-
-#=
-@doc """
-  This function evaluates the advective terms of the strong form.
-  eqn.res is updates with the result
-
-"""->
-function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::EulerData{Tsol, Tdim}, opts)
-
-  for i=1:Tdim
-    differentiate!(sbp, i, 
-
-=#
 
 @doc """
   This function evaluates the boundary integrals in the Euler equations by 
@@ -464,10 +479,11 @@ function evalAdvectiveStrong{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Ab
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 
+  #TODO: remove conditional
   if mesh.isDG
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   else
-    boundaryintegrate!(sbp, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   end
 
 
@@ -558,5 +574,87 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 end
                             
 
+@doc """
+### EulerEquationMod.sendParallelData
+
+  This function interpolates the data into the send buffer and post
+  the Isends and Irecvs.  It does not wait for them to finish
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""->
+function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  for i=1:mesh.npeers
+    # interpolate
+    mesh.send_waited[i] = getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i], mesh.send_waited[i])
+  end
+
+  exchangeFaceData(mesh, opts, eqn.q_face_send, eqn.q_face_recv)
+
+  return nothing
+end
+
+@doc """
+### EulerEquationMod.evalSharedFaceIntegrals
+
+  This function does the computation that needs the parallel
+  communication to have finished already, namely the face integrals
+  for the shared faces
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""->
+function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  if opts["parallel_type"] == 1
+#    println(eqn.params.f, "doing face integrals using face data")
+    calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+  else
+#    println(eqn.params.f, "doing face integrals using element data")
+    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+  end
+
+  return nothing
+end
+
+@doc """
+### EulerEquationMod.evalSourceTerm
+
+  This function performs all the actions necessary to update eqn.res
+  with the source term.  The source term is stored in eqn.src_func.  It is
+  an abstract field, so it cannot be accessed (performantly) directly, so
+  it is passed to an inner function.
+
+  Inputs:
+    mesh : Abstract mesh type
+    sbp  : Summation-by-parts operator
+    eqn  : Euler equation object
+    opts : options dictonary
+
+  Outputs: none
+
+  Aliasing restrictions: none
+
+"""->
+function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, 
+                     opts)
+
+
+  # placeholder for multiple source term functionality (similar to how
+  # boundary conditions are done)
+  if opts["use_src_term"]
+    applySourceTerm(mesh, sbp, eqn, opts, eqn.src_func)
+  end
+
+  return nothing
+end  # end function
 
 

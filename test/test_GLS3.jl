@@ -49,8 +49,8 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
 
     # constant mapping elements only
     dxidx = zeros(2,2)
-    dxidx_hat_el = view(mesh.dxidx, :, :, 1, el)
-    jac_el = view(mesh.jac, :, el)
+    dxidx_hat_el = sview(mesh.dxidx, :, :, 1, el)
+    jac_el = sview(mesh.jac, :, el)
     q_el = reshape(copy(eqn.q[:, :, el]), size_block)
 
     for i=1:2
@@ -93,10 +93,10 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
       idx_i = idx_range[i]
       q_i = q_el[idx_i]
 
-      A1 = view(A1_tilde, idx_i, idx_i)
+      A1 = sview(A1_tilde, idx_i, idx_i)
       EulerEquationMod.calcA1(eqn.params, q_i, A1)
 
-      A2 = view(A2_tilde, idx_i, idx_i)
+      A2 = sview(A2_tilde, idx_i, idx_i)
       EulerEquationMod.calcA2(eqn.params, q_i, A2)
     end
 
@@ -272,7 +272,7 @@ if true
     end
 
     for j=1:len
-      tol = 0.001
+      tol = 0.002
       for k = 1:len
         if abs(jac_fd[k,j]) > 1e-4
           @fact abs((jac_c[k, j] - jac_fd[k, j])/jac_c[k,j]) --> less_than(tol)

@@ -100,7 +100,7 @@ facts("----- Testing DG Boundary -----") do
   mesh.bndry_funcs[1:end] = EulerEquationMod.BCDict["Rho1E2U3BC"]
 
   # check that the interpolation worked
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     for j=1:mesh.sbpface.numnodes
       @fact eqn.q_bndry[:, j, i] --> roughly( [1.0, 0.35355, 0.35355, 2.0], atol=1e-13)
     end
@@ -110,7 +110,7 @@ facts("----- Testing DG Boundary -----") do
   flux_euler = zeros(4)
   EulerEquationMod.getBCFluxes(mesh, sbp, eqn, opts)
 
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
     for j=1:mesh.sbpface.numnodes
       dxidx = mesh.dxidx_bndry[:, :, j, i]

@@ -13,6 +13,7 @@ using SummationByParts
 using PdePumiInterface
 using ForwardDiff
 using Utils
+using MPI
 #using Debugging
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
@@ -56,6 +57,7 @@ export AbstractEulerData, EulerData, EulerData_
  
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
+  f::IOStream
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
@@ -69,6 +71,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
 
+  sat_vals::Array{Tres, 1}  # reusable storage for SAT term
+
   A0::Array{Tsol, 2}  # reusable storage for the A0 matrix
   A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
   A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
@@ -78,6 +82,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
   Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
   Rmat2::Array{Tres, 2}
+
+  nrm::Array{Tmsh, 1}  # a normal vectora
 
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -112,31 +118,50 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
+  #=
+  # timings
+  t_volume::Float64  # time for volume integrals
+  t_face::Float64 # time for surface integrals (interior)
+  t_source::Float64  # time spent doing source term
+  t_sharedface::Float64  # time for shared face integrals
+  t_bndry::Float64  # time spent doing boundary integrals
+  t_send::Float64  # time spent sending data
+  t_wait::Float64  # time spent in MPI_Wait
+  t_allreduce::Float64 # time spent in allreduce
+  t_barrier::Float64  # time spent in MPI_Barrier
+  t_jacobian::Float64 # time spend computing Jacobian
+  t_solve::Float64 # linear solve time
+  =#
+  time::Timings
 
-  function ParamType(sbp, opts, order::Integer)
+  function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
     
     t = 0.0
-
-    q_vals = Array(Tsol, 4)
-    qg = Array(Tsol, 4)
-    v_vals = Array(Tsol, 4)
+    myrank = mesh.myrank
+    f = open("log_$myrank.dat", "w")
+    q_vals = Array(Tsol, Tdim + 2)
+    qg = Array(Tsol, Tdim + 2)
+    v_vals = Array(Tsol, Tdim + 2)
   
-    res_vals1 = Array(Tres, 4)
-    res_vals2 = Array(Tres, 4)
+    res_vals1 = Array(Tres, Tdim + 2)
+    res_vals2 = Array(Tres, Tdim + 2)
 
-    flux_vals1 = Array(Tres, 4)
-    flux_vals2 = Array(Tres, 4)
+    flux_vals1 = Array(Tres, Tdim + 2)
+    flux_vals2 = Array(Tres, Tdim + 2)
 
-    A0 = zeros(Tsol, 4, 4)
-    A0inv = zeros(Tsol, 4, 4)
-    A1 = zeros(Tsol, 4, 4)
-    A2 = zeros(Tsol, 4, 4)
-    A_mats = zeros(Tsol, 4, 4, Tdim)
+    sat_vals = Array(Tres, Tdim + 2)
 
-    Rmat1 = zeros(Tres, 4, 4)
-    Rmat2 = zeros(Tres, 4, 4)
+    A0 = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A0inv = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A1 = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A2 = zeros(Tsol, Tdim + 2, Tdim + 2)
+    A_mats = zeros(Tsol, Tdim + 2, Tdim + 2, Tdim)
 
+    Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
+    Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
+
+    nrm = zeros(Tmsh, Tdim)
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -184,15 +209,17 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
-    return new(t, order, q_vals, qg, v_vals, res_vals1, res_vals2, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, cv, R, 
+    time = Timings()
+    return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
+               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
                use_dissipation, dissipation_const, tau_type, vortex_x0, 
                vortex_strength, 
-               krylov_itr, krylov_type)
+               krylov_itr, krylov_type,
+               time)
 
     end   # end of ParamType function
 
@@ -366,7 +393,7 @@ include("flux.jl")
 include("GLS2.jl")
 include("boundary_functional.jl")
 include("adjoint.jl")
-
+include("source.jl")
 
 @doc """
 ### EulerEquationMod.EulerData_
@@ -405,6 +432,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # this is the ParamType object that uses the same variables as
   # the EulerData_ object
   params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
+  comm::MPI.Comm
+  commsize::Int
+  myrank::Int
 
   # we include a ParamType object of all variable types, because occasionally
   # we need to do a calculation in  variables other than var_type
@@ -422,11 +452,17 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
   aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
                                   # to interior faces
+  aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
+                                       # to shared faces
   aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
                                   # to the boundaries
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
+  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
+                                         # to other processes
+  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
+  flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   res::Array{Tres, 3}             # result of computation
   res_vec::Array{Tres, 1}         # result of computation in vector form
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
@@ -456,6 +492,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 				  # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
+  src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
 # minorIterationCallback::Function # called before every residual evaluation
 
@@ -469,15 +506,19 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
+    eqn.comm = mesh.comm
+    eqn.commsize = mesh.commsize
+    eqn.myrank = mesh.myrank
+
     numfacenodes = mesh.numNodesPerFace
 
     vars_orig = opts["variable_type"]
     opts["variable_type"] = :conservative
     eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}(
-                                       sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order)
     opts["variable_type"] = :entropy
     eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
-                                       sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order)
 
     opts["variable_type"] = vars_orig
     if vars_orig == :conservative
@@ -535,13 +576,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
 
-    eqn.edgestab_alpha = zeros(Tmsh,2,2,sbp.numnodes, mesh.numEl)
+    eqn.edgestab_alpha = zeros(Tmsh,Tdim,Tdim,sbp.numnodes, mesh.numEl)
     if mesh.isDG
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
       eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, mesh.numInterfaces)
-      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, mesh.numBoundaryEdges)
+      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, mesh.numBoundaryFaces)
       eqn.aux_vars_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
-      eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryEdges)
+      eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryFaces)
     else
       eqn.q_face = Array(Tres, 0, 0, 0, 0)
       eqn.flux_face = Array(Tres, 0, 0, 0)
@@ -550,11 +591,47 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
     eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
-                          mesh.numBoundaryEdges)
+                          mesh.numBoundaryFaces)
 
+    # send and receive buffers
+    #TODO: rename buffers to not include face
+    eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
+    eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
+    eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+    eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+    if mesh.isDG
+      if opts["parallel_type"] == 1 
+        dim2 = numfacenodes
+        dim3_send = mesh.peer_face_counts
+        dim3_recv = mesh.peer_face_counts
+      elseif opts["parallel_type"] == 2
+        dim2 = mesh.numNodesPerElement
+        dim3_send = mesh.local_element_counts
+        dim3_recv = mesh.remote_element_counts
+      else
+        ptype = opts["parallel_type"]
+        throw(ErrorException("Unsupported parallel type requested: $ptype"))
+      end
+      for i=1:mesh.npeers
+        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
+                                         dim3_send[i])
+        eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
+                                        dim3_recv[i])
+        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes, 
+                                       mesh.peer_face_counts[i])
+        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode, 
+                                        numfacenodes, mesh.peer_face_counts[i])
+      end
+    end
+   
     #TODO: don't allocate these arrays if not needed
-    eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
-    calcEdgeStabAlpha(mesh, sbp, eqn)
+    if eqn.params.use_edgestab
+      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
+      calcEdgeStabAlpha(mesh, sbp, eqn)
+    else
+      eqn.stabscale = Array(Tres, 0, 0)
+      eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
+    end
 
     println("Tres = ", Tres)
 

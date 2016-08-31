@@ -8,7 +8,7 @@ export calcAdjoint
 @doc """
 ### EulerEquationMod.calcAdjoint
 
-Calculated the adjoint vector for a single functional
+Calculates the adjoint vector for a single functional
 
 **Inputs**
 

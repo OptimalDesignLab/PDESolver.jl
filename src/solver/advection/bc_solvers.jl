@@ -12,14 +12,14 @@ level.
 *  `dxidx` : The jacobian for this node
 *  `nrm`   : nrm is the normal vector
 *  `net_flux`:
-*  `alpha_x` & `alpha_y`: advection velocities in x & y directions
+*  `params`: the equation ParamType
 
 **Outputs**
 
 *  None
 """->
 
-function flux1(u_sbp_, dxidx, nrm, net_flux, alpha_x, alpha_y)
+function flux1(u_sbp_, dxidx, nrm, net_flux, params::ParamType2)
   # This function works at the nodal level  
   # u_sbp_ is the entry from u_sbp for this node
   # dxi_dx is the jacobian for this node
@@ -62,7 +62,7 @@ each boundary. It is called at the nodal level
 
 *  `u`    : Solution of advection equation at a particular node
 *  `u_bc` : Prescribed solution value at the boundary
-*  `alpha_x` & `alpha_y`: advection velocities in x & y directions
+*  `params`: the equation ParamType object
 *  `nrm`  : Summation-by-parts face normal vector
 *  `dxidx`: Mapping jacobian at a particular node
 
@@ -71,12 +71,29 @@ each boundary. It is called at the nodal level
 *  `bndryflux` : Boundary flux at the particular node
 
 """->
-function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, alpha_x, alpha_y, nrm, 
+function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, params::ParamType2, nrm, 
                                dxidx::AbstractArray{Tmsh,2})
-  alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
-  alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
-  alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
-  bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
+    alpha_x = params.alpha_x
+    alpha_y = params.alpha_y
+    alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
+    alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
+    alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
+    bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
 
   return bndryflux
-end # end function AdvectionRoeSolver
+end # end function RoeSolver
+
+function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, params::ParamType3, nrm, 
+                               dxidx::AbstractArray{Tmsh,2})
+    alpha_x = params.alpha_x
+    alpha_y = params.alpha_y
+    alpha_z = params.alpha_z
+    alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y + dxidx[1,3]*alpha_z
+    alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y + dxidx[2,3]*alpha_z
+    alpha_psi = dxidx[3,1]*alpha_x + dxidx[3,2]*alpha_y + dxidx[3,3]*alpha_z
+
+    alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2] + alpha_psi*nrm[3]
+    bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
+
+  return bndryflux
+end # end function RoeSolver

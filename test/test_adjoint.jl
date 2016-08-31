@@ -1,9 +1,9 @@
 # Test functional Integrate and adjoint for euler equation.
 
-ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
-include("../src/solver/euler/startup.jl")  # initialization and construction
-
 facts("--- Testing Functional Computation On a Boundary ----") do
+  ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
+  include("../src/solver/euler/startup.jl")  # initialization and construction
+
 
   @fact mesh.isDG --> true
   @fact opts["functional_name1"] --> "drag"

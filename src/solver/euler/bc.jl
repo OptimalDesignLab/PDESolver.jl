@@ -77,7 +77,7 @@ function writeBoundary(mesh, sbp, eqn, opts)
 
   # write boundaryflux.dat
   f = open(flux_name, "a+")
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     el = mesh.bndryfaces[i].element
     face = mesh.bndryfaces[i].face
     for j=1:sbp.numfacenodes
@@ -123,7 +123,7 @@ function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3D
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
 
   # calculate aux_vars
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     for j=1:mesh.numNodesPerFace
       q_vals = sview(eqn.q_bndry, :, j, i)
       eqn.aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
@@ -186,12 +186,10 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       q = sview(eqn.q, :, k, bndry_i.element)
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
-      flux_parametric = sview(eqn.flux_parametric, :, k, bndry_i.element, :)
       aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = sview(sbp.facenormal, :, bndry_i.face)
-      #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
@@ -260,8 +258,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               q::AbstractArray{Tsol,1}, 
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
-
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
 #  println("entered isentropicOvrtexBC (low level)")
 
@@ -490,6 +487,23 @@ function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
   return nothing
 end # end function call
 
+type ExpBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+
+  qg = params.qg
+  calcExp(coords, params, qg)
+  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+
+  # println("bndryflux = ", bndryflux)
+  return nothing
+end # end function call
+
+
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -502,7 +516,8 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),
 "allOnesBC" => allOnesBC(),
-"unsteadyVortexBC" => unsteadyVortexBC()
+"unsteadyVortexBC" => unsteadyVortexBC(),
+"ExpBC" => ExpBC(),
 )
 
 @doc """

@@ -26,9 +26,9 @@ function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
 
   for j=1:nnodes
@@ -79,9 +79,9 @@ function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                 operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts,
                 u0::AbstractVector{Tsol})
 
-  numEl = getNumEl(mesh)
+  numEl = mesh.numEl
   nnodes = operator.numnodes
-  dofpernode = getNumDofPerNode(mesh)
+  dofpernode = mesh.numDofPerNode
   for i=1:numEl
     for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
@@ -135,9 +135,9 @@ function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
   for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
@@ -289,9 +289,9 @@ function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
@@ -352,9 +352,9 @@ function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
 #  dofnums_i = sview(mesh, i)  # get dof nums for this element
 #  coords = sview(mesh, [i])
@@ -418,9 +418,9 @@ function ICsmoothHeaviside{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 for i=1:numEl
   for j=1:nnodes
       coords = sview(mesh.coords, :, j, i)
@@ -474,10 +474,10 @@ function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 println("entered ICIsentropicVortex")
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
-sol = zeros(Tsol, 4)
+dofpernode = mesh.numDofPerNode
+sol = zeros(Tsol, dofpernode)
 for i=1:numEl
 #  println("i = ", i)
 #  coords = sview(mesh, [i])
@@ -525,9 +525,9 @@ function ICIsentropicVortexWithNoise{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
@@ -573,9 +573,9 @@ function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 println("entered ICIsentropicVortex")
 
-numEl = getNumEl(mesh)
+numEl = mesh.numEl
 nnodes = operator.numnodes
-dofpernode = getNumDofPerNode(mesh)
+dofpernode = mesh.numDofPerNode
 sol = zeros(Tsol, 4)
 for i=1:numEl
   for j=1:nnodes
@@ -638,8 +638,26 @@ end
 
 end
 
+"""
+  Assigns exp(k*x*y*z) as the initial condition, of each node, where k is 
+  the index of the degree of freedom of the node
+"""
+function ICExp{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
 
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      calcExp(coords, eqn.params, q)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
 
+  return nothing
+end
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
 
@@ -656,7 +674,8 @@ global const ICDict = Dict{Any, Function}(
 "ICIsentropicVortex" => ICIsentropicVortex,
 "ICUnsteadyVortex" => ICUnsteadyVortex,
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
-"ICFile" => ICFile
+"ICFile" => ICFile,
+"ICExp" => ICExp,
 )
 
 

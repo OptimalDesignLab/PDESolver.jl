@@ -75,6 +75,87 @@ return nothing
 end
 
 
+function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+                              params::ParamType{3}, sol::AbstractVector{Tsol})
+# calculates the solution at a point of the isentropic vortex
+
+
+  # unpack arguments
+  x = coords[1]; x_orig = x
+  y = coords[2]; y_orig = y
+  z = coords[3]; z_orig = z;
+
+  #println("x = ", x, ", y = ", y, ", z = ", z)
+
+  phi_z = pi/4  # angle of axis relative to z axis
+  sgn = 1.0
+
+  # calculate new x coordinate in rotated coordinate system
+  theta1 = atan2(z, x)
+  #println("theta1 = ", theta1)
+  phi2 = 0.5*pi - theta1
+  #println("phi2 = ", phi2)
+  r_xz = sqrt(x*x + z*z)  # distance from origin to point in xz plane
+  #println("r_xz = ", r_xz)
+  x = r_xz*sin(phi_z + phi2)  # x coordinate in rotated system
+  #println("x = ", x)
+  #println("diff = ", abs(x - z_orig))
+
+  theta3 = theta1 + phi_z + phi2 - 0.5*pi
+
+  # get some values out of params
+  cv = params.cv
+  R = params.R
+  gamma = params.gamma
+
+  # the (hard coded) parameters are
+  r_in = 1  # inner radius of sector of circle
+  rho_in = 2 # density at inner radius
+  M_in = 0.95  # Mach number
+  p_in =  1/gamma
+
+  # calculate r, theta coordinates from x,y
+  r = sqrt(x*x + y*y)
+  if phi_z > 0
+    theta = atan2(x, y)
+  else
+    theta = atan2(y, x)
+  end
+
+  # calculate values at r radius
+  tmp1 = ((gamma-1)/2)*M_in*M_in
+  rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
+  p_r = p_in*(rho_r/rho_in)^gamma
+  a_r = sqrt( gamma*p_r/rho_r )
+  M_r = sqrt( (2/(gamma-1))*((rho_in/rho_r)^(gamma-1))*(1 + tmp1) - 2/(gamma-1) )
+  U_r = M_r*a_r  # velocity magnitude
+
+  if phi_z > 0
+    v_r = U_r*sin(theta)
+    u_r = -U_r*cos(theta)
+  else
+    u_r = U_r*sin(theta)
+    v_r = -U_r*cos(theta)
+  end
+  e_r = cv*p_r/(rho_r*R)
+  E_r = rho_r*e_r + 0.5*rho_r*U_r*U_r
+
+  # convert velocities back to base frame of reference
+  w_r = u_r*sin(theta3)
+  u_r = u_r*cos(theta3)
+
+  # save solution to sol
+  sol[1] = rho_r
+  sol[2] = rho_r*u_r
+  sol[3] = rho_r*v_r
+  sol[4] = rho_r*w_r
+  sol[5] = E_r
+
+  return nothing
+
+end
+
+
 @doc """
 ### EulerEquationMod.calcFreeStream
 
@@ -328,5 +409,57 @@ function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   return nothing
 end
 
+"""
+  Calculates a manufactured solution based on exponentials
+"""
+function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+                    params::ParamType{2}, q::AbstractArray{Tsol,1})
 
+  x = coords[1]
+  y = coords[2]
+  # a and b are parameters determine the scale and offset of the solution
+  # the must be the same here and in the source term
+  af = 1/5  # a = 1/af
+  b = 0.01
+  gamma_1 = params.gamma_1
+  q[1] = exp(af*x*y + b)
+  q[2] = exp(af*2*x*y + b)
+  q[3] = exp(af*3*x*y + b)
+  q[4] = (1/gamma_1 + 0.5)*exp(af*5*x*y + b) + 0.5*exp(af*3*x*y + b)
 
+  return nothing
+end
+
+function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+                    params::ParamType{3}, q::AbstractArray{Tsol,1})
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+
+  # constant parameters
+  a = MMSExp_a
+  b = MMSExp_b
+  c1 = MMSExp_c1 
+  c2 = MMSExp_c2
+  c3 = MMSExp_c3
+  c4 = MMSExp_c4
+  c5 = MMSExp_c5
+  d1 = MMSExp_d1
+  d2 = MMSExp_d2
+  d3 = MMSExp_d3
+  d4 = MMSExp_d4
+  d5 = MMSExp_d5
+
+  # af = 1/50, b = 0.01, c = 8, d = 0.5, f = 10 works
+  gamma_1 = params.gamma_1
+
+  t2 = exp(b);
+  t3 = a*c1*x*y*z;
+  q[1] = d1*t2*exp(t3);
+  q[2] = d2*t2*exp(a*c2*x*y*z);
+  q[3] = d3*t2*exp(a*c3*x*y*z);
+  q[4] = d4*t2*exp(a*c4*x*y*z);
+  q[5] = (t2*exp(-t3)*((d2*d2)*exp(a*c2*x*y*z*2.0)+(d3*d3)*exp(a*c3*x*y*z*2.0)+(d4*d4)*exp(a*c4*x*y*z*2.0))*(1.0/2.0))/d1+(d5*t2*exp(a*c5*x*y*z))/gamma_1;
+
+  return nothing
+end

@@ -82,16 +82,24 @@ facts("----- Testing Jacobian -----") do
   fill!(eqn.res, 0.0)
   NonlinearSolvers.calcJacFD(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalAdvection, res_0, eps_fd, jac)
 
+#  jac_sparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
+  println("mesh.coloringDistance = ", mesh.coloringDistance)
+  println("typeof(mesh) = ", typeof(mesh))
+  println("mesh.pertNeighborEls = ", mesh.pertNeighborEls)
+  println("mesh.dofs = ", mesh.dofs)
   jac_sparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
+  println("create jac_sparse")
   fill!(eqn.res, 0.0)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  println("about to calculate jacobian")
   NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalAdvection, res_3d0, eps_fd, jac_sparse)
-
+  println("finished calculating jacbian")
 
   jac_sparsefull = full(jac_sparse)
   jac_diff = jac - jac_sparsefull
   for i=1:mesh.numDof
     for j=1:mesh.numDof
+      println("i, j ", i, ", ", j)
       @fact abs(jac_diff[j, i]) --> roughly(0.0, atol=1e-6)
     end
   end
@@ -110,6 +118,7 @@ facts("----- Testing Jacobian -----") do
   fill!(eqn.res, 0.0)
   NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalAdvection, eps_c, jac_c)
 
+#  jac_csparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
   jac_csparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   fill!(eqn.res, 0.0)
   res_3d0 = Array(Float64, 0, 0, 0)

@@ -55,10 +55,12 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
+#=
   # test entropy variables
   ARGS[1] = "input_vals_vortex2a.jl"
   include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+=#
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex3.jl"
@@ -66,10 +68,12 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
+#=
   # test entropy variables
   ARGS[1] = "input_vals_vortex3a.jl"
   include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+=#
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex4.jl"
@@ -77,11 +81,12 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
+#=
   # test entropy variables
   ARGS[1] = "input_vals_vortex4a.jl"
   include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
-
+=#
 end
 
 facts("-----  Testing rk4 -----") do

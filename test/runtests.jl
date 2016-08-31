@@ -14,7 +14,7 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-
+include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
 resize!(ARGS, 1)
@@ -25,7 +25,8 @@ include("test_complexify.jl")
 include("test_lowlevel.jl")
 #include("test_simplemesh.jl")
 include("test_GLS3.jl")
-include("test_modes.jl")
+# TODO: uncomment when SBP is fixed
+#include("test_modes.jl")
 include("test_adjoint.jl")
 
 
@@ -33,6 +34,12 @@ cd("./convergence")
 include(joinpath(pwd(), "runtests.jl"))
 cd("..")
 
+include("Utils.jl")
+include("test_parallel.jl")
+
+if MPI.Initialized()
+  MPI.Finalize()
+end
 FactCheck.exitstatus()
 
 

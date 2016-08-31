@@ -31,8 +31,8 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
   # boundaryintegrate!
 
   functional_val = zero(Tsol)
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
+  alpha_x = eqn.params.alpha_x
+  alpha_y = eqn.params.alpha_y
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
@@ -55,11 +55,11 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        boundary_integrand[1,j,i] = functor(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
+        boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
     	end
     end
 
-    boundaryintegrate!(sbp, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
     # Add all boundary_force nodal values along the edge to get the nodal force value
     edge_functional_val = zero(Tsol) # functional value over a geometric edge
     for (bindex, bndry) in enumerate(mesh.bndryfaces[idx_range])
@@ -85,8 +85,8 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   # use integratefunctional! to get the solution.
 
   functional_val = zero(Tsol)
-  alpha_x = eqn.alpha_x
-  alpha_y = eqn.alpha_y
+  alpha_x = eqn.params.alpha_x
+  alpha_y = eqn.params.alpha_y
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
@@ -108,7 +108,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        boundary_integrand[1,j,i] = functor(alpha_x, alpha_y, nx, ny, q) # Boundary Flux
+        boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
       end
     end
 
@@ -138,7 +138,9 @@ level operation
 type qflux <: FunctionalType
 end
 
-function call(obj::qflux, alpha_x, alpha_y, nx, ny, q)
+function call(obj::qflux, params::ParamType2, nx, ny, q)
+  alpha_x = params.alpha_x
+  alpha_y = params.alpha_y
   return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
 end
 
@@ -184,8 +186,8 @@ Calculates the functional integrand for a particular q.
 
 **Inputs**
 
-*  `alpha_x` : eqn.alpha_x
-*  `alpha_y` : eqn.alpha_y
+*  `alpha_x` : eqn.params.alpha_x
+*  `alpha_y` : eqn.params.alpha_y
 *  `nx`      : x-component of normal vector
 *  `ny`      : y-component of normal vector
 *  `q`       : eqn.q or eqn.q_bndry at the particular node

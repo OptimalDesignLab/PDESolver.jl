@@ -4,10 +4,25 @@ Module Utils:
 """->
 module Utils
 
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
 using ArrayViews
+using MPI
+using SummationByParts
+using PdePumiInterface     # common mesh interface - pumi
 
+include("parallel.jl")
+include("io.jl")
+include("logging.jl")
+include("initialization.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
+export calcNorm, calcMeshH
+export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
+export exchangeElementData
+export @mpi_master, @time_all, print_time_all
+export Timings, write_timings
+export sharedFaceLogging
+export createMeshAndOperator
 
 @doc """
 ### Utils.disassembleSolution
@@ -169,6 +184,83 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 
+@doc """
+### Utils.calcNorm
+
+  This function calculates the norm of a vector (of length numDof) using the
+    SBP norm.
+
+    Inputs:
+      eqn:  an AbstractSolutionData
+      res_vec:  vector to calculate the norm of
+
+    Keyword arguments:
+      strongres: if res_vec is the residual of the weak form, then
+                 strongres=true computes (efficiently) the norm of the strong
+                 form residual.  Default false
+      globalnrm: compute the norm over all processes or not. Default true
+
+    Returns:
+      val:  norm of solution using SBP norm (Float64)
+
+    There are no restrctions on the datatype of res_vec (ie. it can be complex)
+
+    Aliasing restrictions: none
+
+"""->
+function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; strongres=false, globalnrm=true)
+# calculates the norm of a vector using the mass matrix
+
+  val = zero(real(res_vec[1]))
+
+  if !strongres
+    for i=1:length(res_vec)
+      val += real(res_vec[i])*eqn.M[i]*real(res_vec[i])   # res^T M res
+    end
+  else  # strongres
+    for i=1:length(res_vec)
+      val += real(res_vec[i])*eqn.Minv[i]*real(res_vec[i])   # res^T M res
+    end
+  end
+
+  eqn.params.time.t_allreduce = @elapsed if globalnrm
+    val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+  end
+
+  val = sqrt(val)
+  return val
+end     # end of calcNorm function
+
+
+@doc """
+### Utils.calcMeshH
+
+  This function calculates the average distance between nodes over the entire
+  mesh.  This function allocates a bunch of temporary memory, so don't call
+  it too often.  This is, strictly speaking, not quite accurate in parallel
+  because the divison by length happens before the allreduce.
+
+  Inputs:
+    mesh
+    eqn
+    opts
+"""->
+function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
+  jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
+  jac_vec = zeros(Tmsh, mesh.numNodes)
+  assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
+
+  dim = mesh.dim
+  # scale by the minimum distance between nodes on a reference element
+  # this is a bit of an assumption, because for distorted elements this
+  # might not be entirely accurate
+  h_avg = sum(1./(jac_vec.^(1/dim)))/length(jac_vec)
+  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)/mesh.commsize
+  h_avg *= mesh.min_node_dist
+  return h_avg
+end
+
+
 # it would be better if this used @boundscheck
 @doc """
 ### Utils.safe_views
@@ -176,12 +268,103 @@ end
   This bool value controls whether the function named sview refers to 
   view or unsafe_view from the ArrayViews package
 """->
-global const safe_views = true
+global const safe_views = false
 if safe_views
   global const sview = ArrayViews.view
 else
   global const sview = ArrayViews.unsafe_view
 end
+
+#=
+import Base.flush
+function flush(f::IOBuffer)
+
+end
+=#
+
+@doc """
+### Utils.Timings
+
+  This type accumulates the time spent in each part of the code.
+"""->
+type Timings
+  # timings
+  t_volume::Float64  # time for volume integrals
+  t_face::Float64 # time for surface integrals (interior)
+  t_source::Float64  # time spent doing source term
+  t_sharedface::Float64  # time for shared face integrals
+  t_bndry::Float64  # time spent doing boundary integrals
+  t_dataprep::Float64  # time spent preparing data
+  t_stab::Float64  # time spent adding stabilization
+  t_send::Float64  # time spent sending data
+  t_wait::Float64  # time spent in MPI_Wait
+  t_allreduce::Float64 # time spent in allreduce
+  t_pert::Float64  # time spent applying peraturbation
+  t_alloc::Float64  # time spent allocating the Jacobian
+  t_insert::Float64  # time spent inserting values into matrix
+  t_func::Float64  # time spent evaluating the residual
+  t_color::Float64  # time spent evaluating the colors
+  t_jacobian::Float64  # time spent computing jacobian
+  t_solve::Float64  # linear solve time
+  t_newton::Float64  # time spent in newton loop
+  t_barrier::Float64  # time spent in MPI_Barrier
+  t_barrier2::Float64
+  t_barrier3::Float64
+  t_barriers::Array{Float64, 1}
+
+  function Timings()
+    nbarriers = 7
+    barriers = zeros(Float64, nbarriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+  end
+end
+
+@doc """
+### Utils.write_timings
+
+  Write the values in a Timings object to a file.  Also writes the names of
+  fields to a separate file.
+
+  Inputs:
+    t: a  Timings object
+    fname: the file name, without extension
+
+  The values are written to the file fname.dat, and the names are written to
+  fname_names.dat
+"""->
+function write_timings(t::Timings, fname::AbstractString)
+  timing_names = fieldnames(t)
+  nbarriers = length(t.t_barriers)
+  nvals = length(timing_names) + nbarriers - 1
+  vals = Array(Float64, nvals)
+  val_names = Array(ASCIIString, nvals)
+
+  # put all values except those from t_barriers into array
+  pos = 1
+  for i=1:length(timing_names)
+    tname_i = timing_names[i]
+    tname_i_str = string(tname_i)
+    if tname_i_str != "t_barriers"
+      vals[pos] = getfield(t, tname_i)
+      val_names[pos] = tname_i_str
+      pos += 1
+    end
+  end
+
+  for i=1:length(t.t_barriers)
+    vals[pos] = t.t_barriers[i]
+    val_names[pos] = string("t_barriers_", i)
+    pos += 1
+  end
+
+  fname_ext = string(fname, ".dat")
+  writedlm(fname_ext, vals)
+
+  fname2_ext = string(fname, "_names.dat")
+  writedlm(fname2_ext, val_names)
+end
+
+
 
 end  # end module
 

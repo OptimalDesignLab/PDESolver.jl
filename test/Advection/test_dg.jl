@@ -15,15 +15,15 @@ include(STARTUP_PATH)
 facts("----- Testing DG Flux ------") do
   eqn.params.LFalpha = 1.0
   dxidx1 = mesh.dxidx_face[:, :, 1, 1]
-  nrm = view(sbp.facenormal, :, mesh.interfaces[1].faceL)
-  alpha = [eqn.alpha_x, eqn.alpha_y]
+  nrm = sview(sbp.facenormal, :, mesh.interfaces[1].faceL)
+  alpha = [eqn.params.alpha_x, eqn.params.alpha_y]
   alpha_n = sum((dxidx1*alpha).*nrm)
   qL = 1.0
   qR = 2.0
   flux_test = alpha_n*(qL + qR)/2
 
   flux_func = AdvectionEquationMod.FluxDict["LFFlux"]
-  flux_code = flux_func(qL, qR, eqn.alpha_x, eqn.alpha_y, dxidx1, nrm, eqn.params)
+  flux_code = flux_func(qL, qR, dxidx1, nrm, eqn.params)
 
   @fact flux_code --> roughly(flux_test, atol=1e-13)
 
@@ -48,22 +48,22 @@ facts("\n----- Testing DG Boundary Condition -----") do
   end
 
   # test use of eqn.q_bndry for BC
-  eqn.alpha_x = -1.0
-  eqn.alpha_y = -1.0
-  range_idx = 1:mesh.numBoundaryEdges
+  eqn.params.alpha_x = -1.0
+  eqn.params.alpha_y = -1.0
+  range_idx = 1:mesh.numBoundaryFaces
   AdvectionEquationMod.calcBoundaryFlux(mesh, sbp, eqn, mesh.bndry_funcs[1], range_idx, mesh.bndryfaces, eqn.bndryflux)
 
   val_code = 0.0
   for i=1:mesh.sbpface.numnodes
     val_code += mesh.sbpface.wface[i]*eqn.bndryflux[1, i, 1]
   end
-  val_test = 4*eqn.q_bndry[1,1,1]*eqn.alpha_x
+  val_test = 4*eqn.q_bndry[1,1,1]*eqn.params.alpha_x
   @fact val_code --> roughly(val_test, atol=1e-13)
 
 
   # test use of the boundary condition value
-  eqn.alpha_x = 1.0
-  eqn.alpha_y = 1.0
+  eqn.params.alpha_x = 1.0
+  eqn.params.alpha_y = 1.0
   bndry_coords = mesh.coords_bndry[:, :, 1]
 
   AdvectionEquationMod.calcBoundaryFlux(mesh, sbp, eqn, mesh.bndry_funcs[1], range_idx, mesh.bndryfaces, eqn.bndryflux)
@@ -82,10 +82,10 @@ facts("\n----- Testing DG Boundary Condition -----") do
   mesh.bndry_funcs[1] = AdvectionEquationMod.BCDict["p1BC"]
   AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
 
-  for i=1:mesh.numBoundaryEdges
+  for i=1:mesh.numBoundaryFaces
     for j=1:mesh.sbpface.numnodes
       coords = mesh.coords_bndry[:, j, i]
-      q_test = AdvectionEquationMod.calc_p1(coords, eqn.alpha_x, eqn.alpha_y, 0.0)
+      q_test = AdvectionEquationMod.calc_p1(coords, eqn.params, 0.0)
       q_code = eqn.q_bndry[1, j, i]
       @fact q_code --> roughly(q_test, atol=1e-13)
     end

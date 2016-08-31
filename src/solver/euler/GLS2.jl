@@ -956,7 +956,6 @@ end  # end function
 
 function getTau{Tres}(params::ParamType, jac::Number, tau::AbstractArray{Tres, 2})
 
-#  println("----- Entered getTau simple -----")
   fac = 1.0
   for i=1:size(tau, 1)
     tau[i,i] = fac*1/(jac^(1/2))

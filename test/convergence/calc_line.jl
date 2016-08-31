@@ -1,6 +1,6 @@
 # calculate the least squares line of the errors
 function calc_line()
-  dirs = Array(4:5)
+  dirs = Array(1:2)
   npts = length(dirs)
   println("maximum(dirs) = ", maximum(dirs))
   err_vals = zeros(maximum(dirs))
@@ -8,12 +8,13 @@ function calc_line()
   for i in dirs
     println("i = ", i)
     fname = "m$i/error_calc.dat"
-    fname2 = "m$i/counts.txt"
+#    fname2 = "m$i/counts_0.txt"
     val_i = readdlm(fname)
     err_vals[i] = val_i[1]
 
-    counts_i = readdlm(fname2)
-    h_vals[i] = 1/(sqrt(counts_i[3]/2))
+#    counts_i = readdlm(fname2)
+#    h_vals[i] = 1/(sqrt(counts_i[3]/2))
+    h_vals[i] = val_i[2]
 
   end
 

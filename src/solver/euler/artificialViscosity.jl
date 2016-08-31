@@ -5,17 +5,18 @@
 @doc """
 ### artificialViscosity
 
-  It is a function that adds an artificial viscosity component to the weak form
-  of the PDE. 
+It is a function that adds an artificial viscosity component to the weak form
+of the PDE. 
 
-  Variables:
-  *  qbar: Same as q except the last dof at a node is replaced by enthalpy
-  *  epsilonHat: Applied artificial viscosity
-  *  hi : Bounding box dimensions in a particular direction
-  *  h  : aithmetic mean of the components of the bounding box
-  *  Fav : Flux corresponding to artificial viscosity
+**Arguments**
 
-"""
+*  qbar: Same as q except the last dof at a node is replaced by enthalpy
+*  epsilonHat: Applied artificial viscosity
+*  hi : Bounding box dimensions in a particular direction
+*  h  : aithmetic mean of the components of the bounding box
+*  Fav : Flux corresponding to artificial viscosity
+
+"""->
 function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                               sbp::AbstractSBP, 
                                               eqn::EulerData{Tsol, Tres, Tdim})
@@ -76,6 +77,22 @@ return nothing
 
 end
 
+@doc """
+### calcArtViscosityFluxComp
+
+Computes the Artificial Viscosity flux components
+
+**Inputs**
+
+*  `params` :  ParameterType{2, :conservative} 
+*  `q`      :  Solution vector at a node
+*  `F`      :  Artificial viscosity flux
+
+**Outputs**
+
+*  None
+
+"""->
 
 function calcArtViscosityFluxComp{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
                                         F::AbstractArray{Tsol,1})

@@ -112,7 +112,7 @@ facts ("----- Testing GLS2 -----") do
       elseif params.tau_type == 3
         println("testing tau_type = 3")
         for i=1:3
-          dxidx_i = view(dxidx, :, :, i)
+          dxidx_i = sview(dxidx, :, :, i)
           tau_i = zeros(Tres, 4, 4)
           p_val = 2
           idx_i = range_idx[i]

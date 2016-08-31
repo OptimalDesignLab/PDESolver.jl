@@ -53,12 +53,12 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
 
       # get components
       q = eqn.q[ 1, k, bndry_i.element]
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
+      alpha_x = eqn.params.alpha_x
+      alpha_y = eqn.params.alpha_y
       coords = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = sview(sbp.facenormal, :, bndry_i.face)
-      bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
+      bndryflux[1, j, i] = -functor(q, eqn.params, coords, dxidx, nrm, t)
     end
   end
 
@@ -86,12 +86,12 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 
       # get components
       q = eqn.q_bndry[ 1, j, global_facenum]
-      alpha_x = eqn.alpha_x
-      alpha_y = eqn.alpha_y
+      alpha_x = eqn.params.alpha_x
+      alpha_y = eqn.params.alpha_y
       coords = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
       nrm = sview(sbp.facenormal, :, bndry_i.face)
-      bndryflux[1, j, i] = -functor(q, alpha_x, alpha_y, coords, dxidx, nrm, t)
+      bndryflux[1, j, i] = -functor(q, eqn.params, coords, dxidx, nrm, t)
     end
   end
 
@@ -109,7 +109,7 @@ level function.
 **Inputs**
 
 *  `u` : Advection variable (eqn.q)
-*  `alpha_x` & `alpha_y` : velocities in the X & Y directions
+*  `params`: the equation ParamType
 *  `coords` : Nodal coordinates
 *  `dxidx`  : Mapping Jacobian
 *  `nrm`    : SBP face-normal vectors
@@ -125,14 +125,28 @@ type x5plusy5BC <: BCType
 end
 
 function call{Tmsh, Tsol}(obj::x5plusy5BC, u::Tsol, 
-              alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
+              params::ParamType2, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_x5plusy5(coords, alpha_x, alpha_y, t) # Calculate the actual analytic value of u at the bondary
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_x5plusy5(coords, params, t) # Calculate the actual analytic value of u at the bondary
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
+
+type constantBC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::constantBC, u::Tsol, 
+              params::ParamTypes, coords::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = 2
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
+  return bndryflux
+end
+
+
 
 @doc """
 ### AdvectionEquationMod.exp_xplusyBC
@@ -158,11 +172,11 @@ type exp_xplusyBC <: BCType
 end
 
 function call{Tmsh, Tsol}(obj::exp_xplusyBC, u::Tsol, 
-              alpha_x, alpha_y, coords::AbstractArray{Tmsh,1}, 
+              params::ParamType2, coords::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_exp_xplusy(coords, alpha_x, alpha_y, t)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_exp_xplusy(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -176,13 +190,13 @@ end
 type sinwave_BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwave_BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::sinwave_BC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_sinwave(coords, alpha_x, alpha_y, t)
+  u_bc = calc_sinwave(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -196,13 +210,13 @@ end
 type sinwavey_BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwavey_BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::sinwavey_BC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_sinwavey(coords, alpha_x, alpha_y, t)
+  u_bc = calc_sinwavey(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -217,13 +231,13 @@ end
 type sinwavey_pertBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwavey_pertBC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::sinwavey_pertBC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_sinwavey_pert(coords, alpha_x, alpha_y, t)
+  u_bc = calc_sinwavey_pert(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -237,13 +251,13 @@ end
 type mms1BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::mms1BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::mms1BC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_mms1(coords, alpha_x, alpha_y, t)
+  u_bc = calc_mms1(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -257,13 +271,13 @@ end
 type x4BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::x4BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::x4BC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_x4(coords, alpha_x, alpha_y, t)
+  u_bc = calc_x4(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -278,13 +292,13 @@ end
 type p1BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p1BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::p1BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_p1(coords, alpha_x, alpha_y, t)
+  u_bc = calc_p1(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
   return bndryflux
 end
 
@@ -297,13 +311,13 @@ end
 type p2BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p2BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::p2BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_p2(coords, alpha_x, alpha_y, t)
+  u_bc = calc_p2(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -317,13 +331,13 @@ end
 type p3BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p3BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::p3BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_p3(coords, alpha_x, alpha_y, t)
+  u_bc = calc_p3(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -338,13 +352,13 @@ end
 type p4BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p4BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::p4BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_p4(coords, alpha_x, alpha_y, t)
+  u_bc = calc_p4(coords, params, t)
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -359,13 +373,15 @@ end
 type p5BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::p5BC, u::Tsol, params::ParamTypes,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
-
-  u_bc = calc_p5(coords, alpha_x, alpha_y, t)
+  # this is really slow: use Horner's rule!
+  u_bc = calc_p5(coords, params, t)
+#  println("calc_p5 @time printed above")
 #  println("  u_bc = ", u_bc)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
+#  println("    RoeSolver @time printed above")
 
   return bndryflux
 end
@@ -381,12 +397,12 @@ to get the boundary state.
 type exp5xplus4yplus2BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp5xplus4yplus2BC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::exp5xplus4yplus2BC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_exp5xplus4yplus2(coords, alpha_x, alpha_y, t)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_exp5xplus4yplus2(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -402,12 +418,12 @@ the boundary state.
 type exp5xplusyBC <:BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp5xplusyBC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::exp5xplusyBC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_exp5xplusy(coords, alpha_x, alpha_y, t)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_exp5xplusy(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -423,12 +439,12 @@ the boundary state.
 type exp3xplusyBC <:BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp3xplusyBC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::exp3xplusyBC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_exp3xplusy(coords, alpha_x, alpha_y, t)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_exp3xplusy(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -444,12 +460,12 @@ the boundary state.
 type exp2xplus2yBC <:BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp2xplus2yBC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::exp2xplus2yBC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_exp2xplus2y(coords, alpha_x, alpha_y, t)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_exp2xplus2y(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -465,12 +481,12 @@ boundary state
 type exp_xyBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp_xyBC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::exp_xyBC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_exp_xy(coords, alpha_x, alpha_y, t)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_exp_xy(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -486,12 +502,12 @@ boundary state
 type xplusyBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::xplusyBC, u::Tsol, alpha_x, alpha_y,
+function call{Tmsh, Tsol}(obj::xplusyBC, u::Tsol, params::ParamType2,
               coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_xplusy(coords, alpha_x, alpha_y, t)
-  bndryflux = RoeSolver(u, u_bc, alpha_x, alpha_y, nrm, dxidx)
+  u_bc = calc_xplusy(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
 
   return bndryflux
 end
@@ -504,6 +520,7 @@ new boundary condition is created, it should get added to BCDict.
 
 """->
 global const BCDict = Dict{ASCIIString, BCType}(
+"constantBC" => constantBC(),
 "x5plusy5BC" => x5plusy5BC(),
 "exp_xplusyBC" => exp_xplusyBC(),
 "sinwaveBC" => sinwave_BC(),

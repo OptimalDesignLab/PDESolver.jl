@@ -3,6 +3,7 @@
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 
 using PDESolver
@@ -16,6 +17,12 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
+function clean_dict(collection)
+  for i in keys(collection)
+    delete!(collection, i)
+  end
+end
+
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
 # insert a command line argument
 resize!(ARGS, 1)
@@ -23,16 +30,19 @@ ARGS[1] = "input_vals_channel.jl"
 include("test_empty.jl")
 #include("test_input.jl")
 include("test_lowlevel.jl")
+include("test_3d.jl")
+include("test_gamma.jl")
 include("test_mms.jl")
 include("test_jac.jl")
 include("test_GLS2.jl")
 include("test_dg.jl")
 include("test_functional_integrate.jl")
-#=
-cd("./convergence")
-include(joinpath(pwd(), "runtests.jl"))
-cd("..")
-=#
+include("test_parallel.jl")
+
+if MPI.Initialized()
+  MPI.Finalize()
+end
+
 FactCheck.exitstatus()
 
 

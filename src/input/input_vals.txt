@@ -15,6 +15,10 @@ where input_file_name.jl is in your current directory.
 "dmg_name" : name of dmg file if using Pumi (string), same behavior as "smb_name", default ".null" (you must omit this key if you are using the null geometric model)
 
 "IC_name" : initial condition function name (string)
+"use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false
+
+"operator_type" : name of discretization operator to use for DG, currently 
+                  either SBPOmega or SBPGamma , (String), default SBPOmega
 
 # time stepping options
 "real_time" : have time marching scheme advance real time instead of pseudo-time,
@@ -42,7 +46,7 @@ where input_file_name.jl is in your current directory.
 "res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
 "res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
 "res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
-"step_tol" : step size tolerance for Newton methods (floating point)
+"step_tol" : step size tolerance for Newton methods (floating point), default -1
 "itermax" : maximum number of iterations for Newton methods or rk4 (integer), for rk4, it is ignored if note specified 
 "Reltol_funcs"  : an initial condition function name, the residual of the equation using this as the input is used for the relative residual calculation, (ASCIIString), defualt "none".  Note that this function will override res_reltol0 = -1.0
 "Relfunc_name": the name of an initial condtion, the residual of which is used
@@ -151,6 +155,7 @@ Note that any values associated with these options are shared with the regular
 # mesh debugging options
 "write_edge_vertnums"  : writes the vertex numbers of every edge to edge_vertnusm.dat (Bool), default false
 "write_face_vertnums" : writes vertex number of every face to face_vertnums.dat, (Bool), default false
+"write_el_vertnums" : similar to write_face_vertnums, except for elements, file name el_vertnums.dat, (Bool), default false
 "write_boundarynums"  : writes the elements  number, global face number of each face with a boundary condition, one per line, to file boundary_nums.dat, (Bool), default false
 "write_dxidx"  : writes dxidx for every node to file dxidx.dat, (Bool) default falsea
 "write_coords" : writes coordinates of every node to file coords.dat, (Bool), default false
@@ -160,7 +165,12 @@ Note that any values associated with these options are shared with the regular
                    to file entity_offsets.dat, (Bool), default false
 "verify_coloring"  : verify coloring worked correctly, (Bool), default true
 "write_counts"  : write the count of various entities used for estimating memory usage, (Bool), default false
-
+"write_interfaces": writes the contents of mesh.interfaces to file interface.dat
+                    (Bool), default false
+"write_boundaries": writes the contents of mesh.bndryfaces to file boundary.dat,                    (Bool), default false
+"write_sharedboundaries": write contents of mesh.bndries_local[i] to file
+                          sharedboundaries_i.dat for all i, (Bool) default 
+                          false
 
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are 
@@ -220,7 +230,6 @@ Note that any values associated with these options are shared with the regular
 "do_postproc" : do postprocessing of any kind, (Bool), default false
 "exact_soln_func" : one of the IC functions used to compute the exact solution,
                     (ASCIIString), default "nothing"
-
 # functional computation options
 "calc_functional" : calculate functional on geometric boundary edge(s)
 "num_functionals" : number of functionals that need to be calculated
@@ -235,3 +244,6 @@ Note that any values associated with these options are shared with the regular
 
 # Adjoint computation options
 "calc_adjoint" : calculates the adjoint vector for a particular functional, default false
+"write_timing" : write the mesh initialization and compute times to the file
+                 timing.dat, (Bool), default false
+"finalize_mpi" : whether or not to finalize MPI, (Bool), default false
