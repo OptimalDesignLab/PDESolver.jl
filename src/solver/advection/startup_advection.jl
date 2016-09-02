@@ -73,6 +73,8 @@ ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec) 
 println("finished initializing q")
+q_norm = calcNorm(eqn, q_vec)
+println("initial solution norm = ", q_norm)
 
 if opts["calc_error"]
   println("\ncalculating error of file ", opts["calc_error_infname"], 
@@ -295,6 +297,7 @@ end       # end of if/elseif blocks checking flag
       end
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
+      println("solution norm diff = ", sol_norm - q_norm)
       exact_norm = calcNorm(eqn, q_exact)
       @mpi_master println("numerical solution norm = ", sol_norm)
       @mpi_master println("exact solution norm = ", exact_norm)

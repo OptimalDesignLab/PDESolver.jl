@@ -163,6 +163,23 @@ function ICsinwavey_pert{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
+
+function ICsinwavexy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+                    opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = mesh.dofs[1, j, i]
+      coords = sview(mesh.coords, :, j, i)
+      u0[dofnums_j] = sin(2*pi*coords[1]) + sin(2*pi*coords[2])
+    end
+  end
+
+  return nothing
+end
+
+
 function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
                     opts, u0::AbstractArray{Tsol})
@@ -406,6 +423,7 @@ global const ICDict = Dict{Any, Function}(
 "ICsinwave" => ICsinwave,
 "ICsinwavey" => ICsinwavey,
 "ICsinwavey_pert" => ICsinwavey_pert,
+"ICsinwavexy" => ICsinwavexy,
 "ICFile" => ICFile,
 "ICmms1" => ICmms1,
 "ICx4" => ICx4,

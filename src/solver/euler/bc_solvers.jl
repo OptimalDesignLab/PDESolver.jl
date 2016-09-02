@@ -310,12 +310,12 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
 
   convertFromNaturalToWorkingVars(params, q, v_vals)
   convertFromNaturalToWorkingVars(params, qg, v_vals2)
-#  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
-  calcEulerFlux_Ducros(params, v_vals, v_vals2, nrm2, euler_flux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+#  calcEulerFlux_Ducros(params, v_vals, v_vals2, nrm2, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
 
-    flux[i] = -2*(sat_fac*sat[i] + euler_flux[i]) 
+    flux[i] = -(sat_fac*sat[i] + euler_flux[i]) 
     # when weak differentiate has transpose = true
   end
 
