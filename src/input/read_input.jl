@@ -148,11 +148,11 @@ get!(arg_dict, "use_edge_res", false)
 
 # deal with file names
 smb_name = arg_dict["smb_name"]
-arg_dict["smb_name"] = joinpath(Pkg.dir("PDESolver"), smb_name)
+arg_dict["smb_name"] = update_path(smb_name)
 
 if haskey(arg_dict, "dmg_name") && arg_dict["dmg_name"] != ".null"
   dmg_name = arg_dict["dmg_name"]
-  arg_dict["dmg_name"] = joinpath(Pkg.dir("PDESolver"), dmg_name)
+  arg_dict["dmg_name"] = update_path(dmg_name)
 else  # no dmg_name specified
   arg_dict["dmg_name"] = ".null"
 end
@@ -380,5 +380,13 @@ function checkKeys(arg_dict, known_keys)
 end
 
 
+function update_path(path)
+
+  if startswith(path, "SRCMESHES")
+    path = joinpath(Pkg.dir("PDESolver"), "src", "mesh_files", lstrip(path[10:end], '/'))
+  end
+
+  return path
+end
 
 

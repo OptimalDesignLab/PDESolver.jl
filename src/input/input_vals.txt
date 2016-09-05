@@ -11,8 +11,12 @@ where input_file_name.jl is in your current directory.
 
 "order" : order of accuracy of elements, 1-4 will be supported eventually (integer)
 "dimensions" : specifies the dimensions of the physical problem, 2D or 3D (integer). Default = 2
-"smb_name" : name of smb file if using Pumi (string), if it appears to be a relative path (ie. does not begin with a "/"), it is relative to the installation directory of PDESolver.  If it appears to be an absolute path, it is treated as such
-"dmg_name" : name of dmg file if using Pumi (string), same behavior as "smb_name", default ".null" (you must omit this key if you are using the null geometric model)
+"smb_name" : name of smb file if using Pumi (string), can either be an absolute
+             path or a relative path.  As a special case, if it starts with 
+             SRCMESHES, then the file is looked for in the src/mesh_files
+             directory of the repo PDESolver repo.
+"dmg_name" : name of dmg file if using Pumi (string), same behavior as 
+             "smb_name", default ".null"
 
 "IC_name" : initial condition function name (string)
 "use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false

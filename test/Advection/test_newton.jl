@@ -44,16 +44,16 @@ end
 
 # run a serial case to compare parallel against later
 cd ("./newton/serial")
-arg_dict["smb_name"] = "src/mesh_files/serial2.smb"
-arg_dict["dmg_name"] = "src/mesh_files/serial2.dmg"
+arg_dict["smb_name"] = "SRCMESHES/serial2.smb"
+arg_dict["dmg_name"] = "SRCMESHES/serial2.dmg"
 make_input(arg_dict, "input_vals_serial")
 ARGS[1] = "input_vals_serial.jl"
 include(STARTUP_PATH)
 
 # make parallel file
 cd("../parallel")
-arg_dict["smb_name"] = "src/mesh_files/psquare2.smb"
-arg_dict["dmg_name"] = "src/mesh_files/psquare2.dmg"
+arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
+arg_dict["dmg_name"] = "SRCMESHES/psquare2.dmg"
 arg_dict["krylov_abstol"] = 1e-12
 make_input(arg_dict, "input_vals_parallel")
 cd("../../")
