@@ -73,7 +73,6 @@ arg_dict["aoa"] = aoa*pi/180  # convert to radians
 get!(arg_dict, "vortex_x0", 0.0)
 get!(arg_dict, "vortex_strength", 1.0)
 
-get!(arg_dict, "mesh_size", 1.0)  # this key should not exist
 get!(arg_dict, "Relfunc_name", "none")
 
 #SBP Options
@@ -180,8 +179,6 @@ get!(arg_dict, "writeq", false)
 get!(arg_dict, "writeqface", false)
 get!(arg_dict, "write_fluxface", false)
 
-#DEBUGGING
-get!(arg_dict, "test_GLS2", false)
 # mesh debugging options
 get!(arg_dict, "write_edge_vertnums", false)
 get!(arg_dict, "write_face_vertnums", false)

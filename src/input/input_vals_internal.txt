@@ -29,3 +29,11 @@
            is specified, otherwise true
 "use_itermax": whether or not use itermax to halt rk4, (Bool), true if
                itermax is specified, otherwise false
+"Tsol" : datatype of solution variables, (DataType), set during initialization
+"Tres" : datatype of residual variables, (DataType), set during initialization
+"Tsbp" : datatype of SBP operator, (DataType), set during initialization, 
+         nearly always to Float64
+"Tmsh" : datatype of mesh variables, (DataType), set during initialization,
+         until differentiation wrt the mesh variables is supported, this should
+         always be Float64
+         

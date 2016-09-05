@@ -73,8 +73,6 @@ ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec) 
 println("finished initializing q")
-q_norm = calcNorm(eqn, q_vec)
-println("initial solution norm = ", q_norm)
 
 if opts["calc_error"]
   println("\ncalculating error of file ", opts["calc_error_infname"], 
@@ -137,9 +135,6 @@ if opts["calc_dt"]
 end
 
 
-if opts["test_GLS2"]
-  calcResidual(mesh, sbp, eqn, opts, evalAdvection)
-end
 println("mesh.min_node_dist = ", mesh.min_node_dist)
 #------------------------------------------------------------------------------
 #=
@@ -297,7 +292,6 @@ end       # end of if/elseif blocks checking flag
       end
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
-      @mpi_master println("solution norm diff = ", sol_norm - q_norm)
       exact_norm = calcNorm(eqn, q_exact)
       @mpi_master println("numerical solution norm = ", sol_norm)
       @mpi_master println("exact solution norm = ", exact_norm)

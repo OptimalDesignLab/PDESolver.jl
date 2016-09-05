@@ -167,10 +167,6 @@ if opts["calc_dt"]
   opts["delta_t"] = delta_t
 end
 
-#DEBUGGING
-if opts["test_GLS2"]
-  calcResidual(mesh, sbp, eqn, opts, evalEuler)
-end
 
 #------------------------------------------------------------------------------
 #=

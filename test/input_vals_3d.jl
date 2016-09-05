@@ -38,7 +38,6 @@ arg_dict = Dict{Any, Any} (
 "use_edgestab" => false,
 "use_GLS2" => false,
 "tau_type" => 3,
-"test_GLS2" => false,
 "edgestab_gamma" => -0.9,
 "use_filter" => false,
 "use_dissipation" => false,

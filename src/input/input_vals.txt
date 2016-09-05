@@ -152,7 +152,7 @@ Note that any values associated with these options are shared with the regular
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
 "writeqface" : write the solution at the face nodes to file qface.dat,
                space delimited, (Bool), default false
-"writefluxface:" write the flux at the face nodes to file fluxface.dat, space
+"write_fluxface" : write the flux at the face nodes to file fluxface.dat, space
                  delmited, (Bool), default false
 
 # mesh debugging options
@@ -174,6 +174,8 @@ Note that any values associated with these options are shared with the regular
 "write_sharedboundaries": write contents of mesh.bndries_local[i] to file
                           sharedboundaries_i.dat for all i, (Bool) default 
                           false
+"write_dofs" : write the mesh.dof array to a file dofs_myrank.dat, (Bool), 
+               default false
 
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are 
