@@ -297,7 +297,7 @@ end       # end of if/elseif blocks checking flag
       end
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
-      println("solution norm diff = ", sol_norm - q_norm)
+      @mpi_master println("solution norm diff = ", sol_norm - q_norm)
       exact_norm = calcNorm(eqn, q_exact)
       @mpi_master println("numerical solution norm = ", sol_norm)
       @mpi_master println("exact solution norm = ", exact_norm)
