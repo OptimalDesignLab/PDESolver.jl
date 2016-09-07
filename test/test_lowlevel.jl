@@ -289,7 +289,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    nrm2 = [dxidx[2,1], dxidx[2,2]]
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
-   EulerEquationMod.RoeSolver(q, qg, aux_vars, dxidx, dir, F_roe, eqn.params)
+   EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, dxidx, dir, F_roe)
    @fact F_roe --> roughly(-F) 
 
 

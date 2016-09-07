@@ -147,7 +147,7 @@ facts("----- Testing BC Solvers -----") do
   aux_vars = [p]
   dxidx = mesh.dxidx[:, :, 1, 1]
 
-  EulerEquationMod.RoeSolver(q, q, aux_vars, dxidx, nrm, F2, eqn.params)
+  EulerEquationMod.RoeSolver(eqn.params, q, q, aux_vars, dxidx, nrm, F2)
   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
 
 #  println("F = \n", F)

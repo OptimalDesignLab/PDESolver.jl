@@ -83,7 +83,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
   Rmat2::Array{Tres, 2}
 
-  nrm::Array{Tmsh, 1}  # a normal vectora
+  nrm::Array{Tmsh, 1}  # a normal vector
+  nrm2::Array{Tmsh, 1}
+  nrm3::Array{Tmsh, 1}
 
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -162,6 +164,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
 
     nrm = zeros(Tmsh, Tdim)
+    nrm2 = zeros(nrm)
+    nrm3 = zeros(nrm)
+
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -211,7 +216,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
     time = Timings()
     return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, cv, R, 
+               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, 
+               nrm2, nrm3,cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 

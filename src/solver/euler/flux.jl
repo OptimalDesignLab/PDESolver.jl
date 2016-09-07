@@ -57,7 +57,7 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
 
       flux_j = sview(face_flux, :, j, i)
-      functor(qL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params)
+      functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
 #      # add the negative sign
 #      for k=1:mesh.numDofPerNode
 #        flux_j[k] = -flux_j[k]
@@ -127,7 +127,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
         aux_vars = sview(aux_vars_arr, :, k, j)
         nrm = sview(sbp.facenormal, :, fL)
         flux_j = sview(flux_arr, :, k, j)
-        functor(qL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params)
+        functor(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
       end
     end
     # end flux calculation
@@ -227,7 +227,7 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
 
         aux_vars[1] = calcPressure(params, qL_k)
 
-        functor(qL_k, qR_k, aux_vars, dxidx, nrm, flux_k, params)
+        functor(params, qL_k, qR_k, aux_vars, dxidx, nrm, flux_k)
        end
      end  # end loop over interfaces
 
@@ -303,24 +303,26 @@ end
 type RoeFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::RoeFlux, uL::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
               uR::AbstractArray{Tsol,1}, 
               aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
-              F::AbstractVector{Tres}, params::ParamType)
+              F::AbstractVector{Tres})
 
-  RoeSolver(uL, uR, aux_vars, dxidx, nrm, F, params)
+  RoeSolver(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
-type AvgFlux <: FluxType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::AvgFlux, uL::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres}(obj::RoeFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
               uR::AbstractArray{Tsol,1}, 
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
-              F::AbstractVector{Tres}, params::ParamType)
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
 
-  AvgSolver(uL, uR, aux_vars, dxidx, nrm, F, params)
+  RoeSolver(params, uL, uR, aux_vars, nrm, F)
+  return nothing
 end
+
 
 
 @doc """
@@ -331,7 +333,6 @@ end
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
-"AvgFlux" => AvgFlux(),
 )
 
 @doc """

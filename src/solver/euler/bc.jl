@@ -265,7 +265,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   # getting qg
   qg = params.qg
   calcIsentropicVortex(x, params, qg)
-  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 #  LFSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 #  AvgSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
@@ -345,7 +345,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
   qg[3] -= ny*Unrm
 
   # call Roe solver
-  #RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  #RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
   nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
@@ -392,7 +392,7 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
   qg = params.qg
   calcUnsteadyVortex(x, params, qg)
 
-  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
   return nothing
 
@@ -414,7 +414,8 @@ type Rho1E2U3BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1},  
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC,
+              q::AbstractArray{Tsol,1},  
               aux_vars::AbstractArray{Tres, 1},  
               x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, 
               nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, 
@@ -429,7 +430,7 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, q::AbstractArray{Tsol,1},
 
   #println("qg = ", qg)
   # call Roe solver
-  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
 return nothing
 
@@ -455,7 +456,7 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
   qg = params.qg
 
   calcFreeStream(x, params, qg)
-  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
   
   return nothing
 end
@@ -481,7 +482,7 @@ function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
   qg = zeros(Tsol, 4)
   calcOnes(x, params, qg)
 
-  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
   # println("bndryflux = ", bndryflux)
   return nothing
@@ -497,7 +498,7 @@ function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
 
   qg = params.qg
   calcExp(coords, params, qg)
-  RoeSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
   # println("bndryflux = ", bndryflux)
   return nothing

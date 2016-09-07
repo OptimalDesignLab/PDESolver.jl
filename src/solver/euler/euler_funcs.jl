@@ -259,6 +259,7 @@ end
 
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tsol, 1},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 # calculate the split form numerical flux function corresponding to the standard DG flux
 
@@ -292,6 +293,7 @@ end
 
 function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 # calculate the split form numerical flux function proposed by Ducros et al.
 

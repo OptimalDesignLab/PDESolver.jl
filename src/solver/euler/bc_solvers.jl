@@ -1,5 +1,33 @@
 
 # this file contains all the flux solvers for weakly imposed boundary conditions
+
+"""
+  A wrapper for the Roe Solver that computes the scaled normal vector
+  in parametric coordinates from the the face normal and the scaled 
+  mapping jacobian.
+
+  Useful for boundary conditions.
+
+""" 
+function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
+                                     q::AbstractArray{Tsol,1}, 
+                                     qg::AbstractArray{Tsol, 1}, 
+                                     aux_vars::AbstractArray{Tres, 1}, 
+                                     dxidx::AbstractArray{Tmsh,2}, 
+                                     nrm::AbstractArray{Tmsh,1}, 
+                                     flux::AbstractArray{Tres, 1})
+                                     
+  nrm2 = params.nrm3
+  nrm2[1] = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  nrm2[2] = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  RoeSolver(params, q, qg, aux_vars, nrm2, flux)
+
+  return nothing
+end
+
+
+
+
 @doc """
 ### EulerEquationMod.RoeSolver
   This calculates the Roe flux for boundary conditions at a node. The inputs 
@@ -17,17 +45,16 @@
     flux : vector to populate with solution
 
   Aliasing restrictions:  none of the inputs can alias params.res_vals1,
-                          params.res_vals2, params.q_vals, params.flux_vals1, or                          params.sat, or params.nrm
+                          params.res_vals2, params.q_vals, params.flux_vals1, or                          params.sat
 
 
 """->
-function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, 
+function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
+                                     q::AbstractArray{Tsol,1}, 
                                      qg::AbstractArray{Tsol, 1}, 
                                      aux_vars::AbstractArray{Tres, 1}, 
-                                     dxidx::AbstractArray{Tmsh,2}, 
                                      nrm::AbstractArray{Tmsh,1}, 
-                                     flux::AbstractArray{Tres, 1}, 
-                                     params::ParamType{2})
+                                     flux::AbstractArray{Tres, 1})
 
   # SAT terms are used for ensuring consistency with the physical problem. Its 
   # similar to upwinding which adds dissipation to the problem. SATs on the 
@@ -51,8 +78,8 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   sat_fac = 1  # multiplier for SAT term
 
   # Begin main executuion
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  nx = nrm[1]
+  ny = nrm[2]
 
   dA = sqrt(nx*nx + ny*ny)
 
@@ -166,13 +193,35 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
 
 end # ends the function eulerRoeSAT
 
-function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1}, 
+
+function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3}, 
+                                     q::AbstractArray{Tsol,1}, 
                                      qg::AbstractArray{Tsol, 1}, 
                                      aux_vars::AbstractArray{Tres, 1}, 
                                      dxidx::AbstractArray{Tmsh,2}, 
                                      nrm::AbstractArray{Tmsh,1}, 
-                                     flux::AbstractArray{Tres, 1}, 
-                                     params::ParamType{3})
+                                     flux::AbstractArray{Tres, 1})
+
+  nrm3 = params.nrm3
+  n1 = nrm[1]; n2 = nrm[2]; n3 = nrm[3]
+  nrm3[1] = dxidx[1,1]*n1 + dxidx[2,1]*n2 + dxidx[3,1]*n3
+  nrm3[2] = dxidx[1,2]*n1 + dxidx[2,2]*n2 + dxidx[3,2]*n3
+  nrm3[3] = dxidx[1,3]*n1 + dxidx[2,3]*n2 + dxidx[3,3]*n3
+  RoeSolver(params, q, qg, aux_vars, nrm3, flux)
+
+  return nothing
+end
+
+"""
+  The main Roe solver.  Populates `flux` with the computed flux.
+"""
+function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
+                                     q::AbstractArray{Tsol,1}, 
+                                     qg::AbstractArray{Tsol, 1}, 
+                                     aux_vars::AbstractArray{Tres, 1}, 
+                                     nrm::AbstractArray{Tmsh,1}, 
+                                     flux::AbstractArray{Tres, 1})
+                                     
 
   # SAT terms are used for ensuring consistency with the physical problem. Its 
   # similar to upwinding which adds dissipation to the problem. SATs on the 
@@ -195,9 +244,9 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   sat_fac = 1  # multiplier for SAT term
 
   # Begin main executuion
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
-  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  nx = nrm[1]
+  ny = nrm[2]
+  nz = nrm[3]
 
   dA = sqrt(nx*nx + ny*ny + nz*nz)
 
@@ -303,15 +352,11 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   # be a cache miss, so we recalculate the Euler flux
   v_vals = params.q_vals
   v_vals2 = zeros(v_vals)
-  nrm2 = params.nrm
-  nrm2[1] = nx
-  nrm2[2] = ny
-  nrm2[3] = nz
 
   convertFromNaturalToWorkingVars(params, q, v_vals)
   convertFromNaturalToWorkingVars(params, qg, v_vals2)
-  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
-#  calcEulerFlux_Ducros(params, v_vals, v_vals2, nrm2, euler_flux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
+#  calcEulerFlux_Ducros(params, v_vals, v_vals2, nrm, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
 
@@ -322,55 +367,5 @@ function RoeSolver{Tmsh, Tsol, Tres}(q::AbstractArray{Tsol,1},
   return nothing
 
 end # ends the function eulerRoeSAT
-
-
-
-function LFSolver(qL, qR, aux_vars, dxidx, nrm, flux, params)
-
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-  # determine if the left state is entering or existing the element
-  l_to_r = nx*qL[2] + ny*qL[3]
-
-  if l_to_r > 0
-    calcEulerFlux(params, qL, aux_vars, [nx, ny], flux)
-  else
-    aux_vars[1] = calcPressure(params, qR)
-    calcEulerFlux(params, qR, aux_vars, [nx, ny], flux)
-  end
-
-  # negate it
-  for i=1:length(flux)
-    flux[i] = -flux[i]
-  end
-
-  return nothing
-end
-
-
-function AvgSolver(qL, qR, aux_vars, dxidx, nrm, flux, params)
-
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-
-  for i=1:length(qL)
-    params.q_vals[i] = 0.5*(qL[i] + qR[i])
-  end
-
-  aux_vars[1] = calcPressure(params, params.q_vals)
-  calcEulerFlux(params, params.q_vals, aux_vars, [nx, ny], flux)
-
-  # negate it
-  for i=1:length(flux)
-    flux[i] = -flux[i]
-  end
-
-
-
-  return nothing
-end
-
 
 
