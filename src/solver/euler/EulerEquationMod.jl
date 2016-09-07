@@ -56,7 +56,7 @@ export AbstractEulerData, EulerData, EulerData_
     * aoa : angle of attack (radians)
  
 """->
-type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
+type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   f::IOStream
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)

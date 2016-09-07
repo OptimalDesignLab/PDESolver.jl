@@ -16,7 +16,7 @@ export ICDict              # exported from ic.jl
 # include("getMass.jl")
 
 
-type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
+type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
   alpha_x::Float64
   alpha_y::Float64

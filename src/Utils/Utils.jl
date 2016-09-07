@@ -23,6 +23,7 @@ export @mpi_master, @time_all, print_time_all
 export Timings, write_timings
 export sharedFaceLogging
 export createMeshAndOperator
+export calcBCNormal
 
 @doc """
 ### Utils.disassembleSolution
@@ -365,6 +366,29 @@ function write_timings(t::Timings, fname::AbstractString)
 end
 
 
+"""
+  Calculate the scaled normal vector in parametric coordinates from the
+  face normal and scaled mapping jacobian.  `nrm2` is overwritten with
+  the result.
+"""
+function calcBCNormal(params::AbstractParamType{2}, dxidx::AbstractMatrix, 
+                    nrm::AbstractVector, nrm2::AbstractVector)
+
+  nrm2[1] = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  nrm2[2] = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  return nothing
+end
+
+function calcBCNormal(params::AbstractParamType{3}, dxidx::AbstractMatrix, 
+                    nrm::AbstractVector, nrm2::AbstractVector)
+
+  n1 = nrm[1]; n2 = nrm[2]; n3 = nrm[3]
+  nrm2[1] = dxidx[1,1]*n1 + dxidx[2,1]*n2 + dxidx[3,1]*n3
+  nrm2[2] = dxidx[1,2]*n1 + dxidx[2,2]*n2 + dxidx[3,2]*n3
+  nrm2[3] = dxidx[1,3]*n1 + dxidx[2,3]*n2 + dxidx[3,3]*n3
+
+  return nothing
+end
 
 end  # end module
 
