@@ -323,6 +323,54 @@ function call{Tsol, Tres}(obj::RoeFlux, params::ParamType,
   return nothing
 end
 
+type StandardFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::StandardFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_Standard(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+
+function call{Tsol, Tres}(obj::StandardFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_Standard(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
+
+type DucrosFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::DucrosFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_Ducros(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+
+function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_Ducros(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
+
 
 
 @doc """
@@ -333,6 +381,8 @@ end
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
+"StandardFlux" => DucrosFlux(),
+"DucrosFlux" => DucrosFlux()
 )
 
 @doc """

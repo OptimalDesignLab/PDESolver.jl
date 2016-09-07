@@ -257,63 +257,6 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 
 end
 
-function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tsol, 1},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
-# calculate the split form numerical flux function corresponding to the standard DG flux
-
-  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
-  rho_avg = 0.5*(qL[1] + qR[1])
-  rhou_avg = 0.5*(qL[2] + qR[2])
-  rhov_avg = 0.5*(qL[3] + qR[3])
-  p_avg = 0.5*(pL + pR)
-
-
-
-  F[1] = dir[1]*(rhou_avg) + dir[2]*rhov_avg
-
-  tmp1 = 0.5*(qL[2]*qL[2]/qL[1] + qR[2]*qR[2]/qR[1])
-  tmp2 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
-  F[2] = dir[1]*(tmp1 + p_avg) + dir[2]*tmp2
-
-  tmp1 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
-  tmp2 = 0.5*(qL[3]*qL[3]/qL[1] + qR[3]*qR[3]/qR[1])
-  F[3] = dir[1]*tmp1 + dir[2]*(tmp2 + p_avg)
-
-
-  tmp1 = 0.5*( (qL[4] + pL)*qL[2]/qL[1] + (qR[4] + pR)*qR[2]/qR[1])
-  tmp2 = 0.5*( (qL[4] + pL)*qL[3]/qL[1] + (qR[4] + pR)*qR[3]/qR[1])
-  F[4] = dir[1]*tmp1 + dir[2]*tmp2
-
-  return nothing
-end
-
-
-
-function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
-# calculate the split form numerical flux function proposed by Ducros et al.
-
-  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
-  uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
-  vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
-
-  rho_avg = 0.5*(qL[1] + qR[1])
-  rhou_avg = 0.5*(qL[2] + qR[2])
-  rhov_avg = 0.5*(qL[3] + qR[3])
-  E_avg = 0.5*(qL[4] + qR[4])
-  p_avg = 0.5*(pL + pR)
-
-  F[1] = dir[1]*rho_avg*u_avg + dir[2]*rho_avg*v_avg
-  F[2] = dir[1]*(rhou_avg*u_avg + p_avg) + dir[2]*(rhou_avg*v_avg)
-  F[3] = dir[1]*(rhov_avg*u_avg) + dir[2]*(rhov_avg*v_avg + p_avg)
-  F[4] = dir[1]*(E_avg + p_avg)*u_avg + dir[2]*(E_avg + p_avg)*v_avg
-
-  return nothing
-end
 
 @doc """
 # low level function
