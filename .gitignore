@@ -1,3 +1,4 @@
 # file name patterns to ignore
 *~
-
+*.vtu
+*.pvtu
