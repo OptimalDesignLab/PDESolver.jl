@@ -350,7 +350,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
 end # ends the function eulerRoeSAT
 
 
-function calcEulerFlux_Standard{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres}, 
                       dxidx::AbstractMatrix{Tmsh},
@@ -358,13 +358,14 @@ function calcEulerFlux_Standard{Tmsh, Tsol, Tres}(params::ParamType{2, :conserva
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_Standard(params, qL, qR, aux_vars, nrm2, F)
+  calcEulerFlux_standard(params, qL, qR, aux_vars, nrm2, F)
   return nothing
 end
 
 
 
-function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
+                      params::ParamType{2, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tsol, 1},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
@@ -396,9 +397,51 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType{2, :conserva
   return nothing
 end
 
+function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
+                      params::ParamType{3, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres, 1},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+# calculate the split form numerical flux function corresponding to the standard DG flux
+#TODO: pre-calculate 1/qL[1], 1/qR[1]
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  rho_avg = 0.5*(qL[1] + qR[1])
+  rhou_avg = 0.5*(qL[2] + qR[2])
+  rhov_avg = 0.5*(qL[3] + qR[3])
+  rhow_avg = 0.5*(qL[4] + qR[4])
+  p_avg = 0.5*(pL + pR)
+
+  F[1] = dir[1]*(rhou_avg) + dir[2]*rhov_avg + dir[3]*rhow_avg
+
+  tmp1 = 0.5*(qL[2]*qL[2]/qL[1] + qR[2]*qR[2]/qR[1])
+  tmp2 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
+  tmp3 = 0.5*(qL[2]*qL[4]/qL[1] + qR[2]*qR[4]/qR[1])
+  F[2] = dir[1]*(tmp1 + p_avg) + dir[2]*tmp2 + dir[1]*tmp3
+
+  tmp1 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
+  tmp2 = 0.5*(qL[3]*qL[3]/qL[1] + qR[3]*qR[3]/qR[1])
+  tmp3 = 0.5*(qL[4]*qL[3]/qL[1] + qR[4]*qR[3]/qR[1])
+  F[3] = dir[1]*tmp1 + dir[2]*(tmp2 + p_avg) + dir[3]*tmp3
+
+  tmp1 = 0.5*(qL[2]*qL[4]/qL[1] + qR[2]*qR[4]/qR[1])
+  tmp2 = 0.5*(qL[3]*qL[4]/qL[1] + qR[3]*qR[4]/qR[1])
+  tmp3 = 0.5*(qL[4]*qL[4]/qL[1] + qR[4]*qR[4]/qR[1])
+  F[4] = dir[1]*tmp1 + dir[2]*tmp2 + dir[3]*(tmp3 + p_avg)
 
 
-function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+  tmp1 = 0.5*( (qL[5] + pL)*qL[2]/qL[1] + (qR[5] + pR)*qR[2]/qR[1])
+  tmp2 = 0.5*( (qL[5] + pL)*qL[3]/qL[1] + (qR[5] + pR)*qR[3]/qR[1])
+  tmp3 = 0.5*( (qL[5] + pL)*qL[4]/qL[1] + (qR[5] + pR)*qR[4]/qR[1])
+  F[5] = dir[1]*tmp1 + dir[2]*tmp2 + dir[3]*tmp3
+
+  return nothing
+end
+
+
+
+function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(
+                      params::ParamType, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres}, 
                       dxidx::AbstractMatrix{Tmsh},
@@ -421,6 +464,9 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservati
   pL = calcPressure(params, qL); pR = calcPressure(params, qR)
   uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
   vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
+  
+  u_avg = 0.5*(uL + uR)
+  v_avg = 0.5*(vL + vR)
 
   rho_avg = 0.5*(qL[1] + qR[1])
   rhou_avg = 0.5*(qL[2] + qR[2])
@@ -435,5 +481,134 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservati
 
   return nothing
 end
+
+function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+# calculate the split form numerical flux function proposed by Ducros et al.
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
+  vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
+  wL = qL[4]/qL[1]; wR = qR[4]/qR[1]
+
+  u_avg = 0.5*(uL + uR)
+  v_avg = 0.5*(vL + vR)
+  w_avg = 0.5*(wL + wR)
+
+  rho_avg = 0.5*(qL[1] + qR[1])
+  rhou_avg = 0.5*(qL[2] + qR[2])
+  rhov_avg = 0.5*(qL[3] + qR[3])
+  rhow_avg = 0.5*(qL[4] + qR[4])
+  E_avg = 0.5*(qL[5] + qR[5])
+  p_avg = 0.5*(pL + pR)
+
+  F[1] = dir[1]*rho_avg*u_avg + dir[2]*rho_avg*v_avg + dir[3]*rho_avg*w_avg
+  F[2] = dir[1]*(rhou_avg*u_avg + p_avg) + dir[2]*(rhou_avg*v_avg) + 
+         dir[3]rhou_avg*w_avg
+  F[3] = dir[1]*(rhov_avg*u_avg) + dir[2]*(rhov_avg*v_avg + p_avg) + 
+         dir[3]*rhov_avg*w_avg
+  F[4] = dir[1]*rhow_avg*u_avg + dir[2]*rhow_avg*v_avg + 
+         dir[3]*(rhow_avg*w_avg + p_avg)
+  F[5] = dir[1]*(E_avg + p_avg)*u_avg + dir[2]*(E_avg + p_avg)*v_avg + 
+         dir[3]*( (E_avg + p_avg)*w_avg)
+
+  return nothing
+end
+
+
+function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, 
+                      dxidx::AbstractMatrix{Tmsh},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
+  calcEulerFlux_IR(params, qL, qR, aux_vars, nrm2, F)
+  return nothing
+end
+
+
+# IR flux
+function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z4L, z4R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  p1_hat = (z4L + z4R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z4L, z4R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+
+  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat
+  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat
+  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat)
+  F[4] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat
+
+  return nothing
+end
+
+function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = z1L*qL[4]/qL[1]; z4R = z1R*qR[4]/qR[1]
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z5L, z5R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  w_hat = (z4L + z4R)/(z1L + z1R)
+  p1_hat = (z5L + z5R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z5L, z5R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat + dir[3]*rho_hat*w_hat
+  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat + 
+         dir[3]*rho_hat*u_hat*w_hat
+  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat) + 
+         dir[3]*rho_hat*v_hat*w_hat
+  F[4] = dir[1]*rho_hat*u_hat*w_hat + dir[2]*rho_hat*v_hat*w_hat + 
+         dir[3]*(rho_hat*w_hat*w_hat + p1_hat)
+  F[5] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat + dir[3]*rho_hat*w_hat*h_hat
+
+  return nothing
+end
+
+
+function logavg(aL, aR)
+# calculate the logarithmic average needed by the IR flux
+  xi = aL/aR
+  f = (xi - 1)/(xi + 1)
+  u = f*f
+  eps = 1e-2
+  if u < eps
+    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0
+  else
+    F = (log(xi)/2.0)/f
+  end
+
+  return (aL + aR)/(2*F)
+end
+
 
 

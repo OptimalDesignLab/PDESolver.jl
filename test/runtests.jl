@@ -27,8 +27,9 @@ include("test_lowlevel.jl")
 include("test_GLS3.jl")
 # TODO: uncomment when SBP is fixed
 #include("test_modes.jl")
+include("test_3d.jl")
 include("test_adjoint.jl")
-
+include("test_flux.jl")
 
 cd("./convergence")
 include(joinpath(pwd(), "runtests.jl"))

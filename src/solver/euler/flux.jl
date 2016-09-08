@@ -332,7 +332,7 @@ function call{Tsol, Tres, Tmsh}(obj::StandardFlux, params::ParamType,
               aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
               F::AbstractVector{Tres})
 
-  calcEulerFlux_Standard(params, uL, uR, aux_vars, dxidx, nrm, F)
+  calcEulerFlux_standard(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
 function call{Tsol, Tres}(obj::StandardFlux, params::ParamType, 
@@ -342,7 +342,7 @@ function call{Tsol, Tres}(obj::StandardFlux, params::ParamType,
               nrm::AbstractVector, 
               F::AbstractVector{Tres})
 
-  calcEulerFlux_Standard(params, uL, uR, aux_vars, nrm, F)
+  calcEulerFlux_standard(params, uL, uR, aux_vars, nrm, F)
   return nothing
 end
 
@@ -370,6 +370,29 @@ function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType,
   return nothing
 end
 
+type IRFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IRFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IR(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+
+function call{Tsol, Tres}(obj::IRFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IR(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
 
 
 
@@ -381,8 +404,9 @@ end
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
-"StandardFlux" => DucrosFlux(),
-"DucrosFlux" => DucrosFlux()
+"StandardFlux" => StandardFlux(),
+"DucrosFlux" => DucrosFlux(),
+"IRFlux" => IRFlux()
 )
 
 @doc """
