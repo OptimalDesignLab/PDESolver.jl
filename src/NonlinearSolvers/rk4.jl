@@ -1,7 +1,5 @@
 # rk4.jl
 # Runge Kutta 4th order solver for ODEs
-# Anthony Ashley
-
 
 export rk4
 
