@@ -1,10 +1,22 @@
-rm -v ./*vtu
+rm -v ./arg_dict_output.jl
 rm -v ./convergence.dat
-rm -v ./coords_output.dat
+rm -v ./coords_output_*.dat
+rm -v ./error_calc.dat
 rm -v ./edge_vertnums.dat
 rm -v ./face_vertnums.dat
-rm -v ./IC.dat
+rm -v ./IC_*.dat
+rm -v ./iotest.dat
 rm -v ./jacobian*.dat
+rm -v ./load_balance_*.dat
+rm -v ./log_*.dat
+rm -v ./meshlog_*dat
 rm -v ./newton_solution.dat
 rm -v ./solution.dat
 rm -v ./sparsity_bnds.dat
+
+rm -rfv ./mesh_complete
+rm -rfv ./newmesh_linear
+rm -rfv ./output_init
+rm -rfv ./solution_done
+rm -rfv ./solution_error
+rm -rfv ./solution_ic
