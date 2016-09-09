@@ -1,4 +1,4 @@
-export calcBndryFunctional, getFunctionalName
+export evalFunctional, calcBndryFunctional, getFunctionalName
 
 # Calculate the analytical force on the inner boundary of the isentropic vortex
 #=
@@ -14,6 +14,46 @@ function calc_analytical_forces{Tmsh}(mesh::AbstractMesh{Tmsh}, params::ParamTyp
   return force
 end
 =#
+@doc """
+### EulerEquationMod.evalFunctional
+
+Hight level function that evaluates all the functionals specified over 
+various edges 
+
+**Arguments**
+
+*  `mesh` :  Abstract mesh object
+*  `sbp`  : Summation-By-Parts operator
+*  `eqn`  : Euler equation object
+*  `opts` : Options dictionary
+
+"""->
+function evalFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
+                        sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+
+  
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
+  # Calculate functional over edges
+  num_functionals = opts["num_functionals"]
+  for j = 1:num_functionals
+    # Geometric edge at which the functional needs to be integrated
+    key_j = string("geom_edges_functional", j)
+    functional_edges = opts[key_j]
+    functional_name = getFunctionalName(opts, j)
+
+    functional_val = zero(Tsol)
+    functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
+                     functional_name, functional_edges)
+  end  # End for i = 1:num_functionals
+
+  return nothing
+end
+
+
 @doc """
 ### EulerEquationMod.calcBndryFunctional
 
@@ -38,7 +78,59 @@ nonlinear solve while computing eqn.q
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::EulerData{Tsol}, opts, functor, functional_edges)
 
-  functional_val = zero(Tsol)
+  local_functional_val = zero(Tsol)
+
+  # Get bndry_offsets for the functional edge concerned
+  for itr = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
+    itr2 = 0
+    # Check which boundary condition number the geometric edge is associated with
+    for itr2 = 1:mesh.numBC
+      key = string("BC",itr2)
+      bc_geom_faces = opts[key]
+      if findfirst(bc_geom_faces, g_edge_number) > 0
+        break # The functional geometric edge is associated with this boundary condition
+      end # End if
+    end   # End itr2
+
+    start_index = mesh.bndry_offsets[itr2]
+    end_index = mesh.bndry_offsets[itr2+1]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
+    nfaces = length(bndry_facenums)
+    boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
+    q2 = zeros(Tsol, mesh.numDofPerNode)
+
+    for i = 1:nfaces
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+      for j = 1:mesh.sbpface.numnodes
+        q = sview(eqn.q_bndry, :, j, global_facenum)
+        convertToConservative(eqn.params, q, q2)
+        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = sview(mesh.coords_bndry, :, j, global_facenum)
+        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+        nrm = sview(sbp.facenormal, :, bndry_i.face)
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+        boundary_integrand[1,j,i] = functor(eqn.params, q, aux_vars, [nx, ny])
+      
+      end  # End for j = 1:mesh.sbpface.numnodes
+    end    # End for i = 1:nfaces
+
+    val_per_geom_edge = zeros(Tsol, 1)
+
+    integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
+                           boundary_integrand, val_per_geom_edge)
+
+    local_functional_val += val_per_geom_edge[1]
+
+  end # End for itr = 1:length(functional_edges)
+  
+  #=
+  local_functional_val = zero(Tsol)
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
@@ -69,13 +161,19 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
-  val_per_geom_edge = zeros(Tsol, 1)
+    val_per_geom_edge = zeros(Tsol, 1)
 
-  integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
-                         boundary_integrand, val_per_geom_edge)
+    integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
+                           boundary_integrand, val_per_geom_edge)
 
-  functional_val += val_per_geom_edge[1]
+    local_functional_val += val_per_geom_edge[1]
   end  # End for itr = 1:length(functional_edges)
+
+  =#
+  # println("rank = $(MPI.Comm_rank(eqn.comm)), local_functional_val = $local_functional_val")
+  functional_val = zero(Tsol)
+  functional_val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
+  # println("rank = $(MPI.Comm_rank(eqn.comm)), functional_val = $functional_val")
 
   return functional_val
 end

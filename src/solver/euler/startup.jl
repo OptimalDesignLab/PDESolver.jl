@@ -338,7 +338,8 @@ if opts["solve"]
 
       #---- Calculate functional on a boundary  -----#
       if opts["calc_functional"]
-        
+        evalFunctional(mesh, sbp, eqn, opts)
+        #=
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         if mesh.isDG
           boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -355,7 +356,6 @@ if opts["solve"]
           functional_val = zero(Tsol)
           functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
                            functional_name, functional_edges)
-
           println("\nNumerical functional value on geometric edges ", 
                   functional_edges, " = ", functional_val)
 
@@ -377,6 +377,7 @@ if opts["solve"]
           println(f, relative_functional_error, " ", mesh_metric)
           close(f)
         end  # End for i = 1:num_functionals
+        =#
       end    # End if opts["calc_functional"]
 
 
