@@ -1,4 +1,4 @@
-#=
+
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -18,13 +18,13 @@ include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
-=#
+
 resize!(ARGS, 1)
 facts("----- Testing Numerical Fluxes -----") do
 
-  ARGS[1] = "input_vals_channel.jl"
+  ARGS[1] = "input_vals_channel_dg.jl"
   include(STARTUP_PATH)
-
+  println("testing 2d")
 
   qL = [1.0, 2.0, 3.0, 7.0]
   qR = qL + 1
@@ -71,9 +71,49 @@ facts("----- Testing Numerical Fluxes -----") do
   functor = EulerEquationMod.FluxDict["IRFlux"]
   test_symmetric_flux(functor, F_num, F_num2)
 
+  # test calculating -Q*f + Eij*f_star_ij = Q^T_ij f_star_ij
+  fill!(eqn.res, 0.0)
+  EulerEquationMod.calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
+  res_split = copy(eqn.res)
+  fill!(eqn.res, 0.0)
+
+  opts["Q_transpose"] = false
+  EulerEquationMod.getEulerFlux(mesh, sbp, eqn, opts)
+  EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  opts["Q_transpose"] = true
+
+  E = zeros(sbp.Q)
+  for dim=1:2
+    E[:, :, dim] = sbp.Q[:, :, dim] + sbp.Q[:, :, dim].'
+  end
+  F_tmp = zeros(4)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      aux_vars = sview(eqn.aux_vars, :, j, i)
+      for k=1:mesh.numNodesPerElement
+        q_k = sview(eqn.q, :, k, i)
+        for dim=1:2
+          nrm = mesh.dxidx[dim, :, j, i]
+          EulerEquationMod.calcEulerFlux_standard(eqn.params, q_j, q_k, aux_vars, nrm, F_tmp)
+          eqn.res[:, j, i] += 2*E[j, k, dim]*F_tmp
+        end
+      end
+    end
+  end
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      for k=1:size(res_split, 1)
+        @fact res_split[k, j, i] --> roughly(eqn.res[k, j, i], atol=1e-12)
+      end
+    end
+  end
+
+
 
   # test 3D
-  ARGS[1] = "test_3d.jl"
+  ARGS[1] = "input_vals_3d.jl"
   include(STARTUP_PATH)
 
   println("testing 3d")
@@ -98,6 +138,46 @@ facts("----- Testing Numerical Fluxes -----") do
   println("testing IRFlux")
   functor = EulerEquationMod.FluxDict["IRFlux"]
   test_symmetric_flux(functor, F_num, F_num2)
+
+
+  # test calculating -Q*f + Eij*f_star_ij = Q^T_ij f_star_ij
+  fill!(eqn.res, 0.0)
+  EulerEquationMod.calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
+  res_split = copy(eqn.res)
+  fill!(eqn.res, 0.0)
+
+  opts["Q_transpose"] = false
+  EulerEquationMod.getEulerFlux(mesh, sbp, eqn, opts)
+  EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  opts["Q_transpose"] = true
+
+  E = zeros(sbp.Q)
+  for dim=1:3
+    E[:, :, dim] = sbp.Q[:, :, dim] + sbp.Q[:, :, dim].'
+  end
+  F_tmp = zeros(5)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      aux_vars = sview(eqn.aux_vars, :, j, i)
+      for k=1:mesh.numNodesPerElement
+        q_k = sview(eqn.q, :, k, i)
+        for dim=1:3
+          nrm = mesh.dxidx[dim, :, j, i]
+          EulerEquationMod.calcEulerFlux_standard(eqn.params, q_j, q_k, aux_vars, nrm, F_tmp)
+          eqn.res[:, j, i] += 2*E[j, k, dim]*F_tmp
+        end
+      end
+    end
+  end
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      for k=1:size(res_split, 1)
+        @fact res_split[k, j, i] --> roughly(eqn.res[k, j, i], atol=1e-12)
+      end
+    end
+  end
 
 
 

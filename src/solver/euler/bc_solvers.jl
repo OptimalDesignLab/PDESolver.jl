@@ -417,7 +417,7 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
   tmp1 = 0.5*(qL[2]*qL[2]/qL[1] + qR[2]*qR[2]/qR[1])
   tmp2 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
   tmp3 = 0.5*(qL[2]*qL[4]/qL[1] + qR[2]*qR[4]/qR[1])
-  F[2] = dir[1]*(tmp1 + p_avg) + dir[2]*tmp2 + dir[1]*tmp3
+  F[2] = dir[1]*(tmp1 + p_avg) + dir[2]*tmp2 + dir[3]*tmp3
 
   tmp1 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
   tmp2 = 0.5*(qL[3]*qL[3]/qL[1] + qR[3]*qR[3]/qR[1])

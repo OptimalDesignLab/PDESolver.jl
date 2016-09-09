@@ -500,6 +500,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
+  volume_flux_func::FluxType  # functor for the volume flux numerical flux
+                              # function
 # minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor

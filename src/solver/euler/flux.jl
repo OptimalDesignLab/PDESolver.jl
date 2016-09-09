@@ -425,5 +425,7 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   name = opts["Flux_name"]
   eqn.flux_func = FluxDict[name]
+  name = opts["Volume_flux_name"]
+  eqn.volume_flux_func = FluxDict[name]
   return nothing
 end

@@ -44,9 +44,13 @@ where input_file_name.jl is in your current directory.
 "variable_type": which set of variables to write the equation in, (Symbol), default
             :conservative
 
-"volume_integral_type": method of computing volume integrals, (Int), 
-                        default 1 (Di*Fi), 2 --> use a split form numerical flux 
-                        function
+"volume_integral_type" : method of computing volume integrals, (Int), 
+                        default 1 (Di*Fi), 2 --> use a split form 
+                        numerical flux function
+
+"Volume_flux_name" : name of the numerical flux function to use for the 
+                     split form volume integrals, (ASCIIString), default
+                     "StandardFlux"
 # Solver options
 "use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
           default false
@@ -142,6 +146,8 @@ Note that any values associated with these options are shared with the regular
 # solve options
 "write_entropy" : write the norm of the entropy during every major iteration, 
                   (Bool), default false
+"write_entropy_freq" : write the entropy every this many timesteps if 
+                       "write_entropy" is true, (Integer), default 1
 "write_entropy_fname" : file name (with extension) to write entropy to, 
                         (ASCIIString), default "entropy.dat"
 "check_density" : whether not to check that density > 0 every residual 

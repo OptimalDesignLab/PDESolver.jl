@@ -88,6 +88,7 @@ end
 
 # volume integral options
 get!(arg_dict, "volume_integral_type", 1)
+get!(arg_dict, "Volume_flux_name", "StandardFlux")
 
 # timestepping options
 if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
@@ -164,6 +165,7 @@ get!(arg_dict, "write_finalresidual", false)
 
 # solver options
 get!(arg_dict, "write_entropy", false)
+get!(arg_dict, "write_entropy_freq", 1)
 get!(arg_dict, "write_entropy_fname", "entropy.dat")
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)

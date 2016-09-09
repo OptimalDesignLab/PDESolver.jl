@@ -208,8 +208,10 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 end
 
 
-function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::AbstractSBP, eqn::AbstractEulerData, opts, f::IO)
+function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer, 
+                               mesh::AbstractMesh{Tmsh}, 
+                               sbp::AbstractSBP, 
+                               eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO)
 
 #  println("Performing major Iteration Callback")
 
@@ -263,14 +265,16 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     #--------------------------------------------------------------------------
   end
 =#
-  if opts["write_entropy"]
+  if opts["write_entropy"] && (itr % opts["write_entropy_freq"] == 0)
     # calculate the entropy norm
     val = zero(Float64)
     for i=1:mesh.numDofPerNode:mesh.numDof
-      q_vals = sview(eqn.q_vec, i:(i+3))
+      q_vals = sview(eqn.q_vec, i:(i+Tdim+1))
       s = calcEntropy(eqn.params, q_vals)
       val += real(s)*eqn.M[i]*real(s)
     end
+    val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+
     f = open(opts["write_entropy_fname"], "a+")
     println(f, itr, " ", eqn.params.t, " ",  val)
     close(f)
@@ -453,11 +457,11 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       end
     else
       for i=1:Tdim
-        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract, trans=false)
+        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
       end
     end  # end if
   elseif integral_type == 2
-    calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts)
+    calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end

@@ -144,15 +144,26 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
 
 end
 
-function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
+                                        mesh::AbstractMesh{Tmsh}, 
                                         sbp::AbstractSBP,  
-                                        eqn::EulerData{Tsol, Tres, Tdim}, opts)
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                                        functor::FluxType)
+
+  #TODO: this could be made more efficient in a couple ways
+  #      First, compute the numerical flux function more efficiently.  
+  #      in particular, computing the flux for 3 different normal vectors
+  #      at the same time could reuse a lot of the computation
+  #
+  #      Second: Caching.  The numerical fluxes used here should be 
+  #      symmetric, so calculate the unique entries and cache them
   dxidx = mesh.dxidx
   res = eqn.res
   q = eqn.q
   nrm = zeros(Tmsh, Tdim)
+  aux_vars = eqn.aux_vars
   F_d = eqn.params.flux_vals1
-
+#=
   # DEBUG:
   Fx_regular = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
   Fx_split = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
@@ -161,45 +172,33 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh
   for p=1:Tdim
     D[:, :, p] = hinv*sbp.Q[:, :, p]
   end
-
+=#
+  println("functor = ", functor)
   for i=1:mesh.numEl
     # res[:, j, i] = Qjk^T*F_start(uj, uk)
-    fill!(Fx_regular, 0.0); fill!(Fx_split, 0.0)
+#    fill!(Fx_regular, 0.0); fill!(Fx_split, 0.0)
     for j=1:mesh.numNodesPerElement
       q_j = sview(q, :, j, i)
+      aux_vars_j = sview(aux_vars, :, j, i)
       for k=1:mesh.numNodesPerElement
         q_k = sview(q, :, k, i)
         # loop over parametric dimensions at this point
         for d=1:Tdim
-
           # get the normal vector
           for p=1:Tdim
             nrm[p] = dxidx[d, p, j, i] 
           end
 
           #  calculate the numerical flux functions in current direction
-          calcEulerFlux_standard(eqn.params, q_j, q_k, nrm, F_d)
+          functor(eqn.params, q_j, q_k, aux_vars_j, nrm, F_d)
 
           # update residual
           for p=1:(Tdim+2)
             res[p, j, i] += 2*sbp.Q[k, j, d]*F_d[p]
-            # DEBUG
-            Fx_split[p, j] += 2*D[j, k, d]*F_d[p]
-            Fx_regular[p, j] += D[j, k, d]*eqn.flux_parametric[p, k, i, d]
           end
 
         end  # end d loop
       end  # end k loop
-
-      # calculate norm of difference
-      val = 0.0
-      for p=1:(Tdim + 2)
-        diff = real(Fx_split[p, j] - Fx_regular[p, j])
-        val += diff*diff
-      end
-
-      val = sqrt(val)
-      @assert val < 1e-12
 
     end  # end j loop
   end  # end i loop
