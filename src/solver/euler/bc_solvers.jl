@@ -17,7 +17,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
                                      nrm::AbstractArray{Tmsh,1}, 
                                      flux::AbstractArray{Tres, 1})
                                      
-  nrm2 = params.nrm3
+  nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
   RoeSolver(params, q, qg, aux_vars, nrm2, flux)
 
@@ -354,7 +354,7 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres}, 
                       dxidx::AbstractMatrix{Tmsh},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
@@ -376,22 +376,23 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
   rhou_avg = 0.5*(qL[2] + qR[2])
   rhov_avg = 0.5*(qL[3] + qR[3])
   p_avg = 0.5*(pL + pR)
+  rhoLinv = 1/qL[1]; rhoRinv = 1/qR[1]
 
 
 
   F[1] = dir[1]*(rhou_avg) + dir[2]*rhov_avg
 
-  tmp1 = 0.5*(qL[2]*qL[2]/qL[1] + qR[2]*qR[2]/qR[1])
-  tmp2 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
+  tmp1 = 0.5*(qL[2]*qL[2]*rhoLinv + qR[2]*qR[2]*rhoRinv)
+  tmp2 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
   F[2] = dir[1]*(tmp1 + p_avg) + dir[2]*tmp2
 
-  tmp1 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
-  tmp2 = 0.5*(qL[3]*qL[3]/qL[1] + qR[3]*qR[3]/qR[1])
+  tmp1 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
+  tmp2 = 0.5*(qL[3]*qL[3]*rhoLinv + qR[3]*qR[3]*rhoRinv)
   F[3] = dir[1]*tmp1 + dir[2]*(tmp2 + p_avg)
 
 
-  tmp1 = 0.5*( (qL[4] + pL)*qL[2]/qL[1] + (qR[4] + pR)*qR[2]/qR[1])
-  tmp2 = 0.5*( (qL[4] + pL)*qL[3]/qL[1] + (qR[4] + pR)*qR[3]/qR[1])
+  tmp1 = 0.5*( (qL[4] + pL)*qL[2]*rhoLinv + (qR[4] + pR)*qR[2]*rhoRinv)
+  tmp2 = 0.5*( (qL[4] + pL)*qL[3]*rhoLinv + (qR[4] + pR)*qR[3]*rhoRinv)
   F[4] = dir[1]*tmp1 + dir[2]*tmp2
 
   return nothing
@@ -411,28 +412,29 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
   rhov_avg = 0.5*(qL[3] + qR[3])
   rhow_avg = 0.5*(qL[4] + qR[4])
   p_avg = 0.5*(pL + pR)
+  rhoLinv = 1/qL[1]; rhoRinv = 1/qR[1]
 
   F[1] = dir[1]*(rhou_avg) + dir[2]*rhov_avg + dir[3]*rhow_avg
 
-  tmp1 = 0.5*(qL[2]*qL[2]/qL[1] + qR[2]*qR[2]/qR[1])
-  tmp2 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
-  tmp3 = 0.5*(qL[2]*qL[4]/qL[1] + qR[2]*qR[4]/qR[1])
+  tmp1 = 0.5*(qL[2]*qL[2]*rhoLinv + qR[2]*qR[2]*rhoRinv)
+  tmp2 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
+  tmp3 = 0.5*(qL[2]*qL[4]*rhoLinv + qR[2]*qR[4]*rhoRinv)
   F[2] = dir[1]*(tmp1 + p_avg) + dir[2]*tmp2 + dir[3]*tmp3
 
-  tmp1 = 0.5*(qL[2]*qL[3]/qL[1] + qR[2]*qR[3]/qR[1])
-  tmp2 = 0.5*(qL[3]*qL[3]/qL[1] + qR[3]*qR[3]/qR[1])
-  tmp3 = 0.5*(qL[4]*qL[3]/qL[1] + qR[4]*qR[3]/qR[1])
+  tmp1 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
+  tmp2 = 0.5*(qL[3]*qL[3]*rhoLinv + qR[3]*qR[3]*rhoRinv)
+  tmp3 = 0.5*(qL[4]*qL[3]*rhoLinv + qR[4]*qR[3]*rhoRinv)
   F[3] = dir[1]*tmp1 + dir[2]*(tmp2 + p_avg) + dir[3]*tmp3
 
-  tmp1 = 0.5*(qL[2]*qL[4]/qL[1] + qR[2]*qR[4]/qR[1])
-  tmp2 = 0.5*(qL[3]*qL[4]/qL[1] + qR[3]*qR[4]/qR[1])
-  tmp3 = 0.5*(qL[4]*qL[4]/qL[1] + qR[4]*qR[4]/qR[1])
+  tmp1 = 0.5*(qL[2]*qL[4]*rhoLinv + qR[2]*qR[4]*rhoRinv)
+  tmp2 = 0.5*(qL[3]*qL[4]*rhoLinv + qR[3]*qR[4]*rhoRinv)
+  tmp3 = 0.5*(qL[4]*qL[4]*rhoLinv + qR[4]*qR[4]*rhoRinv)
   F[4] = dir[1]*tmp1 + dir[2]*tmp2 + dir[3]*(tmp3 + p_avg)
 
 
-  tmp1 = 0.5*( (qL[5] + pL)*qL[2]/qL[1] + (qR[5] + pR)*qR[2]/qR[1])
-  tmp2 = 0.5*( (qL[5] + pL)*qL[3]/qL[1] + (qR[5] + pR)*qR[3]/qR[1])
-  tmp3 = 0.5*( (qL[5] + pL)*qL[4]/qL[1] + (qR[5] + pR)*qR[4]/qR[1])
+  tmp1 = 0.5*( (qL[5] + pL)*qL[2]*rhoLinv + (qR[5] + pR)*qR[2]*rhoRinv)
+  tmp2 = 0.5*( (qL[5] + pL)*qL[3]*rhoLinv + (qR[5] + pR)*qR[3]*rhoRinv)
+  tmp3 = 0.5*( (qL[5] + pL)*qL[4]*rhoLinv + (qR[5] + pR)*qR[4]*rhoRinv)
   F[5] = dir[1]*tmp1 + dir[2]*tmp2 + dir[3]*tmp3
 
   return nothing
@@ -445,7 +447,7 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres}, 
                       dxidx::AbstractMatrix{Tmsh},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
@@ -522,7 +524,7 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres}, 
                       dxidx::AbstractMatrix{Tmsh},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)

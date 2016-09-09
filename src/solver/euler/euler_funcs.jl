@@ -173,7 +173,6 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
     D[:, :, p] = hinv*sbp.Q[:, :, p]
   end
 =#
-  println("functor = ", functor)
   for i=1:mesh.numEl
     # res[:, j, i] = Qjk^T*F_start(uj, uk)
 #    fill!(Fx_regular, 0.0); fill!(Fx_split, 0.0)
