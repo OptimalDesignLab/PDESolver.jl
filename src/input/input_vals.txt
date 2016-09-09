@@ -233,6 +233,8 @@ Note that any values associated with these options are shared with the regular
 # functional computation options
 "calc_functional" : calculate functional on geometric boundary edge(s)
 "num_functionals" : number of functionals that need to be calculated
+"functional_error" : Boolean option for input dictionary to specify whether to compare against 
+                     analytical functional value and write the error.
 "functional_error_outfname" : name of file which stores the error in functional at a 
                          geometric boundary, (ASCIIString), default functional_error, while
                          writing the file a numerical suffix and .dat extension is added

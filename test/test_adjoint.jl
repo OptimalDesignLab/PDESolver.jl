@@ -6,6 +6,8 @@ facts("--- Testing Functional Computation On a Boundary ----") do
 
 
   @fact mesh.isDG --> true
+  @fact opts["calc_functional"] --> true
+  @fact opts["functional_error"] --> true
   @fact opts["functional_name1"] --> "drag"
   @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
   @fact opts["geom_edges_functional1"] --> [4]

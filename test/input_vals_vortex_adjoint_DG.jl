@@ -30,6 +30,7 @@ arg_dict = Dict{Any, Any}(
 "step_tol" => 1e-10,
 "itermax" => 30,
 "calc_functional" => true,
+"functional_error" => true,
 "num_functionals" => 1,
 "functional_name1" => "drag",
 "geom_edges_functional1" => [4],
