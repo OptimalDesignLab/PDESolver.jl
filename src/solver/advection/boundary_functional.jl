@@ -101,8 +101,16 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number + 1]
+    
+    # get the boundary array associated with the geometric edge
+    itr2 = 0
+    for itr2 = 1:mesh.numBC
+      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
+        break
+      end
+    end
+    start_index = mesh.bndry_offsets[itr2]
+    end_index = mesh.bndry_offsets[itr2 + 1]
     idx_range = start_index:(end_index-1)  # Index range
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
@@ -150,13 +158,23 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   # use integratefunctional! to get the solution.
 
   functional_val = zero(Tsol)
+  local_functional_val = zero(Tsol)
   alpha_x = eqn.params.alpha_x
   alpha_y = eqn.params.alpha_y
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
+
+    # get the boundary array associated with the geometric edge
+    itr2 = 0
+    for itr2 = 1:mesh.numBC
+      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
+        break
+      end
+    end
+    
+    start_index = mesh.bndry_offsets[itr2]
+    end_index = mesh.bndry_offsets[itr2+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
@@ -182,9 +200,11 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
                          boundary_integrand, val_per_geom_edge)
 
     # Add contributions of multiple geometric edges to the final functional value
-    functional_val += val_per_geom_edge[1] 
+    local_functional_val += val_per_geom_edge[1] 
 
   end   # End for itr = 1:length(functional_edges)
+
+  functional_val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
   
   return functional_val
 end
