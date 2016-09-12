@@ -1,8 +1,73 @@
 # Calculate boundary "forces" in advection
-export calcBndryfunctional, getFunctionalName
+export evalFunctional, calcBndryfunctional, getFunctionalName
 
 @doc """
-AdvectionEquationMod.calcBndryforces
+### EulerEquationMod.evalFunctional
+
+Hight level function that evaluates all the functionals specified over 
+various edges 
+
+**Arguments**
+
+*  `mesh` :  Abstract mesh object
+*  `sbp`  : Summation-By-Parts operator
+*  `eqn`  : Euler equation object
+*  `opts` : Options dictionary
+
+"""->
+function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
+                        sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts)
+
+  
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
+  # Calculate functional over edges
+  num_functionals = opts["num_functionals"]
+  for j = 1:num_functionals
+    # Geometric edge at which the functional needs to be integrated
+    key_j = string("geom_edges_functional", j)
+    functional_edges = opts[key_j]
+    functional_name = getFunctionalName(opts, j)
+
+    functional_val = zero(Tsol)
+    functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
+                     functional_name, functional_edges)
+
+    # Print statements
+    if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
+      if opts["functional_error"]
+        println("\nNumerical functional value on geometric edges ", 
+                    functional_edges, " = ", functional_val)
+        analytical_functional_val = opts["analytical_functional_val"]
+        println("analytical_functional_val = ", analytical_functional_val)
+
+        absolute_functional_error = norm((functional_val - 
+                                         analytical_functional_val), 2)
+        relative_functional_error = absolute_functional_error/
+                                    norm(analytical_functional_val, 2)
+
+        mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
+        # write functional error to file
+        outname = string(opts["functional_error_outfname"], j, ".dat")
+        println("printed relative functional error = ", 
+                relative_functional_error, " to file ", outname, '\n')
+        f = open(outname, "w")
+        println(f, relative_functional_error, " ", mesh_metric)
+        close(f)
+      end  # End if opts["functional_error"]
+    end    # End @mpi_master
+
+  end  # End for i = 1:num_functionals
+
+  return nothing
+end
+
+
+@doc """
+AdvectionEquationMod.calcBndryfunctional
 
 This function calculates the forces on a geometric boundary of a the 
 computational space. There is no need to call this function withing the 
@@ -22,7 +87,7 @@ nonlinear solve while computing eqn.q
 
 """->
 
-function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
+function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::AdvectionData{Tsol}, opts, functor, functional_edges)
 
   # Specify the boundary conditions for the edge on which the force needs to be
@@ -76,7 +141,7 @@ function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
 end
 
 
-function calcBndryfunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::AdvectionData{Tsol}, opts, functor, functional_edges)
 
   # Specify the boundary conditions for the edge on which the force needs to be

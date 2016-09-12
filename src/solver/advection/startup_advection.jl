@@ -241,7 +241,7 @@ if opts["solve"]
 
 
     rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func, test_post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
-end       # end of if/elseif blocks checking flag
+  end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")
 
@@ -316,45 +316,9 @@ end       # end of if/elseif blocks checking flag
       #----  Calculate functional on a boundary  -----#
       
       if opts["calc_functional"]
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        if mesh.isDG
-          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        end
-        
-        # Calculate functional over edges
-        num_functionals = opts["num_functionals"]
-        for j = 1:num_functionals
-          # Geometric edge at which the functional needs to be integrated
-          key_j = string("geom_edges_functional", j)
-          functional_edges = opts[key_j]
-          functional_name = getFunctionalName(opts, j)
-
-          functional_val = zero(Tsol)
-          functional_val = calcBndryfunctional(mesh, sbp, eqn, opts, 
-                           functional_name, functional_edges)
-          println("\nNumerical functional value on geometric edges ", 
-                  functional_edges, " = ", functional_val)
-          
-          analytical_functional_val = opts["analytical_functional_val"]
-          println("analytical_functional_val = ", analytical_functional_val)
-          
-          absolute_functional_error = norm((functional_val - 
-                                           analytical_functional_val), 2)
-          relative_functional_error = absolute_functional_error/
-                                      norm(analytical_functional_val, 2)
-          
-          mesh_metric = 1/sqrt(mesh.numEl/2)  # Only for a square domain with triangular elements
-          
-          # write functional error to file
-          outname = string(opts["functional_error_outfname"], j, ".dat")
-          println("printed relative functional error = ", 
-                  relative_functional_error, " to file ", outname, '\n')
-          f = open(outname, "w")
-          println(f, relative_functional_error, " ", mesh_metric)
-          close(f)
-        end  # End for j = 1:num_functional
+        evalFunctional(mesh, sbp, eqn, opts)
       end    # End if opts["calc_functional"]
-
+  
 
       #-----  Calculate adjoint vector for a functional  -----#
 
