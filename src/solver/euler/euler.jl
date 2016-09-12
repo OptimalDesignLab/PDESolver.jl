@@ -136,7 +136,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   #println("bndryfluxPhysical = \n", bndryfluxPhysical)
   #println("eqn.bndryflux = \n", eqn.bndryflux)
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
   =#
   
   if opts["use_GLS"]
@@ -145,7 +145,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   
   #=
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
   =#
   #----------------------------------------------------------------------------
 
@@ -486,9 +486,9 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   #TODO: remove conditional
   if mesh.isDG
-    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
   else
-    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
   end
 
 
@@ -571,7 +571,7 @@ end
 function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
-  interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+  interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res, SummationByParts.Subtract())
 
   # do some output here?
   return nothing

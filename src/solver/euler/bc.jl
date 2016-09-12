@@ -355,11 +355,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
   # params says we are using entropy variables
   calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
 
-  #TODO: make this a unary minus, not a fp multiplication
-  for i=1:4
-    bndryflux[i] = -bndryflux[i]
-  end
-
 return nothing
 
 

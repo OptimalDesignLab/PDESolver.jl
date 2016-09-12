@@ -154,7 +154,7 @@ facts("----- Testing BC Solvers -----") do
 
 #  println("F = \n", F)
 #  println("F2 = \n", F2)
-  @fact F2 --> roughly(-F, atol=1e-13)
+  @fact F2 --> roughly(F, atol=1e-13)
 end
 
 end

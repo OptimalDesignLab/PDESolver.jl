@@ -133,7 +133,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
     # end flux calculation
 
     # do the integration
-    boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res, SummationByParts.Subtract())
   end  # end loop over npeers
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, eqn.q_face_send, eqn.q_face_recv)
@@ -232,7 +232,7 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
      end  # end loop over interfaces
 
     # evaluate integral
-    boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)
+    boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res, SummationByParts.Subtract())
   end  # end loop over peers
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, qL_face_arr, qR_face_arr)

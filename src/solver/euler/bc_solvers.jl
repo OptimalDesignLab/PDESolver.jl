@@ -184,7 +184,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
 
   for i=1:4  # ArrayViews does not support flux[:] = .
 
-    flux[i] = -(sat_fac*sat[i] + euler_flux[i]) 
+    flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
     # when weak differentiate has transpose = true
   end
 
@@ -341,7 +341,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
 
   for i=1:5  # ArrayViews does not support flux[:] = .
 
-    flux[i] = -(sat_fac*sat[i] + euler_flux[i]) 
+    flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
     # when weak differentiate has transpose = true
   end
 
