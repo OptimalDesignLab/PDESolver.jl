@@ -4,9 +4,11 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 arg_dict = Dict{Any, Any}(
-"run_type" => 5,
+"run_type" => 1,
+"jac_type" => 3,
+"newton_globalize_euler" => true,
 "order" => 1,
-"real_time" => true,
+"real_time" => false,
 "variable_type" => :conservative,
 "IC_name" => "ICIsentropicVortex",
 "numBC" => 4,
@@ -18,9 +20,10 @@ arg_dict = Dict{Any, Any}(
 "BC3_name" => "isentropicVortexBC",
 "BC4" => [3],
 "BC4_name" => "isentropicVortexBC",
-"smb_name" => "src/mesh_files/gvortex1.smb",
+"smb_name" => "src/mesh_files/gvortex1np2.smb",
 "dmg_name" => ".null",
 "use_DG" => true,
+"operator_type" => "SBPOmega",
 "Flux_name" => "RoeFlux",
 "t_max" => 5.0,
 "res_tol" => 1e-10,

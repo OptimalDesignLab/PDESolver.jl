@@ -1,6 +1,6 @@
 # Test functional Integrate and adjoint for euler equation.
 
-facts("--- Testing Functional Computation On a Boundary ----") do
+facts("--- Testing Functional Computation On a Boundary ---") do
   ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
   include("../src/solver/euler/startup.jl")  # initialization and construction
 
@@ -10,7 +10,7 @@ facts("--- Testing Functional Computation On a Boundary ----") do
   @fact opts["functional_error"] --> true
   @fact opts["functional_name1"] --> "drag"
   @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
-  @fact opts["geom_edges_functional1"] --> [4]
+  @fact opts["geom_edges_functional1"] --> [3]
 
   fname = "./functional_error1.dat"
   relative_error = readdlm(fname)
@@ -20,3 +20,38 @@ facts("--- Testing Functional Computation On a Boundary ----") do
   rm("./functional_error1.dat") # Delete the file
 
 end  # End do
+
+#=
+
+facts("--- Testing Functional Computation On a Boundary ---") do
+  include("./input_vals_vortex_adjoint_DG.jl")
+  arg_dict["smb_name"] = "src/mesh_files/gvortex1np2.smb"
+  arg_dict["run_type"] = 1
+  arg_dict["jac_type"] = 3
+  arg_dict["newton_globalize_euler"] = true
+  f = open("input_vals_vortex_adjoint_DG_parallel.jl", "w")
+  println(f, "arg_dict = ")
+  println(f, arg_dict)
+  close(f)
+
+  ARGS[1] = "input_vals_vortex_adjoint_DG_parallel.jl"
+  include("../src/solver/euler/startup.jl")
+
+  @fact mesh.isDG --> true
+  @fact opts["calc_functional"] --> true
+  @fact opts["functional_error"] --> true
+  @fact opts["functional_name1"] --> "drag"
+  @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
+  @fact opts["geom_edges_functional1"] --> [3]
+
+  fname = "./functional_error1.dat"
+  relative_error = readdlm(fname)
+
+  @fact relative_error[1] --> roughly(0.000177342284, atol = 1e-6)
+
+  rm("./functional_error1.dat") # Delete the file
+  rm("./input_vals_vortex_adjoint_DG_parallel.jl")
+
+
+end  # End do
+=#
