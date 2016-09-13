@@ -86,6 +86,7 @@ nonlinear solve while computing eqn.q
 *  `functional_val` : computed numerical functional at the boundary.
 
 """->
+#=  TODO: uncomment and run test when mesh.bndry_geo_nums gets added to CG meshes
 
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::AdvectionData{Tsol}, opts, functor, functional_edges)
@@ -147,7 +148,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
   
   return functional_val
 end
-
+=#
 
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::AdvectionData{Tsol}, opts, functor, functional_edges)

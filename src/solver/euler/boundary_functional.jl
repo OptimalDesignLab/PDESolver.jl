@@ -1,19 +1,5 @@
 export evalFunctional, calcBndryFunctional, getFunctionalName
 
-# Calculate the analytical force on the inner boundary of the isentropic vortex
-#=
-function calc_analytical_forces{Tmsh}(mesh::AbstractMesh{Tmsh}, params::ParamType{2},
-	                                    coords::AbstractArray{Tmsh})
-
-  q = zeros(mesh.numDofPerNode)
-  calcIsentropicVortex(coords, params, q)  # Get analytical q ath the coordinates
-  p = calcPressure(params, q) # Get the analytical pressure
-  r = sqrt(coords[1]*coords[1] + coords[2]*coords[2]) # get the curcular radius
-  force = 0.5*pi*r*p
-
-  return force
-end
-=#
 @doc """
 ### EulerEquationMod.evalFunctional
 
