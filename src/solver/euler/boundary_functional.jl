@@ -28,7 +28,7 @@ various edges
 *  `opts` : Options dictionary
 
 """->
-function evalFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
+function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
   
@@ -103,21 +103,21 @@ nonlinear solve while computing eqn.q
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::EulerData{Tsol}, opts, functor, functional_edges)
 
+
   local_functional_val = zero(Tsol)
 
   # Get bndry_offsets for the functional edge concerned
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
     itr2 = 0
-    # Check which boundary condition number the geometric edge is associated with
+    # get the boundary array associated with the geometric edge
+    itr2 = 0
     for itr2 = 1:mesh.numBC
-      key = string("BC",itr2)
-      bc_geom_faces = opts[key]
-      if findfirst(bc_geom_faces, g_edge_number) > 0
-        break # The functional geometric edge is associated with this boundary condition
-      end # End if
-    end   # End itr2
-
+      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
+        break
+      end
+    end
+    
     start_index = mesh.bndry_offsets[itr2]
     end_index = mesh.bndry_offsets[itr2+1]
     idx_range = start_index:(end_index-1)
@@ -153,7 +153,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
     local_functional_val += val_per_geom_edge[1]
 
   end # End for itr = 1:length(functional_edges)
-  
+
   #=
   local_functional_val = zero(Tsol)
 
@@ -193,8 +193,8 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
 
     local_functional_val += val_per_geom_edge[1]
   end  # End for itr = 1:length(functional_edges)
-
   =#
+  
   # println("rank = $(MPI.Comm_rank(eqn.comm)), local_functional_val = $local_functional_val")
   functional_val = zero(Tsol)
   functional_val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)

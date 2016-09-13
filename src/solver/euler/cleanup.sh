@@ -1,3 +1,4 @@
+rm -v ./arg_dict_output.jl
 rm -v ./convergence.dat
 rm -v ./solution_newton*vtu
 rm -v ./solution_rk*vtu
