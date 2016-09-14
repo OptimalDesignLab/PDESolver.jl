@@ -61,6 +61,8 @@ facts("----- Testing Parallel -----") do
 
 end
 
+cd(start_dir)
+
 facts("----- Testing Functional Computation On Boundary In Parallel -----") do
 
   resize!(ARGS, 1)
