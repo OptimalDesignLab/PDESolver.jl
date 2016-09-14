@@ -276,6 +276,10 @@ if opts["solve"]
     @time jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
     writedlm("solution_$myrank.dat", jac_col)
 
+  elseif flag == 20
+
+    @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+
   end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")

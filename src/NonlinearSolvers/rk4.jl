@@ -23,18 +23,18 @@ rk4
   the form du/dt = f(u, t)
 
   Arguments:
-    * f  : function evaluation, must have signature (ctx..., opts, t), must have signature (ctx..., opts, t)
+    * f  : function evaluation, must have signature (ctx..., opts, t)
     * h  : time step size
-    * t_max : time value to stop time stepping (time starts at 0)
-    * q_vec vector of the u values
+    * t_max: time value to stop time stepping (time starts at 0)
+    * q_vec: vector of the u values
     * res_vec: vector of du/dt values (the output of the function f)
     * pre_func: function to to be called after the new u values are put into
-                q_vec but before the function f is evaluated.  Mut have
-                signature: post_func(ctx..., opts)
+                q_vec but before the function f is evaluated.  Must have
+                signature: pre_func(ctx..., opts)
     * post_func: function called immediately after f is called.  The function
                  must have the signature res_norm = post_func(ctx..., opts, 
                  calc_norm=true),
-                 where res_norm is a norm of res_vec, and calc_norm determins
+                 where res_norm is a norm of res_vec, and calc_norm determines
                  whether or not to calculate the norm.
     * ctx: a tuple (or any iterable container) of the objects needed by
            f, pre_func, and post func.  The tuple is splatted before being
@@ -278,7 +278,7 @@ end
 @doc """
 ### NonlinearSolvers.pde_pre_func
 
-  The pre-function for solve partial differential equations with a physics
+  The pre-function for solving partial differential equations with a physics
   module.  The only operation it performs is disassembling eqn.q_vec into
   eqn.q
 
@@ -297,7 +297,7 @@ end
 @doc """
 ### NonlinearSolvers.pde_post_func
 
-  The post-function for solver partial differential equations with a physics
+  The post-function for solving partial differential equations with a physics
   module.  This function multiplies by A0inv, assembles eqn.res into
   eqn.res_vec, multiplies by the inverse mass matrix, and calculates
   the SBP approximation to the integral L2 norm
