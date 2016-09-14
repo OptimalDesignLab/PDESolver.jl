@@ -268,15 +268,19 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   if opts["write_entropy"] && (itr % opts["write_entropy_freq"] == 0)
     # calculate the entropy norm
     val = zero(Float64)
+    val2 = zero(Float64)
     for i=1:mesh.numDofPerNode:mesh.numDof
       q_vals = sview(eqn.q_vec, i:(i+Tdim+1))
       s = calcEntropy(eqn.params, q_vals)
-      val += real(s)*eqn.M[i]*real(s)
+      p = calcPressure(eqn.params, q_vals)
+      s2 = log(p/(q_vals[1]^eqn.params.gamma))
+      val += real(s)*eqn.M[i]
+      val2 += sign(s2)*real(s2)*eqn.M[i]*real(s2)
     end
     val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
-
+    val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
     f = open(opts["write_entropy_fname"], "a+")
-    println(f, itr, " ", eqn.params.t, " ",  val)
+    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2 )
     close(f)
   end
 

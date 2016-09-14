@@ -163,6 +163,12 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
   nrm = zeros(Tmsh, Tdim)
   aux_vars = eqn.aux_vars
   F_d = eqn.params.flux_vals1
+  # calculate S
+  stencil_size = size(sbp.Q, 1)
+  S = Array(Float64, stencil_size, stencil_size, Tdim)
+  for i=1:Tdim
+    S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
+  end
 #=
   # DEBUG:
   Fx_regular = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
@@ -193,7 +199,8 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
 
           # update residual
           for p=1:(Tdim+2)
-            res[p, j, i] += 2*sbp.Q[k, j, d]*F_d[p]
+#            res[p, j, i] += 2*sbp.Q[k, j, d]*F_d[p]
+            res[p, j, i] -= 2*S[j, k, d]*F_d[p]
           end
 
         end  # end d loop
