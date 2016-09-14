@@ -32,6 +32,7 @@ rm -v ./*vtu
 rm -v ./coords_output_*.dat
 rm -v ./functional_error*.dat
 rm -v ./newton_solution*.dat
+rm -rfv ./adjoint_field
 rm -rfv ./mesh_complete
 rm -rfv ./output_init
 rm -rfv ./solution_done
