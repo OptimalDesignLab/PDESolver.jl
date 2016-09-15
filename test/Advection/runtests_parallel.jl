@@ -59,9 +59,10 @@ facts("----- Testing Parallel -----") do
   datap = readdlm("error_calc.dat")
   @fact datas[1] --> roughly(datap[1], atol=1e-13)
 
+  cd(start_dir)
+
 end
 
-cd(start_dir)
 
 facts("----- Testing Functional Computation On Boundary In Parallel -----") do
 
