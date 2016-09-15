@@ -126,7 +126,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
-        boundary_integrand[1,j,i] = functor(eqn.params, q, aux_vars, [nx, ny])
+        boundary_integrand[1,j,i] = functor(eqn.params, q2, aux_vars, [nx, ny])
       
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
@@ -139,52 +139,9 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
     local_functional_val += val_per_geom_edge[1]
 
   end # End for itr = 1:length(functional_edges)
-
-  #=
-  local_functional_val = zero(Tsol)
-
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
-    idx_range = start_index:(end_index-1)
-    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
-
-    nfaces = length(bndry_facenums)
-    boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
-    q2 = zeros(Tsol, mesh.numDofPerNode)
-
-    for i = 1:nfaces
-      bndry_i = bndry_facenums[i]
-      global_facenum = idx_range[i]
-      for j = 1:mesh.sbpface.numnodes
-        q = sview(eqn.q_bndry, :, j, global_facenum)
-        convertToConservative(eqn.params, q, q2)
-        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
-        x = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-        boundary_integrand[1,j,i] = functor(eqn.params, q, aux_vars, [nx, ny])
-      
-      end  # End for j = 1:mesh.sbpface.numnodes
-    end    # End for i = 1:nfaces
-
-    val_per_geom_edge = zeros(Tsol, 1)
-
-    integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], 
-                           boundary_integrand, val_per_geom_edge)
-
-    local_functional_val += val_per_geom_edge[1]
-  end  # End for itr = 1:length(functional_edges)
-  =#
   
-  # println("rank = $(MPI.Comm_rank(eqn.comm)), local_functional_val = $local_functional_val")
   functional_val = zero(Tsol)
   functional_val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
-  # println("rank = $(MPI.Comm_rank(eqn.comm)), functional_val = $functional_val")
 
   return functional_val
 end
