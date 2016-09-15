@@ -394,6 +394,7 @@ include("GLS2.jl")
 include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
+include("pressure.jl")
 
 @doc """
 ### EulerEquationMod.EulerData_
