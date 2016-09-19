@@ -54,7 +54,7 @@ export AbstractEulerData, EulerData, EulerData_
     * Ma  : free stream Mach number
     * Re  : free stream Reynolds number
     * aoa : angle of attack (radians)
- 
+
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   f::IOStream
@@ -136,14 +136,14 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
   function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
-    
+
     t = 0.0
     myrank = mesh.myrank
     f = open("log_$myrank.dat", "w")
     q_vals = Array(Tsol, Tdim + 2)
     qg = Array(Tsol, Tdim + 2)
     v_vals = Array(Tsol, Tdim + 2)
-  
+
     res_vals1 = Array(Tres, Tdim + 2)
     res_vals2 = Array(Tres, Tdim + 2)
 
@@ -210,14 +210,14 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
     time = Timings()
-    return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, cv, R, 
-               gamma, gamma_1, Ma, Re, aoa, 
+    return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1,
+               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, cv, R,
+               gamma, gamma_1, Ma, Re, aoa,
                rho_free, E_free,
-               edgestab_gamma, writeflux, writeboundary, 
-               writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
-               use_dissipation, dissipation_const, tau_type, vortex_x0, 
-               vortex_strength, 
+               edgestab_gamma, writeflux, writeboundary,
+               writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
+               use_dissipation, dissipation_const, tau_type, vortex_x0,
+               vortex_strength,
                krylov_itr, krylov_type,
                time)
 
@@ -234,35 +234,35 @@ end  # end type declaration
 
   It should be used for specify the type of a function argument only when
   the function does no operations on the solution data object itself, it just
-  passes it onto other functions that do the work (thus AbstractEulerData 
+  passes it onto other functions that do the work (thus AbstractEulerData
   should be used for only the highest level functions).
 
-  Another way of saying say it is that this type should only be used when 
+  Another way of saying say it is that this type should only be used when
   the function only needs to ensure that it is solving the Euler equations,
   but does not care even a little bit about how.
 """->
 abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 #=
 Use this type to leverage multiple dispatch.
-This type holds any data, including large arrays of solution values, 
-  that are specific to the equation for the Euler equations. 
-  This includes the solutoin variables q, the fluxes in the xi and eta 
-  direction, and the result of the calculation the inverse mass matrix is 
+This type holds any data, including large arrays of solution values,
+  that are specific to the equation for the Euler equations.
+  This includes the solutoin variables q, the fluxes in the xi and eta
+  direction, and the result of the calculation the inverse mass matrix is
   stored here as well (not sure if that fits better here or in the mesh object)
-  things like the coordinate field, the jacobian etc. are stored 
+  things like the coordinate field, the jacobian etc. are stored
   in the mesh object
 
-The aux_vars array holds all auxiliary variables that are stored over 
+The aux_vars array holds all auxiliary variables that are stored over
   the entire mesh.
-Although it can be accessed directly, the preferred method is to use the macros 
+Although it can be accessed directly, the preferred method is to use the macros
   defined in the euler_macros.jl file.
-These macros return either a scalar or an ArrayView of the specified indices, 
+These macros return either a scalar or an ArrayView of the specified indices,
   depending on if the quantity requested is scalar or vector.
-Every time a new variable is added to the array, the size must be updated 
+Every time a new variable is added to the array, the size must be updated
   and a new macro must be created.
 
-The uses of aux_vars should mirror that of eqn.q, in that entire columns 
-  should be passed to low level functions and the low level functions 
+The uses of aux_vars should mirror that of eqn.q, in that entire columns
+  should be passed to low level functions and the low level functions
   use the macros to access individual variables.
 The advantages of macros vs functions for access to variables remains unclear
   if aux_vars is a fixed size.
@@ -272,7 +272,7 @@ If it is variable sized then macros give the advantage of doing location lookup
 
 #=
   Initial Condition:
-    All initial condition functions use conservative variables, and are 
+    All initial condition functions use conservative variables, and are
     converted to the variables used to solve the equation.
 =#
 
@@ -283,10 +283,10 @@ If it is variable sized then macros give the advantage of doing location lookup
     If using some other variables, they are converted before being passed
     to the boundary condition functions.
 
-    The functors that compute boundary conditions are gathered from BCDict 
-    during init() and stored in mesh.bndry_funcs.  The functors compute the 
-    flux from the boundary condition at a node.  The boundary fluxes for all 
-    the nodes on the boundary are stored in mesh.bndryflux, to be integrated 
+    The functors that compute boundary conditions are gathered from BCDict
+    during init() and stored in mesh.bndry_funcs.  The functors compute the
+    flux from the boundary condition at a node.  The boundary fluxes for all
+    the nodes on the boundary are stored in mesh.bndryflux, to be integrated
     later using boundaryintegrate!.
 =#
 
@@ -301,27 +301,27 @@ If it is variable sized then macros give the advantage of doing location lookup
                           qc::AbstractArray{Tsol, 1}
 
     # convert from conservative to the other variables at a node
-    convertToEntropy(params::ParamType, qe::AbstractArray{Tsol, 1}, 
+    convertToEntropy(params::ParamType, qe::AbstractArray{Tsol, 1},
                      qc::AbstractArray{Tsol, 1})
 
     # convert from conservative variables to the variables the equation
     # is being solved in
-    convertFromConservativeToWorkingVars(params::ParamType{Tdim, :var_type, 
+    convertFromConservativeToWorkingVars(params::ParamType{Tdim, :var_type,
                         qe::AbstractArray{Tsol, 1}, qc::AbstractArray{Tsol, 1})
 
     # calculate the coefficient matrix of the time derivate (dq/dv) at a node
-    calcA0(params::ParamType, q::AbstractArray{Tsol, 1}, 
+    calcA0(params::ParamType, q::AbstractArray{Tsol, 1},
            A0::AbstractArray{Tsol, 2})
     # calculate inv(dq/dv)
-    calcA0inv(params::ParamType, q::AbstractArray{Tsol, 1}, 
+    calcA0inv(params::ParamType, q::AbstractArray{Tsol, 1},
               A0::AbstractArray{Tsol, 2})
 
     # multiply a 3D array by inv(A0)
     matVecA0Inv(mesh, sbp, eqn, opts, arr::AbstractArray{Tsol, 3})
 
     # calculate the Euler flux at a node
-    calcEulerFlux(params::ParamType, q::AbstractArray{Tsol, 1}, 
-                  aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh}, 
+    calcEulerFlux(params::ParamType, q::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tsol, 1}, dir::AbstractArray{Tmsh},
                   F::AbstractArray{Tsol, 1})
 
 =#
@@ -330,9 +330,9 @@ If it is variable sized then macros give the advantage of doing location lookup
   Calculating Other Quantities:
     To calculate physical quantities from the solution variables (for which
     the calculation is different for the different sets of variables) at a node,
-    a separate function should be used, usnig the params object to dispatch 
-    to the right function for the variables being used. 
-    
+    a separate function should be used, usnig the params object to dispatch
+    to the right function for the variables being used.
+
     Some examples:
 
     calcPressure(params::ParamType, q::AbstractArray{Tsol, 1})
@@ -346,7 +346,7 @@ If it is variable sized then macros give the advantage of doing location lookup
   This type, although abstract, is the type functions should use for their
   input arguments if they do any operations on the solution data object.
   It stores all data used in evaluting the Euler Equations.
-  
+
   It is paramaterized on the types Tsol, the type of the
   conservative variables q, and Tdim, the dimension of the equation
 
@@ -394,7 +394,7 @@ include("GLS2.jl")
 include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
-include("pressure.jl")
+include("PressureMod.jl")
 
 @doc """
 ### EulerEquationMod.EulerData_
@@ -404,7 +404,7 @@ include("pressure.jl")
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
   It is also paremterized by var_type, which should be a symbol describing
-  the set of variables stored in eqn.q.  Currently supported values are 
+  the set of variables stored in eqn.q.  Currently supported values are
   :conservative and :entropy, which indicate the conservative variables and
   the entropy variables described in 'A New Finite Element Formulation for
   Computational Fluid Dynamics: Part I' by Hughes et al.
@@ -413,19 +413,19 @@ include("pressure.jl")
   specifically a 3D one.
 
   Static Parameters:
-    Tsol : datatype of variables solution variables, ie. the 
+    Tsol : datatype of variables solution variables, ie. the
            q vector and array
     Tres : datatype of residual. ie. eltype(res_vec)
     Tdim : dimensionality of equation, integer, (2 or 3, currently only 2 is
            supported).
     Tmsh : datatype of mesh related quantities
-    var_type : symbol describing variables used in weak form, (:conservative 
+    var_type : symbol describing variables used in weak form, (:conservative
                or :entropy)
 
 
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}  
-# hold any constants needed for euler equation, as well as solution and data 
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
+# hold any constants needed for euler equation, as well as solution and data
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
 # Only the constants are initilized here, the arrays are not.
@@ -446,16 +446,16 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
-  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
+  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
   q_vec::Array{Tres,1}            # initial condition in vector form
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
-  aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
+  aux_vars::Array{Tres, 3}        # storage for auxiliary variables
   aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
                                   # to interior faces
   aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
                                        # to shared faces
-  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
+  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated
                                   # to the boundaries
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
@@ -479,7 +479,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # artificial dissipation operator:
   #   a square numnodes x numnodes matrix for every element
-  dissipation_mat::Array{Tmsh, 3}  
+  dissipation_mat::Array{Tmsh, 3}
 
   Minv::Array{Float64, 1}         # inverse mass matrix
   M::Array{Float64, 1}            # mass matrix
@@ -489,7 +489,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
-                                  # is the coefficient matrix of the time 
+                                  # is the coefficient matrix of the time
 				  # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
@@ -546,8 +546,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     else
       eqn.dissipation_mat = Array(Tmsh, 0, 0, 0)
     end
-    
-    # Must initialize them because some datatypes (BigFloat) 
+
+    # Must initialize them because some datatypes (BigFloat)
     #   don't automatically initialize them
     # Taking a sview(A,...) of undefined values is illegal
     # I think its a bug that Array(Float64, ...) initializes values
@@ -558,12 +558,12 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                     mesh.numEl)
     eqn.Aeta = zeros(eqn.Axi)
     eqn.aux_vars = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, 
+    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes,
                                 mesh.numEl, Tdim)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
     if opts["use_edge_res"]
-      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, 
+      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl,
                            mesh.numTypePerElement[2])
     else
       eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
@@ -591,7 +591,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
-    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
+    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes,
                           mesh.numBoundaryFaces)
 
     # send and receive buffers
@@ -601,7 +601,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     if mesh.isDG
-      if opts["parallel_type"] == 1 
+      if opts["parallel_type"] == 1
         dim2 = numfacenodes
         dim3_send = mesh.peer_face_counts
         dim3_recv = mesh.peer_face_counts
@@ -614,20 +614,20 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
         throw(ErrorException("Unsupported parallel type requested: $ptype"))
       end
       for i=1:mesh.npeers
-        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
+        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2,
                                          dim3_send[i])
         eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
                                         dim3_recv[i])
-        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes, 
+        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes,
                                        mesh.peer_face_counts[i])
-        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode, 
+        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end
     end
-   
+
     #TODO: don't allocate these arrays if not needed
     if eqn.params.use_edgestab
-      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
+      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
       calcEdgeStabAlpha(mesh, sbp, eqn)
     else
       eqn.stabscale = Array(Tres, 0, 0)
@@ -661,8 +661,8 @@ end  # end of type declaration
 """->
 # used by EulerData Constructor
 # mid level functions
-function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                                  sbp::AbstractSBP, 
+function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                                                  sbp::AbstractSBP,
                                                   eqn::EulerData{Tsol, Tres, Tdim})
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
@@ -704,8 +704,8 @@ end     # end of calcMassMatrixInverse function
     M: vector containing mass matrix
 
 """->
-function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                           sbp::AbstractSBP, 
+function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                                           sbp::AbstractSBP,
                                            eqn::EulerData{Tsol, Tres, Tdim})
 # calculate the (diagonal) mass matrix as a vector
 # return the vector M
@@ -741,7 +741,7 @@ end     # end of calcMassMatrix function
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't really need to Tdim)
-function applyMassMatrixInverse{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim}, 
+function applyMassMatrixInverse{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
                                             res_vec::AbstractVector{Tsol})
   # apply the inverse mass matrix stored eqn to res_vec
 
@@ -753,6 +753,42 @@ function applyMassMatrixInverse{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdi
   return nothing
 end
 
+type OptimizationData{Topt} <: AbstractOptimizationData
+
+  pressCoeff_obj::PressureData{Topt} # Objective function related to pressure coeff
+  lift_obj::LiftData{Topt} # Objective function is lift
+  drag_obj::DragData{Topt} # Objective function is drag
+
+  function OptimizationData(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+
+    for i = 1:opts["num_functionals"]
+      dict_val = string("functional_name", i)
+      if opts[dict_val] == "targetCp"
+        g_edges = opts[string("geom_edges_functional", i)]
+        nface_arr = zeros(Int, length(g_edges))
+        for j = 1:length(nface_arr)
+          nface_arr[j] = getnFaces(mesh, g_edges[j])
+        end
+        pressure_obj = PressureData(mesh, g_edges, nface_arr)
+      elseif opts[dict_val] == "lift"
+        lift_obj = LiftData()
+      elseif opts[dict_val] == "drag"
+        drag_obj = DragData()
+      end
+    end   # End for i = 1:opts["num_functionals"]
+
+  end  # End inner constructor
+end    # End OptimizationData
+
+type LiftData{Topt} <: AbstractOptimizationData
+  function LiftData()
+  end
+end
+
+type DragData{Topt} <: AbstractOptimizationData
+  function DragData()
+  end
+end
 
 
 end # end module
