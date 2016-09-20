@@ -15,7 +15,8 @@ various edges
 
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+                        sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
+                        objective::AbstractOptimizationData)
 
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -32,7 +33,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     functional_name = getFunctionalName(opts, j)
 
     functional_val = zero(Tsol)
-    functional_val = calcBndryFunctional(mesh, sbp, eqn, opts,
+    functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, objective,
                      functional_name, functional_edges)
 
     # Print statements
@@ -87,7 +88,8 @@ nonlinear solve while computing eqn.q
 """->
 
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol}, opts, functor, functional_edges)
+                         eqn::EulerData{Tsol}, opts, objective::AbstractOptimizationData,
+                         functor::FunctionalType, functional_edges::AbstractArray{Int,1})
 
 
   local_functional_val = zero(Tsol)
@@ -127,7 +129,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         node_info = Int[itr,j,i]
         boundary_integrand[1,j,i] = functor(eqn.params, q2, aux_vars, [nx, ny],
-                                            node_info)
+                                            node_info, objective)
 
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
@@ -174,7 +176,7 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int})
+              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
 
   euler_flux = zeros(Tsol, length(q))
   calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
@@ -206,7 +208,7 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::lift, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int})
+              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
 
   euler_flux = zeros(Tsol, length(q))
   calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
@@ -225,15 +227,15 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::targetCp, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int})
+              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
 
   cp_node = calcPressureCoeff(params, q)
-  g = node_info[1]
+  g_face = node_info[1]
   node = node_info[2]
   face = node_info[3]
-  cp_target = pressureInfo.targetCp_arr[g_edge][node, face]
+  cp_target = objective.pressCoeff_obj.targetCp_arr[g_face][node, face]
 
-  val = (cp_node - cp_target).^2
+  val = 0.5*((cp_node - cp_target).^2)
 
   return val
 end
@@ -293,6 +295,8 @@ function getnFaces(mesh::AbstractDGMesh, g_face::Int)
 
   return nfaces
 end
+
+
 #=
 function calcForceError()
 

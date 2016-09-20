@@ -19,7 +19,7 @@ using MPI
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
 
-export AbstractEulerData, EulerData, EulerData_
+export AbstractEulerData, EulerData, EulerData_, OptimizationData
 
 @doc """
 ### EulerEquationMod.ParamType
@@ -753,6 +753,96 @@ function applyMassMatrixInverse{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdi
   return nothing
 end
 
+
+@doc """
+### EulerEquationMod.PressureData
+
+Subtype of AbstractOptimizationData. Stores all the information relevant to computing
+an objective function pertaining to pressure coefficeint
+
+**Members**
+
+*  `targetCp_arr` : An array of arrays that stores the target coefficient of
+                    pressure. length(targetCp_arr) = number of geometric edges
+                    over which the functional is being computed. Each sub array
+                    has dimensions (sbpface.numnodes, nfaces) *(from calcBoundarFlux
+                    in bc.jl)*
+*  `nodal_info` : 1D array of indices for one node needed to acces `targetCp_arr`
+                  at a particular data point.
+                  nodal_info[1] = geometric edge number
+                  nodal_info[2] = sbpface node number
+                  nodal_info[3] = element face number on the geometric edge
+
+"""->
+type PressureData{Tpress} <: AbstractOptimizationData
+  targetCp_arr::Array{Array{Tpress,2},1}
+
+  function PressureData(mesh::AbstractMesh, g_edges::AbstractArray{Int,1},
+                        nface_arr::AbstractArray{Int,1})
+
+    targetCp_arr = Array(Array{Tpress,2},length(g_edges))
+    for i = 1:length(g_edges)
+      targetCp_arr[i] = zeros(Tpress, mesh.sbpface.numnodes, nface_arr[i])
+    end
+
+    return new(targetCp_arr)
+
+  end # End inner constructor
+end   # End type PressureData
+
+@doc """
+### EulerEquationMod.LiftData
+
+Subtype of AbstractOptimizationData. Stores all the information relevant to computing
+an objective function pertaining to lift. Presently its an empty type
+"""->
+
+type LiftData{Topt} <: AbstractOptimizationData
+  lift_val::Topt
+  function LiftData()
+    lift_val = zero(Topt)
+    return new(lift_val)
+  end
+end
+
+@doc """
+### EulerEquationMod.DragData
+
+Subtype of AbstractOptimizationData. Stores all the information relevant to computing
+an objective function pertaining to drag. Presently its an empty type
+
+"""->
+
+type DragData{Topt} <: AbstractOptimizationData
+  drag_val::Topt
+  function DragData()
+    drag_val = zero(Topt)
+    return new(drag_val)
+  end
+end
+
+@doc """
+### EulerEquationMod.OptimizationData
+
+A composite data type with data types pertaining to all possible objective
+functions or boundary functionals
+
+**Members**
+
+* `pressCoeff_obj` : data object for functional corresponding to pressure
+                     coefficients
+* `lift_obj`       : data object for functional lift
+* `drag_obj`       : data object for functional drag
+
+**Constructor**
+
+In order to perform optimization, a variable of type OptimizationData can be
+constructed as
+
+`objective = OptimizationData(mesh, sbp, opts)`
+
+"""->
+
 type OptimizationData{Topt} <: AbstractOptimizationData
 
   pressCoeff_obj::PressureData{Topt} # Objective function related to pressure coeff
@@ -760,6 +850,8 @@ type OptimizationData{Topt} <: AbstractOptimizationData
   drag_obj::DragData{Topt} # Objective function is drag
 
   function OptimizationData(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+
+    objective = new()
 
     for i = 1:opts["num_functionals"]
       dict_val = string("functional_name", i)
@@ -769,26 +861,17 @@ type OptimizationData{Topt} <: AbstractOptimizationData
         for j = 1:length(nface_arr)
           nface_arr[j] = getnFaces(mesh, g_edges[j])
         end
-        pressure_obj = PressureData(mesh, g_edges, nface_arr)
+        objective.pressure_obj = PressureData{Topt}(mesh, g_edges, nface_arr)
       elseif opts[dict_val] == "lift"
-        lift_obj = LiftData()
+        objective.lift_obj = LiftData{Topt}()
       elseif opts[dict_val] == "drag"
-        drag_obj = DragData()
+        objective.drag_obj = DragData{Topt}()
       end
     end   # End for i = 1:opts["num_functionals"]
 
+    return objective
   end  # End inner constructor
 end    # End OptimizationData
-
-type LiftData{Topt} <: AbstractOptimizationData
-  function LiftData()
-  end
-end
-
-type DragData{Topt} <: AbstractOptimizationData
-  function DragData()
-  end
-end
 
 
 end # end module

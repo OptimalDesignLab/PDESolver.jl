@@ -58,7 +58,7 @@ init(mesh, sbp, eqn, opts, pmesh)
 #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
 
-res_vec = eqn.res_vec 
+res_vec = eqn.res_vec
 q_vec = eqn.q_vec       # solution at current timestep
 
 # calculate residual of some other function for res_reltol0
@@ -69,7 +69,7 @@ if haskey(ICDict, Relfunc_name)
   Relfunc = ICDict[Relfunc_name]
   @mpi_master println("Relfunc = ", Relfunc)
   Relfunc(mesh, sbp, eqn, opts, q_vec)
- 
+
   if var_type == :entropy
     @mpi_master println("converting to entropy variables")
     for i=1:mesh.numDofPerNode:mesh.numDof
@@ -85,7 +85,7 @@ if haskey(ICDict, Relfunc_name)
 #  println("res_real = ", res_real)
   opts["res_reltol0"] = tmp
   println("res_reltol0 = ", tmp)
-  
+
 #  writedlm("relfunc_res.dat", eqn.res)
 #  writedlm("relfunc_resvec.dat", res_real)
   saveSolutionToMesh(mesh, res_real)
@@ -109,7 +109,7 @@ end
 # TODO: cleanup 20151009 start
 
 if opts["calc_error"]
-  @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"], 
+  @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"],
           " compared to initial condition")
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
@@ -177,7 +177,7 @@ end
 geometric_edge_number = 4
 eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 force = EulerEquationMod.calcNumericalForce(mesh, sbp, eqn, opts, geometric_edge_number)
-println("\nNumerical force on geometric edge ", geometric_edge_number, 
+println("\nNumerical force on geometric edge ", geometric_edge_number,
         " = ", norm(force,2))
 println("force in the X-direction = ", force[1])
 println("force in the Y-direction = ", force[2])
@@ -198,7 +198,7 @@ for i = 1:mesh.numEl
     h = 1/sqrt(mesh.jac[j,i])
     velocities = zeros(2) # Nodal velocities
     velocities[1] = eqn.q[2,j,i]/eqn.q[1,j,i]
-    velocities[2] = eqn.q[3,j,i]/eqn.q[1,j,i] 
+    velocities[2] = eqn.q[3,j,i]/eqn.q[1,j,i]
     vmax = norm(velocities)
     q = sview(eqn.q,:,j,i)
     T = (q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])*(1/(q[1]*eqn.params.cv))
@@ -210,7 +210,7 @@ RecommendedDT = minimum(Dt)
 println("Recommended delta t = ", RecommendedDT)
 
 #=
-FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
+FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian
 tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
 calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 
@@ -226,11 +226,11 @@ calcStabilizationTerm(mesh, sbp, eqn, tau) =#
 
 # call timestepper
 if opts["solve"]
-  
+
   if flag == 1 # normal run
    @time rk4(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
-#   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
-#              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
+#   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec,
+#              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback,
 #              res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
   # println("rk4 @time printed above")
@@ -245,7 +245,7 @@ if opts["solve"]
     end
 
     # use ForwardDiff package to generate function that calculate jacobian
-    calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64, 
+    calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64,
                 fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
 
     jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
@@ -256,8 +256,8 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    @time newton(evalEuler, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
-                 step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
+    @time newton(evalEuler, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
+                 step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
   elseif flag == 6
@@ -338,46 +338,8 @@ if opts["solve"]
 
       #---- Calculate functional on a boundary  -----#
       if opts["calc_functional"]
-        evalFunctional(mesh, sbp, eqn, opts)
-        #=
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        if mesh.isDG
-          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        end
-
-        # Calculate functional over edges
-        num_functionals = opts["num_functionals"]
-        for j = 1:num_functionals
-          # Geometric edge at which the functional needs to be integrated
-          key_j = string("geom_edges_functional", j)
-          functional_edges = opts[key_j]
-          functional_name = getFunctionalName(opts, j)
-
-          functional_val = zero(Tsol)
-          functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
-                           functional_name, functional_edges)
-          println("\nNumerical functional value on geometric edges ", 
-                  functional_edges, " = ", functional_val)
-
-          analytical_functional_val = opts["analytical_functional_val"]
-          println("analytical_functional_val = ", analytical_functional_val)
-
-          absolute_functional_error = norm((functional_val - 
-                                           analytical_functional_val), 2)
-          relative_functional_error = absolute_functional_error/
-                                      norm(analytical_functional_val, 2)
-
-          mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-
-          # write functional error to file
-          outname = string(opts["functional_error_outfname"], j, ".dat")
-          println("printed relative functional error = ", 
-                  relative_functional_error, " to file ", outname, '\n')
-          f = open(outname, "w")
-          println(f, relative_functional_error, " ", mesh_metric)
-          close(f)
-        end  # End for i = 1:num_functionals
-        =#
+        objective = OptimizationData{Tsol}(mesh, sbp, opts)
+        evalFunctional(mesh, sbp, eqn, opts, objective)
       end    # End if opts["calc_functional"]
 
 
@@ -395,7 +357,7 @@ if opts["solve"]
         functional_edges = opts[key]
         functional_number = j
         functional_name = getFunctionalName(opts, j)
-        
+
         adjoint_vec = zeros(Tsol, mesh.numDof)
         calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
 

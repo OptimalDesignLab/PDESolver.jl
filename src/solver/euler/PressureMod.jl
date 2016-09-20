@@ -1,43 +1,6 @@
 # Store the coefficient of pressure in and compare it against the
 # module PressureMod
 # export PressureData, calcPressureCoeff, writeSurfacePressureCoeff, readSurfacePressureCoeff
-@doc """
-### EulerEquationMod.PressureData
-
-Subtype of OptimizationData. Stores all the information relevant to computing
-an objective function pertaining to pressure
-
-**Members**
-
-*  `targetCp_arr` : An array of arrays that stores the target coefficient of
-                    pressure. length(targetCp_arr) = number of geometric edges
-                    over which the functional is being computed. Each sub array
-                    has dimensions (sbpface.numnodes, nfaces) *(from calcBoundarFlux
-                    in bc.jl)*
-*  `nodal_info` : 1D array of indices for one node needed to acces `targetCp_arr`
-                  at a particular data point.
-                  nodal_info[1] = geometric edge number
-                  nodal_info[2] = sbpface node number
-                  nodal_info[3] = element face number on the geometric edge
-
-"""->
-type PressureData{Tpress} <: AbstractOptimizationData
-  targetCp_arr::Array{Array{Tpress,2},1}
-  nodal_info::Array{Int,1}
-
-  function PressureData(mesh::AbstractMesh, g_edges::AbstractArray{Int,1},
-                        nface_arr::AbstractArray{Int,1})
-
-    targetCp_arr = Array(Array{Tpress,2},length(g_edges))
-    for i = 1:length(g_edges)
-      targetCp_arr[i] = zeros(Tpress, mesh.sbpface.numnodes, nface_arr[i])
-    end
-    nodal_info = zeros(Int, 3)
-
-    return new(targetCp_arr, nodal_info)
-
-  end # End inner constructor
-end   # End type PressureData
 
 function calcPressureCoeff(params, q)
 
