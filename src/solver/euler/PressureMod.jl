@@ -38,6 +38,11 @@ separate directory called pressCoeff. The function deletes any existing
 function writeSurfacePressureCoeff{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
          sbp::AbstractSBP, eqn::EulerData{Tsol}, opts, g_edges, nodal_pressCoeff)
 
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
   my_rank = MPI.Comm_rank(eqn.comm)  # Get the rank of the process
 
   if my_rank == 0 # Delete existing directory & Create new directory

@@ -245,6 +245,8 @@ function call{Tsol, Tres, Tmsh}(obj::targetCp, params, q::AbstractArray{Tsol,1},
   node = node_info[2]
   face = node_info[3]
   cp_target = objective.pressCoeff_obj.targetCp_arr[g_face][node, face]
+  println("cp_node = $cp_node")
+  println("cp_target = $cp_target")
 
   val = 0.5*((cp_node - cp_target).^2)
   println("within targetCp, val = $val")
