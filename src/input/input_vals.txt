@@ -230,6 +230,7 @@ Note that any values associated with these options are shared with the regular
 "do_postproc" : do postprocessing of any kind, (Bool), default false
 "exact_soln_func" : one of the IC functions used to compute the exact solution,
                     (ASCIIString), default "nothing"
+
 # functional computation options
 "calc_functional" : calculate functional on geometric boundary edge(s)
 "num_functionals" : number of functionals that need to be calculated
@@ -249,3 +250,10 @@ Note that any values associated with these options are shared with the regular
 "write_timing" : write the mesh initialization and compute times to the file
                  timing.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
+
+# Optimization Dictionary Options
+"objective_function" : name of the objective function being evalueated. There is an implicit assumption
+                       a boundary functional has already been specified and that the objective functiom
+                       acts on the same faces as the boundary functional.
+"geom_faces_objective": Geometric faces on which an objective is being computed. Similar to
+                        geom_edges_functional$i 

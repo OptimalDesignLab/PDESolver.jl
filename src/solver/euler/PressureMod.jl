@@ -11,7 +11,7 @@ function calcPressureCoeff(params, q)
 
   press = calcPressure(params, q)
 
-  pressCoeff = press # (press - p_inf)/m_inf
+  pressCoeff = (press - p_inf)/m_inf
 
   return pressCoeff
 end
@@ -100,7 +100,7 @@ function readSurfacePressureCoeff{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
     # Read in the pressure coefficient from file
     filename = string("pressCoeff_edge", g_edge_number, "_rank", my_rank,".dat")
     f = open(joinpath("./pressCoeff",filename), "r")
-    Cp = readdlm(f,'n',Float64)
+    Cp = readdlm(f)
     close(f)
 
     # get the boundary array associated with the geometric edge

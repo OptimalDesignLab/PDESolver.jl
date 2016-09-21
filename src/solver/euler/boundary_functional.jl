@@ -16,7 +16,8 @@ various edges
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        objective::AbstractOptimizationData)
+                        objective::AbstractOptimizationData; 
+                        is_objective_fn::Bool = false)
 
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -25,42 +26,51 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
-  num_functionals = opts["num_functionals"]
-  for j = 1:num_functionals
-    # Geometric edge at which the functional needs to be integrated
-    key_j = string("geom_edges_functional", j)
-    functional_edges = opts[key_j]
-    functional_name = getFunctionalName(opts, j)
-
-    functional_val = zero(Tsol)
-    functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, objective,
+  if is_objective_fn == true
+    # The function to be evaluated is an objective function
+    functional_edges = opts["geom_faces_objective"]
+    functional_name = FunctionalDict[opts["objective_function"]]
+    objective.val = calcBndryFunctional(mesh, sbp, eqn, opts, objective,
                      functional_name, functional_edges)
+    println("Whithin evalFunctional, objective.val = $(objective.val)")
+  else
+    num_functionals = opts["num_functionals"]
+    for j = 1:num_functionals
+      # Geometric edge at which the functional needs to be integrated
+      key_j = string("geom_edges_functional", j)
+      functional_edges = opts[key_j]
+      functional_name = getFunctionalName(opts, j)
 
-    # Print statements
-    if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
-      if opts["functional_error"]
-        println("\nNumerical functional value on geometric edges ",
-                    functional_edges, " = ", functional_val)
-        analytical_functional_val = opts["analytical_functional_val"]
-        println("analytical_functional_val = ", analytical_functional_val)
+      functional_val = zero(Tsol)
+      functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, objective,
+                       functional_name, functional_edges)
 
-        absolute_functional_error = norm((functional_val -
-                                         analytical_functional_val), 2)
-        relative_functional_error = absolute_functional_error/
-                                    norm(analytical_functional_val, 2)
+      # Print statements
+      if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
+        if opts["functional_error"]
+          println("\nNumerical functional value on geometric edges ",
+                      functional_edges, " = ", functional_val)
+          analytical_functional_val = opts["analytical_functional_val"]
+          println("analytical_functional_val = ", analytical_functional_val)
 
-        mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-        # write functional error to file
-        outname = string(opts["functional_error_outfname"], j, ".dat")
-        println("printed relative functional error = ",
-                relative_functional_error, " to file ", outname, '\n')
-        f = open(outname, "w")
-        println(f, relative_functional_error, " ", mesh_metric)
-        close(f)
-      end  # End if opts["functional_error"]
-    end    # End @mpi_master
+          absolute_functional_error = norm((functional_val -
+                                           analytical_functional_val), 2)
+          relative_functional_error = absolute_functional_error/
+                                      norm(analytical_functional_val, 2)
 
-  end  # End for i = 1:num_functionals
+          mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
+          # write functional error to file
+          outname = string(opts["functional_error_outfname"], j, ".dat")
+          println("printed relative functional error = ",
+                  relative_functional_error, " to file ", outname, '\n')
+          f = open(outname, "w")
+          println(f, relative_functional_error, " ", mesh_metric)
+          close(f)
+        end  # End if opts["functional_error"]
+      end    # End @mpi_master
+    end  # End for i = 1:num_functionals
+  
+  end # End if is_objective_fn == true
 
   return nothing
 end
@@ -145,6 +155,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
 
   functional_val = zero(Tsol)
   functional_val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
+  println("Whithin calcBndryfunctional, functional_val = $functional_val")
 
   return functional_val
 end
@@ -225,7 +236,7 @@ end
 type targetCp <: FunctionalType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::targetCp, q::AbstractArray{Tsol,1},
+function call{Tsol, Tres, Tmsh}(obj::targetCp, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
               node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
 
@@ -236,6 +247,7 @@ function call{Tsol, Tres, Tmsh}(obj::targetCp, q::AbstractArray{Tsol,1},
   cp_target = objective.pressCoeff_obj.targetCp_arr[g_face][node, face]
 
   val = 0.5*((cp_node - cp_target).^2)
+  println("within targetCp, val = $val")
 
   return val
 end
@@ -270,7 +282,7 @@ Gets the name of the functional that needs to be computed at a particular point
 *  `functional` : Returns the functional name in the dictionary
 
 """->
-function getFunctionalName(opts, f_number)
+function getFunctionalName(opts, f_number;is_objective_fn=false)
 
   key = string("functional_name", f_number)
   val = opts[key]
@@ -281,7 +293,7 @@ end
 function getnFaces(mesh::AbstractDGMesh, g_face::Int)
 
   i = 0
-  for itr2 = 1:mesh.numBC
+  for i = 1:mesh.numBC
     if findfirst(mesh.bndry_geo_nums[i],g_face) > 0
       break
     end
