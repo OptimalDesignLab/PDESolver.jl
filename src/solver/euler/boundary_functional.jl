@@ -32,7 +32,6 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     functional_name = FunctionalDict[opts["objective_function"]]
     objective.val = calcBndryFunctional(mesh, sbp, eqn, opts, objective,
                      functional_name, functional_edges)
-    println("Whithin evalFunctional, objective.val = $(objective.val)")
   else
     num_functionals = opts["num_functionals"]
     for j = 1:num_functionals
@@ -155,7 +154,6 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
 
   functional_val = zero(Tsol)
   functional_val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
-  println("Whithin calcBndryfunctional, functional_val = $functional_val")
 
   return functional_val
 end
@@ -245,11 +243,8 @@ function call{Tsol, Tres, Tmsh}(obj::targetCp, params, q::AbstractArray{Tsol,1},
   node = node_info[2]
   face = node_info[3]
   cp_target = objective.pressCoeff_obj.targetCp_arr[g_face][node, face]
-  println("cp_node = $cp_node")
-  println("cp_target = $cp_target")
 
   val = 0.5*((cp_node - cp_target).^2)
-  println("within targetCp, val = $val")
 
   return val
 end

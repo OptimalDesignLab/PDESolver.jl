@@ -3,7 +3,7 @@ include("input_vals_airfoil.jl")
 # include("pressure.jl")
 
 resize!(ARGS, 1)
-ARGS[1] = "input_vals_vortex.jl"
+ARGS[1] = "input_vals_vortex_parallel.jl"
 
 
 #----  Initialize EulerEquationMod for all the global variables necessary  ----#
@@ -34,6 +34,7 @@ EulerEquationMod.readSurfacePressureCoeff(mesh, sbp, eqn, opts, g_edges,
 objective.pressCoeff_obj.targetCp_arr)
 
 # Check if the pressure coefficients are being read in correctly
+#=
 ctr = 0
 for i = 1:length(g_edges)
   for j = 1:size(pressCoeffArrWrite[i],2)
@@ -50,6 +51,7 @@ end
 if ctr == 0
   println("all good")
 end
+=#
 
 #---- Get the objective function value  ----#
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective, is_objective_fn=true)
