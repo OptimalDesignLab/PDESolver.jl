@@ -68,6 +68,31 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           functor::FluxType,
+                           interfaces::AbstractArray{Interface, 1})
+
+  nfaces = length(interfaces)
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = sview(eqn.q, :, :, elL)
+    qR = sview(eqn.q, :, :, elR)
+    aux_vars = sview(eqn.aux_vars, :, :, elL)
+    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+    resL = sview(eqn.res, :, :, elL)
+    resR = sview(eqn.res, :, :, elR)
+
+    calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
+                       dxidx_face, functor, resL, resR)
+  end
+
+  return nothing
+end
+
+
 @doc """
 ### EulerEquationMod.calcSharedFaceIntegrals
 

@@ -47,6 +47,8 @@ where input_file_name.jl is in your current directory.
 "volume_integral_type" : method of computing volume integrals, (Int), 
                         default 1 (Di*Fi), 2 --> use a split form 
                         numerical flux function
+"face_integral_type" : method of computing face integrals, (Int), default 1,
+                       regular face integrals, 2 --> entropy stable form
 
 "Volume_flux_name" : name of the numerical flux function to use for the 
                      split form volume integrals, (ASCIIString), default

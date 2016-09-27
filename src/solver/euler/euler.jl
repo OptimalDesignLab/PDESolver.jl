@@ -358,7 +358,9 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     fill!(eqn.flux_face, 0.0)
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
     interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-    calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+    if opts["face_integral_type"] == 2
+      calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+    end
   end
 #  println("  DG dataPrep @time printed above")
   fill!(eqn.bndryflux, 0.0)
@@ -587,7 +589,18 @@ end
 function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
-  interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res, SummationByParts.Subtract())
+  face_integral_type = opts["face_integral_type"]
+  if face_integral_type == 1
+
+    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res, SummationByParts.Subtract())
+
+  elseif face_integral_type == 2
+    
+    getESFaceIntegral(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces)
+
+  else
+    throw(ErrorException("Unsupported face integral type = $face_integral_type"))
+  end
 
   # do some output here?
   return nothing

@@ -85,8 +85,9 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
         B_valT = B[j, i]
 
         for p=1:numDofPerNode
-          resL[p, i] += B_val*F_tmp[p]
-          resR[p, i] -= B_valT*F_tmp[p]
+          # because the this term is on the rhs, the signs are reversed
+          resL[p, i] -= B_val*F_tmp[p]
+          resR[p, i] += B_valT*F_tmp[p]
         end
       end
     end

@@ -106,8 +106,9 @@ function calcESS{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim}, sbpfac
     for i=1:numNodesPerElement
       for j=1:numDofPerNode
         idx = numDofPerNode*(i-1) + j
-        resL[j, i] += termL_reduced[idx]
-        resR[j, i] -= termR_reduced[idx]
+        # because this term is on the rhs, the signs are reversed
+        resL[j, i] -= termL_reduced[idx]
+        resR[j, i] += termR_reduced[idx]
       end
     end
 
@@ -119,17 +120,27 @@ end
 function runESSTest(mesh, sbp, eqn, opts)
 
   functor = EulerEquationMod.IRFlux()
+  eqn.flux_func = functor
+  fill!(eqn.res, 0.0)
+  res_test = copy(eqn.res)
   for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
     qL = eqn.q[:, :, iface.elementL]
     qR = eqn.q[:, :, iface.elementR]
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
     dxidx_face = mesh.dxidx_face[:, :, :, i]
     Tres = eltype(eqn.res)
-    resL_code = zeros(Tres, size(qL))
-    resR_code = zeros(Tres, size(qL))
-    resL_test = zeros(Tres, size(qL))
-    resR_test = zeros(Tres, size(qL))
+    resL_code = sview(eqn.res, :, :, elL)
+    resR_code = sview(eqn.res, :, :, elR)
+    resL_test = sview(res_test, :, :, elL)
+    resR_test = sview(res_test, :, :, elR)
+#    resL_code = zeros(Tres, size(qL))
+#    resR_code = zeros(Tres, size(qL))
+#    resL_test = zeros(Tres, size(qL))
+#    resR_test = zeros(Tres, size(qL))
+
     EulerEquationMod.calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
 
     calcESS(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test, resR_test)
@@ -143,6 +154,18 @@ function runESSTest(mesh, sbp, eqn, opts)
 
   end
 
+  fill!(eqn.res, 0.0)
+  opts["face_integral_type"] = 2
+  EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+        @fact eqn.res[k, j, i] --> roughly(res_test[k, j, i], atol=1e-12)
+      end
+    end
+  end
+
 end
 
 facts("----- testing ESS -----") do
@@ -153,6 +176,11 @@ facts("----- testing ESS -----") do
   ICFunc = EulerEquationMod.ICDict["ICExp"]
   ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+    end
+  end
   runESSTest(mesh, sbp, eqn, opts)
 
 end

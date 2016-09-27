@@ -166,10 +166,10 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
   # calculate S
   stencil_size = size(sbp.Q, 1)
   S = Array(Float64, stencil_size, stencil_size, Tdim)
-  E = Array(Float64, stencil_size, stencil_size, Tdim)
+#  E = Array(Float64, stencil_size, stencil_size, Tdim)
   for i=1:Tdim
     S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
-    E[:, :, i] = sbp.Q[:, :, i] + sbp.Q[:, :, i].'
+#    E[:, :, i] = sbp.Q[:, :, i] + sbp.Q[:, :, i].'
   end
 #=
   # DEBUG:
@@ -203,7 +203,7 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
           for p=1:(Tdim+2)
 #            res[p, j, i] += 2*sbp.Q[k, j, d]*F_d[p]
             res[p, j, i] -= 2*S[j, k, d]*F_d[p]
-            res[p, j, i] -= E[j, k, d]*F_d[p]
+#            res[p, j, i] -= E[j, k, d]*F_d[p]
           end
 
         end  # end d loop
