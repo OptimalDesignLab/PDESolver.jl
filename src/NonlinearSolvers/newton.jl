@@ -182,6 +182,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 #  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
 
 
+  # Allocation of Jacobian, depending on type of matrix
   eqn.params.time.t_alloc += @elapsed if jac_type == 1  # dense
     jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
   elseif jac_type == 2  # sparse
@@ -287,7 +288,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     @mpi_master println(fstdout, "Newton iteration: ", i)
     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
-    # calculate jacobian using selected method
+    #----------------------------------------------------------------------
+    # Calculate Jacobian using selected method 
     eqn.params.time.t_jacobian += @elapsed if jac_method == 1
       @mpi_master println(fstdout, "calculating finite difference jacobian")
 

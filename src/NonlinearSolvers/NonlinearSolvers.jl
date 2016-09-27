@@ -11,6 +11,7 @@ using PETSc
 using Utils
 
 include("rk4.jl")
+include("crank_nicolson.jl")
 include("newton.jl")
 include("globalization.jl")
 #include("newton_fd_old.jl")
