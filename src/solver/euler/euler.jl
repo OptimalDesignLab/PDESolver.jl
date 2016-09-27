@@ -138,7 +138,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
   =#
-  
+
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
@@ -149,14 +149,18 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   =#
   #----------------------------------------------------------------------------
 
-  time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
+  time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
+    evalBoundaryIntegrals(mesh, sbp, eqn)
 #  println("boundary integral @time printed above")
+  end
 
 
-  time.t_stab += @elapsed addStabilization(mesh, sbp, eqn, opts)
+  time.t_stab += @elapsed if opts["addStabilization"]
+      addStabilization(mesh, sbp, eqn, opts)
 #  println("stabilizing @time printed above")
+  end
 
-  time.t_face += @elapsed if mesh.isDG
+  time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
     #println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
@@ -268,17 +272,25 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   if opts["write_entropy"] && (itr % opts["write_entropy_freq"] == 0)
     # calculate the entropy norm
     val = zero(Float64)
-    val2 = zero(Float64)
     for i=1:mesh.numDofPerNode:mesh.numDof
       q_vals = sview(eqn.q_vec, i:(i+Tdim+1))
-      s = calcEntropy(eqn.params, q_vals)
-      p = calcPressure(eqn.params, q_vals)
-      s2 = log(p/(q_vals[1]^eqn.params.gamma))
-      val += real(s)*eqn.M[i]
-      val2 += sign(s2)*real(s2)*eqn.M[i]*real(s2)
+#      s = calcEntropy(eqn.params, q_vals)
+      s = calcEntropyIR(eqn.params, q_vals)
+      val += real(q_vals[1]*s)*eqn.M[i]
     end
+
     val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
-    val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
+    # compute w^T * res_vec
+    w_vals = zeros(eltype(eqn.q_vec), mesh.numDof)
+    for i=1:mesh.numDofPerNode:mesh.numDof
+      q_vals_i = sview(eqn.q_vec, i:(i+Tdim+1))
+      w_vals_i = sview(w_vals, i:(i+Tdim+1))
+      convertToEntropy(eqn.params, q_vals_i, w_vals_i)
+    end
+    val2_local = dot(w_vals, eqn.res_vec)
+    val2 = MPI.Allreduce(val2_local, MPI.SUM, eqn.comm)
+
+
     f = open(opts["write_entropy_fname"], "a+")
     println(f, itr, " ", eqn.params.t, " ",  val, " ", val2 )
     close(f)

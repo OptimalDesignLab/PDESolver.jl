@@ -166,8 +166,10 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
   # calculate S
   stencil_size = size(sbp.Q, 1)
   S = Array(Float64, stencil_size, stencil_size, Tdim)
+  E = Array(Float64, stencil_size, stencil_size, Tdim)
   for i=1:Tdim
     S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
+    E[:, :, i] = sbp.Q[:, :, i] + sbp.Q[:, :, i].'
   end
 #=
   # DEBUG:
@@ -194,13 +196,14 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
             nrm[p] = dxidx[d, p, j, i] 
           end
 
-          #  calculate the numerical flux functions in current direction
+          # calculate the numerical flux functions in current direction
           functor(eqn.params, q_j, q_k, aux_vars_j, nrm, F_d)
 
           # update residual
           for p=1:(Tdim+2)
 #            res[p, j, i] += 2*sbp.Q[k, j, d]*F_d[p]
             res[p, j, i] -= 2*S[j, k, d]*F_d[p]
+            res[p, j, i] -= E[j, k, d]*F_d[p]
           end
 
         end  # end d loop
@@ -249,8 +252,8 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 # 2D  only
 
 
-#  press = calcPressure(q, params)
-  press = getPressure(aux_vars)
+  press = calcPressure(params, q)
+#  press = getPressure(aux_vars)
 #  press = @getPressure(aux_vars)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
   F[1] = q[1]*U
@@ -605,6 +608,20 @@ function calcEntropy{Tsol}(params::ParamType{3, :entropy},
 
   return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[5]
 end
+
+
+function calcEntropyIR{Tsol}(params::ParamType{2, :conservative}, 
+                           q::AbstractArray{Tsol,1} )
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  p = calcPressure(params, q)
+  rho = q[1]
+  s = -rho*(log(p) - gamma*log(rho))/gamma_1
+  return s
+end
+
 
 
 

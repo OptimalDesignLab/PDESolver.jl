@@ -1,6 +1,123 @@
 
 # this file contains all the flux solvers for weakly imposed boundary conditions
 
+function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
+                                sbpface::AbstractFace,
+                                iface::Interface,
+                                qL::AbstractMatrix{Tsol},
+                                qR::AbstractMatrix{Tsol}, 
+                                aux_vars::AbstractMatrix{Tres},
+                                dxidx_face::Abstract3DArray{Tmsh},
+                                functor::FluxType,
+                                resL::AbstractMatrix{Tres}, 
+                                resR::AbstractMatrix{Tres})
+
+  println("----- entered calcEss code -----")
+
+  numDofPerNode, numNodesPerElement = size(qL)
+  numFaceNodes = length(sbpface.wface)  #TODO: store this in params
+  Rprime_small = sbpface.interp.'
+  Rprime = zeros(size(Rprime_small, 1), numNodesPerElement)
+  # expand into right size (used in SBP Gamma case)
+  for i=1:size(Rprime_small, 2)
+    for j=1:size(Rprime_small, 1)
+      Rprime[j, i] = Rprime_small[j, i]
+    end
+  end
+#  println("Rprime = \n", Rprime)
+
+  F_tmp = zeros(Tres, numDofPerNode)
+
+  result_tmpL = zeros(Tres, numDofPerNode, numNodesPerElement)
+  result_tmpR = zeros(result_tmpL)
+
+  A = zeros(Tres, size(Rprime))
+  B = zeros(Tres, numNodesPerElement, numNodesPerElement)
+  C = zeros(Tres, numNodesPerElement, numNodesPerElement)
+  nrm = zeros(Tdim)
+
+  perm_nu = sview(sbpface.perm, :, iface.faceR)
+  perm_gamma = sview(sbpface.perm, :, iface.faceL)
+
+  # inverse (transpose) permutation vectors
+  iperm_gamma = zeros(perm_gamma); inversePerm(perm_gamma, iperm_gamma)
+
+  # get the face normals
+  facenormal = sview(sbpface.normal, :, iface.faceL)
+  println("dxidx_face = \n", dxidx_face)
+  println("facenormal = ", facenormal)
+
+  for dim=1:Tdim # DEBUGGING loop 1:Tdim
+    println("dim = ", dim)
+    fill!(nrm, 0.0)
+    fill!(result_tmpL, 0.0)
+    fill!(result_tmpR, 0.0)
+    nrm[dim] = 1
+
+    # Nx, wface times Rprime
+    println("Nx times wface =")
+    for i=1:numFaceNodes
+      nrm_i = zero(Tmsh)
+      for d=1:Tdim
+        nrm_i += facenormal[d]*dxidx_face[d, dim, i]
+      end
+      fac = sbpface.wface[i]*nrm_i
+      println("  ", fac)
+      # multiply by Rprime into A
+      for j=1:numNodesPerElement
+        A[i, j] = fac*Rprime[i, j]
+      end
+    end
+
+    # multiply by Rprime.'*A = B
+    smallmatTmat!(Rprime, A, B)
+    
+    # post multiply by perm_nu
+    applyPermColumn(perm_nu, B, C)
+
+    # pre multiply by perm_gamma
+    applyPermRow(iperm_gamma, C, B)
+
+    P_gamma_t = permMatrix(iperm_gamma)
+
+    # now C is the complete operator
+    # (C hadamard F)1
+
+    for i=1:numNodesPerElement
+      q_i = sview(qL, :, i)
+      aux_vars_i = sview(aux_vars, :, i)
+      for j=1:numNodesPerElement
+        q_j = sview(qR, :, j)
+        functor(params, q_i, q_j, aux_vars_i, nrm, F_tmp)
+        B_val = B[i, j]
+        B_valT = B[j, i]
+
+        for p=1:numDofPerNode
+          resL[p, i] += B_val*F_tmp[p]
+          resR[p, i] -= B_valT*F_tmp[p]
+        end
+      end
+    end
+
+#    println("result_tmpL = \n", result_tmpL)
+#    println("result_tmpR = \n", result_tmpR)
+#=
+    # update res
+    for i=1:numNodesPerElement
+      for p=1:numDofPerNode
+        resL[p, i] += result_tmpL[p, i]
+        resR[p, i] -= result_tmpR[p, i]
+      end
+    end
+=#
+
+  end  # end loop Tdim
+
+  return nothing
+end
+                   
+
+
 """
   A wrapper for the Roe Solver that computes the scaled normal vector
   in parametric coordinates from the the face normal and the scaled 

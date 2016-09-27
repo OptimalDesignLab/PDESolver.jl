@@ -135,6 +135,13 @@ facts("----- Testing Numerical Fluxes -----") do
   res_split = copy(eqn.res)
   fill!(eqn.res, 0.0)
 
+  # check that 1^T * volume integrals using S * F_Star * 1 == 0, because 
+  # S is skew symmetric and F_star is symmetric
+  for i=1:mesh.numEl
+    val = sum(res_split[:, :, i])
+    @fact val --> roughly(0.0, atol=1e-13)
+  end
+
   opts["Q_transpose"] = false
   EulerEquationMod.getEulerFlux(mesh, sbp, eqn, opts)
   EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
