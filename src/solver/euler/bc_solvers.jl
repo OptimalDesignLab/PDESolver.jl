@@ -1,6 +1,14 @@
 
 # this file contains all the flux solvers for weakly imposed boundary conditions
+"""
+  Calculate the face integrals in an entropy stable manner.  
 
+  The following field of params are used by this functions:
+    A, B, C, nrm, flux_vals1
+
+  Aliasing restrictions: none, although its unclear what the meaning of this
+                         function would be if resL and resR alias
+"""
 function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
                                 sbpface::AbstractFace,
                                 iface::Interface,
@@ -12,57 +20,41 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
                                 resL::AbstractMatrix{Tres}, 
                                 resR::AbstractMatrix{Tres})
 
-  println("----- entered calcEss code -----")
+#  println("----- entered calcEss code -----")
 
   numDofPerNode, numNodesPerElement = size(qL)
-  numFaceNodes = length(sbpface.wface)  #TODO: store this in params
-  Rprime_small = sbpface.interp.'
-  Rprime = zeros(size(Rprime_small, 1), numNodesPerElement)
-  # expand into right size (used in SBP Gamma case)
-  for i=1:size(Rprime_small, 2)
-    for j=1:size(Rprime_small, 1)
-      Rprime[j, i] = Rprime_small[j, i]
-    end
-  end
-#  println("Rprime = \n", Rprime)
+  numFaceNodes = length(sbpface.wface)
 
-  F_tmp = zeros(Tres, numDofPerNode)
+  Rprime = params.Rprime
 
-  result_tmpL = zeros(Tres, numDofPerNode, numNodesPerElement)
-  result_tmpR = zeros(result_tmpL)
+  F_tmp = params.flux_vals1
 
-  A = zeros(Tres, size(Rprime))
-  B = zeros(Tres, numNodesPerElement, numNodesPerElement)
-  C = zeros(Tres, numNodesPerElement, numNodesPerElement)
-  nrm = zeros(Tdim)
+  A = params.A
+  B = sview(params.B, :, :, 1)
+  C = sview(params.B, :, :, 2)
+  nrm = params.nrm
 
   perm_nu = sview(sbpface.perm, :, iface.faceR)
   perm_gamma = sview(sbpface.perm, :, iface.faceL)
 
   # inverse (transpose) permutation vectors
-  iperm_gamma = zeros(perm_gamma); inversePerm(perm_gamma, iperm_gamma)
+  iperm_gamma = params.iperm 
+  inversePerm(perm_gamma, iperm_gamma)
 
   # get the face normals
   facenormal = sview(sbpface.normal, :, iface.faceL)
-  println("dxidx_face = \n", dxidx_face)
-  println("facenormal = ", facenormal)
 
-  for dim=1:Tdim # DEBUGGING loop 1:Tdim
-    println("dim = ", dim)
+  for dim=1:Tdim
     fill!(nrm, 0.0)
-    fill!(result_tmpL, 0.0)
-    fill!(result_tmpR, 0.0)
     nrm[dim] = 1
 
     # Nx, wface times Rprime
-    println("Nx times wface =")
     for i=1:numFaceNodes
       nrm_i = zero(Tmsh)
       for d=1:Tdim
         nrm_i += facenormal[d]*dxidx_face[d, dim, i]
       end
       fac = sbpface.wface[i]*nrm_i
-      println("  ", fac)
       # multiply by Rprime into A
       for j=1:numNodesPerElement
         A[i, j] = fac*Rprime[i, j]
@@ -80,8 +72,8 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
 
     P_gamma_t = permMatrix(iperm_gamma)
 
-    # now C is the complete operator
-    # (C hadamard F)1
+    # now B is the complete operator
+    # (B hadamard F)1
 
     for i=1:numNodesPerElement
       q_i = sview(qL, :, i)
@@ -98,18 +90,6 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
         end
       end
     end
-
-#    println("result_tmpL = \n", result_tmpL)
-#    println("result_tmpR = \n", result_tmpR)
-#=
-    # update res
-    for i=1:numNodesPerElement
-      for p=1:numDofPerNode
-        resL[p, i] += result_tmpL[p, i]
-        resR[p, i] -= result_tmpR[p, i]
-      end
-    end
-=#
 
   end  # end loop Tdim
 

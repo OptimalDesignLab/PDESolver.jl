@@ -120,6 +120,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
+
+  Rprime::Array{Float64, 2}  # numfaceNodes x numNodesPerElement interpolation matrix
+                             # this should live in sbpface instead
+  # temporary storage for calcESFaceIntegrals
+  A::Array{Tres, 2}
+  B::Array{Tres, 3}
+  iperm::Array{Int, 1}
   #=
   # timings
   t_volume::Float64  # time for volume integrals
@@ -214,6 +221,23 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
+    sbpface = mesh.sbpface
+
+    numNodesPerElement = mesh.numNodesPerElement
+    Rprime = zeros(size(sbpface.interp, 2), numNodesPerElement)
+    # expand into right size (used in SBP Gamma case)
+    for i=1:size(sbpface.interp, 1)
+      for j=1:size(sbpface.interp, 2)
+        Rprime[j, i] = sbpface.interp[i, j]
+      end
+    end
+
+    A = zeros(Tres, size(Rprime))
+    B = zeros(Tres, numNodesPerElement, numNodesPerElement, 2)
+    iperm = zeros(Int, size(sbpface.perm, 1))
+
+
+
     time = Timings()
     return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
                flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, 
@@ -225,6 +249,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                use_dissipation, dissipation_const, tau_type, vortex_x0, 
                vortex_strength, 
                krylov_itr, krylov_type,
+               Rprime, A, B, iperm,
                time)
 
     end   # end of ParamType function

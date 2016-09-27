@@ -29,24 +29,15 @@ function calcESS{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim}, sbpfac
                  resL::AbstractMatrix{Tres},
                  resR::AbstractMatrix{Tres})
 
-  println("----- entered calcEss test -----")
+#  println("----- entered calcEss test -----")
   # form permutation matrices
   numDofPerNode, numNodesPerElement = size(qL)
 
-  P_nu = zeros(numNodesPerElement, numNodesPerElement)
-  P_kappa = zeros(P_nu)
   permvec_nu = sbpface.perm[:, iface.faceR]
   permvec_kappa = sbpface.perm[:, iface.faceL]
-#  println("permvec_kappa = \n", permvec_kappa)
-#  println("sbpface.perm = ", sbpface.perm)
-#  println("sbpface.interp = ", sbpface.interp)
-  for i=1:length(permvec_nu)
-    P_nu[i, permvec_nu[i]] = 1
-    P_kappa[i, permvec_kappa[i]] = 1
-  end
+  P_nu = permMatrix(permvec_nu)
+  P_kappa = permMatrix(permvec_kappa)
 
-#  println("P_nu = \n", P_nu)
-#  println("P_kappa = \n", P_kappa)
 
   numFaceNodes = length(sbpface.wface)
 #  println("numFaceNodes = ", numFaceNodes)
@@ -59,15 +50,11 @@ function calcESS{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim}, sbpfac
   Nx = zeros(Tmsh, numFaceNodes, numFaceNodes)
   facenormal = sbpface.normal[:, iface.faceL]
 
-  println("dxidx_face = \n", dxidx_face)
-  println("facenormal = ", facenormal)
-
   full_size = numDofPerNode*numNodesPerElement
   F = zeros(Tres, full_size, full_size)
 
   nrm = zeros(3)
-  for dim=1:Tdim  # DEBUGGING loop 1:Tdim
-    println("dim = ", dim)
+  for dim=1:Tdim
     fill!(nrm, 0)
     nrm[dim] = 1
     # calculate F
@@ -97,13 +84,9 @@ function calcESS{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim}, sbpfac
       Nx[i, i] = nx
     end
 
-#    println("Nx = ", Nx)
-    println("Nx times wface = \n", Nx*B)
-
     # calculate the full operator
 
     E_expensiveL = P_kappa.'*Rprime.'*B*Nx*Rprime*P_nu
-    println("E_expensiveL = \n", E_expensiveL)
     
     E_expensiveL_full = kron(E_expensiveL, eye(numDofPerNode, numDofPerNode))
     E_expensiveR_full = kron(E_expensiveL.', eye(numDofPerNode, numDofPerNode))
@@ -118,70 +101,6 @@ function calcESS{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim}, sbpfac
     end
     termL_reduced = sum(termL, 2)
     termR_reduced = sum(termR, 2)
-
-    tmp = B*Nx*Rprime
-    println("Nx times wface times Rprime = \n", tmp)
-
-    tmp2 = Rprime.'*tmp
-    println("Rprime transpoes times A = \n", tmp2)
-
-    tmp3 = tmp2*P_nu
-    println("postmulitply P_nu = \n", tmp3)
-
-    tmp4 = P_kappa.'*tmp3
-    println("P_gamma transpose = \n", P_kappa.')
-    println("premultiply P_gamma = \n", tmp4)
-
-
-#=
-    # compute some terms for comparison
-    I4 = eye(4,4)
-    P_nu_full = kron(P_nu, I4)
-    println("P_nu_full = \n", P_nu_full)
-    permF = P_nu_full.*F
-    println("permF = \n", permF)
-    reduced_permF = sum(permF, 2)
-    println("reduced_permF = \n", reduced_permF)
-
-    tmp2 = kron(Rprime, I4)*reduced_permF
-    println("after multiplication by Rprime, tmp2 = \n", tmp2)
-
-    tmp2 = kron(B*Nx, I4)*tmp2
-    println("after multiplication by B, Nx, tmp2 = \n", tmp2)
-
-    tmp1 = kron(Rprime.', I4)*tmp2
-    println("after multiplication by Rprime transpose, tmp1 = \n", tmp1)
-
-    println("P_kappa transpose = \n", P_kappa.')
-    println("P_kappa_big = \n", kron(P_kappa.', I4))
-    tmp3 = kron(P_kappa.', I4)*tmp1
-    println("after multiplication by Ptranspose, tmp3 = \n", tmp3)
-
-    println("termL_reduced = \n", termL_reduced)
-
-    println("---checking elementR ---")
-    permF = kron(P_kappa, I4).*F
-    println("permF = \n", permF)
-    reduced_permF = sum(permF, 2)
-    println("reduced_permF = \n", reduced_permF)
-
-    tmp2 = kron(Rprime, I4)*reduced_permF
-    println("after multiplication by Rprime, tmp2 = \n", tmp2)
-
-    tmp2 = kron(B*Nx, I4)*tmp2
-    println("after multiplication by B, Nx, tmp2 = \n", tmp2)
-
-    tmp1 = kron(Rprime.', I4)*tmp2
-    println("after multiplication by Rprime transpose, tmp1 = \n", tmp1)
-
-    println("P_kappa transpose = \n", P_nu.')
-    println("P_kappa_big = \n", kron(P_nu.', I4))
-    tmp3 = kron(P_nu.', I4)*tmp1
-    println("after multiplication by Ptranspose, tmp3 = \n", tmp3)
-
-    println("termR_reduced = \n", termR_reduced)
-=#
-
 
     # update res
     for i=1:numNodesPerElement
@@ -200,15 +119,10 @@ end
 function runESSTest(mesh, sbp, eqn, opts)
 
   functor = EulerEquationMod.IRFlux()
-  println("numInterfaces = ", mesh.numInterfaces)
-  for i=1:mesh.numInterfaces  # DEBUGGING
-    println("interface ", i)
+  for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
-    println("iface = \n", iface)
     qL = eqn.q[:, :, iface.elementL]
     qR = eqn.q[:, :, iface.elementR]
-    println("qL = \n", qL)
-    println("qR = \n", qR)
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
     dxidx_face = mesh.dxidx_face[:, :, :, i]
     Tres = eltype(eqn.res)
@@ -218,16 +132,11 @@ function runESSTest(mesh, sbp, eqn, opts)
     resR_test = zeros(Tres, size(qL))
     EulerEquationMod.calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
 
-    println("resL_code = ", resL_code)
-    println("resR_code = ", resR_code)
     calcESS(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test, resR_test)
-    println("resL_test = ", resL_test)
-    println("resR_test = ", resR_test)
 
     for i=1:size(resL_code, 1)
       for j=1:size(resR_code, 2)
         @fact resL_code[i, j] --> roughly(resL_test[i, j], atol=1e-12)
-        
         @fact resR_code[i, j] --> roughly(resR_test[i, j], atol=1e-12)
       end
     end
