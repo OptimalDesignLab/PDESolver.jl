@@ -29,9 +29,9 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
 
   F_tmp = params.flux_vals1
 
-  A = params.A
-  B = sview(params.B, :, :, 1)
-  C = sview(params.B, :, :, 2)
+  workA = params.A
+  workB = sview(params.B, :, :, 1)
+  workC = sview(params.B, :, :, 2)
   nrm = params.nrm
 
   perm_nu = sview(sbpface.perm, :, iface.faceR)
@@ -57,35 +57,35 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
       fac = sbpface.wface[i]*nrm_i
       # multiply by Rprime into A
       for j=1:numNodesPerElement
-        A[i, j] = fac*Rprime[i, j]
+        workA[i, j] = fac*Rprime[i, j]
       end
     end
 
     # multiply by Rprime.'*A = B
-    smallmatTmat!(Rprime, A, B)
+    smallmatTmat!(Rprime, workA, workB)
     
     # post multiply by perm_nu
-    applyPermColumn(perm_nu, B, C)
+    applyPermColumn(perm_nu, workB, workC)
 
     # pre multiply by perm_gamma
-    applyPermRow(iperm_gamma, C, B)
+    applyPermRow(iperm_gamma, workC, workB)
 
     P_gamma_t = permMatrix(iperm_gamma)
 
     # now B is the complete operator
-    # (B hadamard F)1
 
+    # compute (B hadamard F)1
     for i=1:numNodesPerElement
       q_i = sview(qL, :, i)
       aux_vars_i = sview(aux_vars, :, i)
       for j=1:numNodesPerElement
         q_j = sview(qR, :, j)
         functor(params, q_i, q_j, aux_vars_i, nrm, F_tmp)
-        B_val = B[i, j]
-        B_valT = B[j, i]
+        B_val = workB[i, j]
+        B_valT = workB[j, i]
 
         for p=1:numDofPerNode
-          # because the this term is on the rhs, the signs are reversed
+          # because this term is on the rhs, the signs are reversed
           resL[p, i] -= B_val*F_tmp[p]
           resR[p, i] += B_valT*F_tmp[p]
         end
