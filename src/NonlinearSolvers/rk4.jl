@@ -240,7 +240,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts; 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
-    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+
+    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
+        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
+        majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
 end
 
@@ -271,9 +274,11 @@ end
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, (mesh, sbp, eqn), opts; majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
-end
+  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, 
+      (mesh, sbp, eqn), opts; 
+      majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
 
+end
 
 @doc """
 ### NonlinearSolvers.pde_pre_func

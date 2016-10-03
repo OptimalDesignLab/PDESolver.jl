@@ -9,6 +9,7 @@ using ODLCommonTools
 import MPI
 using PETSc
 using Utils
+using SummationByParts
 
 include("rk4.jl")
 include("crank_nicolson.jl")
