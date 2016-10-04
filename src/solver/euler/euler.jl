@@ -225,6 +225,11 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
+
+      vals = real(eqn.res_vec)
+      saveSolutionToMesh(mesh, vals)
+      fname = string("res_", itr)
+      writeVisFiles(mesh, fname)
     end
  
     # add an option on control this or something.  Large blocks of commented
@@ -357,8 +362,9 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     fill!(eqn.q_face, 0.0)
     fill!(eqn.flux_face, 0.0)
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
-    interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-    if opts["face_integral_type"] == 2
+
+    if opts["face_integral_type"] == 1
+      interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
     end
   end
