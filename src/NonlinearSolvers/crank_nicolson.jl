@@ -51,18 +51,6 @@ crank_nicolson
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
    should be eqn.q_vec and eqn.res_vec.
 """->
-# function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
-#                         q_vec::AbstractVector, res_vec::AbstractVector, pre_func,
-#                         post_func, ctx, opts)
-# function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
-#                         q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts)
-# function crank_nicolson(f, h, t_max, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, 
-#                  ctx, sbp, eqn, opts; majorIterationCallback=((a...) -> (a...)), 
-#                  res_tol=-1.0, real_time=true)
-
-#                  (mesh, sbp, eqn), opts; 
-#                  res_tol=res_tol, real_time=real_time)
-
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
@@ -92,6 +80,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   flush(fstdout)
   for i = 2:(t_steps + 1)
 
+    println("CN: entered time-stepping loop")
+
     # Allow for some kind of stage loop
 
     # TODO: output_freq
@@ -119,7 +109,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # TODO: tear Jac alloc out of newton so it doesn't need to be called every time iteration 
     #   (instead: only one alloc at first time step, then future time steps use that alloc)
 
-    eqn_nextstep = copy(eqn)
+    println("mark1")
+    eqn_nextstep = deepcopy(eqn)
+    # TODO: don't copy the entire AbstractSolutionData
 
     # TODO: pre_func & post_func?
 #     pre_func(cts..., opt)
@@ -127,6 +119,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     f( ctx..., opts, treal)
 #     sol_norm = post_func(ctx..., opts)
 
+    println("mark2")
     if use_itermax && i > itermax
       if myrank == 0
         println(fstdout, "breaking due to itermax")
@@ -135,8 +128,14 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
       break
     end
+    println("mark3")
 
-    @time newton(f, cnResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"])
+    # pmesh is preconditioning mesh, just passing mesh for arg after opts
+#     @time newton(f, cnResidual, mesh, sbp, eqn, opts, mesh, itermax=opts["itermax"])
+
+    # NOTE: Must include a comma in the ctx tuple to indicate tuple
+    @time newton(cnResidual, mesh, sbp, eqn, opts, mesh, itermax=opts["itermax"], ctx=(eqn_nextstep,))
+    println("mark4")
 
     # TODO: disassembleSolution?  
 
@@ -146,14 +145,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end
 
-# function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
-# 
-#   crank_nicolson(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, 
-#                  (mesh, sbp, eqn), opts; 
-#                  majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
-# 
-# end
-
+# TODO: does cnResidual need to have (mesh, sbp, eqn, opts) signature?
 function cnResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, eqn_nextstep::AbstractSolutionData,
                     opts, t=0.0)
 

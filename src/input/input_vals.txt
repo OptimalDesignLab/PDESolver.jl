@@ -1,9 +1,11 @@
 # Launching a simulation
-To solver the Euler equations, do
+To solve the Euler equations, do
 
 julia /path/to/startup.jl "input_file_name.jl"
 
 where input_file_name.jl is in your current directory.
+
+# TODO: a required keys section
 
 # The following keys are used for the options dictionary in the input file
 

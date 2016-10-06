@@ -224,11 +224,18 @@ get!(arg_dict, "euler_tau", 1.0)
 run_type = arg_dict["run_type"]
 if run_type == 4
   arg_dict["jac_method"] = 1  # finite difference
-  get!(arg_dict, "epsilon", 1e-6)
 elseif run_type == 5
-  arg_dict["jac_method"] = 2
-  get!(arg_dict, "epsilon", 1e-20)
+  arg_dict["jac_method"] = 2  # complex step
 end
+
+if haskey(arg_dict, "jac_method") 
+  if arg_dict["jac_method"] == 1 
+    get!(arg_dict, "epsilon", 1e-6)
+  elseif arg_dict["jac_method"] == 2
+    get!(arg_dict, "epsilon", 1e-20)
+  end
+end
+
 
 get!(arg_dict, "real_time", false)
 

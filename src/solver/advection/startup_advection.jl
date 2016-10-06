@@ -195,22 +195,6 @@ if opts["solve"]
 
     printSolution("newton_solution.dat", eqn.res_vec)
 
-  elseif flag == 6
-    @time newton_check(evalAdvection, mesh, sbp, eqn, opts)
-    vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
-    saveSolutionToMesh(mesh, vals)
-    writeVisFiles(mesh, "solution_error")
-    printBoundaryEdgeNums(mesh)
-    printSolution(mesh, vals)
-
-  elseif flag == 7
-    @time jac_col = newton_check(evalAdvection, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
-
-  elseif flag == 8
-    @time jac_col = newton_check_fd(evalAdvection, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
-
   elseif flag == 9
     # to non-pde rk4 run
     function pre_func(mesh, sbp, eqn,  opts)

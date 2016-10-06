@@ -260,22 +260,6 @@ if opts["solve"]
                  step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
-  elseif flag == 6
-    @time newton_check(evalEuler, mesh, sbp, eqn, opts)
-    vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
-    saveSolutionToMesh(mesh, vals)
-    writeVisFiles(mesh, "solution_error")
-    printBoundaryEdgeNums(mesh)
-    printSolution(mesh, vals)
-
-  elseif flag == 7
-    @time jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
-    writedlm("solution_$myrank.dat", jac_col)
-
-  elseif flag == 8
-    @time jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
-    writedlm("solution_$myrank.dat", jac_col)
-
   elseif flag == 20
 
 #     @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, 

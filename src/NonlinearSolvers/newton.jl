@@ -1,7 +1,7 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
 # includes residual_evaluation.jl and petsc_funcs.jl
 
-export newton, newton_check, newton_check_fd
+export newton
 global const insert_freq = 1
 @doc """
   This type holds all the data the might be needed for Newton's method,
@@ -34,10 +34,13 @@ type NewtonData{Tsol, Tres}
   idx_tmp::Array{PetscInt, 1}
   idy_tmp::Array{PetscInt, 1}
 
+  # tuple to be passed to func
+  ctx
+
   # use default inner constructor
 end
 
-function NewtonData(mesh, sbp, eqn, opts)
+function NewtonData(mesh, sbp, eqn, opts, ctx)
 
   println("entered NewtonData constructor")
   println("typeof(eqn) = ", typeof(eqn))
@@ -62,7 +65,6 @@ function NewtonData(mesh, sbp, eqn, opts)
     tau_vec = []
   end
 
-  
   local_size = mesh.numNodesPerElement*mesh.numDofPerNode*insert_freq
   vals_tmp = zeros(1, local_size) # values
   idx_tmp = zeros(PetscInt, local_size)  # row index
@@ -73,7 +75,7 @@ function NewtonData(mesh, sbp, eqn, opts)
   return NewtonData{Tsol, Tres}(myrank, commsize, reltol, abstol, dtol, 
                     itermax, krylov_gamma, 
                     res_norm_i, res_norm_i_1, tau_l, tau_vec, 1, localsize, vals_tmp, 
-                    idx_tmp, idy_tmp)
+                    idx_tmp, idy_tmp, ctx)
 end
 
 
@@ -125,22 +127,26 @@ include("petsc_funcs.jl")  # Petsc related functions
     * itermax : maximum number of Newton iterations
     * step_tol : step size stopping tolerance
     * res_tol : residual stopping tolerance
+    * ctx : 'context', i.e. the tuple of objects that is passed to func.
+            The tuple is splatted before being passed to func.
 
     func must have the signature func(mesh, sbp, eqn, opts, t=0.0) 
 
 """->
-function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0)
+function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; 
+                itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0, 
+                ctx=())
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
   # the initial condition is stored in eqn.q_vec
   # itermax is the maximum number of iterations
-  # this function is type unstable for certain variables, but thats ok
+  # this function is type unstable for certain variables, but that's ok
   # the dispatch to the backslash solver and possibly the jacobian calculation
   # function will be runtime dispatched
 
   myrank = mesh.myrank
-  newton_data = NewtonData(mesh, sbp, eqn, opts)
+  newton_data = NewtonData(mesh, sbp, eqn, opts, ctx)
   fstdout = BufferedIO(STDOUT)
 
   @mpi_master println(fstdout, "\nEntered Newtons Method")
@@ -684,7 +690,7 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
 
   # scatter into eqn.q
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
-  func(mesh, sbp, eqn, opts)
+  func(mesh, sbp, eqn, opts, newton_data.ctx...)
 
   # gather into eqn.res_vec
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
@@ -898,7 +904,7 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
-    func(mesh, sbp, eqn, opts)
+    func(mesh, sbp, eqn, opts, newton_data.ctx...)
 
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
     calcJacCol(sview(jac, :, j), res_0, eqn.res_vec, epsilon)
@@ -952,7 +958,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
-    func(mesh, sbp, eqn, opts)
+    func(mesh, sbp, eqn, opts, newton_data.ctx...)
 
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
     calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
@@ -1019,7 +1025,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
         if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
   	  # evaluate residual
-          time.t_func += @elapsed func(mesh, sbp, eqn, opts)
+          time.t_func += @elapsed func(mesh, sbp, eqn, opts, newton_data.ctx...)
         end
 
         if !(color == 1 && j == 1 && i == 1) 
@@ -1392,173 +1398,12 @@ function calcJacCol{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
 
-m = length(res)
+  m = length(res)
 
-for i=1:m
-  jac_row[i] = imag(res[i])/epsilon
-end
-
-return nothing
-
-end
-
-@doc """
-### newton_check
-
-  Uses complex step to compare jacobian vector product to directional derivative.
-
-"""->
-function newton_check(func, mesh, sbp, eqn, opts)
-  # this function drives the non-linear residual to some specified tolerance
-  # using Newton's Method
-  # the jacobian is formed using finite differences
-  # the initial condition is stored in eqn.q_vec
-  # itermax is the maximum number of iterations
-
-  step_fac = 0.5  # step size limiter
-  m = length(eqn.res_vec)
-  Tsol = typeof(eqn.res_vec[1])
-  Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
-  jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
-  direction_der = zeros(mesh.numDof)
-#  v = rand(mesh.numDof)
-   v = readdlm("randvec.txt")
-
-  epsilon = 1e-20  # complex step perturbation
-  # compute directional derivative
-  for i=1:mesh.numDof
-    eqn.q_vec[i] += complex(0, epsilon*v[i])  # apply perturbation
+  for i=1:m
+    jac_row[i] = imag(res[i])/epsilon
   end
 
-  func(mesh, sbp, eqn, opts)
-  println("evaluated directional derivative")
-
-  # calculate derivative
-  for i=1:mesh.numDof
-    direction_der[i] = imag(eqn.res_vec[i])/epsilon
-    eqn.q_vec[i] -= complex(0, epsilon*v[i])  # undo perturbation
-  end
-
-
-
-    println("Calculating Jacobian")
-
-    # calculate jacobian
-    for j=1:m
-      println("\ncalculating column ", j, " of the jacobian")
-      if j==1
-	eqn.q_vec[j] +=  complex(0, epsilon)
-      else
-	eqn.q_vec[j-1] -= complex(0, epsilon) # undo previous iteration pertubation
-	eqn.q_vec[j] += complex(0, epsilon)
-      end
-
-      # evaluate residual
-      fill!(eqn.res_vec, 0.0)
-      func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
- #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
-      calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
-#      println("res_vec norm = ", norm(res_vec)/m)
-      
-    end  # end loop over rows of jacobian
-
-    # undo final perturbation
-    eqn.q_vec[m] -= complex(0, epsilon)
-
-    # now jac is complete
-
-    fname = string("jacobian", ".dat")
-    printMatrix(fname, jac)
-    println("finished printing jacobian")
-
-    cond_j = cond(jac)
-    println("Condition number of jacobian = ", cond_j)
-    svals = svdvals(jac)
-    println("svdvals = \n", svals)
-
-    jac_mult = jac*v
-
-    # copy difference between directional derivative and
-    # jacobian multiplication into res_vec for return
-
-    for i=1:mesh.numDof
-      eqn.res_vec[i] = direction_der[i] - jac_mult[i]
-    end
-
-    err_norm = norm(eqn.res_vec)/mesh.numDof
-    println("step_norm = ", err_norm)
-#    println("jac = ", jac)
-
-    print("\n")
-
-    println("finished newton_check")
   return nothing
+
 end
-
-
-
-@doc """
-### newton_check
-
-  This method calculates a single column of the jacobian with the complex step method.
-"""->
-function newton_check(func, mesh, sbp, eqn, opts, j)
-# calculate a single column of hte jacobian
-    
-      jac_col = zeros(Float64, mesh.numDof)
-      println("\ncalculating column ", j, " of the jacobian")
-
-      epsilon = 1e-20
-
-#      eqn.q_vec[j] += complex(0, epsilon)
-      disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-      eqn.q[1, 2, 5] += complex(0, epsilon)
-      writedlm("check_q.dat", imag(eqn.q))
-#      eqn.q[1,1,1] += complex(0, epsilon)
-      # evaluate residual
-      func(mesh, sbp, eqn, opts)
-
-      assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
- #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
-      calcJacCol(jac_col, eqn.res_vec, epsilon)
-#      println("res_vec norm = ", norm(res_vec)/m)
-      writedlm("check_res.dat", imag(eqn.res))
-
-      return jac_col
-end 
-
-@doc """
-### newton_check_fd
-
-  This method calcualtes a single column of the jacobian with the finite difference method.
-
-"""->
-function newton_check_fd(func, mesh, sbp, eqn, opts, j)
-# calculate a single column of hte jacobian
-    
-      jac_col = zeros(Float64, mesh.numDof)
-      println("\ncalculating column ", j, " of the jacobian")
-
-     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-     func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
-     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
-     res_0 = copy(eqn.res_vec)
-
-      epsilon = 1e-6
-
-      eqn.q_vec[j] += epsilon
-
-      eqn.disassmbleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-
-      # evaluate residual
-      func(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
-
-      assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
- #     println("column ", j, " of jacobian, res_vec = ", eqn.res_vec)
-
-      calcJacCol(jac_col, res_0, eqn.res_vec, epsilon)
-#      println("res_vec norm = ", norm(res_vec)/m)
-
-      return jac_col
-end 
- 
