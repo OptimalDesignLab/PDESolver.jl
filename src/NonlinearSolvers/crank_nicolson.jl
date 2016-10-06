@@ -54,8 +54,18 @@ crank_nicolson
 # function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #                         q_vec::AbstractVector, res_vec::AbstractVector, pre_func,
 #                         post_func, ctx, opts)
+# function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+#                         q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts)
+# function crank_nicolson(f, h, t_max, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, 
+#                  ctx, sbp, eqn, opts; majorIterationCallback=((a...) -> (a...)), 
+#                  res_tol=-1.0, real_time=true)
+
+#                  (mesh, sbp, eqn), opts; 
+#                  res_tol=res_tol, real_time=real_time)
+
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
-                        q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts)
+                        mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+                        opts, res_tol=-1.0, real_time=true)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -81,6 +91,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   flush(fstdout)
   for i = 2:(t_steps + 1)
+
+    # Allow for some kind of stage loop
 
     # TODO: output_freq
     @mpi_master if i % output_freq == 0
@@ -128,19 +140,19 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: disassembleSolution?  
 
-  end
+  end   # end of t step loop
 
   #returns t?
 
 end
 
-function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
-
-  crank_nicolson(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, 
-                 (mesh, sbp, eqn), opts; 
-                 majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
-
-end
+# function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
+# 
+#   crank_nicolson(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, 
+#                  (mesh, sbp, eqn), opts; 
+#                  majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+# 
+# end
 
 function cnResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, eqn_nextstep::AbstractSolutionData,
                     opts, t=0.0)
@@ -159,13 +171,69 @@ function cnResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSoluti
 #   residual = eqn_nextstep.q - 0.5*delta_t*evalEuler(mesh, sbp, eqn_nextstep, opts, t=0.0) - 
 #               eqn.q - 0.5*delta_t*evalEuler(mesh, sbp, eqn, opts, t=0.0)
 
+  # TODO:
+  #   update only the eqn.q, then eval residual, then replace eqn.q 
+
   # NOTE: changed evalEuler to f for generic usage
-  residual = eqn_nextstep.q - 0.5*delta_t*f(mesh, sbp, eqn_nextstep, opts, t=0.0) - 
-              eqn.q - 0.5*delta_t*f(mesh, sbp, eqn, opts, t=0.0)
+  residual = eqn_nextstep.q - 0.5*delta_t*f(mesh, sbp, eqn_nextstep, opts, t) - 
+              eqn.q - 0.5*delta_t*f(mesh, sbp, eqn, opts, t)
   
   return residual
 
 
 end
 
+function odeConstantResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, 
+                             eqn_nextstep::AbstractSolutionData, opts, t=0.0)
+
+  return 6
+
+end
+
+@doc """
+### NonlinearSolvers.pde_pre_func
+
+  The pre-function for solving partial differential equations with a physics
+  module.  The only operation it performs is disassembling eqn.q_vec into
+  eqn.q
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""->
+function pde_pre_func(mesh, sbp, eqn, opts)
+  
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+end
+
+
+@doc """
+### NonlinearSolvers.pde_post_func
+
+  The post-function for solving partial differential equations with a physics
+  module.  This function multiplies by A0inv, assembles eqn.res into
+  eqn.res_vec, multiplies by the inverse mass matrix, and calculates
+  the SBP approximation to the integral L2 norm
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+"""->
+function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
+  eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
+  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
+  if calc_norm
+    local_norm = calcNorm(eqn, eqn.res_vec)
+    eqn.params.time.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
+    return sqrt(global_norm)
+  end
+
+   return nothing
+end
 

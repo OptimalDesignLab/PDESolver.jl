@@ -370,7 +370,7 @@ function checkKeys(arg_dict, known_keys)
   cnt = 0
   for key in keys(arg_dict)
     if !haskey(known_keys, key)
-      println(STDERR, "Warning: Key ", key, " in input dictonary not ",
+      println(STDERR, "Warning: Key ", key, " in input dictionary not ",
                "recognized")
        cnt += 1
     end
