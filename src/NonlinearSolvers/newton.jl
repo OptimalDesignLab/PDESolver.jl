@@ -261,7 +261,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
   # evaluating residual at initial condition
   @mpi_master println(fstdout, "evaluating residual at initial condition"); flush(fstdout)
-  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func)
+  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, eqn.res_vec, ctx_residual, t)
   @mpi_master println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
 
   # extract the real components to res_0
@@ -459,8 +459,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
-    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, func)
     # extract real component to res_0
+    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, eqn.res_vec, ctx_residual, t)
     for j=1:m
       res_0[j] = real(eqn.res_vec[j])
     end
@@ -597,6 +597,13 @@ end               # end of function newton()
   Jacobian (of the physics) calculation, separate from the Newton function
 
   ctx_residual: func must be the first element. func is the residual evaluation function, i.e. evalEuler
+  t:            simulation time
+
+  For solving steady problems, this function can be used directly by newtonInner 
+    for the Jac calculation.
+
+  For solving unsteady problems, this function can be used as a building block 
+    for the calculation of the time-marching Jac.
 
 """->
 function calcJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)

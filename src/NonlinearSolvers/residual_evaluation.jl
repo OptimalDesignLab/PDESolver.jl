@@ -1,7 +1,8 @@
 # residual_evaluation.jl: some functions used by NonlinearSolvers relating to 
 # residual evaluation
 
-export calcResidual
+# TODO: calcResidual shouldn't need exporting
+export calcResidual, calcRhs
 @doc """
 ### NonlinearSolvers.calcResidual
 
@@ -17,18 +18,29 @@ export calcResidual
     (even though the weak form residual is stores in eq.res_vec).
 
     Inputs:
-      mesh:  an AbstractMesh object
-      sbp:  an SBP operator
-      eqn:  an AbstractSolutionData object
-      opts:  options dictonary
-      func: residual evaluation function
+      mesh:   an AbstractMesh object
+      sbp:    an SBP operator
+      eqn:    an AbstractSolutionData object
+      opts:   options dictonary
+      func_rhs: residual evaluation function
+      rhs_vec:  rhs vector
+      ctx_residual:  context tuple for func_rhs
+      t:      simulation time
 
     Outputs:
       res_0_norm:  norm of residual
 
+    To solve steady problems:
+      func_rhs should be calcRhs
+      ctx_residual should be (func, ...) where func is the physics function such as evalEuler
+
+    To solve unsteady problems:
+      func_rhs should be some function that typically uses calcRhs as a building block for the time-marching residual
+      ctx_residual should be whatever is required by func_rhs
+
     Aliasing restrictions: none
 """->
-function calcResidual(mesh, sbp, eqn, opts, func)
+function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t)
 # calculate the residual and its norm
 
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -37,15 +49,51 @@ function calcResidual(mesh, sbp, eqn, opts, func)
     exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
 
-  func(mesh, sbp, eqn, opts)
-
-  assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=false)
+  func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
 
   res_0_norm = calcNorm(eqn, eqn.res_vec, strongres=true)
   time.t_allreduce += @elapsed res_norm_global = MPI.Allreduce(res_0_norm*res_0_norm, MPI.SUM, mesh.comm)
-#  println("residual norm = ", res_0_norm)
 
- return sqrt(res_norm_global)
+  return sqrt(res_norm_global)
+
+end
+
+@doc """
+### NonlinearSolvers.calcResidual
+
+  This method of the function is used for calculating the residual of the physics.
+  It is done using the state stored in eqn.q_vec .
+  This method is the standard call to calcResidual for steady problems & rk4.
+
+"""->
+function calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)
+
+  rhs_vec = eqn.res_vec
+  ctx_residual = (func_physics, )
+
+  res_0_norm = calcResidual(mesh, sbp, eqn, opts, calcRhs, rhs_vec, ctx_residual, t)
+
+  return res_0_norm
+
+end
+
+@doc """
+###NonlinearSolver.calcRhs
+  
+  RHS (of the physics) calculation, separate from the Newton function
+
+  ctx_residual: func must be the first element. func is the residual evaluation function, i.e. evalEuler
+  t:            simulation time
+
+"""->
+function calcRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
+
+  func = ctx_residual[1]
+
+  func(mesh, sbp, eqn, opts, t)
+
+  assembleResidual(mesh, sbp, eqn, opts, rhs_vec, assemble_edgeres=false)
+
 end
 
 
