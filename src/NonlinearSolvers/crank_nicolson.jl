@@ -134,7 +134,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     @time newton(f, cnResidual, mesh, sbp, eqn, opts, mesh, itermax=opts["itermax"])
 
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
-    @time newton(cnResidual, mesh, sbp, eqn, opts, mesh, itermax=opts["itermax"], ctx=(eqn_nextstep,))
+    @time newton(cnResidual, mesh, sbp, eqn_nextstep, opts, mesh, itermax=opts["itermax"], ctx=(evalEuler, eqn))
     println("mark4")
 
     # TODO: disassembleSolution?  
@@ -146,8 +146,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 end
 
 # TODO: does cnResidual need to have (mesh, sbp, eqn, opts) signature?
-function cnResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, eqn_nextstep::AbstractSolutionData,
-                    opts, t=0.0)
+# function cnResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, eqn_nextstep::AbstractSolutionData,
+#                     opts, t=0.0)
+function cnResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, 
+                    opts, physics_func::Function, eqn::AbstractSolutionData)
 
   # u_(n+1) - 0.5*dt* (del dot G_(n+1)) 0 u_n - 0.5*dt* (del dot G_n)
   # u is q_vec (ref: rk4.jl)
@@ -167,8 +169,8 @@ function cnResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSoluti
   #   update only the eqn.q, then eval residual, then replace eqn.q 
 
   # NOTE: changed evalEuler to f for generic usage
-  residual = eqn_nextstep.q - 0.5*delta_t*f(mesh, sbp, eqn_nextstep, opts, t) - 
-              eqn.q - 0.5*delta_t*f(mesh, sbp, eqn, opts, t)
+  residual = eqn_nextstep.q - 0.5*delta_t*physics_func(mesh, sbp, eqn_nextstep, opts, t) - 
+              eqn.q - 0.5*delta_t*physics_func(mesh, sbp, eqn, opts, t)
   
   return residual
 
