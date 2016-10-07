@@ -246,14 +246,14 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
     jacp = newton_data.ctx_newton[1]
   end
 
-  Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
-  m = length(eqn.res_vec)
+  Tjac = typeof(real(rhs_vec[1]))  # type of jacobian, residual
+  m = length(rhs_vec)
 
   @mpi_master println(fstdout, "typeof(jac) = ", typeof(jac))
 
   step_fac = 1.0 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
-  Tsol = typeof(eqn.res_vec[1])
+  Tsol = typeof(rhs_vec[1])
   res_0 = zeros(Tjac, m)  # function evaluated at u0
   res_0_norm = 0.0  # norm of res_0
   delta_res_vec = zeros(Tjac, m)  # newton update
@@ -272,12 +272,12 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
 
   # evaluating residual at initial condition
   @mpi_master println(fstdout, "evaluating residual at initial condition"); flush(fstdout)
-  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, eqn.res_vec, ctx_residual, t)
+  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, rhs_vec, ctx_residual, t)
   @mpi_master println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
 
   # extract the real components to res_0
   for i=1:m
-    res_0[i] = real(eqn.res_vec[i])
+    res_0[i] = real(rhs_vec[i])
   end
 
   @mpi_master begin
@@ -471,9 +471,9 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     # extract real component to res_0
-    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, eqn.res_vec, ctx_residual, t)
+    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, rhs_vec, ctx_residual, t)
     for j=1:m
-      res_0[j] = real(eqn.res_vec[j])
+      res_0[j] = real(rhs_vec[j])
     end
 
     @mpi_master begin
@@ -511,9 +511,9 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
       println(fstdout, "Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
     end
 
-     # put residual into eqn.res_vec
+     # put residual into rhs_vec
      for j=1:m
-       eqn.res_vec[j] = res_0[j]
+       rhs_vec[j] = res_0[j]
      end
 
      @mpi_master close(fconv)
@@ -532,9 +532,9 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
       @mpi_master println(fstdout, "Newton iteration converged with step_norm = ", step_norm)
       @mpi_master println(fstdout, "Final residual = ", res_0_norm)
 
-      # put residual into eqn.res_vec
+      # put residual into rhs_vec
       for j=1:m
-        eqn.res_vec[j] = res_0[j]
+        rhs_vec[j] = res_0[j]
       end
       @mpi_master close(fconv)
       
@@ -590,9 +590,9 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
   end
   flush(fstdout)
 
-   # put residual into eqn.res_vec
+   # put residual into rhs_vec
    for j=1:m
-     eqn.res_vec[j] = res_0[j]
+     rhs_vec[j] = res_0[j]
    end
  
   if jac_type == 3
