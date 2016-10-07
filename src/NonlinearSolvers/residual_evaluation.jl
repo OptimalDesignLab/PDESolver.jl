@@ -63,7 +63,6 @@ end
 
   This method of the function is used for calculating the residual of the physics.
   It is done using the state stored in eqn.q_vec .
-  This method is the standard call to calcResidual for steady problems & rk4.
 
 """->
 function calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)

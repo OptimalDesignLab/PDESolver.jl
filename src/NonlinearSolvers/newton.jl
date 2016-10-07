@@ -172,9 +172,25 @@ end   # end of setupNewton
     func must have the signature func(mesh, sbp, eqn, opts, t=0.0) 
 
 """->
-function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; 
-                itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0, 
-                ctx_residual=(), t=0.0)
+function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh, t=0.0; 
+                itermax=200, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
+
+  rhs_func = calcRhs
+  jac_func = calcJac
+
+  # allocate jac & rhs, and construct newton_data
+  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts)
+
+  ctx_residual = (func, )
+
+  newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual, t,
+                itermax=itermax, step_tol=step_tol, res_abstol=res_abstol, res_reltol=res_reltol, res_reltol0=res_reltol0)
+
+end
+
+function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual=(), t=0.0;
+                     itermax=200, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
+
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -220,11 +236,6 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     pert = complex(0, epsilon)
   end
 
-  # allocate jac & rhs, and construct newton_data
-  newton_data, jac, rhs = setupNewton(mesh, pmesh, sbp, eqn, opts)
-
-  # just a placeholder, should be outside of Newton in the final form
-  ctx_residual = (func, )
 
   if jac_type == 4
     # TODO: call Petsc MatShellSetContext her
@@ -588,7 +599,9 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     # contents of ctx_newton: (jacp, x, b, ksp)
     destroyPetsc(jac, newton_data.ctx_newton...)
   end
+
   return nothing
+
 end               # end of function newton()
 
 @doc """
