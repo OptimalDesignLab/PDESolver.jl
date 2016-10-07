@@ -174,7 +174,7 @@ end   # end of setupNewton
 """->
 function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; 
                 itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0, 
-                ctx_newton=())
+                ctx_residual=(), t=0.0)
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -220,10 +220,14 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     pert = complex(0, epsilon)
   end
 
+  # allocate jac & rhs, and construct newton_data
   newton_data, jac, rhs = setupNewton(mesh, pmesh, sbp, eqn, opts)
 
+  # just a placeholder, should be outside of Newton in the final form
+  ctx_residual = (func, )
+
   if jac_type == 4
-    # TODO: call Petsc MatShellSetContext here
+    # TODO: call Petsc MatShellSetContext her
     ctx_petsc = createPetscCtx(mesh, sbp, eqn, opts, newton_data, func)
   end
 
@@ -292,7 +296,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       @mpi_master println(fstdout, "Initial condition satisfied res_reltol with relative residual ", res_0_norm/res_reltol0)
       @mpi_master println(fstdout, "Residual ", res_0_norm)
     else
-     @mpi_master println(fstdout, "Initial condition satisfies res_tol with residual norm ", res_0_norm)
+      @mpi_master println(fstdout, "Initial condition satisfies res_tol with residual norm ", res_0_norm)
     end
     # no need to assemble q into q_vec because it never changed
 
@@ -304,95 +308,35 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       destroyPetsc(jac, newton_data.ctx_newton...)
     end
 
+    return nothing
 
-   return nothing
- end  # end if tolerances satisfied
+  end  # end if tolerances satisfied
 
- @mpi_master println(fstdout, "res_reltol0 = ", res_reltol0)
- if res_reltol0 > 0  # use the supplied res_reltol0 value
-   @mpi_master println(fstdout, "using supplied value for relative residual")
-   res_reltol_0 = res_reltol0
- else
-   @mpi_master println(fstdout, "using initial residual for relative residual")
-   res_reltol_0 = res_0_norm
- end
+  @mpi_master println(fstdout, "res_reltol0 = ", res_reltol0)
+  if res_reltol0 > 0  # use the supplied res_reltol0 value
+    @mpi_master println(fstdout, "using supplied value for relative residual")
+    res_reltol_0 = res_reltol0
+  else
+    @mpi_master println(fstdout, "using initial residual for relative residual")
+    res_reltol_0 = res_0_norm
+  end
 
 
   # do Newton's method if not converged
   @mpi_master print(fstdout, "\n")
 
-
+  #------------------------------------------------------------------------------------
+  # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
     @mpi_master println(fstdout, "Newton iteration: ", i)
     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
-    #----------------------------------------------------------------------
-    # Calculate Jacobian using selected method 
-    eqn.params.time.t_jacobian += @elapsed if jac_method == 1
-      @mpi_master println(fstdout, "calculating finite difference jacobian")
+    # Calculate Jacobian here
+    calcJac(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
 
-      if jac_type == 1  # dense jacobian
-	@mpi_master println(fstdout, "calculating dense FD jacobian")
-        tmp, t_jac, t_gc, alloc = @time_all calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac)
-
-      elseif jac_type == 2  # Julia sparse jacobian
-	@mpi_master println(fstdout, "calculating sparse FD jacobian")
-        #TODO: don't copy the giant array!
-        res_copy = copy(eqn.res)  # copy unperturbed residual
- 
-        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
-      elseif jac_type == 3  # Petsc sparse jacobian
-	@mpi_master println(fstdout, "calculating sparse FD jacobian")
-        res_copy = copy(eqn.res)  # copy unperturbed residual
-        if use_jac_precond
-          tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
-          print(fstdout, "preconditioning jacobian: ")
-          print_time_all(fstdout, t_jac, t_gc, t_alloc)
-        end
-        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
-      end
-
-      @mpi_master print(fstdout, "jacobian calculation: ")
-      @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
-
-    elseif jac_method == 2
-      @mpi_master println(fstdout, "calculating complex step jacobian")
-
-      if jac_type == 1  # dense jacobian
-	@mpi_master println(fstdout, "calculating dense complex step jacobian")
-        tmp, t_jac, t_gc, alloc = @time_all calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac)
-      elseif jac_type == 2  # Julia sparse jacobian 
-	@mpi_master println(fstdout, "calculating sparse complex step jacobian")
-        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
-      elseif jac_type == 3 # Petsc sparse jacobian
-        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-        @mpi_master println(fstdout, "calculating explicit Petsc jacobian")
-
-        if  use_jac_precond
-          @mpi_master println(fstdout, "calculating preconditioning jacobian")
-          tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
-          @mpi_master print("preconditioning jacobian: ")
-          @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
-        end
-        @mpi_master println(fstdout, "calculating main jacobain")
-        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
-
-      elseif jac_type == 4 # Petsc jacobian-vector product
-	# calculate preconditioner matrix only
-	res_dummy = Array(Float64, 0, 0, 0)
-
-	if ((i % recalc_prec_freq)) == 0 || i == 1
-
-          tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
-	end
- 
-      end
-
+    if use_jac_precond
       if ((i % recalc_prec_freq)) == 0 || i == 1
-        @mpi_master print(fstdout, "jacobian calculation: ")
-        @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
-
+        calcJac(newton_data, pmesh, sbp, eqn, opts, jacp, ctx_residual, t)
       end
     end
 
@@ -400,15 +344,15 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     if globalize_euler
 
       if jac_type == 3 || jac_type == 4
-	@mpi_master println(fstdout, "applying Euler globalization to jacp")
-	@mpi_master println(fstdout, "tau = ", newton_data.tau_l)
+        @mpi_master println(fstdout, "applying Euler globalization to jacp")
+        @mpi_master println(fstdout, "tau = ", newton_data.tau_l)
         applyEuler(mesh, sbp, eqn, opts, newton_data, jacp)
       end
 
       if jac_type != 4
-	@mpi_master println(fstdout, "applying Euler gloablization to jac")
+        @mpi_master println(fstdout, "applying Euler gloablization to jac")
         applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
-    end
+      end
     end
 
 #    checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
@@ -435,22 +379,22 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     if (( print_eigs || write_eigs) && (jac_type == 1 || jac_type == 2))
       eigs_i = reverse(eigvals(jac))
       if print_eigs
-	println(fstdout, "eigenvalues =")
-	for i=1:length(eigs_i)
-	  println(fstdout, eigs_i[i])
-	end
+        println(fstdout, "eigenvalues =")
+        for i=1:length(eigs_i)
+          println(fstdout, eigs_i[i])
+        end
       end
       flush(fstdout)
 
       if write_eigs
-	writedlm("eigs$i.dat", eigs_i)
+        writedlm("eigs$i.dat", eigs_i)
       end
 
     end
 
     # do the full eigenvalue decomposition
     # if requested and if julia owns the Jacobian matrix
-    if  write_eigdecomp && ( jac_type == 1 || jac_type == 2)
+    if write_eigdecomp && ( jac_type == 1 || jac_type == 2)
       println(fstdout, "doing eigen decomposition"); flush(fstdout)
       # make a dense jacobian so we can get *all* the eigenvalues and vectors
       # the algorithm for sparse matrices can get all - 2 of them, and might
@@ -646,6 +590,116 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   end
   return nothing
 end               # end of function newton()
+
+@doc """
+###NonlinearSolver.calcJac
+  
+  Jacobian (of the physics) calculation, separate from the Newton function
+
+  ctx_residual: func must be the first element. func is the residual evaluation function, i.e. evalEuler
+
+"""->
+function calcJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
+
+  myrank = mesh.myrank
+  fstdout = BufferedIO(STDOUT)
+
+  write_rhs = opts["write_rhs"]::Bool
+  write_jac = opts["write_jac"]::Bool
+  print_cond = opts["print_cond"]::Bool
+  print_eigs = opts["print_eigs"]::Bool
+  write_eigs = opts["write_eigs"]::Bool
+  write_eigdecomp = opts["write_eigdecomp"]::Bool
+  write_sol = opts["write_sol"]::Bool
+  write_vis = opts["write_vis"]::Bool
+  output_freq = opts["output_freq"]::Int
+  write_qic = opts["write_qic"]::Bool
+  write_res = opts["write_res"]::Bool
+  write_q = opts["writeq"]::Bool
+  jac_method = opts["jac_method"]::Int  # finite difference or complex step
+  jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
+  epsilon = opts["epsilon"]::Float64
+  globalize_euler = opts["newton_globalize_euler"]::Bool
+  recalc_prec_freq = opts["recalc_prec_freq"]::Int
+  use_jac_precond = opts["use_jac_precond"]::Bool
+
+  if jac_method == 1  # finite difference
+    pert = epsilon
+  elseif jac_method == 2  # complex step
+    pert = complex(0, epsilon)
+  end
+
+  # ctx_residual: func must be the first element
+  func = ctx_residual[1]
+
+  #----------------------------------------------------------------------
+  # Calculate Jacobian using selected method 
+  print_jacobian_timing = true
+  eqn.params.time.t_jacobian += @elapsed if jac_method == 1
+    @mpi_master println(fstdout, "calculating finite difference jacobian")
+
+    if jac_type == 1  # dense jacobian
+      @mpi_master println(fstdout, "calculating dense FD jacobian")
+      tmp, t_jac, t_gc, alloc = @time_all calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac)
+
+    elseif jac_type == 2  # Julia sparse jacobian
+      @mpi_master println(fstdout, "calculating sparse FD jacobian")
+      #TODO: don't copy the giant array!
+      res_copy = copy(eqn.res)  # copy unperturbed residual
+
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+    elseif jac_type == 3  # Petsc sparse jacobian
+      @mpi_master println(fstdout, "calculating sparse FD jacobian")
+      res_copy = copy(eqn.res)  # copy unperturbed residual
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+    elseif jac_type == 4  # Petsc jacobian-vector product
+      throw(ErrorException("No handling of jac_method = 1 and jac_type = 4: 
+                           finite differencing isn't permitted for Petsc mat-free"))
+    end
+
+  elseif jac_method == 2
+    @mpi_master println(fstdout, "calculating complex step jacobian")
+
+    if jac_type == 1  # dense jacobian
+      @mpi_master println(fstdout, "calculating dense complex step jacobian")
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac)
+    elseif jac_type == 2  # Julia sparse jacobian 
+      @mpi_master println(fstdout, "calculating sparse complex step jacobian")
+      res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+    elseif jac_type == 3 # Petsc sparse jacobian
+      res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+      @mpi_master println(fstdout, "calculating explicit Petsc jacobian")
+
+      @mpi_master println(fstdout, "calculating main jacobain")
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+
+    elseif jac_type == 4 # Petsc jacobian-vector product
+      # calculate preconditioner matrix only
+      res_dummy = Array(Float64, 0, 0, 0)
+      print_jacobian_timing = false
+
+      # if jac_method == 2 (CS) and jac_type == 4 (Petsc mat-free), only calc the jac if it is a preconditioned jac
+      if is_preconditioned
+        print_jacobian_timing = true
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+      end
+
+    end   # end of jac_type check
+
+  end  # end of jac_method check
+
+  # TODO: all printing should actually be handled outside of this function
+  if print_jacobian_timing
+    @mpi_master print(fstdout, "jacobian calculation: ")
+    @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
+  end
+
+  flush(fstdout)
+
+  return nothing
+
+end   # end of calcJac function
 
 #------------------------------------------------------------------------------
 # jacobian vector product functions

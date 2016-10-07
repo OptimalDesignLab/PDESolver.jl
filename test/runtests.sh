@@ -22,7 +22,10 @@ cd $start_dir
 tmp=$?
 err=$((err + tmp))
 
+echo "retval: $err"
+
 exit $err
+
 
 
 
