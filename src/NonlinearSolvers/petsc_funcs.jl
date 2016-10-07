@@ -26,7 +26,7 @@
     Aliasing restrictions: none
 
 """->
-function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, newton_data::NewtonData, func)
+function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, newton_data::NewtonData)
 # initialize petsc and create Jacobian matrix A, and vectors x, b, and the
 # ksp context
 # serial only
@@ -56,9 +56,6 @@ x = PetscVec(comm)
 PetscVecSetType(x, vectype)
 PetscVecSetSizes(x, obj_size, PETSC_DECIDE)
 
-# tuple of all the objects needed to evaluate the residual
-# only used by Mat Shell
-ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects needed to evalute the
                                     # residual
 if jac_type == 3  # explicit sparse jacobian
   @mpi_master println("creating A")
@@ -203,7 +200,17 @@ end
 =#
 
 
-return A, Ap, x, b, ksp, ctx
+return A, Ap, x, b, ksp
+
+end
+
+function createPetscCtx(mesh, sbp, eqn, opts, newton_data, func)
+
+  # tuple of all the objects needed to evaluate the residual
+  # only used by Mat Shell
+  ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects needed to evalute the
+
+  return ctx
 
 end
 

@@ -3,6 +3,7 @@
 # run all tests
 
 jj=julia
+
 jflags=$@  # take flags as command line arguments
 start_dir=`pwd`
 

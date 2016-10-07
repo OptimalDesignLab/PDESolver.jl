@@ -73,7 +73,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   functional_edges = opts[key]
 
   # Calculate the Jacobian of the residual
-  newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
+  newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
   res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
   pert = complex(0, opts["epsilon"])
   NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts,

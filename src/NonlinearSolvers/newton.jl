@@ -35,52 +35,91 @@ type NewtonData{Tsol, Tres}
   idy_tmp::Array{PetscInt, 1}
 
   # tuple to be passed to func
-  ctx
+  ctx_newton
 
-  # use default inner constructor
-end
+  function NewtonData(mesh, sbp, eqn, opts)
 
-function NewtonData(mesh, sbp, eqn, opts, ctx)
+    println("entered NewtonData constructor")
+    println("typeof(eqn) = ", typeof(eqn))
 
-  println("entered NewtonData constructor")
-  println("typeof(eqn) = ", typeof(eqn))
-  Tsol = eltype(eqn.q)
-  Tres = eltype(eqn.res)
+    myrank = mesh.myrank
+    commsize = mesh.commsize
 
-  myrank = mesh.myrank
-  commsize = mesh.commsize
+    reltol = opts["krylov_reltol"]
+    abstol = opts["krylov_abstol"]
+    dtol = opts["krylov_dtol"]
+    itermax = opts["krylov_itermax"]
+    krylov_gamma = opts["krylov_gamma"]
 
-  reltol = opts["krylov_reltol"]
-  abstol = opts["krylov_abstol"]
-  dtol = opts["krylov_dtol"]
-  itermax = opts["krylov_itermax"]
-  krylov_gamma = opts["krylov_gamma"]
+    res_norm_i = 0.0
+    res_norm_i_1 = 0.0
+    if opts["newton_globalize_euler"]
+      tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
+    else
+      tau_l = opts["euler_tau"]
+      tau_vec = []
+    end
 
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
+    local_size = mesh.numNodesPerElement*mesh.numDofPerNode*insert_freq
+    vals_tmp = zeros(1, local_size) # values
+    idx_tmp = zeros(PetscInt, local_size)  # row index
+    idy_tmp = zeros(PetscInt, 1)  # column indices
+    localsize = mesh.numNodesPerElement*mesh.numDofPerNode
+
+    # NOTE: we are leaving ctx_newton uninitialized because 
+    #   createPetscData needs it, but ctx_newton depends on its returned values
+
+    return new(myrank, commsize, reltol, abstol, dtol, 
+                      itermax, krylov_gamma, 
+                      res_norm_i, res_norm_i_1, tau_l, tau_vec, 1, localsize, vals_tmp, 
+                      idx_tmp, idy_tmp)
   end
 
-  local_size = mesh.numNodesPerElement*mesh.numDofPerNode*insert_freq
-  vals_tmp = zeros(1, local_size) # values
-  idx_tmp = zeros(PetscInt, local_size)  # row index
-  idy_tmp = zeros(PetscInt, 1)  # column indices
-  localsize = mesh.numNodesPerElement*mesh.numDofPerNode
-
-
-  return NewtonData{Tsol, Tres}(myrank, commsize, reltol, abstol, dtol, 
-                    itermax, krylov_gamma, 
-                    res_norm_i, res_norm_i_1, tau_l, tau_vec, 1, localsize, vals_tmp, 
-                    idx_tmp, idy_tmp, ctx)
 end
-
 
 include("residual_evaluation.jl")  # some functions for residual evaluation
 include("petsc_funcs.jl")  # Petsc related functions
+
+@doc """
+### NonlinearSolvers.setupNewton
+  
+  Allocates Jac & RHS
+
+"""->
+function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
+
+  jac_type = opts["jac_type"]
+  Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
+
+  # ctx_newton is not defined yet
+  newton_data = NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
+
+  # Allocation of Jacobian, depending on type of matrix
+  eqn.params.time.t_alloc += @elapsed if jac_type == 1  # dense
+    jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
+    ctx_newton = ()
+  elseif jac_type == 2  # sparse
+    if typeof(mesh) <: AbstractCGMesh
+      println("creating CG SparseMatrix")
+      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
+    else
+      println("Creating DG sparse matrix")
+      jac = SparseMatrixCSC(mesh, Tjac)
+    end
+    ctx_newton = ()
+  elseif jac_type == 3 || jac_type == 4 # petsc
+    jac, jacp, x, b, ksp = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data)
+    ctx_newton = (jacp, x, b, ksp)
+  end
+
+  # now put ctx_newton into newton_data
+  newton_data.ctx_newton = ctx_newton
+
+  rhs = eqn.res_vec
+
+  return newton_data, jac, rhs
+
+end   # end of setupNewton
 
 @doc """
 ### NonlinearSolvers.newton
@@ -127,7 +166,7 @@ include("petsc_funcs.jl")  # Petsc related functions
     * itermax : maximum number of Newton iterations
     * step_tol : step size stopping tolerance
     * res_tol : residual stopping tolerance
-    * ctx : 'context', i.e. the tuple of objects that is passed to func.
+    * ctx_newton : 'context', i.e. the tuple of objects that is passed to func.
             The tuple is splatted before being passed to func.
 
     func must have the signature func(mesh, sbp, eqn, opts, t=0.0) 
@@ -135,7 +174,7 @@ include("petsc_funcs.jl")  # Petsc related functions
 """->
 function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh; 
                 itermax=200, step_tol=1e-6, res_abstol=1e-6,  res_reltol=1e-6, res_reltol0=-1.0, 
-                ctx=())
+                ctx_newton=())
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
   # the jacobian is formed using finite differences
@@ -146,7 +185,6 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
   # function will be runtime dispatched
 
   myrank = mesh.myrank
-  newton_data = NewtonData(mesh, sbp, eqn, opts, ctx)
   fstdout = BufferedIO(STDOUT)
 
   @mpi_master println(fstdout, "\nEntered Newtons Method")
@@ -182,26 +220,19 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     pert = complex(0, epsilon)
   end
 
+  newton_data, jac, rhs = setupNewton(mesh, pmesh, sbp, eqn, opts)
+
+  if jac_type == 4
+    # TODO: call Petsc MatShellSetContext here
+    ctx_petsc = createPetscCtx(mesh, sbp, eqn, opts, newton_data, func)
+  end
+
+  if jac_type == 3 || jac_type == 4
+    jacp = newton_data.ctx_newton[1]
+  end
 
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
   m = length(eqn.res_vec)
-#  jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
-
-
-  # Allocation of Jacobian, depending on type of matrix
-  eqn.params.time.t_alloc += @elapsed if jac_type == 1  # dense
-    jac = zeros(Tjac, m, m)  # storage of the jacobian matrix
-  elseif jac_type == 2  # sparse
-    if typeof(mesh) <: AbstractCGMesh
-      println("creating CG SparseMatrix")
-      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
-    else
-      println("Creating DG sparse matrix")
-      jac = SparseMatrixCSC(mesh, Tjac)
-    end
-  elseif jac_type == 3 || jac_type == 4 # petsc
-    jac, jacp, x, b, ksp, ctx = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data, func)
-  end
 
   @mpi_master println(fstdout, "typeof(jac) = ", typeof(jac))
 
@@ -269,7 +300,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
     flush(fstdout)
 
     if jac_type == 3
-      destroyPetsc(jac, jacp, x, b, ksp)
+      # contents of ctx_newton: (jacp, x, b, ksp)
+      destroyPetsc(jac, newton_data.ctx_newton...)
     end
 
 
@@ -312,20 +344,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       elseif jac_type == 3  # Petsc sparse jacobian
 	@mpi_master println(fstdout, "calculating sparse FD jacobian")
         res_copy = copy(eqn.res)  # copy unperturbed residual
-        # use artificial dissipation for the preconditioner 
-#	use_dissipation_orig = eqn.params.use_dissipation
-#	use_edgestab_orig = eqn.params.use_edgestab
-#        eqn.params.use_dissipation = opts["use_dissipation_prec"]
-#	eqn.params.use_edgestab = opts["use_edgestab_prec"]
         if use_jac_precond
           tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_copy, pert, jacp)
-          print(fstdout, "preconditining jacobian: ")
+          print(fstdout, "preconditioning jacobian: ")
           print_time_all(fstdout, t_jac, t_gc, t_alloc)
         end
-#        addDiagonal(mesh, sbp, eqn, jacp)        
-	# use normal stabilization for the real jacobian
-#	eqn.params.use_dissipation = use_dissipation_orig
-#	eqn.params.use_edgestab = use_edgestab_orig
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
       end
 
@@ -345,10 +368,6 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       elseif jac_type == 3 # Petsc sparse jacobian
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
         @mpi_master println(fstdout, "calculating explicit Petsc jacobian")
-#	use_dissipation_orig = eqn.params.use_dissipation
-#	use_edgestab_orig = eqn.params.use_edgestab
-#        eqn.params.use_dissipation = opts["use_dissipation_prec"]
-#	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
         if  use_jac_precond
           @mpi_master println(fstdout, "calculating preconditioning jacobian")
@@ -356,29 +375,17 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
           @mpi_master print("preconditioning jacobian: ")
           @mpi_master print_time_all(fstdout, t_jac, t_gc, alloc)
         end
-#        addDiagonal(mesh, sbp, eqn, jacp)        
-	# use normal stabilization for the real jacobian
-#	eqn.params.use_dissipation = use_dissipation_orig
-#	eqn.params.use_edgestab = use_edgestab_orig
         @mpi_master println(fstdout, "calculating main jacobain")
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
 
       elseif jac_type == 4 # Petsc jacobian-vector product
 	# calculate preconditioner matrix only
 	res_dummy = Array(Float64, 0, 0, 0)
-#	use_dissipation_orig = eqn.params.use_dissipation
-#	use_edgestab_orig = eqn.params.use_edgestab
-#        eqn.params.use_dissipation = opts["use_dissipation_prec"]
-#	eqn.params.use_edgestab = opts["use_edgestab_prec"]
 
 	if ((i % recalc_prec_freq)) == 0 || i == 1
 
           tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, pmesh, sbp, eqn, opts, func, res_dummy, pert, jacp)
 	end
-#        addDiagonal(mesh, sbp, eqn, jacp)        
-	# use normal stabilization for the real jacobian
-#	eqn.params.use_dissipation = use_dissipation_orig
-#	eqn.params.use_edgestab = use_edgestab_orig
  
       end
 
@@ -401,7 +408,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       if jac_type != 4
 	@mpi_master println(fstdout, "applying Euler gloablization to jac")
         applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
-      end
+    end
     end
 
 #    checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
@@ -477,7 +484,9 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_res_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc jacobian
-      tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, jacp, x, b, ksp, opts, res_0, delta_res_vec, mesh.dof_offset)
+      # contents of ctx: (jacp, x, b, ksp)
+      tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, 
+                                                       res_0, delta_res_vec, mesh.dof_offset)
     end
     eqn.params.time.t_solve += t_solve
     @mpi_master print(fstdout, "matrix solve: ")
@@ -556,7 +565,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
 
      if jac_type == 3
-	destroyPetsc(jac, jacp, x, b, ksp)
+        # contents of ctx_newton: (jacp, x, b, ksp)
+        destroyPetsc(jac, newton_data.ctx_newton...)
      end
      flush(fstdout)
 
@@ -574,7 +584,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
       @mpi_master close(fconv)
       
       if jac_type == 3
-	destroyPetsc(jac, jacp, x, b, ksp)
+        # contents of ctx_newton: (jacp, x, b, ksp)
+        destroyPetsc(jac, newton_data.ctx_newton...)
       end
       flush(fstdout)
 
@@ -630,10 +641,11 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
    end
  
   if jac_type == 3
-    destroyPetsc(jac, jacp,  x, b, ksp)
+    # contents of ctx_newton: (jacp, x, b, ksp)
+    destroyPetsc(jac, newton_data.ctx_newton...)
   end
   return nothing
-end
+end               # end of function newton()
 
 #------------------------------------------------------------------------------
 # jacobian vector product functions
@@ -690,7 +702,7 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
 
   # scatter into eqn.q
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
-  func(mesh, sbp, eqn, opts, newton_data.ctx...)
+  func(mesh, sbp, eqn, opts)
 
   # gather into eqn.res_vec
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
@@ -904,7 +916,7 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
-    func(mesh, sbp, eqn, opts, newton_data.ctx...)
+    func(mesh, sbp, eqn, opts)
 
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
     calcJacCol(sview(jac, :, j), res_0, eqn.res_vec, epsilon)
@@ -958,7 +970,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
-    func(mesh, sbp, eqn, opts, newton_data.ctx...)
+    func(mesh, sbp, eqn, opts)
 
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
     calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
@@ -1025,7 +1037,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
         if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
   	  # evaluate residual
-          time.t_func += @elapsed func(mesh, sbp, eqn, opts, newton_data.ctx...)
+          time.t_func += @elapsed func(mesh, sbp, eqn, opts)
         end
 
         if !(color == 1 && j == 1 && i == 1) 

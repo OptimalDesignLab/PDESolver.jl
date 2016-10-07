@@ -68,10 +68,12 @@ facts("----- Testing Jacobian -----") do
   include(STARTUP_PATH)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-
+  # needed for calls to NewtonData below
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
 
   # now test full jacobian
-  newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
+  newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
   fill!(eqn.res, 0.0)
   AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
@@ -112,7 +114,7 @@ facts("----- Testing Jacobian -----") do
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
   # now test full jacobian
-  newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
+  newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
   jac_c = zeros(Complex128, mesh.numDof, mesh.numDof)
   eps_c = complex(0, 1e-20)
   fill!(eqn.res, 0.0)
