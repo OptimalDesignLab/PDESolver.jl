@@ -90,6 +90,7 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
 
   jac_type = opts["jac_type"]
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
+  m = mesh.numDof
 
   # ctx_newton is not defined yet
   newton_data = NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
@@ -115,9 +116,9 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
   # now put ctx_newton into newton_data
   newton_data.ctx_newton = ctx_newton
 
-  rhs = eqn.res_vec
+  rhs_vec = eqn.res_vec
 
-  return newton_data, jac, rhs
+  return newton_data, jac, rhs_vec
 
 end   # end of setupNewton
 

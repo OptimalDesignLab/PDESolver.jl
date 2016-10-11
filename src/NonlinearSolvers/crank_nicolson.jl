@@ -80,13 +80,14 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   flush(fstdout)
   for i = 2:(t_steps + 1)
 
+
     println("CN: entered time-stepping loop")
 
     # Allow for some kind of stage loop
 
     # TODO: output_freq
     @mpi_master if i % output_freq == 0
-       println(fstdout,"\ntimestep ", i)
+       println(fstdout,"\n==== timestep ", i)
        if i % 5*output_freq == 0
          flush(fstdout)
         end
@@ -120,24 +121,36 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     sol_norm = post_func(ctx..., opts)
 
     println("mark2")
-    if use_itermax && i > itermax
-      if myrank == 0
-        println(fstdout, "breaking due to itermax")
-        close(f1)
-        flush(fstdout)
-      end
-      break
-    end
-    println("mark3")
+#     if use_itermax && i > itermax
+#       if myrank == 0
+#         println(fstdout, "breaking due to itermax")
+#         close(f1)
+#         flush(fstdout)
+#       end
+#       break
+#     end
+#     println("mark3")
 
-    # pmesh is preconditioning mesh, just passing mesh for arg after opts
-#     @time newton(f, cnResidual, mesh, sbp, eqn, opts, mesh, itermax=opts["itermax"])
 
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
-    @time newton(cnResidual, mesh, sbp, eqn_nextstep, opts, mesh, itermax=opts["itermax"], ctx=(evalEuler, eqn))
-    println("mark4")
+  
+    # f is the physics function, like evalEuler
+    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
+
+    ctx_residual = (f, eqn_nextstep, h, newton_data)
+
+    t_nextstep = t + h
+
+    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t_nextstep)
+    println("mark3")
+
+    # TODO: something about eqn & eqn_nextstep: how is the soln updated, and does it need to be saved in eqn from eqn_nextstep?
+    eqn = eqn_nextstep
 
     # TODO: disassembleSolution?  
+
+    # TODO: at start or end?
+    t = t_nextstep
 
   end   # end of t step loop
 
@@ -145,35 +158,74 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end
 
-# TODO: does cnResidual need to have (mesh, sbp, eqn, opts) signature?
-# function cnResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, eqn_nextstep::AbstractSolutionData,
-#                     opts, t=0.0)
-function cnResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, 
-                    opts, physics_func::Function, eqn::AbstractSolutionData)
+# TODO:
+#   update only the eqn.q, then eval residual, then replace eqn.q 
 
-  # u_(n+1) - 0.5*dt* (del dot G_(n+1)) 0 u_n - 0.5*dt* (del dot G_n)
-  # u is q_vec (ref: rk4.jl)
+@doc """
+###NonlinearSolver.cnJac
 
-  # allocate u_(n+1)
+  Jac of the CN calculation
 
-  #q_np1 = eqn.q
+  ctx:    
+    physics func must be the first element, i.e. evalEuler
+    eqn_nextstep must be the second element
+    h must be the third element
+    newton_data must be the fourth element
+"""->
+function cnJac(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts, jac, ctx, t)
+  # TODO: put a CN_Data type at the end of the function signature for passing stuff around
 
-  @mpi_master println(fstdout, "entered cnResidual")
+  @mpi_master println(fstdout, "entered cnJac")
   flush(fstdout)
 
-  # evalEuler n+1 args
-#   residual = eqn_nextstep.q - 0.5*delta_t*evalEuler(mesh, sbp, eqn_nextstep, opts, t=0.0) - 
-#               eqn.q - 0.5*delta_t*evalEuler(mesh, sbp, eqn, opts, t=0.0)
+  physics_func = ctx[1]
+  eqn_nextstep = ctx[2]
+  h = ctx[3]
+  newton_data = ctx[4]
 
-  # TODO:
-  #   update only the eqn.q, then eval residual, then replace eqn.q 
+  t_nextstep = t + h
 
-  # NOTE: changed evalEuler to f for generic usage
-  residual = eqn_nextstep.q - 0.5*delta_t*physics_func(mesh, sbp, eqn_nextstep, opts, t) - 
-              eqn.q - 0.5*delta_t*physics_func(mesh, sbp, eqn, opts, t)
-  
-  return residual
+  NonlinearSolvers.calcJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
 
+  # CN_Jac = I + dt/2 * physics_Jac
+
+  jac = jac*h/2
+
+  # adding identity
+  for i = 1:mesh.numDof
+
+    jac[i,i] += 1
+
+  end
+
+  return nothing
+
+end
+
+@doc """
+###NonlinearSolver.cnRhs
+
+  RHS of the CN calculation
+
+  ctx:    
+    physics func must be the first element, i.e. evalEuler
+    eqn_nextstep must be the second element
+    h must be the third element
+
+"""->
+function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts, rhs_vec, ctx, t)
+
+  physics_func = ctx[1]
+  eqn_nextstep = ctx[2]
+  h = ctx[3]
+  # u_(n+1) - 0.5*dt* (del dot G_(n+1)) 0 u_n - 0.5*dt* (del dot G_n)
+
+  t_nextstep = t + h
+
+  rhs_vec = eqn_nextstep.q - 0.5*h*physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep) - 
+              eqn.q - 0.5*h*physics_func(mesh, sbp, eqn, opts, t)
+
+  return nothing
 
 end
 
