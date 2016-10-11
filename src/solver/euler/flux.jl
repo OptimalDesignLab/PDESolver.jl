@@ -73,7 +73,7 @@ function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                            functor::FluxType,
                            interfaces::AbstractArray{Interface, 1})
 
-  println("----- entered getESFaceIntegral -----")
+#  println("----- entered getESFaceIntegral -----")
   nfaces = length(interfaces)
   for i=1:nfaces
     iface = interfaces[i]

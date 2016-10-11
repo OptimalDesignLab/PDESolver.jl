@@ -336,6 +336,9 @@ function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, resL::Abstrac
 end
 
 function getEface(iface, sbpface, dxidx_face, dir::Integer)
+  # this is inconsistent with reduceEface, for reasons I don't understand
+  error("getEface does not work correctly")
+
   dim = size(dxidx_face, 1)
   EL = zeros(sbpface.stencilsize, sbpface.stencilsize)
   ER = zeros(EL)
@@ -397,8 +400,6 @@ end
 
 function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
-  println("coords2 = \n", mesh.vert_coords[:, :, 2])
-  println("coords7 = \n", mesh.vert_coords[:, :, 7])
   functor = EulerEquationMod.IRFlux()
   eqn.flux_func = functor
   fill!(eqn.res, 0.0)
@@ -662,6 +663,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     E[:, :, dim] = (sbp.Q[:, :, dim] + sbp.Q[:, :, dim].')
   end
 
+  println("S = \n", S)
   println("E = \n", E)
 
   F = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
@@ -669,9 +671,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
   psi = zeros(mesh.numNodesPerElement, mesh.dim)
   nrm = zeros(2)
   for i=1:mesh.numEl
-    println("element ", i)
     q_i = eqn.q[:, :, i]
-    println("q_i = \n", q_i)
     aux_vars_i = eqn.aux_vars[:, :, i]
     dxidx = mesh.dxidx[:, :, :, i]
     # calculate F
@@ -704,7 +704,8 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     end
 
     res_total = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
-    for d=1:mesh.dim
+    potentialflux_total = 0.0
+    for d=1:mesh.dim  # DEBUGGING: 1:mesh.dim
       S_d = S[:, :, d]
       E_d = E[:, :, d]
 
@@ -715,10 +716,10 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
         end
       end
 
-      println("lhs_tmp1 = ", lhs_tmp1)
+#      println("lhs_tmp1 = ", lhs_tmp1)
 
       lhs_reduced = contractLHS(eqn.params, q_i, lhs_tmp1)
-      println("Psi = \n", psi)
+#      println("Psi = \n", psi)
 
       # now do rhs
       rhs_reduced = 0.0
@@ -727,12 +728,19 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 #      println("E*psi = ", E_d*psi[:, d])
 
       println("lhs_reduced = ", lhs_reduced, ", rhs_reduced = ", rhs_reduced)
+      potentialflux_total += lhs_reduced
 
       @fact lhs_reduced --> roughly(-rhs_reduced, atol=1e-12)
 
       res_total[:, :] += lhs_tmp1
     end
     # check that this calculation is doing the same thing as the actual code
+    println("element ", i, " potentialflux = ", potentialflux_total)
+    println("jac = ", mesh.jac[:, i])
+    println("dxidx = ", mesh.dxidx[:, :, 1, i])
+    println("res = \n", res_total)
+    println("res code = \n", eqn.res[:, :, i])
+    println("q_i = \n", q_i)
     @fact res_total --> roughly(-eqn.res[:, :, i], atol=1e-12)
 
 
@@ -750,13 +758,17 @@ end
 facts("----- testing ESS -----") do
   ARGS[1] = "input_vals_channel_dg_large.jl"
   include(STARTUP_PATH)
-
+  println("mesh.numInterfaces = ", mesh.numInterfaces)
   # evaluate the residual to confirm it is zero
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
-  println("eqn.res = \n", eqn.res)
+  eqn.q[:, :, 2] = [0.9999469550787938 0.999893937345772 1.0001591075754341
+                    0.3534187448307662 0.35351249757105674 0.353718757598177
+                    0.3535312360245839 0.3532875032507984 0.3538312607246176
+                    1.9998541244828205 1.9997083272487806 2.000437548268399]
 
+  println("checking channel flow")
   runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)
-
+#=
   println("\nchecking ICExp")
   ICFunc = EulerEquationMod.ICDict["ICExp"]
   ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -770,7 +782,7 @@ facts("----- testing ESS -----") do
     end
   end
   runESSTest(mesh, sbp, eqn, opts)
-
+=#
 end
 
 

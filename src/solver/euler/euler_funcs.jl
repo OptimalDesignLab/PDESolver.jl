@@ -173,6 +173,7 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
     S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
 #    E[:, :, i] = sbp.Q[:, :, i] + sbp.Q[:, :, i].'
   end
+
 #=
   # DEBUG:
   Fx_regular = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
@@ -183,6 +184,7 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
     D[:, :, p] = hinv*sbp.Q[:, :, p]
   end
 =#
+  F = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
   for i=1:mesh.numEl
     # res[:, j, i] = Qjk^T*F_start(uj, uk)
 #    fill!(Fx_regular, 0.0); fill!(Fx_split, 0.0)
@@ -192,7 +194,7 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
       for k=1:mesh.numNodesPerElement
         q_k = sview(q, :, k, i)
         # loop over parametric dimensions at this point
-        for d=1:Tdim
+        for d=1:Tdim  # DEBUGGINg 1:mesh.dim
           # get the normal vector
           for p=1:Tdim
             nrm[p] = dxidx[d, p, j, i] 
@@ -210,6 +212,7 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
 
         end  # end d loop
       end  # end k loop
+
 
     end  # end j loop
   end  # end i loop

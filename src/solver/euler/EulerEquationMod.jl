@@ -425,6 +425,7 @@ include("GLS2.jl")
 include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
+include("entropy_flux.jl")
 
 @doc """
 ### EulerEquationMod.EulerData_

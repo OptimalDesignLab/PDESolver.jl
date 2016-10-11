@@ -164,7 +164,8 @@ get!(arg_dict, "perturb_mag", 0.0)
 get!(arg_dict, "write_finalsolution", false)
 get!(arg_dict, "write_finalresidual", false)
 
-# solver options
+# solver option
+get!(arg_dict, "addVolumeIntegrals", true)
 get!(arg_dict, "addBoundaryIntegrals", true)
 get!(arg_dict, "addFaceIntegrals", true)
 get!(arg_dict, "addStabilization", true)

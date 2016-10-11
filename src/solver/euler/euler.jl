@@ -124,7 +124,10 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 #  println("dataPrep @time printed above")
 
 
-  time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  time.t_volume += @elapsed if opts["addVolumeIntegrals"]
+    println("adding volume integrals")
+    evalVolumeIntegrals(mesh, sbp, eqn, opts)
+  end
 #  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
@@ -140,6 +143,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   =#
 
   if opts["use_GLS"]
+    println("adding boundary integrals")
     GLS(mesh,sbp,eqn)
   end
   
@@ -161,6 +165,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
+    println("calculating face integrals")
     evalFaceIntegrals(mesh, sbp, eqn, opts)
     #println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
@@ -174,7 +179,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 #  println("source integral @time printed above")
 
 
-
+  println("at exit from evalEuler, res = ", eqn.res)
   
 #  print("\n")
 
@@ -218,7 +223,11 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO)
 
 #  println("Performing major Iteration Callback")
+  println("on entry to majorIterationCallbac, res = \n", eqn.res)
 
+  # undo multiplication by inverse mass matrix
+  res_vec_orig = eqn.M.*copy(eqn.res_vec)
+  res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
     if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
       vals = real(eqn.q_vec)  # remove unneded imaginary part
@@ -287,17 +296,70 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
     # compute w^T * res_vec
     w_vals = zeros(eltype(eqn.q_vec), mesh.numDof)
+    potentialflux_arr = zeros(mesh.numNodesPerElement, mesh.numEl)
     for i=1:mesh.numDofPerNode:mesh.numDof
+      idx = findin(mesh.dofs, i)
+      dof, node, el = ind2sub(mesh.dofs, idx[1])
+
       q_vals_i = sview(eqn.q_vec, i:(i+Tdim+1))
       w_vals_i = sview(w_vals, i:(i+Tdim+1))
       convertToEntropy(eqn.params, q_vals_i, w_vals_i)
+      scale!(w_vals_i, 1./eqn.params.gamma_1)
+      potentialflux_arr[node, el] = dot(w_vals_i, res_vec_orig[i:(i+Tdim+1)])
     end
-    val2_local = dot(w_vals, eqn.res_vec)
+
+    for i=1:mesh.numEl
+      println("element ", i, " potential flux = ", sum(potentialflux_arr[:, i]))
+    end
+
+    val2_local = dot(w_vals, res_vec_orig)
+    # this doesn't work right in parallel because of duplicated interfaces
     val2 = MPI.Allreduce(val2_local, MPI.SUM, eqn.comm)
 
 
+    # DEBUGGING: compute the potential flux from the boundary terms
+    #            directly, to verify the boundary terms are the problem
+    val3 = zero(Float64)  # exact potential flux integral
+    for i=1:mesh.numInterfaces
+      iface = mesh.interfaces[i]
+      elL = iface.elementL
+      elR = iface.elementR
+      qL = sview(eqn.q, :, :, elL)
+      qR = sview(eqn.q, :, :, elR)
+      aux_vars = sview(eqn.aux_vars, :, :, elL)
+      dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+      bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, dxidx_face, qL, qR)
+      val3 += bndry_potentialflux
+
+      # DEBUGGING: don't compute the boundary integrals, and add their
+      #            flux here
+      if !opts["addFaceIntegrals"]
+        val2 += bndry_potentialflux
+      end
+
+    end
+
+    for i=1:mesh.numEl
+      q_i = sview(eqn.q[:, :, i])
+      dxidx_i = sview(mesh.dxidx, :, :, :, i)
+      volume_potentialflux = -computeVolumePotentialFlux(eqn.params, sbp, q_i, dxidx_i)
+      val3 += volume_potentialflux
+      # DEBUGGING: don't compute the volume integrals, add their flux here
+
+      if !opts["addVolumeIntegrals"]
+        println("element ", i, " potentialflux = ", volume_potentialflux)
+        println("jac = ", mesh.jac[:, i])
+        println("dxidx = ", mesh.dxidx[:, :, 1, i])
+        println("res = ", res_orig[:, :, i])
+        println("q_i = ", q_i)
+
+        val2 += volume_potentialflux
+      end
+    end
+
+
     f = open(opts["write_entropy_fname"], "a+")
-    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2 )
+    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2, " ", val3 )
     close(f)
   end
 

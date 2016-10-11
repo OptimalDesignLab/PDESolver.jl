@@ -56,6 +56,7 @@ where input_file_name.jl is in your current directory.
 # Solver options
 "use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
           default false
+"addVolumeIntegrals" : enable volume term, (Bool), default true
 "addBoundaryIntegrals" : enable the boundary integral term, (Bool), default true
 "addFaceIntegrals" : enable the face integral term for DG, (Bool), default true
 "addStabilization" : enable any stabilization,  individual types of stabilization
