@@ -17,7 +17,6 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
   #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
-
   for i=1:mesh.numBC
   #  println("computing flux for boundary condition ", i)
     functor_i = mesh.bndry_funcs[i]

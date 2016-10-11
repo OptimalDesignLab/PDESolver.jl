@@ -20,7 +20,7 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
                                 resL::AbstractMatrix{Tres}, 
                                 resR::AbstractMatrix{Tres})
 
-  println("----- entered calcEss code -----")
+#  println("----- entered calcEss code -----")
 
   #DEBUGGING
   fill!(resL, 0.0)
@@ -77,25 +77,6 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
     # pre multiply by perm_gamma
     applyPermRow(iperm_gamma, workC, workB)
 
-    # now B is the complete operator
-    println("E_full = \n", workB)
-#=     
-    # DEBUGGING: compute R_nu and R_gamma explictely
-    R_nu = Rprime[sbpface.nbrperm[:, 1], :]
-    tmp_nu = zeros(R_nu)
-    R_gamma = Rprime.'
-    tmp_gamma = zeros(R_gamma)
-
-    applyPermColumn(perm_nu, R_nu, tmp_nu)
-    applyPermRow(iperm_gamma, R_gamma, tmp_gamma)
-    R_nu1 =sum(R_nu, 2)
-    R_gamma1 = sum(R_gamma.', 2)
-    println("R_nu = \n", R_nu)
-    println("R_gamma = \n", R_gamma.')
-    println("R_nu1 = \n", R_nu1)
-    println("R_gamma1 = \n", R_gamma1)
-    println("diff = \n", R_nu1 - R_gamma1)
-=#
     # compute (B hadamard F)1
     for i=1:numNodesPerElement
       q_i = sview(qL, :, i)
@@ -104,17 +85,12 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
         q_j = sview(qR, :, j)
         functor(params, q_i, q_j, aux_vars_i, nrm, F_tmp)
         B_val = workB[i, j]
-#        B_valT = workB[j, i]
-#        println("element L multiplying ", B_val, " with flux ", i, ", ", j, " and storing in res ", i)
-#        println("element R multiplying ", B_valT, " with flux ", i, ", ", j, " and storing in res ", i)
-
-        println("multiplying ", B_val, " by ", F_tmp, " and storing in res ", i)
+        
         for p=1:numDofPerNode
           # because this term is on the rhs, the signs are reversed
           resL[p, i] -= B_val*F_tmp[p]
           resR[p, j] += B_val*F_tmp[p]
         end
-        println("resL[:, $i] = \n", resL[:, i])
       end
     end
 

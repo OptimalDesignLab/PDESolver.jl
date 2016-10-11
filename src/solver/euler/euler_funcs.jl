@@ -157,6 +157,8 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
   #
   #      Second: Caching.  The numerical fluxes used here should be 
   #      symmetric, so calculate the unique entries and cache them
+
+  println("----- entered calcVolumeIntegralsSplitForm -----")
   dxidx = mesh.dxidx
   res = eqn.res
   q = eqn.q
