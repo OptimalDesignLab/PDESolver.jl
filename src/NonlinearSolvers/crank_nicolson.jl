@@ -80,18 +80,21 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   flush(fstdout)
   for i = 2:(t_steps + 1)
 
-
     println("CN: entered time-stepping loop")
 
     # Allow for some kind of stage loop
 
     # TODO: output_freq
     @mpi_master if i % output_freq == 0
-       println(fstdout,"\n==== timestep ", i)
-       if i % 5*output_freq == 0
-         flush(fstdout)
-        end
+      println(fstdout,"\n==== timestep ", i)
+      flush(fstdout)
+      if i % 5*output_freq == 0
+        flush(fstdout)
+      end
     end
+
+    q_file = "q$i.dat"
+    writedlm(q_file, eqn.q_vec)
 
     # MASTER TODO:
     # assign q_i-1 and q_i
@@ -185,11 +188,17 @@ function cnJac(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, 
 
   t_nextstep = t + h
 
-  NonlinearSolvers.calcJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
+  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
 
   # CN_Jac = I + dt/2 * physics_Jac
 
-  jac = jac*h/2
+  # Jacobian is always 2D
+#   for i = 1:mesh.numDof
+#     for j = 1:mesh.numDof
+#       jac[i,j] = jac[i,j]*h*0.5
+#     end
+#   end
+  scale!(jac, h*0.5)
 
   # adding identity
   for i = 1:mesh.numDof
@@ -222,8 +231,18 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, 
 
   t_nextstep = t + h
 
-  rhs_vec = eqn_nextstep.q - 0.5*h*physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep) - 
-              eqn.q - 0.5*h*physics_func(mesh, sbp, eqn, opts, t)
+#   rhs_vec = eqn_nextstep.q - 0.5*h*physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep) - 
+#               eqn.q - 0.5*h*physics_func(mesh, sbp, eqn, opts, t)
+
+  physics_func(mesh, sbp, eqn, opts, t)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+  assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+
+  # TODO: try printing out rhs_vec both in newton and CN to see if they're the same
+  for i = 1:mesh.numDof
+    rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
+  end
 
   return nothing
 
@@ -231,8 +250,7 @@ end
 
 function odeConstantResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, 
                              eqn_nextstep::AbstractSolutionData, opts, t=0.0)
-
-  return 6
+  return nothing
 
 end
 

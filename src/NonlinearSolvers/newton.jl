@@ -176,8 +176,8 @@ end   # end of setupNewton
 function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh, t=0.0; 
                 itermax=200, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
 
-  rhs_func = calcRhs
-  jac_func = calcJac
+  rhs_func = physicsRhs
+  jac_func = physicsJac
 
   # allocate jac & rhs, and construct newton_data
   newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts)
@@ -257,7 +257,7 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
   Tsol = typeof(rhs_vec[1])
   res_0 = zeros(Tjac, m)  # function evaluated at u0
   res_0_norm = 0.0  # norm of res_0
-  delta_res_vec = zeros(Tjac, m)  # newton update
+  delta_q_vec = zeros(Tjac, m)  # newton update
   step_norm = zero(Tjac)  # norm of newton update
   step_norm_1 = zero(Tjac) # norm of previous newton update
 
@@ -273,7 +273,7 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
 
   # evaluating residual at initial condition
   @mpi_master println(fstdout, "evaluating residual at initial condition"); flush(fstdout)
-  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, rhs_vec, ctx_residual, t)
+  res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, rhs_func, rhs_vec, ctx_residual, t)
   @mpi_master println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
 
   # extract the real components to res_0
@@ -320,6 +320,8 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
       destroyPetsc(jac, newton_data.ctx_newton...)
     end
 
+    @mpi_master println(fstdout, "Not entering Newton iteration loop")
+    flush(fstdout)
     return nothing
 
   end  # end if tolerances satisfied
@@ -344,11 +346,11 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
     # Calculate Jacobian here
-    calcJac(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
+    jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
 
     if use_jac_precond
       if ((i % recalc_prec_freq)) == 0 || i == 1
-        calcJac(newton_data, pmesh, sbp, eqn, opts, jacp, ctx_residual, t)
+        jac_func(newton_data, pmesh, sbp, eqn, opts, jacp, ctx_residual, t)
       end
     end
 
@@ -435,26 +437,27 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
     if jac_type == 1 || jac_type == 2  # julia jacobian
       tmp, t_solve, t_gc, alloc = @time_all begin
         jac_f = factorize(jac)
-        delta_res_vec[:] = jac_f\(res_0)  #  calculate Newton update
+        delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
       end
       fill!(jac, 0.0)
-#    @time solveMUMPS!(jac, res_0, delta_res_vec)
+#    @time solveMUMPS!(jac, res_0, delta_q_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc jacobian
       # contents of ctx: (jacp, x, b, ksp)
       tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, 
-                                                       res_0, delta_res_vec, mesh.dof_offset)
+                                                       res_0, delta_q_vec, mesh.dof_offset)
     end
     eqn.params.time.t_solve += t_solve
     @mpi_master print(fstdout, "matrix solve: ")
     @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
-    step_norm = norm(delta_res_vec)
+    step_norm = norm(delta_q_vec)
     #TODO: make this a regular reduce?
     step_norm = MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm)
     @mpi_master println(fstdout, "step_norm = ", step_norm)
+    flush(fstdout)
 
     # perform Newton update
     for j=1:m
-      eqn.q_vec[j] += step_fac*delta_res_vec[j]
+      eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
     
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
@@ -472,7 +475,7 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     # extract real component to res_0
-    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, calcRhs, rhs_vec, ctx_residual, t)
+    res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, rhs_func, rhs_vec, ctx_residual, t)
     for j=1:m
       res_0[j] = real(rhs_vec[j])
     end
@@ -606,7 +609,7 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
 end               # end of function newton()
 
 @doc """
-###NonlinearSolver.calcJac
+###NonlinearSolver.jac_func
   
   Jacobian (of the physics) calculation, separate from the Newton function
 
@@ -620,7 +623,7 @@ end               # end of function newton()
     for the calculation of the time-marching Jac.
 
 """->
-function calcJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
+function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
 
   myrank = mesh.myrank
   fstdout = BufferedIO(STDOUT)
@@ -720,7 +723,7 @@ function calcJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residua
 
   return nothing
 
-end   # end of calcJac function
+end   # end of physicsJac function
 
 #------------------------------------------------------------------------------
 # jacobian vector product functions

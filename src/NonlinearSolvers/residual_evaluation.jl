@@ -2,7 +2,7 @@
 # residual evaluation
 
 # TODO: calcResidual shouldn't need exporting
-export calcResidual, calcRhs
+export calcResidual, physicsRhs
 @doc """
 ### NonlinearSolvers.calcResidual
 
@@ -31,12 +31,16 @@ export calcResidual, calcRhs
       res_0_norm:  norm of residual
 
     To solve steady problems:
-      func_rhs should be calcRhs
+      func_rhs should be physicsRhs
       ctx_residual should be (func, ...) where func is the physics function such as evalEuler
 
     To solve unsteady problems:
-      func_rhs should be some function that typically uses calcRhs as a building block for the time-marching residual
+      func_rhs should be some function that typically uses physicsRhs as a building block for the time-marching residual
       ctx_residual should be whatever is required by func_rhs
+
+    Note about eqn.q & eqn.q_vec consistency:
+      Within this function, when func_rhs is called, eqn.q and eqn.q_vec are consistent.
+      At exit from func_rhs, rhs_vec will have the residual in it.
 
     Aliasing restrictions: none
 """->
@@ -70,14 +74,14 @@ function calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)
   rhs_vec = eqn.res_vec
   ctx_residual = (func_physics, )
 
-  res_0_norm = calcResidual(mesh, sbp, eqn, opts, calcRhs, rhs_vec, ctx_residual, t)
+  res_0_norm = calcResidual(mesh, sbp, eqn, opts, physicsRhs, rhs_vec, ctx_residual, t)
 
   return res_0_norm
 
 end
 
 @doc """
-###NonlinearSolver.calcRhs
+###NonlinearSolver.physicsRhs
   
   RHS (of the physics) calculation, separate from the Newton function
 
@@ -85,7 +89,7 @@ end
   t:            simulation time
 
 """->
-function calcRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
+function physicsRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
 
   func = ctx_residual[1]
 
