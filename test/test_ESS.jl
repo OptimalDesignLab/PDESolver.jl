@@ -40,7 +40,7 @@ function interiorfacepenalty!{Tdim, Tsol, Tres, Tmsh}(
   nrm = params.nrm
   E_full = zeros(sbpface.stencilsize, sbpface.stencilsize, Tdim)
   F = zeros(4, sbpface.stencilsize, sbpface.stencilsize)
-  for dim = 1:1  # DEBUGGING 1:TDIM
+  for dim = 1:Tdim  # DEBUGGING 1:TDIM
     fill!(nrm, 0.0)
     nrm[dim] = 1
 
@@ -146,7 +146,7 @@ function calcESS{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim}, sbpfac
   F = zeros(Tres, full_size, full_size)
 
   nrm = zeros(3)
-  for dim=1:Tdim  #DEBUGGING 1:TDIM
+  for dim=1:1  #DEBUGGING 1:TDIM
     fill!(nrm, 0)
     nrm[dim] = 1
     # calculate F
@@ -483,6 +483,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
   end
 
   # verify lemma 3
+  total_potentialflux = 0.0
   println("\nchecking lemma 3")
   for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
@@ -508,6 +509,11 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     println("E_expensive = \n", E_expensive)
     println("resL = \n", resL)
     println("resR = \n", resR)
+    lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
+    println("wtranspose resL = \n", lhsL)
+    println("wtranspose resR = \n", lhsR)
+    println("code potentialflux sum = ", lhsL + lhsR)
+
     rhsL = zero(Tres)
     rhsR = zero(Tres)
 
@@ -516,24 +522,21 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 #    calcBCNormal(eqn.params, dxidx_face[:, :, 1], facenormal, nrm) 
 
     rhs = 0.0
-    for dir=1:1
+    for dir=1:mesh.dim
       fill!(nrm, 0.0)
       nrm[dir] = 1.0
       psiL, psiR = getPsi(eqn.params, qL, qR, nrm)
-      println("PsiL = \n", psiL)
-      println("psiR = \n", psiR)
       rhs += reduceEface(iface, mesh.sbpface, dxidx_face, dir, psiL, psiR)
 #      EL, ER = getEface(iface, mesh.sbpface, dxidx_face, dir)
 #      rhsL += sum(EL*psiL)
 #      rhsR += sum(ER*psiR)  # negative transpose
     end
 
-    println("rhs = ", rhs)
+    println("exact potentialflux = ", rhs)
 #    println("rhsL = ", rhsL, ", rhsR = ", rhsR)
 
-    lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
-    println("lhs = ", lhsL + lhsR)
     @fact -(lhsL + lhsR) --> roughly(rhs, atol=1e-12)
+    total_potentialflux -= lhsL + lhsR
 
 
 #=
@@ -588,6 +591,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     @fact rsumL --> roughly(-rsumR, atol=1e-12)
 =#
   end
+  println("total potentialflux = ", total_potentialflux)
 
   println("finished checking lemma 3")
 #=
@@ -761,10 +765,22 @@ facts("----- testing ESS -----") do
   println("mesh.numInterfaces = ", mesh.numInterfaces)
   # evaluate the residual to confirm it is zero
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
-  eqn.q[:, :, 2] = [0.9999469550787938 0.999893937345772 1.0001591075754341
-                    0.3534187448307662 0.35351249757105674 0.353718757598177
-                    0.3535312360245839 0.3532875032507984 0.3538312607246176
-                    1.9998541244828205 1.9997083272487806 2.000437548268399]
+  mesh.numInterfaces = 1  # DEBUGGING, only do first interface
+  interfaces_orig = copy(mesh.interfaces)
+  resize!(mesh.interfaces, 1)
+  mesh.interfaces[1] = interfaces_orig[2]
+
+  eqn.q[:, :, 1] = [1.0000235679946659 1.000032408932158 0.999979378072918
+   0.3536083313130051 0.3536302083762344 0.35349896016653765
+    0.3535583324645141 0.3535614581779644 0.35354270911768015
+     2.000064811793025 2.000089124613972 1.9999432898760423]
+
+
+  eqn.q[:, :, 2] = [1.0000206255729094 0.999976427994924 0.9999675914324248
+   0.3536010433321349 0.353491664838455 0.3534697919736328
+    0.35355729217130205 0.35354166611760535 0.35353854195093376
+     2.0000567205406043 1.999935176748664 1.9999108764276925]
+
 
   println("checking channel flow")
   runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)

@@ -118,9 +118,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if real_time treal = t end
     f( ctx..., opts, treal)
     eqn = ctx[3]
-    println("after stage 1 of rk4, res = \n", eqn.res)
     sol_norm = post_func(ctx..., opts)
-    println("after post_func, res = \n", eqn.res)
     
     majorIterationCallback(i, ctx..., opts, fstdout)
     for j=1:m
@@ -315,11 +313,8 @@ end
 
 """->
 function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
-  println("on entry to pde_post_func, res = \n", eqn.res)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-  println("after multiplyA0inv, res = \n", eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  println("after assembleSolution, eqn.res = \n", eqn.res)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   if calc_norm
     local_norm = calcNorm(eqn, eqn.res_vec)

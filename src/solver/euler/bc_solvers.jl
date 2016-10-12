@@ -23,8 +23,8 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
 #  println("----- entered calcEss code -----")
 
   #DEBUGGING
-  fill!(resL, 0.0)
-  fill!(resR, 0.0)
+#  fill!(resL, 0.0)
+#  fill!(resR, 0.0)
 
   numDofPerNode, numNodesPerElement = size(qL)
   numFaceNodes = length(sbpface.wface)
@@ -48,7 +48,7 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
   # get the face normals
   facenormal = sview(sbpface.normal, :, iface.faceL)
 
-  for dim=1:1  # DEBUGGING: 1:TDIM
+  for dim=1:Tdim  # DEBUGGING: 1:TDIM
     fill!(nrm, 0.0)
     nrm[dim] = 1
 
@@ -96,7 +96,7 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
 
   end  # end loop Tdim
 
-  return copy(workB)
+  return nothing
 end
                    
 
