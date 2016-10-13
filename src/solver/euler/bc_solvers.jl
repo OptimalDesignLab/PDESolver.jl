@@ -704,7 +704,7 @@ function logavg(aL, aR)
   u = f*f
   eps = 1e-2
   if u < eps
-    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0
+    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0 + u*u*u*u/9.0
   else
     F = (log(xi)/2.0)/f
   end

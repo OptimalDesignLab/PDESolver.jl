@@ -286,7 +286,8 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       q_vals = sview(eqn.q_vec, i:(i+Tdim+1))
 #      s = calcEntropy(eqn.params, q_vals)
       s = calcEntropyIR(eqn.params, q_vals)
-      val += real(q_vals[1]*s)*eqn.M[i]
+#      val += real(q_vals[1]*s)*eqn.M[i]
+      val += s*eqn.M[i]
     end
 
     val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
