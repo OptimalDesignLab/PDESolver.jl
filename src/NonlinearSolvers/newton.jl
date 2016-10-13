@@ -609,7 +609,7 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
 end               # end of function newton()
 
 @doc """
-###NonlinearSolver.jac_func
+###NonlinearSolver.physicsJac
   
   Jacobian (of the physics) calculation, separate from the Newton function
 
@@ -624,6 +624,18 @@ end               # end of function newton()
 
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
+
+  loc_mark = 31
+  println(fstdout, "$loc_mark: ===== t = ", t)
+  println(fstdout, "in physicsJac")
+  flush(fstdout)
+  for dofix = 21485:21488
+    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  end
+  for dofix = 20489:20492
+    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  end
+  flush(fstdout)
 
   myrank = mesh.myrank
   fstdout = BufferedIO(STDOUT)

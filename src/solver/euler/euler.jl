@@ -112,6 +112,19 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
+  fstdout = BufferedIO(STDOUT)
+  loc_mark = 41
+  println(fstdout, "$loc_mark: ===== t = ", t)
+  println(fstdout, "in evalEuler")
+  flush(fstdout)
+  for dofix = 21485:21488
+    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  end
+  for dofix = 20489:20492
+    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  end
+  flush(fstdout)
+
   if opts["parallel_type"] == 1
     time.t_send += @elapsed if mesh.commsize > 1
       sendParallelData(mesh, sbp, eqn, opts)
@@ -170,6 +183,8 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 #  println("source integral @time printed above")
 
 
+  println(fstdout, "===== 42: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+  flush(fstdout)
 
   
 #  print("\n")
