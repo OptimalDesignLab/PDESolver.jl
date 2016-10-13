@@ -710,6 +710,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     res_total = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
     potentialflux_total = 0.0
     for d=1:mesh.dim  # DEBUGGING: 1:mesh.dim
+      println("dimension ", d)
       S_d = S[:, :, d]
       E_d = E[:, :, d]
 
@@ -728,11 +729,14 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
       # now do rhs
       rhs_reduced = 0.0
       psi_nrm = dxidx[d, 1, 1]*psi[:, 1] + dxidx[d, 2, 1]*psi[:, 2]
+
+      println("psi_nrm = ", psi_nrm)
       rhs_reduced = sum(E_d*psi_nrm)
+      println("rhs_reduced = ", rhs_reduced)
 #      println("E*psi = ", E_d*psi[:, d])
 
       println("lhs_reduced = ", lhs_reduced, ", rhs_reduced = ", rhs_reduced)
-      potentialflux_total += lhs_reduced
+      potentialflux_total += rhs_reduced
 
       @fact lhs_reduced --> roughly(-rhs_reduced, atol=1e-12)
 
@@ -770,16 +774,16 @@ facts("----- testing ESS -----") do
   resize!(mesh.interfaces, 1)
   mesh.interfaces[1] = interfaces_orig[2]
 
-  eqn.q[:, :, 1] = [1.0000235679946659 1.000032408932158 0.999979378072918
-   0.3536083313130051 0.3536302083762344 0.35349896016653765
-    0.3535583324645141 0.3535614581779644 0.35354270911768015
-     2.000064811793025 2.000089124613972 1.9999432898760423]
+  eqn.q[:, :, 1] = [3.068261489438422 0.1094571399618569 0.00013929885611344085
+   9.320555428200217 0.011861653885188814 1.9211096583974107e-8
+    28.313347408356883 0.0012854239836802314 2.6494563003318874e-12
+     797.9676144200228 0.0006879986168623705 1.324728301343467e-12]
 
 
-  eqn.q[:, :, 2] = [1.0000206255729094 0.999976427994924 0.9999675914324248
-   0.3536010433321349 0.353491664838455 0.3534697919736328
-    0.35355729217130205 0.35354166611760535 0.35353854195093376
-     2.0000567205406043 1.999935176748664 1.9999108764276925]
+  eqn.q[:, :, 2] = [86.00835515025784 0.003904773282808541 67582.95674663827
+   7323.83142612406 1.5095541674084822e-5 4.522009095650572e9
+    623642.9782266528 5.835815857409547e-8 3.025698673972792e14
+     1.3566339108440784e10 2.9181695834354454e-8 4.0638289178478075e24]
 
 
   println("checking channel flow")

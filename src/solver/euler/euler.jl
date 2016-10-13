@@ -295,8 +295,8 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     w_vals = zeros(eltype(eqn.q_vec), mesh.numDof)
 #    potentialflux_arr = zeros(mesh.numNodesPerElement, mesh.numEl)
     for i=1:mesh.numDofPerNode:mesh.numDof
-#      idx = findin(mesh.dofs, i)
-#      dof, node, el = ind2sub(mesh.dofs, idx[1])
+ #     idx = findin(mesh.dofs, i)
+ #     dof, node, el = ind2sub(mesh.dofs, idx[1])
 
       q_vals_i = sview(eqn.q_vec, i:(i+Tdim+1))
       w_vals_i = sview(w_vals, i:(i+Tdim+1))
@@ -309,13 +309,13 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 #      println("element ", i, " potential flux = ", sum(potentialflux_arr[:, i]))
 #    end
 
- #   println("potentialflux from res = ", sum(potentialflux_arr))
+#    println("potentialflux from res = ", sum(potentialflux_arr))
 
     val2_local = dot(w_vals, res_vec_orig)
     # this doesn't work right in parallel because of duplicated interfaces
     val2 = MPI.Allreduce(val2_local, MPI.SUM, eqn.comm)
 
-#=
+
     # DEBUGGING: compute the potential flux from the boundary terms
     #            directly, to verify the boundary terms are the problem
     val3 = zero(Float64)  # exact potential flux integral
@@ -330,6 +330,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       aux_vars = sview(eqn.aux_vars, :, :, elL)
       dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
       bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, dxidx_face, qL, qR)
+#      println("interface ", i, ", potentialflux = ", bndry_potentialflux)
       val3 += bndry_potentialflux
       resL = sview(res_orig, :, :, elL)
       resR = sview(res_orig, :, :, elR)
@@ -339,10 +340,10 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
       # DEBUGGING: don't compute the boundary integrals, and add their
       #            flux here
-      if !opts["addFaceIntegrals"]
+#      if !opts["addFaceIntegrals"]
 #        println("adding boundary potential flux for interface ", i)
-        val2 += bndry_potentialflux
-      end
+#        val2 += bndry_potentialflux
+#      end
 
     end
 
@@ -350,6 +351,8 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       q_i = sview(eqn.q[:, :, i])
       dxidx_i = sview(mesh.dxidx, :, :, :, i)
       volume_potentialflux = -computeVolumePotentialFlux(eqn.params, sbp, q_i, dxidx_i)
+
+#      println("element ", i, "expected potentialflux = ", volume_potentialflux)
       val3 += volume_potentialflux
       # DEBUGGING: don't compute the volume integrals, add their flux here
 
@@ -363,13 +366,14 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
         println("q_i = ", q_i)
         =#
 
-        val2 += volume_potentialflux
+#        val2 += volume_potentialflux
       end
     end
-=#
+
+#    @assert abs(val3 - val2) < 1e-12
 #    println("sum of potential fluxes = ", val2)
     f = open(opts["write_entropy_fname"], "a+")
-    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
+    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2, " ",  val3)
     close(f)
   end
 #=
