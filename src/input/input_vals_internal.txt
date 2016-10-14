@@ -2,9 +2,16 @@
 # this file documents keys that are used by PDESolver internally but are not 
 # intended to be set by users
 
-"parallel_type": what method of parallelization to use, (Int), 1 = face, 2 = 
-                 element, default implied by run_type: rk4 -> 1, any method
+"parallel_type": how often to exchange parallel data, (Int) 1 = every residual
+                 evaluation, 2 = every jacobian evaluation
+                 default implied by run_type: rk4 -> 1, any method
                  that requires calculating the Jacobian -> 2
+
+
+"parallel_data": what data to exchange in parallel, (ASCIIString), 
+                 known values "face" for face data and "element" for element 
+                 data, default implied by a set of other options which
+                 determine the calculations that need to be done
 
 "fname": the path to the file in which the dictionary is declared, ASCIIString,
          set from the argument passed to read_input

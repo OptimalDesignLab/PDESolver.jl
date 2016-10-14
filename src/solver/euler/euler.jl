@@ -112,11 +112,10 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-  if opts["parallel_type"] == 1
-    time.t_send += @elapsed if mesh.commsize > 1
-      sendParallelData(mesh, sbp, eqn, opts)
-    end
-    #  println("send parallel data @time printed above")
+  time.t_send += @elapsed if opts["parallel_type"] == 1
+
+    startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    #  println(" startDataExchange @time printed above")
   end
  
 
@@ -604,7 +603,7 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
 end
                             
-
+#=
 @doc """
 ### EulerEquationMod.sendParallelData
 
@@ -628,7 +627,7 @@ function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end
-
+=#
 @doc """
 ### EulerEquationMod.evalSharedFaceIntegrals
 
@@ -644,12 +643,23 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  if opts["parallel_type"] == 1
-#    println(eqn.params.f, "doing face integrals using face data")
-    calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+  face_integral_type = opts["face_integral_type"]
+  if face_integral_type == 1
+
+    if opts["parallel_data"] == "face"
+  #    println(eqn.params.f, "doing face integrals using face data")
+      calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+    elseif opts["parallel_data"] == "element"
+  #    println(eqn.params.f, "doing face integrals using element data")
+      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+    else
+      throw(ErrorException("unsupported parallel data type"))
+    end
+
+  elseif face_integral_type == 2
+    getESSharedFaceIntegrals(mesh, sbp, eqn, opts,eqn.flux_func)
   else
-#    println(eqn.params.f, "doing face integrals using element data")
-    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+    throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end
 
   return nothing

@@ -634,11 +634,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     if mesh.isDG
-      if opts["parallel_type"] == 1 
+      if opts["parallel_data"] == "face"
         dim2 = numfacenodes
         dim3_send = mesh.peer_face_counts
         dim3_recv = mesh.peer_face_counts
-      elseif opts["parallel_type"] == 2
+      elseif opts["parallel_data"] == "element"
         dim2 = mesh.numNodesPerElement
         dim3_send = mesh.local_element_counts
         dim3_recv = mesh.remote_element_counts
@@ -658,7 +658,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       end
     end
    
-    #TODO: don't allocate these arrays if not needed
     if eqn.params.use_edgestab
       eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
       calcEdgeStabAlpha(mesh, sbp, eqn)

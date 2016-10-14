@@ -40,11 +40,6 @@ include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include th
 # record fname in dictionary
 arg_dict["fname"] = fname
 
-if arg_dict["run_type"] == 1
-  get!(arg_dict, "parallel_type", 1)
-else
-  get!(arg_dict, "parallel_type", 2)
-end
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -136,6 +131,24 @@ if arg_dict["use_edgestab_prec"]
 else
   get!(arg_dict, "coloring_distance_prec", 0)
 end
+
+# parallel options
+if arg_dict["run_type"] == 1
+  get!(arg_dict, "parallel_type", 1)
+else
+  get!(arg_dict, "parallel_type", 2)
+end
+
+if arg_dict["run_type"] == 1
+  if arg_dict["face_integral_type"] == 2  # entropy stable 
+    get!(arg_dict, "parallel_data", "element")
+  else
+    get!(arg_dict, "parallel_data", "face")
+  end
+else
+  get!(arg_dict, "parallel_data", "element")
+end
+
 
 
 # misc options

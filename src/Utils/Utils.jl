@@ -18,6 +18,7 @@ include("initialization.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
+export startDataExchange
 export exchangeElementData
 export @mpi_master, @time_all, print_time_all
 export Timings, write_timings

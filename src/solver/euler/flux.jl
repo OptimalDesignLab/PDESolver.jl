@@ -98,6 +98,10 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol}(
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
                             opts, functor::FluxType)
 
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use getESSharedFaceIntegrals_elemenet without parallel element data"))
+  end
+
   q = eqn.q
   params = eqn.params
   # we don't care about elementR here, so use this throwaway array
@@ -170,6 +174,11 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             opts, functor::FluxType)
 # calculate the face flux and do the integration for the shared interfaces
 
+  if opts["parallel_data"] != "face"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
+  end
+
+
   params = eqn.params
 
   npeers = mesh.npeers
@@ -230,6 +239,11 @@ end
 function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
                             opts, functor::FluxType)
+
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+  end
+
 
   q = eqn.q
   params = eqn.params
@@ -361,7 +375,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts,
     end
   end
 
-  if opts["parallel_type"] == 1  
+  if opts["parallel_data"] == 1  
     for peer=1:mesh.npeers
       q_vals_p = eqn.q_face_send[peer]
       aux_vars = eqn.aux_vars_sharedface[peer]
