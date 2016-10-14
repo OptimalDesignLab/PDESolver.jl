@@ -593,7 +593,8 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
     
-    getESFaceIntegral(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces)
+    @time getESFaceIntegral(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces)
+    println("getESFaceIntegral @time printed above")
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))

@@ -145,7 +145,8 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
 end
 @doc """
   Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q 
-  ans F is a symmetric numerical flux function.  
+  and F is a symmetric numerical flux function.  eqn.res is updated 
+  with the result.
 """
 function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
                                         mesh::AbstractMesh{Tmsh}, 

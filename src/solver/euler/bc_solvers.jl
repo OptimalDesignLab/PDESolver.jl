@@ -1,104 +1,83 @@
 
 # this file contains all the flux solvers for weakly imposed boundary conditions
 """
-  Calculate the face integrals in an entropy stable manner.  
+  Calculate the face integrals in an entropy stable manner for a given
+  interface.  Unlike standard face integrals, this requires data from
+  the entirety of both elements, not just data interpolated to the face
 
-  The following field of params are used by this functions:
-    A, B, C, nrm, flux_vals1
+  resL and resR are updated with the results of the computation for the 
+  left and right elements, respectively.
+
+  Note that dxidx_face must contains the scaled metric terms interpolated 
+  to the face nodes.
 
   Aliasing restrictions: none, although its unclear what the meaning of this
                          function would be if resL and resR alias
+
+  Performance note: the version in the tests is the same speed as this one
+                    for p=1 Omega elements and about 10% faster for 
+                    p=4 elements, but would not be able to take advantage of t
+                    he sparsity of R for SBP Gamma elements
 """
-function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
-                                sbpface::AbstractFace,
-                                iface::Interface,
-                                qL::AbstractMatrix{Tsol},
-                                qR::AbstractMatrix{Tsol}, 
-                                aux_vars::AbstractMatrix{Tres},
-                                dxidx_face::Abstract3DArray{Tmsh},
-                                functor::FluxType,
-                                resL::AbstractMatrix{Tres}, 
-                                resR::AbstractMatrix{Tres})
+                  
+function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+                             params::AbstractParamType{Tdim}, 
+                             sbpface::AbstractFace, 
+                             iface::Interface,
+                             qL::AbstractMatrix{Tsol}, 
+                             qR::AbstractMatrix{Tsol}, 
+                             aux_vars::AbstractMatrix{Tres}, 
+                             dxidx_face::Abstract3DArray{Tmsh},
+                             functor::FluxType, 
+                             resL::AbstractMatrix{Tres}, 
+                             resR::AbstractMatrix{Tres})
 
-#  println("----- entered calcEss code -----")
 
-  #DEBUGGING
-#  fill!(resL, 0.0)
-#  fill!(resR, 0.0)
-
-  numDofPerNode, numNodesPerElement = size(qL)
-  numFaceNodes = length(sbpface.wface)
-
-  Rprime = params.Rprime
-
-  F_tmp = params.flux_vals1
-
-  workA = params.A
-  workB = sview(params.B, :, :, 1)
-  workC = sview(params.B, :, :, 2)
+  Flux_tmp = params.flux_vals1
+  numDofPerNode = length(Flux_tmp)
   nrm = params.nrm
-
-  perm_nu = sview(sbpface.perm, :, iface.faceR)
-  perm_gamma = sview(sbpface.perm, :, iface.faceL)
-
-  # inverse (transpose) permutation vectors
-  iperm_gamma = params.iperm 
-  inversePerm(perm_gamma, iperm_gamma)
-
-  # get the face normals
-  facenormal = sview(sbpface.normal, :, iface.faceL)
-
-  for dim=1:Tdim  # DEBUGGING: 1:TDIM
+  for dim = 1:Tdim
     fill!(nrm, 0.0)
     nrm[dim] = 1
 
-    # Nx, wface times Rprime
-    for i=1:numFaceNodes
-      nrm_i = zero(Tmsh)
-      for d=1:Tdim
-        nrm_i += facenormal[d]*dxidx_face[d, dim, i]
-      end
-      fac = sbpface.wface[i]*nrm_i
-      # multiply by Rprime into A
-      for j=1:numNodesPerElement
-        # should nbrperm be after perm_nu?
-        workA[i, j] = fac*Rprime[sbpface.nbrperm[i], j]
+    # loop over the nodes of "left" element that are in the stencil of interp
+    for i = 1:sbpface.stencilsize
+      p_i = sbpface.perm[i, iface.faceL]
+      qi = sview(qL, :, p_i)
+      aux_vars_i = sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
 
-#        workA[i, j] = fac*Rprime[i, j]
-      end
-    end
+      # loop over the nodes of "right" element that are in the stencil of interp
+      for j = 1:sbpface.stencilsize
+        p_j = sbpface.perm[j, iface.faceR]
+        qj = sview(qR, :, p_j)
 
-    # multiply by Rprime.'*A = B
-    smallmatTmat!(Rprime, workA, workB)
-    
-    # post multiply by perm_nu
-    applyPermColumn(perm_nu, workB, workC)
-
-    # pre multiply by perm_gamma
-    applyPermRow(iperm_gamma, workC, workB)
-
-    # compute (B hadamard F)1
-    for i=1:numNodesPerElement
-      q_i = sview(qL, :, i)
-      aux_vars_i = sview(aux_vars, :, i)
-      for j=1:numNodesPerElement
-        q_j = sview(qR, :, j)
-        functor(params, q_i, q_j, aux_vars_i, nrm, F_tmp)
-        B_val = workB[i, j]
+        # accumulate entry p_i, p_j of E
+        Eij = zero(Tres)  # should be Tres
+        for k = 1:sbpface.numnodes
+          # the computation of nrm_k could be moved outside i,j loops and saved
+          # in an array of size [3, sbp.numnodes]
+          nrm_k = zero(Tmsh)
+          for d = 1:Tdim
+            nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
+          end
+          kR = sbpface.nbrperm[k, iface.orient]
+          Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
+        end  # end loop k
         
+        # compute flux and add contribution to left and right elements
+        functor(params, qi, qj, aux_vars_i, nrm, Flux_tmp)
         for p=1:numDofPerNode
-          # because this term is on the rhs, the signs are reversed
-          resL[p, i] -= B_val*F_tmp[p]
-          resR[p, j] += B_val*F_tmp[p]
+          resL[p, p_i] -= Eij*Flux_tmp[p]
+          resR[p, p_j] += Eij*Flux_tmp[p]
         end
+
       end
     end
-
   end  # end loop Tdim
+
 
   return nothing
 end
-                   
 
 
 """

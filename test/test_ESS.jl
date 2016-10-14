@@ -20,60 +20,90 @@ include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
 resize!(ARGS, 1)
+import EulerEquationMod: ParamType
+function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
+                                sbpface::AbstractFace,
+                                iface::Interface,
+                                qL::AbstractMatrix{Tsol},
+                                qR::AbstractMatrix{Tsol}, 
+                                aux_vars::AbstractMatrix{Tres},
+                                dxidx_face::Abstract3DArray{Tmsh},
+                                functor::FluxType,
+                                resL::AbstractMatrix{Tres}, 
+                                resR::AbstractMatrix{Tres})
 
-function interiorfacepenalty!{Tdim, Tsol, Tres, Tmsh}(
-   params::AbstractParamType{Tdim}, sbpface::AbstractFace, iface::Interface,
-   qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-   aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
-   functor::FluxType, resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+#  println("----- entered calcEss test -----")
 
+  numDofPerNode, numNodesPerElement = size(qL)
+  numFaceNodes = length(sbpface.wface)
 
-  Flux_tmp = params.flux_vals1
-  numDofPerNode = length(Flux_tmp)
+  Rprime = params.Rprime
+
+  F_tmp = params.flux_vals1
+
+  workA = params.A
+  workB = sview(params.B, :, :, 1)
+  workC = sview(params.B, :, :, 2)
   nrm = params.nrm
-  E_full = zeros(sbpface.stencilsize, sbpface.stencilsize, Tdim)
-  for dim = 1:Tdim  # DEBUGGING 1:TDIM
+
+  perm_nu = sview(sbpface.perm, :, iface.faceR)
+  perm_gamma = sview(sbpface.perm, :, iface.faceL)
+
+  # inverse (transpose) permutation vectors
+  iperm_gamma = params.iperm 
+  inversePerm(perm_gamma, iperm_gamma)
+
+  # get the face normals
+  facenormal = sview(sbpface.normal, :, iface.faceL)
+  for dim=1:Tdim
     fill!(nrm, 0.0)
     nrm[dim] = 1
 
-    # loop over the nodes of "left" element that are in the stencil of interp
-    for i = 1:sbpface.stencilsize
-      p_i = sbpface.perm[i, iface.faceL]
-      qi = qL[:, p_i]
-      aux_vars_i = sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
-
-      # loop over the nodes of "right" element that are in the stencil of interp
-      for j = 1:sbpface.stencilsize
-        p_j = sbpface.perm[j, iface.faceR]
-        qj = qR[:, p_j]
-        # construct Eij
-        Eij = zero(Tsol)  # should be Tres
-        for k = 1:sbpface.numnodes
-          # the computation of nrm_k could be moved outside i,j loops and saved
-          # in an array of size [3, sbp.numnodes]
-          nrm_k = zero(Tmsh)
-          for d = 1:Tdim
-            nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
-          end
-          kR = sbpface.nbrperm[k, iface.orient]
-          Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
-        end  # end loop k
-        E_full[p_i, p_j, dim] = Eij
-        
-        # compute flux and add contribution to left and right elements
-        functor(params, qi, qj, aux_vars_i, nrm, Flux_tmp)
-        resL[:, p_i] -= Eij*Flux_tmp[:]
-        resR[:, p_j] += Eij*Flux_tmp[:]
-
+    # Nx, wface times Rprime
+    for i=1:numFaceNodes
+      nrm_i = zero(Tmsh)
+      for d=1:Tdim
+        nrm_i += facenormal[d]*dxidx_face[d, dim, i]
+      end
+      fac = sbpface.wface[i]*nrm_i
+      # multiply by Rprime into A
+      for j=1:numNodesPerElement
+        # should nbrperm be after perm_nu?
+        workA[i, j] = fac*Rprime[sbpface.nbrperm[i], j]
       end
     end
+
+    # multiply by Rprime.'*A = B
+    smallmatTmat!(Rprime, workA, workB)
+    
+    # post multiply by perm_nu
+    applyPermColumn(perm_nu, workB, workC)
+
+    # pre multiply by perm_gamma
+    applyPermRow(iperm_gamma, workC, workB)
+
+    # compute (B hadamard F)1
+    for i=1:numNodesPerElement
+      q_i = sview(qL, :, i)
+      aux_vars_i = sview(aux_vars, :, i)
+      for j=1:numNodesPerElement
+        q_j = sview(qR, :, j)
+        functor(params, q_i, q_j, aux_vars_i, nrm, F_tmp)
+        B_val = workB[i, j]
+        
+        for p=1:numDofPerNode
+          # because this term is on the rhs, the signs are reversed
+          resL[p, i] -= B_val*F_tmp[p]
+          resR[p, j] += B_val*F_tmp[p]
+        end
+      end
+    end
+
   end  # end loop Tdim
 
-
-  return E_full
+  return copy(workB)
 end
-
-
+ 
 function psi_vec(params, q_vals)
   s = EulerEquationMod.calcEntropy(params, q_vals)
   rho = q_vals[1]
@@ -272,7 +302,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
     EulerEquationMod.calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
 
-    interiorfacepenalty!(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
+    calcESFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
 
     for i=1:size(resL_code, 1)
       for j=1:size(resR_code, 2)
@@ -318,7 +348,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     resR = zeros(resL)
 
     # calculate the integral of entropy flux from the residual
-    E_expensive = interiorfacepenalty!(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+    E_expensive = calcESFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
 
     nrm = zeros(mesh.dim)
