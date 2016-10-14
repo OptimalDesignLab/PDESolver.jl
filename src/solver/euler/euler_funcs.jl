@@ -157,6 +157,9 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
   #
   #      Second: Caching.  The numerical fluxes used here should be 
   #      symmetric, so calculate the unique entries and cache them
+  #
+  #      Third: Skew symmetry of S: combined with the symmetric flux function,
+  #             should reduce the number of calculations
 
 #  println("----- entered calcVolumeIntegralsSplitForm -----")
   dxidx = mesh.dxidx
@@ -184,7 +187,6 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
     D[:, :, p] = hinv*sbp.Q[:, :, p]
   end
 =#
-  F = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
   for i=1:mesh.numEl
     # res[:, j, i] = Qjk^T*F_start(uj, uk)
 #    fill!(Fx_regular, 0.0); fill!(Fx_split, 0.0)

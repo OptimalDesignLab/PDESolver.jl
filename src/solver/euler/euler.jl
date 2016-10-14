@@ -126,8 +126,8 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
+#    println("volume integral @time printed above")
   end
-#  println("volume integral @time printed above")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -153,24 +153,25 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   #----------------------------------------------------------------------------
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-    evalBoundaryIntegrals(mesh, sbp, eqn)
-#  println("boundary integral @time printed above")
+   evalBoundaryIntegrals(mesh, sbp, eqn)
+#   println("boundary integral @time printed above")
   end
 
 
   time.t_stab += @elapsed if opts["addStabilization"]
-      addStabilization(mesh, sbp, eqn, opts)
-#  println("stabilizing @time printed above")
+    addStabilization(mesh, sbp, eqn, opts)
+#    println("stabilizing @time printed above")
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-    #println("face integral @time printed above")
+#    println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+#    println("evalSharedFaceIntegrals @time printed above")
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
