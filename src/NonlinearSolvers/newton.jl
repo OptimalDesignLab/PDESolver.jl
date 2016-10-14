@@ -173,7 +173,7 @@ end   # end of setupNewton
     func must have the signature func(mesh, sbp, eqn, opts, t=0.0) 
 
 """->
-function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, pmesh=mesh, t=0.0; 
+function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts, pmesh=mesh, t=0.0; 
                 itermax=200, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
 
   rhs_func = physicsRhs
@@ -189,7 +189,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp, eqn::AbstractSolutionDa
 
 end
 
-function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual=(), t=0.0;
+function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+                     opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual=(), t=0.0;
                      itermax=200, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
 
   # this function drives the non-linear residual to some specified tolerance
@@ -342,7 +343,7 @@ function newtonInner(newton_data::NewtonData, mesh, sbp, eqn, opts, rhs_func, ja
   #------------------------------------------------------------------------------------
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
-    @mpi_master println(fstdout, "Newton iteration: ", i)
+    @mpi_master println(fstdout, "==================== Newton iteration: ", i)
     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
     # Calculate Jacobian here
@@ -624,6 +625,8 @@ end               # end of function newton()
 
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
+
+  fstdout = BufferedIO(STDOUT)
 
   loc_mark = 31
   println(fstdout, "$loc_mark: ===== t = ", t)

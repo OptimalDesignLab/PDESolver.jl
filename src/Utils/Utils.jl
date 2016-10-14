@@ -42,6 +42,9 @@ export createMeshAndOperator
   This is a mid level function, and does the right thing regardless of equation
   dimension.
 
+  The DG method for disassembleSolution assumes that q and q_vec refer to the 
+    same memory address, and therefore does no explicit writing/copying.
+
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
@@ -71,7 +74,7 @@ function disassembleSolution{T}(mesh::AbstractDGMesh, sbp,
                              q_vec::AbstractArray{T, 1})
                              
   # no need to do any disassembly for DG
-  writeQ(mesh, sbp, eqn ,opts)
+  writeQ(mesh, sbp, eqn, opts)
 
 end
 
