@@ -27,19 +27,11 @@ function interiorfacepenalty!{Tdim, Tsol, Tres, Tmsh}(
    aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
    functor::FluxType, resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
-  fill!(resL, 0.0)
-  fill!(resR, 0.0)
-  resL2 = copy(resL)
-  resR2 = copy(resR)
-  println("----- entered interiorfacepenalty -----")
-#  println("qL = \n", qL)
-#  println("qR = \n", qR)
 
   Flux_tmp = params.flux_vals1
-  Flux_tmp2 = params.flux_vals2
+  numDofPerNode = length(Flux_tmp)
   nrm = params.nrm
   E_full = zeros(sbpface.stencilsize, sbpface.stencilsize, Tdim)
-  F = zeros(4, sbpface.stencilsize, sbpface.stencilsize)
   for dim = 1:Tdim  # DEBUGGING 1:TDIM
     fill!(nrm, 0.0)
     nrm[dim] = 1
@@ -70,146 +62,17 @@ function interiorfacepenalty!{Tdim, Tsol, Tres, Tmsh}(
         
         # compute flux and add contribution to left and right elements
         functor(params, qi, qj, aux_vars_i, nrm, Flux_tmp)
-        F[:, p_i, p_j] = Flux_tmp[:]
         resL[:, p_i] -= Eij*Flux_tmp[:]
         resR[:, p_j] += Eij*Flux_tmp[:]
 
       end
     end
-
-#    println("E_full = \n", E_full)
-    for i=1:sbpface.stencilsize
-      qi = sview(qL, :, i)
-      aux_vars_i = sview(aux_vars, :, i)
-      for j=1:sbpface.stencilsize
-        qj = sview(qR, :, j)
-        normdiff = norm(F[:, j, i] - F[:, i, j])
-
-        functor(params, qi, qj, aux_vars_i, nrm, Flux_tmp)
-        functor(params, qj, qi, aux_vars_i, nrm, Flux_tmp2)
-        normdiff2 = norm(Flux_tmp - F[:, i, j])
-        normdiff3 = norm(Flux_tmp - Flux_tmp2)
-#        println("normdiff2 = ", normdiff2)
-#        println("normdiff3 = ", normdiff3)
-#        println("F ij, ji = \n", F[:, i, j], ", ", F[:, j, i])
-        @assert (normdiff2 < 1e-12)
-#        println("element L multiplying ", E_full[i, j], " with flux ", i, ", ", j, " and storing in res ", i)
-#        println("element R multiplying ", E_full[j, i], " with flux ", i, ", ", j, " and storing to res ", i)
-        resL2[:, i] -= E_full[i, j]*Flux_tmp[:]
-        resR2[:, j] += E_full[j, i]*Flux_tmp[:]  # should be resR[:, j]
-
-      end
-    end
-
   end  # end loop Tdim
 
 
   return E_full
 end
 
-
-
-function calcESS{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim}, sbpface, iface, 
-                 qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol},
-                 aux_vars::AbstractMatrix{Tres},
-                 dxidx_face::Abstract3DArray{Tmsh}, functor::FluxType, 
-                 resL::AbstractMatrix{Tres},
-                 resR::AbstractMatrix{Tres})
-
-  println("----- entered calcEss test -----")
-
-  fill!(resL, 0.0)
-  fill!(resR, 0.0)
-
-  # form permutation matrices
-  numDofPerNode, numNodesPerElement = size(qL)
-
-  permvec_nu = sbpface.perm[:, iface.faceR]
-  permvec_kappa = sbpface.perm[:, iface.faceL]
-  P_nu = permMatrix(permvec_nu)
-  P_kappa = permMatrix(permvec_kappa)
-
-
-  numFaceNodes = length(sbpface.wface)
-#  println("numFaceNodes = ", numFaceNodes)
-  Rprime = zeros(numFaceNodes, numNodesPerElement)
-  Rprime[1:size(sbpface.interp,2), 1:size(sbpface.interp,1)] = sbpface.interp.'
-  Rprime_nu = Rprime[sbpface.nbrperm[:, 1], :]
-#  println("Rprime = \n", Rprime)
-
-  B = diagm(sbpface.wface)
-#  println("sbpface.wface = ", sbpface.wface)
-  Nx = zeros(Tmsh, numFaceNodes, numFaceNodes)
-  facenormal = sbpface.normal[:, iface.faceL]
-
-  full_size = numDofPerNode*numNodesPerElement
-  F = zeros(Tres, full_size, full_size)
-
-  nrm = zeros(3)
-  for dim=1:1  #DEBUGGING 1:TDIM
-    fill!(nrm, 0)
-    nrm[dim] = 1
-    # calculate F
-    F_tmp = zeros(Tres, numDofPerNode)
-    for i=1:numNodesPerElement
-      qL_i = qL[:, i]
-      aux_vars_i = aux_vars[:, i]
-      idx_i = (numDofPerNode*(i-1) + 1):(numDofPerNode*i)
-      for j=1:numNodesPerElement
-        qR_j = qR[:, j]
-        functor(params, qL_i, qR_j, aux_vars_i, nrm, F_tmp)
-        idx_j = (numDofPerNode*(j-1) + 1):(numDofPerNode*j)
-
-        # store into F
-        F[idx_i, idx_j] = diagm(F_tmp)
-
-      end
-    end
-#    println("F = \n", F)
-
-    # calculate Nx
-    for i=1:numFaceNodes
-      nx = zero(Tmsh)
-      for d=1:Tdim
-        nx += facenormal[d]*dxidx_face[d, dim, i]
-      end
-      Nx[i, i] = nx
-    end
-
-    # calculate the full operator
-
-    E_expensiveL = P_kappa.'*Rprime.'*B*Nx*Rprime_nu*P_nu
-    E_expensiveL_full = kron(E_expensiveL, eye(numDofPerNode, numDofPerNode))
-    E_expensiveR_full = kron(E_expensiveL.', eye(numDofPerNode, numDofPerNode))
-
-    #  calculate terms for comparison
-    interp_to_face = kron(Rprime_nu*P_nu, eye(4,4))
-
-    termL = zeros(E_expensiveL_full)
-    termR = zeros(E_expensiveR_full)
-    @assert size(termL) == size(F)
-    @assert size(E_expensiveL_full) == size(E_expensiveR_full)
-    for i =1:length(E_expensiveL_full)
-      termL[i] = E_expensiveL_full[i]*F[i]
-      termR[i] = E_expensiveR_full[i]*F[i]
-    end
-    termL_reduced = sum(termL, 2)
-    termR_reduced = sum(termR, 2)
-
-    # update res
-    for i=1:numNodesPerElement
-      for j=1:numDofPerNode
-        idx = numDofPerNode*(i-1) + j
-        # because this term is on the rhs, the signs are reversed
-        resL[j, i] -= termL_reduced[idx]
-        resR[j, i] += termR_reduced[idx]
-      end
-    end
-
-  end  # end loop over Tdim
-
-  return nothing
-end
 
 function psi_vec(params, q_vals)
   s = EulerEquationMod.calcEntropy(params, q_vals)
@@ -247,7 +110,7 @@ end
 function getEPsi{Tsol}(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, dir::Integer)
   # this computes the regular E * psi
   # not what is needed for lemma 3
-  println("----- entered getEPsi -----")
+#  println("----- entered getEPsi -----")
 
   numDofPerNode, numNodesPerElement = size(qL)
   numFaceNodes = sbpface.numnodes
@@ -267,9 +130,6 @@ function getEPsi{Tsol}(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::Ab
     psiR[i] = psi[dir]
   end
 
-  println("psiL = \n", psiL)
-  println("psiR = \n", psiR)
-
   # interpolate to face
   psifaceL = zeros(Tsol, numFaceNodes, 1)
   psifaceR = zeros(psifaceL)
@@ -280,18 +140,12 @@ function getEPsi{Tsol}(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::Ab
   boundaryinterpolate!(sbpface, [bndryL], psiL, psifaceL)
   boundaryinterpolate!(sbpface, [bndryR], psiR, psifaceR)
 
-  println("psifaceL = \n", psifaceL)
-  println("psifaceR = \n", psifaceR)
-
   # integrate and interpolate back to volume nodes
   resL = zeros(Tsol, numNodesPerElement, 1)
   resR = zeros(resL)
 
   boundaryintegrate!(sbpface, [bndryL], psifaceL, resL)
   boundaryintegrate!(sbpface, [bndryR], psifaceR, resR)
-
-  println("resL = \n", resL)
-  println("resR = \n", resR)
 
   return sum(resL), sum(resR)
 
@@ -324,12 +178,6 @@ function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, resL::Abstrac
 
   end
 
-  println("wL = \n", wL)
-
-#  println("wL = \n", wL)
-#  println("wR = \n", wR)
-#  println("resL = \n", resL)
-#  println("resR = \n", resR)
   wL_vec = reshape(wL, length(wL))
 
   return dot(wL_vec, resL_vec)
@@ -407,8 +255,6 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
   res_test2 = copy(eqn.res)
   for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
-    println("iface ", i)
-    println(iface)
     elL = iface.elementL
     elR = iface.elementR
     qL = eqn.q[:, :, iface.elementL]
@@ -423,21 +269,13 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     resL_test2 = sview(res_test2, :, :, elL)
     resR_test2 = sview(res_test2, :, :, elR)
 
-#    resL_code = zeros(Tres, size(qL))
-#    resR_code = zeros(Tres, size(qL))
-#    resL_test = zeros(Tres, size(qL))
-#    resR_test = zeros(Tres, size(qL))
 
     EulerEquationMod.calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
-
-    calcESS(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test, resR_test)
 
     interiorfacepenalty!(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
 
     for i=1:size(resL_code, 1)
       for j=1:size(resR_code, 2)
-#        @fact resL_code[i, j] --> roughly(resL_test[i, j], atol=1e-12)
-#        @fact resR_code[i, j] --> roughly(resR_test[i, j], atol=1e-12)
 
         @fact resL_code[i, j] --> roughly(resL_test2[i, j], atol=1e-12)
         @fact resR_code[i, j] --> roughly(resR_test2[i, j], atol=1e-12)
@@ -460,41 +298,16 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     end
   end
 =#
-  if test_boundaryintegrate
-    println("testing boundaryintegrate")
-    EulerEquationMod.interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-    EulerEquationMod.calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
-    res2 = copy(eqn.res)
-    fill!(res2, 0.0)
-    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, res2, SummationByParts.Subtract())
-
-    # compare res to res2
-    for i=1:mesh.numEl
-      println("element ", i)
-      for j=1:mesh.numNodesPerElement
-        for k=1:mesh.numDofPerNode
-          # was eqn.res on rhs
-          @fact res2[k, j, i] --> roughly(eqn.res[k, j, i], atol=1e-12)
-        end
-      end
-    end
-
-    println("finished testing boundaryintegrate")
-  end
 
   # verify lemma 3
   total_potentialflux = 0.0
   println("\nchecking lemma 3")
   for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
-    println("iface ", i)
-    println(iface)
     elL = iface.elementL
     elR = iface.elementR
     qL = eqn.q[:, :, iface.elementL]
     qR = eqn.q[:, :, iface.elementR]
-    println("qL = \n", qL)
-    println("qR = \n", qR)
 
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
     dxidx_face = mesh.dxidx_face[:, :, :, i]
@@ -504,154 +317,29 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     resL = zeros(Tres, numDofPerNode, numNodesPerElement)
     resR = zeros(resL)
 
-    println("dxidx_face = \n", dxidx_face)
+    # calculate the integral of entropy flux from the residual
     E_expensive = interiorfacepenalty!(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
-    println("E_expensive = \n", E_expensive)
-    println("resL = \n", resL)
-    println("resR = \n", resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
-    println("wtranspose resL = \n", lhsL)
-    println("wtranspose resR = \n", lhsR)
-    println("code potentialflux sum = ", lhsL + lhsR)
-
-    rhsL = zero(Tres)
-    rhsR = zero(Tres)
 
     nrm = zeros(mesh.dim)
-#    facenormal = sbpface.normal[:, iface.faceL]
-#    calcBCNormal(eqn.params, dxidx_face[:, :, 1], facenormal, nrm) 
 
+    # calculate the integral of entropy flux from q
     rhs = 0.0
     for dir=1:mesh.dim
       fill!(nrm, 0.0)
       nrm[dir] = 1.0
       psiL, psiR = getPsi(eqn.params, qL, qR, nrm)
       rhs += reduceEface(iface, mesh.sbpface, dxidx_face, dir, psiL, psiR)
-#      EL, ER = getEface(iface, mesh.sbpface, dxidx_face, dir)
-#      rhsL += sum(EL*psiL)
-#      rhsR += sum(ER*psiR)  # negative transpose
     end
 
-    println("exact potentialflux = ", rhs)
-#    println("rhsL = ", rhsL, ", rhsR = ", rhsR)
 
     @fact -(lhsL + lhsR) --> roughly(rhs, atol=1e-12)
     total_potentialflux -= lhsL + lhsR
 
 
-#=
-    # check first line of lemma 3 proof
-    E_expensiveL = copy(E_expensive)
-    E_expensiveR = copy(E_expensive).'
-    FL = zeros(numDofPerNode, numNodesPerElement, numNodesPerElement)
-    FR = zeros(FL)
-    F_tmp = zeros(numDofPerNode)
-
-    # calculate F
-    for j=1:numNodesPerElement
-      nrm = [1.0; 0.0]
-      q_j = qL[:, j]
-      aux_vars_j = aux_vars[:, j]
-      for k=1:numNodesPerElement
-        q_k = qR[:, k]
-        functor(eqn.params, q_j, q_k, aux_vars_j, nrm, F_tmp)
-        FL[:, j, k] = F_tmp
-
-        aux_vars_j[1] = EulerEquationMod.calcPressure(eqn.params, q_k)
-        functor(eqn.params, q_k, q_j, aux_vars_j, nrm, F_tmp)
-        FR[:, k, j] = F_tmp
-      end
-    end
-
-    lhs = zeros(numDofPerNode, numNodesPerElement, numNodesPerElement)
-    rhs = zeros(lhs)
-    for j=1:numNodesPerElement
-      for k=1:numNodesPerElement
-        lhs[:, j, k] = E_expensiveL[j, k]*FL[:, j, k]
-        rhs[:, j, k] = E_expensiveR[j, k]*FR[:, j, k]
-      end
-    end
-
-    diff = zeros(lhs)
-    for j=1:numNodesPerElement
-      for k=1:numNodesPerElement
-        diff[:, j, k] = lhs[:, j, k] - rhs[:, j, k]
-      end
-    end
-
-    sumL = sum(lhs)
-    sumR = sum(rhs)
-    rsumL = sum(resL)
-    rsumR = sum(resR)
-#    println("sumL = ", sumL, ", sumR = ", sumR, ", diff = ", sumL-sumR)
-#    println("rsumL = ", rsumL, ", rsumR = ", rsumR, ", diff = ", rsumL+rsumR)
-
-
-    @fact sumL --> roughly(sumR, atol=1e-12)
-    @fact rsumL --> roughly(-rsumR, atol=1e-12)
-=#
   end
-  println("total potentialflux = ", total_potentialflux)
 
   println("finished checking lemma 3")
-#=
-  println("checking symmetry of E_expensive")
-
-  # reverse interfaces
-  ifaces2 = copy(mesh.interfaces)
-  for i=1:mesh.numInterfaces
-    iface = ifaces2[i]
-    ifaces2[i] = Interface(iface.elementR, iface.elementL, iface.faceR, iface.faceL, iface.orient)
-  end
-  ifaces_orig = mesh.interfaces
-  mesh.interfaces = ifaces2
-
-  dxidx_faceR, other_vals = PdePumiInterface.interpolateMapping(mesh)
-  mesh.interfaces = ifaces_orig
-
-  for i=1:mesh.numInterfaces
-    iface = mesh.interfaces[i]
-    println("iface ", i)
-    println(iface)
-    elL = iface.elementL
-    elR = iface.elementR
-    qL = eqn.q[:, :, iface.elementL]
-    qR = eqn.q[:, :, iface.elementR]
-    aux_vars = eqn.aux_vars[:,:, iface.elementL]
-    dxidx_face = mesh.dxidx_face[:, :, :, i]
-    Tres = eltype(eqn.res)
-    numDofPerNode = size(eqn.res, 1)
-    numNodesPerElement = size(eqn.res, 2)
-    resL = zeros(Tres, numDofPerNode, numNodesPerElement)
-    resR = zeros(resL)
-
-    println("calculating elementL")
-    E_expensive = EulerEquationMod.calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
-    E_exp
-
-    # for non uniform flow, would have to recalculate aux_vars here too
-    dxidx_face = dxidx_faceR[:, :, :, i]
-
-    iface2 = ifaces2[i]
-    println("iface2 = ")
-    println(iface2)
-
-    println("calculating elementR")
-    E_expensive2
-    E_expensive2 = EulerEquationMod.calcESFaceIntegral(eqn.params, mesh.sbpface, iface2, qR, qL, aux_vars, dxidx_face, functor, resR, resL)
-
-    E_expensive3 = -E_expensive2.'
-
-    @fact E_expensive3 --> roughly(E_expensive, atol=1e-12)
-
-
-    print("\n")
-
-  end
-
-  println("finished checking symmetry of E_expensive")
-
-=#
 
   # check lemma2 - volume terms
   println("checking lemma 2")
@@ -666,9 +354,6 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     S[:, :, dim] = 0.5*(sbp.Q[:, :, dim] - sbp.Q[:, :, dim].')
     E[:, :, dim] = (sbp.Q[:, :, dim] + sbp.Q[:, :, dim].')
   end
-
-  println("S = \n", S)
-  println("E = \n", E)
 
   F = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
   res_el = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
@@ -707,10 +392,9 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
       end
     end
 
+    # calculate (S .* F)1
     res_total = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
-    potentialflux_total = 0.0
-    for d=1:mesh.dim  # DEBUGGING: 1:mesh.dim
-      println("dimension ", d)
+    for d=1:mesh.dim
       S_d = S[:, :, d]
       E_d = E[:, :, d]
 
@@ -721,34 +405,20 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
         end
       end
 
-#      println("lhs_tmp1 = ", lhs_tmp1)
 
+      # contract residual with entropy variables
       lhs_reduced = contractLHS(eqn.params, q_i, lhs_tmp1)
-#      println("Psi = \n", psi)
 
-      # now do rhs
+      # calculate expected potential flux from q variables
       rhs_reduced = 0.0
       psi_nrm = dxidx[d, 1, 1]*psi[:, 1] + dxidx[d, 2, 1]*psi[:, 2]
-
-      println("psi_nrm = ", psi_nrm)
       rhs_reduced = sum(E_d*psi_nrm)
-      println("rhs_reduced = ", rhs_reduced)
-#      println("E*psi = ", E_d*psi[:, d])
-
-      println("lhs_reduced = ", lhs_reduced, ", rhs_reduced = ", rhs_reduced)
-      potentialflux_total += rhs_reduced
 
       @fact lhs_reduced --> roughly(-rhs_reduced, atol=1e-12)
 
       res_total[:, :] += lhs_tmp1
     end
     # check that this calculation is doing the same thing as the actual code
-    println("element ", i, " potentialflux = ", potentialflux_total)
-    println("jac = ", mesh.jac[:, i])
-    println("dxidx = ", mesh.dxidx[:, :, 1, i])
-    println("res = \n", res_total)
-    println("res code = \n", eqn.res[:, :, i])
-    println("q_i = \n", q_i)
     @fact res_total --> roughly(-eqn.res[:, :, i], atol=1e-12)
 
 
@@ -766,43 +436,24 @@ end
 facts("----- testing ESS -----") do
   ARGS[1] = "input_vals_channel_dg_large.jl"
   include(STARTUP_PATH)
-  println("mesh.numInterfaces = ", mesh.numInterfaces)
   # evaluate the residual to confirm it is zero
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
-  mesh.numInterfaces = 1  # DEBUGGING, only do first interface
-  interfaces_orig = copy(mesh.interfaces)
-  resize!(mesh.interfaces, 1)
-  mesh.interfaces[1] = interfaces_orig[2]
-
-  eqn.q[:, :, 1] = [3.068261489438422 0.1094571399618569 0.00013929885611344085
-   9.320555428200217 0.011861653885188814 1.9211096583974107e-8
-    28.313347408356883 0.0012854239836802314 2.6494563003318874e-12
-     797.9676144200228 0.0006879986168623705 1.324728301343467e-12]
-
-
-  eqn.q[:, :, 2] = [86.00835515025784 0.003904773282808541 67582.95674663827
-   7323.83142612406 1.5095541674084822e-5 4.522009095650572e9
-    623642.9782266528 5.835815857409547e-8 3.025698673972792e14
-     1.3566339108440784e10 2.9181695834354454e-8 4.0638289178478075e24]
-
 
   println("checking channel flow")
   runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)
-#=
+
   println("\nchecking ICExp")
   ICFunc = EulerEquationMod.ICDict["ICExp"]
   ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  scale!(eqn.q_vec, 0.01)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  q = eqn.q
-  q[:, :, 2] = q[:, :, 3]
-  q[:, :, 7] = q[:, :, 4]
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
     end
   end
   runESSTest(mesh, sbp, eqn, opts)
-=#
+
 end
 
 
