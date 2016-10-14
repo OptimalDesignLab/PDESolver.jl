@@ -417,6 +417,10 @@ if opts["solve"]
 
 end  # end if (opts[solve])
 
+fname = "timing_breakdown_$myrank"
+write_timings(eqn.params.time, fname)
+
+
 #  return mesh, sbp, eqn, opts
 #end  # end function
 #runtest(1)

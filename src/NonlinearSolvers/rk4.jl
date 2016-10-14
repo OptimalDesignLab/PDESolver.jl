@@ -42,6 +42,7 @@ rk4
            f, pre_func, and post func.  The tuple is splatted before being
            passed to the functions.
     * opts : options dictionary
+    * timing: a Timing object, a new one will be created if not provided
 
     Keyword Arguments:
     * majorIterationCallback: a callback function called after the first
@@ -61,7 +62,7 @@ rk4
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-             post_func, ctx, opts; majorIterationCallback=((a...) -> (a...)), 
+             post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
 #function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
 #function rk4(f, h, x_new, x_ic, t_max, extra_args)
@@ -105,7 +106,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 
   flush(fstdout)
-  for i=2:(t_steps + 1)
+  ### Main timestepping loop ###
+  timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
     @mpi_master if i % output_freq == 0
        println(fstdout, "\ntimestep ",i)
@@ -116,11 +118,11 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     pre_func(ctx..., opts)
     if real_time treal = t end
-    f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)
     eqn = ctx[3]
     sol_norm = post_func(ctx..., opts)
     
-    majorIterationCallback(i, ctx..., opts, fstdout)
+    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
     for j=1:m
       k1[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k1[j]
@@ -158,7 +160,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # stage 2
     pre_func(ctx..., opts) 
     if real_time  treal = t + h/2 end
-    f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)
     post_func(ctx..., opts, calc_norm=false)
     for j=1:m
       k2[j] = res_vec[j]
@@ -168,7 +170,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # stage 3
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
-    f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)
     post_func(ctx..., opts, calc_norm=false)
 
     for j=1:m
@@ -179,7 +181,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # stage 4
     pre_func(ctx..., opts)
     if real_time treal = t + h end
-    f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)
     post_func(ctx..., opts, calc_norm=false)
     for j=1:m
       k4[j] = res_vec[j]
@@ -240,7 +242,7 @@ end
     real_time
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts; 
+             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
     rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
@@ -274,7 +276,7 @@ end
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, (mesh, sbp, eqn), opts; majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, (mesh, sbp, eqn), opts, eqn.params.time; majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
 end
 
 

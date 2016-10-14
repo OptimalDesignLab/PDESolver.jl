@@ -93,6 +93,64 @@ function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+function getESSharedFaceIntegrals_element{Tmsh, Tsol}( 
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            opts, functor::FluxType)
+
+  q = eqn.q
+  params = eqn.params
+  # we don't care about elementR here, so use this throwaway array
+  resR = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  npeers = mesh.npeers
+  val = sum(mesh.recv_waited)
+  if val !=  mesh.npeers && val != 0
+    throw(ErrorException("Receive waits in inconsistent state: $val / $npeers already waited on"))
+  end
+
+  for i=1:mesh.npeers
+    if val == 0
+      params.time.t_wait += @elapsed idx, stat = MPI.Waitany!(mesh.recv_reqs)
+      mesh.recv_stats[idx] = stat
+      mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
+      mesh.recv_waited[idx] = true
+    else
+      idx = i
+    end
+
+    # get the data for the parallel interface
+    interfaces = mesh.shared_interfaces[idx]
+    bndries_local = mesh.bndries_local[idx]
+    bndries_remote = mesh.bndries_remote[idx]
+#    qL_arr = eqn.q_face_send[i]
+    qR_arr = eqn.q_face_recv[idx]
+    dxidx_arr = mesh.dxidx_sharedface[idx]
+#    aux_vars_arr = eqn.aux_vars_sharedface[idx]
+#    flux_arr = eqn.flux_sharedface[idx]
+
+    start_elnum = mesh.shared_element_offsets[idx]
+
+    # compute the integrals
+    for j=1:length(interfaces)
+      iface_j = interfaces[j]
+      elL = iface_j.elementL
+      elR = iface_j.elementR - start_elnum + 1
+      qL = sview(q, :, :, elL)
+      qR = sview(qR_arr, :, :, elR)
+      aux_vars = sview(eqn.aux_vars, :, :, elL)
+      dxidx_face = sview(dxidx_face_arr, :, :, :, i)
+      resL = sview(eqn.res, :, :, elL)
+
+      calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
+                         dxidx_face, functor, resL, resR)
+    end  # end loop j
+
+  end  # end loop over peers
+
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.calcSharedFaceIntegrals
