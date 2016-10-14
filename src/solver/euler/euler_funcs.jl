@@ -143,23 +143,21 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
   return nothing
 
 end
-
+@doc """
+  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q 
+  ans F is a symmetric numerical flux function.  
+"""
 function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
                                         mesh::AbstractMesh{Tmsh}, 
                                         sbp::AbstractSBP,  
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
 
-  #TODO: this could be made more efficient in a couple ways
-  #      First, compute the numerical flux function more efficiently.  
+  #TODO:
+  #      Compute the numerical flux function more efficiently.  
   #      in particular, computing the flux for 3 different normal vectors
   #      at the same time could reuse a lot of the computation
   #
-  #      Second: Caching.  The numerical fluxes used here should be 
-  #      symmetric, so calculate the unique entries and cache them
-  #
-  #      Third: Skew symmetry of S: combined with the symmetric flux function,
-  #             should reduce the number of calculations
 
 #  println("----- entered calcVolumeIntegralsSplitForm -----")
   dxidx = mesh.dxidx
@@ -177,23 +175,11 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
 #    E[:, :, i] = sbp.Q[:, :, i] + sbp.Q[:, :, i].'
   end
 
-#=
-  # DEBUG:
-  Fx_regular = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-  Fx_split = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-  D = zeros(sbp.Q)
-  hinv = inv(diagm(sbp.w))
-  for p=1:Tdim
-    D[:, :, p] = hinv*sbp.Q[:, :, p]
-  end
-=#
   for i=1:mesh.numEl
-    # res[:, j, i] = Qjk^T*F_start(uj, uk)
-#    fill!(Fx_regular, 0.0); fill!(Fx_split, 0.0)
     for j=1:mesh.numNodesPerElement
       q_j = sview(q, :, j, i)
       aux_vars_j = sview(aux_vars, :, j, i)
-      for k=1:mesh.numNodesPerElement
+      for k=1:(j-1)  # loop over lower triangle of S
         q_k = sview(q, :, k, i)
         # loop over parametric dimensions at this point
         for d=1:Tdim  # DEBUGGINg 1:mesh.dim
@@ -207,9 +193,8 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
 
           # update residual
           for p=1:(Tdim+2)
-#            res[p, j, i] += 2*sbp.Q[k, j, d]*F_d[p]
             res[p, j, i] -= 2*S[j, k, d]*F_d[p]
-#            res[p, j, i] -= E[j, k, d]*F_d[p]
+            res[p, k, i] += 2*S[j, k, d]*F_d[p]
           end
 
         end  # end d loop
