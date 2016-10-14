@@ -230,11 +230,6 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
-
-      vals = real(eqn.res_vec)
-      saveSolutionToMesh(mesh, vals)
-      fname = string("res_", itr)
-      writeVisFiles(mesh, fname)
     end
  
     # add an option on control this or something.  Large blocks of commented
@@ -281,112 +276,21 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 =#
   if opts["write_entropy"] && (itr % opts["write_entropy_freq"] == 0)
     # calculate the entropy norm
-    val = zero(Float64)
-    for i=1:mesh.numDofPerNode:mesh.numDof
-      q_vals = sview(eqn.q_vec, i:(i+Tdim+1))
-#      s = calcEntropy(eqn.params, q_vals)
-      s = calcEntropyIR(eqn.params, q_vals)
-#      val += real(q_vals[1]*s)*eqn.M[i]
-      val += s*eqn.M[i]
-    end
+    val = calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec)
 
-    val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
     # compute w^T * res_vec
-    w_vals = zeros(eltype(eqn.q_vec), mesh.numDof)
-#    potentialflux_arr = zeros(mesh.numNodesPerElement, mesh.numEl)
-    for i=1:mesh.numDofPerNode:mesh.numDof
- #     idx = findin(mesh.dofs, i)
- #     dof, node, el = ind2sub(mesh.dofs, idx[1])
+    val2 = contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig)
 
-      q_vals_i = sview(eqn.q_vec, i:(i+Tdim+1))
-      w_vals_i = sview(w_vals, i:(i+Tdim+1))
-      convertToEntropy(eqn.params, q_vals_i, w_vals_i)
-      scale!(w_vals_i, 1./eqn.params.gamma_1)
-#      potentialflux_arr[node, el] = dot(w_vals_i, res_vec_orig[i:(i+Tdim+1)])
-    end
-
-#    for i=1:mesh.numEl
-#      println("element ", i, " potential flux = ", sum(potentialflux_arr[:, i]))
-#    end
-
-#    println("potentialflux from res = ", sum(potentialflux_arr))
-
-    val2_local = dot(w_vals, res_vec_orig)
-    # this doesn't work right in parallel because of duplicated interfaces
-    val2 = MPI.Allreduce(val2_local, MPI.SUM, eqn.comm)
-
-
-    # DEBUGGING: compute the potential flux from the boundary terms
+    # DEBUGGING: compute the potential flux from q
     #            directly, to verify the boundary terms are the problem
-    val3 = zero(Float64)  # exact potential flux integral
-    for i=1:mesh.numInterfaces
-#      println("interface ", i)
-      iface = mesh.interfaces[i]
-      elL = iface.elementL
-      elR = iface.elementR
-#      println("elementL = ", elL, ", elementR = ", elR)
-      qL = sview(eqn.q, :, :, elL)
-      qR = sview(eqn.q, :, :, elR)
-      aux_vars = sview(eqn.aux_vars, :, :, elL)
-      dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
-      bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, dxidx_face, qL, qR)
-#      println("interface ", i, ", potentialflux = ", bndry_potentialflux)
-      val3 += bndry_potentialflux
-      resL = sview(res_orig, :, :, elL)
-      resR = sview(res_orig, :, :, elR)
-#      println("resL = \n", resL)
-#      println("resR = \n", resR)
-#      println("expected potential flux = ", bndry_potentialflux)
+#    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+#    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
 
-      # DEBUGGING: don't compute the boundary integrals, and add their
-      #            flux here
-#      if !opts["addFaceIntegrals"]
-#        println("adding boundary potential flux for interface ", i)
-#        val2 += bndry_potentialflux
-#      end
-
-    end
-
-    for i=1:mesh.numEl
-      q_i = sview(eqn.q[:, :, i])
-      dxidx_i = sview(mesh.dxidx, :, :, :, i)
-      volume_potentialflux = -computeVolumePotentialFlux(eqn.params, sbp, q_i, dxidx_i)
-
-#      println("element ", i, "expected potentialflux = ", volume_potentialflux)
-      val3 += volume_potentialflux
-      # DEBUGGING: don't compute the volume integrals, add their flux here
-
-      if !opts["addVolumeIntegrals"]
-        #=
-        println("adding potential flux for element ", i)
-        println("element ", i, " potentialflux = ", volume_potentialflux)
-        println("jac = ", mesh.jac[:, i])
-        println("dxidx = ", mesh.dxidx[:, :, 1, i])
-        println("res = ", res_orig[:, :, i])
-        println("q_i = ", q_i)
-        =#
-
-#        val2 += volume_potentialflux
-      end
-    end
-
-#    @assert abs(val3 - val2) < 1e-12
-#    println("sum of potential fluxes = ", val2)
     f = open(opts["write_entropy_fname"], "a+")
-    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2, " ",  val3)
+    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
     close(f)
   end
-#=
-  ### DEBUGGING ###
-  # only compute 1 interface during next iteration
-  ninterfaces = 2
-  mesh.numInterfaces = ninterfaces
-  interfaces_orig = copy(mesh.interfaces)
-  resize!(mesh.interfaces, ninterfaces)
-  mesh.interfaces[1] = interfaces_orig[1]
-  mesh.interfaces[2] = interfaces_orig[3]
-#  println("mesh.interface = ", mesh.interfaces)
-=#
+  
   return nothing
 
 end

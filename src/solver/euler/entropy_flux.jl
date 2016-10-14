@@ -127,3 +127,114 @@ function computeVolumePotentialFlux{Tdim, Tsol, Tres}(params::ParamType{Tdim, :c
   return -rhs_reduced
 end
 
+@doc """
+  Calculate the integral of entropy over the entire domain for the given 
+  solution vector q_vec.  
+  This performs an MPI blocking collective operation, so all processes must 
+  call this function at the same time.
+
+  The (scalar) value is returned.
+"""
+function calcEntropyIntegral{Tsol, Tres, Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, 
+             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector)
+
+  val = zero(Tsol)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    q_vals = sview(eqn.q_vec, i:(i+(mesh.numDofPerNode - 1)))
+#      s = calcEntropy(eqn.params, q_vals)
+    s = calcEntropyIR(eqn.params, q_vals)
+#      val += real(q_vals[1]*s)*eqn.M[i]
+    val += s*eqn.M[i]
+  end
+
+  val2 = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+  return val2
+end
+
+@doc """
+  Compute w^T * res_vec, where w is the vector of entropy variables.
+  This performs an MPI blocking collective operation, so all processes must 
+  call this funciton at the same time.
+
+  The (scalar) value is returned.
+"""
+function contractResEntropyVars{Tsol, Tres, Tmsh, Tdim}(
+             mesh::AbstractDGMesh{Tmsh}, 
+             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector,
+             res_vec::AbstractVector)
+
+  val = zero(Tres)
+  w_vals = eqn.params.v_vals
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    q_vals_i = sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
+    convertToEntropy(eqn.params, q_vals_i, w_vals)
+    scale!(w_vals, 1./eqn.params.gamma_1)  # the IR entropy variables are
+                                           # scaled by 1/gamma compared to
+                                           # Hugh's
+    res_vals = sview(res_vec, i:(i+mesh.numDofPerNode - 1))
+    for p=1:mesh.numDofPerNode
+      val += w_vals[p]*res_vals[p]
+    end
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+  return val
+end
+
+@doc """
+  Computes the net potential flux integral over all interfaces, where the 
+  potential flux is calculated from q_arr.
+  Does not work in parallel
+"""
+function calcInterfacePotentialFlux{Tsol, Tres, Tdim, Tmsh}(
+                                   mesh::AbstractDGMesh{Tmsh}, sbp, 
+                                   eqn::EulerData{Tsol, Tres, Tdim}, opts, 
+                                   q_arr::Abstract3DArray)
+
+  if mesh.commsize != 1
+    throw(ErrorException("cannot perform reduction over interfaces in parallel"))
+  end
+
+  val = zero(Tres)
+  for i=1:mesh.numInterfaces
+    iface = mesh.interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = sview(q_arr, :, :, elL)
+    qR = sview(q_arr, :, :, elR)
+    aux_vars = sview(eqn.aux_vars, :, :, elL)
+    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+
+    bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, dxidx_face, qL, qR)
+    val += bndry_potentialflux
+  end
+
+  return val
+end
+
+@doc """
+  Computes the net potential flux from the volume terms, calulated from 
+  q_arr.
+  This performs a blocking MPI collective operation, so all processes must
+  call this function at the same time.
+"""
+function calcVolumePotentialFlux{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, 
+                                 sbp, eqn::EulerData{Tsol, Tres}, opts, 
+                                 q_arr::Abstract3DArray)
+
+  val = zero(Tres)
+  for i=1:mesh.numEl
+    q_i = sview(q_arr, :, :, i)
+    dxidx_i = sview(mesh.dxidx, :, :, :, i)
+    volume_potentialflux = -computeVolumePotentialFlux(eqn.params, sbp, q_i, dxidx_i)
+    val += volume_potentialflux
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, mesh.comm)
+
+  return val
+end
+
+
+
+
