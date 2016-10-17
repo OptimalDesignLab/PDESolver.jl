@@ -93,9 +93,9 @@ function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
-function getESSharedFaceIntegrals_element{Tmsh, Tsol}( 
+function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}( 
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, functor::FluxType)
 
   if opts["parallel_data"] != "element"
@@ -105,7 +105,7 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol}(
   q = eqn.q
   params = eqn.params
   # we don't care about elementR here, so use this throwaway array
-  resR = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  resR = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
 
   npeers = mesh.npeers
   val = sum(mesh.recv_waited)
@@ -129,7 +129,7 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol}(
     bndries_remote = mesh.bndries_remote[idx]
 #    qL_arr = eqn.q_face_send[i]
     qR_arr = eqn.q_face_recv[idx]
-    dxidx_arr = mesh.dxidx_sharedface[idx]
+    dxidx_face_arr = mesh.dxidx_sharedface[idx]
 #    aux_vars_arr = eqn.aux_vars_sharedface[idx]
 #    flux_arr = eqn.flux_sharedface[idx]
 
@@ -146,7 +146,7 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol}(
       dxidx_face = sview(dxidx_face_arr, :, :, :, i)
       resL = sview(eqn.res, :, :, elL)
 
-      calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
+      calcESFaceIntegral(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
                          dxidx_face, functor, resL, resR)
     end  # end loop j
 

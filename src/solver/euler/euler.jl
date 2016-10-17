@@ -220,6 +220,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
 #  println("Performing major Iteration Callback")
 
+  myrank = mesh.myrank
 #  println("eqn.q = \n", eqn.q)
   # undo multiplication by inverse mass matrix
   res_vec_orig = eqn.M.*copy(eqn.res_vec)
@@ -286,9 +287,11 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
 #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
 
-    f = open(opts["write_entropy_fname"], "a+")
-    println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
-    close(f)
+    @mpi_master begin
+      f = open(opts["write_entropy_fname"], "a+")
+      println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
+      close(f)
+    end
   end
   
   return nothing
@@ -657,7 +660,7 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
     end
 
   elseif face_integral_type == 2
-    getESSharedFaceIntegrals(mesh, sbp, eqn, opts,eqn.flux_func)
+    getESSharedFaceIntegrals_element(mesh, sbp, eqn, opts,eqn.flux_func)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end
