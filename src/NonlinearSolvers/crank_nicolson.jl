@@ -9,6 +9,8 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
+DEBUG = false
+
 
 @doc """
 crank_nicolson
@@ -82,33 +84,39 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   flush(fstdout)
 
   eqn_nextstep = deepcopy(eqn)
+  # TODO: comment here
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 #   for i = 1:meshDof
   # TODO: don't copy the entire AbstractSolutionData
 
+  # for the number of times eqn data is flipped btwn one or the other memory locations
+  nflips_eqn = 0
+
   for i = 2:(t_steps + 1)
 
 
     println("CN: entered time-stepping loop")
-    loc_mark = 1
-    println(fstdout, "$loc_mark: ===== t = ", t)
-    flush(fstdout)
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    if DEBUG
+      loc_mark = 1
+      println(fstdout, "$loc_mark: ===== t = ", t)
+      flush(fstdout)
+      for dofix = 21485:21488
+        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+      end
+      for dofix = 20489:20492
+        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+      end
+      for dofix = 21485:21488
+        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+      end
+      for dofix = 20489:20492
+        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+      end
+      println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+      println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+      flush(fstdout)
     end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-    flush(fstdout)
 
     # Allow for some kind of stage loop
 
@@ -121,8 +129,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
     end
 
-    q_file = "q$i.dat"
-    writedlm(q_file, eqn.q_vec)
+    if DEBUG
+      q_file = "q$i.dat"
+      writedlm(q_file, eqn.q_vec)
+    end
 
     # NOTE:
     # majorIterationCallback: called before every step of Newton's method
@@ -159,25 +169,27 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     ctx_residual = (f, eqn_nextstep, h, newton_data)
     ctx_residual = (f, eqn, h, newton_data)
 
-    loc_mark = 2
-    println(fstdout, "$loc_mark: ===== t = ", t)
     println(fstdout, "in CN: before call to newtonInner")
-    flush(fstdout)
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    if DEBUG
+      loc_mark = 2
+      println(fstdout, "$loc_mark: ===== t = ", t)
+      flush(fstdout)
+      for dofix = 21485:21488
+        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+      end
+      for dofix = 20489:20492
+        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+      end
+      for dofix = 21485:21488
+        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+      end
+      for dofix = 20489:20492
+        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+      end
+      println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+      println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+      flush(fstdout)
     end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-    flush(fstdout)
 
     t_nextstep = t + h
 
@@ -185,36 +197,52 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t_nextstep)
     println("mark3")
 
-    # TODO: something about eqn & eqn_nextstep: how is the soln updated, and does it need to be saved in eqn from eqn_nextstep?
+    # This allows the solution to be updated from _nextstep without a deepcopy.
+    # There are two memory locations used by eqn & eqn_nextstep, 
+    #   and this flips the location of eqn & eqn_nextstep every time step
+#     nflips_eqn += 1
+#     eqn_temp = eqn
 #     eqn = eqn_nextstep
+#     eqn_nextstep = eqn_temp
+
+    # Old way
     eqn = deepcopy(eqn_nextstep)
-
-    # TODO: disassembleSolution?  
-
+    eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  
     # TODO: at start or end?
     t = t_nextstep
 
-    loc_mark = 3
-    println(fstdout, "$loc_mark: ===== t = ", t)
     println(fstdout, "in CN: after call to newtonInner")
-    flush(fstdout)
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    if DEBUG
+      loc_mark = 3
+      println(fstdout, "$loc_mark: ===== t = ", t)
+      flush(fstdout)
+      for dofix = 21485:21488
+        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+      end
+      for dofix = 20489:20492
+        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+      end
+      for dofix = 21485:21488
+        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+      end
+      for dofix = 20489:20492
+        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+      end
+      println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+      println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+      flush(fstdout)
     end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-    flush(fstdout)
 
   end   # end of t step loop
+
+  # TODO: if we're using the flipping mechanism for the eqn data, we need to complete this section so that 
+  #     the correct data is returned in the caller's eqn arg
+#   if (nflips_eqn % 2) == 1      # odd number of flips
+
+
+
 
   #returns t?
   return nothing
@@ -239,6 +267,7 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
                eqn_nextstep::AbstractSolutionData, opts, jac, ctx, t)
   # TODO: put a CN_Data type at the end of the function signature for passing stuff around
 
+  DEBUG = false
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
   physics_func = ctx[1]
@@ -251,50 +280,55 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   t_nextstep = t + h
 
   fstdout = BufferedIO(STDOUT)
-  loc_mark = 11
-  println(fstdout, "$loc_mark: ===== t = ", t)
   println(fstdout, "in cnJac")
-  flush(fstdout)
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  if DEBUG
+    loc_mark = 11
+    println(fstdout, "$loc_mark: ===== t = ", t)
+    flush(fstdout)
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+    flush(fstdout)
   end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-  end
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-  println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-  flush(fstdout)
 
   @mpi_master println(fstdout, "entered cnJac")
   flush(fstdout)
 
-  loc_mark = 12
-  println(fstdout, "$loc_mark: ===== t = ", t)
-  println(fstdout, "in cnJac after t_nextstep set to t+h")
-  flush(fstdout)
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-  end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-  end
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-  println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-  flush(fstdout)
 
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
+
+  println(fstdout, "in cnJac after physicsJac call")
+  if DEBUG
+    loc_mark = 12
+    println(fstdout, "$loc_mark: ===== t = ", t)
+    flush(fstdout)
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+    flush(fstdout)
+  end
 
   # CN_Jac = I + dt/2 * physics_Jac
 
@@ -325,6 +359,8 @@ end
 """->
 function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
 
+  DEBUG = false
+
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
 #   eqn_nextstep = ctx[2]
@@ -334,25 +370,27 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   t_nextstep = t + h
 
   fstdout = BufferedIO(STDOUT)
-  loc_mark = 21
-  println(fstdout, "$loc_mark: ===== t = ", t)
   println(fstdout, "in cnRhs")
-  flush(fstdout)
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  if DEBUG
+    loc_mark = 21
+    println(fstdout, "$loc_mark: ===== t = ", t)
+    flush(fstdout)
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+    flush(fstdout)
   end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-  end
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-  println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-  flush(fstdout)
 
 #   loc_mark = 22
 #   println(fstdout, "$loc_mark: ===== t = ", t)
@@ -371,24 +409,26 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
-  loc_mark = 23
-  println(fstdout, "$loc_mark: ===== t = ", t)
   println(fstdout, "in cnRhs after calls to physics_func")
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  if DEBUG
+    loc_mark = 23
+    println(fstdout, "$loc_mark: ===== t = ", t)
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
+    end
+    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+    flush(fstdout)
   end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-  end
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-  end
-  println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-  println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-  flush(fstdout)
 
   # TODO: try printing out rhs_vec both in newton and CN to see if they're the same
   #   what this is doing:

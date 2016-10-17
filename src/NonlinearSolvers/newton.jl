@@ -533,6 +533,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
      return nothing
    end  # end if tolerances satisfied
 
+   # NOTE: garbage value 20161014 TODO TODO TODO
+   step_tol = -5
     if (step_norm < step_tol)
       @mpi_master println(fstdout, "Newton iteration converged with step_norm = ", step_norm)
       @mpi_master println(fstdout, "Final residual = ", res_0_norm)
@@ -626,19 +628,23 @@ end               # end of function newton()
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
 
+  DEBUG = false
+
   fstdout = BufferedIO(STDOUT)
 
-  loc_mark = 31
-  println(fstdout, "$loc_mark: ===== t = ", t)
   println(fstdout, "in physicsJac")
-  flush(fstdout)
-  for dofix = 21485:21488
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+  if DEBUG
+    loc_mark = 31
+    println(fstdout, "$loc_mark: ===== t = ", t)
+    flush(fstdout)
+    for dofix = 21485:21488
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    for dofix = 20489:20492
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    flush(fstdout)
   end
-  for dofix = 20489:20492
-    println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-  end
-  flush(fstdout)
 
   myrank = mesh.myrank
   fstdout = BufferedIO(STDOUT)
