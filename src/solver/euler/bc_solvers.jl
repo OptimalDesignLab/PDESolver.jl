@@ -633,11 +633,18 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
   p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z4L, z4R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
 
+  
+  Un = dir[1]*u_hat + dir[2]*v_hat
+  F[1] = rho_hat*Un
+  F[2] = rho_hat*u_hat*Un + dir[1]*p1_hat
+  F[3] = rho_hat*v_hat*Un + dir[2]*p1_hat
+  F[4] = rho_hat*h_hat*Un
+  #=
   F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat
   F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat
   F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat)
   F[4] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat
-
+  =#
   return nothing
 end
 
@@ -683,7 +690,8 @@ function logavg(aL, aR)
   u = f*f
   eps = 1e-2
   if u < eps
-    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0 + u*u*u*u/9.0
+    F = @evalpoly( u, 1, 1/3, 1/5, 1/7, 1/9)
+#    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0 + u*u*u*u/9.0
   else
     F = (log(xi)/2.0)/f
   end

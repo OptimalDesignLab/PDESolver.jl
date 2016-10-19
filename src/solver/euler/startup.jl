@@ -162,6 +162,7 @@ writeVisFiles(mesh, "solution_ic")
 if opts["calc_dt"]
   wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
   @mpi_master println("max wave speed = ", wave_speed)
+  @mpi_master println("min element size = ", mesh.min_el_size)
   delta_t = opts["CFL"]*mesh.min_el_size/wave_speed
   println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
   opts["delta_t"] = delta_t
