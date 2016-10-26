@@ -72,13 +72,22 @@ println("finished initializing q")
 saveSolutionToMesh(mesh, real(eqn.q_vec))
 writeVisFiles(mesh, "solution_ic")
 
+writedlm("solution_ic.dat", real(eqn.q_vec))
+writedlm("residual_ic_$myrank.dat", real(eqn.res_vec))
+
 if opts["solve"]
 
   # handle flags
 
   if flag == 1        # RK4
-    @time rk4(evalSimpleODE, opts["delta_t"], t_max, mesh, sbp, eqn, 
-              opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+
+    # OLD: does not use a pde_pre_func & pde_post_func suited to ODEs
+#     @time rk4(evalSimpleODE, opts["delta_t"], t_max, mesh, sbp, eqn, 
+#               opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+
+    rk4(evalSimpleODE, opts["delta_t"], t_max, eqn.q_vec, eqn.res_vec, ode_pre_func, ode_post_func, 
+        (mesh, sbp, eqn), opts; 
+        majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
   elseif flag == 20   # Crank-Nicolson
     @time crank_nicolson(evalSimpleODE, opts["delta_t"], t_max, mesh, sbp, eqn, 

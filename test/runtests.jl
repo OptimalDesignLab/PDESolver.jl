@@ -28,6 +28,7 @@ include("test_GLS3.jl")
 # TODO: uncomment when SBP is fixed
 #include("test_modes.jl")
 include("test_adjoint.jl")
+include("test_rk4.jl")
 
 
 cd("./convergence")
