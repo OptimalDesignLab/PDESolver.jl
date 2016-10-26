@@ -224,8 +224,11 @@ if opts["solve"]
     end
 
 
-    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func, test_post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
-end       # end of if/elseif blocks checking flag
+    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
+        test_post_func, (mesh, sbp, eqn), opts, 
+        majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+
+  end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")
 
@@ -237,6 +240,7 @@ end       # end of if/elseif blocks checking flag
       close(f)
     end
   end
+
   # evaluate residual at final q value
   need_res = false
   if need_res
@@ -247,7 +251,6 @@ end       # end of if/elseif blocks checking flag
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   end
 
-
   if opts["write_finalsolution"]
     println("writing final solution")
     writedlm("solution_final_$myrank.dat", real(eqn.q_vec))
@@ -256,7 +259,6 @@ end       # end of if/elseif blocks checking flag
   if opts["write_finalresidual"]
     writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
   end
-
 
   ##### Do postprocessing ######
   println("\nDoing postprocessing")
@@ -294,8 +296,6 @@ end       # end of if/elseif blocks checking flag
         println(f, diff_norm, " ", h_avg)
         close(f)
       end
-
-
 
       #----  Calculate functional on a boundary  -----#
       

@@ -1,4 +1,4 @@
-module AdvectionEquationMod
+module SimpleODEMod
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ArrayViews
@@ -8,41 +8,19 @@ using PdePumiInterface
 using ForwardDiff
 using MPI
 using Utils
-export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
-export evalAdvection, init # exported from advectionFunctions.jl
+# export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
+export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
+export evalSimpleODE, init # exported from simpleODE_funcs.jl
 export ICDict              # exported from ic.jl
 
-# include("advectionFunctions.jl")
-# include("getMass.jl")
-
-
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
-  LFalpha::Float64  # alpha for the Lax-Friedrich flux
-  alpha_x::Float64
-  alpha_y::Float64
-  alpha_z::Float64
 
-  f::BufferedIO{IOStream}
+  f::BufferedIO{IOStream}     # TODO: needed?
+
+  t::Float64
   time::Timings
-  #=
-  # timings
-  t_volume::Float64  # time for volume integrals
-  t_face::Float64 # time for surface integrals (interior)
-  t_source::Float64  # time spent doing source term
-  t_sharedface::Float64  # time for shared face integrals
-  t_bndry::Float64  # time spent doing boundary integrals
-  t_send::Float64  # time spent sending data
-  t_wait::Float64  # time spent in MPI_Wait
-  t_allreduce::Float64 # time spent in allreduce
-  t_jacobian::Float64  # time spent computing jacobian
-  t_solve::Float64  # linear solve time
-  t_barrier::Float64  # time spent in MPI_Barrier
-  t_barrier2::Float64
-  t_barrier3::Float64
-  t_barriers::Array{Float64, 1}
-  =#
+
   function ParamType(mesh, sbp, opts)
-    LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
       _f = open("log_$myrank.dat", "w")
@@ -50,32 +28,32 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
     else
       f = BufferedIO()  # create a dummy IOStream
     end
-    alpha_x = 1.0
-    alpha_y = 1.0
-    alpha_z = 1.0
 
+    t = 0.0
 
-    t = Timings()
-    return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)
+    time = Timings()
+
+    return new(f, t, time)
   end
-end
+
+end   # end of ParamType type def
 
 typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
 typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
 typealias ParamTypes Union{ParamType2, ParamType3}
-abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
-abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
+abstract AbstractSimpleODEData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+abstract SimpleODEData{Tsol, Tres, Tdim} <: AbstractSimpleODEData{Tsol, Tres}
 
 @doc """
-### AdvectionEquationMod.AdvectionData_
+### SimpleODEMod.SimpleODEData_
 
-  This type is an implementation of the abstract AdvectionData.  It is
+  This type is an implementation of the abstract SimpleODEData.  It is
   paramterized by the residual type Tres and the mesh type Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 
 """->
-type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
+type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
   params::ParamType{Tsol, Tres, Tdim}
@@ -113,8 +91,8 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
-    println("\nConstruction AdvectionData object")
+  function SimpleODEData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+    println("\nConstruction SimpleODEData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
     println("  Tdim = ", Tdim)
@@ -191,26 +169,27 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     end
 
     return eqn
-  end # ends the constructer AdvectionData_
+  end # ends the constructer SimpleODEData_
 
-end # End type AdvectionData_
+end # End type SimpleODEData_
 
+# TODO: which of these
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
-include("advectionFunctions.jl")
+include("simpleODE_funcs.jl")
 include("common_funcs.jl")
-include("boundaryconditions.jl")
-include("bc_solvers.jl")
 include("ic.jl")
-include("GLS.jl")
-include("GLS2.jl")
-include("boundary_functional.jl")
-include("adjoint.jl")
+# include("boundaryconditions.jl")
+# include("bc_solvers.jl")
+# include("GLS.jl")
+# include("GLS2.jl")
+# include("boundary_functional.jl")
+# include("adjoint.jl")
 include("../euler/complexify.jl")
-include("source.jl")
-include("flux.jl")
+# include("source.jl")
+# include("flux.jl")
 
 @doc """
-### AdvectionEquationMod.calcMassMatrix
+### SimpleODEMod.calcMassMatrix
 
   This function calculate the mass matrix and returns it.
   Beause w are using SBP operators, the mass matrix is diagonal, so it is
@@ -219,14 +198,14 @@ include("flux.jl")
   Arguments:
     mesh: AbstractMesh
     sbp: SBP operator
-    eqn: an implementation of AdvectionData. Does not have to be fully initialized.
+    eqn: an implementation of SimpleODEData. Does not have to be fully initialized.
 
   Outputs:
     M: vector containing mass matrix
 
 """->
 function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                        sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
+                        sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim})
 # calculate the (diagonal) mass matrix as a vector
 # return the vector M
 
@@ -247,7 +226,7 @@ function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 end     # end of calcMassMatrix function
 
 @doc """
-### AdvectionEquationMod.calcMassMatrixInverse
+### SimpleODEMod.calcMassMatrixInverse
 
   This function calculates the inverse mass matrix and returns it.
   Because we use SBP operators, the mass matrix is diagonal, so it is stored
@@ -257,17 +236,17 @@ end     # end of calcMassMatrix function
   Arguments:
     mesh: AbstractMesh
     sbp: SBP operator
-    eqn: an implementation of AdvectionData. Does not have to be fully initialized.
+    eqn: an implementation of SimpleODEData. Does not have to be fully initialized.
 
   Outputs:
     Minv: vector containing inverse mass matrix
 
 """->
-# used by AdvectionData Constructor
+# used by SimpleODEData Constructor
 # mid level functions
 function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                                   sbp::AbstractSBP, 
-                                                  eqn::AdvectionData{Tsol, Tres, Tdim})
+                                                  eqn::SimpleODEData{Tsol, Tres, Tdim})
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 
@@ -294,14 +273,14 @@ end     # end of calcMassMatrixInverse function
 
 # functions needed to make it compatible with the NonLinearSolvers module
 function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
+                     sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
                      opts, res_arr::AbstractArray{Tsol, 3})
 
   return nothing
 end
 
 function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                  sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+                  sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
                   res_arr::AbstractArray{Tsol, 3})
 
   return nothing

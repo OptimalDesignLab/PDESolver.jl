@@ -437,7 +437,7 @@ end
   3D array is read matters, because only the last value assigned to a location 
   in a vector remains.
 
-  In most cases, what you really wnat is assembleSolution().
+  In most cases, what you really want is assembleSolution().
 
   Inputs:
     mesh
