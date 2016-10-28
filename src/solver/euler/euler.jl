@@ -112,11 +112,11 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-  if opts["parallel_type"] == 1
-    time.t_send += @elapsed if mesh.commsize > 1
-      sendParallelData(mesh, sbp, eqn, opts)
-    end
-    #  println("send parallel data @time printed above")
+  time.t_send += @elapsed if opts["parallel_type"] == 1
+    println(eqn.params.f, "starting data exchange")
+
+    startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    #  println(" startDataExchange @time printed above")
   end
  
 
@@ -124,8 +124,10 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 #  println("dataPrep @time printed above")
 
 
-  time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn, opts)
-#  println("volume integral @time printed above")
+  time.t_volume += @elapsed if opts["addVolumeIntegrals"]
+    evalVolumeIntegrals(mesh, sbp, eqn, opts)
+#    println("volume integral @time printed above")
+  end
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -136,42 +138,46 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   #println("bndryfluxPhysical = \n", bndryfluxPhysical)
   #println("eqn.bndryflux = \n", eqn.bndryflux)
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
   =#
-  
+
   if opts["use_GLS"]
+    println("adding boundary integrals")
     GLS(mesh,sbp,eqn)
   end
   
   #=
   bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res)
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
   =#
   #----------------------------------------------------------------------------
 
-  time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
-#  println("boundary integral @time printed above")
+  time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
+   evalBoundaryIntegrals(mesh, sbp, eqn)
+#   println("boundary integral @time printed above")
+  end
 
 
-  time.t_stab += @elapsed addStabilization(mesh, sbp, eqn, opts)
-#  println("stabilizing @time printed above")
+  time.t_stab += @elapsed if opts["addStabilization"]
+    addStabilization(mesh, sbp, eqn, opts)
+#    println("stabilizing @time printed above")
+  end
 
-  time.t_face += @elapsed if mesh.isDG
+  time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-    #println("face integral @time printed above")
+#    println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+#    println("evalSharedFaceIntegrals @time printed above")
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
 #  println("source integral @time printed above")
 
 
-
-  
 #  print("\n")
 
   return nothing
@@ -208,11 +214,18 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 end
 
 
-function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::AbstractSBP, eqn::AbstractEulerData, opts, f::IO)
+function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer, 
+                               mesh::AbstractMesh{Tmsh}, 
+                               sbp::AbstractSBP, 
+                               eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO)
 
 #  println("Performing major Iteration Callback")
 
+  myrank = mesh.myrank
+#  println("eqn.q = \n", eqn.q)
+  # undo multiplication by inverse mass matrix
+  res_vec_orig = eqn.M.*copy(eqn.res_vec)
+  res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
     if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
       vals = real(eqn.q_vec)  # remove unneded imaginary part
@@ -263,20 +276,36 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     #--------------------------------------------------------------------------
   end
 =#
-  if opts["write_entropy"]
+  if opts["write_entropy"] && (itr % opts["write_entropy_freq"] == 0)
     # calculate the entropy norm
-    val = zero(Float64)
-    for i=1:mesh.numDofPerNode:mesh.numDof
-      q_vals = sview(eqn.q_vec, i:(i+3))
-      s = calcEntropy(eqn.params, q_vals)
-      val += real(s)*eqn.M[i]*real(s)
+    val = calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec)
+
+    # compute w^T * res_vec
+    val2 = contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig)
+
+    # DEBUGGING: compute the potential flux from q
+    #            directly, to verify the boundary terms are the problem
+#    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+#    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+
+    @mpi_master begin
+      f = open(opts["write_entropy_fname"], "a+")
+      println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
+      close(f)
     end
-    f = open(opts["write_entropy_fname"], "a+")
-    println(f, itr, " ", eqn.params.t, " ",  val)
-    close(f)
   end
 
-
+  if opts["write_integralq"]
+    integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
+    f = open(opts["write_integralq_fname"], "a+")
+    print(f, itr, " ", eqn.params.t)
+    for i=1:length(integralq_vals)
+      print(f, " ", integralq_vals[i])
+    end
+    print(f, "\n")
+    close(f)
+  end
+  
   return nothing
 
 end
@@ -337,8 +366,11 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     fill!(eqn.q_face, 0.0)
     fill!(eqn.flux_face, 0.0)
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
-    interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-    calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+
+    if opts["face_integral_type"] == 1
+      interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+      calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+    end
   end
 #  println("  DG dataPrep @time printed above")
   fill!(eqn.bndryflux, 0.0)
@@ -445,24 +477,25 @@ end
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
-  if opts["Q_transpose"] == true
-    for i=1:Tdim
-      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
-    end
+  integral_type = opts["volume_integral_type"]
+  if integral_type == 1
+    if opts["Q_transpose"] == true
+      for i=1:Tdim
+        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+      end
+    else
+      for i=1:Tdim
+        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
+      end
+    end  # end if
+  elseif integral_type == 2
+    calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
   else
-    for i=1:Tdim
-      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract, trans=false)
-    end
-  end  # end if
+    throw(ErrorException("Unsupported volume integral type = $integral_type"))
+  end
 
 
   # artificialViscosity(mesh, sbp, eqn) 
-
-  # hAverage = AvgMeshSize(mesh, eqn)
-  # println("Average Mesh Size = ", hAverage)
-  # need source term here
-
-
 
 end  # end evalVolumeIntegrals
 
@@ -481,9 +514,9 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   #TODO: remove conditional
   if mesh.isDG
-    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
   else
-    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
   end
 
 
@@ -566,14 +599,26 @@ end
 function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
-  interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+  face_integral_type = opts["face_integral_type"]
+  if face_integral_type == 1
+#    println("calculating regular face integrals")
+    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res, SummationByParts.Subtract())
+
+  elseif face_integral_type == 2
+#    println("calculating ESS face integrals")
+    
+    getESFaceIntegral(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces)
+
+  else
+    throw(ErrorException("Unsupported face integral type = $face_integral_type"))
+  end
 
   # do some output here?
   return nothing
 
 end
                             
-
+#=
 @doc """
 ### EulerEquationMod.sendParallelData
 
@@ -597,7 +642,7 @@ function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end
-
+=#
 @doc """
 ### EulerEquationMod.evalSharedFaceIntegrals
 
@@ -613,12 +658,27 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  if opts["parallel_type"] == 1
-#    println(eqn.params.f, "doing face integrals using face data")
-    calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+  println(eqn.params.f, "evaluating shared face integrals")
+  face_integral_type = opts["face_integral_type"]
+  if face_integral_type == 1
+    println(eqn.params.f, "face integral type 1")
+
+    if opts["parallel_data"] == "face"
+      println(eqn.params.f, "doing face integrals using face data")
+      calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+    elseif opts["parallel_data"] == "element"
+      println(eqn.params.f, "doing face integrals using element data")
+      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+    else
+      throw(ErrorException("unsupported parallel data type"))
+    end
+
+  elseif face_integral_type == 2
+
+    println(eqn.params.f, "face integral type 2")
+    getESSharedFaceIntegrals_element(mesh, sbp, eqn, opts,eqn.flux_func)
   else
-#    println(eqn.params.f, "doing face integrals using element data")
-    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+    throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end
 
   return nothing

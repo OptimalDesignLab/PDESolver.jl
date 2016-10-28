@@ -16,7 +16,7 @@ export ICDict              # exported from ic.jl
 # include("getMass.jl")
 
 
-type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
+type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
   alpha_x::Float64
   alpha_y::Float64
@@ -169,11 +169,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
     eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
     if mesh.isDG
-      if opts["parallel_type"] == 1
+      if opts["parallel_data"] == "face"
         dim2 = numfacenodes
         dim3_send = mesh.peer_face_counts
         dim3_recv = mesh.peer_face_counts
-      elseif opts["parallel_type"] == 2
+      elseif opts["parallel_data"] == "element"
         dim2 = mesh.numNodesPerElement
         dim3_send = mesh.local_element_counts
         dim3_recv = mesh.remote_element_counts

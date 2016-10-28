@@ -57,7 +57,7 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
 
       flux_j = sview(face_flux, :, j, i)
-      functor(qL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params)
+      functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
 #      # add the negative sign
 #      for k=1:mesh.numDofPerNode
 #        flux_j[k] = -flux_j[k]
@@ -67,6 +67,102 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+
+function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           functor::FluxType,
+                           interfaces::AbstractArray{Interface, 1})
+
+#  println("----- entered getESFaceIntegral -----")
+  nfaces = length(interfaces)
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = sview(eqn.q, :, :, elL)
+    qR = sview(eqn.q, :, :, elR)
+    aux_vars = sview(eqn.aux_vars, :, :, elL)
+    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+    resL = sview(eqn.res, :, :, elL)
+    resR = sview(eqn.res, :, :, elR)
+
+    calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
+                       dxidx_face, functor, resL, resR)
+  end
+
+  return nothing
+end
+
+function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}( 
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            opts, functor::FluxType)
+
+  println(eqn.params.f, "entered getEsSharedFaceIntegrals_element")
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use getESSharedFaceIntegrals_element without parallel element data"))
+  end
+
+  q = eqn.q
+  params = eqn.params
+  # we don't care about elementR here, so use this throwaway array
+  resR = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  npeers = mesh.npeers
+  val = sum(mesh.recv_waited)
+  if val !=  mesh.npeers && val != 0
+    throw(ErrorException("Receive waits in inconsistent state: $val / $npeers already waited on"))
+  end
+
+  for i=1:mesh.npeers
+    if val == 0
+      params.time.t_wait += @elapsed idx, stat = MPI.Waitany!(mesh.recv_reqs)
+      mesh.recv_stats[idx] = stat
+      mesh.recv_reqs[idx] = MPI.REQUEST_NULL  # make sure this request is not used
+      mesh.recv_waited[idx] = true
+    else
+      idx = i
+    end
+
+    println(eqn.params.f, "\ndoing shared face integrals for peer ", i)
+
+    # get the data for the parallel interface
+    interfaces = mesh.shared_interfaces[idx]
+    bndries_local = mesh.bndries_local[idx]
+    bndries_remote = mesh.bndries_remote[idx]
+#    qL_arr = eqn.q_face_send[i]
+    qR_arr = eqn.q_face_recv[idx]
+    dxidx_face_arr = mesh.dxidx_sharedface[idx]
+#    aux_vars_arr = eqn.aux_vars_sharedface[idx]
+#    flux_arr = eqn.flux_sharedface[idx]
+
+    start_elnum = mesh.shared_element_offsets[idx]
+    println(eqn.params.f, "numEl = ", mesh.numEl, ", start_elnum = ", start_elnum)
+
+    # compute the integrals
+    for j=1:length(interfaces)
+      println(eqn.params.f, "interface ", j)
+      iface_j = interfaces[j]
+      elL = iface_j.elementL
+      elR = iface_j.elementR - start_elnum + 1  # is this always equal to j?
+      qL = sview(q, :, :, elL)
+      qR = sview(qR_arr, :, :, elR)
+      aux_vars = sview(eqn.aux_vars, :, :, elL)
+      dxidx_face = sview(dxidx_face_arr, :, :, :, j)
+      resL = sview(eqn.res, :, :, elL)
+
+      println(eqn.params.f, "elL = ", elL, ", elR = ", elR)
+      println(eqn.params.f, "iface = ", iface_j)
+
+      calcESFaceIntegral(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
+                         dxidx_face, functor, resL, resR)
+    end  # end loop j
+
+  end  # end loop over peers
+
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.calcSharedFaceIntegrals
@@ -85,6 +181,11 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
                             opts, functor::FluxType)
 # calculate the face flux and do the integration for the shared interfaces
+
+  if opts["parallel_data"] != "face"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
+  end
+
 
   params = eqn.params
 
@@ -127,13 +228,13 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
         aux_vars = sview(aux_vars_arr, :, k, j)
         nrm = sview(sbp.facenormal, :, fL)
         flux_j = sview(flux_arr, :, k, j)
-        functor(qL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params)
+        functor(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
       end
     end
     # end flux calculation
 
     # do the integration
-    boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res)
+    boundaryintegrate!(mesh.sbpface, mesh.bndries_local[idx], flux_arr, eqn.res, SummationByParts.Subtract())
   end  # end loop over npeers
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, eqn.q_face_send, eqn.q_face_recv)
@@ -146,6 +247,11 @@ end
 function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
                             opts, functor::FluxType)
+
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+  end
+
 
   q = eqn.q
   params = eqn.params
@@ -227,12 +333,12 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
 
         aux_vars[1] = calcPressure(params, qL_k)
 
-        functor(qL_k, qR_k, aux_vars, dxidx, nrm, flux_k, params)
+        functor(params, qL_k, qR_k, aux_vars, dxidx, nrm, flux_k)
        end
      end  # end loop over interfaces
 
     # evaluate integral
-    boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)
+    boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res, SummationByParts.Subtract())
   end  # end loop over peers
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, qL_face_arr, qR_face_arr)
@@ -277,7 +383,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts,
     end
   end
 
-  if opts["parallel_type"] == 1  
+  if opts["parallel_data"] == 1  
     for peer=1:mesh.npeers
       q_vals_p = eqn.q_face_send[peer]
       aux_vars = eqn.aux_vars_sharedface[peer]
@@ -303,24 +409,97 @@ end
 type RoeFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::RoeFlux, uL::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
               uR::AbstractArray{Tsol,1}, 
               aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
-              F::AbstractVector{Tres}, params::ParamType)
+              F::AbstractVector{Tres})
 
-  RoeSolver(uL, uR, aux_vars, dxidx, nrm, F, params)
+  RoeSolver(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
-type AvgFlux <: FluxType
+function call{Tsol, Tres}(obj::RoeFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  RoeSolver(params, uL, uR, aux_vars, nrm, F)
+  return nothing
 end
 
-function call{Tsol, Tres, Tmsh}(obj::AvgFlux, uL::AbstractArray{Tsol,1}, 
+type StandardFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::StandardFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
               uR::AbstractArray{Tsol,1}, 
               aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
-              F::AbstractVector{Tres}, params::ParamType)
+              F::AbstractVector{Tres})
 
-  AvgSolver(uL, uR, aux_vars, dxidx, nrm, F, params)
+  calcEulerFlux_standard(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
+
+function call{Tsol, Tres}(obj::StandardFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_standard(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
+
+type DucrosFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::DucrosFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_Ducros(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+
+function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_Ducros(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
+type IRFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IRFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IR(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+
+function call{Tsol, Tres}(obj::IRFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IR(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
+
 
 
 @doc """
@@ -331,7 +510,9 @@ end
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
-"AvgFlux" => AvgFlux(),
+"StandardFlux" => StandardFlux(),
+"DucrosFlux" => DucrosFlux(),
+"IRFlux" => IRFlux()
 )
 
 @doc """
@@ -350,5 +531,7 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   name = opts["Flux_name"]
   eqn.flux_func = FluxDict[name]
+  name = opts["Volume_flux_name"]
+  eqn.volume_flux_func = FluxDict[name]
   return nothing
 end

@@ -162,15 +162,12 @@ writeVisFiles(mesh, "solution_ic")
 if opts["calc_dt"]
   wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
   @mpi_master println("max wave speed = ", wave_speed)
+  @mpi_master println("min element size = ", mesh.min_el_size)
   delta_t = opts["CFL"]*mesh.min_el_size/wave_speed
   println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
   opts["delta_t"] = delta_t
 end
 
-#DEBUGGING
-if opts["test_GLS2"]
-  calcResidual(mesh, sbp, eqn, opts, evalEuler)
-end
 
 #------------------------------------------------------------------------------
 #=
@@ -420,6 +417,10 @@ if opts["solve"]
   writeVisFiles(mesh, "solution_done")
 
 end  # end if (opts[solve])
+
+fname = "timing_breakdown_$myrank"
+write_timings(eqn.params.time, fname)
+
 
 #  return mesh, sbp, eqn, opts
 #end  # end function

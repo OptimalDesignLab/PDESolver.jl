@@ -152,8 +152,8 @@ facts("----- Testing Parallel Functions -----") do
   cd(start_dir)
 
   # make the parallel version
-  opts["smb_name"] = "src/mesh_files/psquare2.smb"
-  opts["dmg_name"] = "src/mesh_files/psquare2.dmg"
+  opts["smb_name"] = "SRCMESHES/psquare2.smb"
+  opts["dmg_name"] = "SRCMESHES/psquare2.dmg"
   make_input( opts, string("./rk4/parallel/", fname, "p"))
 
   start_dir = pwd()
@@ -161,8 +161,8 @@ facts("----- Testing Parallel Functions -----") do
   ARGS[1] = "input_vals_serial.jl"
   include(STARTUP_PATH)
   cd(start_dir)
-  opts["smb_name"] = "src/mesh_files/psquare2.smb"
-  opts["dmg_name"] = "src/mesh_files/psquare2.dmg"
+  opts["smb_name"] = "SRCMESHES/psquare2.smb"
+  opts["dmg_name"] = "SRCMESHES/psquare2.dmg"
   make_input(opts, string("./newton/parallel/", "input_vals_parallel"))
 
 
@@ -174,16 +174,17 @@ facts("----- Testing Parallel Functions -----") do
 
   # make the parallel version
   cd(start_dir)
-  opts["smb_name"] = "src/mesh_files/ptet8cube.smb"
+  opts["smb_name"] = "SRCMESHES/ptet8cube.smb"
   make_input(opts, string("./rk4_3d/parallel/", "input_vals_parallel"))
 
   # make the parallel newton's method
   opts["run_type"] = 5
   opts["jac_type"] = 3
   opts["parallel_type"] = 2
+  opts["parallel_data"] = "element"
   make_input(opts, string("./newton_3d/parallel/", "input_vals_parallel"))
 
-  opts["smb_name"] = "src/mesh_files/tet8cube.smb"
+  opts["smb_name"] = "SRCMESHES/tet8cube.smb"
   make_input(opts, string("./newton_3d/serial/", "input_vals_serial"))
 
   cd("./newton_3d/serial")

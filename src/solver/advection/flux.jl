@@ -72,6 +72,10 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             opts, functor::FluxType)
 # calculate the face flux and do the integration for the shared interfaces
 
+  if opts["parallel_data"] != "face"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
+  end
+
   params = eqn.params
 
   npeers = mesh.npeers
@@ -132,6 +136,11 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
 
   q = eqn.q
   params = eqn.params
+
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use getSharedFaceIntegrals_elemenet without parallel element data"))
+  end
+
 
   @debug1 begin
     qL_face_arr = Array(Array{Tsol, 3}, mesh.npeers)

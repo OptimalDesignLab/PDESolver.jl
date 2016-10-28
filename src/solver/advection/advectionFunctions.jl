@@ -36,10 +36,10 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
   # start communication right away
-  if opts["parallel_type"] == 1
-    params.time.t_send += @elapsed if mesh.commsize > 1
-      sendParallelData(mesh, sbp, eqn, opts)
-    end
+  params.time.t_send += @elapsed if opts["parallel_type"] == 1
+
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, 
+                      params.f)
     #  println("send parallel data @time printed above")
   end
 
@@ -311,7 +311,7 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
   return nothing
 end
 
-
+#=
 @doc """
 ### AdvectionEquationMod.sendParallelData
 
@@ -335,6 +335,7 @@ function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end
+=#
 
 @doc """
 ### AdvectionEquationMod.evalSharedFaceIntegrals
@@ -351,12 +352,18 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  if opts["parallel_type"] == 1
+  if opts["face_integral_type"] != 1
+    throw(ErrorException("unsupported face integral type"))
+  end
+
+  if opts["parallel_data"] == "face"
 #    println(eqn.params.f, "doing face integrals using face data")
     calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
-  else
+  elseif opts["parallel_data"] == "element"
 #    println(eqn.params.f, "doing face integrals using element data")
     calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+  else
+    throw(ErrorException("unsupported parallel_data setting"))
   end
 
   return nothing

@@ -135,9 +135,6 @@ if opts["calc_dt"]
 end
 
 
-if opts["test_GLS2"]
-  calcResidual(mesh, sbp, eqn, opts, evalAdvection)
-end
 println("mesh.min_node_dist = ", mesh.min_node_dist)
 #------------------------------------------------------------------------------
 #=

@@ -34,7 +34,7 @@ function calcResidual(mesh, sbp, eqn, opts, func)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   time = eqn.params.time
   time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
-    exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
 
   func(mesh, sbp, eqn, opts)

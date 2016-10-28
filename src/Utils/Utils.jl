@@ -18,11 +18,15 @@ include("initialization.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
 export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
+export startDataExchange
 export exchangeElementData
 export @mpi_master, @time_all, print_time_all
 export Timings, write_timings
 export sharedFaceLogging
 export createMeshAndOperator
+export calcBCNormal
+export applyPermRow, applyPermRowInplace, applyPermColumn
+export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 
 @doc """
 ### Utils.disassembleSolution
@@ -268,7 +272,7 @@ end
   This bool value controls whether the function named sview refers to 
   view or unsafe_view from the ArrayViews package
 """->
-global const safe_views = false
+global const safe_views = true
 if safe_views
   global const sview = ArrayViews.view
 else
@@ -307,6 +311,8 @@ type Timings
   t_jacobian::Float64  # time spent computing jacobian
   t_solve::Float64  # linear solve time
   t_newton::Float64  # time spent in newton loop
+  t_timemarch::Float64 # time spent in time marching loop
+  t_callback::Float64  # time spent performing callbacks
   t_barrier::Float64  # time spent in MPI_Barrier
   t_barrier2::Float64
   t_barrier3::Float64
@@ -315,7 +321,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 
@@ -365,6 +371,172 @@ function write_timings(t::Timings, fname::AbstractString)
 end
 
 
+"""
+  Calculate the scaled normal vector in parametric coordinates from the
+  face normal and scaled mapping jacobian.  `nrm2` is overwritten with
+  the result.
+"""
+function calcBCNormal(params::AbstractParamType{2}, dxidx::AbstractMatrix, 
+                    nrm::AbstractVector, nrm2::AbstractVector)
+
+  nrm2[1] = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  nrm2[2] = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  return nothing
+end
+
+function calcBCNormal(params::AbstractParamType{3}, dxidx::AbstractMatrix, 
+                    nrm::AbstractVector, nrm2::AbstractVector)
+
+  n1 = nrm[1]; n2 = nrm[2]; n3 = nrm[3]
+  nrm2[1] = dxidx[1,1]*n1 + dxidx[2,1]*n2 + dxidx[3,1]*n3
+  nrm2[2] = dxidx[1,2]*n1 + dxidx[2,2]*n2 + dxidx[3,2]*n3
+  nrm2[3] = dxidx[1,3]*n1 + dxidx[2,3]*n2 + dxidx[3,3]*n3
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# permutation functions
+#------------------------------------------------------------------------------
+"""
+  Permute the rows of A according to the permvec, storing the result in B
+  The permvec contains the source indices for each entry in B, ie.
+  B[permvec[i]] comes from A[i].  This is consistent with the mathematical
+  definition of a permutation that pre-multiplication by a permutation 
+  matrix (obtained from permMatrix) is a row permutation, ie.
+  B = P*A
+
+  Aliasing: no aliasing allowed
+"""
+function applyPermRow{T}(permvec::AbstractVector, A::AbstractMatrix{T},
+                            B::AbstractMatrix{T})
+
+  m, n = size(A)
+  for i=1:m
+    idx = permvec[i]
+    for j=1:n
+      B[ i, j] = A[idx, j]
+    end
+  end
+
+  return nothing
+end
+
+"""
+  Like applyPermRow, but the result is returned in A.  Both A and B
+  are overwritten.
+
+  Aliasing: no aliasing allowed
+"""
+function applyPermRowInplace{T}(permvec::AbstractVector, A::AbstractMatrix{T},
+                            B::AbstractMatrix{T})
+
+  applyPermRow(permvec, A, B)
+
+  # copy back
+  for i=1:length(A)
+    A[i] = B[i]
+  end
+
+  return nothing
+end
+
+
+"""
+  Permute the columns of A according to permvec.  See applyPermRow for the
+  definition of a permvec.  Note that for column permutation the 
+  interpretation is that destination column permvec[i] comes from 
+  source column i.  This is consistent with the notion that post-multiplying
+  by a permutation matrix (obtained from permMatrix) is a column 
+  permutation, i.e B = A*P
+
+  Aliasing: no aliasing allowed
+"""
+function applyPermColumn{T}(permvec::AbstractVector, A::AbstractMatrix{T},
+                            B::AbstractMatrix{T})
+
+  m, n = size(A)
+  for i=1:m
+    for j=1:n
+      B[i, permvec[j]] = A[i, j]
+    end
+  end
+
+  return nothing
+end
+
+"""
+  Like applyPermColumn, but the result is returned in A.  Both A and B
+  are overwritten
+
+  Aliasing: no aliasing allowed
+"""
+function applyPermColumnInplace{T}(permvec::AbstractVector, 
+                            A::AbstractMatrix{T}, B::AbstractMatrix{T})
+
+  applyPermColumn(permvec, A, B)
+
+  for i=1:length(A)
+    A[i] = B[i]
+  end
+
+  return nothing
+end
+
+"""
+  Create a permutation matrix from a permutation vector.  Only select
+  entries of A are overwritten.
+
+"""
+function permMatrix!(permvec::AbstractVector, A::AbstractMatrix)
+
+  m, n = size(A)
+
+  for i=1:m
+    A[i, permvec[i]] = 1
+  end
+
+  return nothing
+end
+
+"""
+  Create a permutation matrix from a permutation vector.  The element type
+  of the returned matrix is Int.
+"""
+function permMatrix(permvec::AbstractVector)
+  m = length(permvec)
+  A = zeros(Int, m, m)
+  permMatrix!(permvec, A)
+
+  return A
+end
+
+
+"""
+  Compute the permutation vector that corresponds to the inverse permutation
+
+  Inputs:
+    permvec: the original permutation vector
+
+  Inputs/Outputs:
+    invperm: the inverse permutation vector
+
+  Aliasing: no aliasing allowed
+"""
+function inversePerm(permvec::AbstractVector, invperm::AbstractVector)
+
+  n = length(permvec)
+  for i=1:n
+    idx = permvec[i]
+    invperm[idx] = i
+  end
+
+  return nothing
+end
+
+# TODO: write functions to apply inverse permutation from permvec, without
+#       needing to explicetly compute the inverse permutation vector
 
 end  # end module
 
