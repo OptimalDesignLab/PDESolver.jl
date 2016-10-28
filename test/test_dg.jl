@@ -54,9 +54,9 @@ facts("----- Testing DG flux -----") do
       nrm_scaled = [nx, ny]
       EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
-      func(uL, uR, aux_vars, dxidx, nrm, flux_roe, eqn.params)
+      func(eqn.params, uL, uR, aux_vars, dxidx, nrm, flux_roe)
 
-      @fact flux_roe --> roughly(-flux_euler, atol=1e-13)
+      @fact flux_roe --> roughly(flux_euler, atol=1e-13)
     end
   end
 
@@ -84,7 +84,7 @@ facts("----- Testing DG flux -----") do
       nrm_scaled = [nx, ny]
       EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
-      @fact eqn.flux_face[:, j, i] --> roughly(-flux_euler, atol=1e-13)
+      @fact eqn.flux_face[:, j, i] --> roughly(flux_euler, atol=1e-13)
     end
   end
 
