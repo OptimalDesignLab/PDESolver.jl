@@ -182,6 +182,34 @@ function contractResEntropyVars{Tsol, Tres, Tmsh, Tdim}(
 end
 
 @doc """
+  Compute the SBP approximation to integral q dOmega, ie. the mass matrix
+  times the vector of conservative variables at each node in the mesh.  
+
+  This function returns an array of length numDofPerNode containing the 
+  result for each variable.
+"""
+function integrateQ{Tsol, Tres, Tmsh, Tdim}( mesh::AbstractDGMesh{Tmsh}, 
+             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector)
+
+  vals = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    q_vals_i = sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
+    w_val = eqn.M[i]
+    for j=1:length(q_vals_i)
+      vals[j] += w_val*q_vals_i[j]
+    end
+  end
+
+  vals2 = zeros(vals)
+  MPI.Allreduce(vals, vals2, MPI.SUM, eqn.comm)
+
+  return vals2
+end
+
+
+
+
+@doc """
   Computes the net potential flux integral over all interfaces, where the 
   potential flux is calculated from q_arr.
   Does not work in parallel

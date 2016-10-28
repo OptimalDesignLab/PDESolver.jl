@@ -185,6 +185,8 @@ get!(arg_dict, "addStabilization", true)
 get!(arg_dict, "write_entropy", false)
 get!(arg_dict, "write_entropy_freq", 1)
 get!(arg_dict, "write_entropy_fname", "entropy.dat")
+get!(arg_dict, "write_integralq", false)
+get!(arg_dict, "write_integralq_fname", "integralq.dat")
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
 

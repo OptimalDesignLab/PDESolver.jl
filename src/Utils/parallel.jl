@@ -65,7 +65,6 @@ function startDataExchange{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
   end
 
   if opts["parallel_data"] == "face"
-
     # interpolate to face
     for i=1:mesh.npeers
       mesh.send_waited[i] = getSendData(mesh, opts, q, mesh.bndries_local[i], 
@@ -78,7 +77,6 @@ function startDataExchange{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     exchangeFaceData(mesh, opts, send_buff, recv_buff, wait=wait)
 
   elseif opts["parallel_data"] == "element"
-
     # call exchangeElementData, because it internally extracts the 
     # needed values
     exchangeElementData(mesh, opts, q, send_buff, recv_buff, f, wait=wait)
@@ -199,6 +197,9 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     # these should have completed long ago, so it shouldn't be a performance
     # problem
 
+    # the waitany trick doesn't work because this loop posts new sends, reusing
+    # the same array of MPI_Requests.
+
     idx = i
     if !mesh.send_waited[i]
       MPI.Wait!(mesh.send_reqs[i])
@@ -230,7 +231,6 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     fill!(mesh.send_waited, true)
   end
 
-  flush(f)
 
   return nothing
 end

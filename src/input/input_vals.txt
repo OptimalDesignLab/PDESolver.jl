@@ -158,6 +158,13 @@ Note that any values associated with these options are shared with the regular
                        "write_entropy" is true, (Integer), default 1
 "write_entropy_fname" : file name (with extension) to write entropy to, 
                         (ASCIIString), default "entropy.dat"
+"write_integralq": write the integral of the q variables to a file every 
+                   iteration, (Bool), default false, currently only supported 
+                   by Euler module
+
+"write_integralq_fname": file name to write integral of q to, (ASCIIString),
+                         default "integralq.dat"
+
 "check_density" : whether not to check that density > 0 every residual 
                   evalution, (Bool), default true
 "check_pressure": whether to not to check that pressure > 0 every residual

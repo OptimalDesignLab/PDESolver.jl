@@ -113,6 +113,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   myrank = mesh.myrank
 
   time.t_send += @elapsed if opts["parallel_type"] == 1
+    println(eqn.params.f, "starting data exchange")
 
     startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
     #  println(" startDataExchange @time printed above")
@@ -292,6 +293,17 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
       close(f)
     end
+  end
+
+  if opts["write_integralq"]
+    integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
+    f = open(opts["write_integralq_fname"], "a+")
+    print(f, itr, " ", eqn.params.t)
+    for i=1:length(integralq_vals)
+      print(f, " ", integralq_vals[i])
+    end
+    print(f, "\n")
+    close(f)
   end
   
   return nothing
@@ -646,20 +658,24 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
+  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
+    println(eqn.params.f, "face integral type 1")
 
     if opts["parallel_data"] == "face"
-  #    println(eqn.params.f, "doing face integrals using face data")
+      println(eqn.params.f, "doing face integrals using face data")
       calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
     elseif opts["parallel_data"] == "element"
-  #    println(eqn.params.f, "doing face integrals using element data")
+      println(eqn.params.f, "doing face integrals using element data")
       calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
     else
       throw(ErrorException("unsupported parallel data type"))
     end
 
   elseif face_integral_type == 2
+
+    println(eqn.params.f, "face integral type 2")
     getESSharedFaceIntegrals_element(mesh, sbp, eqn, opts,eqn.flux_func)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))

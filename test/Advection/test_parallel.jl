@@ -181,6 +181,7 @@ facts("----- Testing Parallel Functions -----") do
   opts["run_type"] = 5
   opts["jac_type"] = 3
   opts["parallel_type"] = 2
+  opts["parallel_data"] = "element"
   make_input(opts, string("./newton_3d/parallel/", "input_vals_parallel"))
 
   opts["smb_name"] = "SRCMESHES/tet8cube.smb"

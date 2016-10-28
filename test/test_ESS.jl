@@ -1,5 +1,5 @@
 # test the entropy stable interface calculation
-
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -20,6 +20,7 @@ include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
 resize!(ARGS, 1)
+=#
 import EulerEquationMod: ParamType
 function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
                                 sbpface::AbstractFace,

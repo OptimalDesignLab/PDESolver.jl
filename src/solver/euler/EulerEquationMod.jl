@@ -148,6 +148,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     
     t = 0.0
     myrank = mesh.myrank
+    #TODO: don't open a file in non-debug mode
     f = open("log_$myrank.dat", "w")
     q_vals = Array(Tsol, Tdim + 2)
     qg = Array(Tsol, Tdim + 2)

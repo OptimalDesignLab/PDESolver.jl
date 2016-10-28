@@ -30,6 +30,7 @@ include("test_GLS3.jl")
 include("test_3d.jl")
 include("test_adjoint.jl")
 include("test_flux.jl")
+include("test_ESS.jl")
 
 cd("./convergence")
 include(joinpath(pwd(), "runtests.jl"))
