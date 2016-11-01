@@ -161,7 +161,7 @@ end
 
 #run_dof()
 op_type = 3
-findMeshSizeEl(50, op_type, 4)
+findMeshSizeEl(65, op_type, 4)
 #findMeshSize(771, 4)
 
 

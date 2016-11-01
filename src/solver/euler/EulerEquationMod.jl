@@ -62,8 +62,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   order::Int  # accuracy of elements (p=1,2,3...)
 
   q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
+  q_vals2::Array{Tsol, 1}
+  q_vals3::Array{Tsol, 1}
   qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
   v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
+  v_vals2::Array{Tsol, 1}
 
   res_vals1::Array{Tres, 1}  # reusable residual type storage
   res_vals2::Array{Tres, 1}  # reusable residual type storage
@@ -151,8 +154,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     #TODO: don't open a file in non-debug mode
     f = open("log_$myrank.dat", "w")
     q_vals = Array(Tsol, Tdim + 2)
+    q_vals2 = Array(Tsol, Tdim + 2)
+    q_vals3 = Array(Tsol, Tdim + 3)
     qg = Array(Tsol, Tdim + 2)
     v_vals = Array(Tsol, Tdim + 2)
+    v_vals2 = Array(Tsol, Tdim + 2)
   
     res_vals1 = Array(Tres, Tdim + 2)
     res_vals2 = Array(Tres, Tdim + 2)
@@ -240,7 +246,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
 
     time = Timings()
-    return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
+    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2, 
+               res_vals1, 
+               res_vals2, sat_vals, flux_vals1, 
                flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, 
                nrm2, nrm3,cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
