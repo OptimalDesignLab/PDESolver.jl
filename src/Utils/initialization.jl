@@ -86,6 +86,7 @@ function createMeshAndOperator(opts, dofpernode)
     # create DG SBP operator with internal nodes only
     if dim == 2
       sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+      # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
       interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
       sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')

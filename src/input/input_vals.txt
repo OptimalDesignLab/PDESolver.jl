@@ -223,6 +223,10 @@ Note that any values associated with these options are shared with the regular
 "write_res"  : write the residual in 3d form (res$i.dat) each iteration, (Bool), default false
 "write_qic"  : write the initial condition, assembled into 3d array form, to file qic.dat, (Bool), default false
 "write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
+"exact_visualization" : write a subtriangulated Paraview file in addition to
+                        the regular one, (Bool), default false, SBP Omega only.
+                        The subtriangulated file will have "_exact" appended
+                        to the file name
 "print_eigs" : calculate and print eigenvalues to STDOUT.  The calculation is very expensive, (Bool), default false
 "write_eigs" : calculate and write eigenvalues to file (eigs$i.dat) each iteration.  If both pritn_eigs and write_eigs are true, only one calculation is performed.  (Bool), default false
 "write_eigdecomp" : calculate and write to file the eigenvalues and eignenvectors of the jacobian, only supported for a Jacobian owned by Julia, (Bool), default false

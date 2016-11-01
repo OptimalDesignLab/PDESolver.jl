@@ -63,12 +63,17 @@ ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects need
 if jac_type == 3  # explicit sparse jacobian
   @mpi_master println("creating A")
   A = PetscMat(comm)
+  println("setting A from options")
   PetscMatSetFromOptions(A)
+  println("setting MatType")
   PetscMatSetType(A, mattype)
+  println("setting size")
   PetscMatSetSizes(A, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
+  println("checking if DG")
   if mesh.isDG
     MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
   end
+  println("done")
 elseif jac_type == 4  # jacobian-vector product
   # create matrix shell
   ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple

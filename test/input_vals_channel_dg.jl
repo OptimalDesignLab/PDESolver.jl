@@ -17,6 +17,7 @@ arg_dict = Dict{Any,Any}(
 "print_eigs" => false,
 "write_jac" => false,
 "coloring_distance_prec" => 0,
+"exact_visualization" => false,
 "write_res" => false,
 "verify_coloring" => true,
 "coloring_distance" => 0,
