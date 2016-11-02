@@ -91,11 +91,30 @@ end
 """->
 function physicsRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
 
+  DEBUG = true
+
   func = ctx_residual[1]
 
   func(mesh, sbp, eqn, opts, t)
 
+  # NOTE TODO TODO TODO: was rhs_vec, should be res_vec?!?
   assembleResidual(mesh, sbp, eqn, opts, rhs_vec, assemble_edgeres=false)
+#   assembleResidual(mesh, sbp, eqn, opts, res_vec, assemble_edgeres=false)
+
+  if DEBUG
+    println("============= in physicsRhs in residual_evaluation.jl")
+    loc_mark = 51
+    println(fstdout, "$loc_mark: ===== t = ", t)
+    flush(fstdout)
+    for dofix = 33:40
+      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
+    end
+    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
+    flush(fstdout)
+
+  end
+  
+
 
 end
 

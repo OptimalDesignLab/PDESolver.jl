@@ -319,6 +319,11 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
   # CN_Jac = I + dt/2 * physics_Jac
 
+  if DEBUG
+    println("===== jac inside cnJac but before CN adjustments =====")
+    dump(full(jac))
+  end
+
   # Jacobian is always 2D
   scale!(jac, h*0.5)
 
@@ -330,7 +335,7 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   end
 
   if DEBUG
-    println("===== jac inside cnJac =====")
+    println("===== jac inside cnJac but after CN adjustments =====")
     dump(full(jac))
   end
 
@@ -413,7 +418,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   # TODO: try printing out rhs_vec both in newton and CN to see if they're the same
   #   what this is doing:
-  #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) 0 u_n - 0.5*dt* (del dot G_n)
+  #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
   for i = 1:mesh.numDof
     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
   end

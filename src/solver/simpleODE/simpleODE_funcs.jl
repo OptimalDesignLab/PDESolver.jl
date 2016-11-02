@@ -22,6 +22,9 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
 
+  println("======= in evalSimpleODE, printing q")
+  println(eqn.q)
+
   myrank = mesh.myrank
   params = eqn.params
 
@@ -47,6 +50,8 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 #   end
 
+  println("======= in evalSimpleODE, printing res")
+  println(eqn.res)
 
 end   # end of function evalSimpleODE
 

@@ -116,7 +116,9 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
   # now put ctx_newton into newton_data
   newton_data.ctx_newton = ctx_newton
 
+  # TODO: 20161102 what is this?
   rhs_vec = eqn.res_vec
+#   rhs_vec = zeros(eqn.res_vec)
 
   return newton_data, jac, rhs_vec
 
@@ -174,7 +176,7 @@ end   # end of setupNewton
 
 """->
 function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts, pmesh=mesh, t=0.0; 
-                itermax=200, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
+                itermax=10, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
 
   rhs_func = physicsRhs
   jac_func = physicsJac
@@ -191,7 +193,7 @@ end
 
 function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                      opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual=(), t=0.0;
-                     itermax=200, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
+                     itermax=10, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
 
   # this function drives the non-linear residual to some specified tolerance
   # using Newton's Method
@@ -331,6 +333,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   if res_reltol0 > 0  # use the supplied res_reltol0 value
     @mpi_master println(fstdout, "using supplied value for relative residual")
     res_reltol_0 = res_reltol0
+    # TODO 20161101: what is this
   else
     @mpi_master println(fstdout, "using initial residual for relative residual")
     res_reltol_0 = res_0_norm
@@ -444,9 +447,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
         println(norm(full(jac)))
         println(norm(res_0))
 
-#         println("====== delta_q_vec inside newtonInner")
-#         println(delta_q_vec)
-#         println(norm(delta_q_vec))
+        println("====== delta_q_vec inside newtonInner")
+        println(delta_q_vec)
+        println(norm(delta_q_vec))
       end
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_q_vec)
@@ -510,11 +513,13 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 #    tmp = i+1
     # write rhs to file
     if write_rhs
-      writedlm("rhs$i_$myrank.dat", res_0)
+      fname = string("rhs", i, "_", myrank, ".dat")
+      writedlm(fname, res_0)
     end
 
     if write_res
-      writedlm("res$i_$myrank.dat", eqn.res)
+      fname = string("res", i, "_", myrank, ".dat")
+      writedlm(fname, eqn.res)
     end
 
 
@@ -1134,6 +1139,10 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 #  filter_orig = eqn.params.use_filter  # record original filter state
 #  eqn.params.use_filter = false  # don't repetatively filter
 
+  println("===== entered calcJacobianSparse =====")
+  println(func)
+  println("res_0: \n", res_0)
+
   epsilon = norm(pert)  # get magnitude of perturbation
   m = length(res_0)
   myrank = mesh.myrank
@@ -1370,7 +1379,7 @@ end
   This function extracts the entries for one column of the Jacobian from two residual evaluates that come from finite differences.
 
   Inputs:
-    res_0: vector of unperturbed residuala values
+    res_0: vector of unperturbed residual values
     res: vector of perturbed residual values
     epsilon: magnitude of perturbation
 
