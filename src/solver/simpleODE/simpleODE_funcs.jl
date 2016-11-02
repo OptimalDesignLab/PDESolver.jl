@@ -22,9 +22,6 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
                        opts, t = 0.0)
 
-  println("======= in evalSimpleODE, printing q")
-  println(eqn.q)
-
   myrank = mesh.myrank
   params = eqn.params
 
@@ -50,9 +47,6 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 #   end
 
-  println("======= in evalSimpleODE, printing res")
-  println(eqn.res)
-
 end   # end of function evalSimpleODE
 
 function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
@@ -62,8 +56,6 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   dxidx = mesh.dxidx
   q = eqn.q
 
-  println("===== (in physics) ===== t = $t")
-
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       for k=1:Tdim  # loop over parametric dimensions
@@ -72,8 +64,6 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
         # TODO
 #         eqn.q[1, j, i] = x^2 + t^2
-
-#         println("===== setting , mesh.coords[:, j, i]
 
 #         eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
 #         eqn.res[1, j, i] = calc_3t2(mesh.coords[:, j, i], eqn.params, t)

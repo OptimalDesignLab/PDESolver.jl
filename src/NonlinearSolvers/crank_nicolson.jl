@@ -96,38 +96,18 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
-    # NOTE DEBUG fix 20161031
-#     eqn_nextstep = deepcopy(eqn)
-#     # TODO: comment here
-#     eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-#     eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-
-    println("CN: entered time-stepping loop")
-    if DEBUG
-      loc_mark = 1
-      println(fstdout, "$loc_mark: ===== t = ", t)
-      flush(fstdout)
-      for dofix = 33:40
-        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-      end
-      for dofix = 33:40
-        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-      end
-      println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-      println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-      flush(fstdout)
-    end
+    println("CN: at the top of time-stepping loop, t = $t")
 
     # Allow for some kind of stage loop
 
     # TODO: output_freq
-    @mpi_master if i % output_freq == 0
-      println(fstdout,"\n==== timestep ", i)
-      flush(fstdout)
-      if i % 5*output_freq == 0
-        flush(fstdout)
-      end
-    end
+#     @mpi_master if i % output_freq == 0
+#       println(fstdout,"\n==== timestep ", i)
+#       flush(fstdout)
+#       if i % 5*output_freq == 0
+#         flush(fstdout)
+#       end
+#     end
 
     if DEBUG
       q_file = "q$i.dat"
@@ -176,24 +156,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     ctx_residual = (f, eqn, h, newton_data)
 
     println(fstdout, "in CN: before call to newtonInner")
-    if DEBUG
-      loc_mark = 2
-      println(fstdout, "$loc_mark: ===== t = ", t)
-      flush(fstdout)
-      for dofix = 33:40
-        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-      end
-      for dofix = 33:40
-        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-      end
-      println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-      println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-      flush(fstdout)
-    end
 
     t_nextstep = t + h
 
-    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t_nextstep)
+    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
     println("mark3")
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
@@ -206,33 +172,23 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # Old way
     eqn = deepcopy(eqn_nextstep)
-
-    # NOTE this is a DEBUG fix 20161031
-#     eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-#     eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-    eqn.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-    eqn.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    eqn.q = reshape(eqn.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    eqn.res = reshape(eqn.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   
     # TODO: at start or end?
     t = t_nextstep
 
     println(fstdout, "in CN: after call to newtonInner")
     if DEBUG
-      loc_mark = 3
-      println(fstdout, "$loc_mark: ===== t = ", t)
+      println(fstdout, "===== t = ", t)
       flush(fstdout)
-      for dofix = 33:40
-        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-      end
-      for dofix = 33:40
-        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-      end
-      println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-      println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
+      println(fstdout, "eqn.q_vec: \n", eqn.q_vec)
       flush(fstdout)
     end
 
   end   # end of t step loop
+
+  writedlm("solution_final_inCN.dat", real(eqn.q_vec))
 
   # TODO: if we're using the flipping mechanism for the eqn data, we need to complete this section so that 
   #     the correct data is returned in the caller's eqn arg
@@ -281,20 +237,6 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
   fstdout = BufferedIO(STDOUT)
   println(fstdout, "in cnJac")
-  if DEBUG
-    loc_mark = 11
-    println(fstdout, "$loc_mark: ===== t = ", t)
-    flush(fstdout)
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-    flush(fstdout)
-  end
 
   @mpi_master println(fstdout, "entered cnJac")
   flush(fstdout)
@@ -302,27 +244,8 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
 
   println(fstdout, "in cnJac after physicsJac call")
-  if DEBUG
-    loc_mark = 12
-    println(fstdout, "$loc_mark: ===== t = ", t)
-    flush(fstdout)
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-    flush(fstdout)
-  end
 
   # CN_Jac = I + dt/2 * physics_Jac
-
-  if DEBUG
-    println("===== jac inside cnJac but before CN adjustments =====")
-    dump(full(jac))
-  end
 
   # Jacobian is always 2D
   scale!(jac, h*0.5)
@@ -332,11 +255,6 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
     jac[i,i] += 1
 
-  end
-
-  if DEBUG
-    println("===== jac inside cnJac but after CN adjustments =====")
-    dump(full(jac))
   end
 
   return nothing
@@ -359,6 +277,9 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 #   DEBUG = false
   DEBUG = true
 
+  println("============ rhs_vec in cnRhs")
+  println("t: \n", t)
+
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
 #   eqn_nextstep = ctx[2]
@@ -369,62 +290,56 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   fstdout = BufferedIO(STDOUT)
   println(fstdout, "in cnRhs")
-  if DEBUG
-    loc_mark = 21
-    println(fstdout, "$loc_mark: ===== t = ", t)
-    flush(fstdout)
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-    flush(fstdout)
-  end
 
-#   loc_mark = 22
-#   println(fstdout, "$loc_mark: ===== t = ", t)
-#   println(fstdout, "in cnRhs after t_nextstep set to t+h")
-#   flush(fstdout)
-#   for dofix = 21485:21488
-#     println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-#   end
-#   for dofix = 20489:20492
-#     println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-#   end
-#   flush(fstdout)
+  println("=== in cnRhs, before physics eval\n")
+#   println("eqn.res_vec: \n")
+#   println(eqn.res_vec)
+  println(pointer(rhs_vec))
+  println(pointer(eqn.res))
+  println(pointer(eqn.res_vec))
+  println(pointer(eqn_nextstep.res_vec))
 
   physics_func(mesh, sbp, eqn, opts, t)
+
+#   println("=== in cnRhs, after physics eval\n")
+#   pointer(rhs_vec)
+#   pointer(eqn.res)
+#   pointer(eqn.res_vec)
+#   pointer(eqn_nextstep.res_vec)
+
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+#   println("eqn.res_vec: \n")
+#   println(eqn.res_vec)
+
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
   println(fstdout, "in cnRhs after calls to physics_func")
-  if DEBUG
-    loc_mark = 23
-    println(fstdout, "$loc_mark: ===== t = ", t)
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    println(fstdout, "$loc_mark: norm(eqn_nextstep.res_vec) = ", norm(eqn_nextstep.res_vec))
-    flush(fstdout)
-  end
 
-  # TODO: try printing out rhs_vec both in newton and CN to see if they're the same
+  println("=== in cnRhs \n")
+#   println("eqn.q_vec: \n")
+#   println(eqn.q_vec)
+#   println("eqn_nextstep.q_vec: \n")
+#   println(eqn_nextstep.q_vec)
+#   println("eqn.res_vec: \n")
+#   println(eqn.res_vec)
+#   println("eqn_nextstep.res_vec: \n")
+#   println(eqn_nextstep.res_vec)
+
+
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
   for i = 1:mesh.numDof
-    rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
-  end
+#     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
+    temp1 = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i]
+    temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
 
-  println("============ rhs_vec in cnRhs")
-  println(rhs_vec)
+    println("== in cnRhs. i = $i    temp1 = $temp1    temp2 = $temp2")
+
+    rhs_vec[i] = temp1 - temp2 
+
+  end
 
   return nothing
 

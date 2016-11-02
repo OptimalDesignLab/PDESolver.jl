@@ -28,7 +28,8 @@ export calcResidual, physicsRhs
       t:      simulation time
 
     Outputs:
-      res_0_norm:  norm of residual
+      rhs_norm_global:  norm of residual
+      
 
     To solve steady problems:
       func_rhs should be physicsRhs
@@ -44,7 +45,7 @@ export calcResidual, physicsRhs
 
     Aliasing restrictions: none
 """->
-function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t)
+function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0.0)
 # calculate the residual and its norm
 
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -53,12 +54,20 @@ function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t)
     exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
 
+  println("===== entered calcResidual, before func_rhs call =====")
+  println("t: ", t)
+  println("rhs_vec: \n", rhs_vec)
+
   func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
 
-  res_0_norm = calcNorm(eqn, eqn.res_vec, strongres=true)
-  time.t_allreduce += @elapsed res_norm_global = MPI.Allreduce(res_0_norm*res_0_norm, MPI.SUM, mesh.comm)
+  println("===== entered calcResidual, after func_rhs call =====")
+  println("t: ", t)
+  println("rhs_vec: \n", rhs_vec)
 
-  return sqrt(res_norm_global)
+  rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
+  time.t_allreduce += @elapsed rhs_norm_global = MPI.Allreduce(rhs_0_norm*rhs_0_norm, MPI.SUM, mesh.comm)
+
+  return sqrt(rhs_norm_global)
 
 end
 
@@ -89,7 +98,7 @@ end
   t:            simulation time
 
 """->
-function physicsRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
+function physicsRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t=0.0)
 
   DEBUG = true
 
@@ -97,24 +106,7 @@ function physicsRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
 
   func(mesh, sbp, eqn, opts, t)
 
-  # NOTE TODO TODO TODO: was rhs_vec, should be res_vec?!?
   assembleResidual(mesh, sbp, eqn, opts, rhs_vec, assemble_edgeres=false)
-#   assembleResidual(mesh, sbp, eqn, opts, res_vec, assemble_edgeres=false)
-
-  if DEBUG
-    println("============= in physicsRhs in residual_evaluation.jl")
-    loc_mark = 51
-    println(fstdout, "$loc_mark: ===== t = ", t)
-    flush(fstdout)
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-    flush(fstdout)
-
-  end
-  
-
 
 end
 

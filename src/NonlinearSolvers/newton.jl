@@ -234,6 +234,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     println("res_reltol0 = ", res_reltol0)
   end
 
+  if (t != 0.0) && (jac_type == 4)
+    throw(ErrorException, "Petsc cannot be used for solving unsteady problems, see TODO in calcJacVecProd_wrapper")
+  end
+
+
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
@@ -463,7 +468,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
     step_norm = norm(delta_q_vec)
     #TODO: make this a regular reduce?
-    step_norm = MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm)
+    step_norm = sqrt(MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm))
     @mpi_master println(fstdout, "step_norm = ", step_norm)
     flush(fstdout)
 
@@ -641,7 +646,7 @@ end               # end of function newton()
     for the calculation of the time-marching Jac.
 
 """->
-function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
+function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
 #   DEBUG = false
   DEBUG = true
@@ -649,18 +654,6 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
   fstdout = BufferedIO(STDOUT)
 
   println(fstdout, "in physicsJac")
-  if DEBUG
-    loc_mark = 31
-    println(fstdout, "$loc_mark: ===== t = ", t)
-    flush(fstdout)
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 33:40
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    flush(fstdout)
-  end
 
   myrank = mesh.myrank
   fstdout = BufferedIO(STDOUT)
@@ -701,18 +694,18 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
 
     if jac_type == 1  # dense jacobian
       @mpi_master println(fstdout, "calculating dense FD jacobian")
-      tmp, t_jac, t_gc, alloc = @time_all calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac)
+      tmp, t_jac, t_gc, alloc = @time_all calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac, t)
 
     elseif jac_type == 2  # Julia sparse jacobian
       @mpi_master println(fstdout, "calculating sparse FD jacobian")
       #TODO: don't copy the giant array!
       res_copy = copy(eqn.res)  # copy unperturbed residual
 
-      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac, t)
     elseif jac_type == 3  # Petsc sparse jacobian
       @mpi_master println(fstdout, "calculating sparse FD jacobian")
       res_copy = copy(eqn.res)  # copy unperturbed residual
-      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac)
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_copy, pert, jac, t)
     elseif jac_type == 4  # Petsc jacobian-vector product
       throw(ErrorException("No handling of jac_method = 1 and jac_type = 4: 
                            finite differencing isn't permitted for Petsc mat-free"))
@@ -723,17 +716,17 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
 
     if jac_type == 1  # dense jacobian
       @mpi_master println(fstdout, "calculating dense complex step jacobian")
-      tmp, t_jac, t_gc, alloc = @time_all calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac)
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac, t)
     elseif jac_type == 2  # Julia sparse jacobian 
       @mpi_master println(fstdout, "calculating sparse complex step jacobian")
       res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
     elseif jac_type == 3 # Petsc sparse jacobian
       res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
       @mpi_master println(fstdout, "calculating explicit Petsc jacobian")
 
       @mpi_master println(fstdout, "calculating main jacobain")
-      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
 
     elseif jac_type == 4 # Petsc jacobian-vector product
       # calculate preconditioner matrix only
@@ -743,7 +736,7 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
       # if jac_method == 2 (CS) and jac_type == 4 (Petsc mat-free), only calc the jac if it is a preconditioned jac
       if is_preconditioned
         print_jacobian_timing = true
-        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
       end
 
     end   # end of jac_type check
@@ -792,7 +785,7 @@ end   # end of physicsJac function
   Aliasing restrictions: vec, b, and eqn.q must not alias each other.
 
 """
-function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, func::Function, vec::AbstractVector, b::AbstractVector)
+function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, func::Function, vec::AbstractVector, b::AbstractVector, t=0.0)
 # calculates the product of the jacobian with the vector vec using a directional
 # derivative
 # only intended to work with complex step
@@ -817,7 +810,7 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
 
   # scatter into eqn.q
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
-  func(mesh, sbp, eqn, opts)
+  func(mesh, sbp, eqn, opts, t)
 
   # gather into eqn.res_vec
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
@@ -861,16 +854,16 @@ end
 
     Aliasing restrictions: none
 """->
-function checkJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, func, pert)
+function checkJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, func, pert, t=0.0)
   
   v = ones(mesh.numDof)
   result1 = zeros(mesh.numDof)
-  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v, result1)
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v, result1, t)
   jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   res_dummy = []
 
   disassembleSolution(mesh, sbp, eqn,opts, eqn.q_vec)
-  @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac)
+  @time calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
 
   if opts["newton_globalize_euler"]
     applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
@@ -903,7 +896,7 @@ function checkJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, func, pe
 
   result4 = zeros(mesh.numDof)
 
-  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v2, result4)
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, v2, result4, t)
 
   cnt = 0
   for i=1:mesh.numDof
@@ -948,6 +941,8 @@ end
 """->
 function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 # calculate Ax = b
+
+  # TODO 20161102: this needs a 't' argument
 
 #  println("entered calcJacVecProd wrapper")
   # get the context
@@ -1012,7 +1007,7 @@ end
 
   Aliasing restrictions: res_0 must not alias eqn.res_vec
 """->
-function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray)
+function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray, t=0.0)
 # calculate the jacobian using finite difference
   (m,n) = size(jac)
   entry_orig = zero(eltype(eqn.q_vec))
@@ -1031,7 +1026,7 @@ function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, p
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
-    func(mesh, sbp, eqn, opts)
+    func(mesh, sbp, eqn, opts, t)
 
     assembleResidual(mesh, sbp, eqn, opts,  eqn.res_vec)
     calcJacCol(sview(jac, :, j), res_0, eqn.res_vec, epsilon)
@@ -1067,7 +1062,7 @@ end
 
   Aliasing restrictions: res_0 must not alias eqn.res_vec
 """->
-function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func, pert, jac)
+function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func, pert, jac, t=0.0)
 
   epsilon = norm(pert)  # complex step perturbation
   entry_orig = zero(eltype(eqn.q_vec))
@@ -1085,7 +1080,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
-    func(mesh, sbp, eqn, opts)
+    func(mesh, sbp, eqn, opts, t)
 
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
     calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
@@ -1131,17 +1126,13 @@ end
 
  
 """->
-function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, pert, jac::Union{SparseMatrixCSC, PetscMat})
+function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, pert, jac::Union{SparseMatrixCSC, PetscMat}, t=0.0)
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type
 
 #  filter_orig = eqn.params.use_filter  # record original filter state
 #  eqn.params.use_filter = false  # don't repetatively filter
-
-  println("===== entered calcJacobianSparse =====")
-  println(func)
-  println("res_0: \n", res_0)
 
   epsilon = norm(pert)  # get magnitude of perturbation
   m = length(res_0)
@@ -1156,7 +1147,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
         if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
   	  # evaluate residual
-          time.t_func += @elapsed func(mesh, sbp, eqn, opts)
+          time.t_func += @elapsed func(mesh, sbp, eqn, opts, t)
         end
 
         if !(color == 1 && j == 1 && i == 1) 
