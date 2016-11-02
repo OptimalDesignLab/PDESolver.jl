@@ -1,5 +1,7 @@
-
 # this file contains all the flux solvers for weakly imposed boundary conditions
+
+include("IR_stab.jl")  # stabilization for the IR flux
+
 """
   Calculate the face integrals in an entropy stable manner for a given
   interface.  Unlike standard face integrals, this requires data from

@@ -133,6 +133,32 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcA0Inv(eqn.params, q, A0_c)
    @fact A0_c --> eye(4)
 
+   # test calcIRA0
+  A03 = scale(A0, eqn.params.gamma_1)
+  A04_test = zeros(A02)
+  A04_code = zeros(A02)
+  EulerEquationMod.getIRA0(eqn.params, q, A04_code)
+  q3 = zeros(Complex128, length(q))
+  q4 = zeros(Complex128, length(q))
+
+  q3[:] = q
+  EulerEquationMod.convertToEntropy_(eqn.params, q3, q4)
+  for i=1:length(q)
+    h = 1e-20
+    q4[i] += complex(0, h)
+    EulerEquationMod.convertToConservative_(eqn.params, q4, q3)
+    A04_test[:, i] = imag(q3)/h
+    q4[i] -= complex(0, h)
+  end
+  scale!(A04_test, eqn.params.gamma_1)
+
+  for i=1:length(A04_test)
+    @fact A04_code[i] --> roughly(A04_test[i], atol=1e-13)
+    @fact A04_code[i] --> roughly(A03[i], atol=1e-10)
+  end
+
+
+
      # test A1
    A1 = zeros(4,4)
    q_tmp = ones(Tsol, 4)
@@ -237,6 +263,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
 
 
+
      
 
      # now test converting back to conservative
@@ -251,6 +278,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
      for i=1:mesh.numDof
        @fact v_vec[i] --> roughly(eqn.q_vec[i])
      end
+
 
      # test multiplying an entire array by A0inv
      
