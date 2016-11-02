@@ -439,6 +439,14 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       tmp, t_solve, t_gc, alloc = @time_all begin
         jac_f = factorize(jac)
         delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
+        println("====== norm of jac -- right after delta_q_vec is calculated in newton")
+        println(norm(jac.nzval))
+        println(norm(full(jac)))
+        println(norm(res_0))
+
+#         println("====== delta_q_vec inside newtonInner")
+#         println(delta_q_vec)
+#         println(norm(delta_q_vec))
       end
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_q_vec)
@@ -460,6 +468,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
+    println("====== eqn.q_vec in newtonInner after delta_q_vec update")
+    println(eqn.q_vec)
     
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
  
@@ -628,7 +638,8 @@ end               # end of function newton()
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t; is_preconditioned::Bool=false)
 
-  DEBUG = false
+#   DEBUG = false
+  DEBUG = true
 
   fstdout = BufferedIO(STDOUT)
 
@@ -637,10 +648,10 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
     loc_mark = 31
     println(fstdout, "$loc_mark: ===== t = ", t)
     flush(fstdout)
-    for dofix = 21485:21488
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
     end
-    for dofix = 20489:20492
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
     end
     flush(fstdout)

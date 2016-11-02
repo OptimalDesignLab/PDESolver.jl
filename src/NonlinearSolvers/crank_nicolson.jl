@@ -9,7 +9,8 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
-DEBUG = false
+# DEBUG = false
+DEBUG = true
 
 
 @doc """
@@ -95,22 +96,21 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
+    # NOTE DEBUG fix 20161031
+#     eqn_nextstep = deepcopy(eqn)
+#     # TODO: comment here
+#     eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+#     eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
     println("CN: entered time-stepping loop")
     if DEBUG
       loc_mark = 1
       println(fstdout, "$loc_mark: ===== t = ", t)
       flush(fstdout)
-      for dofix = 21485:21488
+      for dofix = 33:40
         println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
       end
-      for dofix = 20489:20492
-        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-      end
-      for dofix = 21485:21488
-        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-      end
-      for dofix = 20489:20492
+      for dofix = 33:40
         println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
       end
       println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
@@ -132,6 +132,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if DEBUG
       q_file = "q$i.dat"
       writedlm(q_file, eqn.q_vec)
+    end
+    if DEBUG
+      res_file = "res$i.dat"
+      writedlm(res_file, eqn.res_vec)
     end
 
     # NOTE:
@@ -163,7 +167,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
   
     # f is the physics function, like evalEuler
+    # DEBUG fix 20161031
     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
+#     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts)
 
     # NOTE: eqn_nextstep changed to eqn 20161013
 #     ctx_residual = (f, eqn_nextstep, h, newton_data)
@@ -174,16 +180,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       loc_mark = 2
       println(fstdout, "$loc_mark: ===== t = ", t)
       flush(fstdout)
-      for dofix = 21485:21488
+      for dofix = 33:40
         println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
       end
-      for dofix = 20489:20492
-        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-      end
-      for dofix = 21485:21488
-        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-      end
-      for dofix = 20489:20492
+      for dofix = 33:40
         println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
       end
       println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
@@ -192,7 +192,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     t_nextstep = t + h
-
 
     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t_nextstep)
     println("mark3")
@@ -207,8 +206,12 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # Old way
     eqn = deepcopy(eqn_nextstep)
-    eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-    eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+
+    # NOTE this is a DEBUG fix 20161031
+#     eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+#     eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    eqn.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    eqn.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   
     # TODO: at start or end?
     t = t_nextstep
@@ -218,16 +221,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       loc_mark = 3
       println(fstdout, "$loc_mark: ===== t = ", t)
       flush(fstdout)
-      for dofix = 21485:21488
+      for dofix = 33:40
         println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
       end
-      for dofix = 20489:20492
-        println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-      end
-      for dofix = 21485:21488
-        println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-      end
-      for dofix = 20489:20492
+      for dofix = 33:40
         println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
       end
       println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
@@ -255,7 +252,9 @@ end
 @doc """
 ###NonlinearSolver.cnJac
 
-  Jac of the CN calculation
+  Jac of the CN calculation.
+  Effectively a wrapper for physicsJac, because the CN Jac is:
+    CN_Jac = I + dt/2 * physicsJac
 
   ctx:    
     physics func must be the first element, i.e. evalEuler
@@ -267,7 +266,8 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
                eqn_nextstep::AbstractSolutionData, opts, jac, ctx, t)
   # TODO: put a CN_Data type at the end of the function signature for passing stuff around
 
-  DEBUG = false
+#   DEBUG = false
+  DEBUG = true
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
   physics_func = ctx[1]
@@ -285,16 +285,10 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
     loc_mark = 11
     println(fstdout, "$loc_mark: ===== t = ", t)
     flush(fstdout)
-    for dofix = 21485:21488
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
     end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    for dofix = 20489:20492
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
     end
     println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
@@ -305,7 +299,6 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   @mpi_master println(fstdout, "entered cnJac")
   flush(fstdout)
 
-
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
 
   println(fstdout, "in cnJac after physicsJac call")
@@ -313,16 +306,10 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
     loc_mark = 12
     println(fstdout, "$loc_mark: ===== t = ", t)
     flush(fstdout)
-    for dofix = 21485:21488
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
     end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    for dofix = 20489:20492
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
     end
     println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
@@ -342,6 +329,11 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
   end
 
+  if DEBUG
+    println("===== jac inside cnJac =====")
+    dump(full(jac))
+  end
+
   return nothing
 
 end
@@ -359,7 +351,8 @@ end
 """->
 function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
 
-  DEBUG = false
+#   DEBUG = false
+  DEBUG = true
 
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
@@ -375,16 +368,10 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     loc_mark = 21
     println(fstdout, "$loc_mark: ===== t = ", t)
     flush(fstdout)
-    for dofix = 21485:21488
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
     end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    for dofix = 20489:20492
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
     end
     println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
@@ -413,16 +400,10 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   if DEBUG
     loc_mark = 23
     println(fstdout, "$loc_mark: ===== t = ", t)
-    for dofix = 21485:21488
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
     end
-    for dofix = 20489:20492
-      println(fstdout, "$loc_mark: eqn.q_vec($dofix) = ", eqn.q_vec[dofix])
-    end
-    for dofix = 21485:21488
-      println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
-    end
-    for dofix = 20489:20492
+    for dofix = 33:40
       println(fstdout, "$loc_mark: eqn_nextstep.q_vec($dofix) = ", eqn_nextstep.q_vec[dofix])
     end
     println(fstdout, "$loc_mark: norm(eqn.res_vec) = ", norm(eqn.res_vec))
@@ -437,15 +418,12 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
   end
 
+  println("============ rhs_vec in cnRhs")
+  println(rhs_vec)
+
   return nothing
 
-end
-
-function odeConstantResidual(f, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, 
-                             eqn_nextstep::AbstractSolutionData, opts, t=0.0)
-  return nothing
-
-end
+end     # end of function cnRhs
 
 @doc """
 ### NonlinearSolvers.pde_pre_func

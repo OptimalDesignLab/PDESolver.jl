@@ -70,9 +70,9 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 #         println("===== setting , mesh.coords[:, j, i]
 
-        eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
+#         eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
 #         eqn.res[1, j, i] = calc_3t2(mesh.coords[:, j, i], eqn.params, t)
-#         eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
+        eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
 
         # this is for u = x^2 + t OR u = t
 #         eqn.res[1, j, i] = 1.0
