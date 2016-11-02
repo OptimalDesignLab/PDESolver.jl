@@ -499,6 +499,29 @@ function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
   return nothing
 end
 
+type IRStableFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IRStableFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IRStable(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+
+function call{Tsol, Tres}(obj::IRStableFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IRStable(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
 
 
 
@@ -512,7 +535,8 @@ global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
 "StandardFlux" => StandardFlux(),
 "DucrosFlux" => DucrosFlux(),
-"IRFlux" => IRFlux()
+"IRFlux" => IRFlux(),
+"IRStableFlux" => IRStableFlux()
 )
 
 @doc """

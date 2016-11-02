@@ -684,6 +684,35 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
   return nothing
 end
 
+# stabilized IR flux
+
+function calcEulerFlux_IRStable{Tmsh, Tsol, Tres}(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, 
+                      dxidx::AbstractMatrix{Tmsh},
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
+  calcEulerFlux_IRStable(params, qL, qR, aux_vars, nrm2, F)
+  return nothing
+end
+
+
+function calcEulerFlux_IRStable{Tmsh, Tsol, Tres, Tdim}(
+                      params::ParamType{Tdim, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+
+  getIRFlux(params, qL, qR, aux_vars, dir, F)
+  getIRStab1(params, qL, qR, aux_vars, dir, F)
+
+  return nothing
+end
+
+
 
 function logavg(aL, aR)
 # calculate the logarithmic average needed by the IR flux

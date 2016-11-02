@@ -108,7 +108,7 @@ end
 
 """
   This function computes the IR stabilization using simple averaging of
-  qL and qR.  F is updated ( += ) with the result.
+  qL and qR.  The term is subtracted off of F.
 
   This function is dimension agnostic, but only works for conservative
   variables.
@@ -133,8 +133,9 @@ end
 
 """
   Updates the vector F with the stabilization term from Carpenter, Fisher,
-  Nielsen, Frankel, Entrpoy stabel spectral collocation schemes for the 
-  Navier-Stokes equatiosn: Discontinuous interfaces
+  Nielsen, Frankel, Entrpoy stable spectral collocation schemes for the 
+  Navier-Stokes equatiosn: Discontinuous interfaces.  The term is subtracted
+  off from F.
 
   The qavg vector should some average of qL and qR, but the type of 
   averaging is left up to the user.
@@ -190,7 +191,7 @@ function getIRStab_inner{Tmsh, Tsol, Tres, Tdim}(
   lambda_max = abs(Un) + dA*a
 
   for i=1:length(q_vals)
-    F[i] += 0.5*lambda_max*vR[i]
+    F[i] -= 0.5*lambda_max*vR[i]
   end
 
   return nothing
