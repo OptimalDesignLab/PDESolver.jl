@@ -338,7 +338,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   if res_reltol0 > 0  # use the supplied res_reltol0 value
     @mpi_master println(fstdout, "using supplied value for relative residual")
     res_reltol_0 = res_reltol0
-    # TODO 20161101: what is this
+    # Jared has a good explanation for why this is here
+    # It has to do with choosing between user-supplied relative norm or the norm of the IC
   else
     @mpi_master println(fstdout, "using initial residual for relative residual")
     res_reltol_0 = res_0_norm
@@ -447,14 +448,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       tmp, t_solve, t_gc, alloc = @time_all begin
         jac_f = factorize(jac)
         delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
-        println("====== norm of jac -- right after delta_q_vec is calculated in newton")
-        println(norm(jac.nzval))
-        println(norm(full(jac)))
-        println(norm(res_0))
-
-        println("====== delta_q_vec inside newtonInner")
-        println(delta_q_vec)
-        println(norm(delta_q_vec))
       end
       fill!(jac, 0.0)
 #    @time solveMUMPS!(jac, res_0, delta_q_vec)
@@ -476,8 +469,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
-    println("====== eqn.q_vec in newtonInner after delta_q_vec update")
-    println(eqn.q_vec)
     
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
  
@@ -551,10 +542,10 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
      flush(fstdout)
 
      return nothing
-   end  # end if tolerances satisfied
+    end  # end if tolerances satisfied
 
    # NOTE: garbage value 20161014 TODO TODO TODO
-   step_tol = -5
+    step_tol = -5
     if (step_norm < step_tol)
       @mpi_master println(fstdout, "Newton iteration converged with step_norm = ", step_norm)
       @mpi_master println(fstdout, "Final residual = ", res_0_norm)

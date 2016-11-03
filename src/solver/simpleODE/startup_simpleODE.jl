@@ -81,9 +81,7 @@ if opts["solve"]
 
   if flag == 1        # RK4
 
-    # OLD: does not use a pde_pre_func & pde_post_func suited to ODEs
-#     @time rk4(evalSimpleODE, opts["delta_t"], t_max, mesh, sbp, eqn, 
-#               opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+    # NOTE: needs to have a custom pde_pre_func & pde_post_func suited to ODEs, named ode_pre_func & ode_post_func
 
     rk4(evalSimpleODE, opts["delta_t"], t_max, eqn.q_vec, eqn.res_vec, ode_pre_func, ode_post_func, 
         (mesh, sbp, eqn), opts; 
@@ -97,6 +95,7 @@ if opts["solve"]
 
     throw(ErrorException("only RK4 and CN are implemented now; user selected different solve flag"))
     return nothing
+
   end
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)

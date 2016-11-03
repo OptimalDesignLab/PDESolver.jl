@@ -80,10 +80,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t = 0.0
   t_steps = round(Int, t_max/h)
 
-  println(fstdout, "\n00: ===== t = ", t)
-  println(fstdout, "00: (before time loop) setting eqn_nextstep to eqn using deepcopy", t)
-  flush(fstdout)
-
   eqn_nextstep = deepcopy(eqn)
   # TODO: comment here
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
@@ -132,7 +128,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     f( ctx..., opts, treal)
 #     sol_norm = post_func(ctx..., opts)
 
-    println("mark2")
 #     if use_itermax && i > itermax
 #       if myrank == 0
 #         println(fstdout, "breaking due to itermax")
@@ -147,7 +142,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
   
     # f is the physics function, like evalEuler
-    # DEBUG fix 20161031
+
+    # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
 #     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts)
 
@@ -160,7 +156,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     t_nextstep = t + h
 
     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-    println("mark3")
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -177,14 +172,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   
     # TODO: at start or end?
     t = t_nextstep
-
-    println(fstdout, "in CN: after call to newtonInner")
-    if DEBUG
-      println(fstdout, "===== t = ", t)
-      flush(fstdout)
-      println(fstdout, "eqn.q_vec: \n", eqn.q_vec)
-      flush(fstdout)
-    end
 
   end   # end of t step loop
 
@@ -235,15 +222,7 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
   t_nextstep = t + h
 
-  fstdout = BufferedIO(STDOUT)
-  println(fstdout, "in cnJac")
-
-  @mpi_master println(fstdout, "entered cnJac")
-  flush(fstdout)
-
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
-
-  println(fstdout, "in cnJac after physicsJac call")
 
   # CN_Jac = I + dt/2 * physics_Jac
 
@@ -274,11 +253,8 @@ end
 """->
 function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
 
-#   DEBUG = false
-  DEBUG = true
-
-  println("============ rhs_vec in cnRhs")
-  println("t: \n", t)
+  DEBUG = false
+#   DEBUG = true
 
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
@@ -288,44 +264,12 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   t_nextstep = t + h
 
-  fstdout = BufferedIO(STDOUT)
-  println(fstdout, "in cnRhs")
-
-  println("=== in cnRhs, before physics eval\n")
-#   println("eqn.res_vec: \n")
-#   println(eqn.res_vec)
-  println(pointer(rhs_vec))
-  println(pointer(eqn.res))
-  println(pointer(eqn.res_vec))
-  println(pointer(eqn_nextstep.res_vec))
-
   physics_func(mesh, sbp, eqn, opts, t)
-
-#   println("=== in cnRhs, after physics eval\n")
-#   pointer(rhs_vec)
-#   pointer(eqn.res)
-#   pointer(eqn.res_vec)
-#   pointer(eqn_nextstep.res_vec)
-
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-
-#   println("eqn.res_vec: \n")
-#   println(eqn.res_vec)
 
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
-  println(fstdout, "in cnRhs after calls to physics_func")
-
-  println("=== in cnRhs \n")
-#   println("eqn.q_vec: \n")
-#   println(eqn.q_vec)
-#   println("eqn_nextstep.q_vec: \n")
-#   println(eqn_nextstep.q_vec)
-#   println("eqn.res_vec: \n")
-#   println(eqn.res_vec)
-#   println("eqn_nextstep.res_vec: \n")
-#   println(eqn_nextstep.res_vec)
 
 
   #   what this is doing:
@@ -335,7 +279,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     temp1 = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i]
     temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
 
-    println("== in cnRhs. i = $i    temp1 = $temp1    temp2 = $temp2")
+#     println("== in cnRhs. i = $i    temp1 = $temp1    temp2 = $temp2")
 
     rhs_vec[i] = temp1 - temp2 
 

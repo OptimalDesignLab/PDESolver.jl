@@ -187,13 +187,6 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
 #  println("source integral @time printed above")
 
-
-  println(fstdout, "===== 42: norm(eqn.res_vec) = ", norm(eqn.res_vec))
-  flush(fstdout)
-
-  
-#  print("\n")
-
   return nothing
 end  # end evalEuler
 

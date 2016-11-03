@@ -14,7 +14,6 @@ function calc_x2_4t3{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   return u
 end
 
-
 @doc """
 ### SimpleODEMod.calc_x2_3t2
 

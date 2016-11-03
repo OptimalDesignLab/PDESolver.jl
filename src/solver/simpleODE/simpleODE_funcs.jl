@@ -60,10 +60,12 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     for j=1:mesh.numNodesPerElement
       for k=1:Tdim  # loop over parametric dimensions
 
-        # TODO How to get x from mesh -> dxidx?
-
-        # TODO
-#         eqn.q[1, j, i] = x^2 + t^2
+        # Here the expressions for du/dt needs to be stored in eqn.res
+        # For example:
+        #   if u = x^2 + t^2
+        #   then res = 2t
+        #   do this with:
+        #     eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
 
 #         eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
 #         eqn.res[1, j, i] = calc_3t2(mesh.coords[:, j, i], eqn.params, t)
@@ -131,11 +133,13 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh, sbp::AbstractS
 end
 
 @doc """
-### NonlinearSolvers.pde_pre_func
+### NonlinearSolvers.ode_pre_func
 
-  The pre-function for solving partial differential equations with a physics
+  The pre-function for solving ordinary differential equations with a physics
   module.  The only operation it performs is disassembling eqn.q_vec into
   eqn.q
+
+  Compare with NonlinearSolvers.pde_pre_func in NonlinearSolvers/rk4.jl
 
   Inputs:
     mesh
@@ -148,15 +152,16 @@ function ode_pre_func(mesh, sbp, eqn, opts)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 end
 
-# TODO: update these comments for pde -> ode
-
 @doc """
-### NonlinearSolvers.pde_post_func
+### NonlinearSolvers.pde_ode_func
 
-  The post-function for solving partial differential equations with a physics
-  module.  This function multiplies by A0inv, assembles eqn.res into
-  eqn.res_vec, multiplies by the inverse mass matrix, and calculates
-  the SBP approximation to the integral L2 norm
+  The post-function for solving ordinary differential equations with a physics
+  module.  This function DOES NOT multiply by A0inv.
+  It assembles eqn.res into eqn.res_vec. 
+  Then it DOES NOT multiply by the inverse mass matrix, then it calculates
+  the SBP approximation to the integral L2 norm.
+
+  Compare with NonlinearSolvers.pde_post_func in NonlinearSolvers/rk4.jl
 
   Inputs:
     mesh
@@ -166,13 +171,13 @@ end
 
 """->
 function ode_post_func(mesh, sbp, eqn, opts; calc_norm=true)
-#   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
+  # IN pde_post_func:  eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-#   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
+  # IN pde_post_func:  for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   if calc_norm
-#     local_norm = calcNorm(eqn, eqn.res_vec)
 
     # since simpleODE doesn't use SBP, need to use standard 2-norm instead of SBP norm
+    # IN pde_post_func:    local_norm = calcNorm(eqn, eqn.res_vec)
     local_norm = norm(eqn.res_vec, 2)/mesh.numDof
     eqn.params.time.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
     return sqrt(global_norm)

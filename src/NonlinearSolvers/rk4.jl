@@ -105,7 +105,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   flush(fstdout)
   for i=2:(t_steps + 1)
 
-    println("===== (beginning of rk4 timestep) ===== t = $t")
+#     println("===== (beginning of rk4 timestep) ===== t = $t")
 
     @mpi_master if i % output_freq == 0
        println(fstdout, "\ntimestep ",i)
@@ -184,10 +184,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k4[j] = res_vec[j]
     end
 
-    println("k1 = \n", k1)
-    println("k2 = \n", k2)
-    println("k3 = \n", k3)
-    println("k4 = \n", k4)
+#     println("k1 = \n", k1)
+#     println("k2 = \n", k2)
+#     println("k3 = \n", k3)
+#     println("k4 = \n", k4)
 
 #     println("q_old = \n", x_old)
 
@@ -197,14 +197,12 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j]
     end
 
-    println("q_vec = \n", q_vec)
-
+#     println("q_vec = \n", q_vec)
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)
     fill!(k3, 0.0)
     fill!(k4, 0.0)
-
 
     t = t + h
 

@@ -54,15 +54,7 @@ function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0
     exchangeElementData(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
 
-  println("===== entered calcResidual, before func_rhs call =====")
-  println("t: ", t)
-  println("rhs_vec: \n", rhs_vec)
-
   func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
-
-  println("===== entered calcResidual, after func_rhs call =====")
-  println("t: ", t)
-  println("rhs_vec: \n", rhs_vec)
 
   rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
   time.t_allreduce += @elapsed rhs_norm_global = MPI.Allreduce(rhs_0_norm*rhs_0_norm, MPI.SUM, mesh.comm)
@@ -99,8 +91,6 @@ end
 
 """->
 function physicsRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t=0.0)
-
-  DEBUG = true
 
   func = ctx_residual[1]
 
