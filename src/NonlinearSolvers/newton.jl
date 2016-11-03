@@ -544,8 +544,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
      return nothing
     end  # end if tolerances satisfied
 
-   # NOTE: garbage value 20161014 TODO TODO TODO
-    step_tol = -5
     if (step_norm < step_tol)
       @mpi_master println(fstdout, "Newton iteration converged with step_norm = ", step_norm)
       @mpi_master println(fstdout, "Final residual = ", res_0_norm)
