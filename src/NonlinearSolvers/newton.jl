@@ -323,10 +323,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     @mpi_master close(fconv)
     flush(fstdout)
 
-    if jac_type == 3
-      # contents of ctx_newton: (jacp, x, b, ksp)
-      destroyPetsc(jac, newton_data.ctx_newton...)
-    end
+    # NOTE: moved out of newton into calling function 20161104
+#     if jac_type == 3
+#       # contents of ctx_newton: (jacp, x, b, ksp)
+#       destroyPetsc(jac, newton_data.ctx_newton...)
+#     end
 
     @mpi_master println(fstdout, "Not entering Newton iteration loop")
     flush(fstdout)
@@ -535,10 +536,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
      @mpi_master close(fconv)
 
 
-     if jac_type == 3
-        # contents of ctx_newton: (jacp, x, b, ksp)
-        destroyPetsc(jac, newton_data.ctx_newton...)
-     end
+    # NOTE: moved out of newton into calling function 20161104
+#      if jac_type == 3
+#         # contents of ctx_newton: (jacp, x, b, ksp)
+#         destroyPetsc(jac, newton_data.ctx_newton...)
+#      end
      flush(fstdout)
 
      return nothing
@@ -554,10 +556,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       end
       @mpi_master close(fconv)
       
-      if jac_type == 3
-        # contents of ctx_newton: (jacp, x, b, ksp)
-        destroyPetsc(jac, newton_data.ctx_newton...)
-      end
+      # NOTE: moved out of newton into calling function 20161104
+#       if jac_type == 3
+#         # contents of ctx_newton: (jacp, x, b, ksp)
+#         destroyPetsc(jac, newton_data.ctx_newton...)
+#       end
       flush(fstdout)
 
       return nothing
@@ -611,14 +614,16 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
      rhs_vec[j] = res_0[j]
    end
  
-  if jac_type == 3
-    # contents of ctx_newton: (jacp, x, b, ksp)
-    destroyPetsc(jac, newton_data.ctx_newton...)
-  end
+  # NOTE: moved out of newton into calling function 20161104
+#   if jac_type == 3
+#     # contents of ctx_newton: (jacp, x, b, ksp)
+#     destroyPetsc(jac, newton_data.ctx_newton...)
+#   end
 
   return nothing
 
 end               # end of function newton()
+# TODO: more 'end of' comments inside newton()
 
 @doc """
 ###NonlinearSolver.physicsJac

@@ -68,6 +68,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   output_freq = opts["output_freq"]::Int
   write_vis = opts["write_vis"]::Bool
   use_itermax = opts["use_itermax"]::Bool
+  jac_type = opts["jac_type"]
   if use_itermax
     itermax = opts["itermax"]
   end
@@ -90,11 +91,21 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # for the number of times eqn data is flipped btwn one or the other memory locations
   nflips_eqn = 0
 
+  #-------------------------------------------------------------------------------
+  # allocate Jac outside of time-stepping loop
+  # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
+  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
+#   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts)
+
+
   for i = 2:(t_steps + 1)
 
     println("CN: at the top of time-stepping loop, t = $t")
 
-    # Allow for some kind of stage loop
+    # zero out Jac
+    fill!(jac, 0.0)
+
+    # TODO: Allow for some kind of stage loop: ES-Dirk
 
     # TODO: output_freq
 #     @mpi_master if i % output_freq == 0
@@ -143,10 +154,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   
     # f is the physics function, like evalEuler
 
-    # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
-    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
-#     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts)
-
     # NOTE: eqn_nextstep changed to eqn 20161013
 #     ctx_residual = (f, eqn_nextstep, h, newton_data)
     ctx_residual = (f, eqn, h, newton_data)
@@ -182,18 +189,23 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #   if (nflips_eqn % 2) == 1      # odd number of flips
 
 
+  # TODO: double check destroyPetsc here
+  if jac_type == 3
+    # contents of ctx_newton: (jacp, x, b, ksp)
+    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
+  end
 
 
   #returns t?
   return nothing
 
-end
+end   # end of crank_nicolson function
 
 # TODO:
 #   update only the eqn.q, then eval residual, then replace eqn.q 
 
 @doc """
-###NonlinearSolver.cnJac
+###NonlinearSolvers.cnJac
 
   Jac of the CN calculation.
   Effectively a wrapper for physicsJac, because the CN Jac is:
@@ -241,7 +253,7 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 @doc """
-###NonlinearSolver.cnRhs
+###NonlinearSolvers.cnRhs
 
   RHS of the CN calculation
 
