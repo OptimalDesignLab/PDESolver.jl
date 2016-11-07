@@ -189,7 +189,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #   if (nflips_eqn % 2) == 1      # odd number of flips
 
 
-  # TODO: double check destroyPetsc here
   if jac_type == 3
     # contents of ctx_newton: (jacp, x, b, ksp)
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)

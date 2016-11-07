@@ -178,6 +178,8 @@ end   # end of setupNewton
 function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts, pmesh=mesh, t=0.0; 
                 itermax=10, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0)
 
+  jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
+
   rhs_func = physicsRhs
   jac_func = physicsJac
 
@@ -188,6 +190,10 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::Abstr
 
   newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual, t,
                 itermax=itermax, step_tol=step_tol, res_abstol=res_abstol, res_reltol=res_reltol, res_reltol0=res_reltol0)
+
+  if jac_type == 3
+    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
+  end
 
 end
 
@@ -322,12 +328,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
     @mpi_master close(fconv)
     flush(fstdout)
-
-    # NOTE: moved out of newton into calling function 20161104
-#     if jac_type == 3
-#       # contents of ctx_newton: (jacp, x, b, ksp)
-#       destroyPetsc(jac, newton_data.ctx_newton...)
-#     end
 
     @mpi_master println(fstdout, "Not entering Newton iteration loop")
     flush(fstdout)
@@ -535,12 +535,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
      @mpi_master close(fconv)
 
-
-    # NOTE: moved out of newton into calling function 20161104
-#      if jac_type == 3
-#         # contents of ctx_newton: (jacp, x, b, ksp)
-#         destroyPetsc(jac, newton_data.ctx_newton...)
-#      end
      flush(fstdout)
 
      return nothing
@@ -556,11 +550,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       end
       @mpi_master close(fconv)
       
-      # NOTE: moved out of newton into calling function 20161104
-#       if jac_type == 3
-#         # contents of ctx_newton: (jacp, x, b, ksp)
-#         destroyPetsc(jac, newton_data.ctx_newton...)
-#       end
       flush(fstdout)
 
       return nothing
@@ -614,12 +603,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
      rhs_vec[j] = res_0[j]
    end
  
-  # NOTE: moved out of newton into calling function 20161104
-#   if jac_type == 3
-#     # contents of ctx_newton: (jacp, x, b, ksp)
-#     destroyPetsc(jac, newton_data.ctx_newton...)
-#   end
-
   return nothing
 
 end               # end of function newton()
