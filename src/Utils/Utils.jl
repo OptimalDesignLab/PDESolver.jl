@@ -265,20 +265,6 @@ function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
 end
 
 
-# it would be better if this used @boundscheck
-@doc """
-### Utils.safe_views
-
-  This bool value controls whether the function named sview refers to 
-  view or unsafe_view from the ArrayViews package
-"""->
-global const safe_views = true
-if safe_views
-  global const sview = ArrayViews.view
-else
-  global const sview = ArrayViews.unsafe_view
-end
-
 #=
 import Base.flush
 function flush(f::IOBuffer)

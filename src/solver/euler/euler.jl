@@ -112,6 +112,8 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
+#  println("entered evalEuler")
+#  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
     println(eqn.params.f, "starting data exchange")
 
@@ -229,6 +231,10 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
     if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
       vals = real(eqn.q_vec)  # remove unneded imaginary part
+
+#      println("writing vtk, q1319-3 = ", eqn.q[:, 3, 1319])
+#      dofs = mesh.dofs[:, 3, 1319]
+#      println("writing vtk, q_vec1319-3 = ", vals[dofs])
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
@@ -449,9 +455,10 @@ function checkPressure(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
+    q = sview(eqn.q, :, j, i)
     aux_vars = sview(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
-    @assert( real(press) > 0.0, "element $i, node $j")
+    @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
   end
 end
 

@@ -263,7 +263,33 @@ facts("----- Testing Numerical Fluxes -----") do
       end
     end
   end
+#=
+  # this isn't a valid test
+  # test that the flux is entropy dissipative
+  functor = EulerEquationMod.FluxDict["IRFlux"]
+  functor_stable = EulerEquationMod.FluxDict["IRStableFlux"]
+#  v1 = zeros(5)
+#  v2 = zeros(5)
+  F_ir = zeros(5)
+  F_irs = zeros(5)  # stabilized flux
+  for i=1:mesh.numEl
+    # pick the solutions at the first two nodes (arbitrary
+    qL = eqn.q[:, 1, i]
+    qR = eqn.q[:, 2, i]
+    dxidx = mesh.dxidx[:, :, 1, i]
+    aux_vars = eqn.aux_vars[:, 1, i]
+    nrm = sbp.facenormal[:, 3]  # use 3rd face, arbitrary
 
+    functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, F_ir)
+    functor_stable(eqn.params, qL, qR, aux_vars, dxidx, nrm, F_irs)
+
+    println("F_ir = \n", F_ir)
+    println("F_irs = \n", F_irs)
+    for j=1:5
+      @fact F_irs[j] --> less_than(F_ir[j])
+    end
+  end
+=#
 
 
 

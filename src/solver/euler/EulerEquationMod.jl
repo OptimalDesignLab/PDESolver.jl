@@ -155,7 +155,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     f = open("log_$myrank.dat", "w")
     q_vals = Array(Tsol, Tdim + 2)
     q_vals2 = Array(Tsol, Tdim + 2)
-    q_vals3 = Array(Tsol, Tdim + 3)
+    q_vals3 = Array(Tsol, Tdim + 2)
     qg = Array(Tsol, Tdim + 2)
     v_vals = Array(Tsol, Tdim + 2)
     v_vals2 = Array(Tsol, Tdim + 2)

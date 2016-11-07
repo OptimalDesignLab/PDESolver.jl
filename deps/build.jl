@@ -109,7 +109,7 @@ function installPDESolver()
   #------------------------------------------------------------------------------
 
   # array of [pkg_name, commit_hash]
-  pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "aa23cb98dbdba0eab82d465f87b1a936685548c0";
+  pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "b2bb3abe8057793f44d48ebce9f05c23d3dbcd69";
               "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
               "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
 #              "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "4ec55697fc4f9cba522a5137b96d502230269910";

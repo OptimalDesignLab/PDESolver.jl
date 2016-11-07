@@ -98,7 +98,6 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, functor::FluxType)
 
-  println(eqn.params.f, "entered getEsSharedFaceIntegrals_element")
   if opts["parallel_data"] != "element"
     throw(ErrorException("cannot use getESSharedFaceIntegrals_element without parallel element data"))
   end
@@ -124,8 +123,6 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
       idx = i
     end
 
-    println(eqn.params.f, "\ndoing shared face integrals for peer ", i)
-
     # get the data for the parallel interface
     interfaces = mesh.shared_interfaces[idx]
     bndries_local = mesh.bndries_local[idx]
@@ -137,11 +134,9 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
 #    flux_arr = eqn.flux_sharedface[idx]
 
     start_elnum = mesh.shared_element_offsets[idx]
-    println(eqn.params.f, "numEl = ", mesh.numEl, ", start_elnum = ", start_elnum)
 
     # compute the integrals
     for j=1:length(interfaces)
-      println(eqn.params.f, "interface ", j)
       iface_j = interfaces[j]
       elL = iface_j.elementL
       elR = iface_j.elementR - start_elnum + 1  # is this always equal to j?
@@ -150,9 +145,6 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
       aux_vars = sview(eqn.aux_vars, :, :, elL)
       dxidx_face = sview(dxidx_face_arr, :, :, :, j)
       resL = sview(eqn.res, :, :, elL)
-
-      println(eqn.params.f, "elL = ", elL, ", elR = ", elR)
-      println(eqn.params.f, "iface = ", iface_j)
 
       calcESFaceIntegral(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
                          dxidx_face, functor, resL, resR)
