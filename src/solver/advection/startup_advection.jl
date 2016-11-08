@@ -13,6 +13,7 @@ using ForwardDiff
 using NonlinearSolvers     # non-linear solvers
 using ArrayViews
 using Utils
+import ODLCommonTools.sview
 using MPI
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))

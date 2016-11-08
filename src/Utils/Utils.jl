@@ -6,6 +6,7 @@ module Utils
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
+import ODLCommonTools.sview
 using ArrayViews
 using MPI
 using SummationByParts
@@ -15,7 +16,7 @@ include("parallel.jl")
 include("io.jl")
 include("logging.jl")
 include("initialization.jl")
-export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
+export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export startDataExchange

@@ -6,9 +6,10 @@ using ArrayViews
 using Debug
 using PdePumiInterface  # needed to write vtk files
 using ODLCommonTools
+using Utils
+import ODLCommonTools.sview
 import MPI
 using PETSc
-using Utils
 
 include("rk4.jl")
 include("newton.jl")

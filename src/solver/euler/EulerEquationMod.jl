@@ -13,6 +13,7 @@ using SummationByParts
 using PdePumiInterface
 using ForwardDiff
 using Utils
+import ODLCommonTools.sview
 using MPI
 #using Debugging
 # the AbstractEquation type is declared in ODLCommonTools

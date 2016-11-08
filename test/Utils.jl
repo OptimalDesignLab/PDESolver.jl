@@ -19,6 +19,7 @@ include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using Utils
+import ODLCommonTools.sview
 using FactCheck
 using ODLCommonTools
 using MPI

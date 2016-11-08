@@ -16,6 +16,7 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
+import ODLCommonTools.sview
 using MPI
 
 #using Debugging   # some debugging utils.

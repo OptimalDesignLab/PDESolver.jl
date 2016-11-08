@@ -8,6 +8,7 @@ using PdePumiInterface
 using ForwardDiff
 using MPI
 using Utils
+import ODLCommonTools.sview
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 export evalAdvection, init # exported from advectionFunctions.jl
 export ICDict              # exported from ic.jl
