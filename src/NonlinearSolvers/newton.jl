@@ -83,10 +83,14 @@ include("petsc_funcs.jl")  # Petsc related functions
 @doc """
 ### NonlinearSolvers.setupNewton
   
+  alloc_rhs: keyword arg to allocate a new object or not for rhs_vec
+                true (default) allocates a new vector
+                false will use eqn.res_vec
+
   Allocates Jac & RHS
 
 """->
-function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
+function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts; alloc_rhs=true)
 
   jac_type = opts["jac_type"]
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
@@ -116,9 +120,15 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
   # now put ctx_newton into newton_data
   newton_data.ctx_newton = ctx_newton
 
-  # TODO: 20161102 what is this?
-  rhs_vec = eqn.res_vec
-#   rhs_vec = zeros(eqn.res_vec)
+  # For simple cases, especially for Newton's method as a steady solver,
+  #   having rhs_vec and eqn.res_vec pointing to the same memory
+  #   saves us from having to copy back and forth
+  if alloc_rhs 
+#     rhs_vec = deepcopy(eqn.res_vec)
+    rhs_vec = zeros(eqn.res_vec)
+  else
+    rhs_vec = eqn.res_vec
+  end
 
   return newton_data, jac, rhs_vec
 
@@ -184,7 +194,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::Abstr
   jac_func = physicsJac
 
   # allocate jac & rhs, and construct newton_data
-  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts)
+  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, alloc_rhs=false)
 
   ctx_residual = (func, )
 

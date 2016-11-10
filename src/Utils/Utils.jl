@@ -73,6 +73,13 @@ function disassembleSolution{T}(mesh::AbstractDGMesh, sbp,
                              q_arr::AbstractArray{T, 3}, 
                              q_vec::AbstractArray{T, 1})
                              
+  # we assume the memory layouts of q_arr and q_vec are the same
+  if pointer(q_arr) != pointer(q_vec)
+    for i = 1:length(q_vec)
+      q_arr[i] = q_vec[i]
+    end
+  end
+
   # no need to do any disassembly for DG
   writeQ(mesh, sbp, eqn, opts)
 
@@ -107,7 +114,7 @@ end
   This function takes the 3D array of variables in arr and 
   reassmbles is into the vector res_vec.  Note that
   This is a reduction operation and zeros res_vec before performing the 
-  operation, unless zero_res is set to false
+  operation, unless zero_resvec is set to false
 
   This is a mid level function, and does the right thing regardless of
   equation dimension
@@ -115,7 +122,7 @@ end
 # mid level function (although it doesn't need Tdim)
 function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh}, 
                          sbp, eqn::AbstractSolutionData{Tsol}, opts, 
-                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec
 
@@ -133,7 +140,7 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
     for j=1:mesh.numNodesPerElement
       for k=1:size(arr, 1)  # loop over dofs on the node
         dofnum_k = mesh.dofs[k, j, i]
-        res_vec[dofnum_k] += arr[k,j,i]
+        res_vec[dofnum_k] += res_arr[k,j,i]
       end
     end
   end
@@ -143,10 +150,18 @@ end
 
 function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh}, 
                          sbp, eqn::AbstractSolutionData{Tsol}, opts, 
-                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
 
-  # no need to do anything for DG meshes
+  # we assume the memory layouts of q_arr and q_vec are the same
+  if pointer(res_arr) != pointer(res_vec)
+    for i = 1:length(res_vec)
+      res_arr[i] = res_vec[i]
+    end
+  end
+
+  return nothing
+
 end
 
 
