@@ -81,12 +81,15 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t = 0.0
   t_steps = round(Int, t_max/h)
 
+#   eqn1 = eqn
+#   eqn2 = deepcopy(eqn1)
   eqn_nextstep = deepcopy(eqn)
+#   eqn2 = copyForMultistage(eqn1)
   # TODO: comment here
+#   eqn2.q = reshape(eqn2.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+#   eqn2.res = reshape(eqn2.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-#   for i = 1:meshDof
-  # TODO: don't copy the entire AbstractSolutionData
 
   # for the number of times eqn data is flipped btwn one or the other memory locations
   nflips_eqn = 0
@@ -95,6 +98,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # allocate Jac outside of time-stepping loop
   # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
+#   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn1, opts)
 #   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts)
 
 
@@ -167,15 +171,23 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
     #   and this flips the location of eqn & eqn_nextstep every time step
-#     nflips_eqn += 1
-#     eqn_temp = eqn
-#     eqn = eqn_nextstep
-#     eqn_nextstep = eqn_temp
+    nflips_eqn += 1
+    eqn_temp = eqn
+    eqn = eqn_nextstep
+    eqn_nextstep = eqn_temp
+
+#     if (nflips_eqn % 2) == 0
+#       eqn = eqn1
+#       eqn_nextstep = eqn2
+#     else
+#       eqn = eqn2
+#       eqn_nextstep = eqn1
+#     end
 
     # Old way
-    eqn = deepcopy(eqn_nextstep)
-    eqn.q = reshape(eqn.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-    eqn.res = reshape(eqn.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+#     eqn = deepcopy(eqn_nextstep)
+#     eqn.q = reshape(eqn.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+#     eqn.res = reshape(eqn.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   
     # TODO: at start or end?
     t = t_nextstep
@@ -186,7 +198,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   # TODO: if we're using the flipping mechanism for the eqn data, we need to complete this section so that 
   #     the correct data is returned in the caller's eqn arg
-#   if (nflips_eqn % 2) == 1      # odd number of flips
+  if (nflips_eqn % 2) == 1      # odd number of flips
+  end
 
 
   if jac_type == 3

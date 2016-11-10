@@ -191,7 +191,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     end
 
     return eqn
-  end # ends the constructer AdvectionData_
+  end # ends the constructor AdvectionData_
 
 end # End type AdvectionData_
 

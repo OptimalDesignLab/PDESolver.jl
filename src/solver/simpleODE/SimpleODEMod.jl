@@ -8,6 +8,7 @@ using PdePumiInterface
 using ForwardDiff
 using MPI
 using Utils
+import ODLCommonTools.get_uninitialized_SolutionData
 # export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
 export evalSimpleODE, init # exported from simpleODE_funcs.jl
@@ -93,6 +94,12 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
   flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
+  function SimpleODEData_(eqn::SimpleODEData_)
+
+    return new()
+
+  end
+
   function SimpleODEData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
     println("\nConstruction SimpleODEData object")
     println("  Tsol = ", Tsol)
@@ -101,7 +108,7 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
     println("  Tmsh = ", Tmsh)
     numfacenodes = mesh.numNodesPerFace
 
-    eqn = new()  # incomplete initilization
+    eqn = new()  # incomplete initialization
     eqn.comm = mesh.comm
     eqn.commsize = mesh.commsize
     eqn.myrank = mesh.myrank
@@ -189,6 +196,16 @@ include("ic.jl")
 include("../euler/complexify.jl")
 # include("source.jl")
 # include("flux.jl")
+
+@doc """
+
+# TODO
+"""->
+function get_uninitialized_SolutionData(eqn::SimpleODEData_)
+
+  return SimpleODEData_(eqn)
+
+end
 
 @doc """
 ### SimpleODEMod.calcMassMatrix
