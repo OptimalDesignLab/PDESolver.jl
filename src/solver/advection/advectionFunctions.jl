@@ -106,6 +106,18 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
                                            eqn::AdvectionData{Tsol, Tres, Tdim})
 
+  # TODO TODO 20161110 what is this, and why
+  # why why why
+  # why are there no comments
+  # what is Adq_dxi
+  # why is it set to eqn.flux_parametric
+  # why is flux_parametric not used anywhere else except to be zeroed out in the constructor
+  # what does weakdifferentiate do
+  # is it additive
+  # does this work for 2 & 3 dimensions
+  # what is sview
+  # is alpha the advection parameter?
+  # is it ever set to anything other than 1.0
   Adq_dxi = eqn.flux_parametric
   alphas_xy = zeros(Float64, Tdim)
   alphas_param = zeros(Tmsh, Tdim)
