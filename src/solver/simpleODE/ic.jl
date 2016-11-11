@@ -164,10 +164,31 @@ function ICallzero{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function ICallzero
 
+function ICallOnes{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                    sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
+                    opts, u0::AbstractArray{Tsol})
+  t = 0.0
+
+  for i = 1:mesh.numEl
+  	for j = 1:mesh.numNodesPerElement
+  	  dofnums_j = sview(mesh.dofs, :, j, i)
+#   	  x = mesh.coords[1, j, i]
+#   	  y = mesh.coords[2, j, i]
+#   	  u0[dofnums_j] = x^2 + t^2
+  	  u0[dofnums_j] = 1.0
+  	end
+  end
+
+  return nothing
+end # end function ICallOnes
+
+# TODO: rename ICallzero to ICallZeros
+
 global const ICDict = Dict{Any, Function}(
 "ICConstant" => ICConstant,
 "ICx2plust4" => ICx2plust4,
 "ICx2plust3" => ICx2plust3,
 "ICx2plust2" => ICx2plust2,
 "ICallzero" => ICallzero,
+"ICallOnes" => ICallOnes,
 )

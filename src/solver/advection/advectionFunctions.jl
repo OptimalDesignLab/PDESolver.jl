@@ -106,22 +106,12 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
                                            eqn::AdvectionData{Tsol, Tres, Tdim})
 
-  # TODO TODO 20161110 what is this, and why
-  # why why why
-  # why are there no comments
-  # what is Adq_dxi
-  # why is it set to eqn.flux_parametric
-  # why is flux_parametric not used anywhere else except to be zeroed out in the constructor
-  # what does weakdifferentiate do
-  # is it additive
-  # does this work for 2 & 3 dimensions
-  # what is sview
-  # is alpha the advection parameter?
-  # is it ever set to anything other than 1.0
-  Adq_dxi = eqn.flux_parametric
-  alphas_xy = zeros(Float64, Tdim)
-  alphas_param = zeros(Tmsh, Tdim)
-  dxidx = mesh.dxidx
+  # storing flux_parametric in eqn, rather than re-allocating it every time
+  flux_parametric = eqn.flux_parametric
+
+  alphas_xy = zeros(Float64, Tdim)      # advection coefficients in the xy directions
+  alphas_param = zeros(Tmsh, Tdim)      # advection coefficients in the parametric directions
+  dxidx = mesh.dxidx                    # metric term
   q = eqn.q
   alphas_xy[1] = eqn.params.alpha_x
   alphas_xy[2] = eqn.params.alpha_y
@@ -136,13 +126,18 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         for p=1:Tdim  # sum up alpha in the current parametric dimension
           alpha_k += dxidx[k, p, j, i]*alphas_xy[p]
         end
-        Adq_dxi[1,j,i,k] = alpha_k*q_val
+        # the first index is the 'equation number'; advection has only one equation so it's always 1
+        # for a vector PDE, there would be more
+        flux_parametric[1,j,i,k] = alpha_k*q_val
       end
     end
   end
 
+  # for each dimension, grabbing everything in the mesh and applying weakdifferentiate!
   for i=1:Tdim
-    weakdifferentiate!(sbp, i, sview(Adq_dxi, :, :, :, i), eqn.res, trans=true)
+    # multiplies flux_parametric by the SBP Q matrix (transposed), stores result in res
+    # i is parametric direction
+    weakdifferentiate!(sbp, i, sview(flux_parametric, :, :, :, i), eqn.res, trans=true)
   end
 
   return nothing
