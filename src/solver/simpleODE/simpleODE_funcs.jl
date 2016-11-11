@@ -62,17 +62,23 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
         # Here the expressions for du/dt needs to be stored in eqn.res
         # For example:
-        #   if u = x^2 + t^2
-        #   then res = 2t
-        #   do this with:
-        #     eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
+        #   if u = x^2 + t^4   =>   then res = 4*t^3
+        #       do this with:  eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
+        #   if u = x^2 + t^3   =>   then res = 3*t^2
+        #       do this with:  eqn.res[1, j, i] = calc_3t2(mesh.coords[:, j, i], eqn.params, t)
+        #   if u = x^2 + t^2   =>   then res = 2t
+        #       do this with:  eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
+        #   if u = x^2 + t     =>   then res = 1
+        #   if u = t           =>   then res = 1
+        #       do this with:  eqn.res[1, j, i] = 1.0
 
 #         eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
 #         eqn.res[1, j, i] = calc_3t2(mesh.coords[:, j, i], eqn.params, t)
         eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
-
-        # this is for u = x^2 + t OR u = t
 #         eqn.res[1, j, i] = 1.0
+
+        # for du/dt = u + 2*t
+#         eqn.res[1, j, i] = q[1, j, i] + calc_2t(mesh.coords[:, j, i], eqn.params, t)
 
       end
 

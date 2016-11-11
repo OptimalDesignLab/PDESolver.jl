@@ -138,7 +138,7 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-      for k=1:size(arr, 1)  # loop over dofs on the node
+      for k=1:size(res_arr, 1)  # loop over dofs on the node
         dofnum_k = mesh.dofs[k, j, i]
         res_vec[dofnum_k] += res_arr[k,j,i]
       end

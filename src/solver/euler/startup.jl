@@ -159,6 +159,7 @@ writedlm("IC_$myrank.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
+writedlm("solution_ic.dat", real(eqn.q_vec))
 if opts["calc_dt"]
   wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
   @mpi_master println("max wave speed = ", wave_speed)
@@ -264,8 +265,8 @@ if opts["solve"]
 
 #     @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, 
 #                          eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
-    @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, 
-                         eqn, opts, opts["res_abstol"], opts["real_time"])
+    @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, 
+                         opts, opts["res_abstol"], opts["real_time"])
 
   end       # end of if/elseif blocks checking flag
 
@@ -409,6 +410,7 @@ if opts["solve"]
   printSolution(mesh, real(eqn.q_vec))
   printCoordinates(mesh)
   writeVisFiles(mesh, "solution_done")
+  writedlm("solution_done.dat", real(eqn.q_vec))
 
 end  # end if (opts[solve])
 
