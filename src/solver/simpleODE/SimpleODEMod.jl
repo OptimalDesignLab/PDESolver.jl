@@ -69,9 +69,6 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
   res_type::DataType  # type of res
   q::Array{Tsol, 3}
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
-  aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
-  flux_parametric::Array{Tsol,4}  # flux in xi direction
-  flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   res::Array{Tres, 3}      # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
   res_edge::Array{Tres, 4} # edge based residual storage
@@ -81,8 +78,6 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
   q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
   q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
-  flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
-  bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
   disassembleSolution::Function # function u_vec -> eqn.q
@@ -90,8 +85,6 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
   multiplyA0inv::Function       # multiply an array by inv(A0), where A0
                                 # is the coefficient matrix of the time 
                                 # derivative
-  src_func::SRCType  # functor for source term
-  flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
   function SimpleODEData_(eqn::SimpleODEData_)
@@ -122,7 +115,6 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
     if mesh.isDG
@@ -132,14 +124,11 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
       eqn.q_vec = zeros(Tres, mesh.numDof)
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
-    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
     eqn.multiplyA0inv = matVecA0inv
 
     if mesh.isDG
       eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
-      eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
       eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
-      eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
 
       for i=1:mesh.npeers
         eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes, 
@@ -147,7 +136,6 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
       end
     else
       eqn.q_face = Array(Tres, 0, 0, 0, 0)
-      eqn.flux_face = Array(Tres, 0, 0, 0)
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
     end
 
@@ -301,6 +289,11 @@ end
 function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                   sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
                   res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSimpleODEData, opts)
 
   return nothing
 end

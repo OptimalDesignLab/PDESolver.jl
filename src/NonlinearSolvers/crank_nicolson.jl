@@ -81,13 +81,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t = 0.0
   t_steps = round(Int, t_max/h)
 
-#   eqn1 = eqn
-#   eqn2 = deepcopy(eqn1)
   eqn_nextstep = deepcopy(eqn)
-#   eqn2 = copyForMultistage(eqn1)
-  # TODO: comment here
-#   eqn2.q = reshape(eqn2.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-#   eqn2.res = reshape(eqn2.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  # TODO TODO TODO: copyForMultistage does not give correct values.
+  #     deepcopy works for now, but uses more memory than copyForMultistage, if it worked
+#   eqn_nextstep = copyForMultistage(eqn)
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
@@ -98,9 +95,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # allocate Jac outside of time-stepping loop
   # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
-#   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn1, opts)
-#   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts)
-
 
   for i = 2:(t_steps + 1)
 
@@ -111,14 +105,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: Allow for some kind of stage loop: ES-Dirk
 
-    # TODO: output_freq
-#     @mpi_master if i % output_freq == 0
-#       println(fstdout,"\n==== timestep ", i)
-#       flush(fstdout)
-#       if i % 5*output_freq == 0
-#         flush(fstdout)
-#       end
-#     end
+    # TODO: output freq
 
     if DEBUG
       q_file = "q$i.dat"
@@ -133,16 +120,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # majorIterationCallback: called before every step of Newton's method
     # majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)
 
-    # TODO: tear Jac alloc out of newton so it doesn't need to be called every time iteration 
-    #   (instead: only one alloc at first time step, then future time steps use that alloc)
-
-
-    # TODO: pre_func & post_func?
-#     pre_func(cts..., opt)
-#     if real_time treal = t end
-#     f( ctx..., opts, treal)
-#     sol_norm = post_func(ctx..., opts)
-
 #     if use_itermax && i > itermax
 #       if myrank == 0
 #         println(fstdout, "breaking due to itermax")
@@ -153,9 +130,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     end
 #     println("mark3")
 
-
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
-  
     # f is the physics function, like evalEuler
 
     # NOTE: eqn_nextstep changed to eqn 20161013
@@ -189,7 +164,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     eqn.q = reshape(eqn.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 #     eqn.res = reshape(eqn.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   
-    # TODO: at start or end?
     t = t_nextstep
 
   end   # end of t step loop
@@ -213,9 +187,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end   # end of crank_nicolson function
 
-# TODO:
-#   update only the eqn.q, then eval residual, then replace eqn.q 
-
 @doc """
 ###NonlinearSolvers.cnJac
 
@@ -231,10 +202,7 @@ end   # end of crank_nicolson function
 """->
 function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
                eqn_nextstep::AbstractSolutionData, opts, jac, ctx, t)
-  # TODO: put a CN_Data type at the end of the function signature for passing stuff around
 
-#   DEBUG = false
-  DEBUG = true
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
   physics_func = ctx[1]
@@ -277,9 +245,6 @@ end
 """->
 function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
 
-  DEBUG = false
-#   DEBUG = true
-
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
 #   eqn_nextstep = ctx[2]
@@ -294,16 +259,12 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
-
-
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
   for i = 1:mesh.numDof
 #     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
     temp1 = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i]
     temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
-
-#     println("== in cnRhs. i = $i    temp1 = $temp1    temp2 = $temp2")
 
     rhs_vec[i] = temp1 - temp2 
 
