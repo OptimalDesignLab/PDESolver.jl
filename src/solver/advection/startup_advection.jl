@@ -228,6 +228,15 @@ if opts["solve"]
         test_post_func, (mesh, sbp, eqn), opts, 
         majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
+  elseif flag == 20
+
+    @time crank_nicolson(evalAdvection, opts["delta_t"], t_max, mesh, sbp, eqn, 
+                         opts, opts["res_abstol"], opts["real_time"])
+
+#   else
+#     throw(ErrorException("No flag specified: no solve will take place"))
+#     return nothing
+
   end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")

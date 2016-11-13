@@ -91,6 +91,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # for the number of times eqn data is flipped btwn one or the other memory locations
   nflips_eqn = 0
 
+  q_vec_old_DEBUG = zeros(eqn.q_vec)
+
+  println("============ In CN ============")
+
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
   # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
@@ -99,6 +103,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   for i = 2:(t_steps + 1)
 
     println("CN: at the top of time-stepping loop, t = $t")
+    q_vec_old_DEBUG = deepcopy(eqn.q_vec)
 
     # zero out Jac
     fill!(jac, 0.0)
@@ -142,6 +147,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     t_nextstep = t + h
 
     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+
+    delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
+    println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
+    println("============+++++++++ norm(delta_q_vec): ", norm(delta_q_vec_DEBUG))
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 

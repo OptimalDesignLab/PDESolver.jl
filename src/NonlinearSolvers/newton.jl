@@ -301,9 +301,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   @mpi_master println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
 
   # extract the real components to res_0
-  for i=1:m
-    res_0[i] = real(rhs_vec[i])
-  end
+#   for i=1:m
+#     res_0[i] = real(rhs_vec[i])
+#   end
+  res_0 = deepcopy(real(rhs_vec))
+  # TODO TODO TODO: changed to deepcopy 20161113
 
   @mpi_master begin
     println(fconv, 0, " ", res_0_norm, " ", 0)
@@ -452,6 +454,15 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     for j=1:m
       res_0[j] = -res_0[j]
     end
+
+#     println("========= in Newton, before delta_q_vec update. t = $t")
+#     for dof_ix = 21461:21464
+#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
+#     end
+#     println(" ")
+#     for dof_ix = 14997:15000
+#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
+#     end
    
     # calculate Newton step
     flush(fstdout)
@@ -467,6 +478,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, 
                                                        res_0, delta_q_vec, mesh.dof_offset)
     end
+
+    println("=============+++++In newton+++++ i: ", i)
+    println("=============+++++In newton+++++ norm(delta_q_vec): ", norm(delta_q_vec))
+    println("=============+++++In newton+++++ norm(res_0): ", norm(res_0))
+
     eqn.params.time.t_solve += t_solve
     @mpi_master print(fstdout, "matrix solve: ")
     @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
@@ -480,6 +496,15 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
+
+#     println("========= in Newton, after delta_q_vec update. t = $t")
+#     for dof_ix = 21461:21464
+#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
+#     end
+#     println(" ")
+#     for dof_ix = 14997:15000
+#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
+#     end
     
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
  
@@ -497,9 +522,13 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     # extract real component to res_0
     res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, rhs_func, rhs_vec, ctx_residual, t)
-    for j=1:m
-      res_0[j] = real(rhs_vec[j])
-    end
+#     for j=1:m
+#       res_0[j] = real(rhs_vec[j])
+#     end
+    res_0 = deepcopy(real(rhs_vec))
+    # TODO TODO TODO: changed to deepcopy 20161113
+
+
 
     @mpi_master begin
       println(fstdout, "residual norm = ", res_0_norm)
