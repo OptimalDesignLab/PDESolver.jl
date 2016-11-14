@@ -231,12 +231,13 @@ function getIRStab_inner{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end
 
-function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, qL::AbstractVector{Tsol}, 
-                      qR::AbstractVector{Tsol}, dir::AbstractVector{Tmsh})
+function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh})
 # compute lambda_max approximation from Carpenter's Entropy Stable Collocation
 # Schemes paper
 
-   gamma = params.gamma
+  gamma = params.gamma
   Tres = promote_type(Tsol, Tmsh)
   UnL = zero(Tres)
   UnR = zero(Tres)

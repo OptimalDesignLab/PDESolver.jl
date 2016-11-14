@@ -1,5 +1,5 @@
 # test the entropy stable interface calculation
-#=
+
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -20,7 +20,7 @@ include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
 resize!(ARGS, 1)
-=#
+
 import EulerEquationMod: ParamType
 function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
                                 sbpface::AbstractFace,
@@ -274,6 +274,172 @@ end
 
 
   
+function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
+              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol},
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+#  println("----- entered entropyDissipativeRef -----")
+  numDofPerNode = size(qL, 1)
+  # convert to entropy variables
+  wL = zeros(Tsol, numDofPerNode, sbpface.stencilsize)
+  wR = zeros(wL)
+
+  for i=1:sbpface.stencilsize
+    qL_i = sview(qL, :, i)
+    qR_i = sview(qR, :, i)
+    wL_i = sview(wL, :, i)
+    wR_i = sview(wR, :, i)
+    EulerEquationMod.convertToEntropy(params, qL_i, wL_i)
+    EulerEquationMod.convertToEntropy(params, qR_i, wR_i)
+  end
+
+  scale!(wL, 1/params.gamma_1)
+  scale!(wR, 1/params.gamma_1)
+
+  wLT = wL.'
+  wRT = wR.'
+  wLTP = zeros(wLT)  # permuted
+  wRTP = zeros(wRT)
+
+  applyPermRow(sbpface.perm[:, iface.faceL], wLT, wLTP)
+  applyPermRow(sbpface.perm[:, iface.faceR], wRT, wRTP)
+
+  wLTP_interp = sbpface.interp.'*wLTP
+  wRTP_interp = sbpface.interp.'*wRTP
+
+  # apply neigbor permutation to wR
+  wRTNP_interp  = zeros(wRTP_interp)
+  applyPermRow(vec(sbpface.nbrperm), wRTP_interp, wRTNP_interp)
+
+  # transpose back to numDofPerNode x numNodes
+  wL_face = wLTP_interp.'
+  wR_face = wRTNP_interp.'
+
+  # get the middle term
+  middle_term = zeros(Tres, numDofPerNode, numDofPerNode, sbpface.numnodes)
+  A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+  qL_i = zeros(Tsol, numDofPerNode)
+  qR_i = zeros(Tsol, numDofPerNode)
+  for i=1:sbpface.numnodes
+    wL_i = wL_face[:, i]
+    wR_i = wR_face[:, i]
+    nrm = zeros(Tmsh, 2)
+    # get the normal vector
+    for dim = 1:Tdim
+      for d = 1:Tdim
+        nrm[dim] += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
+      end
+    end
+
+    # get q_avg
+    scale!(wL_i, params.gamma_1)
+    scale!(wR_i, params.gamma_1)
+    EulerEquationMod.convertToConservative_(params, wL_i, qL_i)
+    EulerEquationMod.convertToConservative_(params, wR_i, qR_i)
+    scale!(wL_i, 1/params.gamma_1)
+    scale!(wR_i, 1/params.gamma_1)
+
+    q_avg = 0.5*(qL_i + qR_i)
+    EulerEquationMod.getIRA0(params, q_avg, A0)
+    lambda_max = EulerEquationMod.getLambdaMax(params, qL_i, qR_i, nrm)
+
+    middle_term[:, :, i] = lambda_max*sbpface.wface[i]*A0
+  end
+
+  # get the left term
+  # this way is slower than the way the right term is computed, but more instructive
+  PL = zeros(Int, sbpface.stencilsize, sbpface.stencilsize)
+  PR = zeros(PL)
+  permMatrix!(sbpface.perm[:, iface.faceL], PL)
+  permMatrix!(sbpface.perm[:, iface.faceR], PR)
+  Pnbr = permMatrix(vec(sbpface.nbrperm))
+  Rtranspose = sbpface.interp
+  
+  lhs_L = PL.'*Rtranspose
+  lhs_R = PR.'*Rtranspose*Pnbr.'
+
+  # construct w^T * lhs_L
+  R = Rtranspose.'
+
+  contractL3 = zeros(Tres, numDofPerNode, sbpface.numnodes)
+  contractR3 = zeros(contractL3)
+  for i=1:sbpface.numnodes
+    for j=1:sbpface.stencilsize
+      contractL3[:, i] += lhs_L[j, i]*wL[:, j]
+      contractR3[:, i] += lhs_R[j, i]*wR[:, j]
+    end
+  end
+#=
+  println("contractL2 = \n", contractL2)
+  println("contractL3 = \n", contractL3)
+  println("contractR2 = \n", contractR2)
+  println("contractR3 = \n", contractR3)
+  println("diff = ", contractL2 - contractR2)
+  for i=1:sbpface.numnodes
+    println("face node ", i)
+    println("wL_face = ", wL_face[:, i])
+    println("wR_face = ", wR_face[:, i])
+    println("diff = ", wL_face[:, i] - wR_face[:, i])
+  end
+=#
+  #=
+  I4 = eye(4,4)
+  contractL = kron(R*PL, I4)*vec(wLT)
+  contractR = kron(Pnbr*R*PR, I4)*vec(wRT)
+
+  contractLT = contractL.'
+  contractRT = contractR.'
+  =#
+  middle_sum = zeros(Tres, numDofPerNode, sbpface.numnodes)
+  for i=1:sbpface.numnodes
+    middle_sum[:, i] = middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
+  end
+
+  # update res
+  delta_s = zero(Tres)
+  for i=1:sbpface.numnodes
+    delta_lhs = contractL3[:, i] - contractR3[:, i]
+    delta_s += dot(delta_lhs, middle_sum[:, i])
+  end
+
+  for i=1:sbpface.numnodes
+    for j=1:sbpface.stencilsize
+      resL[:, j] += lhs_L[j, i]*middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
+      resR[:, j] -= lhs_R[j, i]*middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
+    end
+  end
+
+#=
+  # this agrees with the regular code
+  for i=1:sbpface.numnodes
+    ni = sbpface.nbrperm[i]
+    for j=1:sbpface.stencilsize
+      j_pL = sbpface.perm[j, iface.faceL]
+      j_pR = sbpface.perm[j, iface.faceR]
+      for p=1:numDofPerNode
+        resL[p, j_pL] += sbpface.interp[j, i]*middle_sum[p, i]
+        resR[p, j_pR] -= sbpface.interp[j, ni]*middle_sum[p, i]
+      end
+    end
+  end
+=#
+#=
+  # this also agrees with the regular code
+  for i=1:sbpface.numnodes
+    for j=1:sbpface.stencilsize
+      for p=1:numDofPerNode
+        resL[p, j] += lhs_L[j, i]*middle_sum[p, i]
+        resR[p, j] -= lhs_R[j, i]*middle_sum[p, i]
+      end
+    end
+  end
+=#
+
+  return nothing
+end
 
 
 
@@ -459,7 +625,86 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
   println("finished checking lemma 2")
 
 
+  println("checking entropy dissipation")
+  # check calcEntropyDissipativeIntegral
+  for i=1:mesh.numInterfaces
+    iface = mesh.interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = eqn.q[:, :, iface.elementL]
+    qR = eqn.q[:, :, iface.elementR]
+    aux_vars = eqn.aux_vars[:,:, iface.elementL]
+    dxidx_face = mesh.dxidx_face[:, :, :, i]
 
+    resL = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
+    resR = zeros(resL)
+    resL2 = zeros(resL)
+    resR2 = zeros(resR)
+
+    EulerEquationMod.calcEntropyDissipativeIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+
+    entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
+
+    for i=1:size(resL, 1)
+      for j=1:size(resL, 2)
+        @fact abs(resL[i, j] - resL2[i, j]) --> roughly(0.0, atol=1e-12)
+        @fact abs(resR[i, j] - resR2[i, j]) --> roughly(0.0, atol=1e-12)
+      end
+    end
+
+    # verify conservation
+    resL_sum = sum(resL, 2)
+    resR_sum = sum(resR, 2)
+
+    @fact resL_sum --> roughly(-resR_sum, atol=1e-13)
+
+    # contract with entropy variables, verify result is negative
+    resL_reduced = zeros(mesh.numNodesPerElement)
+    resR_reduced = zeros(mesh.numNodesPerElement)
+    wL = zeros(mesh.numDofPerNode)
+    wR = zeros(mesh.numDofPerNode)
+    resL_reduced2 = zeros(mesh.numNodesPerElement)
+    resR_reduced2 = zeros(mesh.numNodesPerElement)
+
+    for i=1:mesh.numNodesPerElement
+      EulerEquationMod.convertToEntropy_(eqn.params, qL[:, i], wL)
+      EulerEquationMod.convertToEntropy_(eqn.params, qR[:, i], wR)
+      scale!(wL, 1/eqn.params.gamma_1)
+      scale!(wR, 1/eqn.params.gamma_1)
+
+      resL_reduced[i] = dot(wL, resL[:, i])
+      resR_reduced[i] = dot(wR, resR[:, i])
+      
+      resL_reduced2[i] = dot(wL, resL2[:, i])
+      resR_reduced2[i] = dot(wR, resR2[:, i])
+
+    end
+
+#    println("resL_reduced = \n", resL_reduced)
+#    println("resR_reduced = \n", resR_reduced)
+
+#    println("sbp.w = ", sbp.w)
+    delta_sL = sum(resL_reduced)
+    delta_sR = sum(resR_reduced)
+    delta_s = delta_sL + delta_sR
+    @fact delta_s --> greater_than(-eps())
+    
+    delta_sL2 = sum(resL_reduced2)
+    delta_sR2 = sum(resR_reduced2)
+    delta_s2 = delta_sL2 + delta_sR2
+    @fact delta_s2 --> greater_than(-eps())
+
+#=
+    delta_sL = dot(sbp.w, resL_reduced)
+    delta_sR = dot(sbp.w, resR_reduced)
+
+    println("delta_sL = ", delta_sL)
+    println("delta_sR = ", delta_sR)
+=#
+#    @fact delta_sL --> less_than(eps())
+#    @fact delta_sR --> less_than(eps())
+
+  end  # end loop over interfaces
 
 
 end

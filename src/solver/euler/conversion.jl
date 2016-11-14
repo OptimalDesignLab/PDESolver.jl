@@ -9,11 +9,12 @@
 #  to determine what variables the input vector is in and then does the proper
 #  conversion (or no-op, if that is the case) do not have an underscore (ie. 
 #  (convertToConservative, convertToEntropy).  Note that it is safe to 
-#  convert conservative variables to conservative variables, the proper
+#  convert conservative variables to conservative variables, the
 #  proper conversion is a no-op. Anyone writing physics code should call
 #  the non-underscore methods, never the underscore methods.
 #
-#  There is also the concepts of the natural variables and the working variables
+#  There are also the concepts of the natural variables and the working 
+#  variables.
 #  The natural variables are the ones the governing equation is usually 
 #  written in (conservative for the Euler equations).  The working variables
 #  are the ones the equation is being solved in, as determined by the 
@@ -40,7 +41,7 @@ export convertFromNaturalToWorkingVars
   qe  : vector (of length 4 or 5) of conservative variables
   
   Inputs/outputs
-  qc : vector (of length or 5) of entropy variables.  Contents of vector are
+  qc : vector (of length 4 or 5) of entropy variables.  Contents of vector are
        overwritten
 
   Aliasing: none (qc and qe *can* be the same vector)

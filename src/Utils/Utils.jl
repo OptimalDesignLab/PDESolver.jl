@@ -396,8 +396,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermRow{T}(permvec::AbstractVector, A::AbstractMatrix{T},
-                            B::AbstractMatrix{T})
+function applyPermRow(permvec::AbstractVector, A::AbstractMatrix,
+                            B::AbstractMatrix)
 
   m, n = size(A)
   for i=1:m
@@ -416,8 +416,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermRowInplace{T}(permvec::AbstractVector, A::AbstractMatrix{T},
-                            B::AbstractMatrix{T})
+function applyPermRowInplace(permvec::AbstractVector, A::AbstractMatrix,
+                            B::AbstractMatrix)
 
   applyPermRow(permvec, A, B)
 
@@ -440,8 +440,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermColumn{T}(permvec::AbstractVector, A::AbstractMatrix{T},
-                            B::AbstractMatrix{T})
+function applyPermColumn(permvec::AbstractVector, A::AbstractMatrix,
+                            B::AbstractMatrix)
 
   m, n = size(A)
   for i=1:m
@@ -459,8 +459,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermColumnInplace{T}(permvec::AbstractVector, 
-                            A::AbstractMatrix{T}, B::AbstractMatrix{T})
+function applyPermColumnInplace(permvec::AbstractVector, 
+                            A::AbstractMatrix, B::AbstractMatrix)
 
   applyPermColumn(permvec, A, B)
 
