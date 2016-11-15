@@ -435,8 +435,8 @@ include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
-include("flux.jl")
 include("faceElementIntegrals.jl")
+include("flux.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
 include("GLS2.jl")
@@ -546,6 +546,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   flux_func::FluxType  # functor for the face flux
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
+  face_element_integral_func::FaceElementIntegralType  # function for face
+                                                       # integrals that use
+                                                       # volume data
 # minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor

@@ -70,7 +70,8 @@ end
 
 function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                           functor::FluxType,
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
                            interfaces::AbstractArray{Interface, 1})
 
 #  println("----- entered getESFaceIntegral -----")
@@ -86,8 +87,8 @@ function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
-                       dxidx_face, functor, resL, resR)
+    face_integral_functor(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
+                       dxidx_face, flux_functor, resL, resR)
   end
 
   return nothing

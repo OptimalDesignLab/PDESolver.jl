@@ -209,7 +209,9 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   getSRCFunctors(mesh, sbp, eqn, opts)
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
+    getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
+
 
 
   return nothing
@@ -614,7 +616,8 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
     
-    getESFaceIntegral(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces)
+    getESFaceIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+                      eqn.flux_func, mesh.interfaces)
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))

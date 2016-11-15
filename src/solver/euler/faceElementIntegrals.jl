@@ -205,4 +205,48 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   return nothing
 end
 
+# do the functor song and dance
+abstract FaceElementIntegralType
 
+type ESFaceIntegral <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ESFaceIntegral, params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcESFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+                      functor, resL, resR)
+
+end
+
+type EDissipativeFaceIntegral <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::EDissipativeFaceIntegral, 
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcEDissipativeFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+
+end
+
+global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
+"ESFaceIntegral" => ESFaceIntegral(),
+"EDissipativeFaceIntegral" => EDissipativeFaceIntegral()
+)
+
+function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)
+
+  eqn.face_element_integral_func = FaceElementDict[opts["FaceElementIntegral_name"]]
+  return nothing
+end
