@@ -296,9 +296,6 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
     EulerEquationMod.convertToIR(params, qR_i, wR_i)
   end
 
-#  scale!(wL, 1/params.gamma_1)
-#  scale!(wR, 1/params.gamma_1)
-
   wLT = wL.'
   wRT = wR.'
   wLTP = zeros(wLT)  # permuted
@@ -333,15 +330,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
         nrm[dim] += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
       end
     end
-#=
-    # get q_avg
-    scale!(wL_i, params.gamma_1)
-    scale!(wR_i, params.gamma_1)
-    EulerEquationMod.convertToConservative_(params, wL_i, qL_i)
-    EulerEquationMod.convertToConservative_(params, wR_i, qR_i)
-    scale!(wL_i, 1/params.gamma_1)
-    scale!(wR_i, 1/params.gamma_1)
-=#
+    
     EulerEquationMod.convertToConservativeFromIR_(params, wL_i, qL_i)
     EulerEquationMod.convertToConservativeFromIR_(params, wR_i, qR_i)
 
@@ -375,27 +364,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
       contractR3[:, i] += lhs_R[j, i]*wR[:, j]
     end
   end
-#=
-  println("contractL2 = \n", contractL2)
-  println("contractL3 = \n", contractL3)
-  println("contractR2 = \n", contractR2)
-  println("contractR3 = \n", contractR3)
-  println("diff = ", contractL2 - contractR2)
-  for i=1:sbpface.numnodes
-    println("face node ", i)
-    println("wL_face = ", wL_face[:, i])
-    println("wR_face = ", wR_face[:, i])
-    println("diff = ", wL_face[:, i] - wR_face[:, i])
-  end
-=#
-  #=
-  I4 = eye(4,4)
-  contractL = kron(R*PL, I4)*vec(wLT)
-  contractR = kron(Pnbr*R*PR, I4)*vec(wRT)
-
-  contractLT = contractL.'
-  contractRT = contractR.'
-  =#
+  
   middle_sum = zeros(Tres, numDofPerNode, sbpface.numnodes)
   for i=1:sbpface.numnodes
     middle_sum[:, i] = middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
@@ -414,32 +383,6 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
       resR[:, j] -= lhs_R[j, i]*middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
     end
   end
-
-#=
-  # this agrees with the regular code
-  for i=1:sbpface.numnodes
-    ni = sbpface.nbrperm[i]
-    for j=1:sbpface.stencilsize
-      j_pL = sbpface.perm[j, iface.faceL]
-      j_pR = sbpface.perm[j, iface.faceR]
-      for p=1:numDofPerNode
-        resL[p, j_pL] += sbpface.interp[j, i]*middle_sum[p, i]
-        resR[p, j_pR] -= sbpface.interp[j, ni]*middle_sum[p, i]
-      end
-    end
-  end
-=#
-#=
-  # this also agrees with the regular code
-  for i=1:sbpface.numnodes
-    for j=1:sbpface.stencilsize
-      for p=1:numDofPerNode
-        resL[p, j] += lhs_L[j, i]*middle_sum[p, i]
-        resR[p, j] -= lhs_R[j, i]*middle_sum[p, i]
-      end
-    end
-  end
-=#
 
   return nothing
 end

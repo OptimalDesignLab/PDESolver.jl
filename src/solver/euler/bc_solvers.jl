@@ -117,8 +117,6 @@ function calcEntropyDissipativeIntegral{Tdim, Tsol, Tres, Tmsh}(
   end
 
   # convert to IR entropy variables
-#  scale!(wL, 1/params.gamma_1)
-#  scale!(wR, 1/params.gamma_1)
 
   # accumulate wL at the node
   wL_i = zeros(Tsol, numDofPerNode)
@@ -154,15 +152,6 @@ function calcEntropyDissipativeIntegral{Tdim, Tsol, Tres, Tmsh}(
       dir[dim] = nrm_dim
     end
 
-    #=
-    # TODO: do this better
-    scale!(wL_i, params.gamma_1)
-    scale!(wR_i, params.gamma_1)
-    convertToConservative_(params, wL_i, qL_i)
-    convertToConservative_(params, wR_i, qR_i)
-    scale!(wL_i, 1/params.gamma_1)
-    scale!(wR_i, 1/params.gamma_1)
-    =#
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
