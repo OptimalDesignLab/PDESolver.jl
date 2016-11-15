@@ -57,6 +57,14 @@ facts("----- Testing Conversion -----") do
   EulerEquationMod.convertToConservative(params_e, q2, q3)
   @fact q3 --> roughly(q, atol=1e-13)
 
+  vIR = copy(q)
+  EulerEquationMod.convertToIR(eqn.params, vIR, vIR)
+  diff = vIR - q2./eqn.params.gamma_1
+  @fact norm(diff) --> roughly(0.0, atol=1e-12)
+
+  EulerEquationMod.convertToConservativeFromIR_(eqn.params, vIR, vIR)
+  diff = vIR - q
+  @fact norm(diff) --> roughly(0.0, atol=1e-12)
   
 end
 

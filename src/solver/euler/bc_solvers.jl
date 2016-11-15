@@ -99,8 +99,10 @@ function calcEntropyDissipativeIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   #TODO: add these arrays to params
   # convert qL and qR to entropy variables (only the nodes that will be used)
-  wL = zeros(Tsol, numDofPerNode, sbpface.stencilsize)
-  wR = zeros(wL)
+  wL = params.w_vals_stencil
+  wR = params.w_vals2_stencil
+#  wL = zeros(Tsol, numDofPerNode, sbpface.stencilsize)
+#  wR = zeros(wL)
 
   for i=1:sbpface.stencilsize
     # apply sbpface.perm here

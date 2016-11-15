@@ -141,6 +141,124 @@ function convertToConservative_{Tsol}(params::ParamType{3},
 end
 
 
+@doc """
+### EulerEquationMod.convertToIR_
+
+  Converts the conservative variables at a node to the entropy variables
+  of Ismail and Roe regardless of the static parameter var_type.
+
+  Inputs:
+  params  : ParamType{Tdim} used to dispatch to the proper method
+  qe  : vector (of length 4 or 5) of conservative variables
+  
+  Inputs/outputs
+  qc : vector (of length 4 or 5) of entropy variables.  Contents of vector are
+       overwritten
+
+  Aliasing: none (qc and qe *can* be the same vector)
+
+  Ths is a low level function.
+"""->
+function convertToIR_{Tsol}(params::ParamType{2}, 
+                           qc::AbstractArray{Tsol, 1}, 
+                           qe::AbstractArray{Tsol, 1})
+# this is the same code as convertToEntropy_, scaled by 1/gamma_1
+# it is necessary to copy it because qc and qe can alias
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  gamma_1i = 1/gamma_1
+
+  k1 = 0.5*(qc[2]^2 + qc[3]^2)/qc[1]
+  rho_int = qc[4] -k1
+  s = log(gamma_1*rho_int/(qc[1]^gamma))
+  fac = 1.0/rho_int
+  tmp1 = -qc[1]*fac*gamma_1i
+  qe[1] = ((rho_int*(gamma + 1 -s) - qc[4])*fac)*gamma_1i
+  qe[2] = qc[2]*fac*gamma_1i
+  qe[3] = qc[3]*fac*gamma_1i
+  qe[4] = tmp1
+
+  return nothing
+end
+
+function convertToIR_{Tsol}(params::ParamType{3}, 
+                           qc::AbstractArray{Tsol, 1}, 
+                           qe::AbstractArray{Tsol, 1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  gamma_1i = 1/gamma_1
+
+  k1 = 0.5*(qc[2]^2 + qc[3]^2 + qc[4]^2)/qc[1]
+  rho_int = qc[5] - k1
+  s = log(gamma_1*rho_int/(qc[1]^gamma))
+  fac = 1.0/rho_int
+  tmp1 = -qc[1]*fac*gamma_1i
+  qe[1] = ((rho_int*(gamma + 1 -s) - qc[5])*fac)*gamma_1i
+  qe[2] = qc[2]*fac*gamma_1i
+  qe[3] = qc[3]*fac*gamma_1i
+  qe[4] = qc[4]*fac*gamma_1i
+  qe[5] = tmp1
+
+  return nothing
+end
+
+
+@doc """
+### EulerEquationMod.convertToConservativeFromIR_
+
+  Converts the IR entropy variables at a node to the conservative variables
+  regardless of the static parameter var_type.
+
+  Inputs:
+  params  : ParamType{Tdim} used to dispatch to the proper method
+  qe  : vector (of length 4 or 5) of entropy variables
+  
+  Inputs/outputs
+  qc : vector (of length 4 or 5) of conservative variables.  Contents of 
+       vector are overwritten
+
+  Aliasing: none (qc and qe *can* be the same vector)
+
+  Ths is a low level function.
+"""->
+function convertToConservativeFromIR_{Tsol}(params::ParamType{2}, 
+                                qe::AbstractArray{Tsol, 1}, 
+                                qc::AbstractArray{Tsol, 1})
+  # this is very siilar to the convertToConservative code, except qe is 
+  # scaled by gamma_1.  There is no way to do this operation by calling 
+  # convertToConservative_ in the case where qe and qc alias
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  k1 = 0.5*gamma_1*(qe[2]^2 + qe[3]^2)/qe[4]
+  s = gamma - gamma_1*qe[1] + k1
+  rho_int = exp(-s/gamma_1)*(gamma_1/(-gamma_1*qe[4])^gamma)^(1/gamma_1)
+  rho_int *= gamma_1
+  qc[1] = -qe[4]*rho_int
+  qc[2] = qe[2]*rho_int
+  qc[3] = qe[3]*rho_int
+  qc[4] = (1.0 - k1)*rho_int/gamma_1
+end
+
+function convertToConservativeFromIR_{Tsol}(params::ParamType{3}, 
+                                qe::AbstractArray{Tsol,1}, 
+                                qc::AbstractArray{Tsol, 1})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  k1 = 0.5*gamma_1*(qe[2]^2 + qe[3]^2 + qe[4]^2)/qe[5]
+  s = gamma - gamma_1*qe[1] + k1
+  rho_int = exp(-s/gamma_1)*(gamma_1/(-gamma_1*qe[5])^gamma)^(1/gamma_1)
+  rho_int *= gamma_1
+  qc[1] = -qe[5]*rho_int
+  qc[2] = qe[2]*rho_int
+  qc[3] = qe[3]*rho_int
+  qc[4] = qe[4]*rho_int
+  qc[5] = (1.0 - k1)*rho_int/gamma_1
+end
+
 
 
 #------------------------------------------------------------------------------
@@ -356,6 +474,21 @@ function convertFromNaturalToWorkingVars{Tdim, Tsol}(
 
   convertToEntropy_(params, qc, qe)
 end
+
+@doc """
+  Convert from conservative variables to entropy variables.  Solving the
+  equation in IR variables is not yet supported, so the corresponding
+  convertToConservative method is not defined.
+"""
+function convertToIR{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+
+  convertToIR_(params, qc, qe)
+
+  return nothing
+end
+
+
 
 @doc """
 # mid level function

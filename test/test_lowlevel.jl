@@ -88,6 +88,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
  flux_parametric = zeros(4,2)
 
    v = zeros(4)
+   vIR = zeros(4)
    EulerEquationMod.convertToEntropy(eqn.params, q, v)
    v_analytic = [-2*4.99528104378295, 4., 6, -2*1]
    @fact v --> roughly(v_analytic)
@@ -95,7 +96,26 @@ facts("--- Testing Euler Low Level Functions --- ") do
    q2 = copy(q)
    EulerEquationMod.convertToEntropy(eqn.params, q2, q2)
    @fact q2 --> v_analytic
-   println("v = ", v)
+
+   # test IR variables
+   EulerEquationMod.convertToIR(eqn.params, q, vIR)
+   println("vIR = ", vIR)
+   println("q2./params.gamma_1 = ", q2./eqn.params.gamma_1)
+   diff = vIR - q2./eqn.params.gamma_1
+   println("diff = ", diff)
+   @fact norm(diff) --> roughly(0.0, atol=1e-12)
+
+   # test inplace operation
+   vIR2 = copy(q)
+   EulerEquationMod.convertToIR(eqn.params, vIR2, vIR2)
+   diff = vIR2 - q2./eqn.params.gamma_1
+   @fact norm(diff) --> roughly(0.0, atol=1e-12)
+
+   # convert back
+   EulerEquationMod.convertToConservativeFromIR_(eqn.params, vIR2, vIR2)
+   diff = q - vIR2
+   @fact norm(diff) --> roughly(0.0, atol=1e-12)
+
    q_ret = zeros(4)
    EulerEquationMod.convertToConservative(e_params, v, q_ret)
    @fact q_ret --> roughly(q)
@@ -211,7 +231,7 @@ facts("--- Testing Euler Low Level Functions --- ") do
    @fact_throws EulerEquationMod.checkDensity(eqn)
    @fact_throws EulerEquationMod.checkPressure(eqn)
 
-   println("\n\neqn.q = ", eqn.q, "\n")
+#   println("\n\neqn.q = ", eqn.q, "\n")
 
    context("--- Testing convert Functions ---") do
      # for the case, the solution is uniform flow

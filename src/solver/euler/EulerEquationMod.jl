@@ -69,6 +69,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
   v_vals2::Array{Tsol, 1}
 
+  # numDofPerNode x stencilsize arrays for entropy variables
+  w_vals_stencil::Array{Tsol, 2}
+  w_vals2_stencil::Array{Tsol, 2}
+
   res_vals1::Array{Tres, 1}  # reusable residual type storage
   res_vals2::Array{Tres, 1}  # reusable residual type storage
 
@@ -160,7 +164,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     qg = Array(Tsol, Tdim + 2)
     v_vals = Array(Tsol, Tdim + 2)
     v_vals2 = Array(Tsol, Tdim + 2)
-  
+ 
+    w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
+    w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
+
     res_vals1 = Array(Tres, Tdim + 2)
     res_vals2 = Array(Tres, Tdim + 2)
 
@@ -248,7 +255,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2, 
-               res_vals1, 
+               w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, sat_vals, flux_vals1, 
                flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, 
                nrm2, nrm3,cv, R, 
