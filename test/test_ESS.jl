@@ -292,12 +292,12 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
     qR_i = sview(qR, :, i)
     wL_i = sview(wL, :, i)
     wR_i = sview(wR, :, i)
-    EulerEquationMod.convertToEntropy(params, qL_i, wL_i)
-    EulerEquationMod.convertToEntropy(params, qR_i, wR_i)
+    EulerEquationMod.convertToIR(params, qL_i, wL_i)
+    EulerEquationMod.convertToIR(params, qR_i, wR_i)
   end
 
-  scale!(wL, 1/params.gamma_1)
-  scale!(wR, 1/params.gamma_1)
+#  scale!(wL, 1/params.gamma_1)
+#  scale!(wR, 1/params.gamma_1)
 
   wLT = wL.'
   wRT = wR.'
@@ -333,7 +333,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
         nrm[dim] += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
       end
     end
-
+#=
     # get q_avg
     scale!(wL_i, params.gamma_1)
     scale!(wR_i, params.gamma_1)
@@ -341,6 +341,9 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
     EulerEquationMod.convertToConservative_(params, wR_i, qR_i)
     scale!(wL_i, 1/params.gamma_1)
     scale!(wR_i, 1/params.gamma_1)
+=#
+    EulerEquationMod.convertToConservativeFromIR_(params, wL_i, qL_i)
+    EulerEquationMod.convertToConservativeFromIR_(params, wR_i, qR_i)
 
     q_avg = 0.5*(qL_i + qR_i)
     EulerEquationMod.getIRA0(params, q_avg, A0)

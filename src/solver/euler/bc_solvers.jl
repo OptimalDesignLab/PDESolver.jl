@@ -112,13 +112,13 @@ function calcEntropyDissipativeIntegral{Tdim, Tsol, Tres, Tmsh}(
     qR_i = sview(qR, :, p_iR)
     wL_i = sview(wL, :, i)
     wR_i = sview(wR, :, i)
-    convertToEntropy(params, qL_i, wL_i)
-    convertToEntropy(params, qR_i, wR_i)
+    convertToIR(params, qL_i, wL_i)
+    convertToIR(params, qR_i, wR_i)
   end
 
   # convert to IR entropy variables
-  scale!(wL, 1/params.gamma_1)
-  scale!(wR, 1/params.gamma_1)
+#  scale!(wL, 1/params.gamma_1)
+#  scale!(wR, 1/params.gamma_1)
 
   # accumulate wL at the node
   wL_i = zeros(Tsol, numDofPerNode)
@@ -154,6 +154,7 @@ function calcEntropyDissipativeIntegral{Tdim, Tsol, Tres, Tmsh}(
       dir[dim] = nrm_dim
     end
 
+    #=
     # TODO: do this better
     scale!(wL_i, params.gamma_1)
     scale!(wR_i, params.gamma_1)
@@ -161,10 +162,12 @@ function calcEntropyDissipativeIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservative_(params, wR_i, qR_i)
     scale!(wL_i, 1/params.gamma_1)
     scale!(wR_i, 1/params.gamma_1)
-
+    =#
+    convertToConservativeFromIR_(params, wL_i, qL_i)
+    convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
     lambda_max = getLambdaMax(params, qL_i, qR_i, dir)
-    @assert lambda_max > 0 
+    
     # compute average qL
     # also delta w (used later)
     for j=1:numDofPerNode
