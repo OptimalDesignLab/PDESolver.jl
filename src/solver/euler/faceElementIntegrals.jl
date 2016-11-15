@@ -99,7 +99,7 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              resR::AbstractMatrix{Tres})
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
-                     functorm, resL, resR)
+                     functor, resL, resR)
   calcEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
                              dxidx_face, resL, resR)
 

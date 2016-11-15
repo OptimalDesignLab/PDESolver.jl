@@ -12,6 +12,7 @@ arg_dict = Dict{Any, Any}(
 "addFaceIntegrals" => true,
 "addVolumeIntegrals" => true,
 "Volume_flux_name" => "IRFlux",
+"FaceElementIntegral_name" => "ECFaceIntegral",
 "vortex_x0" => 5.0,
 "numBC" => 0,
 "delta_t" => 0.0005,

@@ -616,8 +616,8 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
     
-    getECFaceIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
-                      eqn.flux_func, mesh.interfaces)
+    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+                           eqn.flux_func, mesh.interfaces)
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))
@@ -668,16 +668,13 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  println(eqn.params.f, "evaluating shared face integrals")
+#  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
-    println(eqn.params.f, "face integral type 1")
 
     if opts["parallel_data"] == "face"
-      println(eqn.params.f, "doing face integrals using face data")
       calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
     elseif opts["parallel_data"] == "element"
-      println(eqn.params.f, "doing face integrals using element data")
       calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
     else
       throw(ErrorException("unsupported parallel data type"))
@@ -685,8 +682,7 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   elseif face_integral_type == 2
 
-    println(eqn.params.f, "face integral type 2")
-    getESSharedFaceIntegrals_element(mesh, sbp, eqn, opts,eqn.flux_func)
+    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts, eqn.face_element_integral_func,  eqn.flux_func)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end

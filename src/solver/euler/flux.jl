@@ -68,7 +68,13 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
-function getECFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+"""
+  This function loops over interfaces and computes a face integral that
+  uses data from all volume nodes. See FaceElementIntegralType for details on
+  the integral performed.
+"""
+function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
+                           mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
@@ -94,10 +100,17 @@ function getECFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
-function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}( 
+"""
+  This function loops over shared interfaces and computes a face integral that
+  uses data from all volume nodes.  See FaceElementIntegralType for details on
+  the integral performed.
+"""
+function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}( 
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
-                            opts, functor::FluxType)
+                            opts, 
+                            face_integral_functor::FaceElementIntegralType, 
+                            flux_functor::FluxType)
 
   if opts["parallel_data"] != "element"
     throw(ErrorException("cannot use getESSharedFaceIntegrals_element without parallel element data"))
@@ -147,8 +160,8 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
       dxidx_face = sview(dxidx_face_arr, :, :, :, j)
       resL = sview(eqn.res, :, :, elL)
 
-      calcECFaceIntegral(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
-                         dxidx_face, functor, resL, resR)
+      face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
+                         dxidx_face, flux_functor, resL, resR)
     end  # end loop j
 
   end  # end loop over peers
