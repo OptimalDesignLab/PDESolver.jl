@@ -22,7 +22,7 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 resize!(ARGS, 1)
 
 import EulerEquationMod: ParamType
-function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
+function calcECFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
                                 sbpface::AbstractFace,
                                 iface::Interface,
                                 qL::AbstractMatrix{Tsol},
@@ -413,9 +413,9 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     resR_test2 = sview(res_test2, :, :, elR)
 
 
-    EulerEquationMod.calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
+    EulerEquationMod.calcECFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
 
-    calcESFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
+    calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
 
     for i=1:size(resL_code, 1)
       for j=1:size(resR_code, 2)
@@ -461,7 +461,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     resR = zeros(resL)
 
     # calculate the integral of entropy flux from the residual
-    E_expensive = calcESFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+    E_expensive = calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
 
     nrm = zeros(mesh.dim)

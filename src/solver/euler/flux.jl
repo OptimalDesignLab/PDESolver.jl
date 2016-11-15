@@ -68,13 +68,13 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
-function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+function getECFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
                            interfaces::AbstractArray{Interface, 1})
 
-#  println("----- entered getESFaceIntegral -----")
+#  println("----- entered getECFaceIntegral -----")
   nfaces = length(interfaces)
   for i=1:nfaces
     iface = interfaces[i]
@@ -147,7 +147,7 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
       dxidx_face = sview(dxidx_face_arr, :, :, :, j)
       resL = sview(eqn.res, :, :, elL)
 
-      calcESFaceIntegral(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
+      calcECFaceIntegral(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
                          dxidx_face, functor, resL, resR)
     end  # end loop j
 

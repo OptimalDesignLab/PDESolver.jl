@@ -3,7 +3,7 @@
 include("IR_stab.jl")  # stabilization for the IR flux
 
 """
-  Calculate the face integrals in an entropy stable manner for a given
+  Calculate the face integrals in an entropy conservative manner for a given
   interface.  Unlike standard face integrals, this requires data from
   the entirety of both elements, not just data interpolated to the face
 
@@ -18,11 +18,11 @@ include("IR_stab.jl")  # stabilization for the IR flux
 
   Performance note: the version in the tests is the same speed as this one
                     for p=1 Omega elements and about 10% faster for 
-                    p=4 elements, but would not be able to take advantage of t
-                    he sparsity of R for SBP Gamma elements
+                    p=4 elements, but would not be able to take advantage of 
+                    the sparsity of R for SBP Gamma elements
 """
                   
-function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
                              sbpface::AbstractFace, 
                              iface::Interface,
@@ -80,7 +80,13 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   return nothing
 end
-function calcEDissipativeFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+
+"""
+  Calculate the face integral in an entropy stable mannor.  This uses
+  calcECFaceIntegral and calcEntropyPenaltyIntegral internally, see those
+  functions for details.
+"""
+function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
                              sbpface::AbstractFace, 
                              iface::Interface,
@@ -92,7 +98,7 @@ function calcEDissipativeFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-  calcESFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
                      functorm, resL, resR)
   calcEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
                              dxidx_face, resL, resR)
@@ -101,8 +107,16 @@ function calcEDissipativeFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 end
 
 """
+  Calculate a term that provably dissipates (mathematical) entropy.  This
+  requires data from the left and right element volume nodes, rather than
+  face nodes for a regular face integral.
 
-  Aliasing restrictions: params.nrm2, params.A0
+  Note that dxidx_face must contain the scaled metric terms interpolated
+  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  entire element, not just the face.
+
+
+  Aliasing restrictions: params.nrm2, params.A0, w_vals_stencil, w_vals2_stencil
 """
 
 function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
@@ -116,7 +130,6 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   numDofPerNode = size(qL, 1)
 
-  #TODO: add these arrays to params
   # convert qL and qR to entropy variables (only the nodes that will be used)
   wL = params.w_vals_stencil
   wR = params.w_vals2_stencil
@@ -127,22 +140,29 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     # apply sbpface.perm here
     p_iL = sbpface.perm[i, iface.faceL]
     p_iR = sbpface.perm[i, iface.faceR]
-    qL_i = sview(qL, :, p_iL)
-    qR_i = sview(qR, :, p_iR)
-    wL_i = sview(wL, :, i)
-    wR_i = sview(wR, :, i)
-    convertToIR(params, qL_i, wL_i)
-    convertToIR(params, qR_i, wR_i)
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_itmp = sview(qL, :, p_iL)
+    qR_itmp = sview(qR, :, p_iR)
+    wL_itmp = sview(wL, :, i)
+    wR_itmp = sview(wR, :, i)
+    convertToIR(params, qL_itmp, wL_itmp)
+    convertToIR(params, qR_itmp, wR_itmp)
   end
 
   # convert to IR entropy variables
 
   # accumulate wL at the node
-  wL_i = zeros(Tsol, numDofPerNode)
-  wR_i = zeros(Tsol, numDofPerNode)
+  wL_i = params.v_vals
+  wR_i = params.v_vals2
+  qL_i = params.q_vals
+  qR_i = params.q_vals2
+
+#  wL_i = zeros(Tsol, numDofPerNode)
+#  wR_i = zeros(Tsol, numDofPerNode)
   # convert wL at the node back to qL
-  qL_i = zeros(Tsol, numDofPerNode)
-  qR_i = zeros(Tsol, numDofPerNode)
+#  qL_i = zeros(Tsol, numDofPerNode)
+#  qR_i = zeros(Tsol, numDofPerNode)
   dir = params.nrm2
   A0 = params.A0
 
@@ -208,10 +228,10 @@ end
 # do the functor song and dance
 abstract FaceElementIntegralType
 
-type ESFaceIntegral <: FaceElementIntegralType
+type ECFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ESFaceIntegral, params::AbstractParamType{Tdim}, 
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral, params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
@@ -219,15 +239,15 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ESFaceIntegral, params::AbstractParam
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcESFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
                       functor, resL, resR)
 
 end
 
-type EDissipativeFaceIntegral <: FaceElementIntegralType
+type ESFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::EDissipativeFaceIntegral, 
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ESFaceIntegral, 
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -236,13 +256,13 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::EDissipativeFaceIntegral,
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcEDissipativeFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+  calcESFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
 
 end
 
 global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
-"ESFaceIntegral" => ESFaceIntegral(),
-"EDissipativeFaceIntegral" => EDissipativeFaceIntegral()
+"ECFaceIntegral" => ECFaceIntegral(),
+"ESFaceIntegral" => ESFaceIntegral()
 )
 
 function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)

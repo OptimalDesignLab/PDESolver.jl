@@ -131,7 +131,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   Rprime::Array{Float64, 2}  # numfaceNodes x numNodesPerElement interpolation matrix
                              # this should live in sbpface instead
-  # temporary storage for calcESFaceIntegrals
+  # temporary storage for calcECFaceIntegrals
   A::Array{Tres, 2}
   B::Array{Tres, 3}
   iperm::Array{Int, 1}
