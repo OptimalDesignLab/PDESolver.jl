@@ -379,8 +379,8 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
 
   for i=1:sbpface.numnodes
     for j=1:sbpface.stencilsize
-      resL[:, j] += lhs_L[j, i]*middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
-      resR[:, j] -= lhs_R[j, i]*middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
+      resL[:, j] -= lhs_L[j, i]*middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
+      resR[:, j] += lhs_R[j, i]*middle_term[:, :, i]*(wL_face[:, i] - wR_face[:, i])
     end
   end
 
@@ -572,7 +572,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
 
   println("checking entropy dissipation")
-  # check calcEntropyDissipativeIntegral
+  # check calcEntropyPenaltyIntegral
   for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
     elL = iface.elementL
@@ -587,7 +587,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     resL2 = zeros(resL)
     resR2 = zeros(resR)
 
-    EulerEquationMod.calcEntropyDissipativeIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+    EulerEquationMod.calcEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
 
     entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
 
@@ -633,12 +633,12 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     delta_sL = sum(resL_reduced)
     delta_sR = sum(resR_reduced)
     delta_s = delta_sL + delta_sR
-    @fact delta_s --> greater_than(-eps())
+    @fact delta_s --> less_than(eps())
     
     delta_sL2 = sum(resL_reduced2)
     delta_sR2 = sum(resR_reduced2)
     delta_s2 = delta_sL2 + delta_sR2
-    @fact delta_s2 --> greater_than(-eps())
+    @fact delta_s2 --> less_than(eps())
 
 #=
     delta_sL = dot(sbp.w, resL_reduced)
