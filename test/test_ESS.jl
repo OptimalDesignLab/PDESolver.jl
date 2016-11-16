@@ -389,7 +389,8 @@ end
 
 
 
-function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
+function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref=false)
+# test_ref: whether or not to compare against the reference implementations above
 
   functor = EulerEquationMod.IRFlux()
   eqn.flux_func = functor
@@ -415,16 +416,18 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
     EulerEquationMod.calcECFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
 
-    calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
+    if test_ref
+      calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
 
-    for i=1:size(resL_code, 1)
-      for j=1:size(resR_code, 2)
+      for i=1:size(resL_code, 1)
+        for j=1:size(resR_code, 2)
 
-        @fact resL_code[i, j] --> roughly(resL_test2[i, j], atol=1e-12)
-        @fact resR_code[i, j] --> roughly(resR_test2[i, j], atol=1e-12)
+          @fact resL_code[i, j] --> roughly(resL_test2[i, j], atol=1e-12)
+          @fact resR_code[i, j] --> roughly(resR_test2[i, j], atol=1e-12)
+        end
       end
-    end
 
+    end
   end  # end loop over interfaces
 #=
 
@@ -461,7 +464,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     resR = zeros(resL)
 
     # calculate the integral of entropy flux from the residual
-    E_expensive = calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+    EulerEquationMod.calcECFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
 
     nrm = zeros(mesh.dim)
@@ -589,13 +592,16 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
     EulerEquationMod.calcEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
 
-    entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
+    if test_ref
+      entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
 
-    for i=1:size(resL, 1)
-      for j=1:size(resL, 2)
-        @fact abs(resL[i, j] - resL2[i, j]) --> roughly(0.0, atol=1e-12)
-        @fact abs(resR[i, j] - resR2[i, j]) --> roughly(0.0, atol=1e-12)
+      for i=1:size(resL, 1)
+        for j=1:size(resL, 2)
+          @fact abs(resL[i, j] - resL2[i, j]) --> roughly(0.0, atol=1e-12)
+          @fact abs(resR[i, j] - resR2[i, j]) --> roughly(0.0, atol=1e-12)
+        end
       end
+
     end
 
     # verify conservation
@@ -634,11 +640,13 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
     delta_sR = sum(resR_reduced)
     delta_s = delta_sL + delta_sR
     @fact delta_s --> less_than(eps())
-    
-    delta_sL2 = sum(resL_reduced2)
-    delta_sR2 = sum(resR_reduced2)
-    delta_s2 = delta_sL2 + delta_sR2
-    @fact delta_s2 --> less_than(eps())
+   
+    if test_ref
+      delta_sL2 = sum(resL_reduced2)
+      delta_sR2 = sum(resR_reduced2)
+      delta_s2 = delta_sL2 + delta_sR2
+      @fact delta_s2 --> less_than(eps())
+    end
 
 #=
     delta_sL = dot(sbp.w, resL_reduced)
@@ -662,7 +670,7 @@ facts("----- testing ESS -----") do
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
   println("checking channel flow")
-  runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)
+  runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=true)
 
   println("\nchecking ICExp")
   ICFunc = EulerEquationMod.ICDict["ICExp"]
@@ -674,7 +682,25 @@ facts("----- testing ESS -----") do
       eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
     end
   end
-  runESSTest(mesh, sbp, eqn, opts)
+  runESSTest(mesh, sbp, eqn, opts, test_ref=true)
+
+  # check gamma operators
+  opts["operator_type"] = "SBPGamma"
+  fname = "input_vals_ESS_test2"
+  make_input(opts, fname)
+  ARGS[1] = fname*".jl"
+  include(STARTUP_PATH)
+  
+  ICFunc = EulerEquationMod.ICDict["ICExp"]
+  ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  scale!(eqn.q_vec, 0.01)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+    end
+  end
+  runESSTest(mesh, sbp, eqn, opts, test_ref=false)
 
 end
 

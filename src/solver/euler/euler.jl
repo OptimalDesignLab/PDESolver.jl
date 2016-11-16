@@ -123,7 +123,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
  
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  #println("dataPrep @time printed above")
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
@@ -156,7 +156,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
    evalBoundaryIntegrals(mesh, sbp, eqn)
-#   println("boundary integral @time printed above")
+   #println("boundary integral @time printed above")
   end
 
 
@@ -167,7 +167,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("face integral @time printed above")
+    #println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
 

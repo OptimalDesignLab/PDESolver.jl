@@ -263,3 +263,47 @@ function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim},
 
   return lambda_max
 end
+
+function getLambdaMaxRoe{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh})
+# compute lambda_max approximation from Carpenter's Entropy Stable Collocation
+# Schemes paper
+
+  gamma = params.gamma
+  Tres = promote_type(Tsol, Tmsh)
+  Un = zero(Tres)
+  dA = zero(Tmsh)
+  rhoLinv = 1/qL[1]
+  rhoRinv = 1/qR[1]
+
+  pL = calcPressure(params, qL)
+  pR = calcPressure(params, qR)
+
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+  aR = sqrt(gamma*pR*rhoRinv)  # speed of sound
+  a = 0.5*(aL + aR)
+#  Un = nx*q_avg[2]*rhoinv + ny*q_avg[3]*rhoinv + nz*q_avg[4]*rhoinv
+#  dA = sqrt(nx*nx + ny*ny + nz*nz)
+  for i=1:Tdim
+    Un += dir[i]*0.5*(qL[i+1]*rhoLinv + qR[i+1]*rhoLinv)
+    dA += dir[i]*dir[i]
+  end
+
+  rhoA = absvalue(Un) + dA*a
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
+  tau = 1
+  lambda1 = (tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = (tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = (tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+  lambda_max1 = max(absvalue(lambda1), absvalue(lambda2))
+  lambda_max1 = max(absvalue(lambda_max1), absvalue(lambda3))
+
+
+
+  return lambda_max1
+end
