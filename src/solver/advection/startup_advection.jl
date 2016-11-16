@@ -74,6 +74,8 @@ println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec) 
 println("finished initializing q")
 
+writedlm("solution_ic.dat", eqn.q_vec)
+
 if opts["calc_error"]
   println("\ncalculating error of file ", opts["calc_error_infname"], 
           " compared to initial condition")

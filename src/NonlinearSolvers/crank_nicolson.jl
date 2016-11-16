@@ -102,7 +102,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
-    println("CN: at the top of time-stepping loop, t = $t")
+    println("CN: at the top of time-stepping loop, t = $t, i = $i")
     q_vec_old_DEBUG = deepcopy(eqn.q_vec)
 
     # zero out Jac
@@ -146,11 +146,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t_nextstep = t + h
 
+    # ORIG: t, not t_nextstep. which one? TODO 
     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-
-    delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
-    println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
-    println("============+++++++++ norm(delta_q_vec): ", norm(delta_q_vec_DEBUG))
+#     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t_nextstep)
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -159,6 +157,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     eqn_temp = eqn
     eqn = eqn_nextstep
     eqn_nextstep = eqn_temp
+
+    delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
+    println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
+    println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec_DEBUG))
 
 #     if (nflips_eqn % 2) == 0
 #       eqn = eqn1
@@ -254,6 +256,8 @@ end
 """->
 function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
 
+  # eqn comes in through ctx_residual, which is set up in CN before the newtonInner call
+
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
 #   eqn_nextstep = ctx[2]
@@ -263,6 +267,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   t_nextstep = t + h
 
   physics_func(mesh, sbp, eqn, opts, t)
+  println("---- physics_func: ",physics_func)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
@@ -276,6 +281,23 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
 
     rhs_vec[i] = temp1 - temp2 
+    # TODO: is there a sign problem here? should rhs_vec = -rhs_vec ?
+
+
+    # local dof index, node, el
+    loc_dof, node, el = ind2sub(mesh.coords, findfirst(mesh.dofs, i))
+
+    # mesh.coords indices: [dimension index, node num, el num]
+    x = mesh.coords[1, node, el]
+    y = mesh.coords[2, node, el]
+
+    println("x: $x    y: $y    t: $t    t_nextstep: $t_nextstep")
+    println("dof_ix: $i    rhs_vec[i]: ",rhs_vec[i])
+    println("dof_ix: $i    eqn.q_vec[i]: ",eqn.q_vec[i])
+    println("dof_ix: $i    eqn.res_vec[i]: ",eqn.res_vec[i])
+    println("dof_ix: $i    eqn_nextstep.q_vec[i]: ",eqn_nextstep.q_vec[i])
+    println("dof_ix: $i    eqn_nextstep.res_vec[i]: ",eqn_nextstep.res_vec[i])
+    println("-")
 
   end
 

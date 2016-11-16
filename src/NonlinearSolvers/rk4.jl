@@ -220,7 +220,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     delta_q_vec = q_vec - q_vec_old_DEBUG
     println("============+++++++++ norm(q_vec): ", norm(q_vec))
-    println("============+++++++++ norm(delta_q_vec): ", norm(delta_q_vec))
+    println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec))
 
   end   # end of RK4 time stepping loop
 
