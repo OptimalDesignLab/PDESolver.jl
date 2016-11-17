@@ -3,6 +3,7 @@
 
 # TODO: calcResidual shouldn't need exporting
 export calcResidual, physicsRhs
+import Utils.disassembleSolution
 @doc """
 ### NonlinearSolvers.calcResidual
 

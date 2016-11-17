@@ -158,6 +158,13 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     eqn = eqn_nextstep
     eqn_nextstep = eqn_temp
 
+    # 20161116
+    # Note: we now need to copy the updated q over for the initial newton guess
+    for i = 1:mesh.numDof
+      eqn_nextstep.q_vec[i] = eqn.q_vec[i]
+    end
+    disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
+
     delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
     println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
     println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec_DEBUG))
@@ -179,12 +186,16 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   end   # end of t step loop
 
-  writedlm("solution_final_inCN.dat", real(eqn.q_vec))
+#   # TODO: if we're using the flipping mechanism for the eqn data, we need to complete this section so that 
+#   #     the correct data is returned in the caller's eqn arg
+#   if (nflips_eqn % 2) == 1      # odd number of flips
+# 
+#   end
 
-  # TODO: if we're using the flipping mechanism for the eqn data, we need to complete this section so that 
-  #     the correct data is returned in the caller's eqn arg
-  if (nflips_eqn % 2) == 1      # odd number of flips
-  end
+  # depending on how many timesteps we do, this may or may not be necessary
+  # copy!(dest, src)
+  copy!(eqn, eqn_nextstep)
+  writedlm("solution_final_inCN.dat", real(eqn.q_vec))
 
 
   if jac_type == 3
@@ -192,9 +203,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
 
-
-  #returns t?
-  return nothing
+  return t
 
 end   # end of crank_nicolson function
 
@@ -281,8 +290,9 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
 
     rhs_vec[i] = temp1 - temp2 
-    # TODO: is there a sign problem here? should rhs_vec = -rhs_vec ?
 
+    # NOTE: question: is there a sign problem here? should rhs_vec = -rhs_vec ?
+    #     NO. this negative gets applied in newton.jl, where res_0[i] = -res_0[i]
 
     # local dof index, node, el
     loc_dof, node, el = ind2sub(mesh.coords, findfirst(mesh.dofs, i))

@@ -232,8 +232,10 @@ if opts["solve"]
 
   elseif flag == 20
 
-    @time crank_nicolson(evalAdvection, opts["delta_t"], t_max, mesh, sbp, eqn, 
+    @time t = crank_nicolson(evalAdvection, opts["delta_t"], t_max, mesh, sbp, eqn, 
                          opts, opts["res_abstol"], opts["real_time"])
+
+    eqn.t = t
 
 #   else
 #     throw(ErrorException("No flag specified: no solve will take place"))
