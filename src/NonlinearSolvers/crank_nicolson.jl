@@ -146,9 +146,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t_nextstep = t + h
 
-    # ORIG: t, not t_nextstep. which one? TODO 
     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-#     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t_nextstep)
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -203,6 +201,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
 
+  println("============= end of CN: t = $t ===============")
   return t
 
 end   # end of crank_nicolson function
@@ -234,12 +233,16 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
   t_nextstep = t + h
 
-  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
+  # Orig CN: 
+  #   call physicsJac with eqn_nextstep & t_nextstep
+  #   then form CN_Jac = I + dt/2 * physics_Jac
 
-  # CN_Jac = I + dt/2 * physics_Jac
+  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
+# TODO: CN dismantle 20161116 NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
+
 
   # Jacobian is always 2D
-  scale!(jac, h*0.5)
+  scale!(jac, h*-0.5)
 
   # adding identity
   for i = 1:mesh.numDof
@@ -247,6 +250,8 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
     jac[i,i] += 1
 
   end
+
+  writedlm("jac_inside_cnJac.dat", full(jac))
 
   return nothing
 
@@ -279,16 +284,21 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   println("---- physics_func: ",physics_func)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
+# TODO: CN dismantle 20161116 physics_func(mesh, sbp, eqn_nextstep, opts, t)
+# Orig CN: physics_func called with eqn_nextstep & t_nextstep
+# dismantled: physics_func called with eqn_nextstep & t
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
   for i = 1:mesh.numDof
-#     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
+# #     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
+
+# TODO: CN dismantle 20161116 rhs_vec[i] = eqn_nextstep.res_vec[i]
     temp1 = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i]
     temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
-
+# 
     rhs_vec[i] = temp1 - temp2 
 
     # NOTE: question: is there a sign problem here? should rhs_vec = -rhs_vec ?
@@ -310,6 +320,8 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     println("-")
 
   end
+
+  writedlm("rhs_inside_cnRhs.dat", full(rhs_vec))
 
   return nothing
 

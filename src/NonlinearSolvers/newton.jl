@@ -470,12 +470,14 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
     println("----- in newtonInner, before linear solve -----")
     println("t: $t")
-    println("res_0[15]: ",res_0[15])
-    println("rhs_vec[15]: ",rhs_vec[15])
-    println("eqn.q_vec[15]: ",eqn.q_vec[15])
-    println("eqn.res_vec[15]: ",eqn.res_vec[15])
+#     println("res_0[15]: ",res_0[15])
+#     println("rhs_vec[15]: ",rhs_vec[15])
+#     println("eqn.q_vec[15]: ",eqn.q_vec[15])
+#     println("eqn.res_vec[15]: ",eqn.res_vec[15])
     println("-")
-   
+#     writedlm("jac_inside_newtonjl_iter_$i.dat", full(jac))
+#     writedlm("rhs_inside_newtonjl_iter_$i.dat", full(res_0))
+
     # calculate Newton step
     flush(fstdout)
     if jac_type == 1 || jac_type == 2  # julia jacobian
@@ -510,6 +512,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
+    writedlm("q_vec_in_newtonjl_after_update-iter_$i.dat", eqn.q_vec)
 
 #     println("========= in Newton, after delta_q_vec update. t = $t")
 #     for dof_ix = 21461:21464
