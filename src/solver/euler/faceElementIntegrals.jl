@@ -165,6 +165,7 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 #  qR_i = zeros(Tsol, numDofPerNode)
   dir = params.nrm2
   A0 = params.A0
+  fill!(A0, 0.0)
 
   for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i]
@@ -195,6 +196,7 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
     lambda_max = getLambdaMax(params, qL_i, qR_i, dir)
+#    lambda_max = 3.0
     
     # compute average qL
     # also delta w (used later)
@@ -204,6 +206,9 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     end
 
     getIRA0(params, qL_i, A0)
+#    for j=1:numDofPerNode
+#      A0[j, j] = 1
+#    end
 
     # wface[i] * lambda_max * A0 * delta w
     smallmatvec!(A0, wL_i, wR_i)

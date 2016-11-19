@@ -92,7 +92,7 @@ where input_file_name.jl is in your current directory.
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
 
-# source term specification (advection equation only)
+# source term specification
 "SRCname": the name of the source term to use, (ASCIIString), default SRC0
 
 # misc options

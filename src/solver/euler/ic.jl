@@ -659,6 +659,27 @@ function ICExp{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol},
   return nothing
 end
 
+"""
+  Writes calcPeriodicMMS to the initial condition vector u0
+"""
+function ICPeriodicMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      calcPeriodicMMS(coords, eqn.params, q)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
+
+  return nothing
+end
+
+
 # declare a const dictionary here that maps strings to function (used for input arguments)
 
 global const ICDict = Dict{Any, Function}(
@@ -676,6 +697,7 @@ global const ICDict = Dict{Any, Function}(
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
 "ICFile" => ICFile,
 "ICExp" => ICExp,
+"ICPeriodicMMS" => ICPeriodicMMS,
 )
 
 

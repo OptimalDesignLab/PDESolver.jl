@@ -35,10 +35,10 @@ opts = read_input(ARGS[1])
 #opts = read_input("input_vals_channel2.jl")
 
 # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
+t_max = opts["t_max"]
 flag = opts["run_type"]
 
 # timestepping parameters
-t_max = opts["t_max"]       # t_max: maximum time for RK
 order = opts["order"]       # order of accuracy
 Tdim = opts["dimensions"]
 dofpernode = Tdim + 2
