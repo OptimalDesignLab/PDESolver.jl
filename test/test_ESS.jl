@@ -389,8 +389,9 @@ end
 
 
 
-function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref=false)
+function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref=false, zero_penalty=false)
 # test_ref: whether or not to compare against the reference implementations above
+# zero_penalty: test whether the entropy stability penalty should be zero
 
   functor = EulerEquationMod.IRFlux()
   eqn.flux_func = functor
@@ -610,6 +611,14 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
 
     @fact resL_sum --> roughly(-resR_sum, atol=1e-13)
 
+    if zero_penalty
+      for i=1:mesh.numNodesPerElement
+        for p=1:mesh.numDofPerNode
+          @fact resL[p, i] --> roughly(0.0, atol=1e-13)
+          @fact resR[p, i] --> roughly(0.0, atol=1e-13)
+        end
+      end
+    end
     # contract with entropy variables, verify result is negative
     resL_reduced = zeros(mesh.numNodesPerElement)
     resR_reduced = zeros(mesh.numNodesPerElement)
@@ -663,45 +672,91 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
 
 end
 
+
+function applyPoly(mesh, sbp, eqn, opts, p)
+# set the solution to be a polynomial of degree p of the entropy variables
+
+  v_vals = zeros(mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      x = mesh.coords[1, j, i]
+      y = mesh.coords[2, j, i]
+
+      v_vals[1] = 4*(x^p) + 4*(y^p) - 100
+      v_vals[2] = 2*(x^p) + 2*(y^p) + 1
+      v_vals[3] = 3*(x^p) + 3*(y^p) + 2
+      v_vals[4] = 4*(x^p) + 4*(y^p) - 10
+
+#      println("v_vals = \n", v_vals)
+      q_i = sview(eqn.q, :, j, i)
+      EulerEquationMod.convertToConservativeFromIR_(eqn.params, v_vals, q_i)
+      eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, q_i)
+    end
+  end
+        
+
+  return nothing
+end
+
 facts("----- testing ESS -----") do
   ARGS[1] = "input_vals_channel_dg_large.jl"
   include(STARTUP_PATH)
   # evaluate the residual to confirm it is zero
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
-  println("checking channel flow")
-  runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=true)
 
-  println("\nchecking ICExp")
-  ICFunc = EulerEquationMod.ICDict["ICExp"]
-  ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  scale!(eqn.q_vec, 0.01)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+  for p=1:4
+    println("testing p = ", p)
+    opts["operator_type"] = "SBPOmega"
+    opts["order"] = p
+    fname = "input_vals_ESS_test2"
+    make_input(opts, fname)
+    ARGS[1] = fname*".jl"
+    include(STARTUP_PATH)
+   
+
+    println("checking channel flow")
+    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=true)
+
+    println("\nchecking ICExp")
+    ICFunc = EulerEquationMod.ICDict["ICExp"]
+    ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+    scale!(eqn.q_vec, 0.01)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    for i=1:mesh.numEl
+      for j=1:mesh.numNodesPerElement
+        eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+      end
     end
-  end
-  runESSTest(mesh, sbp, eqn, opts, test_ref=true)
+    runESSTest(mesh, sbp, eqn, opts, test_ref=true)
+    # check polynomial
+    applyPoly(mesh, sbp, eqn, opts, p)
+    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=true, zero_penalty=true)
 
-  # check gamma operators
-  opts["operator_type"] = "SBPGamma"
-  fname = "input_vals_ESS_test2"
-  make_input(opts, fname)
-  ARGS[1] = fname*".jl"
-  include(STARTUP_PATH)
-  
-  ICFunc = EulerEquationMod.ICDict["ICExp"]
-  ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  scale!(eqn.q_vec, 0.01)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+    # check gamma operators
+    opts["operator_type"] = "SBPGamma"
+    fname = "input_vals_ESS_test2"
+    make_input(opts, fname)
+    ARGS[1] = fname*".jl"
+    include(STARTUP_PATH)
+    
+    ICFunc = EulerEquationMod.ICDict["ICExp"]
+    ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+    scale!(eqn.q_vec, 0.01)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    for i=1:mesh.numEl
+      for j=1:mesh.numNodesPerElement
+        eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+      end
     end
-  end
-  runESSTest(mesh, sbp, eqn, opts, test_ref=false)
+    runESSTest(mesh, sbp, eqn, opts, test_ref=false)
 
+    # check polynomial
+    applyPoly(mesh, sbp, eqn, opts, p)
+    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=false, zero_penalty=true)
+
+
+  end  # end loop over p
 end
 
 
