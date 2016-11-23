@@ -16,7 +16,7 @@ export ICDict              # exported from ic.jl
 # include("getMass.jl")
 
 
-type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
+type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
   alpha_x::Float64
   alpha_y::Float64
@@ -51,7 +51,11 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
       f = BufferedIO()  # create a dummy IOStream
     end
     alpha_x = 1.0
+#     alpha_x = 0.0
+    # Note: alpha_y = 0.0 might be useful for testing out new methods, 
+    #    but the CI tests will fail unless set to 1.0
     alpha_y = 1.0
+#     alpha_y = 0.0
     alpha_z = 1.0
 
 
@@ -69,7 +73,7 @@ abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
 @doc """
 ### AdvectionEquationMod.AdvectionData_
 
-  This type is an implimentation of the abstract AdvectionData.  It is
+  This type is an implementation of the abstract AdvectionData.  It is
   paramterized by the residual type Tres and the mesh type Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
@@ -169,11 +173,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
     eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
     if mesh.isDG
-      if opts["parallel_type"] == 1
+      if opts["parallel_data"] == "face"
         dim2 = numfacenodes
         dim3_send = mesh.peer_face_counts
         dim3_recv = mesh.peer_face_counts
-      elseif opts["parallel_type"] == 2
+      elseif opts["parallel_data"] == "element"
         dim2 = mesh.numNodesPerElement
         dim3_send = mesh.local_element_counts
         dim3_recv = mesh.remote_element_counts
@@ -191,7 +195,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     end
 
     return eqn
-  end # ends the constructer AdvectionData_
+  end # ends the constructor AdvectionData_
 
 end # End type AdvectionData_
 

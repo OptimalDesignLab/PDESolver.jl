@@ -27,7 +27,7 @@ cd("./rk4/serial")
 include(STARTUP_PATH)
 cd("../parallel")
 
-arg_dict["smb_name"] = "src/mesh_files/psquare2.smb"
+arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
 make_input(arg_dict, "input_vals_parallel")
 
 cd("../../newton/serial")
@@ -36,7 +36,7 @@ include(STARTUP_PATH)
 
 
 cd("../parallel")
-arg_dict["smb_name"] = "src/mesh_files/psquare2.smb"
+arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
 make_input(arg_dict, "input_vals_parallel")
 
 

@@ -1,3 +1,22 @@
+push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+
+
+using PDESolver
+#using Base.Test
+using FactCheck
+using ODLCommonTools
+using PdePumiInterface  # common mesh interface - pumi
+using SummationByParts  # SBP operators
+using EulerEquationMod
+using ForwardDiff
+using NonlinearSolvers   # non-linear solvers
+using ArrayViews
+include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
+include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+
+
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using Utils
 using FactCheck
@@ -135,6 +154,69 @@ facts("----- Testing Utility Functions -----") do
   mesh = TestMesh{Float64}(jac, dofs, MPI.COMM_WORLD, MPI.Comm_size(MPI.COMM_WORLD), numNodes, numNodesPerElement, numEl, numDofPerNode, 0.25, 2)
   opts = Dict{Any, Any}()
   @fact calcMeshH(mesh, FakeSBP(), obj, opts) --> roughly(mesh.min_node_dist*1./sqrt(2))
+
+
+end
+
+facts("----- Testing Permutation Functions -----") do
+
+  # test permuting rows
+  A = [1 2 3 10 ; 4 5 6 11; 7 8 9 12]
+  B = zeros(A)
+  permvec = [2, 3, 1]
+  P = permMatrix(permvec)
+
+  A_orig = copy(A)
+  applyPermRowInplace(permvec, A, B)
+  A2 = P*A_orig
+ 
+  for i=1:3
+    @fact A2[i, :] --> A[i, :]
+  end
+
+
+  A = [1 2 3; 4 5 6; 7 8 9]
+  A_orig = copy(A)
+  permvec = [3, 1, 2]
+  P = permMatrix(permvec)
+
+  A2 = P*A
+  applyPermRowInplace(permvec, A, B)
+ 
+  for i=1:3
+    @fact A2[i, :] --> A[i, :]
+  end
+
+
+
+
+  #  test inverse permutation
+  invperm = zeros(permvec)
+  inversePerm(permvec, invperm)
+  applyPermRowInplace(invperm, A, B)
+
+  for i=1:length(A)
+    @fact A[i] --> A_orig[i]
+  end
+
+  P2 = permMatrix(invperm)
+
+  @fact P2.' --> P
+
+  # test permuting columns
+  A = [1 2 3; 4 5 6; 7 8 9; 10 11 12]
+  B = zeros(A)
+  A_orig = copy(A)
+  P = permMatrix(permvec)
+
+  applyPermColumnInplace(permvec, A, B)
+  A2 = A_orig*P
+
+  for i=1:3
+    @fact (A_orig*P)[:, i] --> A[ :, i ]
+  end
+
+
 
 
 end

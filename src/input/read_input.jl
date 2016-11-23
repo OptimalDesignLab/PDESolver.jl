@@ -40,11 +40,6 @@ include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include th
 # record fname in dictionary
 arg_dict["fname"] = fname
 
-if arg_dict["run_type"] == 1
-  get!(arg_dict, "parallel_type", 1)
-else
-  get!(arg_dict, "parallel_type", 2)
-end
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -73,7 +68,6 @@ arg_dict["aoa"] = aoa*pi/180  # convert to radians
 get!(arg_dict, "vortex_x0", 0.0)
 get!(arg_dict, "vortex_strength", 1.0)
 
-get!(arg_dict, "mesh_size", 1.0)  # this key should not exist
 get!(arg_dict, "Relfunc_name", "none")
 
 #SBP Options
@@ -86,6 +80,11 @@ if arg_dict["SRCname"] == "SRC0"
 else
   get!(arg_dict, "use_src_term", true)
 end
+
+# volume integral options
+get!(arg_dict, "volume_integral_type", 1)
+get!(arg_dict, "Volume_flux_name", "StandardFlux")
+get!(arg_dict, "face_integral_type", 1)
 
 # timestepping options
 if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
@@ -133,6 +132,24 @@ else
   get!(arg_dict, "coloring_distance_prec", 0)
 end
 
+# parallel options
+if arg_dict["run_type"] == 1
+  get!(arg_dict, "parallel_type", 1)
+else
+  get!(arg_dict, "parallel_type", 2)
+end
+
+if arg_dict["run_type"] == 1
+  if arg_dict["face_integral_type"] == 2  # entropy stable 
+    get!(arg_dict, "parallel_data", "element")
+  else
+    get!(arg_dict, "parallel_data", "face")
+  end
+else
+  get!(arg_dict, "parallel_data", "element")
+end
+
+
 
 # misc options
 get!(arg_dict, "calc_error", false)
@@ -146,11 +163,11 @@ get!(arg_dict, "use_edge_res", false)
 
 # deal with file names
 smb_name = arg_dict["smb_name"]
-arg_dict["smb_name"] = joinpath(Pkg.dir("PDESolver"), smb_name)
+arg_dict["smb_name"] = update_path(smb_name)
 
 if haskey(arg_dict, "dmg_name") && arg_dict["dmg_name"] != ".null"
   dmg_name = arg_dict["dmg_name"]
-  arg_dict["dmg_name"] = joinpath(Pkg.dir("PDESolver"), dmg_name)
+  arg_dict["dmg_name"] = update_path(dmg_name)
 else  # no dmg_name specified
   arg_dict["dmg_name"] = ".null"
 end
@@ -160,9 +177,16 @@ get!(arg_dict, "perturb_mag", 0.0)
 get!(arg_dict, "write_finalsolution", false)
 get!(arg_dict, "write_finalresidual", false)
 
-# solver options
+# solver option
+get!(arg_dict, "addVolumeIntegrals", true)
+get!(arg_dict, "addBoundaryIntegrals", true)
+get!(arg_dict, "addFaceIntegrals", true)
+get!(arg_dict, "addStabilization", true)
 get!(arg_dict, "write_entropy", false)
+get!(arg_dict, "write_entropy_freq", 1)
 get!(arg_dict, "write_entropy_fname", "entropy.dat")
+get!(arg_dict, "write_integralq", false)
+get!(arg_dict, "write_integralq_fname", "integralq.dat")
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
 
@@ -177,8 +201,6 @@ get!(arg_dict, "writeq", false)
 get!(arg_dict, "writeqface", false)
 get!(arg_dict, "write_fluxface", false)
 
-#DEBUGGING
-get!(arg_dict, "test_GLS2", false)
 # mesh debugging options
 get!(arg_dict, "write_edge_vertnums", false)
 get!(arg_dict, "write_face_vertnums", false)
@@ -206,6 +228,7 @@ get!(arg_dict, "print_cond", false)
 get!(arg_dict, "write_sol", false)
 get!(arg_dict, "write_qic", false)
 get!(arg_dict, "write_vis", false)
+get!(arg_dict, "exact_visualization", false)
 get!(arg_dict, "write_res", false)
 get!(arg_dict, "output_freq", 1)
 get!(arg_dict, "recalc_prec_freq", 1)
@@ -224,11 +247,18 @@ get!(arg_dict, "euler_tau", 1.0)
 run_type = arg_dict["run_type"]
 if run_type == 4
   arg_dict["jac_method"] = 1  # finite difference
-  get!(arg_dict, "epsilon", 1e-6)
 elseif run_type == 5
-  arg_dict["jac_method"] = 2
-  get!(arg_dict, "epsilon", 1e-20)
+  arg_dict["jac_method"] = 2  # complex step
 end
+
+if haskey(arg_dict, "jac_method") 
+  if arg_dict["jac_method"] == 1 
+    get!(arg_dict, "epsilon", 1e-6)
+  elseif arg_dict["jac_method"] == 2
+    get!(arg_dict, "epsilon", 1e-20)
+  end
+end
+
 
 get!(arg_dict, "real_time", false)
 
@@ -371,7 +401,7 @@ function checkKeys(arg_dict, known_keys)
   cnt = 0
   for key in keys(arg_dict)
     if !haskey(known_keys, key)
-      println(STDERR, "Warning: Key ", key, " in input dictonary not ",
+      println(STDERR, "Warning: Key ", key, " in input dictionary not ",
                "recognized")
        cnt += 1
     end
@@ -381,5 +411,13 @@ function checkKeys(arg_dict, known_keys)
 end
 
 
+function update_path(path)
+
+  if startswith(path, "SRCMESHES")
+    path = joinpath(Pkg.dir("PDESolver"), "src", "mesh_files", lstrip(path[10:end], '/'))
+  end
+
+  return path
+end
 
 

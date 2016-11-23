@@ -48,7 +48,14 @@ function createMeshAndOperator(opts, dofpernode)
     Tsbp = Float64
     Tsol = Complex128
     Tres = Complex128
+  elseif flag == 20 # Crank-Nicolson
+    Tmsh = Float64
+    Tsbp = Float64
+    Tsol = Float64
+    Tres = Float64
   end
+  # If the user specifies a flag other than the ones within the above if checks, 
+  #   then an error will be thrown now because Tsol is not defined
   opts["Tsol"] = Tsol
   opts["Tres"] = Tres
   opts["Tsbp"] = Tsbp
@@ -86,6 +93,7 @@ function createMeshAndOperator(opts, dofpernode)
     # create DG SBP operator with internal nodes only
     if dim == 2
       sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+      # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
       interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
       sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')

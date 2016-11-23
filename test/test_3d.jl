@@ -1,3 +1,4 @@
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -17,6 +18,7 @@ include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
+=#
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_3d.jl"
 include(STARTUP_PATH)
@@ -147,12 +149,12 @@ facts("----- Testing BC Solvers -----") do
   aux_vars = [p]
   dxidx = mesh.dxidx[:, :, 1, 1]
 
-  EulerEquationMod.RoeSolver(q, q, aux_vars, dxidx, nrm, F2, eqn.params)
+  EulerEquationMod.RoeSolver(eqn.params, q, q, aux_vars, dxidx, nrm, F2)
   EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
 
 #  println("F = \n", F)
 #  println("F2 = \n", F2)
-  @fact F2 --> roughly(-F, atol=1e-13)
+  @fact F2 --> roughly(F, atol=1e-13)
 end
 
 end

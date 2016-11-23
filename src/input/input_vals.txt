@@ -1,18 +1,28 @@
 # Launching a simulation
-To solver the Euler equations, do
+To solve the Euler equations, do
 
 julia /path/to/startup.jl "input_file_name.jl"
 
 where input_file_name.jl is in your current directory.
 
+# TODO: a required keys section
+
 # The following keys are used for the options dictionary in the input file
 
-"run_type"  : what type of run, 1 = rk4, 4 = Newton finite difference, 5 = Newton complex step (integer)
+"run_type"  : what type of run: 
+              1 = rk4
+              4 = Newton finite difference
+              5 = Newton complex step (integer)
+              20 = Crank-Nicolson
 
 "order" : order of accuracy of elements, 1-4 will be supported eventually (integer)
 "dimensions" : specifies the dimensions of the physical problem, 2D or 3D (integer). Default = 2
-"smb_name" : name of smb file if using Pumi (string), if it appears to be a relative path (ie. does not begin with a "/"), it is relative to the installation directory of PDESolver.  If it appears to be an absolute path, it is treated as such
-"dmg_name" : name of dmg file if using Pumi (string), same behavior as "smb_name", default ".null" (you must omit this key if you are using the null geometric model)
+"smb_name" : name of smb file if using Pumi (string), can either be an absolute
+             path or a relative path.  As a special case, if it starts with 
+             SRCMESHES, then the file is looked for in the src/mesh_files
+             directory of the repo PDESolver repo.
+"dmg_name" : name of dmg file if using Pumi (string), same behavior as 
+             "smb_name", default ".null"
 
 "IC_name" : initial condition function name (string)
 "use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false
@@ -40,9 +50,24 @@ where input_file_name.jl is in your current directory.
 "variable_type": which set of variables to write the equation in, (Symbol), default
             :conservative
 
+"volume_integral_type" : method of computing volume integrals, (Int), 
+                        default 1 (Di*Fi), 2 --> use a split form 
+                        numerical flux function
+"face_integral_type" : method of computing face integrals, (Int), default 1,
+                       regular face integrals, 2 --> entropy stable form
+
+"Volume_flux_name" : name of the numerical flux function to use for the 
+                     split form volume integrals, (ASCIIString), default
+                     "StandardFlux"
 # Solver options
 "use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
           default false
+"addVolumeIntegrals" : enable volume term, (Bool), default true
+"addBoundaryIntegrals" : enable the boundary integral term, (Bool), default true
+"addFaceIntegrals" : enable the face integral term for DG, (Bool), default true
+"addStabilization" : enable any stabilization,  individual types of stabilization
+                     are controlled by their individual keys, (Bool), default true
+
 "res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
 "res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
 "res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
@@ -135,8 +160,17 @@ Note that any values associated with these options are shared with the regular
 # solve options
 "write_entropy" : write the norm of the entropy during every major iteration, 
                   (Bool), default false
+"write_entropy_freq" : write the entropy every this many timesteps if 
+                       "write_entropy" is true, (Integer), default 1
 "write_entropy_fname" : file name (with extension) to write entropy to, 
                         (ASCIIString), default "entropy.dat"
+"write_integralq": write the integral of the q variables to a file every 
+                   iteration, (Bool), default false, currently only supported 
+                   by Euler module
+
+"write_integralq_fname": file name to write integral of q to, (ASCIIString),
+                         default "integralq.dat"
+
 "check_density" : whether not to check that density > 0 every residual 
                   evalution, (Bool), default true
 "check_pressure": whether to not to check that pressure > 0 every residual
@@ -149,7 +183,7 @@ Note that any values associated with these options are shared with the regular
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
 "writeqface" : write the solution at the face nodes to file qface.dat,
                space delimited, (Bool), default false
-"writefluxface:" write the flux at the face nodes to file fluxface.dat, space
+"write_fluxface" : write the flux at the face nodes to file fluxface.dat, space
                  delmited, (Bool), default false
 
 # mesh debugging options
@@ -171,6 +205,8 @@ Note that any values associated with these options are shared with the regular
 "write_sharedboundaries": write contents of mesh.bndries_local[i] to file
                           sharedboundaries_i.dat for all i, (Bool) default 
                           false
+"write_dofs" : write the mesh.dof array to a file dofs_myrank.dat, (Bool), 
+               default false
 
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are 
@@ -193,6 +229,10 @@ Note that any values associated with these options are shared with the regular
 "write_res"  : write the residual in 3d form (res$i.dat) each iteration, (Bool), default false
 "write_qic"  : write the initial condition, assembled into 3d array form, to file qic.dat, (Bool), default false
 "write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
+"exact_visualization" : write a subtriangulated Paraview file in addition to
+                        the regular one, (Bool), default false, SBP Omega only.
+                        The subtriangulated file will have "_exact" appended
+                        to the file name
 "print_eigs" : calculate and print eigenvalues to STDOUT.  The calculation is very expensive, (Bool), default false
 "write_eigs" : calculate and write eigenvalues to file (eigs$i.dat) each iteration.  If both pritn_eigs and write_eigs are true, only one calculation is performed.  (Bool), default false
 "write_eigdecomp" : calculate and write to file the eigenvalues and eignenvectors of the jacobian, only supported for a Jacobian owned by Julia, (Bool), default false

@@ -289,8 +289,9 @@ facts("--- Testing Euler Low Level Functions --- ") do
    nrm2 = [dxidx[2,1], dxidx[2,2]]
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
-   EulerEquationMod.RoeSolver(q, qg, aux_vars, dxidx, dir, F_roe, eqn.params)
-   @fact F_roe --> roughly(-F) 
+   EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, dxidx, dir, F_roe)
+   println("roe 1")
+   @fact F_roe --> roughly(F) 
 
 
    # test that roe flux = euler flux of BC functions
@@ -307,7 +308,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
-   @fact F_roe --> roughly(-F) 
+   println("roe 2")
+   @fact F_roe --> roughly(F) 
 
    q[3] = 0  # make flow parallel to wall
    func1 = EulerEquationMod.noPenetrationBC()
@@ -320,7 +322,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
-   @fact F_roe --> roughly(-F) 
+   println("roe 3")
+   @fact F_roe --> roughly(F) 
 
    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
    func1 = EulerEquationMod.Rho1E2U3BC()
@@ -333,7 +336,8 @@ facts("--- Testing Euler Low Level Functions --- ") do
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
  
-   @fact F_roe --> roughly(-F) 
+   println("roe 4")
+   @fact F_roe --> roughly(F) 
 
 
 
@@ -407,6 +411,14 @@ facts("--- Testing Euler Low Level Functions --- ") do
      end
    end
 
+   # testing arrToVecAssign
+   q_vec_orig = copy(eqn.q_vec)
+   EulerEquationMod.arrToVecAssign(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+   for i = 1:mesh.numDof
+     @fact eqn.q_vec[i] --> roughly(q_vec_orig[i], atol=1e-5)
+   end
+
+
    #=
    for i=1:mesh.numEl
      println("i = ", i)
@@ -441,19 +453,19 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
    # test getBCFluxes
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 1] --> roughly(-[-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 1] --> roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 2] --> roughly(-[-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 2] --> roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 3] --> roughly(-[0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 3] --> roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
      end
 
      for j= 1:sbp.numfacenodes
-       @fact eqn.bndryflux[:, j, 4] --> roughly(-[0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
+       @fact eqn.bndryflux[:, j, 4] --> roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
      end
 
 

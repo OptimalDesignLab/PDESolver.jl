@@ -39,6 +39,11 @@ include("test_dg.jl")
 include("test_functional_integrate.jl")
 include("test_parallel.jl")
 
+start_dir = pwd()
+cd("./energy")
+include( joinpath(pwd(), "runtests.jl"))
+cd(start_dir)
+
 if MPI.Initialized()
   MPI.Finalize()
 end

@@ -56,7 +56,7 @@ export AbstractEulerData, EulerData, EulerData_, OptimizationData
     * aoa : angle of attack (radians)
 
 """->
-type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
+type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   f::IOStream
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
@@ -83,7 +83,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
   Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
   Rmat2::Array{Tres, 2}
 
-  nrm::Array{Tmsh, 1}  # a normal vectora
+  nrm::Array{Tmsh, 1}  # a normal vector
+  nrm2::Array{Tmsh, 1}
+  nrm3::Array{Tmsh, 1}
 
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -118,6 +120,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
+
+  Rprime::Array{Float64, 2}  # numfaceNodes x numNodesPerElement interpolation matrix
+                             # this should live in sbpface instead
+  # temporary storage for calcESFaceIntegrals
+  A::Array{Tres, 2}
+  B::Array{Tres, 3}
+  iperm::Array{Int, 1}
   #=
   # timings
   t_volume::Float64  # time for volume integrals
@@ -139,6 +148,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
 
     t = 0.0
     myrank = mesh.myrank
+    #TODO: don't open a file in non-debug mode
     f = open("log_$myrank.dat", "w")
     q_vals = Array(Tsol, Tdim + 2)
     qg = Array(Tsol, Tdim + 2)
@@ -162,6 +172,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
 
     nrm = zeros(Tmsh, Tdim)
+    nrm2 = zeros(nrm)
+    nrm3 = zeros(nrm)
+
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -209,9 +222,28 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
     krylov_itr = 0
     krylov_type = 1 # 1 = explicit jacobian, 2 = jac-vec prod
 
+    sbpface = mesh.sbpface
+
+    numNodesPerElement = mesh.numNodesPerElement
+    Rprime = zeros(size(sbpface.interp, 2), numNodesPerElement)
+    # expand into right size (used in SBP Gamma case)
+    for i=1:size(sbpface.interp, 1)
+      for j=1:size(sbpface.interp, 2)
+        Rprime[j, i] = sbpface.interp[i, j]
+      end
+    end
+
+    A = zeros(Tres, size(Rprime))
+    B = zeros(Tres, numNodesPerElement, numNodesPerElement, 2)
+    iperm = zeros(Int, size(sbpface.perm, 1))
+
+
+
     time = Timings()
+
     return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1,
-               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, cv, R,
+               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm,
+               nrm2, nrm3,cv, R,
                gamma, gamma_1, Ma, Re, aoa,
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary,
@@ -219,6 +251,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType
                use_dissipation, dissipation_const, tau_type, vortex_x0,
                vortex_strength,
                krylov_itr, krylov_type,
+               Rprime, A, B, iperm,
                time)
 
     end   # end of ParamType function
@@ -395,6 +428,7 @@ include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
 include("PressureMod.jl")
+include("entropy_flux.jl")
 
 @doc """
 ### EulerEquationMod.EulerData_
@@ -495,6 +529,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
+  volume_flux_func::FluxType  # functor for the volume flux numerical flux
+                              # function
 # minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor
@@ -601,11 +637,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     if mesh.isDG
-      if opts["parallel_type"] == 1
+      if opts["parallel_data"] == "face"
         dim2 = numfacenodes
         dim3_send = mesh.peer_face_counts
         dim3_recv = mesh.peer_face_counts
-      elseif opts["parallel_type"] == 2
+      elseif opts["parallel_data"] == "element"
         dim2 = mesh.numNodesPerElement
         dim3_send = mesh.local_element_counts
         dim3_recv = mesh.remote_element_counts
@@ -625,7 +661,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       end
     end
 
-    #TODO: don't allocate these arrays if not needed
     if eqn.params.use_edgestab
       eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
       calcEdgeStabAlpha(mesh, sbp, eqn)

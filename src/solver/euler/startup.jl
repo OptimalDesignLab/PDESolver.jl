@@ -159,18 +159,16 @@ writedlm("IC_$myrank.dat", real(q_vec))
 saveSolutionToMesh(mesh, q_vec)
 
 writeVisFiles(mesh, "solution_ic")
+writedlm("solution_ic.dat", real(eqn.q_vec))
 if opts["calc_dt"]
   wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
   @mpi_master println("max wave speed = ", wave_speed)
+  @mpi_master println("min element size = ", mesh.min_el_size)
   delta_t = opts["CFL"]*mesh.min_el_size/wave_speed
   println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
   opts["delta_t"] = delta_t
 end
 
-#DEBUGGING
-if opts["test_GLS2"]
-  calcResidual(mesh, sbp, eqn, opts, evalEuler)
-end
 
 #------------------------------------------------------------------------------
 #=
@@ -260,21 +258,12 @@ if opts["solve"]
                  step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
-  elseif flag == 6
-    @time newton_check(evalEuler, mesh, sbp, eqn, opts)
-    vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
-    saveSolutionToMesh(mesh, vals)
-    writeVisFiles(mesh, "solution_error")
-    printBoundaryEdgeNums(mesh)
-    printSolution(mesh, vals)
+  elseif flag == 20
 
-  elseif flag == 7
-    @time jac_col = newton_check(evalEuler, mesh, sbp, eqn, opts, 1)
-    writedlm("solution_$myrank.dat", jac_col)
-
-  elseif flag == 8
-    @time jac_col = newton_check_fd(evalEuler, mesh, sbp, eqn, opts, 1)
-    writedlm("solution_$myrank.dat", jac_col)
+#     @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, 
+#                          eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+    @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, 
+                         opts, opts["res_abstol"], opts["real_time"])
 
   end       # end of if/elseif blocks checking flag
 
@@ -381,8 +370,13 @@ if opts["solve"]
   printSolution(mesh, real(eqn.q_vec))
   printCoordinates(mesh)
   writeVisFiles(mesh, "solution_done")
+  writedlm("solution_done.dat", real(eqn.q_vec))
 
 end  # end if (opts[solve])
+
+fname = "timing_breakdown_$myrank"
+write_timings(eqn.params.time, fname)
+
 
 #  return mesh, sbp, eqn, opts
 #end  # end function

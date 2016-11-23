@@ -71,11 +71,13 @@ println("\nEvaluating initial condition")
 ICfunc_name = opts["IC_name"]
 ICfunc = ICDict[ICfunc_name]
 println("ICfunc = ", ICfunc)
-ICfunc(mesh, sbp, eqn, opts, q_vec) 
+ICfunc(mesh, sbp, eqn, opts, q_vec)
 println("finished initializing q")
 
+writedlm("solution_ic.dat", eqn.q_vec)
+
 if opts["calc_error"]
-  println("\ncalculating error of file ", opts["calc_error_infname"], 
+  println("\ncalculating error of file ", opts["calc_error_infname"],
           " compared to initial condition")
   vals = readdlm(opts["calc_error_infname"])
   @assert length(vals) == mesh.numDof
@@ -135,9 +137,6 @@ if opts["calc_dt"]
 end
 
 
-if opts["test_GLS2"]
-  calcResidual(mesh, sbp, eqn, opts, evalAdvection)
-end
 println("mesh.min_node_dist = ", mesh.min_node_dist)
 #------------------------------------------------------------------------------
 #=
@@ -159,16 +158,16 @@ println("Recommended delta t = ", RecommendedDT) =#
 MPI.Barrier( mesh.comm)
 # evalAdvection(mesh, sbp, eqn, opts, t)
 if opts["solve"]
-  
+
   solve_time = @elapsed if flag == 1 # normal run
     # RK4 solver
-    @time rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn, opts, 
+    @time rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn, opts,
               res_tol=opts["res_abstol"], real_time=opts["real_time"])
     println("finish rk4")
 #    printSolution("rk4_solution.dat", eqn.res_vec)
-  
+
   elseif flag == 2 # forward diff dR/du
-    
+
     # define nested function
     function dRdu_rk4_wrapper(u_vals::AbstractVector, res_vec::AbstractVector)
       eqn.q_vec = u_vals
@@ -178,7 +177,7 @@ if opts["solve"]
     end
 
     # use ForwardDiff package to generate function that calculate jacobian
-    calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64, 
+    calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64,
                 fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
 
     jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
@@ -189,27 +188,11 @@ if opts["solve"]
     # dRdx here
 
   elseif flag == 4 || flag == 5
-    @time newton(evalAdvection, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
-                 step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
+    @time newton(evalAdvection, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
+                 step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
                  res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
     printSolution("newton_solution.dat", eqn.res_vec)
-
-  elseif flag == 6
-    @time newton_check(evalAdvection, mesh, sbp, eqn, opts)
-    vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
-    saveSolutionToMesh(mesh, vals)
-    writeVisFiles(mesh, "solution_error")
-    printBoundaryEdgeNums(mesh)
-    printSolution(mesh, vals)
-
-  elseif flag == 7
-    @time jac_col = newton_check(evalAdvection, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
-
-  elseif flag == 8
-    @time jac_col = newton_check_fd(evalAdvection, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
 
   elseif flag == 9
     # to non-pde rk4 run
@@ -231,7 +214,7 @@ if opts["solve"]
 
   elseif flag == 10
     function test_pre_func(mesh, sbp, eqn, opts)
-      
+
       eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     end
 
@@ -239,8 +222,20 @@ if opts["solve"]
       return calcNorm(eqn, eqn.res_vec)
     end
 
+    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
+        test_post_func, (mesh, sbp, eqn), opts,
+        majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
-    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func, test_post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+  elseif flag == 20
+
+    @time t = crank_nicolson(evalAdvection, opts["delta_t"], t_max, mesh, sbp, eqn,
+                         opts, opts["res_abstol"], opts["real_time"])
+
+    eqn.t = t
+
+#   else
+#     throw(ErrorException("No flag specified: no solve will take place"))
+#     return nothing
   end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")
@@ -253,6 +248,7 @@ if opts["solve"]
       close(f)
     end
   end
+
   # evaluate residual at final q value
   need_res = false
   if need_res
@@ -263,7 +259,6 @@ if opts["solve"]
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   end
 
-
   if opts["write_finalsolution"]
     println("writing final solution")
     writedlm("solution_final_$myrank.dat", real(eqn.q_vec))
@@ -272,7 +267,6 @@ if opts["solve"]
   if opts["write_finalresidual"]
     writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
   end
-
 
   ##### Do postprocessing ######
   println("\nDoing postprocessing")
@@ -311,14 +305,12 @@ if opts["solve"]
         close(f)
       end
 
-
-
       #----  Calculate functional on a boundary  -----#
-      
+
       if opts["calc_functional"]
         evalFunctional(mesh, sbp, eqn, opts)
       end    # End if opts["calc_functional"]
-  
+
 
       #-----  Calculate adjoint vector for a functional  -----#
 
@@ -335,7 +327,7 @@ if opts["solve"]
         functional_edges = opts[key]
         functional_number = j
         functional_name = getFunctionalName(opts, j)
-        
+
         adjoint_vec = zeros(Tsol, mesh.numDof)
         calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
 
@@ -350,7 +342,7 @@ if opts["solve"]
         writeVisFiles(mesh, "adjoint_field")
       end  # end if opts["calc_adjoint"]
 
-      
+
 
 
 #=
