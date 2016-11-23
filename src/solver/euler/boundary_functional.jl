@@ -16,7 +16,7 @@ various edges
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        objective::AbstractOptimizationData; 
+                        objective::AbstractOptimizationData;
                         is_objective_fn::Bool = false)
 
 
@@ -68,7 +68,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
         end  # End if opts["functional_error"]
       end    # End @mpi_master
     end  # End for i = 1:num_functionals
-  
+
   end # End if is_objective_fn == true
 
   return nothing
@@ -106,7 +106,6 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   # Get bndry_offsets for the functional edge concerned
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
-    itr2 = 0
     # get the boundary array associated with the geometric edge
     itr2 = 0
     for itr2 = 1:mesh.numBC
@@ -276,7 +275,8 @@ Gets the name of the functional that needs to be computed at a particular point
 
 **Outputs**
 
-*  `functional` : Returns the functional name in the dictionary
+*  `functional` : Returns the functional name in the dictionary. It is of type
+                  `FucntionalType`,
 
 """->
 function getFunctionalName(opts, f_number;is_objective_fn=false)

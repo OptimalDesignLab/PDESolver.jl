@@ -798,10 +798,10 @@ an objective function pertaining to lift. Presently its an empty type
 """->
 
 type LiftData{Topt} <: AbstractOptimizationData
-  lift_val::Topt
+  target_lift::Topt
   function LiftData()
-    lift_val = zero(Topt)
-    return new(lift_val)
+    target_lift = zero(Topt)
+    return new(target_lift)
   end
 end
 
@@ -814,10 +814,10 @@ an objective function pertaining to drag. Presently its an empty type
 """->
 
 type DragData{Topt} <: AbstractOptimizationData
-  drag_val::Topt
+  target_drag::Topt
   function DragData()
-    drag_val = zero(Topt)
-    return new(drag_val)
+    target_drag = zero(Topt)
+    return new(target_drag)
   end
 end
 
