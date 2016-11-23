@@ -24,7 +24,8 @@
 
   rhoinv = 1/rho
 
-  h = (rhoe + p)*rhoinv
+  h = (rhoe + p)*rhoinv  # this isn't really h, but including the factor of
+                         # 1/rho is convenient
   a2 = gamma*p*rhoinv  # speed of sound
 
   A0[1,1] = rho

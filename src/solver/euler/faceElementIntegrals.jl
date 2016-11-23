@@ -196,6 +196,12 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
     lambda_max = getLambdaMax(params, qL_i, qR_i, dir)
+    @assert lambda_max > 0
+#    lambda_max *= sqrt(params.h)
+    # poor mans entropy fix
+    lambda_max *= 0.1
+#    lambda_max += 0.25
+#    lambda_max *= 2
 #    lambda_max = 3.0
     
     # compute average qL
@@ -233,10 +239,14 @@ end
 # do the functor song and dance
 abstract FaceElementIntegralType
 
+"""
+  Entropy conservative term only
+"""
 type ECFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral, params::AbstractParamType{Tdim}, 
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral, 
+              params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
@@ -249,6 +259,9 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral, params::AbstractParam
 
 end
 
+"""
+  Entropy conservaive integral + penalty
+"""
 type ESFaceIntegral <: FaceElementIntegralType
 end
 
@@ -265,9 +278,30 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ESFaceIntegral,
 
 end
 
+"""
+  Penalty term only
+"""
+type EPenaltyFaceIntegral <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::EPenaltyFaceIntegral, 
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+
+end
+
+
 global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
 "ECFaceIntegral" => ECFaceIntegral(),
-"ESFaceIntegral" => ESFaceIntegral()
+"ESFaceIntegral" => ESFaceIntegral(),
+"EPenaltyFaceIntegral" => EPenaltyFaceIntegral(),
 )
 
 function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)

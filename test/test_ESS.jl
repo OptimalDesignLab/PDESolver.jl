@@ -698,12 +698,26 @@ function applyPoly(mesh, sbp, eqn, opts, p)
   return nothing
 end
 
+function factRes0(mesh, sbp, eqn, opts)
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+        @fact eqn.res[k, j, i] --> roughly(0.0, atol=1e-13)
+      end
+    end
+  end
+
+  return nothing
+end
+
+
 facts("----- testing ESS -----") do
   ARGS[1] = "input_vals_channel_dg_large.jl"
   include(STARTUP_PATH)
   # evaluate the residual to confirm it is zero
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
-
+  penalty_functor = EulerEquationMod.FaceElementDict["EPenaltyFaceIntegral"]
 
   for p=1:4
     println("testing p = ", p)
@@ -733,6 +747,13 @@ facts("----- testing ESS -----") do
     applyPoly(mesh, sbp, eqn, opts, p)
     runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=true, zero_penalty=true)
 
+    # check full calling sequence
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+
+    factRes0(mesh, sbp, eqn, opts)
+
+
     # check gamma operators
     opts["operator_type"] = "SBPGamma"
     fname = "input_vals_ESS_test2"
@@ -754,6 +775,12 @@ facts("----- testing ESS -----") do
     # check polynomial
     applyPoly(mesh, sbp, eqn, opts, p)
     runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=false, zero_penalty=true)
+    # check full calling sequence
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+
+    factRes0(mesh, sbp, eqn, opts)
+
 
 
   end  # end loop over p

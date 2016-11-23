@@ -95,6 +95,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   nrm2::Array{Tmsh, 1}
   nrm3::Array{Tmsh, 1}
 
+  h::Float64 # temporary: mesh size metric
+
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -189,6 +191,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     nrm2 = zeros(nrm)
     nrm3 = zeros(nrm)
 
+    h = maximum(mesh.jac)
+
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
     R = opts[ "R"]
@@ -258,7 +262,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, sat_vals, flux_vals1, 
                flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, 
-               nrm2, nrm3,cv, R, 
+               nrm2, nrm3, h, cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 
