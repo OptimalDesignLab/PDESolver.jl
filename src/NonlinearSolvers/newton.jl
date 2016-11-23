@@ -131,7 +131,7 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
   end
 
   # should be all zeros if alloc_rhs is true
-  writedlm("rhs_initial.dat", rhs_vec)
+#   writedlm("rhs_initial.dat", rhs_vec)
 
   return newton_data, jac, rhs_vec
 
@@ -309,7 +309,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   end
 #   res_0 = deepcopy(real(rhs_vec))
   # TODO TODO TODO: changed to deepcopy 20161113
-  writedlm("rhs_before_newton_loop.dat", res_0)
+#   writedlm("rhs_before_newton_loop.dat", res_0)
 
   @mpi_master begin
     println(fconv, 0, " ", res_0_norm, " ", 0)
@@ -369,8 +369,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   #------------------------------------------------------------------------------------
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
-    @mpi_master println(fstdout, "==================== Newton iteration: ", i)
-    @mpi_master println(fstdout, "step_fac = ", step_fac)
+#     @mpi_master println(fstdout, "==================== Newton iteration: ", i)
+#     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
     # Calculate Jacobian here
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
@@ -468,13 +468,13 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 #       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
 #     end
 
-    println("----- in newtonInner, before linear solve -----")
-    println("t: $t")
+#     println("----- in newtonInner, before linear solve -----")
+#     println("t: $t")
 #     println("res_0[15]: ",res_0[15])
 #     println("rhs_vec[15]: ",rhs_vec[15])
 #     println("eqn.q_vec[15]: ",eqn.q_vec[15])
 #     println("eqn.res_vec[15]: ",eqn.res_vec[15])
-    println("-")
+#     println("-")
 #     writedlm("jac_inside_newtonjl_iter_$i.dat", full(jac))
 #     writedlm("rhs_inside_newtonjl_iter_$i.dat", full(res_0))
 
@@ -493,10 +493,10 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
                                                        res_0, delta_q_vec, mesh.dof_offset)
     end
 
-    println("=============+++++In newton+++++ i: ", i)
-    println("=============+++++In newton+++++ t: ", t)
-    println("=============+++++In newton+++++ norm(delta_q_vec): ", norm(delta_q_vec))
-    println("=============+++++In newton+++++ norm(res_0): ", norm(res_0))
+#     println("=============+++++In newton+++++ i: ", i)
+#     println("=============+++++In newton+++++ t: ", t)
+#     println("=============+++++In newton+++++ norm(delta_q_vec): ", norm(delta_q_vec))
+#     println("=============+++++In newton+++++ norm(res_0): ", norm(res_0))
 
     eqn.params.time.t_solve += t_solve
     @mpi_master print(fstdout, "matrix solve: ")
@@ -507,12 +507,12 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     @mpi_master println(fstdout, "step_norm = ", step_norm)
     flush(fstdout)
 
-    println("=============+++++In newton+++++ performing Newton update")
+#     println("=============+++++In newton+++++ performing Newton update")
     # perform Newton update
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
-    writedlm("q_vec_in_newtonjl_after_update-iter_$i.dat", eqn.q_vec)
+#     writedlm("q_vec_in_newtonjl_after_update-iter_$i.dat", eqn.q_vec)
 
 #     println("========= in Newton, after delta_q_vec update. t = $t")
 #     for dof_ix = 21461:21464
@@ -535,7 +535,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       writedlm("q$i_$myrank.dat", eqn.q)
     end
 
-    println("=============+++++In newton+++++ calling calcResidual")
+#     println("=============+++++In newton+++++ calling calcResidual")
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     # extract real component to res_0
@@ -544,9 +544,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     for j=1:m
       res_0[j] = real(rhs_vec[j])
     end
-#     res_0 = deepcopy(real(rhs_vec))
-    # TODO TODO TODO: changed to deepcopy 20161113
-
 
 
     @mpi_master begin

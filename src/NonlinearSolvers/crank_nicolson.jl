@@ -58,6 +58,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
 
+  #----------------------------------------------------------------------
+  throw(ErrorException("Crank-Nicolson is in development. Exiting."))
+
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
   if myrank == 0
@@ -147,8 +150,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t_nextstep = t + h
 
-#     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-    cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+#     cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -166,8 +169,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
     delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
-    println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
-    println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec_DEBUG))
+#     println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
+#     println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec_DEBUG))
 
 #     if (nflips_eqn % 2) == 0
 #       eqn = eqn1
@@ -279,7 +282,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   t_nextstep = t + h
 
   physics_func(mesh, sbp, eqn, opts, t)
-  println("---- physics_func: ",physics_func)
+#   println("---- physics_func: ",physics_func)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
 # TODO: CN dismantle 20161116 physics_func(mesh, sbp, eqn_nextstep, opts, t)

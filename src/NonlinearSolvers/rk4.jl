@@ -101,15 +101,14 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   k3 = zeros(x_old)
   k4 = zeros(x_old)
 
-  q_vec_old_DEBUG = zeros(q_vec)
-
+#   q_vec_old_DEBUG = zeros(q_vec)
 
   flush(fstdout)
   #-----------------------------------------------------
   # beginning of RK4 time stepping loop
   for i=2:(t_steps + 1)
 
-    q_vec_old_DEBUG = deepcopy(q_vec)
+#     q_vec_old_DEBUG = deepcopy(q_vec)
 
 #     println("===== (beginning of rk4 timestep) ===== t = $t")
 
@@ -210,17 +209,17 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     fill!(k3, 0.0)
     fill!(k4, 0.0)
 
-    println("============+++++++++ t: ", t)
+#     println("============+++++++++ t: ", t)
     t = t + h
 
-    DEBUG = true
-    if DEBUG
-      q_file = "q$i.dat"
-      writedlm(q_file, q_vec)
-    end
-    delta_q_vec = q_vec - q_vec_old_DEBUG
-    println("============+++++++++ norm(q_vec): ", norm(q_vec))
-    println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec))
+#     DEBUG = true
+#     if DEBUG
+#       q_file = "q$i.dat"
+#       writedlm(q_file, q_vec)
+#     end
+#     delta_q_vec = q_vec - q_vec_old_DEBUG
+#     println("============+++++++++ norm(q_vec): ", norm(q_vec))
+#     println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec))
 
   end   # end of RK4 time stepping loop
 
