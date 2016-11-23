@@ -112,6 +112,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: output freq
 
+    DEBUG = false
     if DEBUG
       q_file = "q$i.dat"
       writedlm(q_file, eqn.q_vec)
@@ -146,7 +147,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t_nextstep = t + h
 
-    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+#     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+    cnNewton(mesh, h, f, eqn, eqn_nextstep, t)
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -184,14 +186,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   end   # end of t step loop
 
-#   # TODO: if we're using the flipping mechanism for the eqn data, we need to complete this section so that 
-#   #     the correct data is returned in the caller's eqn arg
-#   if (nflips_eqn % 2) == 1      # odd number of flips
-# 
-#   end
-
   # depending on how many timesteps we do, this may or may not be necessary
-  # copy!(dest, src)
+  #   usage: copy!(dest, src)
   copy!(eqn, eqn_nextstep)
   writedlm("solution_final_inCN.dat", real(eqn.q_vec))
 
@@ -251,7 +247,9 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
   end
 
-  writedlm("jac_inside_cnJac.dat", full(jac))
+#   println("==== in cnJac: h: $h ====")
+
+#   writedlm("jac_inside_cnJac.dat", full(jac))
 
   return nothing
 
@@ -307,21 +305,27 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     # local dof index, node, el
     loc_dof, node, el = ind2sub(mesh.coords, findfirst(mesh.dofs, i))
 
-    # mesh.coords indices: [dimension index, node num, el num]
-    x = mesh.coords[1, node, el]
-    y = mesh.coords[2, node, el]
+    DEBUG = false
+    if DEBUG
+      # mesh.coords indices: [dimension index, node num, el num]
+      # 20161118: this threw an error in the vortex case???
+      x = mesh.coords[1, node, el]
+      y = mesh.coords[2, node, el]
 
-    println("x: $x    y: $y    t: $t    t_nextstep: $t_nextstep")
-    println("dof_ix: $i    rhs_vec[i]: ",rhs_vec[i])
-    println("dof_ix: $i    eqn.q_vec[i]: ",eqn.q_vec[i])
-    println("dof_ix: $i    eqn.res_vec[i]: ",eqn.res_vec[i])
-    println("dof_ix: $i    eqn_nextstep.q_vec[i]: ",eqn_nextstep.q_vec[i])
-    println("dof_ix: $i    eqn_nextstep.res_vec[i]: ",eqn_nextstep.res_vec[i])
-    println("-")
+      println("x: $x    y: $y    t: $t    t_nextstep: $t_nextstep")
+      println("dof_ix: $i    rhs_vec[i]: ",rhs_vec[i])
+      println("dof_ix: $i    eqn.q_vec[i]: ",eqn.q_vec[i])
+      println("dof_ix: $i    eqn.res_vec[i]: ",eqn.res_vec[i])
+      println("dof_ix: $i    eqn_nextstep.q_vec[i]: ",eqn_nextstep.q_vec[i])
+      println("dof_ix: $i    eqn_nextstep.res_vec[i]: ",eqn_nextstep.res_vec[i])
+      println("-")
+    end
 
   end
 
-  writedlm("rhs_inside_cnRhs.dat", full(rhs_vec))
+#   println("==== in cnRhs: h: $h ====")
+
+#   writedlm("rhs_inside_cnRhs.dat", full(rhs_vec))
 
   return nothing
 
@@ -373,4 +377,107 @@ function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
 
    return nothing
 end
+
+# the goal is to replace newton.jl.
+# this will go into CN in the time-stepping loop
+function cnNewton(mesh, h, physics_func, eqn, eqn_nextstep, t)
+
+  println("---- physics_func: ",physics_func)
+
+  # Jac on eqn or eqn_nextstep?
+
+  epsilon = 1e-8
+
+  jac = zeros(mesh.numDof, mesh.numDof)
+
+  # emulates physicsJac
+  # so we need to step through the jacobian column wise.
+  #   d res[1]/d q[1]   d res[1]/d q[2]   d res[1]/d q[3] ...
+  #   d res[2]/d q[1]   d res[2]/d q[2]   d res[2]/d q[3] ...
+  #   d res[3]/d q[1]   d res[3]/d q[2]   d res[3]/d q[3] ...
+  #   ...               ...               ...
+
+  newton_itermax = 14
+  delta_q_vec = zeros(eqn_nextstep.q_vec)
+
+  # newton_loop starting here?
+  for newton_i = 1:newton_itermax
+
+    #--------------------------
+    # emulates physicsJac
+    unperturbed_q_vec = copy(eqn_nextstep.q_vec)
+  
+    physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+    # needed b/c physics_func only updates eqn.res
+    assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    unperturbed_res_vec = copy(eqn_nextstep.res_vec)
+  
+    for i = 1:mesh.numDof
+      eqn_nextstep.q_vec[i] = eqn_nextstep.q_vec[i] + epsilon
+  
+      physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+      assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+  
+      jac[:,i] = (eqn_nextstep.res_vec - unperturbed_res_vec)/epsilon
+  
+      eqn_nextstep.q_vec[i] = unperturbed_q_vec[i]
+  
+    end
+  
+    #--------------------------
+    # emulates cnJac
+    scale!(jac, -0.5*h)
+    for i = 1:mesh.numDof
+      jac[i,i] += 1
+    end
+  
+    #--------------------------
+    # emulates cnRhs
+    #   what this is doing:
+    #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
+    physics_func(mesh, sbp, eqn, opts, t)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+    assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+  
+    rhs_vec = zeros(eqn.q_vec)
+  
+    for i = 1:mesh.numDof
+      rhs_vec[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
+    end
+  
+    # TODO: check these args
+    rhs_norm = calcNorm(eqn, rhs_vec, strongres=true)
+    
+    #--------------------------
+    # start of actual Newton
+    neg_rhs = scale(rhs, -1.0)
+
+    fill!(delta_q_vec, 0.0)
+    # TODO: do these need to be column wise? why in newton.jl is it [:]?
+    delta_q_vec = jac\neg_rhs
+    fill!(jac, 0.0)
+
+#     eqn_nextstep.q_vec += delta_q_vec
+
+    for i = 1:mesh.numDof
+      eqn_nextstep.q_vec[i] += delta_q_vec[i]
+    end
+
+    rhs_norm_tol = 1e-6
+    if rhs_norm < rhs_norm_tol
+      println("=== cnNewton converged with rhs_norm under $rhs_norm_tol ===")
+      return nothing
+    end
+
+
+  end   # end of newton iterations
+
+
+  println("=== cnNewton did not converge ===")
+  return nothing
+
+
+end
+
 

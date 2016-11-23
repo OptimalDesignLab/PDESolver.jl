@@ -51,9 +51,11 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
       f = BufferedIO()  # create a dummy IOStream
     end
     alpha_x = 1.0
+#     alpha_x = 0.0
     # Note: alpha_y = 0.0 might be useful for testing out new methods, 
     #    but the CI tests will fail unless set to 1.0
     alpha_y = 1.0
+#     alpha_y = 0.0
     alpha_z = 1.0
 
 

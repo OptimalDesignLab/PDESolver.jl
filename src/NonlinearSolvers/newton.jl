@@ -729,7 +729,13 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
 
     if jac_type == 1  # dense jacobian
       @mpi_master println(fstdout, "calculating dense FD jacobian")
-      tmp, t_jac, t_gc, alloc = @time_all calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_0, pert, jac, t)
+      # TODO: need to make q/q_vec and res/res_vec consistent
+      arrToVecAssign(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+      # res_0 is the unperturbed res, and it needs to be passed in vector form
+      assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      res_copy_vec = copy(eqn.res_vec)
+      #TODO: don't copy the giant vector!
+      tmp, t_jac, t_gc, alloc = @time_all calcJacFD(newton_data, mesh, sbp, eqn, opts, func, res_copy_vec, pert, jac, t)
 
     elseif jac_type == 2  # Julia sparse jacobian
       @mpi_master println(fstdout, "calculating sparse FD jacobian")
@@ -1041,6 +1047,15 @@ end
     jac:: Jacobian matrix to be populated.  Must be a dense matrix
 
   Aliasing restrictions: res_0 must not alias eqn.res_vec
+
+  At the start, calcJacFD assumes:
+    The Jacobian will be calculated at the state that is specified in eqn.q_vec .
+    res_0 should have the residual at that state in it
+
+  At exit, eqn.q_vec will have the same values as at the start.
+
+  eqn.q and eqn.res will be overwritten in the course of this function.
+
 """->
 function calcJacFD(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray, t=0.0)
 # calculate the jacobian using finite difference
@@ -1326,27 +1341,27 @@ function assembleElement{Tsol <: Real}(newton_data::NewtonData, mesh, eqn::Abstr
 # typically either el_pert or dof_pert will be needed, not both
 
 
-# resize array
-# basically a no-op if array is already the right size
-local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
-
-# get row number
-newton_data.idy_tmp[1] = dof_pert - 1 + mesh.dof_offset
-
-pos = 1
-for j_j = 1:mesh.numNodesPerElement
-  for i_i = 1:mesh.numDofPerNode
-    newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1 + mesh.dof_offset
-
-    tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
-    newton_data.vals_tmp[pos] = tmp
-    pos += 1
+  # resize array
+  # basically a no-op if array is already the right size
+  local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
+  
+  # get row number
+  newton_data.idy_tmp[1] = dof_pert - 1 + mesh.dof_offset
+  
+  pos = 1
+  for j_j = 1:mesh.numNodesPerElement
+    for i_i = 1:mesh.numDofPerNode
+      newton_data.idx_tmp[pos] = mesh.dofs[i_i, j_j, el_res] - 1 + mesh.dof_offset
+  
+      tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+      newton_data.vals_tmp[pos] = tmp
+      pos += 1
+    end
   end
-end
-
-PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
-
-return nothing
+  
+  PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
+  
+  return nothing
 
 end
 
@@ -1384,17 +1399,17 @@ function assembleElement{Tsol <: Real}(newton_data::NewtonData, mesh, eqn::Abstr
 # dof_pert is the dof number (global) of the dof that was perturbed
 # typically either el_pert or dof_pert will be needed, not both
 
-for j_j = 1:mesh.numNodesPerElement
-  for i_i = 1:mesh.numDofPerNode
-    row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
-
-    tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
-    jac[row_idx, dof_pert + mesh.dof_offset] += tmp
-
+  for j_j = 1:mesh.numNodesPerElement
+    for i_i = 1:mesh.numDofPerNode
+      row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
+  
+      tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
+      jac[row_idx, dof_pert + mesh.dof_offset] += tmp
+  
+    end
   end
-end
-
-return nothing
+  
+  return nothing
 
 end
 
@@ -1419,12 +1434,12 @@ function calcJacCol{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
 
-m = length(res_0)
-for i=1:m
-  jac_row[i] = (res[i] - res_0[i])/epsilon
-end
-
-return nothing
+  m = length(res_0)
+  for i=1:m
+    jac_row[i] = (res[i] - res_0[i])/epsilon
+  end
+  
+  return nothing
 
 end
 

@@ -23,6 +23,7 @@ export @mpi_master, @time_all, print_time_all
 export Timings, write_timings
 export sharedFaceLogging
 export createMeshAndOperator
+export arrToVecAssign
 
 @doc """
 ### Utils.disassembleSolution
@@ -112,7 +113,7 @@ end
 ### Utils.assembleSolution
 
   This function takes the 3D array of variables in arr and 
-  reassmbles is into the vector res_vec.  Note that
+  reassembles it into the vector res_vec.  Note that
   This is a reduction operation and zeros res_vec before performing the 
   operation, unless zero_resvec is set to false
 
@@ -160,6 +161,42 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
     end
   end
 
+  return nothing
+
+end
+
+
+function arrToVecAssign{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                         sbp, eqn::AbstractSolutionData{Tsol}, opts, 
+                         arr::Abstract3DArray, dest_vec::AbstractArray{Tres,1}, 
+                         zero_resvec=true)
+
+  # This was created so a q -> q_vec operation could be performed, but it is sufficiently
+  #   generic to operate on other things.
+  # It is the inverse function of disassembleSolution
+
+  # arr is the array to be assembled into dest_vec, using an assignment reduction
+
+  # removed zeroing out of dest vec, as all of it will be overwritten below
+
+  if pointer(arr) == pointer(dest_vec)
+    return nothing
+  end
+
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode  # loop over dofs on the node
+
+        # mesh.dofs indexing:
+        #   [dof ix on the node, node ix on the el, el ix]
+        dofnum_k = mesh.dofs[k, j, i]
+
+        dest_vec[dofnum_k] = arr[k,j,i]
+
+      end
+    end
+  end
+  
   return nothing
 
 end

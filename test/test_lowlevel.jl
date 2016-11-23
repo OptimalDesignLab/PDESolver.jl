@@ -407,6 +407,14 @@ facts("--- Testing Euler Low Level Functions --- ") do
      end
    end
 
+   # testing arrToVecAssign
+   q_vec_orig = copy(eqn.q_vec)
+   EulerEquationMod.arrToVecAssign(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+   for i = 1:mesh.numDof
+     @fact eqn.q_vec[i] --> roughly(q_vec_orig[i], atol=1e-5)
+   end
+
+
    #=
    for i=1:mesh.numEl
      println("i = ", i)

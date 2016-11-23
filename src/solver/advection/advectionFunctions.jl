@@ -14,6 +14,8 @@ Pass this function as an input argument to the RK4 solver just like evalAdvectio
 *  `opts` : Options dictionary
 *  `t`    :
 
+Effectively updates eqn.res -- not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec
+
 **Outputs**
 
 *  None
