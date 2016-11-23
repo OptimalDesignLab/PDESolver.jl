@@ -406,31 +406,31 @@ function cnNewton(mesh, h, physics_func, eqn, eqn_nextstep, t)
     #--------------------------
     # emulates physicsJac
     unperturbed_q_vec = copy(eqn_nextstep.q_vec)
-  
+
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
     # needed b/c physics_func only updates eqn.res
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
     unperturbed_res_vec = copy(eqn_nextstep.res_vec)
-  
+
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] = eqn_nextstep.q_vec[i] + epsilon
-  
+
       physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
       assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
-  
+
       jac[:,i] = (eqn_nextstep.res_vec - unperturbed_res_vec)/epsilon
-  
+
       eqn_nextstep.q_vec[i] = unperturbed_q_vec[i]
-  
+
     end
-  
+
     #--------------------------
     # emulates cnJac
     scale!(jac, -0.5*h)
     for i = 1:mesh.numDof
       jac[i,i] += 1
     end
-  
+
     #--------------------------
     # emulates cnRhs
     #   what this is doing:
@@ -439,16 +439,16 @@ function cnNewton(mesh, h, physics_func, eqn, eqn_nextstep, t)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
-  
+
     rhs_vec = zeros(eqn.q_vec)
-  
+
     for i = 1:mesh.numDof
       rhs_vec[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
     end
-  
+
     # TODO: check these args
     rhs_norm = calcNorm(eqn, rhs_vec, strongres=true)
-    
+
     #--------------------------
     # start of actual Newton
     neg_rhs = scale(rhs, -1.0)

@@ -1344,10 +1344,10 @@ function assembleElement{Tsol <: Real}(newton_data::NewtonData, mesh, eqn::Abstr
   # resize array
   # basically a no-op if array is already the right size
   local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
-  
+
   # get row number
   newton_data.idy_tmp[1] = dof_pert - 1 + mesh.dof_offset
-  
+
   pos = 1
   for j_j = 1:mesh.numNodesPerElement
     for i_i = 1:mesh.numDofPerNode
@@ -1358,9 +1358,9 @@ function assembleElement{Tsol <: Real}(newton_data::NewtonData, mesh, eqn::Abstr
       pos += 1
     end
   end
-  
+
   PetscMatSetValues(jac, newton_data.idx_tmp, newton_data.idy_tmp, newton_data.vals_tmp, PETSC_ADD_VALUES)
-  
+
   return nothing
 
 end
@@ -1402,10 +1402,10 @@ function assembleElement{Tsol <: Real}(newton_data::NewtonData, mesh, eqn::Abstr
   for j_j = 1:mesh.numNodesPerElement
     for i_i = 1:mesh.numDofPerNode
       row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
-  
+
       tmp = (res_arr[i_i,j_j, el_res] - res_0[i_i, j_j, el_res])/epsilon
       jac[row_idx, dof_pert + mesh.dof_offset] += tmp
-  
+
     end
   end
   
@@ -1438,7 +1438,7 @@ function calcJacCol{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
   for i=1:m
     jac_row[i] = (res[i] - res_0[i])/epsilon
   end
-  
+
   return nothing
 
 end
@@ -1538,14 +1538,14 @@ function assembleElement{Tsol <: Complex}(newton_data::NewtonData, mesh, eqn::Ab
 
 #println(" element $el_res res = ", sview(res_arr, :, :, el_res))
 
-for j_j = 1:mesh.numNodesPerElement
-  for i_i = 1:mesh.numDofPerNode
-    row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
-    jac[row_idx, dof_pert + mesh.dof_offset] += imag(res_arr[i_i,j_j, el_res])/epsilon
+  for j_j = 1:mesh.numNodesPerElement
+    for i_i = 1:mesh.numDofPerNode
+      row_idx = mesh.dofs[i_i, j_j, el_res] + mesh.dof_offset
+      jac[row_idx, dof_pert + mesh.dof_offset] += imag(res_arr[i_i,j_j, el_res])/epsilon
+    end
   end
-end
 
-return nothing
+  return nothing
 
 end
 

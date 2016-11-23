@@ -166,9 +166,9 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
 end
 
 
-function arrToVecAssign{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts, 
-                         arr::Abstract3DArray, dest_vec::AbstractArray{Tres,1}, 
+function arrToVecAssign{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
+                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
+                         arr::Abstract3DArray, dest_vec::AbstractArray{Tres,1},
                          zero_resvec=true)
 
   # This was created so a q -> q_vec operation could be performed, but it is sufficiently
@@ -196,7 +196,7 @@ function arrToVecAssign{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
       end
     end
   end
-  
+
   return nothing
 
 end
