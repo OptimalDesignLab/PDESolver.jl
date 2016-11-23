@@ -488,6 +488,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     if jac_type == 1 || jac_type == 2  # julia jacobian
       tmp, t_solve, t_gc, alloc = @time_all begin
         jac_f = factorize(jac)
+        # Note: reason for the colon: this is attempting to 
+        #       access the existing delta_q_vec so excessive copies aren't required
         delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
       end
       fill!(jac, 0.0)

@@ -385,6 +385,7 @@ end
 # the goal is to replace newton.jl.
 # this will go into CN in the time-stepping loop
 function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
+  println("++++++++++++++++ clean sheet Newton being run ++++++++++")
 
   println("---- physics_func: ",physics_func)
 
@@ -415,6 +416,8 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
     # needed b/c physics_func only updates eqn.res
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    # Comment here about mass matrix inv multiplication TODO
+    applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
     unperturbed_res_vec = copy(eqn_nextstep.res_vec)
 
     for i = 1:mesh.numDof
@@ -422,6 +425,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
       physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
       assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+      applyMassMatrixInv(mesh, eqn, eqn_nextstep.res_vec)
 
       jac[:,i] = (eqn_nextstep.res_vec - unperturbed_res_vec)/epsilon
 
@@ -454,12 +458,16 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     =#
     physics_func(mesh, sbp, eqn, opts, t)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    applyMassMatrixInv(mesh, eqn, eqn.res_vec)
+    current_t_step_contribution = zeros(eqn.q_vec)
     for i = 1:mesh.numDof
       current_t_step_contribution[i] = - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
     end
 
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
+    next_t_step_contribution = zeros(eqn.q_vec)
     for i = 1:mesh.numDof
       next_t_step_contribution[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] 
     end
@@ -478,7 +486,6 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     neg_rhs = scale(rhs_vec, -1.0)
 
     fill!(delta_q_vec, 0.0)
-    # TODO: do these need to be column wise? why in newton.jl is it [:]?
     delta_q_vec = jac\neg_rhs
     fill!(jac, 0.0)
 
@@ -504,4 +511,12 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
 end
 
+function applyMassMatrixInv(mesh, eqn, vec)
+
+  for k = 1:mesh.numDof
+    vec[k] = eqn.Minv[k] * vec[k]
+  end
+
+  return vec
+end
 
