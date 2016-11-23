@@ -26,15 +26,16 @@ for i = 1:length(g_edges)
 end
 EulerEquationMod.writeSurfacePressureCoeff(mesh, sbp, eqn, opts, g_edges, pressCoeffArrWrite)
 
-
-#----  Read in the target surface pressure coefficients  ----#
 # Create the objective function data object
 objective = EulerEquationMod.OptimizationData{Tsol}(mesh, sbp, opts)
+
+#=
+#----  Read in the target surface pressure coefficients  ----#
 EulerEquationMod.readSurfacePressureCoeff(mesh, sbp, eqn, opts, g_edges,
 objective.pressCoeff_obj.targetCp_arr)
 
 # Check if the pressure coefficients are being read in correctly
-#=
+
 ctr = 0
 for i = 1:length(g_edges)
   for j = 1:size(pressCoeffArrWrite[i],2)

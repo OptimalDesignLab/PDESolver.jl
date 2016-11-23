@@ -825,7 +825,8 @@ end
 ### EulerEquationMod.OptimizationData
 
 A composite data type with data types pertaining to all possible objective
-functions or boundary functionals
+functions or boundary functionals. While dealing with an objective function,
+make sure to use the bool
 
 **Members**
 
@@ -847,6 +848,7 @@ objective = OptimizationData(mesh, sbp, opts)
 
 type OptimizationData{Topt} <: AbstractOptimizationData
 
+  is_objective_fn::Bool
   val::Topt
   pressCoeff_obj::PressureData{Topt} # Objective function related to pressure coeff
   lift_obj::LiftData{Topt} # Objective function is lift
@@ -854,25 +856,47 @@ type OptimizationData{Topt} <: AbstractOptimizationData
 
   function OptimizationData(mesh::AbstractMesh, sbp::AbstractSBP, opts)
 
-    objective = new()
-    objective.val = zero(Topt)
+    functional = new()
+    functional.val = zero(Topt)
     for i = 1:opts["num_functionals"]
       dict_val = string("functional_name", i)
+
       if opts[dict_val] == "targetCp" || opts["objective_function"] == "targetCp"
+
+        if opts["objective_function"] == "targetCp"
+          functional.is_objective_fn = true
+        else
+          functional.is_objective_fn = false
+        end
         g_edges = opts[string("geom_edges_functional", i)]
         nface_arr = zeros(Int, length(g_edges))
         for j = 1:length(nface_arr)
           nface_arr[j] = getnFaces(mesh, g_edges[j])
         end
-        objective.pressCoeff_obj = PressureData{Topt}(mesh, g_edges, nface_arr)
+        functional.pressCoeff_obj = PressureData{Topt}(mesh, g_edges, nface_arr)
+
       elseif opts[dict_val] == "lift" || opts["objective_function"] == "lift"
-        objective.lift_obj = LiftData{Topt}()
+
+        if opts["objective_function"] == "lift"
+          functional.is_objective_fn = true
+        else
+          functional.is_objective_fn = false
+        end
+        functional.lift_obj = LiftData{Topt}()
+
       elseif opts[dict_val] == "drag" || opts["objective_function"] == "drag"
-        objective.drag_obj = DragData{Topt}()
+
+        if opts["objective_function"] == "drag"
+          functional.is_objective_fn = true
+        else
+          functional.is_objective_fn = false
+        end
+        functional.drag_obj = DragData{Topt}()
+
       end
     end   # End for i = 1:opts["num_functionals"]
 
-    return objective
+    return functional
   end  # End inner constructor
 end    # End OptimizationData
 
