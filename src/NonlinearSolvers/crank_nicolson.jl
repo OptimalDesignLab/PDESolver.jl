@@ -148,7 +148,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     t_nextstep = t + h
 
 #     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-    cnNewton(mesh, h, f, eqn, eqn_nextstep, t)
+    cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -380,13 +380,14 @@ end
 
 # the goal is to replace newton.jl.
 # this will go into CN in the time-stepping loop
-function cnNewton(mesh, h, physics_func, eqn, eqn_nextstep, t)
+function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
   println("---- physics_func: ",physics_func)
 
   # Jac on eqn or eqn_nextstep?
 
   epsilon = 1e-8
+  t_nextstep = t + h
 
   jac = zeros(mesh.numDof, mesh.numDof)
 
@@ -451,7 +452,7 @@ function cnNewton(mesh, h, physics_func, eqn, eqn_nextstep, t)
 
     #--------------------------
     # start of actual Newton
-    neg_rhs = scale(rhs, -1.0)
+    neg_rhs = scale(rhs_vec, -1.0)
 
     fill!(delta_q_vec, 0.0)
     # TODO: do these need to be column wise? why in newton.jl is it [:]?
@@ -466,7 +467,7 @@ function cnNewton(mesh, h, physics_func, eqn, eqn_nextstep, t)
 
     rhs_norm_tol = 1e-6
     if rhs_norm < rhs_norm_tol
-      println("=== cnNewton converged with rhs_norm under $rhs_norm_tol ===")
+      println("=== cnNewton converged with rhs_norm under $rhs_norm_tol -- newton iters: $newton_i ===")
       return nothing
     end
 
