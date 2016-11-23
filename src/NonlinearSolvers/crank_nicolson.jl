@@ -58,7 +58,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
   #----------------------------------------------------------------------
-  throw(ErrorException("Crank-Nicolson is in development. Exiting."))
+#   throw(ErrorException("Crank-Nicolson is in development. Exiting."))
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -151,8 +151,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t_nextstep = t + h
 
-    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-#     cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+#     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+    cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -440,6 +440,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     # emulates cnRhs
     #   what this is doing:
     #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
+    #=
     physics_func(mesh, sbp, eqn, opts, t)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
@@ -449,6 +450,24 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
     for i = 1:mesh.numDof
       rhs_vec[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
+    end
+    =#
+    physics_func(mesh, sbp, eqn, opts, t)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    for i = 1:mesh.numDof
+      current_t_step_contribution[i] = - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
+    end
+
+    physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+    assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    for i = 1:mesh.numDof
+      next_t_step_contribution[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] 
+    end
+
+    rhs_vec = zeros(eqn.q_vec)
+
+    for i = 1:mesh.numDof
+      rhs_vec[i] = current_t_step_contribution[i] + next_t_step_contribution[i]
     end
 
     # TODO: check these args
