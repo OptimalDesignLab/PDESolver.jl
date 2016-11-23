@@ -205,7 +205,7 @@ end
   This function calculates the unsteady vortex solution to the Euler equations
   at time params.t, where the vortex was centered at x = params.vortex_x0 at 
   time t=0.  The analytical solution can be found in, for example,
-  K. Mattsson et al./ Computers & Fluixs 36 (2007) 636-649
+  K. Mattsson et al./ Computers & Fluxs 36 (2007) 636-649
 
   This function uses conservative variables regardless of the static parameter
   of params.

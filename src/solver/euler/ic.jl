@@ -450,9 +450,9 @@ return nothing
 end
 
 @doc """
-### EulerEquationMod.ICZero
+### EulerEquationMod.ICIsentropicVortex
 
-  Sets the solution to the isentropic vortex solution.
+  Sets the solution to the steady isentropic vortex solution.
 
   Inputs:
     mesh
@@ -501,10 +501,10 @@ end  # end function
 
 
 @doc """
-### EulerEquationMod.ICZero
+### EulerEquationMod.ICIsentropicVortexWithNoise
 
-  Sets the solutoin to the isentropic vortex solution plus a small random noise
-  component.
+  Sets the solution to the steady isentropic vortex solution plus 
+  a small random noise component.
 
   Inputs:
     mesh
@@ -548,7 +548,7 @@ return nothing
 end  # end function
 
 @doc """
-### EulerEquationMod.ICZero
+### EulerEquationMod.ICUnsteadyVortex
 
   Sets the solution to the unsteady vortex problem.  eqn.params.t is used to
   determine what time to use for the solution.
@@ -571,7 +571,7 @@ function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-println("entered ICIsentropicVortex")
+println("entered ICUnsteadyVortex")
 
 numEl = mesh.numEl
 nnodes = operator.numnodes
@@ -597,7 +597,7 @@ end  # end function
 
 
 @doc """
-### EulerEquationMod.ICZero
+### EulerEquationMod.ICFile
 
   This function reads a vector from a file on disk and set the solution to it.
   The vector must contain the same number of entries as there are degrees of 

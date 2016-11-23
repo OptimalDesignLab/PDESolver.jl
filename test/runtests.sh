@@ -3,6 +3,7 @@
 # run all tests
 
 jj=julia
+
 jflags=$@  # take flags as command line arguments
 start_dir=`pwd`
 
@@ -21,7 +22,11 @@ cd $start_dir
 tmp=$?
 err=$((err + tmp))
 
+echo " "
+echo "runtests.sh retval: $err"
+
 exit $err
+
 
 
 

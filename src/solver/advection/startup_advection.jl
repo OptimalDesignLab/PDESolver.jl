@@ -74,6 +74,8 @@ println("ICfunc = ", ICfunc)
 ICfunc(mesh, sbp, eqn, opts, q_vec) 
 println("finished initializing q")
 
+writedlm("solution_ic.dat", eqn.q_vec)
+
 if opts["calc_error"]
   println("\ncalculating error of file ", opts["calc_error_infname"], 
           " compared to initial condition")
@@ -192,22 +194,6 @@ if opts["solve"]
 
     printSolution("newton_solution.dat", eqn.res_vec)
 
-  elseif flag == 6
-    @time newton_check(evalAdvection, mesh, sbp, eqn, opts)
-    vals = abs(real(eqn.res_vec))  # remove unneded imaginary part
-    saveSolutionToMesh(mesh, vals)
-    writeVisFiles(mesh, "solution_error")
-    printBoundaryEdgeNums(mesh)
-    printSolution(mesh, vals)
-
-  elseif flag == 7
-    @time jac_col = newton_check(evalAdvection, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
-
-  elseif flag == 8
-    @time jac_col = newton_check_fd(evalAdvection, mesh, sbp, eqn, opts, 1)
-    writedlm("solution.dat", jac_col)
-
   elseif flag == 9
     # to non-pde rk4 run
     function pre_func(mesh, sbp, eqn,  opts)
@@ -237,8 +223,22 @@ if opts["solve"]
     end
 
 
-    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func, test_post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
-end       # end of if/elseif blocks checking flag
+    rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
+        test_post_func, (mesh, sbp, eqn), opts, 
+        majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+
+  elseif flag == 20
+
+    @time t = crank_nicolson(evalAdvection, opts["delta_t"], t_max, mesh, sbp, eqn, 
+                         opts, opts["res_abstol"], opts["real_time"])
+
+    eqn.t = t
+
+#   else
+#     throw(ErrorException("No flag specified: no solve will take place"))
+#     return nothing
+
+  end       # end of if/elseif blocks checking flag
 
   println("total solution time printed above")
 
@@ -250,6 +250,7 @@ end       # end of if/elseif blocks checking flag
       close(f)
     end
   end
+
   # evaluate residual at final q value
   need_res = false
   if need_res
@@ -260,7 +261,6 @@ end       # end of if/elseif blocks checking flag
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   end
 
-
   if opts["write_finalsolution"]
     println("writing final solution")
     writedlm("solution_final_$myrank.dat", real(eqn.q_vec))
@@ -269,7 +269,6 @@ end       # end of if/elseif blocks checking flag
   if opts["write_finalresidual"]
     writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
   end
-
 
   ##### Do postprocessing ######
   println("\nDoing postprocessing")
@@ -307,8 +306,6 @@ end       # end of if/elseif blocks checking flag
         println(f, diff_norm, " ", h_avg)
         close(f)
       end
-
-
 
       #----  Calculate functional on a boundary  -----#
       

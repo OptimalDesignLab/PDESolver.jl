@@ -14,6 +14,8 @@ Pass this function as an input argument to the RK4 solver just like evalAdvectio
 *  `opts` : Options dictionary
 *  `t`    :
 
+Effectively updates eqn.res -- not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec
+
 **Outputs**
 
 *  None
@@ -106,10 +108,12 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
                                            eqn::AdvectionData{Tsol, Tres, Tdim})
 
-  Adq_dxi = eqn.flux_parametric
-  alphas_xy = zeros(Float64, Tdim)
-  alphas_param = zeros(Tmsh, Tdim)
-  dxidx = mesh.dxidx
+  # storing flux_parametric in eqn, rather than re-allocating it every time
+  flux_parametric = eqn.flux_parametric
+
+  alphas_xy = zeros(Float64, Tdim)      # advection coefficients in the xy directions
+  alphas_param = zeros(Tmsh, Tdim)      # advection coefficients in the parametric directions
+  dxidx = mesh.dxidx                    # metric term
   q = eqn.q
   alphas_xy[1] = eqn.params.alpha_x
   alphas_xy[2] = eqn.params.alpha_y
@@ -124,13 +128,18 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         for p=1:Tdim  # sum up alpha in the current parametric dimension
           alpha_k += dxidx[k, p, j, i]*alphas_xy[p]
         end
-        Adq_dxi[1,j,i,k] = alpha_k*q_val
+        # the first index is the 'equation number'; advection has only one equation so it's always 1
+        # for a vector PDE, there would be more
+        flux_parametric[1,j,i,k] = alpha_k*q_val
       end
     end
   end
 
+  # for each dimension, grabbing everything in the mesh and applying weakdifferentiate!
   for i=1:Tdim
-    weakdifferentiate!(sbp, i, sview(Adq_dxi, :, :, :, i), eqn.res, trans=true)
+    # multiplies flux_parametric by the SBP Q matrix (transposed), stores result in res
+    # i is parametric direction
+    weakdifferentiate!(sbp, i, sview(flux_parametric, :, :, :, i), eqn.res, trans=true)
   end
 
   return nothing
@@ -444,7 +453,7 @@ end
   3D array is read matters, because only the last value assigned to a location 
   in a vector remains.
 
-  In most cases, what you really wnat is assembleSolution().
+  In most cases, what you really want is assembleSolution().
 
   Inputs:
     mesh

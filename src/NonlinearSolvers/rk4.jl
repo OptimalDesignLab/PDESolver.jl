@@ -1,7 +1,5 @@
 # rk4.jl
 # Runge Kutta 4th order solver for ODEs
-# Anthony Ashley
-
 
 export rk4
 
@@ -25,18 +23,18 @@ rk4
   the form du/dt = f(u, t)
 
   Arguments:
-    * f  : function evaluation, must have signature (ctx..., opts, t), must have signature (ctx..., opts, t)
+    * f  : function evaluation, must have signature (ctx..., opts, t)
     * h  : time step size
-    * t_max : time value to stop time stepping (time starts at 0)
-    * q_vec vector of the u values
+    * t_max: time value to stop time stepping (time starts at 0)
+    * q_vec: vector of the u values
     * res_vec: vector of du/dt values (the output of the function f)
     * pre_func: function to to be called after the new u values are put into
-                q_vec but before the function f is evaluated.  Mut have
-                signature: post_func(ctx..., opts)
+                q_vec but before the function f is evaluated.  Must have
+                signature: pre_func(ctx..., opts)
     * post_func: function called immediately after f is called.  The function
                  must have the signature res_norm = post_func(ctx..., opts, 
                  calc_norm=true),
-                 where res_norm is a norm of res_vec, and calc_norm determins
+                 where res_norm is a norm of res_vec, and calc_norm determines
                  whether or not to calculate the norm.
     * ctx: a tuple (or any iterable container) of the objects needed by
            f, pre_func, and post func.  The tuple is splatted before being
@@ -104,10 +102,18 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   k3 = zeros(x_old)
   k4 = zeros(x_old)
 
+  # Note: q_vec_old_DEBUG is a tool for showing the change in q between timesteps for comparison with CN (for ex)
+#   q_vec_old_DEBUG = zeros(q_vec)
 
   flush(fstdout)
+  #-----------------------------------------------------
   ### Main timestepping loop ###
+  # beginning of RK4 time stepping loop
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
+
+#     q_vec_old_DEBUG = deepcopy(q_vec)
+
+#     println("===== (beginning of rk4 timestep) ===== t = $t")
 
     @mpi_master if i % output_freq == 0
        println(fstdout, "\ntimestep ",i)
@@ -119,7 +125,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f( ctx..., opts, treal)
-    eqn = ctx[3]
     sol_norm = post_func(ctx..., opts)
     
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
@@ -186,30 +191,40 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     for j=1:m
       k4[j] = res_vec[j]
     end
-#=
-    println("k1 = \n", k1)
-    println("k2 = \n", k2)
-    println("k3 = \n", k3)
-    println("k4 = \n", k4)
 
-    println("q_old = \n", x_old)
-=#
+#     println("k1 = \n", k1)
+#     println("k2 = \n", k2)
+#     println("k3 = \n", k3)
+#     println("k4 = \n", k4)
+
+#     println("q_old = \n", x_old)
+
     # update
     for j=1:m
       x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
       q_vec[j] = x_old[j]
     end
 
+#     println("q_vec = \n", q_vec)
 
     fill!(k1, 0.0)
     fill!(k2, 0.0)
     fill!(k3, 0.0)
     fill!(k4, 0.0)
 
-
+#     println("============+++++++++ t: ", t)
     t = t + h
 
-  end
+#     DEBUG = true
+#     if DEBUG
+#       q_file = "q$i.dat"
+#       writedlm(q_file, q_vec)
+#     end
+#     delta_q_vec = q_vec - q_vec_old_DEBUG
+#     println("============+++++++++ norm(q_vec): ", norm(q_vec))
+#     println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec))
+
+  end   # end of RK4 time stepping loop
 
   if myrank == 0
     close(f1)
@@ -245,7 +260,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
-    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+
+    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
+        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
+        majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
 end
 
@@ -276,14 +294,16 @@ end
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func, (mesh, sbp, eqn), opts, eqn.params.time; majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
-end
+  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
+      (mesh, sbp, eqn), opts, eqn.params.time;
+      majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
 
+end
 
 @doc """
 ### NonlinearSolvers.pde_pre_func
 
-  The pre-function for solve partial differential equations with a physics
+  The pre-function for solving partial differential equations with a physics
   module.  The only operation it performs is disassembling eqn.q_vec into
   eqn.q
 
@@ -302,7 +322,7 @@ end
 @doc """
 ### NonlinearSolvers.pde_post_func
 
-  The post-function for solver partial differential equations with a physics
+  The post-function for solving partial differential equations with a physics
   module.  This function multiplies by A0inv, assembles eqn.res into
   eqn.res_vec, multiplies by the inverse mass matrix, and calculates
   the SBP approximation to the integral L2 norm
@@ -324,7 +344,7 @@ function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
     return sqrt(global_norm)
   end
 
-   return nothing
+  return nothing
 end
 
 
