@@ -4,7 +4,7 @@ export evalFunctional, calcBndryFunctional, getFunctionalName
 ### EulerEquationMod.evalFunctional
 
 Hight level function that evaluates all the functionals specified over
-various edges
+various edges. At the moment, it can only handle one functional.
 
 **Arguments**
 
@@ -16,8 +16,8 @@ various edges
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        objective::AbstractOptimizationData;
-                        is_objective_fn::Bool = false)
+                        functional::AbstractOptimizationData;
+                        functional_number::Int=1)
 
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -26,49 +26,44 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
-  if is_objective_fn == true
+  if functional.is_objective_fn == true
     # The function to be evaluated is an objective function
     functional_edges = opts["geom_faces_objective"]
     functional_name = FunctionalDict[opts["objective_function"]]
-    objective.val = calcBndryFunctional(mesh, sbp, eqn, opts, objective,
+    functional.val = calcBndryFunctional(mesh, sbp, eqn, opts, functional,
                      functional_name, functional_edges)
   else
-    num_functionals = opts["num_functionals"]
-    for j = 1:num_functionals
-      # Geometric edge at which the functional needs to be integrated
-      key_j = string("geom_edges_functional", j)
-      functional_edges = opts[key_j]
-      functional_name = getFunctionalName(opts, j)
+    # Geometric edge at which the functional needs to be integrated
+    key = string("geom_edges_functional", functional_number)
+    functional_edges = opts[key]
+    functional_name = getFunctionalName(opts, functional_number)
 
-      functional_val = zero(Tsol)
-      functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, objective,
-                       functional_name, functional_edges)
+    functional.val = calcBndryFunctional(mesh, sbp, eqn, opts, functional,
+                     functional_name, functional_edges)
 
-      # Print statements
-      if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
-        if opts["functional_error"]
-          println("\nNumerical functional value on geometric edges ",
-                      functional_edges, " = ", functional_val)
-          analytical_functional_val = opts["analytical_functional_val"]
-          println("analytical_functional_val = ", analytical_functional_val)
+    # Print statements
+    if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
+      if opts["functional_error"]
+        println("\nNumerical functional value on geometric edges ",
+                    functional_edges, " = ", functional.val)
+        analytical_functional_val = opts["analytical_functional_val"]
+        println("analytical_functional_val = ", analytical_functional_val)
 
-          absolute_functional_error = norm((functional_val -
-                                           analytical_functional_val), 2)
-          relative_functional_error = absolute_functional_error/
-                                      norm(analytical_functional_val, 2)
+        absolute_functional_error = norm((functional.val -
+                                         analytical_functional_val), 2)
+        relative_functional_error = absolute_functional_error/
+                                    norm(analytical_functional_val, 2)
 
-          mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-          # write functional error to file
-          outname = string(opts["functional_error_outfname"], j, ".dat")
-          println("printed relative functional error = ",
-                  relative_functional_error, " to file ", outname, '\n')
-          f = open(outname, "w")
-          println(f, relative_functional_error, " ", mesh_metric)
-          close(f)
-        end  # End if opts["functional_error"]
-      end    # End @mpi_master
-    end  # End for i = 1:num_functionals
-
+        mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
+        # write functional error to file
+        outname = string(opts["functional_error_outfname"], functional_number, ".dat")
+        println("printed relative functional error = ",
+                relative_functional_error, " to file ", outname, '\n')
+        f = open(outname, "w")
+        println(f, relative_functional_error, " ", mesh_metric)
+        close(f)
+      end  # End if opts["functional_error"]
+    end    # End @mpi_master
   end # End if is_objective_fn == true
 
   return nothing

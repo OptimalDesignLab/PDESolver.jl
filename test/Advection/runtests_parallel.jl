@@ -63,7 +63,7 @@ facts("----- Testing Parallel -----") do
 
 end
 
-
+#=
 facts("----- Testing Functional Computation On Boundary In Parallel -----") do
 
   resize!(ARGS, 1)
@@ -83,6 +83,7 @@ facts("----- Testing Functional Computation On Boundary In Parallel -----") do
   @fact error[1] --> roughly(0.00681567877682826, atol=1e-6)
 
 end
+=#
 
 if MPI.Initialized()
   MPI.Finalize()

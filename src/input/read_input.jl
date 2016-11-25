@@ -5,17 +5,17 @@
 @doc """
 ### PDESolver.read_input
 
-  This function reads a file which must  be a julia source file that declares 
+  This function reads a file which must  be a julia source file that declares
   a dictionary of option keywords and values for the options named arg_dict.
-  See the documention on input variables for valid keywords.  
-    
+  See the documention on input variables for valid keywords.
+
   read_input() returns the dictionary after doing some sanity checks and
   supplying default values for any unspecified keys.
 
   After supplying default values, it prints the dictonary to arg_dict_output.jl,
   which is a valid julia source file and can be read in to re-run a simulation.
 
-  This function checks whether the keys in arg_dict are recognized keywords 
+  This function checks whether the keys in arg_dict are recognized keywords
   and prints a warning to STDERR if an unrecognized key is found.  The list of
   known keys is read from the julia source file known_keys.jl
 
@@ -44,7 +44,7 @@ arg_dict["fname"] = fname
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
 
-# supply default values if not given 
+# supply default values if not given
 # get() = get!(dictionary, key, default)
 gamma = get!(arg_dict, "gamma", 1.4)
 gamma_1 = gamma - 1
@@ -110,7 +110,7 @@ get!(arg_dict, "tau_type", 1)
 
 # preconditioning stabilization options
 # non-logical values are shared between regular, preconditioned run
-get!(arg_dict, "use_edgestab_prec", false) 
+get!(arg_dict, "use_edgestab_prec", false)
 get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
 if arg_dict["use_filter"]
@@ -140,7 +140,7 @@ else
 end
 
 if arg_dict["run_type"] == 1
-  if arg_dict["face_integral_type"] == 2  # entropy stable 
+  if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")
   else
     get!(arg_dict, "parallel_data", "face")
@@ -251,8 +251,8 @@ elseif run_type == 5
   arg_dict["jac_method"] = 2  # complex step
 end
 
-if haskey(arg_dict, "jac_method") 
-  if arg_dict["jac_method"] == 1 
+if haskey(arg_dict, "jac_method")
+  if arg_dict["jac_method"] == 1
     get!(arg_dict, "epsilon", 1e-6)
   elseif arg_dict["jac_method"] == 2
     get!(arg_dict, "epsilon", 1e-20)
@@ -285,6 +285,7 @@ myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
 # Functional computational options
 get!(arg_dict, "calc_functional", false)
+get!(arg_dict, "objective_function", "none")
 get!(arg_dict, "num_functionals", 0)
 get!(arg_dict, "functional_error", false)
 get!(arg_dict, "functional_error_outfname", "functional_error")
@@ -419,5 +420,3 @@ function update_path(path)
 
   return path
 end
-
-

@@ -29,12 +29,16 @@ arg_dict = Dict{Any, Any}(
 "res_reltol" => 1e-9,
 "step_tol" => 1e-10,
 "itermax" => 30,
+
+#Functional computation keys
 "calc_functional" => true,
 "functional_error" => true,
 "num_functionals" => 1,
 "functional_name1" => "drag",
 "geom_edges_functional1" => [3],
 "analytical_functional_val" => -1/1.4,
+
+# Adjoint computation keys
 "calc_adjoint" => false,
 "writeq" => false,
 "write_edge_vertnums" => false,

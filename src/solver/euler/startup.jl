@@ -260,9 +260,9 @@ if opts["solve"]
 
   elseif flag == 20
 
-#     @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, 
+#     @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp,
 #                          eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
-    @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, 
+    @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn,
                          opts, opts["res_abstol"], opts["real_time"])
 
   end       # end of if/elseif blocks checking flag
@@ -327,8 +327,11 @@ if opts["solve"]
 
       #---- Calculate functional on a boundary  -----#
       if opts["calc_functional"]
-        objective = OptimizationData{Tsol}(mesh, sbp, opts)
-        evalFunctional(mesh, sbp, eqn, opts, objective)
+        num_functionals = opts["num_functionals"]
+        for j = 1:num_functionals
+          functional = OptimizationData{Tsol}(mesh, sbp, opts)
+          evalFunctional(mesh, sbp, eqn, opts, functional, functional_number=j)
+        end  # End for j = 1:num_functionals
       end    # End if opts["calc_functional"]
 
 

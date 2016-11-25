@@ -14,7 +14,10 @@ rm -v ./log_*.dat
 rm -v ./meshlog_*dat
 rm -v ./newton_solution.dat
 rm -v ./solution.dat
+rm -v ./solution_done.dat
+rm -v ./solution_ic.dat
 rm -v ./sparsity_bnds.dat
+rm -v ./timing_breakdown_*.dat
 
 # Clear directories
 rm -rfv ./mesh_complete

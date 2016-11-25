@@ -49,6 +49,7 @@ facts("----- Testing Parallel -----") do
 
 end
 
+#=
 facts("--- Testing Functional Computation On a Boundary in Parallel ---") do
 
   ARGS[1] = "input_vals_vortex_adjoint_DG_parallel.jl"
@@ -70,6 +71,7 @@ facts("--- Testing Functional Computation On a Boundary in Parallel ---") do
 
 
 end  # End do
+=#
 
 if MPI.Initialized()
   MPI.Finalize()
