@@ -30,6 +30,8 @@ where input_file_name.jl is in your current directory.
 "operator_type" : name of discretization operator to use for DG, currently 
                   either SBPOmega or SBPGamma , (String), default SBPOmega
 
+"use_Minv" : apply the inverse mass matrix to the residual within the physics module
+
 # time stepping options
 "real_time" : have time marching scheme advance real time instead of pseudo-time,
              (Bool), default false

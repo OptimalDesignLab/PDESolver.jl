@@ -71,6 +71,7 @@ arg_dict = Dict{Any,Any}(
 "R" => 287.058,
 "use_filter_prec" => false,
 "write_vis" => false,
+"use_Minv" => false,
 "CFL" => 0.4,
 "write_dxidx" => false,
 "euler_tau" => 1.0,

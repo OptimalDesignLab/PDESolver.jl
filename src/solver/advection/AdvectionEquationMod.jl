@@ -108,6 +108,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
+  Minv3D::Array{Float64, 3}    # inverse mass matrix for application to res, not res_vec
   disassembleSolution::Function # function u_vec -> eqn.q
   assembleSolution::Function    # function : eqn.res -> res_vec
   multiplyA0inv::Function       # multiply an array by inv(A0), where A0
@@ -138,6 +139,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.majorIterationCallback = majorIterationCallback
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
+    eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
@@ -239,7 +241,7 @@ function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     for j=1:sbp.numnodes
       for k=1:mesh.numDofPerNode
         dofnum_k = mesh.dofs[k,j,i]
-        # multiplication is faster than division, so do the divions here
+        # multiplication is faster than division, so do the divisions here
         # and then multiply solution vector times M
         M[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
       end
@@ -295,6 +297,37 @@ function calcMassMatrixInverse{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}
   return Minv
 
 end     # end of calcMassMatrixInverse function
+
+# calcMassMatrixInverse3D: 
+#   calculates the inverse mass matrix, returning it as a 3D array suitable for application to eqn.res
+function calcMassMatrixInverse3D{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                                  sbp::AbstractSBP, 
+                                                  eqn::AdvectionData{Tsol, Tres, Tdim})
+
+  Minv3D = zeros(Tmsh, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+
+  for i=1:mesh.numEl
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+        dofnum_k = mesh.dofs[k,j,i]
+        # multiplication is faster than division, so do the divisions here
+        # and then multiply solution vector times Minv
+        Minv3D[k, j, i] += (sbp.w[j]/mesh.jac[j,i])
+      end
+    end
+  end
+
+  for i=1:mesh.numEl
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+        Minv3D[k, j, i] = 1/Minv3D[k, j, i]
+      end
+    end
+  end
+
+  return Minv3D
+
+end 
 
 # functions needed to make it compatible with the NonLinearSolvers module
 function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 

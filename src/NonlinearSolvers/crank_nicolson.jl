@@ -151,8 +151,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t_nextstep = t + h
 
-#     @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-    cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+#     cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -403,7 +403,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
   #   d res[3]/d q[1]   d res[3]/d q[2]   d res[3]/d q[3] ...
   #   ...               ...               ...
 
-  newton_itermax = 14
+  newton_itermax = 2
   delta_q_vec = zeros(eqn_nextstep.q_vec)
 
   # newton_loop starting here?
@@ -464,6 +464,16 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       current_t_step_contribution[i] = - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
     end
 
+    # Test for 3D Minv results
+    # this works!
+#     res_vec_control = deepcopy(eqn.res_vec)
+#     res_vec_test = deepcopy(eqn.res_vec)
+#     res_control = deepcopy(eqn.res)
+#     res_test = deepcopy(eqn.res)
+#     applyMassMatrixInv3D(mesh, sbp, eqn, res_test)
+#     assembleSolution(mesh, sbp, eqn, opts, res_test, res_vec_test)
+#     println("=+=+=+ norm of diff btwn res_vec_test & res_vec_control: ", norm(res_vec_test - res_vec_control))
+
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
     applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
@@ -519,4 +529,18 @@ function applyMassMatrixInv(mesh, eqn, vec)
 
   return vec
 end
+
+function applyMassMatrixInv3D(mesh, sbp, eqn, arr)
+
+  for i = 1:mesh.numEl
+    for j = 1:sbp.numnodes
+      for k = 1:mesh.numDofPerNode
+        arr[k, j, i] = eqn.Minv3D[k, j, i] * arr[k, j, i]
+      end
+    end
+  end
+
+  return arr
+end
+
 

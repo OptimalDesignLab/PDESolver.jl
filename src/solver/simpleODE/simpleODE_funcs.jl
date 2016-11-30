@@ -9,7 +9,7 @@ This function evaluates the simple ODE equation.
 
 *  `mesh` : Abstract mesh object
 *  `sbp`  : Summation-by-parts operator
-*  `eqn`  : Advection equation object
+*  `eqn`  : Simple ODE equation object
 *  `opts` : Options dictionary
 *  `t`    :
 
@@ -46,6 +46,10 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #   params.time.t_sharedface += @elapsed if mesh.commsize > 1
 #     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 #   end
+
+  if opts["use_Minv"]
+    applyMassMatrixInv3D(mesh, sbp, eqn, opts, eqn.res)
+  end
 
 end   # end of function evalSimpleODE
 
@@ -193,5 +197,31 @@ function ode_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   return nothing
 end
 
+@doc """
+### SimpleODeMod.applyMassMatrixInv3D
+
+  This function applies the 3D inverse mass matrix to an array. 
+    The array passed in should always be eqn.res
+
+  Inputs:
+    mesh: mesh object, needed for numEl and numDofPerNode fields
+    sbp: sbp object, needed for numnodes field
+    eqn: equation object, needed for Minv3D field
+    opts
+    arr: the 3D array to have the 3D mass matrix inverse applied to it
+
+"""->
+function applyMassMatrixInv3D(mesh, sbp, eqn, opts, arr)
+
+  for i = 1:mesh.numEl
+    for j = 1:sbp.numnodes
+      for k = 1:mesh.numDofPerNode
+        arr[k, j, i] = eqn.Minv3D[k, j, i] * arr[k, j, i]
+      end
+    end
+  end
+
+  return arr
+end
 
 

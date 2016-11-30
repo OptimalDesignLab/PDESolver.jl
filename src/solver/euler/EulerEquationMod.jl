@@ -396,6 +396,7 @@ If it is variable sized then macros give the advantage of doing location lookup
     * stabscale : 2D array holding edge stabilization scale factor
     * M : vector holding the mass matrix
     * Minv :  vector holding inverse mass matrix
+    # Minv3D :  3D array holding inverse mass matrix for application to res (not res_vec)
 """->
 abstract EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres}
 
@@ -513,6 +514,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   #   a square numnodes x numnodes matrix for every element
   dissipation_mat::Array{Tmsh, 3}  
 
+  Minv3D::Array{Float64, 3}       # inverse mass matrix for application to res, not res_vec
   Minv::Array{Float64, 1}         # inverse mass matrix
   M::Array{Float64, 1}            # mass matrix
 
@@ -569,6 +571,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.majorIterationCallback = majorIterationCallback
 
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
+    eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
 
 
@@ -760,6 +763,51 @@ function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 end     # end of calcMassMatrix function
 
+@doc """
+### EulerEquationMod.calcMassMatrixInverse
+
+  This function calculates the mass matrix and returns it, in a 3D array format suitable for
+  application to eqn.res.
+
+  Arguments:
+    mesh: AbstractMesh
+    sbp: SBP operator
+    eqn: an implementation of EulerData. Does not have to be fully initialized.
+
+  Outputs:
+    M: vector containing mass matrix
+
+"""->
+# calcMassMatrixInverse3D: 
+#   calculates the inverse mass matrix, returning it as a 3D array suitable for application to eqn.res
+function calcMassMatrixInverse3D{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+                                                  sbp::AbstractSBP, 
+                                                  eqn::EulerData{Tsol, Tres, Tdim})
+
+  Minv3D = zeros(Tmsh, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+
+  for i=1:mesh.numEl
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+        dofnum_k = mesh.dofs[k,j,i]
+        # multiplication is faster than division, so do the divisions here
+        # and then multiply solution vector times Minv
+        Minv3D[k, j, i] += (sbp.w[j]/mesh.jac[j,i])
+      end
+    end
+  end
+
+  for i=1:mesh.numEl
+    for j=1:sbp.numnodes
+      for k=1:mesh.numDofPerNode
+        Minv3D[k, j, i] = 1/Minv3D[k, j, i]
+      end
+    end
+  end
+
+  return Minv3D
+
+end 
 
 @doc """
 ### EulerEquationMod.applyMassMatrixInverse

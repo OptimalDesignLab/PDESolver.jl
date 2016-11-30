@@ -149,6 +149,9 @@ else
   get!(arg_dict, "parallel_data", "element")
 end
 
+#-----------------------------------------------
+# physics module options
+get!(arg_dict, "use_Minv", false)       # apply inverse mass matrix to residual calc in physics module. needed for CN
 
 
 # misc options

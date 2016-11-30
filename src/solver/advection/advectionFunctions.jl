@@ -82,6 +82,11 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   println(f, "----- finished evalAdvection -----")
   close(f)
 =#
+
+  if opts["use_Minv"]
+    applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
+  end
+
   @debug1 flush(params.f)
 #  println(params.f, "----- finished evalAdvection -----")
   return nothing
@@ -497,4 +502,31 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   end
   
   return nothing
+end
+
+@doc """
+### AdvectionEquationMod.applyMassMatrixInverse3D
+
+  This function applies the 3D inverse mass matrix to an array. 
+    The array passed in should always be eqn.res
+
+  Inputs:
+    mesh: mesh object, needed for numEl and numDofPerNode fields
+    sbp: sbp object, needed for numnodes field
+    eqn: equation object, needed for Minv3D field
+    opts
+    arr: the 3D array to have the 3D mass matrix inverse applied to it
+
+"""->
+function applyMassMatrixInverse3D(mesh, sbp, eqn, opts, arr)
+
+  for i = 1:mesh.numEl
+    for j = 1:sbp.numnodes
+      for k = 1:mesh.numDofPerNode
+        arr[k, j, i] = eqn.Minv3D[k, j, i] * arr[k, j, i]
+      end
+    end
+  end
+
+  return arr
 end

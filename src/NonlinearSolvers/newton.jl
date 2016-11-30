@@ -595,6 +595,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
        rhs_vec[j] = res_0[j]
      end
 
+     @mpi_master println("Iteration count: $i")
      @mpi_master close(fconv)
 
      flush(fstdout)
