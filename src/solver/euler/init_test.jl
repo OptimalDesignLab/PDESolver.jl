@@ -3,7 +3,7 @@ include("input_vals_airfoil.jl")
 # include("pressure.jl")
 
 resize!(ARGS, 1)
-ARGS[1] = "input_vals_vortex_parallel.jl"
+ARGS[1] = "input_vals_vortex.jl"
 
 
 #----  Initialize EulerEquationMod for all the global variables necessary  ----#
@@ -54,9 +54,13 @@ if ctr == 0
 end
 =#
 
-#---- Get the objective function value  ----#
-EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective, is_objective_fn=true)
+#---- Get the objective function value  ----#\
+EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 println("objective.val = $(objective.val)")
+
+# Calculate the adjoint vector
+adjoint_vec = zeros(Tsol, mesh.numDof)
+calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
 if MPI.Initialized()
   MPI.Finalize()

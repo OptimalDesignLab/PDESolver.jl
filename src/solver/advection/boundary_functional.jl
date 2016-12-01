@@ -16,7 +16,9 @@ various edges
 
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts)
+                        sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
+                        functionalData::AbstractOptimizationData;
+                        functional_number::Int=1)
 
   
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -25,16 +27,20 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
-  num_functionals = opts["num_functionals"]
-  for j = 1:num_functionals
+  if functionalData.is_objective_fn == true
+    # The function to be evaluated is an objective function
+    functional_edges = opts["geom_faces_objective"]
+    functional_name = FunctionalDict[opts["objective_function"]]
+    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
+                                             functional_name, functional_edges)
+  else
     # Geometric edge at which the functional needs to be integrated
-    key_j = string("geom_edges_functional", j)
-    functional_edges = opts[key_j]
-    functional_name = getFunctionalName(opts, j)
+    key = string("geom_edges_functional", functional_number)
+    functional_edges = opts[key]
+    functional_name = getFunctionalName(opts, functional_number)
 
-    functional_val = zero(Tsol)
-    functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
-                     functional_name, functional_edges)
+    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
+                                             functional_name, functional_edges)
 
     # Print statements
     MPI.Barrier(eqn.comm)
@@ -61,7 +67,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
       end  # End if opts["functional_error"]
     end    # End @mpi_master
 
-  end  # End for i = 1:num_functionals
+  end  # End if is_objective_fn == true
 
   return nothing
 end
@@ -152,7 +158,9 @@ end
 =#
 
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::AdvectionData{Tsol}, opts, functor, functional_edges)
+                            eqn::AdvectionData{Tsol}, opts, 
+                            functionalData::AbstractOptimizationData, 
+                            functional_name::FunctionalType, functional_edges::AbstractArray{Int,1})
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary 
@@ -193,7 +201,8 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
+        boundary_integrand[1,j,i] = functional_name(eqn.params, nx, ny, q,
+                                    functionalData) # Boundary Flux
       end
     end
 
@@ -225,7 +234,9 @@ level operation
 type qflux <: FunctionalType
 end
 
-function call(obj::qflux, params::ParamType2, nx, ny, q)
+function call(obj::qflux, params::ParamType2, nx, ny, q, 
+              functionalData::AbstractOptimizationData)
+
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
   return functional_integrand = (alpha_x*nx + alpha_y*ny)*q

@@ -16,7 +16,7 @@ various edges. At the moment, it can only handle one functional.
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functional::AbstractOptimizationData;
+                        functionalData::AbstractOptimizationData;
                         functional_number::Int=1)
 
 
@@ -26,11 +26,11 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
-  if functional.is_objective_fn == true
+  if functionalData.is_objective_fn == true
     # The function to be evaluated is an objective function
     functional_edges = opts["geom_faces_objective"]
     functional_name = FunctionalDict[opts["objective_function"]]
-    functional.val = calcBndryFunctional(mesh, sbp, eqn, opts, functional,
+    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
                      functional_name, functional_edges)
   else
     # Geometric edge at which the functional needs to be integrated
@@ -38,18 +38,18 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     functional_edges = opts[key]
     functional_name = getFunctionalName(opts, functional_number)
 
-    functional.val = calcBndryFunctional(mesh, sbp, eqn, opts, functional,
+    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
                      functional_name, functional_edges)
 
     # Print statements
     if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
       if opts["functional_error"]
         println("\nNumerical functional value on geometric edges ",
-                    functional_edges, " = ", functional.val)
+                    functional_edges, " = ", functionalData.val)
         analytical_functional_val = opts["analytical_functional_val"]
         println("analytical_functional_val = ", analytical_functional_val)
 
-        absolute_functional_error = norm((functional.val -
+        absolute_functional_error = norm((functionalData.val -
                                          analytical_functional_val), 2)
         relative_functional_error = absolute_functional_error/
                                     norm(analytical_functional_val, 2)
@@ -92,8 +92,8 @@ nonlinear solve while computing eqn.q
 """->
 
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol}, opts, objective::AbstractOptimizationData,
-                         functor::FunctionalType, functional_edges::AbstractArray{Int,1})
+                         eqn::EulerData{Tsol}, opts, functionalData::AbstractOptimizationData,
+                         functional_name::FunctionalType, functional_edges::AbstractArray{Int,1})
 
 
   local_functional_val = zero(Tsol)
@@ -131,8 +131,8 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         node_info = Int[itr,j,i]
-        boundary_integrand[1,j,i] = functor(eqn.params, q2, aux_vars, [nx, ny],
-                                            node_info, objective)
+        boundary_integrand[1,j,i] = functional_name(eqn.params, q2, aux_vars,
+                                    [nx, ny], node_info, functionalData)
 
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces

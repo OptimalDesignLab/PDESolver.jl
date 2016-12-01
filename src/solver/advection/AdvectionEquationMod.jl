@@ -11,6 +11,7 @@ using Utils
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 export evalAdvection, init # exported from advectionFunctions.jl
 export ICDict              # exported from ic.jl
+export OptimizationData
 
 # include("advectionFunctions.jl")
 # include("getMass.jl")
@@ -310,5 +311,59 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end
+
+@doc """
+###AdvectionEquationMod.qfluxData
+
+Data type for storing relevant information pertaining to an a functional or an
+objective function.
+
+**Members**
+
+*  `target_qFlux` : Target value for the functional qFlux
+
+"""->
+
+type QfluxData{Topt} <: AbstractOptimizationData
+  target_qflux::Topt
+  function QfluxData()
+    target_qflux = zero(Topt)
+    return new(target_qflux)
+  end
+end
+
+@doc """
+###AdvectionEquationMod.OptimizationData
+
+"""->
+
+type OptimizationData{Topt} <: AbstractOptimizationData
+
+  is_objective_fn::Bool
+  val::Topt
+  qflux_obj::QfluxData{Topt}
+
+  function OptimizationData(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+
+    functional = new()
+    functional.val = zero(Topt)
+
+    for i = 1:opts["num_functionals"]
+      dict_val = string("functional_name",i)
+      
+      if opts[dict_val] == "qflux" || opts["objective_function"] == "qflux"
+        if opts["objective_function"] == "qflux"
+          functional.is_objective_fn = true
+        else
+          functional.is_objective_fn = false
+        end
+        functional.qflux_obj = QfluxData{Topt}()
+      end # End if opts[dict_val]
+
+    end  # End  for i = 1:opts["num_functionals"]
+    
+    return functional
+  end # End inner constructor
+end # End type OptimizationData
 
 end # end module

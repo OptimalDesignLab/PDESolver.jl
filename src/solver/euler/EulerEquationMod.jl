@@ -14,6 +14,7 @@ using PdePumiInterface
 using ForwardDiff
 using Utils
 using MPI
+using PETSc
 #using Debugging
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation

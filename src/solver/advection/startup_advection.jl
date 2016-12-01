@@ -308,7 +308,12 @@ if opts["solve"]
       #----  Calculate functional on a boundary  -----#
 
       if opts["calc_functional"]
-        evalFunctional(mesh, sbp, eqn, opts)
+        num_functionals = opts["num_functionals"]
+        for j = 1:num_functionals
+          functional = OptimizationData{Tsol}(mesh, sbp, opts)
+          evalFunctional(mesh, sbp, eqn, opts, functional, functional_number=j)
+        end  # End for j = 1:num_functionals
+        # evalFunctional(mesh, sbp, eqn, opts) # Legacy
       end    # End if opts["calc_functional"]
 
 
