@@ -153,6 +153,11 @@ end
 # physics module options
 get!(arg_dict, "use_Minv", false)       # apply inverse mass matrix to residual calc in physics module. needed for CN
 
+if arg_dict["use_Minv"] == false && arg_dict["run_type"] == 20
+  println("INPUT: User did not specify use_Minv but selected run_type is CN. Setting use_Minv = true.")
+  arg_dict["use_Minv"] = true
+end
+
 
 # misc options
 get!(arg_dict, "calc_error", false)
