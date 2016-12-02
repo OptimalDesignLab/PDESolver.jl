@@ -144,7 +144,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # f is the physics function, like evalEuler
 
     # NOTE: eqn_nextstep changed to eqn 20161013
-#     ctx_residual = (f, eqn_nextstep, h, newton_data)
     ctx_residual = (f, eqn, h, newton_data)
 
     println(fstdout, "in CN: before call to newtonInner")
@@ -174,21 +173,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
     delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
-#     println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
-#     println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec_DEBUG))
-
-#     if (nflips_eqn % 2) == 0
-#       eqn = eqn1
-#       eqn_nextstep = eqn2
-#     else
-#       eqn = eqn2
-#       eqn_nextstep = eqn1
-#     end
-
-    # Old way
-#     eqn = deepcopy(eqn_nextstep)
-#     eqn.q = reshape(eqn.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-#     eqn.res = reshape(eqn.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   
     t = t_nextstep
 
@@ -231,7 +215,6 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   physics_func = ctx[1]
   # NOTE: eqn instead of eqn_nextstep, 20161013
   eqn = ctx[2]
-#   eqn_nextstep = ctx[2]
   h = ctx[3]
   newton_data = ctx[4]
 
@@ -242,8 +225,6 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   #   then form CN_Jac = I + dt/2 * physics_Jac
 
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
-# TODO: CN dismantle 20161116 NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
-
 
   # Jacobian is always 2D
   scale!(jac, h*-0.5)
@@ -254,10 +235,6 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
     jac[i,i] += 1
 
   end
-
-#   println("==== in cnJac: h: $h ====")
-
-#   writedlm("jac_inside_cnJac.dat", full(jac))
 
   return nothing
 
@@ -280,31 +257,24 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
-#   eqn_nextstep = ctx[2]
   eqn = ctx[2]
   h = ctx[3]
 
   t_nextstep = t + h
 
   physics_func(mesh, sbp, eqn, opts, t)
-#   println("---- physics_func: ",physics_func)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
-# TODO: CN dismantle 20161116 physics_func(mesh, sbp, eqn_nextstep, opts, t)
-# Orig CN: physics_func called with eqn_nextstep & t_nextstep
-# dismantled: physics_func called with eqn_nextstep & t
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
   for i = 1:mesh.numDof
-# #     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
 
-# TODO: CN dismantle 20161116 rhs_vec[i] = eqn_nextstep.res_vec[i]
     temp1 = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i]
     temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
-# 
+
     rhs_vec[i] = temp1 - temp2 
 
     # NOTE: question: is there a sign problem here? should rhs_vec = -rhs_vec ?
@@ -330,10 +300,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     end
 
   end
-
-#   println("==== in cnRhs: h: $h ====")
-
-#   writedlm("rhs_inside_cnRhs.dat", full(rhs_vec))
 
   return nothing
 
@@ -503,8 +469,6 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     delta_q_vec = jac\neg_rhs
     fill!(jac, 0.0)
 
-#     eqn_nextstep.q_vec += delta_q_vec
-
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] += delta_q_vec[i]
     end
@@ -515,9 +479,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       return nothing
     end
 
-
   end   # end of newton iterations
-
 
   println("=== cnNewton did not converge ===")
   return nothing
@@ -525,6 +487,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
 end
 
+# TODO: comment here
 function applyMassMatrixInv(mesh, eqn, vec)
 
   for k = 1:mesh.numDof
@@ -534,6 +497,7 @@ function applyMassMatrixInv(mesh, eqn, vec)
   return vec
 end
 
+# TODO: comment here
 function applyMassMatrixInv3D(mesh, sbp, eqn, arr)
 
   for i = 1:mesh.numEl
