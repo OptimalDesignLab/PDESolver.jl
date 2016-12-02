@@ -246,6 +246,7 @@ Note that any values associated with these options are shared with the regular
 "recalc_prec_freq" : recalculate the preconditioner matrix every this many 
                      iterations, if doing an interative solve, (Integer),
                      default 1
+"cleansheet_CN_newton" : use the Newton's method internal to CN. Only for debugging - it supports dense FD Jacs only
 
 # Newton's Method options
 "jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)

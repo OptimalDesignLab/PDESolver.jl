@@ -267,6 +267,8 @@ if haskey(arg_dict, "jac_method")
   end
 end
 
+# clean-sheet Newton's method (internal to CN) option - only for debugging
+get!(arg_dict, "cleansheet_CN_newton", false)
 
 get!(arg_dict, "real_time", false)
 

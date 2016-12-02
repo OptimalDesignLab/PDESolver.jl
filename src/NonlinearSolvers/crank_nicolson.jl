@@ -151,8 +151,12 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t_nextstep = t + h
 
-    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-#     cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+    # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
+    if opts["cleansheet_CN_newton"]
+      cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+    else
+      @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+    end
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
