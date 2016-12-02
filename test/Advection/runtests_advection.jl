@@ -44,6 +44,10 @@ cd("./energy")
 include( joinpath(pwd(), "runtests.jl"))
 cd(start_dir)
 
+cd("./Nonlinearsolvers/crank_nicolson")
+include(joinpath(pwd(), "runtests.jl"))
+cd("../..")
+
 if MPI.Initialized()
   MPI.Finalize()
 end

@@ -122,6 +122,7 @@ arg_dict = Dict{Any,Any}(
 "write_qic" => false,
 "real_time" => false,
 "res_abstol" => 1.0e-12,
+"cleansheet_CN_newton" => false,
 "addFaceIntegrals" => true,
 "addStabilization" => true,
 "calc_functional" => false,
