@@ -128,7 +128,12 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
   #   saves us from having to copy back and forth
   if alloc_rhs 
 #     rhs_vec = deepcopy(eqn.res_vec)
-    rhs_vec = zeros(eqn.res_vec)
+
+    # TODO changed this zeros to have the type, 20161203
+    # didn't matter.
+#     rhs_vec = zeros(eqn.res_vec)
+    rhs_vec = zeros(Tsol, size(eqn.res_vec))
+
   else
     rhs_vec = eqn.res_vec
   end
@@ -692,8 +697,6 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
   DEBUG = true
 
   fstdout = BufferedIO(STDOUT)
-
-  println(fstdout, "in physicsJac")
 
   myrank = mesh.myrank
   fstdout = BufferedIO(STDOUT)

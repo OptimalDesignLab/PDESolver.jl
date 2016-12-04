@@ -16,6 +16,7 @@ function createMeshAndOperator(opts, dofpernode)
   order = opts["order"]  # order of accuracy
   # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
   flag = opts["run_type"]
+  jac_method = opts["jac_method"]
   dim = opts["dimensions"]
 
   if flag == 1 || flag == 8  || flag == 9 || flag == 10  # normal run
@@ -48,11 +49,16 @@ function createMeshAndOperator(opts, dofpernode)
     Tsbp = Float64
     Tsol = Complex128
     Tres = Complex128
-  elseif flag == 20 # Crank-Nicolson
+  elseif flag == 20 && jac_method == 1 # Crank-Nicolson, FD Jac
     Tmsh = Float64
     Tsbp = Float64
     Tsol = Float64
     Tres = Float64
+  elseif flag == 20 && jac_method == 2 # Crank-Nicolson, CS Jac
+    Tmsh = Float64
+    Tsbp = Float64
+    Tsol = Complex128
+    Tres = Complex128
   end
   # If the user specifies a flag other than the ones within the above if checks, 
   #   then an error will be thrown now because Tsol is not defined

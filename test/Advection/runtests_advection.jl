@@ -44,7 +44,11 @@ cd("./energy")
 include( joinpath(pwd(), "runtests.jl"))
 cd(start_dir)
 
-cd("./Nonlinearsolvers/crank_nicolson")
+cd("./Nonlinearsolvers/crank_nicolson_FD")
+include(joinpath(pwd(), "runtests.jl"))
+cd("../..")
+
+cd("./Nonlinearsolvers/crank_nicolson_CS")
 include(joinpath(pwd(), "runtests.jl"))
 cd("../..")
 
