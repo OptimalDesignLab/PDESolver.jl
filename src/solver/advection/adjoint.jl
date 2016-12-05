@@ -354,8 +354,8 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
       end
     end
 
-    start_index = mesh.bndry_offsets[g_edge_number]
-    end_index = mesh.bndry_offsets[g_edge_number+1]
+    start_index = mesh.bndry_offsets[itr2]
+    end_index = mesh.bndry_offsets[itr2+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
