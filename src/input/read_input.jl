@@ -436,6 +436,12 @@ function checkForIllegalOptions(arg_dict)
     end
   end
 
+  if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
+    if arg_dict["jac_method"] != 2
+      warn("PETSc jac_type specified, but jac_method is not 2 (complex step)")
+    end
+  end
+
   return nothing
 
 end
