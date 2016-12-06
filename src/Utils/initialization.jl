@@ -36,22 +36,28 @@ function createMeshAndOperator(opts, dofpernode)
     Tsbp = Float64
     Tsol = Dual{Float64}
     Tres = Dual{Float64}
-  elseif flag == 4  # use Newton method using finite difference
-    Tmsh = Float64
-    Tsbp = Float64
-    Tsol = Float64
-    Tres = Float64
-  elseif flag == 5  # use complex step dR/du
-    Tmsh = Float64
-    Tsbp = Float64
-    Tsol = Complex128
-    Tres = Complex128
+  elseif flag == 5  
+    if jac_method == 1 # use Newton method using finite difference  (former flag 4)
+      println("========== utils/initialization: flag 5, jac_method 1")
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Float64
+      Tres = Float64
+    elseif jac_method == 2 # use complex step dR/du
+      println("========== utils/initialization: flag 5, jac_method 2")
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Complex128
+      Tres = Complex128
+    else 
+      throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
+    end
   elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
     Tmsh = Float64
     Tsbp = Float64
     Tsol = Complex128
     Tres = Complex128
-  elseif flag == 20 && isdefined(jac_method)
+  elseif flag == 20 # jac_method needs to be symbol
     if jac_method == 1 # Crank-Nicolson, FD Jac
       Tmsh = Float64
       Tsbp = Float64
@@ -62,6 +68,8 @@ function createMeshAndOperator(opts, dofpernode)
       Tsbp = Float64
       Tsol = Complex128
       Tres = Complex128
+    else
+      throw(ErrorException("Illegal or no jac_method specified for CN initialization."))
     end
   else
     throw(ErrorException("Illegal flag or jac_method combination specified in input."))

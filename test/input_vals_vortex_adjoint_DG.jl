@@ -5,6 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 arg_dict = Dict{Any, Any}(
 "run_type" => 5,
+"jac_method" => 2,
 "order" => 1,
 "real_time" => true,
 "variable_type" => :conservative,

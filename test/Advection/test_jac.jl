@@ -36,7 +36,7 @@ facts("----- Testing Jacobian -----") do
     # now do complex step
     println("----- Doing Complex step -----")
     include(ARGS[1])
-    arg_dict["run_type"] = 5
+    arg_dict["jac_method"] = 2
     f = open("input_vals_8elc.jl", "w")
     println(f, arg_dict)
     close(f)
@@ -109,7 +109,7 @@ facts("----- Testing Jacobian -----") do
   # back to complex step
   println("----- Testing Complex Step Jacobian -----")
   ARGS[1] = "input_vals_8elc.jl"
-  arg_dict["run_type"] = 5  # something screwy is going on because this is necessary
+  arg_dict["jac_method"] = 2  # something screwy is going on because this is necessary
   include(STARTUP_PATH)
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 

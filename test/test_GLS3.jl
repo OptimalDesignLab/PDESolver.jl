@@ -238,7 +238,7 @@ if true
     # now do complex step
 
     println("doing complex step")
-    arg_dict["run_type"] = 5
+    arg_dict["jac_method"] = 2
     f = open("input_vals_vortex3c_gls.jl", "w")
     print(f, "arg_dict = ")
     println(f, arg_dict)

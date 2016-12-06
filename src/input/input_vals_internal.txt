@@ -1,5 +1,5 @@
 # input_vals_internal.txt
-# this file documents keys that are used by PDESolver internally but are not 
+# this file documents keys that are used by Ticon internally but are not 
 # intended to be set by users
 
 "parallel_type": how often to exchange parallel data, (Int) 1 = every residual
@@ -23,10 +23,6 @@
 
 "coloring_distance_prec": same as coloring_distance, for mesh used for
                           preconditioning.
-
-"jac_method" : what method to use for computing the Jacobian (finite difference,
-               or complex step, determined from "run_type", 1 finite difference
-               2 = complex step
 
 "solve" : call the solver specified by run_type, (Bool), default true
 

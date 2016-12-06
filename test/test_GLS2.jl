@@ -552,7 +552,7 @@ if true
 
     println("doing complex step")
     println("typeof(q_vec) = ", typeof(q_vec))
-    arg_dict["run_type"] = 5
+    arg_dict["jac_method"] = 2
     f = open("input_vals_vortex3c_gls.jl", "w")
     println(f, arg_dict)
     close(f)

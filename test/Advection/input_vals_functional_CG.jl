@@ -6,6 +6,7 @@
 
 arg_dict = Dict{Any, Any}(
 "run_type" => 5,
+"jac_method" => 2,
 "order" => 1,
 "real_time" => true,
 "IC_name" => "ICexp_xy",

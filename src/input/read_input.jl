@@ -28,6 +28,7 @@
 """->
 function read_input(fname::AbstractString)
 
+
 println("pwd = ", pwd())
 println("fname = ", fname)
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
@@ -40,6 +41,8 @@ include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include th
 # record fname in dictionary
 arg_dict["fname"] = fname
 
+  # new (201612) options checking function
+  checkForIllegalOptions(arg_dict)
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -253,11 +256,6 @@ get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
-if run_type == 4
-  arg_dict["jac_method"] = 1  # finite difference
-elseif run_type == 5
-  arg_dict["jac_method"] = 2  # complex step
-end
 
 if haskey(arg_dict, "jac_method") 
   if arg_dict["jac_method"] == 1 
@@ -429,4 +427,16 @@ function update_path(path)
   return path
 end
 
+function checkForIllegalOptions(arg_dict)
+
+  # Ensure that jac-method is not specified 
+  if haskey(arg_dict, "jac_method")
+    if arg_dict["run_type"] == 1
+      warn("jac_method specified, but run_type is RK4.")
+    end
+  end
+
+  return nothing
+
+end
 

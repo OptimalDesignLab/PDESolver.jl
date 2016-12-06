@@ -179,6 +179,7 @@ facts("----- Testing Parallel Functions -----") do
 
   # make the parallel newton's method
   opts["run_type"] = 5
+  opts["jac_method"] = 2
   opts["jac_type"] = 3
   opts["parallel_type"] = 2
   opts["parallel_data"] = "element"

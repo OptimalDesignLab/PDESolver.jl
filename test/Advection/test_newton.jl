@@ -27,7 +27,7 @@ facts("----- Testing Newtons Method: Finite Difference -----") do
 end
 
 facts("----- Testing Newtons Method: Complex Step -----") do
-  arg_dict["run_type"] = 5
+  arg_dict["jac_method"] = 2
   make_input(arg_dict, "input_vals_newton2")
   ARGS[1] = "input_vals_newton2.jl"
   include(STARTUP_PATH)

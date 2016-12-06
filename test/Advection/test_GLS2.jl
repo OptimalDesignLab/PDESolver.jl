@@ -106,6 +106,7 @@ facts("----- Testing GLS2 -----") do
   ARGS[1] = "input_vals_GLS2.jl"
   include(STARTUP_PATH)
   arg_dict["run_type"] = 5  # complex step run
+  arg_dict["jac_method"] = 2  # complex step run
   f = open("input_vals_GLS2c.jl", "w")
   println(f, arg_dict)
   close(f)

@@ -5,7 +5,8 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any}(
-"run_type" => 4,
+"run_type" => 5,
+"jac_method" => 1,
 "order" => 1,
 "IC_name" => "ICsinwave",
 #"IC_name" => "ICFile",

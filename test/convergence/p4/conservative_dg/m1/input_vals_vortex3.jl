@@ -11,6 +11,7 @@ arg_dict = Dict{Any, Any} (
 "var4" => [1,2,3],
 "var3" => 4,
 "run_type" => 5,
+"jac_method" => 2,
 "jac_type" => 2,
 "order" => 4,
 "use_DG" => true,
