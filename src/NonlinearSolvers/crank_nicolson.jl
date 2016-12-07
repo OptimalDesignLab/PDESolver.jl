@@ -9,10 +9,6 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
-# DEBUG = false
-DEBUG = true
-
-
 @doc """
 crank_nicolson
 
@@ -75,6 +71,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
+  if jac_type == 4
+    throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
+  end
+
   if myrank == 0
     _f1 = open("convergence.dat", "a+")
     f1 = BufferedIO(_f1)
@@ -90,11 +90,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
-  # for the number of times eqn data is flipped btwn one or the other memory locations
-  nflips_eqn = 0
-
-  q_vec_old_DEBUG = zeros(eqn.q_vec)
-
   println("============ In CN ============")
 
   #-------------------------------------------------------------------------------
@@ -103,28 +98,19 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
   # TODO TODO: f should be the rhs function. this is createPetsc ctx stuff, 20161123
 
-
   for i = 2:(t_steps + 1)
 
     println("CN: at the top of time-stepping loop, t = $t, i = $i")
-    q_vec_old_DEBUG = deepcopy(eqn.q_vec)
 
+    #----------------------------
     # zero out Jac
-    fill!(jac, 0.0)
+    #   this works for both PETSc and Julia matrices.
+    #   when jac is a Julia matrix, this is effectively wrapping: fill!(jac, 0.0)
+    PetscMatZeroEntries(jac)
 
     # TODO: Allow for some kind of stage loop: ES-Dirk
 
     # TODO: output freq
-
-    DEBUG = false
-    if DEBUG
-      q_file = "q$i.dat"
-      writedlm(q_file, eqn.q_vec)
-    end
-    if DEBUG
-      res_file = "res$i.dat"
-      writedlm(res_file, eqn.res_vec)
-    end
 
     # NOTE:
     # majorIterationCallback: called before every step of Newton's method
@@ -138,7 +124,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #       end
 #       break
 #     end
-#     println("mark3")
 
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
@@ -160,20 +145,16 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
     #   and this flips the location of eqn & eqn_nextstep every time step
-    nflips_eqn += 1
     eqn_temp = eqn
     eqn = eqn_nextstep
     eqn_nextstep = eqn_temp
 
-    # 20161116
     # Note: we now need to copy the updated q over for the initial newton guess
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] = eqn.q_vec[i]
     end
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
-    delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
-  
     t = t_nextstep
 
   end   # end of t step loop
@@ -218,23 +199,58 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   h = ctx[3]
   newton_data = ctx[4]
 
+  jac_type = opts["jac_type"]
+
   t_nextstep = t + h
 
-  # Orig CN: 
+  # Forming the CN Jacobian:
   #   call physicsJac with eqn_nextstep & t_nextstep
   #   then form CN_Jac = I + dt/2 * physics_Jac
 
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
 
+  # need to flush assembly cache before performing the scale operation.
+  #   These are defined for Julia matrices; they're just noops
+  PetscMatAssemblyBegin(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
+
+  #--------------------------
+  # applying dt/2 to jac
   # Jacobian is always 2D
-  scale!(jac, h*-0.5)
+  scale_factor = h*-0.5
+  # make this into a petsc_scale_factor
+  petsc_scale_factor = PetscScalar(scale_factor)
 
+  # PetscMatScale is defined for all jac types, PETSc and Julia
+  # when jac is julia array, this effectively does: scale!(jac, scale_factor)
+  PetscMatScale(jac, petsc_scale_factor)
+
+  # PetscMatAssembly___ not necessary here; PetscMatScale is provably local so it doesn't cache its stuff
+
+  #--------------------------
   # adding identity
+  ix_petsc_row = zeros(PetscInt, 1)
+  ix_petsc_col = zeros(PetscInt, 1)
+  value_to_add = zeros(PetscScalar, 1, 1)
+  value_to_add[1,1] = 1.0
+  flag = PETSc.PETSC_ADD_VALUES
+
   for i = 1:mesh.numDof
+    ix_petsc_row[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
+    ix_petsc_col[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
 
-    jac[i,i] += 1
-
+    # PETSc function: set_values1!(Jac, [2], [2], Jac[2,2] + 1)
+    # args: array, row (as an array of len 1), col (as an array of len 1), new values (as a 2D array of len 1)
+    #   set_values1! has different methods for both PETSc matrices and Julia matrices
+    #   for Julia dense & sparse arrays, set_values1! effectively does this: jac[i,i] += 1
+    #   in serial, mesh.dof_offset is set to 0 automatically
+    set_values1!(jac, ix_petsc_row, ix_petsc_col, value_to_add, flag)
   end
+
+  # set_values1! only caches the results; need to be assembled. This happens in petscSolve in petsc_funcs.jl
+  #   (The assemble funcs are defined for Julia matrices; they're just noops)
+
+  # jac is now I + dt/2 * physics_jac
 
   return nothing
 
@@ -282,22 +298,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
     # local dof index, node, el
     loc_dof, node, el = ind2sub(mesh.coords, findfirst(mesh.dofs, i))
-
-    DEBUG = false
-    if DEBUG
-      # mesh.coords indices: [dimension index, node num, el num]
-      # 20161118: this threw an error in the vortex case???
-      x = mesh.coords[1, node, el]
-      y = mesh.coords[2, node, el]
-
-      println("x: $x    y: $y    t: $t    t_nextstep: $t_nextstep")
-      println("dof_ix: $i    rhs_vec[i]: ",rhs_vec[i])
-      println("dof_ix: $i    eqn.q_vec[i]: ",eqn.q_vec[i])
-      println("dof_ix: $i    eqn.res_vec[i]: ",eqn.res_vec[i])
-      println("dof_ix: $i    eqn_nextstep.q_vec[i]: ",eqn_nextstep.q_vec[i])
-      println("dof_ix: $i    eqn_nextstep.res_vec[i]: ",eqn_nextstep.res_vec[i])
-      println("-")
-    end
 
   end
 

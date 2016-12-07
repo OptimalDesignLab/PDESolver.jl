@@ -379,8 +379,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   #------------------------------------------------------------------------------------
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
-#     @mpi_master println(fstdout, "==================== Newton iteration: ", i)
-#     @mpi_master println(fstdout, "step_fac = ", step_fac)
 
     # Calculate Jacobian here
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
@@ -469,25 +467,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       res_0[j] = -res_0[j]
     end
 
-#     println("========= in Newton, before delta_q_vec update. t = $t")
-#     for dof_ix = 21461:21464
-#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
-#     end
-#     println(" ")
-#     for dof_ix = 14997:15000
-#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
-#     end
-
-#     println("----- in newtonInner, before linear solve -----")
-#     println("t: $t")
-#     println("res_0[15]: ",res_0[15])
-#     println("rhs_vec[15]: ",rhs_vec[15])
-#     println("eqn.q_vec[15]: ",eqn.q_vec[15])
-#     println("eqn.res_vec[15]: ",eqn.res_vec[15])
-#     println("-")
-#     writedlm("jac_inside_newtonjl_iter_$i.dat", full(jac))
-#     writedlm("rhs_inside_newtonjl_iter_$i.dat", full(res_0))
-
     # calculate Newton step
     flush(fstdout)
     if jac_type == 1 || jac_type == 2  # julia jacobian
@@ -505,11 +484,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
                                                        res_0, delta_q_vec, mesh.dof_offset)
     end
 
-#     println("=============+++++In newton+++++ i: ", i)
-#     println("=============+++++In newton+++++ t: ", t)
-#     println("=============+++++In newton+++++ norm(delta_q_vec): ", norm(delta_q_vec))
-#     println("=============+++++In newton+++++ norm(res_0): ", norm(res_0))
-
     eqn.params.time.t_solve += t_solve
     @mpi_master print(fstdout, "matrix solve: ")
     @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
@@ -519,21 +493,10 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     @mpi_master println(fstdout, "step_norm = ", step_norm)
     flush(fstdout)
 
-#     println("=============+++++In newton+++++ performing Newton update")
     # perform Newton update
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
-#     writedlm("q_vec_in_newtonjl_after_update-iter_$i.dat", eqn.q_vec)
-
-#     println("========= in Newton, after delta_q_vec update. t = $t")
-#     for dof_ix = 21461:21464
-#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
-#     end
-#     println(" ")
-#     for dof_ix = 14997:15000
-#       println("eqn.q_vec($dof_ix) = ", eqn.q_vec[dof_ix])
-#     end
     
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
  
@@ -547,12 +510,10 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       writedlm("q$i_$myrank.dat", eqn.q)
     end
 
-#     println("=============+++++In newton+++++ calling calcResidual")
     # calculate residual at updated location, used for next iteration rhs
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     # extract real component to res_0
     res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, rhs_func, rhs_vec, ctx_residual, t)
-    # TODO: should this be a res_vec instead of rhs_vec? 20161116
     for j=1:m
       res_0[j] = real(rhs_vec[j])
     end
