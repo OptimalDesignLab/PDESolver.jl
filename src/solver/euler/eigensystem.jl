@@ -13,6 +13,9 @@
   This function calculate the Euler flux jacobian in the x direction from 
   the conservative variables.  Methods are available for 2 and 3 dimensions
 
+  Note that this code calculates pressure internally (ie. it does not call
+  calcPressure).
+
   Inputs:
     params: a ParamType
     q: a vector of conservative variables
@@ -32,28 +35,34 @@ function calcA(params::ParamType{2, :conservative}, q::AbstractVector, R::Abstra
   gamma = params.gamma
 
 
+  # auto-generated code
   t2 = q2*q2;
   t3 = 1.0/q1;
   t4 = 1.0/(q1*q1);
   t5 = gami*t2;
   t6 = q3*q3;
   t7 = gami*t6;
+
   R[1,1] = 0;
-  R[1,2] = 1.0;
-  R[1,3] = 0;
-  R[1,4] = 0;
   R[2,1] = t4*(t2*-2.0+t5+t7)*0.5;
-  R[2,2] = -q2*t3*(gami-2.0);
-  R[2,3] = -gami*q3*t3;
-  R[2,4] = gami;
   R[3,1] = -q2*q3*t4;
+  R[4,1] = t3*t4*q2*(t5+t7-q1*q5-gami*q1*q5);
+
+  R[1,2] = 1.0;
+  R[2,2] = -q2*t3*(gami-2.0);
   R[3,2] = q3*t3;
-  R[3,3] = q2*t3;
-  R[3,4] = 0;
-  R[4,1] = 1.0/(q1*q1*q1)*q2*(t5+t7-q1*q5-gami*q1*q5);
   R[4,2] = t4*(t7+gami*t2*3.0-q1*q5*2.0-gami*q1*q5*2.0)*-0.5;
+
+  R[1,3] = 0;
+  R[2,3] = -gami*q3*t3;
+  R[3,3] = q2*t3;
   R[4,3] = -gami*q2*q3*t4;
+
+  R[1,4] = 0;
+  R[2,4] = gami;
+  R[3,4] = 0;
   R[4,4] = q2*t3*(gamma);
+
 
   return nothing
 end
@@ -72,7 +81,7 @@ function calcA(params::ParamType{3, :conservative}, q::AbstractVector, R::Abstra
   # auto generated code
   t2 = q2*q2;
   t3 = 1.0/q1;
-  t4 = 1.0/(q1*q1);
+  t4 = t3*t3
   t5 = q2*t3;
   t6 = q3*q3;
   t7 = q4*q4;
@@ -119,26 +128,30 @@ function calcB(params::ParamType{2, :conservative}, q::AbstractVector, R::Abstra
   gamma = params.gamma
 
   t2 = 1.0/q1;
-  t3 = 1.0/(q1*q1);
+  t3 = t2*t2;
   t4 = q3*q3;
   t5 = q2*q2;
   t6 = gami*t5;
   t7 = gami*t4;
+
   R[1,1] = 0;
-  R[1,2] = 0;
-  R[1,3] = 1.0;
-  R[1,4] = 0;
   R[2,1] = -q2*q3*t3;
-  R[2,2] = q3*t2;
-  R[2,3] = q2*t2;
-  R[2,4] = 0;
   R[3,1] = t3*(t4*-2.0+t6+t7)*0.5;
+  R[4,1] = t2*t3*q3*(t6+t7-q1*q5-gami*q1*q5);
+
+  R[1,2] = 0;
+  R[2,2] = q3*t2;
   R[3,2] = -gami*q2*t2;
-  R[3,3] = t2*(q3*2.0-gami*q3);
-  R[3,4] = gami;
-  R[4,1] = 1.0/(q1*q1*q1)*q3*(t6+t7-q1*q5-gami*q1*q5);
   R[4,2] = -gami*q2*q3*t3;
+
+  R[1,3] = 1.0;
+  R[2,3] = q2*t2;
+  R[3,3] = t2*(q3*2.0-gami*q3);
   R[4,3] = t3*(t6+gami*t4*3.0-q1*q5*2.0-gami*q1*q5*2.0)*-0.5;
+
+  R[1,4] = 0;
+  R[2,4] = 0;
+  R[3,4] = gami;
   R[4,4] = q3*t2*(gamma);
 
   return nothing
@@ -341,23 +354,6 @@ function calcEvalsy(params::ParamType{2, :conservative}, q::AbstractVector, Lamb
   t2 = 1.0/q1;
   t3 = q3*t2;
   t4 = q2*q2;
-  t5 = t4*(1.0/2.0);
-  t6 = q3*q3;
-  t7 = t6*(1.0/2.0);
-  t8 = t5+t7;
-  t9 = q5-t2*t8;
-  t10 = gami+1.0;
-  t11 = gami*t2*t9*t10;
-  t12 = sqrt(t11);
-
-  Lambda[1] = t3;
-  Lambda[2] = t3;
-  Lambda[3] = t3+t12;
-  Lambda[4] = t3-t12; 
-#=
-  t2 = 1.0/q1;
-  t3 = q3*t2;
-  t4 = q2*q2;
   t5 = t4*0.5;
   t6 = q3*q3;
   t7 = t6*0.5;
@@ -370,8 +366,8 @@ function calcEvalsy(params::ParamType{2, :conservative}, q::AbstractVector, Lamb
   Lambda[1] = t3;
   Lambda[2] = t3;
   Lambda[3] = t3+t12;
-  Lambda[4] = t3-t12;
-=#
+  Lambda[4] = t3-t12; 
+  
   return nothing
 end
 
@@ -389,7 +385,7 @@ function calcEvalsy(params::ParamType{3, :conservative}, q::AbstractVector, Lamb
   t2 = 1.0/q1;
   t3 = q3*t2;
   t4 = sqrt(2.0);
-  t5 = 1.0/(q1*q1);
+  t5 = t2*t2;
   t6 = gamma;
   t7 = q2*q2;
   t8 = q3*q3;
@@ -491,6 +487,7 @@ function calcEvecsx(params::ParamType{2, :conservative}, q::AbstractVector, R::A
   t24 = t11+t23;
   t25 = t19*t24;
   t26 = q2*t2*t16;
+  t27 = q1*t3*t12
 
   R[1,1] = 1.0;
   R[2,1] = t15;
@@ -503,14 +500,14 @@ function calcEvecsx(params::ParamType{2, :conservative}, q::AbstractVector, R::A
   R[4,2] = -q3;
 
   R[1,3] = t13;
-  R[2,3] = q1*t3*t12*(t15+t16);
+  R[2,3] = t27*(t15+t16);
   R[3,3] = t17;
-  R[4,3] = q1*t3*t12*(t25+t26);
+  R[4,3] = t27*(t25+t26);
 
   R[1,4] = t13;
-  R[2,4] = q1*t3*t12*(t15-t16);
+  R[2,4] = t27*(t15-t16);
   R[3,4] = t17;
-  R[4,4] = q1*t3*t12*(t25-t26);
+  R[4,4] = t27*(t25-t26);
 
   return nothing
 end
@@ -609,12 +606,13 @@ function calcEvecsy(params::ParamType{2, :conservative}, q::AbstractVector, R::A
   t9 = q5-t14;
   t10 = gamma;
   t11 = gami*t2*t9*t10;
-  t12 = 1.0/sqrt(t11);
-  t13 = q1*t3*t12*0.5;
-  t15 = q2*t3*t12*0.5;
-  t16 = q3*t2;
   t17 = sqrt(t11);
-  t18 = 1.0/(q1*q1);
+  t12 = 1.0/t17;
+  t12a = t3*t12*0.5;
+  t13 = q1*t12a
+  t15 = q2*t12a;
+  t16 = q3*t2;
+  t18 = t2*t2;
   t19 = 1.0/gami;
   t20 = t4*t18;
   t21 = t6*t18;
@@ -623,22 +621,27 @@ function calcEvecsy(params::ParamType{2, :conservative}, q::AbstractVector, R::A
   t24 = t11+t23;
   t25 = t19*t24;
   t26 = q3*t2*t17;
+  t27 = q1*t3*t12*0.5
+
   R[1,1] = 1.0;
-  R[1,2] = 0;
-  R[1,3] = t13;
-  R[1,4] = t13;
   R[2,1] = q2*t2;
-  R[2,2] = q1;
-  R[2,3] = t15;
-  R[2,4] = t15;
   R[3,1] = t16;
-  R[3,2] = 0
-  R[3,3] = q1*t3*t12*(t16+t17)*0.5;
-  R[3,4] = q1*t3*t12*(t16-t17)*0.5;
   R[4,1] = t4*t18*0.5+t6*t18*0.5;
+
+  R[1,2] = 0;
+  R[2,2] = q1;
+  R[3,2] = 0
   R[4,2] = q2;
-  R[4,3] = q1*t3*t12*(t25+t26)*0.5;
-  R[4,4] = q1*t3*t12*(t25-t26)*0.5;
+
+  R[1,3] = t13;
+  R[2,3] = t15;
+  R[3,3] = t27*(t16+t17);
+  R[4,3] = t27*(t25+t26);
+
+  R[1,4] = t13;
+  R[2,4] = t15;
+  R[3,4] = t27*(t16-t17);
+  R[4,4] = t27*(t25-t26);
 
   return nothing
 end

@@ -269,6 +269,10 @@ facts("--- Testing Euler Low Level Functions --- ") do
          qc[i] -= pert
        end
 
+       println("Ax = \n", Ax)
+       println("Ax3 = \n", Ax3)
+       println("diff = \n", Ax - Ax3)
+
        # now compute Ax and and Ay from their eigensystem and compare
        Yx = zeros(4,4)
        Yy = zeros(4,4)
