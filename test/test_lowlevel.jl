@@ -233,6 +233,82 @@ facts("--- Testing Euler Low Level Functions --- ") do
 
 #   println("\n\neqn.q = ", eqn.q, "\n")
 
+    context("--- Testing Eigensystem ---") do
+
+    function test_eigsystem()
+      # compute flux jacobian in x and y directions
+       params = eqn.params
+       q = [1.0, 2.0, 3.0, 7.0]
+       qc = convert(Array{Complex128}, q)
+       aux_vars = Array(Complex128, 1)
+       qg = deepcopy(q)
+       dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
+       F = zeros(Complex128, 4)
+
+       Ax = zeros(4,4)
+       Ax3 = zeros(Ax)
+       Ay = zeros(4,4)
+       Ay3 = zeros(Ay)
+
+       EulerEquationMod.calcA(params, q, Ax3)
+       EulerEquationMod.calcB(params, q, Ay3)
+       h = 1e-20
+       pert = Complex128(0, h)
+       for i=1:4
+         qc[i] += pert
+         dir = [1.0, 0.0]
+         p = EulerEquationMod.calcPressure(params, qc)
+         aux_vars[1] = p
+         EulerEquationMod.calcEulerFlux(params, qc, aux_vars, dir, F)
+         Ax[:, i] = imag(F)/h
+
+         dir = [0.0, 1.0]
+         EulerEquationMod.calcEulerFlux(params, qc, aux_vars, dir, F)
+         Ay[:, i] = imag(F)/h
+
+         qc[i] -= pert
+       end
+
+       # now compute Ax and and Ay from their eigensystem and compare
+       Yx = zeros(4,4)
+       Yy = zeros(4,4)
+       Lambdax = zeros(4)
+       Lambday = zeros(4)
+
+       EulerEquationMod.calcEvecsx(params, q, Yx)
+       EulerEquationMod.calcEvecsy(params, q, Yy)
+       EulerEquationMod.calcEvalsx(params, q, Lambdax)
+       EulerEquationMod.calcEvalsy(params, q, Lambday)
+
+       Ax2 = Yx*diagm(Lambdax)*inv(Yx)
+       Ay2 = Yy*diagm(Lambday)*inv(Yy)
+
+       @fact Ax2 --> roughly(Ax, atol=1e-12)
+       @fact Ay2 --> roughly(Ay, atol=1e-12)
+       @fact Ax3 --> roughly(Ax, atol=1e-12)
+       @fact Ay3 --> roughly(Ay, atol=1e-12)
+
+       # check A0 = Y*S2*Y.'
+       A0 = zeros(4,4)
+       Sx = zeros(4)
+       Sy = zeros(4)
+
+       EulerEquationMod.getIRA0(params, q, A0)
+       EulerEquationMod.calcEScalingx(params, q, Sx)
+       EulerEquationMod.calcEScalingy(params, q, Sy)
+       A02 = Yx*diagm(Sx)*Yx.'
+       A03 = Yy*diagm(Sy)*Yy.'
+
+       @fact A0 --> roughly(A02, atol=1e-12)
+       @fact A0 --> roughly(A03, atol=1e-12) 
+
+       return nothing
+     end
+
+     test_eigsystem()
+
+    end
+
    context("--- Testing convert Functions ---") do
      # for the case, the solution is uniform flow
      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -306,12 +382,15 @@ facts("--- Testing Euler Low Level Functions --- ") do
    end
  context("--- Testing calc functions ---") do
 
+   dir = [1.0, 0.0]
+   aux_vars = [EulerEquationMod.calcPressure(eqn.params, q)]
+   println("q = ", q)
+   println("aux_vars = ", aux_vars )
+   F = zeros(4)
    @fact EulerEquationMod.calcPressure(eqn.params, q) --> roughly(0.2)
    @fact EulerEquationMod.calcPressure(e_params, v) --> roughly(0.2)
    a_cons = EulerEquationMod.calcSpeedofSound(eqn.params, q)
    a_ent = EulerEquationMod.calcSpeedofSound(e_params, v)
-   println("a_cosn = ", a_cons)
-   println("a_ent = ", a_ent)
    @fact a_cons --> roughly(a_ent)
    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
    EulerEquationMod.calcEulerFlux(e_params, v, aux_vars, dir, Fe)

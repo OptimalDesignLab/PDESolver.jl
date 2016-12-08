@@ -170,6 +170,105 @@ facts("----- Testing Coefficient Matrices calculations -----") do
     @fact A04_code[i] --> roughly(A03[i], atol=1e-10)
   end
 
+facts("----- Testing Eigensystem -----") do
+
+  function test_eigsystem3d()
+    params = eqn.params
+    q = [1., 2, 3, 4, 15]
+    numDofPerNode = length(q)
+    qc = convert(Array{Complex128}, q)
+    aux_vars = Array(Complex128, 1)
+    qg = deepcopy(q)
+    dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
+    F = zeros(Complex128, numDofPerNode)
+
+    Ax = zeros(numDofPerNode, numDofPerNode)
+    Ax3 = zeros(Ax)
+    Ay = zeros(Ax)
+    Ay3 = zeros(Ay)
+    Az = zeros(Ax)
+    Az3 = zeros(Ax)
+
+    EulerEquationMod.calcA(params, q, Ax3)
+    EulerEquationMod.calcB(params, q, Ay3)
+    EulerEquationMod.calcC(params, q, Az3)
+    h = 1e-20
+    pert = Complex128(0, h)
+    for i=1:numDofPerNode
+      qc[i] += pert
+      dir = [1.0, 0.0, 0]
+      p = EulerEquationMod.calcPressure(params, qc)
+      aux_vars[1] = p
+      EulerEquationMod.calcEulerFlux(params, qc, aux_vars, dir, F)
+      Ax[:, i] = imag(F)/h
+
+      dir = [0.0, 1.0, 0.0]
+      EulerEquationMod.calcEulerFlux(params, qc, aux_vars, dir, F)
+      Ay[:, i] = imag(F)/h
+
+      dir = [0.0, 0.0, 1.0]
+      EulerEquationMod.calcEulerFlux(params, qc, aux_vars, dir, F)
+      Az[:, i] = imag(F)/h
+
+      qc[i] -= pert
+    end
+
+    # now compute Ax and and Ay from their eigensystem and compare
+    Yx = zeros(Ax)
+    Yy = zeros(Ax)
+    Yz = zeros(Ax)
+    Lambdax = zeros(numDofPerNode)
+    Lambday = zeros(numDofPerNode)
+    Lambdaz = zeros(numDofPerNode)
+
+    EulerEquationMod.calcEvecsx(params, q, Yx)
+    EulerEquationMod.calcEvecsy(params, q, Yy)
+    EulerEquationMod.calcEvecsz(params, q, Yz)
+    EulerEquationMod.calcEvalsx(params, q, Lambdax)
+    EulerEquationMod.calcEvalsy(params, q, Lambday)
+    EulerEquationMod.calcEvalsz(params, q, Lambdaz)
+
+    Ax2 = Yx*diagm(Lambdax)*inv(Yx)
+    Ay2 = Yy*diagm(Lambday)*inv(Yy)
+    Az2 = Yz*diagm(Lambdaz)*inv(Yz)
+
+    println("Az = \n", Az)
+    println("Az2 = \n", Az2)
+    println("Az3 = \n", Az3)
+    println("diff1 = \n", Az2 - Az)
+    println("diff2 = \n", Az3 - Az)
+    println("diff3 = \n", Az3 - Az2)
+
+    @fact Ax2 --> roughly(Ax, atol=1e-12)
+    @fact Ay2 --> roughly(Ay, atol=1e-12)
+    @fact Az2 --> roughly(Az, atol=1e-12)
+    @fact Ax3 --> roughly(Ax, atol=1e-12)
+    @fact Ay3 --> roughly(Ay, atol=1e-12)
+    @fact Az3 --> roughly(Az, atol=1e-12)
+
+    # check A0 = Y*S2*Y.'
+    A0 = zeros(Ax)
+    Sx = zeros(numDofPerNode)
+    Sy = zeros(numDofPerNode)
+    Sz = zeros(numDofPerNode)
+
+    EulerEquationMod.getIRA0(params, q, A0)
+    EulerEquationMod.calcEScalingx(params, q, Sx)
+    EulerEquationMod.calcEScalingy(params, q, Sy)
+    EulerEquationMod.calcEScalingz(params, q, Sz)
+    A02 = Yx*diagm(Sx)*Yx.'
+    A03 = Yy*diagm(Sy)*Yy.'
+    A04 = Yz*diagm(Sz)*Yz.'
+
+    @fact A0 --> roughly(A02, atol=1e-12)
+    @fact A0 --> roughly(A03, atol=1e-12) 
+    @fact A0 --> roughly(A04, atol=1e-12) 
+
+    return nothing
+  end
+
+  test_eigsystem3d()
+end
 
 facts("----- Testing BC Solvers -----") do
 

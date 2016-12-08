@@ -448,7 +448,7 @@ include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
 include("entropy_flux.jl")
-
+include("eigensystem.jl")
 @doc """
 ### EulerEquationMod.EulerData_
 

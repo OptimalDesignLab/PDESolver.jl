@@ -199,7 +199,7 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     @assert lambda_max > 0
 #    lambda_max *= sqrt(params.h)
     # poor mans entropy fix
-    lambda_max *= 0.1
+#    lambda_max *= 0.1
 #    lambda_max += 0.25
 #    lambda_max *= 2
 #    lambda_max = 3.0
