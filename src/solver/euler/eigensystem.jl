@@ -87,30 +87,36 @@ function calcA(params::ParamType{3, :conservative}, q::AbstractVector, R::Abstra
   t7 = q4*q4;
   t8 = gami*t6;
   t9 = gami*t7;
+  t10 = -gami*q2*t4;
+
   R[1,1] = 0;
-  R[1,2] = 1.0;
-  R[1,3] = 0;
-  R[1,4] = 0;
-  R[1,5] = 0;
   R[2,1] = t4*(t2*-2.0+t8+t9+gami*t2)*0.5;
-  R[2,2] = t3*(q2*2.0-gami*q2);
-  R[2,3] = -gami*q3*t3;
-  R[2,4] = -gami*q4*t3;
-  R[2,5] = gami;
   R[3,1] = -q2*q3*t4;
-  R[3,2] = q3*t3;
-  R[3,3] = t5;
-  R[3,4] = 0;
-  R[3,5] = 0;
   R[4,1] = -q2*q4*t4;
+  R[5,1] = t3*t3*t3*q2*( gami*(t2+t6+t7-q1*q5)-q1*q5 );
+
+  R[1,2] = 1.0;
+  R[2,2] = t3*(q2*2.0-gami*q2);
+  R[3,2] = q3*t3;
   R[4,2] = q4*t3;
-  R[4,3] = 0;
-  R[4,4] = t5;
-  R[4,5] = 0;
-  R[5,1] = 1.0/(q1*q1*q1)*q2*(gami*t2*2.0+gami*t6*2.0+gami*t7*2.0-q1*q5*2.0-gami*q1*q5*2.0)*0.5;
   R[5,2] = t4*(t8+t9+gami*t2*3.0-q1*q5*2.0-gami*q1*q5*2.0)*-0.5;
-  R[5,3] = -gami*q2*q3*t4;
-  R[5,4] = -gami*q2*q4*t4;
+
+  R[1,3] = 0;
+  R[2,3] = -gami*q3*t3;
+  R[3,3] = t5;
+  R[4,3] = 0;
+  R[5,3] = t10*q3;
+
+  R[1,4] = 0;
+  R[2,4] = -gami*q4*t3;
+  R[3,4] = 0;
+  R[4,4] = t5;
+  R[5,4] = t10*q4;
+
+  R[1,5] = 0;
+  R[2,5] = gami;
+  R[3,5] = 0;
+  R[4,5] = 0;
   R[5,5] = t3*(q2+gami*q2);
 
   return nothing
@@ -170,7 +176,7 @@ function calcB(params::ParamType{3, :conservative}, q::AbstractVector, R::Abstra
 
   # auto generated code
   t2 = 1.0/q1;
-  t3 = 1.0/(q1*q1);
+  t3 = t2*t2
   t4 = q3*q3;
   t5 = q3*t2;
   t6 = q2*q2;
@@ -178,31 +184,40 @@ function calcB(params::ParamType{3, :conservative}, q::AbstractVector, R::Abstra
   t8 = gami*t4;
   t9 = q4*q4;
   t10 = gami*t9;
+  t11 = -q3*t3
+  t12 = t7+t8+t10
+  t13 = -q1*q5*gamma
+  t14 = -gami*t2
+
   R[1,1] = 0;
+  R[2,1] = q2*t11;
+  R[3,1] = t3*(t4*-2.0+t12)*0.5;
+  R[4,1] = q4*t11;
+  R[5,1] = t2*t3*q3*(t12+t13);
+
   R[1,2] = 0;
-  R[1,3] = 1.0;
-  R[1,4] = 0;
-  R[1,5] = 0;
-  R[2,1] = -q2*q3*t3;
   R[2,2] = t5;
-  R[2,3] = q2*t2;
-  R[2,4] = 0;
-  R[2,5] = 0;
-  R[3,1] = t3*(t4*-2.0+t7+t8+t10)*0.5;
-  R[3,2] = -gami*q2*t2;
-  R[3,3] = -q3*t2*(gami-2.0);
-  R[3,4] = -gami*q4*t2;
-  R[3,5] = gami;
-  R[4,1] = -q3*q4*t3;
+  R[3,2] = q2*t14;
   R[4,2] = 0;
+  R[5,2] = gami*q2*t11;
+
+  R[1,3] = 1.0;
+  R[2,3] = q2*t2;
+  R[3,3] = -q3*t2*(gami-2.0);
   R[4,3] = q4*t2;
+  R[5,3] = -0.5*t3*(t7+t10+gami*t4*3.0+2.0*t13);
+
+  R[1,4] = 0;
+  R[2,4] = 0;
+  R[3,4] = q4*t14;
   R[4,4] = t5;
+  R[5,4] = gami*t11*q4;
+
+  R[1,5] = 0;
+  R[2,5] = 0;
+  R[3,5] = gami;
   R[4,5] = 0;
-  R[5,1] = 1.0/(q1*q1*q1)*q3*(t7+t8+t10-q1*q5-gami*q1*q5);
-  R[5,2] = -gami*q2*q3*t3;
-  R[5,3] = t3*(t7+t10+gami*t4*3.0-q1*q5*2.0-gami*q1*q5*2.0)*-0.5;
-  R[5,4] = -gami*q3*q4*t3;
-  R[5,5] = q3*t2*(gamma);
+  R[5,5] = q3*t2*gamma;
 
   return nothing
 end
@@ -229,30 +244,39 @@ function calcC(params::ParamType{3, :conservative}, q::AbstractVector, R::Abstra
   t8 = q3*q3;
   t9 = gami*t8;
   t10 = gami*t5;
+  t11 = t7+t9+t10
+  t12 = -q1*q5*gamma
+  t13 = -gami*q4*t3
+  t14 = -gami*t2
+
   R[1,1] = 0;
-  R[1,2] = 0;
-  R[1,3] = 0;
-  R[1,4] = 1.0;
-  R[1,5] = 0;
   R[2,1] = -q2*q4*t3;
-  R[2,2] = t4;
-  R[2,3] = 0;
-  R[2,4] = q2*t2;
-  R[2,5] = 0;
   R[3,1] = -q3*q4*t3;
+  R[4,1] = t3*(t5*-2.0+t11)*0.5;
+  R[5,1] = t2*t3*q4*(t11+t12);
+
+  R[1,2] = 0;
+  R[2,2] = t4;
   R[3,2] = 0;
+  R[4,2] = t14*q2;
+  R[5,2] = t13*q2;
+
+  R[1,3] = 0;
+  R[2,3] = 0;
   R[3,3] = t4;
+  R[4,3] = t14*q3;
+  R[5,3] = t13*q3;
+
+  R[1,4] = 1.0;
+  R[2,4] = q2*t2;
   R[3,4] = q3*t2;
-  R[3,5] = 0;
-  R[4,1] = t3*(t5*-2.0+t7+t9+t10)*0.5;
-  R[4,2] = -gami*q2*t2;
-  R[4,3] = -gami*q3*t2;
   R[4,4] = -q4*t2*(gami-2.0);
+  R[5,4] = t3*(t7+t9+gami*t5*3.0+2.0*t12)*-0.5;
+
+  R[1,5] = 0;
+  R[2,5] = 0;
+  R[3,5] = 0;
   R[4,5] = gami;
-  R[5,1] = 1.0/(q1*q1*q1)*q4*(t7+t9+t10-q1*q5-gami*q1*q5);
-  R[5,2] = -gami*q2*q4*t3;
-  R[5,3] = -gami*q3*q4*t3;
-  R[5,4] = t3*(t7+t9+gami*t5*3.0-q1*q5*2.0-gami*q1*q5*2.0)*-0.5;
   R[5,5] = q4*t2*(gamma);
 
   return nothing
@@ -419,7 +443,7 @@ function calcEvalsz(params::ParamType{3, :conservative}, q::AbstractVector, Lamb
   t2 = 1.0/q1;
   t3 = q4*t2;
   t4 = sqrt(2.0);
-  t5 = 1.0/(q1*q1);
+  t5 = t2*t2;
   t6 = gamma;
   t7 = q2*q2;
   t8 = q3*q3;
@@ -536,13 +560,13 @@ function calcEvecsx(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   t17 = t2*t11;
   t12 = q5-t17;
   t13 = gami*t2*t4*t12;
-  t14 = 1.0/sqrt(t13);
+  t18 = sqrt(t13);
+  t14 = 1.0/t18
   t15 = q1*t3*t14*0.5;
   t16 = q2*t2;
-  t18 = sqrt(t13);
   t19 = q3*t3*t14*0.5;
   t20 = q4*t3*t14*0.5;
-  t21 = 1.0/(q1*q1);
+  t21 = t2*t2;
   t22 = 1.0/gami;
   t23 = t5*t21;
   t24 = t7*t21;
@@ -552,31 +576,37 @@ function calcEvecsx(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   t28 = t13+t27;
   t29 = t22*t28;
   t30 = q2*t2*t18;
+  t31 = 0.5*q1*t3*t14;
+
   R[1,1] = 1.0;
-  R[1,2] = 0;
-  R[1,3] = 0
-  R[1,4] = t15;
-  R[1,5] = t15;
   R[2,1] = t16;
-  R[2,2] = 0;
-  R[2,3] = 0;
-  R[2,4] = q1*t3*t14*(t16+t18)*0.5;
-  R[2,5] = q1*t3*t14*(t16-t18)*0.5;
   R[3,1] = q3*t2;
-  R[3,2] = 0;
-  R[3,3] = -q1;
-  R[3,4] = t19;
-  R[3,5] = t19;
   R[4,1] = q4*t2;
+  R[5,1] = 0.5*(t5*t21+t7*t21+t9*t21);
+
+  R[1,2] = 0;
+  R[2,2] = 0;
+  R[3,2] = 0;
   R[4,2] = q1;
-  R[4,3] = 0;
-  R[4,4] = t20;
-  R[4,5] = t20;
-  R[5,1] = t5*t21*0.5+t7*t21*0.5+t9*t21*0.5;
   R[5,2] = q4;
+
+  R[1,3] = 0;
+  R[2,3] = 0;
+  R[3,3] = -q1;
+  R[4,3] = 0;
   R[5,3] = -q3;
-  R[5,4] = q1*t3*t14*(t29+t30)*0.5;
-  R[5,5] = q1*t3*t14*(t29-t30)*0.5;
+
+  R[1,4] = t15;
+  R[2,4] = t31*(t16+t18);
+  R[3,4] = t19;
+  R[4,4] = t20;
+  R[5,4] = t31*(t29+t30);
+
+  R[1,5] = t15;
+  R[2,5] = t31*(t16-t18);
+  R[3,5] = t19;
+  R[4,5] = t20;
+  R[5,5] = t31*(t29-t30);
 
   return nothing
 end
@@ -671,13 +701,14 @@ function calcEvecsy(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   t16 = t2*t11;
   t12 = q5-t16;
   t13 = gami*t2*t4*t12;
-  t14 = 1.0/sqrt(t13);
-  t15 = q1*t3*t14*0.5;
-  t17 = q2*t3*t14*0.5;
-  t18 = q3*t2;
   t19 = sqrt(t13);
-  t20 = q4*t3*t14*0.5;
-  t21 = 1.0/(q1*q1);
+  t14 = 1.0/t19;
+  t14a = t3*t14
+  t15 = q1*t14a*0.5;
+  t17 = q2*t14a*0.5;
+  t18 = q3*t2;
+  t20 = q4*t14a*0.5;
+  t21 = t2*t2;
   t22 = 1.0/gami;
   t23 = t5*t21;
   t24 = t7*t21;
@@ -687,6 +718,8 @@ function calcEvecsy(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   t28 = t13+t27;
   t29 = t22*t28;
   t30 = q3*t2*t19;
+  t31 = 0.5*q1*t14a;
+
   R[1,1] = 0
   R[1,2] = 1.0;
   R[1,3] = 0;
@@ -700,8 +733,8 @@ function calcEvecsy(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   R[3,1] = 0;
   R[3,2] = t18;
   R[3,3] = 0;
-  R[3,4] = q1*t3*t14*(t18+t19)*0.5;
-  R[3,5] = q1*t3*t14*(t18-t19)*0.5;
+  R[3,4] = t31*(t18+t19);
+  R[3,5] = t31*(t18-t19);
   R[4,1] = -q1;
   R[4,2] = q4*t2;
   R[4,3] = 0;
@@ -710,8 +743,8 @@ function calcEvecsy(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   R[5,1] = -q4;
   R[5,2] = t5*t21*0.5+t7*t21*0.5+t9*t21*0.5;
   R[5,3] = q2;
-  R[5,4] = q1*t3*t14*(t29+t30)*0.5;
-  R[5,5] = q1*t3*t14*(t29-t30)*0.5;
+  R[5,4] = t31*(t29+t30);
+  R[5,5] = t31*(t29-t30);
 
   return nothing
 end
@@ -743,13 +776,14 @@ function calcEvecsz(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   t16 = t2*t11;
   t12 = q5-t16;
   t13 = gami*t2*t4*t12;
-  t14 = 1.0/sqrt(t13);
-  t15 = q1*t3*t14*0.5;
-  t17 = q2*t3*t14*0.5;
-  t18 = q3*t3*t14*0.5;
-  t19 = q4*t2;
   t20 = sqrt(t13);
-  t21 = 1.0/(q1*q1);
+  t14 = 1.0/t20;
+  t14a = t3*t14*0.5
+  t15 = q1*t14a;
+  t17 = q2*t14a;
+  t18 = q3*t14a;
+  t19 = q4*t2;
+  t21 = t2*t2;
   t22 = 1.0/gami;
   t23 = t5*t21;
   t24 = t7*t21;
@@ -759,31 +793,37 @@ function calcEvecsz(params::ParamType{3, :conservative}, q::AbstractVector, R::A
   t28 = t13+t27;
   t29 = t22*t28;
   t30 = q4*t2*t20;
+  t31 = q1*t14a;
+
   R[1,1] = 0;
-  R[1,2] = 0;
-  R[1,3] = 1.0;
-  R[1,4] = t15;
-  R[1,5] = t15;
   R[2,1] = 0;
-  R[2,2] = -q1;
-  R[2,3] = q2*t2;
-  R[2,4] = t17;
-  R[2,5] = t17;
   R[3,1] = q1;
-  R[3,2] = 0;
-  R[3,3] = q3*t2;
-  R[3,4] = t18;
-  R[3,5] = t18;
   R[4,1] = 0;
-  R[4,2] = 0;
-  R[4,3] = t19;
-  R[4,4] = q1*t3*t14*(t19+t20)*0.5;
-  R[4,5] = q1*t3*t14*(t19-t20)*0.5;
   R[5,1] = q3;
+
+  R[1,2] = 0;
+  R[2,2] = -q1;
+  R[3,2] = 0;
+  R[4,2] = 0;
   R[5,2] = -q2;
-  R[5,3] = t5*t21*0.5+t7*t21*0.5+t9*t21*0.5;
-  R[5,4] = q1*t3*t14*(t29+t30)*0.5;
-  R[5,5] = q1*t3*t14*(t29-t30)*0.5;
+
+  R[1,3] = 1.0;
+  R[2,3] = q2*t2;
+  R[3,3] = q3*t2;
+  R[4,3] = t19;
+  R[5,3] = 0.5*(t5*t21+t7*t21+t9*t21);
+
+  R[1,4] = t15;
+  R[2,4] = t17;
+  R[3,4] = t18;
+  R[4,4] = t31*(t19+t20);
+  R[5,4] = t31*(t29+t30);
+
+  R[1,5] = t15;
+  R[2,5] = t17;
+  R[3,5] = t18;
+  R[4,5] = t31*(t19-t20);
+  R[5,5] = t31*(t29-t30);
 
   return nothing
 end
@@ -855,11 +895,13 @@ function calcEScalingx(params::ParamType{3, :conservative}, q::AbstractVector, S
   t5 = q4*q4;
   t7 = q1*q5*2.0;
   t6 = t3+t4+t5-t7;
+  t8 = gami*t2*t6*-0.5;
+
   S[1] = (gami*q1)/(gamma);
-  S[2] = gami*t2*t6*-0.5;
-  S[3] = gami*t2*t6*-0.5;
-  S[4] = gami*t2*t6*-0.5;
-  S[5] = gami*t2*t6*-0.5;
+  S[2] = t8
+  S[3] = t8;
+  S[4] = t8;
+  S[5] = t8;
 
   return nothing
 end
@@ -903,17 +945,19 @@ function calcEScalingy(params::ParamType{3, :conservative}, q::AbstractVector, S
   gami = params.gamma_1
   gamma = params.gamma
 
+  # auto-generated code
   t2 = 1.0/(q1*q1*q1);
   t3 = q2*q2;
   t4 = q3*q3;
   t5 = q4*q4;
   t7 = q1*q5*2.0;
   t6 = t3+t4+t5-t7;
-  S[1] = gami*t2*t6*-0.5;
+  t8 = gami*t2*t6*-0.5;
+  S[1] = t8;
   S[2] = (gami*q1)/(gamma);
-  S[3] = gami*t2*t6*-0.5;
-  S[4] = gami*t2*t6*-0.5;
-  S[5] = gami*t2*t6*-0.5;
+  S[3] = t8;
+  S[4] = t8;
+  S[5] = t8;
 
   return nothing
 end
@@ -939,11 +983,13 @@ function calcEScalingz(params::ParamType{3, :conservative}, q::AbstractVector, S
   t5 = q4*q4;
   t7 = q1*q5*2.0;
   t6 = t3+t4+t5-t7;
-  S[1] = gami*t2*t6*-0.5;
-  S[2] = gami*t2*t6*-0.5;
+  t8 = gami*t2*t6*-0.5;
+
+  S[1] = t8;
+  S[2] = t8;
   S[3] = (gami*q1)/(gamma);
-  S[4] = gami*t2*t6*-0.5;
-  S[5] = gami*t2*t6*-0.5;
+  S[4] = t8;
+  S[5] = t8;
 
   return nothing
 end
