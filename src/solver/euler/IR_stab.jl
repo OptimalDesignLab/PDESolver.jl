@@ -1,4 +1,5 @@
 #  IRStab.jl: functions for stabilizing the IR flux
+#             These functions are called from bc_solvers.jl
 
 """
   Computes dq/dv, where q are the conservative variables and v are the
