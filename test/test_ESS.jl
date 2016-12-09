@@ -576,7 +576,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
 
 
   println("checking entropy dissipation")
-  # check calcEntropyPenaltyIntegral
+  # check calcLFEntropyPenaltyIntegral
   for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
     elL = iface.elementL
@@ -591,7 +591,7 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
     resL2 = zeros(resL)
     resR2 = zeros(resR)
 
-    EulerEquationMod.calcEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+    EulerEquationMod.calcLFEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
 
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
@@ -717,7 +717,7 @@ facts("----- testing ESS -----") do
   include(STARTUP_PATH)
   # evaluate the residual to confirm it is zero
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
-  penalty_functor = EulerEquationMod.FaceElementDict["EPenaltyFaceIntegral"]
+  penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
 
   for p=1:4
     println("testing p = ", p)

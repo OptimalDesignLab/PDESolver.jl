@@ -62,12 +62,15 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
+  #TODO: consider making these vectors views of a matrix, to guarantee
+  #      spatial locality
   q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
   q_vals2::Array{Tsol, 1}
   q_vals3::Array{Tsol, 1}
   qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
   v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
   v_vals2::Array{Tsol, 1}
+  Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
 
   # numDofPerNode x stencilsize arrays for entropy variables
   w_vals_stencil::Array{Tsol, 2}
@@ -85,6 +88,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
   A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
   A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
+  S2::Array{Tsol, 1}  # diagonal matrix of eigenvector scaling
 
   A_mats::Array{Tsol, 3}  # reusable storage for flux jacobians
 
@@ -166,6 +170,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     qg = Array(Tsol, Tdim + 2)
     v_vals = Array(Tsol, Tdim + 2)
     v_vals2 = Array(Tsol, Tdim + 2)
+    Lambda = Array(Tsol, Tdim + 2)
  
     w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
     w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
@@ -183,6 +188,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     A1 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A2 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A_mats = zeros(Tsol, Tdim + 2, Tdim + 2, Tdim)
+    S2 = Array(Tsol, Tdim + 2)
 
     Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
     Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
@@ -258,10 +264,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
 
     time = Timings()
-    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2, 
-               w_vals_stencil, w_vals2_stencil, res_vals1, 
+    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
+               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, sat_vals, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, 
+               flux_vals2, A0, A0inv, A1, A2, S2, A_mats, Rmat1, Rmat2, nrm, 
                nrm2, nrm3, h, cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,

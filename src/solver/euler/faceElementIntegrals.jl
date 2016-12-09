@@ -82,11 +82,12 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 end
 
 """
-  Calculate the face integral in an entropy stable mannor.  This uses
-  calcECFaceIntegral and calcEntropyPenaltyIntegral internally, see those
-  functions for details.
+  Calculate the face integral in an entropy stable manner using Lax-Friedrich
+  type dissipation.  
+  This uses calcECFaceIntegral and calcLFEntropyPenaltyIntegral internally, 
+  see those functions for details.
 """
-function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
                              sbpface::AbstractFace, 
                              iface::Interface,
@@ -100,14 +101,43 @@ function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
                      functor, resL, resR)
-  calcEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
+  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
                              dxidx_face, resL, resR)
 
   return nothing
 end
 
 """
-  Calculate a term that provably dissipates (mathematical) entropy.  This
+  Calculate the face integral in an entropy stable manner using Lax-Wendroff
+  type dissipation.  
+  This uses calcECFaceIntegral and calcLWEntropyPenaltyIntegral internally, 
+  see those functions for details.
+"""
+function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+                             params::AbstractParamType{Tdim}, 
+                             sbpface::AbstractFace, 
+                             iface::Interface,
+                             qL::AbstractMatrix{Tsol}, 
+                             qR::AbstractMatrix{Tsol}, 
+                             aux_vars::AbstractMatrix{Tres}, 
+                             dxidx_face::Abstract3DArray{Tmsh},
+                             functor::FluxType, 
+                             resL::AbstractMatrix{Tres}, 
+                             resR::AbstractMatrix{Tres})
+
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+                     functor, resL, resR)
+  calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
+                             dxidx_face, resL, resR)
+
+  return nothing
+end
+
+
+"""
+  Calculate a term that provably dissipates (mathematical) entropy using a 
+  Lax-Friedrich type of dissipation.  
+  This
   requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
@@ -119,7 +149,7 @@ end
   Aliasing restrictions: params.nrm2, params.A0, w_vals_stencil, w_vals2_stencil
 """
 
-function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::AbstractFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -236,6 +266,156 @@ function calcEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   return nothing
 end
 
+"""
+  Calculate a term that provably dissipates (mathematical) entropy using a 
+  Lax-Wendroff type of dissipation.  
+  This requires data from the left and right element volume nodes, rather than
+  face nodes for a regular face integral.
+
+  Note that dxidx_face must contain the scaled metric terms interpolated
+  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  entire element, not just the face.
+
+
+  Aliasing restrictions: from params the following fields are used:
+    A0, S2, res_vals1, res_vals2,  w_vals_stencil, w_vals2_stencil,
+"""
+
+
+function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::AbstractFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+#  println("----- entered calcEntropyDissipativeIntegral -----")
+
+  numDofPerNode = size(qL, 1)
+
+  # convert qL and qR to entropy variables (only the nodes that will be used)
+  wL = params.w_vals_stencil
+  wR = params.w_vals2_stencil
+
+  Y = params.A0  # eigenvectors of flux jacobian
+  S2 = params.S2  # diagonal scaling matrix squared
+                       # S is defined s.t. (YS)*(YS).' = A0
+  Lambda = params.Lambda  # diagonal matrix of eigenvalues
+  tmp1 = params.res_vals1  # work vectors
+  tmp2 = params.res_vals2
+
+  for i=1:sbpface.stencilsize
+    # apply sbpface.perm here
+    p_iL = sbpface.perm[i, iface.faceL]
+    p_iR = sbpface.perm[i, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_itmp = sview(qL, :, p_iL)
+    qR_itmp = sview(qR, :, p_iR)
+    wL_itmp = sview(wL, :, i)
+    wR_itmp = sview(wR, :, i)
+    convertToIR(params, qL_itmp, wL_itmp)
+    convertToIR(params, qR_itmp, wR_itmp)
+  end
+
+  # convert to IR entropy variables
+
+  # accumulate wL at the node
+  wL_i = params.v_vals
+  wR_i = params.v_vals2
+  qL_i = params.q_vals
+  qR_i = params.q_vals2
+
+  for i=1:sbpface.numnodes  # loop over face nodes
+    ni = sbpface.nbrperm[i]
+    fill!(wL_i, 0.0)
+    fill!(wR_i, 0.0)
+
+    # interpolate wL and wR to this node
+    for j=1:sbpface.stencilsize
+      interpL = sbpface.interp[j, i]
+      interpR = sbpface.interp[j, ni]
+
+      for k=1:numDofPerNode
+        wL_i[k] += interpL*wL[k, j]
+        wR_i[k] += interpR*wR[k, j]
+      end
+    end
+
+    # need conservative variables for flux jacobian calculation
+    convertToConservativeFromIR_(params, wL_i, qL_i)
+    convertToConservativeFromIR_(params, wR_i, qR_i)
+
+    for j=1:numDofPerNode
+      # use flux jacobian at arithmetic average state
+      qL_i[j] =0.5*( qL_i[j] + qR_i[j])
+      # put delta w into wL_i
+      wL_i[j] -= wR_i[j]
+    end
+
+
+    # get the normal vector (scaled)
+    for dim =1:Tdim
+      nrm_dim = zero(Tmsh)
+      for d = 1:Tdim
+        nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
+      end
+
+      # get the eigensystem in the current direction
+      if dim == 1
+        calcEvecsx(params, qL_i, Y)
+        calcEvalsx(params, qL_i, Lambda)
+        calcEScalingx(params, qL_i, S2)
+      elseif dim == 2
+        calcEvecsy(params, qL_i, Y)
+        calcEvalsy(params, qL_i, Lambda)
+        calcEScalingy(params, qL_i, S2)
+      elseif dim == 3
+        calcEvecsz(params, qL_i, Y)
+        calcEvalsz(params, qL_i, Lambda)
+        calcEScalingz(params, qL_i, S2)
+      end
+
+      # compute the Lax-Wendroff term, returned in tmp2
+      applyEntropyLWUpdate(Y, Lambda, S2, wL_i, nrm_dim, tmp1, tmp2)
+    end
+
+    # interpolate back to volume nodes
+    for j=1:sbpface.stencilsize
+      j_pL = sbpface.perm[j, iface.faceL]
+      j_pR = sbpface.perm[j, iface.faceR]
+
+      for p=1:numDofPerNode
+        resL[p, j_pL] -= sbpface.interp[j, i]*tmp2[p]
+        resR[p, j_pR] += sbpface.interp[j, ni]*tmp2[p]
+      end
+    end
+
+  end  # end loop i
+
+  return nothing
+end
+
+@inline function applyEntropyLWUpdate(Y::AbstractMatrix, 
+           Lambda::AbstractVector, S2::AbstractVector, delta_v::AbstractVector, 
+           ni::Number, tmp1::AbstractVector, tmp2::AbstractVector)
+# this is the computation kernel Lax-Wendroff entropy dissipation
+# the result is returned in tmp2
+
+  # multiply delta_v by Y.'
+  smallmatTvec!(Y, delta_v, tmp1)
+  # multiply by diagonal terms, normal vector component
+  for i=1:length(delta_v)
+    tmp1[i] *= ni*S2[i]*absvalue(Lambda[i])
+  end
+  # multiply by Y
+  smallmatvec!(Y, tmp1, tmp2)
+
+  return nothing
+end
+
+
+
 # do the functor song and dance
 abstract FaceElementIntegralType
 
@@ -260,12 +440,12 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral,
 end
 
 """
-  Entropy conservaive integral + penalty
+  Entropy conservative integral + penalty
 """
-type ESFaceIntegral <: FaceElementIntegralType
+type ESLFFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ESFaceIntegral, 
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLFFaceIntegral, 
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -274,17 +454,17 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ESFaceIntegral,
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcESFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+  calcESLFFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
 
 end
 
 """
-  Penalty term only
+  Lax-Friedrich entropy penalty term only
 """
-type EPenaltyFaceIntegral <: FaceElementIntegralType
+type ELFPenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::EPenaltyFaceIntegral, 
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ELFPenaltyFaceIntegral, 
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -293,15 +473,15 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::EPenaltyFaceIntegral,
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
 
 end
 
 
 global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
 "ECFaceIntegral" => ECFaceIntegral(),
-"ESFaceIntegral" => ESFaceIntegral(),
-"EPenaltyFaceIntegral" => EPenaltyFaceIntegral(),
+"ESLFFaceIntegral" => ESLFFaceIntegral(),
+"ELFPenaltyFaceIntegral" => ELFPenaltyFaceIntegral(),
 )
 
 function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)

@@ -665,6 +665,37 @@ function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end
 
+"""
+  This function is similar to calcEulerFlux_IRSLF, but uses Lax-Wendroff
+  dissipation rather than Lax-Friedrich.
+
+  Aliasing restrictions: see getEntropyLWStab
+"""
+function calcEulerFlux_IRSLW{Tmsh, Tsol, Tres}(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, 
+                      dxidx::AbstractMatrix{Tmsh},
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
+  calcEulerFlux_IRSLW(params, qL, qR, aux_vars, nrm2, F)
+  return nothing
+end
+
+function calcEulerFlux_IRSWF{Tmsh, Tsol, Tres, Tdim}(
+                      params::ParamType{Tdim, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractVector{Tres},
+                      dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1})
+
+  calcEulerFlux_IR(params, qL, qR, aux_vars, dir, F)
+  getEntropyLWStab(params, qL, qR, aux_vars, dir, F)
+
+  return nothing
+end
+
+
 
 
 function logavg(aL, aR)
