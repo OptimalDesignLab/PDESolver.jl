@@ -267,7 +267,7 @@ facts("----- Testing Numerical Fluxes -----") do
   # this isn't a valid test
   # test that the flux is entropy dissipative
   functor = EulerEquationMod.FluxDict["IRFlux"]
-  functor_stable = EulerEquationMod.FluxDict["IRStableFlux"]
+  functor_stable = EulerEquationMod.FluxDict["IRSLFFlux"]
 #  v1 = zeros(5)
 #  v2 = zeros(5)
   F_ir = zeros(5)

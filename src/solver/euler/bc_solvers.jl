@@ -623,9 +623,9 @@ end
     F: vector to be updated with the result
 
   Aliasing restrictions:
-    nothing may alias params.nrm2.  See also getIRStab1
+    nothing may alias params.nrm2.  See also getEntropyLFStab
 """
-function calcEulerFlux_IRStable{Tmsh, Tsol, Tres}(params::ParamType,
+function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres}, 
                       dxidx::AbstractMatrix{Tmsh},
@@ -633,7 +633,7 @@ function calcEulerFlux_IRStable{Tmsh, Tsol, Tres}(params::ParamType,
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_IRStable(params, qL, qR, aux_vars, nrm2, F)
+  calcEulerFlux_IRSLF(params, qL, qR, aux_vars, nrm2, F)
   return nothing
 end
 
@@ -650,17 +650,17 @@ end
     F: vector to be updated with the result
 
   Alising restrictions:
-    See getIRStab1
+    See getEntropyLFStab
 
 """
-function calcEulerFlux_IRStable{Tmsh, Tsol, Tres, Tdim}(
+function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres, Tdim}(
                       params::ParamType{Tdim, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractVector{Tres},
                       dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1})
 
   calcEulerFlux_IR(params, qL, qR, aux_vars, dir, F)
-  getIRStab1(params, qL, qR, aux_vars, dir, F)
+  getEntropyLFStab(params, qL, qR, aux_vars, dir, F)
 
   return nothing
 end

@@ -115,9 +115,9 @@ end
   This function is dimension agnostic, but only works for conservative
   variables.
 
-  Aliasing restrictions: params.q_vals3, see also getIRStab_inner
+  Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
 """
-function getIRStab1{Tmsh, Tsol, Tres, Tdim}(
+function getEntropyLFStab{Tmsh, Tsol, Tres, Tdim}(
                       params::ParamType{Tdim, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
@@ -127,7 +127,7 @@ function getIRStab1{Tmsh, Tsol, Tres, Tdim}(
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])
   end
-  getIRStab_inner(params, qL, qR, q_avg, aux_vars, dir, F)
+  getEntropyLFStab_inner(params, qL, qR, q_avg, aux_vars, dir, F)
 
   return nothing
 end
@@ -149,12 +149,12 @@ end
               v_vals2.
 
 """
-function getIRStab_inner{Tmsh, Tsol, Tres, Tdim}(
+function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
                       params::ParamType{Tdim, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
-#  println("entered getIRStab_inner")
+#  println("entered getEntropyLFStab_inner")
 
   A0 = params.A0
   vL = params.v_vals
