@@ -237,7 +237,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     # compute average qL
     # also delta w (used later)
     for j=1:numDofPerNode
-      qL_i[j] =0.5*( qL_i[j] + qR_i[j])
+      qL_i[j] = 0.5*(qL_i[j] + qR_i[j])
       wL_i[j] -= wR_i[j]
     end
 
@@ -278,7 +278,7 @@ end
 
 
   Aliasing restrictions: from params the following fields are used:
-    A0, S2, res_vals1, res_vals2,  w_vals_stencil, w_vals2_stencil,
+    A0, S2, res_vals1, res_vals2, res_vals3,  w_vals_stencil, w_vals2_stencil,
 """
 
 
@@ -303,6 +303,7 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   Lambda = params.Lambda  # diagonal matrix of eigenvalues
   tmp1 = params.res_vals1  # work vectors
   tmp2 = params.res_vals2
+  tmp3 = params.res_vals3  # accumulate result vector
 
   for i=1:sbpface.stencilsize
     # apply sbpface.perm here
@@ -330,7 +331,7 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     ni = sbpface.nbrperm[i]
     fill!(wL_i, 0.0)
     fill!(wR_i, 0.0)
-
+    fill!(tmp3, 0.0)
     # interpolate wL and wR to this node
     for j=1:sbpface.stencilsize
       interpL = sbpface.interp[j, i]
@@ -348,13 +349,14 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
     for j=1:numDofPerNode
       # use flux jacobian at arithmetic average state
-      qL_i[j] =0.5*( qL_i[j] + qR_i[j])
+      qL_i[j] = 0.5*( qL_i[j] + qR_i[j])
       # put delta w into wL_i
       wL_i[j] -= wR_i[j]
     end
 
 
     # get the normal vector (scaled)
+
     for dim =1:Tdim
       nrm_dim = zero(Tmsh)
       for d = 1:Tdim
@@ -376,8 +378,21 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
         calcEScalingz(params, qL_i, S2)
       end
 
+      # DEBUGGING: turn this into Lax-Friedrich
+#      lambda_max = maximum(absvalue(Lambda))
+#      fill!(Lambda, lambda_max)
+
       # compute the Lax-Wendroff term, returned in tmp2
-      applyEntropyLWUpdate(Y, Lambda, S2, wL_i, nrm_dim, tmp1, tmp2)
+      applyEntropyLWUpdate(Y, Lambda, S2, wL_i, absvalue(nrm_dim), tmp1, tmp2)
+      # accumulate result
+      for j=1:length(tmp3)
+        tmp3[j] += tmp2[j]
+      end
+    end
+
+    # scale by wface[i]
+    for j=1:length(tmp3)
+      tmp3[j] *= sbpface.wface[i]
     end
 
     # interpolate back to volume nodes
@@ -386,8 +401,8 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
       j_pR = sbpface.perm[j, iface.faceR]
 
       for p=1:numDofPerNode
-        resL[p, j_pL] -= sbpface.interp[j, i]*tmp2[p]
-        resR[p, j_pR] += sbpface.interp[j, ni]*tmp2[p]
+        resL[p, j_pL] -= sbpface.interp[j, i]*tmp3[p]
+        resR[p, j_pR] += sbpface.interp[j, ni]*tmp3[p]
       end
     end
 
@@ -440,7 +455,7 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral,
 end
 
 """
-  Entropy conservative integral + penalty
+  Entropy conservative integral + Lax-Friedrich penalty
 """
 type ESLFFaceIntegral <: FaceElementIntegralType
 end
@@ -477,11 +492,53 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ELFPenaltyFaceIntegral,
 
 end
 
+"""
+  Entropy conservative integral + Lax-Wendroff penalty
+"""
+type ESLWFaceIntegral <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLWFaceIntegral, 
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+
+end
+
+"""
+  Lax-Wendroff entropy penalty term only
+"""
+type ELWPenaltyFaceIntegral <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ELWPenaltyFaceIntegral, 
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+
+end
+
+
 
 global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
 "ECFaceIntegral" => ECFaceIntegral(),
 "ESLFFaceIntegral" => ESLFFaceIntegral(),
 "ELFPenaltyFaceIntegral" => ELFPenaltyFaceIntegral(),
+"ESLWFaceIntegral" => ESLWFaceIntegral(),
+"ELWPenaltyFaceIntegral" => ELWPenaltyFaceIntegral(),
+
 )
 
 function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)

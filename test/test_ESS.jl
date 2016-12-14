@@ -389,9 +389,8 @@ end
 
 
 
-function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref=false, zero_penalty=false)
+function runECTest(mesh, sbp, eqn, opts; test_ref=false)
 # test_ref: whether or not to compare against the reference implementations above
-# zero_penalty: test whether the entropy stability penalty should be zero
 
   functor = EulerEquationMod.IRFlux()
   eqn.flux_func = functor
@@ -575,7 +574,18 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
   println("finished checking lemma 2")
 
 
+end
+
+function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=false, zero_penalty=false)
+# run entropy stability tests
+# test_ref: whether or not to compare against the reference implementations above
+# zero_penalty: test whether the entropy stability penalty should be zero
+# penalty name: name of penalty functor to call
+
   println("checking entropy dissipation")
+
+  # the penalty functions don't need a flux, so pick an arbitrary one
+  flux_func = EulerEquationMod.FluxDict["StandardFlux"]  
   # check calcLFEntropyPenaltyIntegral
   for i=1:mesh.numInterfaces
     iface = mesh.interfaces[i]
@@ -591,7 +601,16 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
     resL2 = zeros(resL)
     resR2 = zeros(resR)
 
-    EulerEquationMod.calcLFEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+#    resL3 = zeros(resL)
+#    resR3 = zeros(resR)
+
+
+    penalty_func = EulerEquationMod.FaceElementDict[penalty_name]
+    lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+
+    penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_func,  resL, resR)
+#    lf_penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_func,  resL3, resR3)
+#    EulerEquationMod.calcLFEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
 
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
@@ -619,6 +638,17 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
         end
       end
     end
+#=
+    # verify equality with Lax-Friedrich
+    for i=1:size(resL, 1)
+      for j=1:size(resL, 2)
+        @fact abs(resL[i, j] - resL3[i, j]) --> roughly(0.0, atol=1e-12)
+        @fact abs(resR[i, j] - resR3[i, j]) --> roughly(0.0, atol=1e-12)
+      end
+    end
+=#
+
+
     # contract with entropy variables, verify result is negative
     resL_reduced = zeros(mesh.numNodesPerElement)
     resR_reduced = zeros(mesh.numNodesPerElement)
@@ -649,7 +679,13 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
     delta_sR = sum(resR_reduced)
     delta_s = delta_sL + delta_sR
     @fact delta_s --> less_than(eps())
-   
+
+    if !(delta_s < eps())
+      println("entropy growth at interface ", i)
+      println("iface = ", iface)
+      println("qL = \n", qL)
+      println("qR = \n", qR)
+    end
     if test_ref
       delta_sL2 = sum(resL_reduced2)
       delta_sR2 = sum(resR_reduced2)
@@ -669,9 +705,134 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false, test_ref
 
   end  # end loop over interfaces
 
-
 end
 
+function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts)
+  # computes the Lax-Wendroff term using the maximum eigenvalue for all 
+  # eigenvalue, turning it into Lax-Friedrich
+  # compare agains LF
+  params = eqn.params
+  sbpface = mesh.sbpface
+
+  Y = params.A0  # eigenvectors of flux jacobian
+  A0 = copy(Y)
+  S2 = params.S2  # diagonal scaling matrix squared
+                       # S is defined s.t. (YS)*(YS).' = A0
+  Lambda = params.Lambda  # diagonal matrix of eigenvalues
+  tmp1 = params.res_vals1  # work vectors
+  tmp2 = params.res_vals2
+  tmp3 = params.res_vals3  # accumulate result vector
+  nrm = params.nrm2
+
+  iface = mesh.interfaces[1]
+  elL = iface.elementL
+  elR = iface.elementR
+  qL = eqn.q[:, 1, elL]
+  qR = eqn.q[:, 1, elR]
+  dxidx_face = mesh.dxidx[:, :, 1, elL]
+
+  q_avg = 0.5*(qL + qR)
+
+  # delta_w doesn't matter, so make an arbitrary vector
+  delta_w = collect(Tsol, 1:length(qL))
+
+  fill!(tmp3, 0.0)
+  fill!(nrm, 0.0)
+
+  # compute LW term
+  lambda_net = 0.0
+  for dim =1:Tdim
+    nrm_dim = zero(Tmsh)
+    for d = 1:Tdim
+      nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim]
+    end
+    nrm[dim] = nrm_dim  # needed for LF below
+  end
+
+
+  nrm2 = nrm./norm(nrm)
+  A1 = zeros(4,4)  # flux jacobian computed via sum of x, y directions
+  A2 = zeros(4,4)  # flux jacobian in nrm direction computed directly
+  for dim=1:Tdim
+    # get the eigensystem in the current direction
+    if dim == 1
+      EulerEquationMod.calcEvecsx(params, q_avg, Y)
+      EulerEquationMod.calcEvalsx(params, q_avg, Lambda)
+      EulerEquationMod.calcEScalingx(params, q_avg, S2)
+    elseif dim == 2
+      EulerEquationMod.calcEvecsy(params, q_avg, Y)
+      EulerEquationMod.calcEvalsy(params, q_avg, Lambda)
+      EulerEquationMod.calcEScalingy(params, q_avg, S2)
+    elseif dim == 3
+      EulerEquationMod.calcEvecsz(params, q_avg, Y)
+      EulerEquationMod.calcEvalsz(params, q_avg, Lambda)
+      EulerEquationMod.calcEScalingz(params, q_avg, S2)
+    end
+
+    A1 += nrm[dim]*Y*diagm(Lambda)*inv(Y)
+    # DEBUGGING: turn this into Lax-Friedrich
+    lambda_max = maximum(absvalue(Lambda))
+    lambda_net += absvalue(lambda_max*nrm[dim])
+    fill!(Lambda, lambda_max)
+
+
+    # compute the Lax-Wendroff term, returned in tmp2
+    EulerEquationMod.applyEntropyLWUpdate(Y, Lambda, S2, delta_w, nrm[dim], tmp1, tmp2)
+    # accumulate result
+    for j=1:length(tmp3)
+      tmp3[j] += tmp2[j]
+    end
+  end
+
+
+  # compute LF term
+
+  # this is not exactly the same eigenvalue calculation as lambda(q_avg)
+#  lambda_max = EulerEquationMod.getLambdaMax(params, qL, qR, nrm)
+  Un = (q_avg[2]*nrm[1] + q_avg[3]*nrm[2])/q_avg[1]
+  p_avg = EulerEquationMod.calcPressure(params, q_avg)
+  dA = sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2])
+  a_avg = dA*sqrt(params.gamma*p_avg/q_avg[1])  # speed of sound
+  lambda_max = absvalue(Un) + absvalue(a_avg)
+  EulerEquationMod.getIRA0(params, q_avg, A0)
+
+  # lambda_max * A0 * delta w
+  smallmatvec!(A0, delta_w, tmp1)
+  scale!(tmp1, lambda_max)
+
+  # compute scaling parameter alpha
+  alpha = lambda_max/lambda_net
+  scale!(tmp3, alpha)
+
+  println("LW = \n", tmp3)
+  println("LF = \n", tmp1)
+  println("diff = \n", tmp3 - tmp1)
+
+  println("lambda_net = ", lambda_net)
+  println("lambda_max = ", lambda_max)
+  println("alpha = ", alpha)
+  println("nrm = ", nrm)
+
+  q2 = convert(Array{Complex128, 1}, q_avg)
+  h = 1e-20
+  pert = Complex128(0, h)
+  F = zeros(Complex128, length(q_avg))
+  aux_vars = zeros(Complex128, 1)
+  for i=1:length(q_avg)
+    q2[i] += pert
+    EulerEquationMod.calcEulerFlux(params, q2, aux_vars, nrm, F)
+    A2[:, i] = imag(F)/h
+    q2[i] -= pert
+  end
+
+  println("A1 = \n", A1)
+  println("A2 = \n", A2)
+  println("ratio = \n", A1./A2)
+  println("diff = \n", A1 - A2)
+
+
+  return nothing
+end
 
 function applyPoly(mesh, sbp, eqn, opts, p)
 # set the solution to be a polynomial of degree p of the entropy variables
@@ -718,6 +879,8 @@ facts("----- testing ESS -----") do
   # evaluate the residual to confirm it is zero
   EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
   penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+  penalty_lf = "ELFPenaltyFaceIntegral"
+  penalty_lw = "ELWPenaltyFaceIntegral"
 
   for p=1:4
     println("testing p = ", p)
@@ -730,7 +893,7 @@ facts("----- testing ESS -----") do
    
 
     println("checking channel flow")
-    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=true)
+    runECTest(mesh, sbp, eqn, opts, test_ref=true)
 
     println("\nchecking ICExp")
     ICFunc = EulerEquationMod.ICDict["ICExp"]
@@ -742,11 +905,21 @@ facts("----- testing ESS -----") do
         eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
       end
     end
-    runESSTest(mesh, sbp, eqn, opts, test_ref=true)
+    runECTest(mesh, sbp, eqn, opts, test_ref=true)
+    println("testing LF dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true)
+    println("testing LW dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=false)
+    println("finished testing LW dissipation")
+#    testLW(mesh, sbp, eqn, opts)
     # check polynomial
     applyPoly(mesh, sbp, eqn, opts, p)
-    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=true, zero_penalty=true)
+    runECTest(mesh, sbp, eqn, opts, test_ref=true)
+    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true, zero_penalty=true)
 
+    println("testing LW dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=true, zero_penalty=true)
+    println("finished testing LW dissipation")
     # check full calling sequence
     fill!(eqn.res, 0.0)
     EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
@@ -770,11 +943,14 @@ facts("----- testing ESS -----") do
         eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
       end
     end
-    runESSTest(mesh, sbp, eqn, opts, test_ref=false)
+    runECTest(mesh, sbp, eqn, opts, test_ref=false)
+    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false)
 
     # check polynomial
     applyPoly(mesh, sbp, eqn, opts, p)
-    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false, test_ref=false, zero_penalty=true)
+    runECTest(mesh, sbp, eqn, opts, test_ref=false)
+    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false, zero_penalty=true)
+
     # check full calling sequence
     fill!(eqn.res, 0.0)
     EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)

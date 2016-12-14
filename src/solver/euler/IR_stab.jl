@@ -275,6 +275,7 @@ function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim},
   UnR = zero(Tres)
   rhoLinv = 1/qL[1]
   rhoRinv = 1/qR[1]
+  dA = zero(Tmsh)
 
   pL = calcPressure(params, qL)
   pR = calcPressure(params, qR)
@@ -286,7 +287,12 @@ function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim},
   for i=1:Tdim
     UnL += dir[i]*qL[i+1]*rhoLinv
     UnR += dir[i]*qR[i+1]*rhoRinv
+    dA += dir[i]*dir[i]
   end
+
+  dA = sqrt(dA)
+  aL *= dA
+  aR *= dA
 
 #  println("UnL = ", UnL, ", UnR = ", UnR, ", aL = ", aL, ", aR = ", aR)
 
