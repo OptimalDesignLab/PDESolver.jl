@@ -87,13 +87,13 @@ facts("----- Testing Timings -----") do
 
 end
 
-type TestParams
+type TestParams{Tdim} <: AbstractParamType{Tdim}
   time::Timings
 end
 
 # test the tools
 type TestData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
-  params::TestParams
+  params::TestParams{2}
   M::Array{Float64, 1}
   Minv::Array{Float64, 1}
   comm::MPI.Comm
@@ -118,7 +118,7 @@ end
 facts("----- Testing Utility Functions -----") do
   M = rand(10)
   Minv = 1./M
-  params = TestParams(Timings())
+  params = TestParams{2}(Timings())
   obj = TestData{Float64, Float64}(params, M, Minv, MPI.COMM_WORLD)
   data = rand(10)
 
@@ -216,6 +216,107 @@ facts("----- Testing Permutation Functions -----") do
   for i=1:3
     @fact (A_orig*P)[:, i] --> A[ :, i ]
   end
+
+
+  function test_projection()
+    facts("----- testing Projection -----") do
+      t = Timings()
+      params = TestParams{2}(t)
+      params3 = TestParams{3}(t)
+
+      nrm = zeros(2)
+      P = zeros(4,4)
+      nrm3 = zeros(3)
+      P3 = zeros(5,5)
+
+      q = [1.0, 2.0, 3.0, 7.0]
+      qprime = zeros(q)
+      qprime2 = zeros(q)
+      q2 = zeros(q)
+      q2a = zeros(q)
+      q3 = [1.0, 2.0, 3.0, 4.0, 15.0]
+      q3prime = zeros(q3)
+      q3prime2 = zeros(q3)
+      q32 = zeros(q3)
+      q32a = zeros(q3)
+
+      for theta=0.0:0.1:2*pi
+        nrm[1] = cos(theta)
+        nrm[2] = sin(theta)
+
+        t1, t2 = Utils.getOrthogonalVector(params, nrm)
+        dot_val = abs(t1*nrm[1] + t2*nrm[2])
+        # check normal vector calculation
+        @fact sqrt(t1*t1 + t2*t2) --> roughly(1.0, atol=1e-12)
+        @fact dot_val --> less_than(1e-13)
+
+        # check projection
+        getProjectionMatrix(params, nrm, P)
+
+        # check P is unitary
+        @fact norm(inv(P) - P.') --> roughly(0.0, atol=1e-12)
+
+        # check q1, q4 are same, magnitude of momentum is same
+        A_mul_B!(qprime, P, q)
+        @fact q[1] --> roughly(qprime[1], atol=1e-13)
+        @fact q[4] --> roughly(qprime[4], atol=1e-13)
+        @fact q[2]*q[2] + q[3]*q[3] --> roughly( qprime[2]*qprime[2] + qprime[3]*qprime[3], atol=1e-12)
+
+        # check multiplication functions against A_mul_b
+        projectToNT(params, P, q, qprime2)
+        @fact qprime --> roughly(qprime2, atol=1e-12)
+
+        # project back
+        At_mul_B!(q2, P, qprime)
+        @fact q2 --> roughly(q, atol=1e-12)
+        projectToXY(params, P, qprime, q2a)
+        @fact q2a --> roughly(q, atol=1e-12)
+
+
+      end
+
+      # 3D test
+      for theta=0:0.1:pi
+        for phi=0:0.1:2*pi
+          nrm3[1] = sin(theta)*cos(phi)
+          nrm3[2] = sin(theta)*sin(phi)
+          nrm3[3] = cos(theta)
+
+          t1, t2, t3 = Utils.getOrthogonalVector(params3, nrm3)
+          dot_val = abs(t1*nrm3[1] + t2*nrm3[2] + t3*nrm3[3])
+          @fact t1*t1 + t2*t2 + t3*t3 --> roughly(1.0, atol=1e-12)
+          @fact dot_val --> roughly(0.0, atol=1e-13)
+
+          getProjectionMatrix(params3, nrm3, P3)
+
+          @fact norm(inv(P3) - P3.') --> roughly(0.0, atol=1e-12)
+
+          # check q1, q4 are same, magnitude of momentum is same
+          A_mul_B!(q3prime, P3, q3)
+          @fact q3[1] --> roughly(q3prime[1], atol=1e-13)
+          @fact q3[5] --> roughly(q3prime[5], atol=1e-13)
+          @fact q3[2]*q[2] + q3[3]*q3[3] + q3[4]*q3[4] --> roughly( q3prime[2]*q3prime[2] + q3prime[3]*q3prime[3] + q3prime[4]*q3prime[4], atol=1e-12)
+
+          # check multiplication functions against A_mul_b
+          projectToNT(params3, P3, q3, q3prime2)
+          @fact q3prime --> roughly(q3prime2, atol=1e-12)
+
+          # project back
+          At_mul_B!(q32, P3, q3prime)
+          @fact q32 --> roughly(q3, atol=1e-12)
+          projectToXY(params3, P3, q3prime, q32a)
+          @fact q32a --> roughly(q3, atol=1e-12)
+
+        end
+      end
+
+
+
+    end  # end facts block
+    return nothing
+  end
+
+  @time test_projection()
 
 
 

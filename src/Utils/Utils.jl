@@ -12,10 +12,12 @@ using MPI
 using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
 
+include("../solver/euler/complexify.jl") #TODO: move this file into Utils
 include("parallel.jl")
 include("io.jl")
 include("logging.jl")
 include("initialization.jl")
+include("projections.jl")
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
@@ -28,7 +30,8 @@ export createMeshAndOperator
 export calcBCNormal
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
-
+# projections.jl functions
+export getProjectionMatrix, projectToXY, projectToNT
 @doc """
 ### Utils.disassembleSolution
 
