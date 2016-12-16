@@ -96,6 +96,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
   Rmat2::Array{Tres, 2}
 
+  P::Array{Tmsh, 2}  # projection matrix
+
   nrm::Array{Tmsh, 1}  # a normal vector
   nrm2::Array{Tmsh, 1}
   nrm3::Array{Tmsh, 1}
@@ -195,6 +197,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
     Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
 
+    P = zeros(Tmsh, Tdim + 2, Tdim + 2)
+
     nrm = zeros(Tmsh, Tdim)
     nrm2 = zeros(nrm)
     nrm3 = zeros(nrm)
@@ -269,8 +273,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
                Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3, sat_vals, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, S2, A_mats, Rmat1, Rmat2, nrm, 
-               nrm2, nrm3, h, cv, R, 
+               flux_vals2, A0, A0inv, A1, A2, S2, A_mats, Rmat1, Rmat2, P,
+               nrm, nrm2, nrm3, h, cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 

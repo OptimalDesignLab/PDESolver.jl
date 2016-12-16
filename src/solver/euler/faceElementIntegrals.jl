@@ -2,6 +2,8 @@
 # the entire element
 include("IR_stab.jl")  # stabilization for the IR flux
 
+#-----------------------------------------------------------------------------
+# entry point functions
 """
   Calculate the face integrals in an entropy conservative manner for a given
   interface.  Unlike standard face integrals, this requires data from
@@ -108,8 +110,8 @@ function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 end
 
 """
-  Calculate the face integral in an entropy stable manner using Lax-Wendroff
-  type dissipation.  
+  Calculate the face integral in an entropy stable manner using approximate
+  Lax-Wendroff type dissipation.  
   This uses calcECFaceIntegral and calcLWEntropyPenaltyIntegral internally, 
   see those functions for details.
 """
@@ -133,6 +135,34 @@ function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
   return nothing
 end
 
+"""
+  Calculate the face integral in an entropy stable manner using
+  Lax-Wendroff type dissipation.  
+  This uses calcECFaceIntegral and calcLWEntropyPenaltyIntegral internally, 
+  see those functions for details.
+"""
+function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+                             params::AbstractParamType{Tdim}, 
+                             sbpface::AbstractFace, 
+                             iface::Interface,
+                             qL::AbstractMatrix{Tsol}, 
+                             qR::AbstractMatrix{Tsol}, 
+                             aux_vars::AbstractMatrix{Tres}, 
+                             dxidx_face::Abstract3DArray{Tmsh},
+                             functor::FluxType, 
+                             resL::AbstractMatrix{Tres}, 
+                             resR::AbstractMatrix{Tres})
+
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+                     functor, resL, resR)
+  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
+                             dxidx_face, resL, resR)
+
+  return nothing
+end
+
+#-----------------------------------------------------------------------------
+# Internal functions that calculate the penalties
 
 """
   Calculate a term that provably dissipates (mathematical) entropy using a 
@@ -268,7 +298,7 @@ end
 
 """
   Calculate a term that provably dissipates (mathematical) entropy using a 
-  Lax-Wendroff type of dissipation.  
+  an approximation to Lax-Wendroff type of dissipation.  
   This requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
@@ -276,9 +306,17 @@ end
   to the face nodes, and qL, qR, resL, and resR are the arrays for the
   entire element, not just the face.
 
+  The approximation to Lax-Wendroff is the computation of
+
+  for i=1:Tdim
+    abs(ni*Y_i*S2_i*Lambda_i*Y_i.')
+  end
+
+  rather than computing the flux jacobian in the normal direction.
 
   Aliasing restrictions: from params the following fields are used:
-    A0, S2, res_vals1, res_vals2, res_vals3,  w_vals_stencil, w_vals2_stencil,
+    Y, S2, Lambda, res_vals1, res_vals2, res_vals3,  w_vals_stencil, 
+    w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2
 """
 
 
@@ -429,9 +467,158 @@ end
   return nothing
 end
 
+"""
+  Calculate a term that provably dissipates (mathematical) entropy using a 
+  Lax-Wendroff type of dissipation.  
+  This requires data from the left and right element volume nodes, rather than
+  face nodes for a regular face integral.
+
+  Note that dxidx_face must contain the scaled metric terms interpolated
+  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  entire element, not just the face.
+
+  Implementation Detail:
+    Because the scaling does not exist in arbitrary directions for 3D, 
+    the function projects q into n-t coordinates, computes the
+    eigendecomposition there, and then rotates back
+
+  Aliasing restrictions: from params the following fields are used:
+    Y, S2, Lambda, res_vals1, res_vals2,  w_vals_stencil, 
+    w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2, nrm2, P
+
+"""
+function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::AbstractFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+#  println("----- entered calcEntropyDissipativeIntegral -----")
+
+  numDofPerNode = size(qL, 1)
+
+  # convert qL and qR to entropy variables (only the nodes that will be used)
+  wL = params.w_vals_stencil
+  wR = params.w_vals2_stencil
+
+  Y = params.A0  # eigenvectors of flux jacobian
+  S2 = params.S2  # diagonal scaling matrix squared
+                       # S is defined s.t. (YS)*(YS).' = A0
+  Lambda = params.Lambda  # diagonal matrix of eigenvalues
+  tmp1 = params.res_vals1  # work vectors
+  tmp2 = params.res_vals2
+
+  for i=1:sbpface.stencilsize
+    # apply sbpface.perm here
+    p_iL = sbpface.perm[i, iface.faceL]
+    p_iR = sbpface.perm[i, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_itmp = sview(qL, :, p_iL)
+    qR_itmp = sview(qR, :, p_iR)
+    wL_itmp = sview(wL, :, i)
+    wR_itmp = sview(wR, :, i)
+    convertToIR(params, qL_itmp, wL_itmp)
+    convertToIR(params, qR_itmp, wR_itmp)
+  end
+
+  # convert to IR entropy variables
+
+  # accumulate wL at the node
+  wL_i = params.v_vals
+  wR_i = params.v_vals2
+  qL_i = params.q_vals
+  qR_i = params.q_vals2
+  nrm = params.nrm2
+  P = params.P  # projection matrix
+
+  for i=1:sbpface.numnodes  # loop over face nodes
+    ni = sbpface.nbrperm[i]
+    fill!(wL_i, 0.0)
+    fill!(wR_i, 0.0)
+    # interpolate wL and wR to this node
+    for j=1:sbpface.stencilsize
+      interpL = sbpface.interp[j, i]
+      interpR = sbpface.interp[j, ni]
+
+      for k=1:numDofPerNode
+        wL_i[k] += interpL*wL[k, j]
+        wR_i[k] += interpR*wR[k, j]
+      end
+    end
+
+    # need conservative variables for flux jacobian calculation
+    convertToConservativeFromIR_(params, wL_i, qL_i)
+    convertToConservativeFromIR_(params, wR_i, qR_i)
+
+    for j=1:numDofPerNode
+      # use flux jacobian at arithmetic average state
+      qL_i[j] = 0.5*( qL_i[j] + qR_i[j])
+      # put delta w into wL_i
+      wL_i[j] -= wR_i[j]
+    end
 
 
+    # get the normal vector (scaled)
+
+    for dim =1:Tdim
+      nrm_dim = zero(Tmsh)
+      for d = 1:Tdim
+        nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
+      end
+
+      nrm[dim] = nrm_dim
+    end
+
+    # normalize direction vector
+    len_fac = calcLength(params, nrm)
+    for dim=1:Tdim
+      nrm[dim] /= len_fac
+    end
+
+    # project q into n-t coordinate system
+    getProjectionMatrix(params, nrm, P)
+    projectToNT(params, P, qL_i, qR_i)  # qR_i is qprime
+
+    # get eigensystem in the normal direction, which is equivalent to
+    # the x direction now that q has been rotated
+    calcEvecsx(params, qR_i, Y)
+    calcEvalsx(params, qR_i, Lambda)
+    calcEScalingx(params, qR_i, S2)
+
+    # compute LF term in n-t coordinates, then rotate back to x-y
+    projectToNT(params, P, wL_i, tmp1)
+    smallmatTvec!(Y, tmp1, tmp2)
+    # multiply by diagonal Lambda and S2, also include the scalar
+    # wface and len_fac components
+    for j=1:length(tmp2)
+      tmp2[j] *= len_fac*sbpface.wface[i]*Lambda[j]*S2[j]
+    end
+    smallmatvec!(Y, tmp2, tmp1)
+    projectToXY(params, P, tmp1, tmp2)
+
+
+    # interpolate back to volume nodes
+    for j=1:sbpface.stencilsize
+      j_pL = sbpface.perm[j, iface.faceL]
+      j_pR = sbpface.perm[j, iface.faceR]
+
+      for p=1:numDofPerNode
+        resL[p, j_pL] -= sbpface.interp[j, i]*tmp2[p]
+        resR[p, j_pR] += sbpface.interp[j, ni]*tmp2[p]
+      end
+    end
+
+  end  # end loop i
+
+  return nothing
+end
+
+
+#-----------------------------------------------------------------------------
 # do the functor song and dance
+
 abstract FaceElementIntegralType
 
 """
@@ -493,7 +680,7 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ELFPenaltyFaceIntegral,
 end
 
 """
-  Entropy conservative integral + Lax-Wendroff penalty
+  Entropy conservative integral + approximate Lax-Wendroff penalty
 """
 type ESLWFaceIntegral <: FaceElementIntegralType
 end
@@ -512,7 +699,7 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLWFaceIntegral,
 end
 
 """
-  Lax-Wendroff entropy penalty term only
+  Approximate Lax-Wendroff entropy penalty term only
 """
 type ELWPenaltyFaceIntegral <: FaceElementIntegralType
 end
@@ -530,6 +717,44 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ELWPenaltyFaceIntegral,
 
 end
 
+"""
+  Entropy conservative integral + Lax-Wendroff penalty
+"""
+type ESLW2FaceIntegral <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLWFaceIntegral, 
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+
+end
+
+"""
+  Lax-Wendroff entropy penalty term only
+"""
+type ELW2PenaltyFaceIntegral <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ELWPenaltyFaceIntegral, 
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+
+end
+
 
 
 global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
@@ -538,6 +763,9 @@ global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
 "ELFPenaltyFaceIntegral" => ELFPenaltyFaceIntegral(),
 "ESLWFaceIntegral" => ESLWFaceIntegral(),
 "ELWPenaltyFaceIntegral" => ELWPenaltyFaceIntegral(),
+"ESLW2FaceIntegral" => ESLW2FaceIntegral(),
+"ELW2PenaltyFaceIntegral" => ELW2PenaltyFaceIntegral(),
+
 
 )
 

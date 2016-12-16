@@ -31,7 +31,7 @@ export calcBCNormal
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 # projections.jl functions
-export getProjectionMatrix, projectToXY, projectToNT
+export getProjectionMatrix, projectToXY, projectToNT, calcLength
 @doc """
 ### Utils.disassembleSolution
 

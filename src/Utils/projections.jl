@@ -185,6 +185,27 @@ end
 end
 
 """
+  Calculates the length of a vector, using a manually unrolled loop.
+  Methods are available for 2D and 3D.
+
+  Inputs:
+    params: an AbstractParamType{Tdim}, used to dispatch to the right method
+    nrm: the vector to calculate the length of.  Must have length 2 in 2D
+         and 3 in 3D
+
+  Outputs:
+    length of nrm
+"""
+@inline function calcLength(params::AbstractParamType{2}, nrm::AbstractVector)
+  return sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2])
+end
+
+@inline function calcLength(params::AbstractParamType{3}, nrm::AbstractVector)
+  return sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]) 
+end
+
+
+"""
   This function projects a vector x from x-y coordinates to normal-tangential
   (n-t) coordinates, where A is a projection matrix from x-y to n-t, obtained
   from getProjectionMatrix.  This function is a specialized matrix-vector
@@ -206,7 +227,7 @@ end
 
 function projectToNT(params::AbstractParamType{2}, P::AbstractMatrix, 
                      x::AbstractVector, b::AbstractVector)
-
+# regular multiplication
   m, n = size(P)
 
   # first loop: overwrite b
@@ -228,6 +249,7 @@ end
 
 function projectToNT(params::AbstractParamType{3}, P::AbstractMatrix, 
                      x::AbstractVector, b::AbstractVector)
+# regular multiplication
 
   m, n = size(P)
 
@@ -261,6 +283,7 @@ end
 """
 function projectToXY(params::AbstractParamType{2}, P::AbstractMatrix, 
                      x::AbstractVector, b::AbstractVector)
+# transpose multiplication
 
   m, n = size(P)
 
@@ -283,6 +306,7 @@ end
 
 function projectToXY(params::AbstractParamType{3}, P::AbstractMatrix, 
                      x::AbstractVector, b::AbstractVector)
+# transposed multiplication
 
   m, n = size(P)
 
