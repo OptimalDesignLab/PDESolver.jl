@@ -419,11 +419,11 @@ function runECTest(mesh, sbp, eqn, opts; test_ref=false)
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
 
-      for i=1:size(resL_code, 1)
-        for j=1:size(resR_code, 2)
+      for j=1:size(resL_code, 1)
+        for k=1:size(resR_code, 2)
 
-          @fact resL_code[i, j] --> roughly(resL_test2[i, j], atol=1e-12)
-          @fact resR_code[i, j] --> roughly(resR_test2[i, j], atol=1e-12)
+          @fact resL_code[j, k] --> roughly(resL_test2[j, k], atol=1e-12)
+          @fact resR_code[j, k] --> roughly(resR_test2[j, k], atol=1e-12)
         end
       end
 
@@ -631,10 +631,10 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     @fact resL_sum --> roughly(-resR_sum, atol=1e-13)
 
     if zero_penalty
-      for i=1:mesh.numNodesPerElement
+      for j=1:mesh.numNodesPerElement
         for p=1:mesh.numDofPerNode
-          @fact resL[p, i] --> roughly(0.0, atol=1e-13)
-          @fact resR[p, i] --> roughly(0.0, atol=1e-13)
+          @fact resL[p, j] --> roughly(0.0, atol=1e-13)
+          @fact resR[p, j] --> roughly(0.0, atol=1e-13)
         end
       end
     end
@@ -657,17 +657,17 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     resL_reduced2 = zeros(mesh.numNodesPerElement)
     resR_reduced2 = zeros(mesh.numNodesPerElement)
 
-    for i=1:mesh.numNodesPerElement
-      EulerEquationMod.convertToEntropy_(eqn.params, qL[:, i], wL)
-      EulerEquationMod.convertToEntropy_(eqn.params, qR[:, i], wR)
+    for j=1:mesh.numNodesPerElement
+      EulerEquationMod.convertToEntropy_(eqn.params, qL[:, j], wL)
+      EulerEquationMod.convertToEntropy_(eqn.params, qR[:, j], wR)
       scale!(wL, 1/eqn.params.gamma_1)
       scale!(wR, 1/eqn.params.gamma_1)
 
-      resL_reduced[i] = dot(wL, resL[:, i])
-      resR_reduced[i] = dot(wR, resR[:, i])
+      resL_reduced[j] = dot(wL, resL[:, j])
+      resR_reduced[j] = dot(wR, resR[:, j])
       
-      resL_reduced2[i] = dot(wL, resL2[:, i])
-      resR_reduced2[i] = dot(wR, resR2[:, i])
+      resL_reduced2[j] = dot(wL, resL2[:, j])
+      resR_reduced2[j] = dot(wR, resR2[:, j])
 
     end
 
