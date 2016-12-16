@@ -138,7 +138,7 @@ end
 """
   Calculate the face integral in an entropy stable manner using
   Lax-Wendroff type dissipation.  
-  This uses calcECFaceIntegral and calcLWEntropyPenaltyIntegral internally, 
+  This uses calcECFaceIntegral and calcLW2EntropyPenaltyIntegral internally, 
   see those functions for details.
 """
 function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
@@ -327,7 +327,7 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
-#  println("----- entered calcEntropyDissipativeIntegral -----")
+#  println("----- entered calcEntropyLWEntropyPenaltyIntegral -----")
 
   numDofPerNode = size(qL, 1)
 
@@ -494,7 +494,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
-#  println("----- entered calcEntropyDissipativeIntegral -----")
+#  println("----- entered calcLW2EntropyPenaltyIntegral -----")
 
   numDofPerNode = size(qL, 1)
 
@@ -723,14 +723,13 @@ end
 type ESLW2FaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLWFaceIntegral, 
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLW2FaceIntegral, 
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
-
 
   calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
 
@@ -742,7 +741,7 @@ end
 type ELW2PenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ELWPenaltyFaceIntegral, 
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ELW2PenaltyFaceIntegral, 
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
