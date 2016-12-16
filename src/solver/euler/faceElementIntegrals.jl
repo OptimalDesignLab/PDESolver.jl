@@ -2,6 +2,15 @@
 # the entire element
 include("IR_stab.jl")  # stabilization for the IR flux
 
+# naming convention
+# EC -> entropy conservative
+# ES -> entropy stable (ie. dissipative)
+# LF -> Lax-Friedrich
+# LW -> Lax-Wendroff
+#
+# so for example, ESLFFaceIntegral is an entropy stable face integral function
+# that uses Lax-Friedrich type dissipation
+
 #-----------------------------------------------------------------------------
 # entry point functions
 """
