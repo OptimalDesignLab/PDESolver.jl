@@ -122,6 +122,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
+        # println("element number = ", bndry_i.element-1, " face = ", bndry_i.face)
         q = sview(eqn.q_bndry, :, j, global_facenum)
         convertToConservative(eqn.params, q, q2)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
@@ -182,7 +183,25 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
               node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
 
   euler_flux = zeros(Tsol, length(q))
-  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
+  nx = nrm[1]
+  ny = nrm[2]
+
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac  
+  ny *= fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  
   val = euler_flux[2]
 
   return val

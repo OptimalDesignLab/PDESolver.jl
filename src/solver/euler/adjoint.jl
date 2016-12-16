@@ -213,7 +213,6 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         break
       end
     end
-
     start_index = mesh.bndry_offsets[itr2]
     end_index = mesh.bndry_offsets[itr2+1]
     idx_range = start_index:(end_index-1)
@@ -221,11 +220,11 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
 
     nfaces = length(bndry_facenums)
     q2 = zeros(Tsol, mesh.numDofPerNode)
-
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
+        vtx_arr = mesh.topo.face_verts[:,bndry_i.face]
         q = sview(eqn.q_bndry, :, j, global_facenum)
         convertToConservative(eqn.params, q, q2)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
@@ -247,6 +246,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
 
   return nothing
 end  # End function calcFunctionalDeriv
+
 
 @doc """
 ### EulerEquationMod.calcIntegrandDeriv

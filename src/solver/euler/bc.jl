@@ -251,6 +251,39 @@ end
 """->
 type isentropicVortexBC <: BCType
 end
+#=
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
+              q::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+
+  # getting qg
+  qg = params.qg
+  calcIsentropicVortex(x, params, qg)
+  # println("q = $(real(q))")
+
+  # Getting SAT terms
+  dq = zeros(qg)
+  dq = q - qg
+  sat = params.sat_vals
+  # println("sat pre = $sat")
+  calcSAT(params, nrm, q, dq, sat)
+  euler_flux = params.flux_vals1
+  v_vals = params.q_vals
+  nrm2 = params.nrm
+  # println("sat post = $sat")
+  convertFromNaturalToWorkingVars(params, q, v_vals)
+  calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
+
+  sat_fac = 1 # Multiplier for SAT term
+  for i=1:4
+    bndryflux[i] = sat_fac*sat[i]  + euler_flux[i]
+  end
+
+  return nothing
+end
+=#
 
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
@@ -259,14 +292,13 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
-#  println("entered isentropicOvrtexBC (low level)")
-
   # getting qg
   qg = params.qg
   calcIsentropicVortex(x, params, qg)
+  # println("q = $(real(q))")
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-#  LFSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
-#  AvgSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  # LFSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
+  # AvgSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   return nothing
 
@@ -330,6 +362,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
   nx *= fac  
   ny *= fac
 
+  # Get the normal momentum
   Unrm = nx*q[2] + ny*q[3]
 
   qg = params.qg
@@ -337,9 +370,8 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
     qg[i] = q[i]
   end
 
-  #qg = copy(q)
-
-  # calculate normal velocity
+  # Subtract the normal component of the momentum from \xi & \eta components 
+  # of the momentum
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
 
@@ -352,7 +384,17 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
   # params says we are using entropy variables
+  
+
   calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+  #=
+  press = calcPressure(params, v_vals)
+  U = (v_vals[2]*nx2 + v_vals[3]*ny2)/v_vals[1]
+  bndryflux[1] = q[1]*U
+  bndryflux[2] = nx2*press
+  bndryflux[3] = ny2*press
+  bndryflux[4] = (v_vals[4] + press)*U
+  =#
 
 return nothing
 

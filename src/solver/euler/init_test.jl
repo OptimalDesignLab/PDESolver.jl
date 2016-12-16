@@ -1,5 +1,4 @@
 # test parts
-include("input_vals_airfoil.jl")
 # include("pressure.jl")
 
 resize!(ARGS, 1)
@@ -58,9 +57,13 @@ end
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 println("objective.val = $(objective.val)")
 
+
 # Calculate the adjoint vector
 adjoint_vec = zeros(Tsol, mesh.numDof)
 calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+
+saveSolutionToMesh(mesh, real(adjoint_vec))
+writeVisFiles(mesh, "adjoint_field")
 
 if MPI.Initialized()
   MPI.Finalize()

@@ -9,7 +9,7 @@ facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
 
 
   @fact mesh.isDG --> false
-  @fact opts["functional_name1"] --> "qflux" 
+  @fact opts["functional_name1"] --> "qflux"
   @fact opts["analytical_functional_val"] --> roughly(2*(exp(1) - 1), atol=1e-12)
   @fact opts["geom_edges_functional1"] --> [2,3]
 
@@ -38,19 +38,32 @@ facts("--- Testing Boundary Functional Computation on DG Mesh ---") do
 
   rm("./functional_error1.dat") # Delete the file
 end
-#=
+
+facts("--- Testing Objective Function Computation On a Boundary ---") do
+
+  inclure("input_vals_functional_DG.jl")
+
+end # End facts("--- Testing Objective Function Computation On a Boundary ---")
+
 facts("--- Testing Adjoint Computation on DG Mesh ---") do
 
-  @fact mesh.isDG --> true
-  @fact opts["calc_adjoint"] --> true
+  ARGS[1] = "input_vals_functional_DG.jl"
+  include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
 
+  context("check for an objective function") do
+
+    @fact mesh.isDG --> true
+    @fact opts["calc_adjoint"] --> false
+
+    
+  end # End Context
+  #=
   fname = "./adjoint_vector.dat"
   adjoint_vec = readdlm(fname)
   for i = 1:length(adjoint_vec)
     @fact adjoint_vec[i] --> roughly(-1.0 , atol=1e-10)
   end
-
+  =#
   rm("./adjoint_vector.dat")
 
 end
-=#

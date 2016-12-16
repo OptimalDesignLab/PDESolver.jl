@@ -27,12 +27,12 @@ facts("--- Testing Objective Function Computation On a Boundary ---") do
   arg_dict["objective_function"] = "drag"
   arg_dict["geom_faces_objective"] = [3]
 
-  f = open("input_vals_vortex_objective_computation_DG,jl", "w")
+  f = open("input_vals_vortex_objective_computation_DG.jl", "w")
   println(f, "arg_dict = ")
   println(f, arg_dict)
   close(f)
 
-  ARGS[1] = "input_vals_vortex_objective_computation_DG,jl"
+  ARGS[1] = "input_vals_vortex_objective_computation_DG.jl"
   include("../src/solver/euler/startup.jl")
 
   # Assert basic facts
