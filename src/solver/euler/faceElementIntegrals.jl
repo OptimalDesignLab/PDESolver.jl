@@ -593,7 +593,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     # multiply by diagonal Lambda and S2, also include the scalar
     # wface and len_fac components
     for j=1:length(tmp2)
-      tmp2[j] *= len_fac*sbpface.wface[i]*Lambda[j]*S2[j]
+      tmp2[j] *= len_fac*sbpface.wface[i]*absvalue(Lambda[j])*S2[j]
     end
     smallmatvec!(Y, tmp2, tmp1)
     projectToXY(params, P, tmp1, tmp2)

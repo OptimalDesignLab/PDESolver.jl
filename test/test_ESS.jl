@@ -912,9 +912,9 @@ facts("----- testing ESS -----") do
     println("testing LW dissipation")
     runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=false)
     println("finished testing LW dissipation")
-#    println("testing LW2 dissipation")
-#    runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
-#    println("finished testing LW2 dissipation")
+    println("testing LW2 dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
+    println("finished testing LW2 dissipation")
 
 #    testLW(mesh, sbp, eqn, opts)
     # check polynomial
