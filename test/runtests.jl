@@ -40,8 +40,15 @@ include("test_dg.jl")
 include("test_GLS3.jl")
 # TODO: uncomment when SBP is fixed
 #include("test_modes.jl")
+
+ARGS[1] = "input_vals_3d.jl"
+include(STARTUP_PATH)
 include("test_3d.jl")
+
+ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
+include(STARTUP_PATH)  # initialization and construction
 include("test_adjoint.jl")
+
 include("test_flux.jl")
 include("test_ESS.jl")
 include("test_rk4.jl")
