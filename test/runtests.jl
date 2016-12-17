@@ -19,10 +19,21 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 # insert a command line argument
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_channel.jl"
+include(STARTUP_PATH)  # initialization and construction
+fill!(eqn.res_vec, 0.0)
+
 include("test_empty.jl")
 include("test_input.jl")
 include("test_complexify.jl")
+
 include("test_lowlevel.jl")
+
+opts["Flux_name"] = "RoeFlux"
+opts["use_DG"] = true
+make_input(opts, "input_vals_channel_dg")
+ARGS[1] = "input_vals_channel_dg.jl"
+include(STARTUP_PATH)
+
 include("test_dg.jl")
 #include("test_simplemesh.jl")
 include("test_GLS3.jl")
