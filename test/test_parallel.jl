@@ -1,5 +1,5 @@
 # run tests related to parallel functionality that are not actually parallel
-
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -21,22 +21,29 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 
 
 resize!(ARGS, 1)
-ARGS[1] = "input_vals_vortex3.jl"
+=#
 
-cd("./rk4/serial")
-include(STARTUP_PATH)
-cd("../parallel")
+function test_parallel()
+  ARGS[1] = "input_vals_vortex3.jl"
 
-arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-make_input(arg_dict, "input_vals_parallel")
+  cd("./rk4/serial")
+  include(STARTUP_PATH)
+  cd("../parallel")
 
-cd("../../newton/serial")
-ARGS[1] = "input_vals_vortex3.jl"
-include(STARTUP_PATH)
+  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(arg_dict, "input_vals_parallel")
+
+  cd("../../newton/serial")
+  ARGS[1] = "input_vals_vortex3.jl"
+  include(STARTUP_PATH)
 
 
-cd("../parallel")
-arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-make_input(arg_dict, "input_vals_parallel")
+  cd("../parallel")
+  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(arg_dict, "input_vals_parallel")
 
+  return nothing
+end
+
+test_parallel()
 
