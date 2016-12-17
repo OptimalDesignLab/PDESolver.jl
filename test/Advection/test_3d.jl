@@ -1,4 +1,4 @@
-
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -16,23 +16,19 @@ using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
-
+=#
 function clean_dict(collection)
   for i in keys(collection)
     delete!(collection, i)
   end
 end
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
+#global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
 # insert a command line argument
 
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_3d.jl"
-include(STARTUP_PATH)
 
-facts("----- Testing 3D -----") do
-
-  facts("----- Testing SummationByParts -----") do
+function test_3d_sbp(mesh, sbp, eqn, opts)
+  facts("----- Testing 3D SummationByParts -----") do
     q = ones(1, mesh.numNodesPerElement, 2)
     res = zeros(q)
     weakdifferentiate!(sbp, 1, q, res, trans=false)
@@ -44,6 +40,7 @@ facts("----- Testing 3D -----") do
     end
 
   end
+
   # test constant IC -> zero residual
   opts["use_src_term"] = false
   opts["BC1_name"] = "constantBC"
@@ -58,6 +55,12 @@ facts("----- Testing 3D -----") do
   for i=1:length(eqn.res)
     @fact eqn.res[i] --> roughly(0.0, atol=1e-13)
   end
+
+
+  return nothing
+end
+
+test_3d_sbp(mesh, sbp, eqn, opts)
 
 function test_bc(flux_exp)
 # test summing boundary condition
@@ -84,7 +87,7 @@ function test_bc(flux_exp)
 end
 
 
-
+function test_3d_bcsolver(mesh, sbp, eqn, opts)
   facts("----- Testing BCSolver -----") do
     # check that the solver produces the regular flux when qL = qR
     q2 = rand(1, mesh.numNodesPerElement, mesh.numEl)
@@ -116,12 +119,18 @@ end
           @fact eqn.flux_parametric[1, j, i, d] --> roughly(flux_parametric[d], atol=1e-13)
         end
 
-         @fact bndryflux_calc --> roughly(net_flux, atol=1e-13)
-       end
-     end
-     eqn.q = q1
-   end
+        @fact bndryflux_calc --> roughly(net_flux, atol=1e-13)
+      end
+    end
+    eqn.q = q1
+  end  # end facts block
 
+  return nothing
+end
+
+test_3d_bcsolver(mesh, sbp, eqn, opts)
+
+function test_3d_boundaryflux(mesh, sbp, eqn, opts)
    facts("----- Testing boundary flux calculation -----") do
      # set alpha_x = 1. all others zero, q = constant, check flux
      fill!(eqn.q, 2.0)
@@ -153,6 +162,12 @@ end
 
    end
 
+   return nothing
+end
+
+test_3d_boundaryflux(mesh, sbp, eqn, opts)
+
+function test_3d_faceflux(mesh, sbp, eqn, opts)
   facts("----- Testing face flux -----") do
     # the interpolation should be exact for this case
     AdvectionEquationMod.ICp1(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -178,9 +193,9 @@ end
         @fact q_calc2 --> roughly(q_exp, atol=1e-13)
       end
     end
+  end  # end facts block
 
-
-  end
-
-
+  return nothing
 end
+
+test_3d_faceflux(mesh, sbp, eqn, opts)
