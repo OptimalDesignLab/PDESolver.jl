@@ -27,12 +27,8 @@ end
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
 # insert a command line argument
 =#
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_3d_gamma.jl"
-include(STARTUP_PATH)
 
-facts("----- Testing 3D -----") do
-
+function test_gamma_sbp(mesh, sbp, eqn, opts)
   facts("----- Testing SummationByParts -----") do
     q = ones(1, mesh.numNodesPerElement, 2)
     res = zeros(q)
@@ -44,21 +40,29 @@ facts("----- Testing 3D -----") do
       end
     end
 
-  end
-  # test constant IC -> zero residual
-  opts["use_src_term"] = false
-  opts["BC1_name"] = "constantBC"
-  fill!(eqn.res, 0.0)
-  fill!(eqn.q_vec, 2.0)
-  fill!(eqn.q, 2.0)
-  AdvectionEquationMod.ICConstant(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
-  evalAdvection(mesh, sbp, eqn, opts)
+    # test constant IC -> zero residual
+    opts["use_src_term"] = false
+    opts["BC1_name"] = "constantBC"
+    fill!(eqn.res, 0.0)
+    fill!(eqn.q_vec, 2.0)
+    fill!(eqn.q, 2.0)
+    AdvectionEquationMod.ICConstant(mesh, sbp, eqn, opts, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
+    evalAdvection(mesh, sbp, eqn, opts)
 
-  for i=1:length(eqn.res)
-    @fact eqn.res[i] --> roughly(0.0, atol=1e-13)
-  end
+    for i=1:length(eqn.res)
+      @fact eqn.res[i] --> roughly(0.0, atol=1e-13)
+    end
+
+  end  # end facts block
+
+  return nothing
+end
+
+test_gamma_sbp(mesh, sbp, eqn, opts)
+
+
 
 function test_bc(flux_exp)
 # test summing boundary condition
@@ -85,7 +89,7 @@ function test_bc(flux_exp)
 end
 
 
-
+function test_gamma_bcsolver(mesh, sbp, eqn, opts)
   facts("----- Testing BCSolver -----") do
     # check that the solver produces the regular flux when qL = qR
     q2 = rand(1, mesh.numNodesPerElement, mesh.numEl)
@@ -117,12 +121,18 @@ end
           @fact eqn.flux_parametric[1, j, i, d] --> roughly(flux_parametric[d], atol=1e-13)
         end
 
-         @fact bndryflux_calc --> roughly(net_flux, atol=1e-13)
-       end
-     end
-     eqn.q = q1
-   end
+        @fact bndryflux_calc --> roughly(net_flux, atol=1e-13)
+      end
+    end
+    eqn.q = q1
+  end  # end facts block
 
+  return nothing
+end
+
+test_gamma_bcsolver(mesh, sbp, eqn, opts)
+
+function test_gamma_bcflux(mesh, sbp, eqn, opts)
    facts("----- Testing boundary flux calculation -----") do
      # set alpha_x = 1. all others zero, q = constant, check flux
      fill!(eqn.q, 2.0)
@@ -150,10 +160,14 @@ end
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 1.0
      test_bc(3*8.0)
+   end  # end facts block
 
+  return nothing
+end
 
-   end
+test_gamma_bcflux(mesh, sbp, eqn, opts)
 
+function test_gamma_faceflux(mesh, sbp, eqn, opts)
   facts("----- Testing face flux -----") do
     # the interpolation should be exact for this case
     AdvectionEquationMod.ICp1(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -179,9 +193,9 @@ end
         @fact q_calc2 --> roughly(q_exp, atol=1e-13)
       end
     end
+  end  # end facts block
 
-
-  end
-
-
+  return nothing
 end
+
+test_gamma_faceflux(mesh, sbp, eqn, opts)

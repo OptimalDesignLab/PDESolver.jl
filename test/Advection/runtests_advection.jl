@@ -34,9 +34,12 @@ include("test_lowlevel.jl")
 
 ARGS[1] = "input_vals_3d.jl"
 include(STARTUP_PATH)
-
 include("test_3d.jl")
+
+ARGS[1] = "input_vals_3d_gamma.jl"
+include(STARTUP_PATH)
 include("test_gamma.jl")
+
 include("test_mms.jl")
 include("test_jac.jl")
 include("test_GLS2.jl")
