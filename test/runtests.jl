@@ -46,10 +46,10 @@ include(STARTUP_PATH)
 include("test_3d.jl")
 
 ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
-include(STARTUP_PATH)  # initialization and construction
+include(STARTUP_PATH)
 include("test_adjoint.jl")
-
 include("test_flux.jl")
+
 include("test_ESS.jl")
 include("test_rk4.jl")
 

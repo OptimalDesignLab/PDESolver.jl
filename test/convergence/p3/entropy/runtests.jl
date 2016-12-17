@@ -1,45 +1,52 @@
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-using FactCheck
+#global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
+#using FactCheck
 
 #run(`cptest.sh`)
 #run(`cperr.sh`)
-facts("---- P1 Entropy Convergence Tests -----") do
-start_dir = pwd()
 
-resize!(ARGS, 1)
+function test_convergence_p3_entropy()
+  facts("---- P3 Entropy Convergence Tests -----") do
+  start_dir = pwd()
 
-cd("./m1")
-ARGS[1] = "input_vals_vortex3.jl"
-include(STARTUP_PATH)
-ARGS[1] = "input_vals_vortex4.jl"
-include(STARTUP_PATH)
+  resize!(ARGS, 1)
 
-cd("../m2")
-ARGS[1] = "input_vals_vortex3.jl"
-include(STARTUP_PATH)
-ARGS[1] = "input_vals_vortex4.jl"
-include(STARTUP_PATH)
+  cd("./m1")
+  ARGS[1] = "input_vals_vortex3.jl"
+  include(STARTUP_PATH)
+  ARGS[1] = "input_vals_vortex4.jl"
+  include(STARTUP_PATH)
 
-cd("..")
-include("calc_line.jl")
+  cd("../m2")
+  ARGS[1] = "input_vals_vortex3.jl"
+  include(STARTUP_PATH)
+  ARGS[1] = "input_vals_vortex4.jl"
+  include(STARTUP_PATH)
 
-slope = calc_line()
-println("slope = ", slope)
+  cd("..")
+  include("calc_line.jl")
 
-data = readdlm("err_data.dat")
-err_vals = data[:, 2]
-#println("err_vals = ", err_vals)
+  slope = calc_line()
+  println("slope = ", slope)
 
-slope_val = 3.64
-slope_margin = 0.1
+  data = readdlm("err_data.dat")
+  err_vals = data[:, 2]
+  #println("err_vals = ", err_vals)
 
-@fact slope => greater_than(slope_val - slope_margin)
-@fact slope => less_than(slope_val + slope_margin)
+  slope_val = 3.64
+  slope_margin = 0.1
 
-err_val = 5.76e-5
-slope_fac = 1.25
-println("err_vals[1] = ", err_vals[1])
-@fact err_vals[1] => greater_than(err_val/slope_fac)
-@fact err_vals[1] => less_than(err_val*slope_fac)
+  @fact slope => greater_than(slope_val - slope_margin)
+  @fact slope => less_than(slope_val + slope_margin)
 
+  err_val = 5.76e-5
+  slope_fac = 1.25
+  println("err_vals[1] = ", err_vals[1])
+  @fact err_vals[1] => greater_than(err_val/slope_fac)
+  @fact err_vals[1] => less_than(err_val*slope_fac)
+
+  end
+
+  return nothing
 end
+
+test_convergence_p3_entropy()

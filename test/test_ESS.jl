@@ -464,27 +464,31 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
 end
 
-facts("----- testing ESS -----") do
-  ARGS[1] = "input_vals_channel_dg_large.jl"
-  include(STARTUP_PATH)
-  # evaluate the residual to confirm it is zero
-  EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
+function test_ESS()
+  facts("----- testing ESS -----") do
+    ARGS[1] = "input_vals_channel_dg_large.jl"
+    include(STARTUP_PATH)
+    # evaluate the residual to confirm it is zero
+    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
-  println("checking channel flow")
-  runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)
+    println("checking channel flow")
+    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)
 
-  println("\nchecking ICExp")
-  ICFunc = EulerEquationMod.ICDict["ICExp"]
-  ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  scale!(eqn.q_vec, 0.01)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+    println("\nchecking ICExp")
+    ICFunc = EulerEquationMod.ICDict["ICExp"]
+    ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+    scale!(eqn.q_vec, 0.01)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    for i=1:mesh.numEl
+      for j=1:mesh.numNodesPerElement
+        eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+      end
     end
-  end
-  runESSTest(mesh, sbp, eqn, opts)
+    runESSTest(mesh, sbp, eqn, opts)
 
-end
+  end  # end facts block
 
+  return nothing
+end  # end functions
 
+test_ESS()
