@@ -227,7 +227,7 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString})
               end
             end
 
-            make_input(input_mod_i["new_fname"], arg_dict)
+            make_input(arg_dict, input_mod_i["new_fname"])
 
             ARGS[1] = new_fname
             include(STARTUP_PATH)

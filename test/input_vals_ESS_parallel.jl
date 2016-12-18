@@ -1,4 +1,4 @@
-arg_dict = Dict{Any, Any}(
+arg_dict = Dict{ASCIIString, Any}(
 "dimension" => 2,
 "use_DG" => true,
 "operator_type" => "SBPOmega",

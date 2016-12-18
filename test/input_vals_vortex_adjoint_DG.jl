@@ -3,7 +3,7 @@
 # it is a little bit dangerous letting the user run arbitrary code
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
-arg_dict = Dict{Any, Any}(
+arg_dict = Dict{ASCIIString, Any}(
 "run_type" => 5,
 "order" => 1,
 "real_time" => true,
