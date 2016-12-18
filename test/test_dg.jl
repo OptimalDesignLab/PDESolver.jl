@@ -22,6 +22,10 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 =#
 # insert a command line argument
 
+# input file to modify, same for all test functions
+const test_dg_inputfile = "input_vals_channel.jl"
+const test_dg_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
+
 function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG flux -----") do
 
@@ -84,7 +88,8 @@ function test_dg_flux(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_dg_flux(mesh, sbp, eqn, opts)
+#test_dg_flux(mesh, sbp, eqn, opts)
+add_func3!(EulerTests, test_dg_flux, test_dg_inputfile, test_dg_moddict, [TAG_FLUX])
 
 function test_dg_boundary(mesh, sbp, eqn, opts)
 
@@ -128,7 +133,8 @@ function test_dg_boundary(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_dg_boundary(mesh, sbp, eqn, opts)
+#test_dg_boundary(mesh, sbp, eqn, opts)
+add_func3!(EulerTests, test_dg_boundary, test_dg_inputfile, test_dg_moddict, [TAG_BC])
 
 function test_dg_uniform(mesh, sbp, eqn, opts)
 
@@ -148,4 +154,5 @@ function test_dg_uniform(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_dg_uniform(mesh, sbp, eqn, opts)
+#test_dg_uniform(mesh, sbp, eqn, opts)
+add_func3!(EulerTests, test_dg_uniform, test_dg_inputfile, test_dg_moddict)

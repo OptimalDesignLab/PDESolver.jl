@@ -1,7 +1,7 @@
 # test complexify.jl
 
-using FactCheck
-include(joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
+#using FactCheck
+#include(joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 
 function test_complexify()
 
@@ -25,4 +25,5 @@ function test_complexify()
   end
 end
 
-test_complexify()
+#test_complexify()
+add_func1!(EulerTests, test_complexify, [TAG_COMPLEX])

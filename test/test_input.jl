@@ -19,4 +19,5 @@ function test_input()
   end
 end
 
-test_input()
+#test_input()
+add_func1!(EulerTests, test_input)

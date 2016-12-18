@@ -9,5 +9,6 @@ function test_empty()
   end
 end
 
-test_empty()
+#test_empty()
+add_func1!(EulerTests, test_empty)
 

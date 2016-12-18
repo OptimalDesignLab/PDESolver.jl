@@ -1,4 +1,4 @@
-using ArrayViews
+#using ArrayViews
 # using input_vals_channel.jl
 
 function test_lowlevel_mesh(mesh, sbp, eqn, opts)
@@ -68,8 +68,8 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
   end
 end # end function
 
-test_lowlevel_mesh(mesh, sbp, eqn, opts)
-
+#test_lowlevel_mesh(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_mesh, "input_vals_channel.jl")
 
 function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
@@ -191,7 +191,8 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
+#test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS])
 
 function test_lowlevel_convert(mesh, sbp, eqn, opts)
    opts["variable_type"] = :entropy
@@ -285,7 +286,8 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
   return nothing
 end
      
-test_lowlevel_convert(mesh, sbp, eqn, opts)
+#test_lowlevel_convert(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS])
 
 function test_lowlevel_calc(mesh, sbp, eqn, opts)
    opts["variable_type"] = :entropy
@@ -317,7 +319,8 @@ function test_lowlevel_calc(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_convert(mesh, sbp, eqn, opts)
+#test_lowlevel_convert(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS])
 
 function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
@@ -407,8 +410,8 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_boundary(mesh, sbp, eqn, opts)
-
+#test_lowlevel_boundary(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_boundary, "input_vals_channel.jl", [TAG_BC, TAG_FLUX])
 
 
 function test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
@@ -465,8 +468,8 @@ function test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
-
+#test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_commonfuncs, "input_vals_channel.jl")
 
 function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 
@@ -543,7 +546,8 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_dataprep(mesh, sbp, eqn, opts)
+#test_lowlevel_dataprep(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_dataprep, "input_vals_channel.jl", [TAG_FLUX])
 
 function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
@@ -607,6 +611,6 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_integrals(mesh, sbp, eqn, opts)
-
+#test_lowlevel_integrals(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_lowlevel_integrals, "input_vals_channel.jl", [TAG_BC, TAG_FLUX])
 

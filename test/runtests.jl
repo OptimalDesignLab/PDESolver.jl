@@ -1,42 +1,67 @@
+
+using FactCheck
+using ArrayViews
+using ODLCommonTools
+import ODLCommonTools.sview
+include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
+include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+#=
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
-
+=#
+#=
 using PDESolver
 #using Base.Test
-using FactCheck
-using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+=#
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 # insert a command line argument
 resize!(ARGS, 1)
-ARGS[1] = "input_vals_channel.jl"
-include(STARTUP_PATH)  # initialization and construction
-fill!(eqn.res_vec, 0.0)
+ARGS[1] = ""
+#ARGS[1] = "input_vals_channel.jl"
+
+include("./TestSystem.jl")
+# define tags that will be used
+global const TAG_COMPLEX = "tag_complex"
+global const TAG_BC = "tag_bc"
+global const TAG_FLUX = "tag_flux"
+global const TAG_ENTROPYVARS = "tag_entropyvars"
+# test list
+global const EulerTests = TestList()
+
+#include(STARTUP_PATH)  # initialization and construction
+#fill!(eqn.res_vec, 0.0)
 
 include("test_empty.jl")
 include("test_input.jl")
+
+
 include("test_complexify.jl")
 
 include("test_lowlevel.jl")
 
+
+#=
 opts["Flux_name"] = "RoeFlux"
 opts["use_DG"] = true
 make_input(opts, "input_vals_channel_dg")
 ARGS[1] = "input_vals_channel_dg.jl"
 include(STARTUP_PATH)
+=#
 
 include("test_dg.jl")
-#include("test_simplemesh.jl")
+# run tests
+run_testlist(EulerTests, [TAG_DEFAULT])
 
+
+#include("test_simplemesh.jl")
+#=
 include("test_GLS3.jl")
 # TODO: uncomment when SBP is fixed
 #include("test_modes.jl")
@@ -60,7 +85,7 @@ cd("..")
 
 include("Utils.jl")
 include("test_parallel.jl")
-
+=#
 if MPI.Initialized()
   MPI.Finalize()
 end
