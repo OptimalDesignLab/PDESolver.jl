@@ -18,15 +18,19 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection
 # insert a command line argument
 resize!(ARGS, 1)
 
-facts("----- Testing Parallel 4 -----") do
+function runtests_parallel4()
+  facts("----- Testing Parallel 4 -----") do
 
-  start_dir = pwd()
-  cd("./energy")
-  include(joinpath(pwd(), "runtests_parallel.jl"))
-  cd(start_dir)
- 
+    start_dir = pwd()
+    cd("./energy")
+    include(joinpath(pwd(), "runtests_parallel.jl"))
+    cd(start_dir)
+  end
 
+  return nothing
 end
+
+runtests_parallel4()
 
 if MPI.Initialized()
   MPI.Finalize()

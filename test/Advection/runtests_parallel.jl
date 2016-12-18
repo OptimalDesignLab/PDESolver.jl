@@ -18,50 +18,53 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection
 # insert a command line argument
 resize!(ARGS, 1)
 
-facts("----- Testing Parallel -----") do
+function runtests_parallel()
+  facts("----- Testing Parallel -----") do
 
-  start_dir = pwd()
-  cd ("./rk4/parallel")
-  ARGS[1] = "input_vals_parallel_runp.jl"
-  include(STARTUP_PATH)
+    start_dir = pwd()
+    cd ("./rk4/parallel")
+    ARGS[1] = "input_vals_parallel_runp.jl"
+    include(STARTUP_PATH)
 
-  datas = readdlm("../serial/error_calc.dat")
-  datap = readdlm("error_calc.dat")
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
 
-  @fact datas[1] --> roughly(datap[1], atol=1e-13)
-  @fact datas[2] --> roughly(datap[2], atol=1e-13)
-  cd("../../")
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    cd("../../")
 
-  cd("./newton/parallel")
-  ARGS[1] = "input_vals_parallel.jl"
-  include(STARTUP_PATH)
+    cd("./newton/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    include(STARTUP_PATH)
 
-  datas = readdlm("../serial/error_calc.dat")
-  datap = readdlm("./error_calc.dat")
-  @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("./error_calc.dat")
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
 
-  cd(start_dir)
+    cd(start_dir)
 
-  cd("./rk4_3d/parallel")
-  ARGS[1] = "input_vals_parallel.jl"
-  include(STARTUP_PATH)
+    cd("./rk4_3d/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    include(STARTUP_PATH)
 
-  datas = readdlm("../serial/error_calc.dat")
-  datap = readdlm("error_calc.dat")
-  @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
 
-  cd(start_dir)
+    cd(start_dir)
 
-  cd("./newton_3d/parallel")
-  ARGS[1] = "input_vals_parallel.jl"
-  include(STARTUP_PATH)
-  datas = readdlm("../serial/error_calc.dat")
-  datap = readdlm("error_calc.dat")
-  @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    cd("./newton_3d/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    include(STARTUP_PATH)
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+  end  # end facts block
 
- 
-
+  return nothing
 end
+
+runtests_parallel()
 
 if MPI.Initialized()
   MPI.Finalize()
