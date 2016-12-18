@@ -44,14 +44,6 @@ include("test_mms.jl")
 include("test_jac.jl")
 include("test_GLS2.jl")
 
-ARGS[1] = "input_vals_channel.jl"
-include(STARTUP_PATH)
-
-arg_dict["use_DG"] = true
-arg_dict["Flux_name"] = "LFFlux"
-arg_dict["BC1_name"] = "p1BC"
-
-make_input(arg_dict, "input_vals_channelDG")
 ARGS[1] = "input_vals_channelDG.jl"
 include(STARTUP_PATH)
 include("test_dg.jl")

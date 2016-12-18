@@ -1,6 +1,3 @@
-# insert a command line argument
-resize!(ARGS, 1)
-
 function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG Flux ------") do
     eqn.params.LFalpha = 1.0
