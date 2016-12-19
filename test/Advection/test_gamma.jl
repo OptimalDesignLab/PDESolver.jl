@@ -1,32 +1,6 @@
+# test SBPGamma operators
 
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using AdvectionEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-
-function clean_dict(collection)
-  for i in keys(collection)
-    delete!(collection, i)
-  end
-end
-
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-# insert a command line argument
-=#
+global const test_gamma_inputfile = "input_vals_3d_gamma.jl"
 
 function test_gamma_sbp(mesh, sbp, eqn, opts)
   facts("----- Testing SummationByParts -----") do
@@ -60,8 +34,8 @@ function test_gamma_sbp(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_gamma_sbp(mesh, sbp, eqn, opts)
-
+#test_gamma_sbp(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_gamma_sbp, test_gamma_inputfile)
 
 
 function test_bc(flux_exp)
@@ -130,7 +104,8 @@ function test_gamma_bcsolver(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_gamma_bcsolver(mesh, sbp, eqn, opts)
+#test_gamma_bcsolver(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_gamma_bcsolver, test_gamma_inputfile, [TAG_BC, TAG_FLUX])
 
 function test_gamma_bcflux(mesh, sbp, eqn, opts)
    facts("----- Testing boundary flux calculation -----") do
@@ -165,7 +140,8 @@ function test_gamma_bcflux(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_gamma_bcflux(mesh, sbp, eqn, opts)
+#test_gamma_bcflux(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_gamma_bcflux, test_gamma_inputfile, [TAG_BC])
 
 function test_gamma_faceflux(mesh, sbp, eqn, opts)
   facts("----- Testing face flux -----") do
@@ -198,4 +174,5 @@ function test_gamma_faceflux(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_gamma_faceflux(mesh, sbp, eqn, opts)
+#test_gamma_faceflux(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_gamma_faceflux, test_gamma_inputfile, [TAG_BC])

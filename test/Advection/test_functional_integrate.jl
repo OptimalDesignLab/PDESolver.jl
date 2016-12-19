@@ -1,5 +1,5 @@
 # test boundary forces
-function test_function_integrate()
+function test_functional_integrate()
 facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
     clean_dict(arg_dict)
     ARGS[1] = "input_vals_functional_CG.jl"
@@ -56,4 +56,5 @@ facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
   return nothing
 end
 
-test_function_integrate()
+#test_functional_integrate()
+add_func1!(AdvectionTests, test_functional_integrate)

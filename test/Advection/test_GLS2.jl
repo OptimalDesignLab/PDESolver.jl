@@ -82,6 +82,7 @@ function test_GLS2_term()
 end
 
 test_GLS2_term()
+add_func1!(AdvectionTests, test_GLS2_term)
 
 function test_GLS2_jac()
   # finite difference checks
@@ -177,3 +178,4 @@ function test_GLS2_jac()
 end  # end function
 
 test_GLS2_jac()
+add_func1!(AdvectionTests, test_GLS2_jac)

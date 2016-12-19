@@ -205,4 +205,5 @@ function test_parallel_serialpart()
   cd(start_dir)
 end
 
-test_parallel_serialpart()
+#test_parallel_serialpart()
+add_func1!(AdvectionTests, test_parallel_serialpart)

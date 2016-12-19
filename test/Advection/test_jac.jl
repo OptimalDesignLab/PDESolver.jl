@@ -69,7 +69,7 @@ function test_jac_res()
 end
 
 test_jac_res()
-
+add_func1!(AdvectionTests, test_jac_res)
 function test_jac_calc()
   facts("----- Testing Jacobian calculation -----") do
     # back to finite differences

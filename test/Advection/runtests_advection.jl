@@ -24,37 +24,49 @@ function clean_dict(collection)
 end
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-# insert a command line argument
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_channel.jl"
-include(STARTUP_PATH)  # initialization and construction
-fill!(eqn.res_vec, 0.0)
+
+#------------------------------------------------------------------------------
+# define tests and tags
+
+include("../TestSystem.jl")
+# define tags that will be used
+global const TAG_COMPLEX = "tag_complex"
+global const TAG_BC = "tag_bc"
+global const TAG_FLUX = "tag_flux"
+global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
+global const TAG_CONVERGENCE = "tag_convergence"
+
+# test list
+global const AdvectionTests = TestList()
 
 include("test_lowlevel.jl")
-
-ARGS[1] = "input_vals_3d.jl"
-include(STARTUP_PATH)
 include("test_3d.jl")
-
-ARGS[1] = "input_vals_3d_gamma.jl"
-include(STARTUP_PATH)
 include("test_gamma.jl")
-
 include("test_mms.jl")
 include("test_jac.jl")
 include("test_GLS2.jl")
-
-ARGS[1] = "input_vals_channelDG.jl"
-include(STARTUP_PATH)
 include("test_dg.jl")
-
 include("test_functional_integrate.jl")
 include("test_parallel.jl")
+include( "./energy/runtests.jl")
 
-start_dir = pwd()
-cd("./energy")
-include( joinpath(pwd(), "runtests.jl"))
-cd(start_dir)
+#------------------------------------------------------------------------------
+# run tests
+facts("----- Running Advection tests -----") do
+  nargs = length(ARGS)
+  if nargs == 0
+    tags = ASCIIString[TAG_DEFAULT]
+  else
+    tags = Array(ASCIIString, nargs)
+    copy!(tags, ARGS)
+  end
+
+  resize!(ARGS, 1)
+  ARGS[1] = ""
+  run_testlist(AdvectionTests, tags)
+end
+
+
 
 if MPI.Initialized()
   MPI.Finalize()

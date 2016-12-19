@@ -1,7 +1,3 @@
-include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
-fill!(eqn.res_vec, 0.0)
-using ArrayViews
-
 type twoxBC <: BCType
 end
 function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, dxidx, nrm, t)
@@ -10,7 +6,8 @@ function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, dx
   return bndryflux
 end
 
-
+# input file used by all tests
+global const test_lowlevel_inputfile = "input_vals_channel.jl"
 
 function test_lowlevel_mesh(mesh, sbp, eqn, opts)
   facts("--- Testing Mesh --- ") do
@@ -68,7 +65,8 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_mesh(mesh, sbp, eqn, opts)
+#test_lowlevel_mesh(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_lowlevel_mesh, test_lowlevel_inputfile)
 
 function test_lowlevel_core(mesh, sbp, eqn, opts)
   facts("--- Testing Functions Within AdvectionData_--- ") do
@@ -118,7 +116,8 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_core(mesh, sbp, eqn, opts)
+#test_lowlevel_core(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_lowlevel_core, test_lowlevel_inputfile)
 
 function test_lowlevel_common(mesh, sbp, eqn, opts)
   facts("--- Testing common functions ---") do
@@ -139,7 +138,8 @@ function test_lowlevel_common(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_common(mesh, sbp, eqn, opts)
+#test_lowlevel_common(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_lowlevel_common, test_lowlevel_inputfile)
 
 function test_lowlevel_bc(mesh, sbp, eqn, opts)
   facts("--- Testing Boundary Function ---") do
@@ -228,7 +228,8 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_lowlevel_bc(mesh, sbp, eqn, opts)
+#test_lowlevel_bc(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_lowlevel_bc, test_lowlevel_inputfile, [TAG_BC])
 
 function test_lowlevel_volumeintegrals()
   facts("--- Testing Volume Integrals ---")  do
@@ -430,8 +431,8 @@ function test_lowlevel_volumeintegrals()
   return nothing
 end
 
-test_lowlevel_volumeintegrals()
-
+#test_lowlevel_volumeintegrals()
+add_func2!(AdvectionTests, test_lowlevel_volumeintegrals, test_lowlevel_inputfile, [TAG_VOLUMEINTEGRALS])
   #=
   context("--- Testing evalInteriorFlux ---") do
     

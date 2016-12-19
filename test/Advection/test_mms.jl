@@ -218,6 +218,6 @@ function test_mms()
 end  # end function
 
 test_mms()
-
+add_func1!(AdvectionTests, test_mms)
 
 

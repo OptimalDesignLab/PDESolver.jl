@@ -22,15 +22,15 @@ using EulerEquationMod
 using Utils
 using MPI
 
-#------------------------------------------------------------------------------
-# define tests and tags
-
 if !MPI.Initialized()
   MPI.Init()
 end
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-#ARGS[1] = "input_vals_channel.jl"
+
+
+#------------------------------------------------------------------------------
+# define tests and tags
 
 include("./TestSystem.jl")
 # define tags that will be used

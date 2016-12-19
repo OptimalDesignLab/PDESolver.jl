@@ -33,8 +33,9 @@ end
 function test_energy_serial()
   facts("----- Testing Energy Stability -----") do
 
-
+    
     start_dir = pwd()
+    cd(dirname(@__FILE__))
 
     ARGS[1] = "input_vals_periodic.jl"
     cd("./2dp1")
@@ -45,10 +46,12 @@ function test_energy_serial()
     include(STARTUP_PATH)
     test_energy(mesh, sbp, eqn, opts)
 
+    cd(start_dir)
 
   end
 
   return nothing
 end
 
-test_energy_serial()
+#test_energy_serial()
+add_func1!(AdvectionTests, test_energy_serial)

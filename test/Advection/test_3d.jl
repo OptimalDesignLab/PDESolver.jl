@@ -1,31 +1,4 @@
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using AdvectionEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-=#
-function clean_dict(collection)
-  for i in keys(collection)
-    delete!(collection, i)
-  end
-end
-
-#global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-# insert a command line argument
-
+global const test_3d_inputfile = "input_vals_3d.jl"
 
 function test_3d_sbp(mesh, sbp, eqn, opts)
   facts("----- Testing 3D SummationByParts -----") do
@@ -60,7 +33,8 @@ function test_3d_sbp(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_3d_sbp(mesh, sbp, eqn, opts)
+#test_3d_sbp(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_3d_sbp, test_3d_inputfile)
 
 function test_bc(flux_exp)
 # test summing boundary condition
@@ -128,7 +102,8 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_3d_bcsolver(mesh, sbp, eqn, opts)
+#test_3d_bcsolver(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_3d_bcsolver, test_3d_inputfile, [TAG_BC, TAG_FLUX])
 
 function test_3d_boundaryflux(mesh, sbp, eqn, opts)
    facts("----- Testing boundary flux calculation -----") do
@@ -165,7 +140,8 @@ function test_3d_boundaryflux(mesh, sbp, eqn, opts)
    return nothing
 end
 
-test_3d_boundaryflux(mesh, sbp, eqn, opts)
+#test_3d_boundaryflux(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_3d_boundaryflux, test_3d_inputfile, [TAG_BC])
 
 function test_3d_faceflux(mesh, sbp, eqn, opts)
   facts("----- Testing face flux -----") do
@@ -198,4 +174,5 @@ function test_3d_faceflux(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_3d_faceflux(mesh, sbp, eqn, opts)
+#test_3d_faceflux(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_3d_faceflux, test_3d_inputfile, [TAG_FLUX])

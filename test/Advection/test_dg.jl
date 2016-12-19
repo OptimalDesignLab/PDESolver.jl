@@ -1,3 +1,7 @@
+# test advection discontinuous-Galerkin functions
+
+global const test_dg_inputfile = "input_vals_channelDG.jl"
+
 function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG Flux ------") do
     eqn.params.LFalpha = 1.0
@@ -28,7 +32,8 @@ function test_dg_flux(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_dg_flux(mesh, sbp, eqn, opts)
+#test_dg_flux(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_FLUX])
 
 function test_dg_bc(mesh, sbp, eqn, opts)
   facts("\n----- Testing DG Boundary Condition -----") do
@@ -88,4 +93,5 @@ function test_dg_bc(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_dg_bc(mesh, sbp, eqn, opts)
+#test_dg_bc(mesh, sbp, eqn, opts)
+add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_BC])
