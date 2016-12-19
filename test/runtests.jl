@@ -40,7 +40,7 @@ global const TAG_FLUX = "tag_flux"
 global const TAG_ENTROPYVARS = "tag_entropyvars"
 global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
 global const TAG_CONVERGENCE = "tag_convergence"
-
+global const TAG_NLSOVLERS = "tag_nlsolvers"
 # test list
 global const EulerTests = TestList()
 
