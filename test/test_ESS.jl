@@ -70,7 +70,7 @@ function calcECFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
       # multiply by Rprime into A
       for j=1:numNodesPerElement
         # should nbrperm be after perm_nu?
-        workA[i, j] = fac*Rprime[sbpface.nbrperm[i], j]
+        workA[i, j] = fac*Rprime[sbpface.nbrperm[i, iface.orient], j]
       end
     end
 
@@ -105,13 +105,13 @@ function calcECFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
   return copy(workB)
 end
  
-function psi_vec(params, q_vals)
-  s = EulerEquationMod.calcEntropy(params, q_vals)
-  rho = q_vals[1]
-  u = q_vals[2]/rho
-  v = q_vals[3]/rho
-  psi = [rho*u, rho*v]
-  return psi
+function psi_vec{Tdim}(params::AbstractParamType{Tdim}, q_vals)
+  psi_vec = zeros(eltype(q_vals), Tdim)
+  for i=1:Tdim
+    psi_vec[i] = q_vals[i+1]
+  end
+
+  return psi_vec
 end
 
 function getPsi{Tsol}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector)
@@ -127,6 +127,7 @@ function getPsi{Tsol}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}
 
     psi_vecL = psi_vec(params, qL_i)
     psi_vecR = psi_vec(params, qR_i)
+
     for d=1:dim
       psiL[i] += nrm[d]*psi_vecL[d]
       psiR[i] += nrm[d]*psi_vecR[d]
@@ -309,7 +310,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
 
   # apply neigbor permutation to wR
   wRTNP_interp  = zeros(wRTP_interp)
-  applyPermRow(vec(sbpface.nbrperm), wRTP_interp, wRTNP_interp)
+  applyPermRow(vec(sbpface.nbrperm[:, iface.orient]), wRTP_interp, wRTNP_interp)
 
   # transpose back to numDofPerNode x numNodes
   wL_face = wLTP_interp.'
@@ -323,7 +324,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
   for i=1:sbpface.numnodes
     wL_i = wL_face[:, i]
     wR_i = wR_face[:, i]
-    nrm = zeros(Tmsh, 2)
+    nrm = zeros(Tmsh, mesh.dim)
     # get the normal vector
     for dim = 1:Tdim
       for d = 1:Tdim
@@ -347,7 +348,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
   PR = zeros(PL)
   permMatrix!(sbpface.perm[:, iface.faceL], PL)
   permMatrix!(sbpface.perm[:, iface.faceR], PR)
-  Pnbr = permMatrix(vec(sbpface.nbrperm))
+  Pnbr = permMatrix(vec(sbpface.nbrperm[:, iface.orient]))
   Rtranspose = sbpface.interp
   
   lhs_L = PL.'*Rtranspose
@@ -504,7 +505,7 @@ function runECTest(mesh, sbp, eqn, opts; test_ref=false)
   F = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
   res_el = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
   psi = zeros(mesh.numNodesPerElement, mesh.dim)
-  nrm = zeros(2)
+  nrm = zeros(mesh.dim)
   for i=1:mesh.numEl
     q_i = eqn.q[:, :, i]
     aux_vars_i = eqn.aux_vars[:, :, i]
@@ -557,7 +558,10 @@ function runECTest(mesh, sbp, eqn, opts; test_ref=false)
 
       # calculate expected potential flux from q variables
       rhs_reduced = 0.0
-      psi_nrm = dxidx[d, 1, 1]*psi[:, 1] + dxidx[d, 2, 1]*psi[:, 2]
+      psi_nrm = zeros(eltype(psi), size(psi, 1))
+      for d2=1:mesh.dim
+        psi_nrm[:] += dxidx[d, d2, 1]*psi[:, d2]# + dxidx[d, 2, 1]*psi[:, 2]
+      end
       rhs_reduced = sum(E_d*psi_nrm)
 
       @fact lhs_reduced --> roughly(-rhs_reduced, atol=1e-12)
@@ -705,6 +709,8 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
 
   end  # end loop over interfaces
 
+  println("finished checking entropy dissipation")
+
 end
 
 function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts)
@@ -847,6 +853,9 @@ function applyPoly(mesh, sbp, eqn, opts, p)
       v_vals[2] = 2*(x^p) + 2*(y^p) + 1
       v_vals[3] = 3*(x^p) + 3*(y^p) + 2
       v_vals[4] = 4*(x^p) + 4*(y^p) - 10
+      if mesh.dim == 3
+        v_vals[5] = 4*(x^p) + 4*(y^p) - 10
+      end
 
 #      println("v_vals = \n", v_vals)
       q_i = sview(eqn.q, :, j, i)
@@ -883,88 +892,101 @@ facts("----- testing ESS -----") do
   penalty_lw = "ELWPenaltyFaceIntegral"
   penalty_lw2 = "ELW2PenaltyFaceIntegral"
 
-  for p=1:4
-    println("testing p = ", p)
-    opts["operator_type"] = "SBPOmega"
-    opts["order"] = p
-    fname = "input_vals_ESS_test2"
-    make_input(opts, fname)
-    ARGS[1] = fname*".jl"
-    include(STARTUP_PATH)
-   
-
-    println("checking channel flow")
-    runECTest(mesh, sbp, eqn, opts, test_ref=true)
-
-    println("\nchecking ICExp")
-    ICFunc = EulerEquationMod.ICDict["ICExp"]
-    ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
-    scale!(eqn.q_vec, 0.01)
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    for i=1:mesh.numEl
-      for j=1:mesh.numNodesPerElement
-        eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
-      end
+  for dim =2:3
+    println("testing dimensions ", dim)
+    if dim == 2
+      meshname = "SRCMESHES/tri8l.smb"
+    else
+      meshname = "SRCMESHES/tet8cubep.smb"
     end
-    runECTest(mesh, sbp, eqn, opts, test_ref=true)
-    println("testing LF dissipation")
-    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true)
-    println("testing LW dissipation")
-    runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=false)
-    println("finished testing LW dissipation")
-    println("testing LW2 dissipation")
-    runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
-    println("finished testing LW2 dissipation")
 
-#    testLW(mesh, sbp, eqn, opts)
-    # check polynomial
-    applyPoly(mesh, sbp, eqn, opts, p)
-    runECTest(mesh, sbp, eqn, opts, test_ref=true)
-    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true, zero_penalty=true)
-
-    println("testing LW dissipation")
-    runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=true, zero_penalty=true)
-    println("finished testing LW dissipation")
-    # check full calling sequence
-    fill!(eqn.res, 0.0)
-    EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
-
-    factRes0(mesh, sbp, eqn, opts)
-
-
-    # check gamma operators
-    opts["operator_type"] = "SBPGamma"
-    fname = "input_vals_ESS_test2"
-    make_input(opts, fname)
-    ARGS[1] = fname*".jl"
-    include(STARTUP_PATH)
-    
-    ICFunc = EulerEquationMod.ICDict["ICExp"]
-    ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
-    scale!(eqn.q_vec, 0.01)
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    for i=1:mesh.numEl
-      for j=1:mesh.numNodesPerElement
-        eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+    for p=1:4
+      if dim == 3 && p > 2
+        continue
       end
-    end
-    runECTest(mesh, sbp, eqn, opts, test_ref=false)
-    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false)
+      println("testing p = ", p)
+      opts["dimensions"] = dim
+      opts["smb_name"] = meshname
+      opts["operator_type"] = "SBPOmega"
+      opts["order"] = p
+      fname = "input_vals_ESS_test2"
+      make_input(opts, fname)
+      ARGS[1] = fname*".jl"
+      include(STARTUP_PATH)
+     
 
-    # check polynomial
-    applyPoly(mesh, sbp, eqn, opts, p)
-    runECTest(mesh, sbp, eqn, opts, test_ref=false)
-    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false, zero_penalty=true)
+      println("checking channel flow")
+      runECTest(mesh, sbp, eqn, opts, test_ref=true)
 
-    # check full calling sequence
-    fill!(eqn.res, 0.0)
-    EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+      println("\nchecking ICExp")
+      ICFunc = EulerEquationMod.ICDict["ICExp"]
+      ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+      scale!(eqn.q_vec, 0.01)
+      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+      for i=1:mesh.numEl
+        for j=1:mesh.numNodesPerElement
+          eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+        end
+      end
+      runECTest(mesh, sbp, eqn, opts, test_ref=true)
+      println("testing LF dissipation")
+      runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true)
+      println("testing LW dissipation")
+      runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=false)
+      println("finished testing LW dissipation")
+      println("testing LW2 dissipation")
+      runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
+      println("finished testing LW2 dissipation")
 
-    factRes0(mesh, sbp, eqn, opts)
+  #    testLW(mesh, sbp, eqn, opts)
+      # check polynomial
+      println("testing polynomial")
+      applyPoly(mesh, sbp, eqn, opts, p)
+      runECTest(mesh, sbp, eqn, opts, test_ref=true)
+      runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true, zero_penalty=true)
+
+      println("testing LW dissipation")
+      runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=true, zero_penalty=true)
+      println("finished testing LW dissipation")
+      # check full calling sequence
+      fill!(eqn.res, 0.0)
+      EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+
+      factRes0(mesh, sbp, eqn, opts)
 
 
+      # check gamma operators
+      opts["operator_type"] = "SBPGamma"
+      fname = "input_vals_ESS_test2"
+      make_input(opts, fname)
+      ARGS[1] = fname*".jl"
+      include(STARTUP_PATH)
+      
+      ICFunc = EulerEquationMod.ICDict["ICExp"]
+      ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+      scale!(eqn.q_vec, 0.01)
+      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+      for i=1:mesh.numEl
+        for j=1:mesh.numNodesPerElement
+          eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+        end
+      end
+      runECTest(mesh, sbp, eqn, opts, test_ref=false)
+      runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false)
 
-  end  # end loop over p
+      # check polynomial
+      applyPoly(mesh, sbp, eqn, opts, p)
+      runECTest(mesh, sbp, eqn, opts, test_ref=false)
+      runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false, zero_penalty=true)
+
+      # check full calling sequence
+      fill!(eqn.res, 0.0)
+      EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+
+      factRes0(mesh, sbp, eqn, opts)
+
+    end  # end loop over p
+  end  # end loop over dim
 end
 
 

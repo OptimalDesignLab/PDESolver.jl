@@ -237,7 +237,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   fill!(A0, 0.0)
 
   for i=1:sbpface.numnodes  # loop over face nodes
-    ni = sbpface.nbrperm[i]
+    ni = sbpface.nbrperm[i, iface.orient]
     fill!(wL_i, 0.0)
     fill!(wR_i, 0.0)
 
@@ -375,7 +375,7 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   qR_i = params.q_vals2
 
   for i=1:sbpface.numnodes  # loop over face nodes
-    ni = sbpface.nbrperm[i]
+    ni = sbpface.nbrperm[i, iface.orient]
     fill!(wL_i, 0.0)
     fill!(wR_i, 0.0)
     fill!(tmp3, 0.0)
@@ -543,7 +543,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   P = params.P  # projection matrix
 
   @simd for i=1:sbpface.numnodes  # loop over face nodes
-    ni = sbpface.nbrperm[i]
+    ni = sbpface.nbrperm[i, iface.orient]
     fill!(wL_i, 0.0)
     fill!(wR_i, 0.0)
     # interpolate wL and wR to this node

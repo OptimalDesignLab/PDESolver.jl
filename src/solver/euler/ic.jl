@@ -190,27 +190,20 @@ function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
+println("enetered ICRho1E2U3, typeof(eqn) = ", typeof(eqn))
+
 numEl = mesh.numEl
 nnodes = mesh.numNodesPerElement
 dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, 4)
+sol = zeros(Tsol, mesh.numDofPerNode)
 for i=1:numEl
   for j=1:nnodes
 
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
       # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
-
-      x = coords_j[1]
-      y = coords_j[2]
 
       calcRho1Energy2U3(coords_j, eqn.params, sol)
-
-      sol[2] += 0*sin(x)  # add a perturbation
 
       for k=1:dofpernode
         u0[dofnums_j[k]] = sol[k]

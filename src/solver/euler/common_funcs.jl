@@ -331,8 +331,9 @@ end  # end function calcOnes
 @doc """
 ### EulerEquationMod.calcRho1Energy2U3
 
-  Sets the density values 1.0, x and y momenta to 0.35355, and
+  Sets the density values 1.0, momenta to 0.35355, and
   energy to 2.0 at a node.
+
 
 
   This function uses conservative variables regardless of the static parameter
@@ -359,6 +360,20 @@ function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
 
   return nothing
 end
+
+function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+                           params::ParamType{3}, sol::AbstractArray{Tsol, 1})
+  # for square test case with rho = 1, digonal momentum, energy
+
+  sol[1] = 1.0
+  sol[2] = 0.35355
+  sol[3] = 0.35355
+  sol[4] = 0.35355
+  sol[5] = 2.0
+
+  return nothing
+end
+
 
 
 @doc """
