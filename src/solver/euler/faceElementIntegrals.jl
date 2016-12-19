@@ -518,7 +518,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   tmp1 = params.res_vals1  # work vectors
   tmp2 = params.res_vals2
 
-  for i=1:sbpface.stencilsize
+  @simd for i=1:sbpface.stencilsize
     # apply sbpface.perm here
     p_iL = sbpface.perm[i, iface.faceL]
     p_iR = sbpface.perm[i, iface.faceR]
@@ -542,16 +542,16 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   nrm = params.nrm2
   P = params.P  # projection matrix
 
-  for i=1:sbpface.numnodes  # loop over face nodes
+  @simd for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i]
     fill!(wL_i, 0.0)
     fill!(wR_i, 0.0)
     # interpolate wL and wR to this node
-    for j=1:sbpface.stencilsize
+    @simd for j=1:sbpface.stencilsize
       interpL = sbpface.interp[j, i]
       interpR = sbpface.interp[j, ni]
 
-      for k=1:numDofPerNode
+      @simd for k=1:numDofPerNode
         wL_i[k] += interpL*wL[k, j]
         wR_i[k] += interpR*wR[k, j]
       end
@@ -561,7 +561,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       # use flux jacobian at arithmetic average state
       qL_i[j] = 0.5*( qL_i[j] + qR_i[j])
       # put delta w into wL_i
@@ -571,9 +571,9 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
     # get the normal vector (scaled)
 
-    for dim =1:Tdim
+    @simd for dim =1:Tdim
       nrm_dim = zero(Tmsh)
-      for d = 1:Tdim
+      @simd for d = 1:Tdim
         nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
       end
 
@@ -582,7 +582,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
     # normalize direction vector
     len_fac = calcLength(params, nrm)
-    for dim=1:Tdim
+    @simd for dim=1:Tdim
       nrm[dim] /= len_fac
     end
 
@@ -601,7 +601,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     smallmatTvec!(Y, tmp1, tmp2)
     # multiply by diagonal Lambda and S2, also include the scalar
     # wface and len_fac components
-    for j=1:length(tmp2)
+    @simd for j=1:length(tmp2)
       tmp2[j] *= len_fac*sbpface.wface[i]*absvalue(Lambda[j])*S2[j]
     end
     smallmatvec!(Y, tmp2, tmp1)
@@ -609,11 +609,11 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
 
     # interpolate back to volume nodes
-    for j=1:sbpface.stencilsize
+    @simd for j=1:sbpface.stencilsize
       j_pL = sbpface.perm[j, iface.faceL]
       j_pR = sbpface.perm[j, iface.faceR]
 
-      for p=1:numDofPerNode
+      @simd for p=1:numDofPerNode
         resL[p, j_pL] -= sbpface.interp[j, i]*tmp2[p]
         resR[p, j_pR] += sbpface.interp[j, ni]*tmp2[p]
       end

@@ -466,7 +466,9 @@ end
 
 """
   Calculates a manufactured solution from Gassner, Winters, Kopriva: Split 
-  Form Nodal DG Schemes with SBP Propertiy for the Compressible Euler Equations
+  Form Nodal DG Schemes with SBP Propertiy for the Compressible Euler Equations.
+  This is typically used with a mesh that spans [-1, 1] in all directions
+
 """
 function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
                     params::ParamType{2}, q::AbstractArray{Tsol,1})
@@ -485,6 +487,29 @@ function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   q[2] = t6;
   q[3] = t6;
   q[4] = t6*t6;
+
+  return nothing
+end
+
+function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+                    params::ParamType{3}, q::AbstractArray{Tsol,1})
+
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  t = params.t
+
+  t7 = t*2.0;
+  t2 = -t7+x+y+z;
+  t3 = 3.141592653589793*t2;
+  t4 = sin(t3);
+  t5 = t4*(1.0/1.0E1);
+  t6 = t5+2.0;
+  q[1] = t6;
+  q[2] = t6;
+  q[3] = t6;
+  q[4] = t6;
+  q[5] = t6*t6;
 
   return nothing
 end
