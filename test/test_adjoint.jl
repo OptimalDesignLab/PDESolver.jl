@@ -20,4 +20,5 @@ function test_adjoint(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_adjoint(mesh, sbp, eqn, opts)
+#test_adjoint(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_adjoint, "input_vals_vortex_adjoint_DG.jl")

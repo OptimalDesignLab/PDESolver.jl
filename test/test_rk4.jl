@@ -53,4 +53,5 @@ function test_rk4()
   return nothing
 end
 
-test_rk4()
+#test_rk4()
+add_func1!(EulerTests, test_rk4)

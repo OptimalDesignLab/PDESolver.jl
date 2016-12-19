@@ -45,5 +45,5 @@ function test_parallel()
   return nothing
 end
 
-test_parallel()
-
+#test_parallel()
+add_func1!(EulerTests, test_parallel)

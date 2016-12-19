@@ -56,5 +56,5 @@ function test_ESS_parallel()
   return nothing
 end
 
-test_ESS_parallel()
-
+#test_ESS_parallel()
+add_func1!(EulerTests, test_ESS_parallel)

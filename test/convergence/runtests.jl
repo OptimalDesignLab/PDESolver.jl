@@ -4,6 +4,9 @@
 function run_convergence_tests()
   facts("----- testing convergence rates -----") do
 
+    original_dir = pwd()
+    cd(dirname(@__FILE__))
+
     start_dir = pwd()
   #=
     # test p1 elements
@@ -84,10 +87,13 @@ function run_convergence_tests()
     # return to original directory
     cd(start_dir)
 
+    cd(original_dir)
+
   end  # end facts block
 
   return nothing
 
 end
 
-run_convergence_tests()
+#run_convergence_tests()
+add_func1!(EulerTests, run_convergence_tests, [TAG_CONVERGENCE])

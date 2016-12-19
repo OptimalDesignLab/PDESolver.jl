@@ -201,7 +201,9 @@ function test_flux_2d()
   return nothing
 end  # end function
 
-test_flux_2d()
+#test_flux_2d()
+add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX])
+
 
 function test_flux_3d()
   # test 3D
@@ -281,4 +283,5 @@ function test_flux_3d()
 end
 
 
-test_flux_3d()
+#test_flux_3d()
+add_func1!(EulerTests, test_flux_3d, [TAG_VOLUMEINTEGRALS, TAG_FLUX])

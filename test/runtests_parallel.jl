@@ -19,9 +19,12 @@ include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
 include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 
+#------------------------------------------------------------------------------
+# define test list
+include("./TestSystem.jl")
+global const EulerTests = TestList()
+# define global const tags here
 
-start_dir = pwd()
-resize!(ARGS, 1)
 
 function test_parallel2()
   facts("----- Testing Parallel -----") do
@@ -53,11 +56,30 @@ function test_parallel2()
   return nothing
 end
 
-test_parallel2()
+#test_parallel2()
+add_func1!(EulerTests, test_parallel2)
+
+#------------------------------------------------------------------------------
+# run tests
+facts("----- Running Euler 2 process tests -----") do
+  nargs = length(ARGS)
+  if nargs == 0
+    tags = ASCIIString[TAG_DEFAULT]
+  else
+    tags = Array(ASCIIString, nargs)
+    copy!(tags, ARGS)
+  end
+
+  resize!(ARGS, 1)
+  ARGS[1] = ""
+  run_testlist(EulerTests, tags)
+end
 
 if MPI.Initialized()
   MPI.Finalize()
 end
+
+
 
 FactCheck.exitstatus()
 

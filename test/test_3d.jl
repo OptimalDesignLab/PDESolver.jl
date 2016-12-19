@@ -22,6 +22,8 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 #resize!(ARGS, 1)
 # create entropy variable param type
 
+const test_3d_inputfile = "input_vals_3d.jl"  # input file used by all tests
+
 function test_3d_conversion(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
@@ -60,7 +62,8 @@ function test_3d_conversion(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_3d_conversion(mesh, sbp, eqn, opts)
+#test_3d_conversion(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS])
 
 function test_3d_flux(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
@@ -103,7 +106,8 @@ function test_3d_flux(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_3d_flux(mesh, sbp, eqn, opts)
+#test_3d_flux(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_FLUX])
 
 function test_3d_misc(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
@@ -128,7 +132,8 @@ function test_3d_misc(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_3d_misc(mesh, sbp, eqn, opts)
+#test_3d_misc(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS])
 
 function test_3d_matrices(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
@@ -164,7 +169,8 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
   return nothing
 end  # end function
 
-test_3d_matrices(mesh, sbp, eqn, opts)
+#test_3d_matrices(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile)
 
 function test_3d_bc(mesh, sbp, eqn, opts)
   facts("----- Testing BC Solvers -----") do
@@ -187,4 +193,6 @@ function test_3d_bc(mesh, sbp, eqn, opts)
   end  # end facts block
 
   return nothing
-end  # end function
+end  # end functiona
+
+add_func2!(EulerTests, test_3d_bc,  test_3d_inputfile, [TAG_BC])

@@ -82,7 +82,8 @@ function test_utils_io()
   return nothing
 end
 
-test_utils_io()
+#test_utils_io()
+add_func1!(EulerTests, test_utils_io)
 
 function test_utils_timing()
   facts("----- Testing Timings -----") do
@@ -127,7 +128,8 @@ function test_utils_timing()
   return nothing
 end
 
-test_utils_timing()
+#test_utils_timing()
+add_func1!(EulerTests, test_utils_timing)
 
 function test_utils_misc()
   facts("----- Testing Utility Functions -----") do
@@ -177,7 +179,8 @@ function test_utils_misc()
   return nothing
 end
 
-test_utils_misc()
+#test_utils_misc()
+add_func1!(EulerTests, test_utils_misc)
 
 function test_utils_perm()
   facts("----- Testing Permutation Functions -----") do
@@ -242,7 +245,7 @@ function test_utils_perm()
   return nothing
 end
 
-test_utils_perm()
-
+#test_utils_perm()
+add_func1!(EulerTests, test_utils_perm)
 
 

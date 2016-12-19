@@ -154,6 +154,7 @@ end  # end function
 
 # run the tests
 function test_gls_channel(mesh, sbp, eqn, opts)
+  #=
   include("input_vals_channel.jl")
   arg_dict["solve"] = false
   arg_dict["variable_type"] = :entropy
@@ -161,13 +162,13 @@ function test_gls_channel(mesh, sbp, eqn, opts)
   println(f, "arg_dict = ")
   println(f, arg_dict)
   close(f)
-
+  =#
 
 
   facts("----- Testing GLS3 channel -----") do
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_channel_gls.jl"
-    include(STARTUP_PATH)
+ #   resize!(ARGS, 1)
+ #   ARGS[1] = "input_vals_channel_gls.jl"
+ #   include(STARTUP_PATH)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     test_GLS(mesh, sbp, eqn, opts)
   end  # end facts block
@@ -175,12 +176,12 @@ function test_gls_channel(mesh, sbp, eqn, opts)
   return nothing
 end
 
+test_gls_channel_inputname = "input_vals_channel.jl"
+test_gls_channel_moddict = Dict{ASCIIString, Any}("solve" => false, "variable_type" => :entropy, "new_fname" => "input_vals_channel_gls")
+#test_gls_channel(mesh, sbp, eqn, opts)
+add_func3!(EulerTests, test_gls_channel, test_gls_channel_inputname, test_gls_channel_moddict, [TAG_ENTROPYVARS])
 
-if true
-  test_gls_channel(mesh, sbp, eqn, opts)
-end
-
-function test_gls_vortex(mesh, sbp, eqn, opts)
+function test_gls_vortex()
   for p = 1:4
     if true
       facts("----- Testing GLS3 p$p  on isentropic vortex -----") do
@@ -207,7 +208,8 @@ function test_gls_vortex(mesh, sbp, eqn, opts)
   return nothing
 end
 
-test_gls_vortex(mesh, sbp, eqn, opts)
+#test_gls_vortex(mesh, sbp, eqn, opts)
+add_func1!(EulerTests, test_gls_vortex, [TAG_ENTROPYVARS])
 
 function test_gls_fd()
   for p = 1:4
@@ -313,5 +315,5 @@ function test_gls_fd()
 
 end  # end function
 
-test_gls_fd()
-
+#test_gls_fd()
+add_func1!(EulerTests, test_gls_fd, [TAG_COMPLEX])

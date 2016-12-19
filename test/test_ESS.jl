@@ -21,8 +21,9 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 # insert a command line argument
 resize!(ARGS, 1)
 =#
-import EulerEquationMod: ParamType
-function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
+#import EulerEquationMod: ParamType
+function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(
+                                params::AbstractParamType{Tdim},
                                 sbpface::AbstractFace,
                                 iface::Interface,
                                 qL::AbstractMatrix{Tsol},
@@ -491,4 +492,5 @@ function test_ESS()
   return nothing
 end  # end functions
 
-test_ESS()
+#test_ESS()
+add_func1!(EulerTests, test_ESS, [TAG_FLUX])

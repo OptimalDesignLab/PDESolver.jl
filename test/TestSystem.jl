@@ -184,8 +184,23 @@ function add_func3!(testlist::TestList, func::Function, input_name::ASCIIString,
 
 end
 
+"""
+  This function runs a test list.  Tests are run in the order they were
+  loaded into the TestList object.  This implementation handles the case of
+  several tests sets sharing an input file efficiencly, ie. if several test 
+  functions use the same input file and are placed in the test list 
+  consecutively, the input file will be loaded only once.
 
-function run_testlist(testlist::TestList, tags::Vector{ASCIIString})
+  A list of tags can be optionally supplied.  In this case, only the tests
+  that have the specified tags will be run.  If no list is supplied, all tags
+  are run.
+
+  Inputs:
+    testlist: a TestList loaded with functions
+    tags: an array of tags (optional)
+
+"""
+function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
 
   println("tags to run = ", tags)
   tags_set = Set(tags)
