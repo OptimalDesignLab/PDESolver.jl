@@ -44,3 +44,13 @@ in TestSet.jl.
 
 The function `run_testlist` runs a test list.  See the documentation of
 these functions for details on how to use them.
+
+Note that it is acceptable for a test function to load input files internally.
+The benefit to type 2 functions over type 1 functions is in the case when
+several functions share an input file.  The test system will only load the
+file once if possible, rather than for every test function that uses is.
+Consequently, each test function must not depend on modifications made
+to the the `(mesh, sbp, eqn,  opts)` objects by other test functions, because
+the objects may or may not be re-initialized between calls to the test
+functions.  Also, because tags can be used to selectively run tests, it
+cannot be guaranteed that a particular test will run before another one.

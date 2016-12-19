@@ -202,7 +202,7 @@ end
 """
 function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
 
-  println("tags to run = ", tags)
+  println("Running tests with tags matching = ", tags)
   tags_set = Set(tags)
   ntests = length(testlist.funcs)
   for i=1:ntests
@@ -212,12 +212,9 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
     input_name_i = testlist.input_name[i]
     input_mod_i = testlist.input_mod[i]
 
-    println("considering function ", func_i)
-    println("which has tags ", func_tags_i)
     for j=1:length(func_tags_i)
       tag_j = func_tags_i[j]
       if tag_j in tags_set
-        println("running this test")
         # run this test
         if functype_i == 1  # function with no arguments
           func_i()
@@ -228,13 +225,10 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
           end
           func_i(mesh, sbp, eqn, opts)
         elseif functype_i == 3  # modify input before running
-          println("running type 3 test")
           new_fname = input_mod_i["new_fname"]*".jl"
 
           if ARGS[1] != new_fname  # don't create a file if it was done already
-            println("creating new input file")
             include(joinpath(pwd(), input_name_i))
-            println("typeof(arg_dict) = ", typeof(arg_dict))
 
             for (key, val) in input_mod_i
               if key != "new_fname"
