@@ -18,6 +18,12 @@ tmp=$?
 err=$((err + tmp))
 
 cd $start_dir
+cd ./simpleODE/
+$jj $jflags ./runtests_simpleODE.jl
+tmp=$?
+err=$((err + tmp))
+
+cd $start_dir
 ./runtests_parallel.sh $jflags
 tmp=$?
 err=$((err + tmp))

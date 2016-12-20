@@ -292,3 +292,13 @@ Note that any values associated with these options are shared with the regular
 "write_timing" : write the mesh initialization and compute times to the file
                  timing.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
+
+# SimpleODE equation selection
+"simpleODE_eqn" : integer to select the equation being solved 
+                  1: u = x^2 + t^4
+                  2: u = x^2 + t^3
+                  3: u = x^2 + t^2
+                  4: u = x^2 + t
+                  5: u = t
+                  6: du/dt = u + 2t
+                  7: du/dt = u

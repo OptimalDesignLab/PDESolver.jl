@@ -37,7 +37,7 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     end
   end
 
-  params.time.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn, t)
+  params.time.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn, opts, t)
 #   params.time.t_face += @elapsed if mesh.isDG
 #     evalFaceTerm(mesh, sbp, eqn, opts)
 #   end
@@ -47,6 +47,10 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 #   end
 
+  # !!!!!!!!!!!
+  # Simple ODE does not need use_Minv. Forcing it to be false.
+  opts["use_Minv"] = false
+
   if opts["use_Minv"]
     applyMassMatrixInv3D(mesh, sbp, eqn, opts, eqn.res)
   end
@@ -55,7 +59,8 @@ end   # end of function evalSimpleODE
 
 function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
-                                           eqn::SimpleODEData{Tsol, Tres, Tdim}, t)
+                                           eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
+                                           t)
 
   dxidx = mesh.dxidx
   q = eqn.q
@@ -64,7 +69,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     for j=1:mesh.numNodesPerElement
       for k=1:Tdim  # loop over parametric dimensions
 
-        # Here the expressions for du/dt needs to be stored in eqn.res
+        # Here, the expression for du/dt needs to be stored in eqn.res
         # For example:
         #   if u = x^2 + t^4   =>   then res = 4*t^3
         #       do this with:  eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
@@ -76,19 +81,27 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         #   if u = t           =>   then res = 1
         #       do this with:  eqn.res[1, j, i] = 1.0
 
-#         eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
-#         eqn.res[1, j, i] = calc_3t2(mesh.coords[:, j, i], eqn.params, t)
-#         eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
-#         eqn.res[1, j, i] = 1.0
+        if opts["simpleODE_eqn"] == 1
+          eqn.res[1, j, i] = calc_4t3(mesh.coords[:, j, i], eqn.params, t)
+        elseif opts["simpleODE_eqn"] == 2
+          eqn.res[1, j, i] = calc_3t2(mesh.coords[:, j, i], eqn.params, t)
+        elseif opts["simpleODE_eqn"] == 3
+          eqn.res[1, j, i] = calc_2t(mesh.coords[:, j, i], eqn.params, t)
+        elseif opts["simpleODE_eqn"] == 4 || opts["simpleODE_eqn"] == 5
+          eqn.res[1, j, i] = 1.0
+        elseif opts["simpleODE_eqn"] == 6
+          # for du/dt = u + 2*t
+          eqn.res[1, j, i] = q[1, j, i] + calc_2t(mesh.coords[:, j, i], eqn.params, t)
+        elseif opts["simpleODE_eqn"] == 7
+          # for du/dt = u
+          eqn.res[1, j, i] = q[1, j, i]
+        else
+          throw(ErrorException("Incorrect or no option simpleODE_eqn specified."))
+        end # end of simpleODE_eqn handling
 
-        # for du/dt = u + 2*t
-#         eqn.res[1, j, i] = q[1, j, i] + calc_2t(mesh.coords[:, j, i], eqn.params, t)
-        eqn.res[1, j, i] = q[1, j, i]
-
-      end
-
-    end
-  end
+      end # end of loop over parametric dimensions
+    end # end of loop over nodes on the element
+  end # end of loop over elements
 
   return nothing
 

@@ -38,13 +38,13 @@ function createMeshAndOperator(opts, dofpernode)
     Tres = Dual{Float64}
   elseif flag == 5  
     if jac_method == 1 # use Newton method using finite difference  (former flag 4)
-      println("========== utils/initialization: flag 5, jac_method 1")
+      # println("========== utils/initialization: flag 5, jac_method 1")
       Tmsh = Float64
       Tsbp = Float64
       Tsol = Float64
       Tres = Float64
     elseif jac_method == 2 # use complex step dR/du
-      println("========== utils/initialization: flag 5, jac_method 2")
+      # println("========== utils/initialization: flag 5, jac_method 2")
       Tmsh = Float64
       Tsbp = Float64
       Tsol = Complex128
