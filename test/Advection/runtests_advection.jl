@@ -44,21 +44,9 @@ cd("./energy")
 include( joinpath(pwd(), "runtests.jl"))
 cd(start_dir)
 
-cd("./Nonlinearsolvers/crank_nicolson_FD")
-include(joinpath(pwd(), "runtests.jl"))
-cd("../..")
-
-cd("./Nonlinearsolvers/crank_nicolson_CS")
-include(joinpath(pwd(), "runtests.jl"))
-cd("../..")
-
-cd("./Nonlinearsolvers/crank_nicolson_PETSc_serial/")
-include(joinpath(pwd(), "runtests.jl"))
-cd("../..")
-
-cd("./Nonlinearsolvers/crank_nicolson_PETSc_parallel/")
-include(joinpath(pwd(), "runtests.jl"))
-cd("../..")
+cd("./Nonlinearsolvers/")
+include(joinpath(pwd(), "runtests_serial.jl"))
+cd("../")
 
 if MPI.Initialized()
   MPI.Finalize()

@@ -64,14 +64,8 @@ function startDataExchange{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     return nothing
   end
 
-  println(f, "entered startDataExchange")
-  flush(f)
-  printbacktrace(f)
-
   if opts["parallel_data"] == "face"
     # interpolate to face
-    println(f, "in startDataEx: face")
-    flush(f)
     for i=1:mesh.npeers
       mesh.send_waited[i] = getSendData(mesh, opts, q, mesh.bndries_local[i], 
                             send_buff[i], mesh.send_reqs[i], 
@@ -83,8 +77,6 @@ function startDataExchange{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     exchangeFaceData(mesh, opts, send_buff, recv_buff, wait=wait)
 
   elseif opts["parallel_data"] == "element"
-    println(f, "in startDataEx: element")
-    flush(f)
     # call exchangeElementData, because it internally extracts the 
     # needed values
     exchangeElementData(mesh, opts, q, send_buff, recv_buff, f, wait=wait)
@@ -190,8 +182,6 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
   for i=1:mesh.npeers
     peer_i = mesh.peer_parts[i]
     recv_buff_i = recv_buff[i]
-    println(f, "=== pointer of recv_buff_i: ", pointer(recv_buff_i))
-    flush(f)
     mesh.recv_reqs[i] = MPI.Irecv!(recv_buff_i, peer_i, tag, mesh.comm)
     mesh.recv_waited[i] = false
   end
@@ -219,8 +209,6 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
     # copy data into send buffer
     local_els = mesh.local_element_lists[idx]
     send_buff_i = send_buff[idx]
-    println(f, "=== pointer of send_buff_i: ", pointer(send_buff_i))
-    flush(f)
     for j=1:length(local_els)
       el_j = local_els[j]
       for k=1:size(q, 2)
@@ -229,8 +217,6 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
         end
       end
     end
-    println(f, "=== contents of send_buff_i: ", send_buff_i)
-    flush(f)
 
     # send it
     peer_i = mesh.peer_parts[idx]
@@ -239,14 +225,10 @@ function exchangeElementData{T, N}(mesh::AbstractMesh, opts, q::Abstract3DArray,
   end
 
   if wait
-    println(f, "=== doing a Waitall ===")
-    flush(f)
     mesh.recv_stats = MPI.Waitall!(mesh.recv_reqs)
     fill!(mesh.recv_waited, true)
     mesh.send_stats = MPI.Waitall!(mesh.send_reqs)
     fill!(mesh.send_waited, true)
-    println(f, "=== finished with a Waitall ===")
-    flush(f)
   end
 
 

@@ -41,8 +41,8 @@ include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include th
 # record fname in dictionary
 arg_dict["fname"] = fname
 
-  # new (201612) options checking function
-  checkForIllegalOptions(arg_dict)
+# new (201612) options checking function
+checkForIllegalOptions(arg_dict)
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -436,9 +436,11 @@ function checkForIllegalOptions(arg_dict)
     end
   end
 
-  if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
-    if arg_dict["jac_method"] != 2
-      warn("PETSc jac_type specified, but jac_method is not 2 (complex step)")
+  if haskey(arg_dict, "jac_type")
+    if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
+      if arg_dict["jac_method"] != 2
+        warn("PETSc jac_type specified, but jac_method is not 2 (complex step)")
+      end
     end
   end
 
