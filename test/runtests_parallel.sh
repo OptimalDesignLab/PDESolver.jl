@@ -13,6 +13,10 @@ cd ./Advection
   tmp=$?
   err=$((err + tmp))
 
+  cd ./Nonlinearsolvers/crank_nicolson_PETSc_parallel
+  mpirun -np 4 julia $jflags ./runtests.jl
+  tmp=$?
+  err=$((err + tmp))
 
 cd $start_dir
 

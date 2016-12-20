@@ -233,6 +233,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   # the dispatch to the backslash solver and possibly the jacobian calculation
   # function will be runtime dispatched
 
+  println(eqn.params.f, "==== Entered newton")
+  flush(eqn.params.f)
+
   myrank = mesh.myrank
   fstdout = BufferedIO(STDOUT)
 
@@ -264,7 +267,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   end
 
   if (t != 0.0) && (jac_type == 4)
-    throw(ErrorException, "Petsc cannot be used for solving unsteady problems, see TODO in calcJacVecProd_wrapper")
+    throw(ErrorException, "Matrix free Petsc cannot be used for solving unsteady problems, see TODO in calcJacVecProd_wrapper")
   end
 
 
@@ -276,7 +279,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
 
   if jac_type == 4
-    # TODO: call Petsc MatShellSetContext her
+    # TODO: call Petsc MatShellSetContext here
     ctx_petsc = createPetscCtx(mesh, sbp, eqn, opts, newton_data, func)
   end
 
@@ -379,6 +382,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   #------------------------------------------------------------------------------------
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
+
+    println(eqn.params.f, "===== newton iteration: $i")
 
     # Calculate Jacobian here
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
@@ -566,6 +571,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
      flush(fstdout)
 
+     println(eqn.params.f, "============ end of Newton")
      return nothing
     end  # end if tolerances satisfied
 
@@ -581,6 +587,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       
       flush(fstdout)
 
+      println(eqn.params.f, "============ end of Newton")
       return nothing
     end
 

@@ -28,7 +28,8 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-#  println(params.f, "-----entered evalAdvection -----")
+  println(params.f, "-----entered evalAdvection -----")
+  printbacktrace(params.f)
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalAdvection -----")
   #close(f)
@@ -37,11 +38,14 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
+  println(params.f, "== parallel_type: ", opts["parallel_type"])
+
   # start communication right away
   params.time.t_send += @elapsed if opts["parallel_type"] == 1
 
     startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, 
-                      params.f)
+                      params.f, wait=true)
+    println(params.f, "-----entered if statement around startDataExchange -----")
     #  println("send parallel data @time printed above")
   end
 
@@ -113,6 +117,8 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
                                            eqn::AdvectionData{Tsol, Tres, Tdim})
 
+  println(eqn.params.f, "entered evalSCResidual")
+
   # storing flux_parametric in eqn, rather than re-allocating it every time
   flux_parametric = eqn.flux_parametric
 
@@ -138,6 +144,7 @@ function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         flux_parametric[1,j,i,k] = alpha_k*q_val
       end
     end
+    println(eqn.params.f, "i: $i")
   end
 
   # for each dimension, grabbing everything in the mesh and applying weakdifferentiate!

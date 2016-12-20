@@ -100,7 +100,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
-    println("CN: at the top of time-stepping loop, t = $t, i = $i")
+    println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
+    flush(eqn.params.f)
 
     #----------------------------
     # zero out Jac
@@ -278,11 +279,15 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   t_nextstep = t + h
 
-  physics_func(mesh, sbp, eqn, opts, t)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-
+  # these two flipped 20161219
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+
+  if opts["parallel_type"] == 2 && mesh.npeers > 0
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+  end
+  physics_func(mesh, sbp, eqn, opts, t)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
@@ -295,9 +300,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
     # NOTE: question: is there a sign problem here? should rhs_vec = -rhs_vec ?
     #     NO. this negative gets applied in newton.jl, where res_0[i] = -res_0[i]
-
-    # local dof index, node, el
-    loc_dof, node, el = ind2sub(mesh.coords, findfirst(mesh.dofs, i))
 
   end
 

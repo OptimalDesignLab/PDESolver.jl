@@ -14,6 +14,7 @@ arg_dict = Dict{Any,Any}(
 # "res_reltol" => -1.0,
 "use_DG" => true,
 "operator_type" => "SBPGamma",
+# "operator_type" => "SBPOmega",
 # "Flux_name" => "RoeFlux",
 "Flux_name" => "LFFlux",
 "output_freq" => 100,
