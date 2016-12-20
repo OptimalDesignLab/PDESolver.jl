@@ -233,8 +233,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   # the dispatch to the backslash solver and possibly the jacobian calculation
   # function will be runtime dispatched
 
-  println(eqn.params.f, "==== Entered newton")
-  flush(eqn.params.f)
+  @debug1 println(eqn.params.f, "==== Entered newton")
+  @debug1 flush(eqn.params.f)
 
   myrank = mesh.myrank
   fstdout = BufferedIO(STDOUT)

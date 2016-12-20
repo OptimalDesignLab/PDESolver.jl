@@ -28,8 +28,8 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-  println(params.f, "-----entered evalAdvection -----")
-  printbacktrace(params.f)
+  @debug1 println(params.f, "-----entered evalAdvection -----")
+  @debug1 printbacktrace(params.f)
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalAdvection -----")
   #close(f)
@@ -38,14 +38,14 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
-  println(params.f, "== parallel_type: ", opts["parallel_type"])
+  @debug1 println(params.f, "== parallel_type: ", opts["parallel_type"])
 
   # start communication right away
   params.time.t_send += @elapsed if opts["parallel_type"] == 1
 
     startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, 
                       params.f, wait=true)
-    println(params.f, "-----entered if statement around startDataExchange -----")
+    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
     #  println("send parallel data @time printed above")
   end
 

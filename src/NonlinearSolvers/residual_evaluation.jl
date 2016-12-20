@@ -52,14 +52,10 @@ function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   time = eqn.params.time
   time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
-    println(eqn.params.f, "========== about to startDataExchange in residual_evaluation.jl")
     startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
-  flush(eqn.params.f)
 
-  println(eqn.params.f, "====== about to call func_rhs in residual_evaluation.jl")
   func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
-  println(eqn.params.f, "====== done calling func_rhs in residual_evaluation.jl")
 
   rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
   time.t_allreduce += @elapsed rhs_norm_global = MPI.Allreduce(rhs_0_norm*rhs_0_norm, MPI.SUM, mesh.comm)

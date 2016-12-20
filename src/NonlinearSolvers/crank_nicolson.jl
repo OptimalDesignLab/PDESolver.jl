@@ -90,7 +90,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
-  println("============ In CN ============")
+  @debug1 println("============ In CN ============")
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
@@ -100,8 +100,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
-    println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
-    flush(eqn.params.f)
+    @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
+    @debug1 flush(eqn.params.f)
 
     #----------------------------
     # zero out Jac
@@ -171,7 +171,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
 
-  println("============= end of CN: t = $t ===============")
+  @debug1 println("============= end of CN: t = $t ===============")
   return t
 
 end   # end of crank_nicolson function
