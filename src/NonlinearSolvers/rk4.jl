@@ -113,8 +113,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 #     q_vec_old_DEBUG = deepcopy(q_vec)
 
-#     println("===== (beginning of rk4 timestep) ===== t = $t")
-
     @mpi_master if i % output_freq == 0
        println(fstdout, "\ntimestep ",i)
        if i % 5*output_freq == 0
@@ -212,17 +210,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     fill!(k3, 0.0)
     fill!(k4, 0.0)
 
-#     println("============+++++++++ t: ", t)
     t = t + h
-
-#     DEBUG = true
-#     if DEBUG
-#       q_file = "q$i.dat"
-#       writedlm(q_file, q_vec)
-#     end
-#     delta_q_vec = q_vec - q_vec_old_DEBUG
-#     println("============+++++++++ norm(q_vec): ", norm(q_vec))
-#     println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec))
 
   end   # end of RK4 time stepping loop
 
