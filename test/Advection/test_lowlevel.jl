@@ -9,6 +9,10 @@ end
 # input file used by all tests
 global const test_lowlevel_inputfile = "input_vals_channel.jl"
 
+"""
+  Test that the mesh counts things correctly, and that coordinates and metrics
+  are calculated correctly.  This makes it dependent on the element ordering
+"""
 function test_lowlevel_mesh(mesh, sbp, eqn, opts)
   facts("--- Testing Mesh --- ") do
 
@@ -68,6 +72,9 @@ end
 #test_lowlevel_mesh(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_lowlevel_mesh, test_lowlevel_inputfile)
 
+"""
+  Test some basic functionality: dissassmble solution, mass matrix, etc.
+"""
 function test_lowlevel_core(mesh, sbp, eqn, opts)
   facts("--- Testing Functions Within AdvectionData_--- ") do
     Tsol = Float64
@@ -119,6 +126,9 @@ end
 #test_lowlevel_core(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_lowlevel_core, test_lowlevel_inputfile)
 
+"""
+  Test things from common_funcs.jl
+"""
 function test_lowlevel_common(mesh, sbp, eqn, opts)
   facts("--- Testing common functions ---") do
 
@@ -141,6 +151,10 @@ end
 #test_lowlevel_common(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_lowlevel_common, test_lowlevel_inputfile)
 
+"""
+  Test Roe solver used for boundary conditions and some hand calculated
+  boundary flux values.
+"""
 function test_lowlevel_bc(mesh, sbp, eqn, opts)
   facts("--- Testing Boundary Function ---") do
 
@@ -231,6 +245,9 @@ end
 #test_lowlevel_bc(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_lowlevel_bc, test_lowlevel_inputfile, [TAG_BC])
 
+"""
+  Test computing volume integrals over entire mesh
+"""
 function test_lowlevel_volumeintegrals()
   facts("--- Testing Volume Integrals ---")  do
 

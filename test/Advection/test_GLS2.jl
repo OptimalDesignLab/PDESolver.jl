@@ -1,3 +1,9 @@
+# test the second GLS implementation
+
+"""
+  Compute GLS in an inefficent way and compare to the efficient implementation
+  in the code.  This is not a test function, but is called by test functions.
+"""
 function getGLS_test(mesh, sbp, eqn, opts)
 #    println("----- Entered get GLS_test -----")
   Tmsh = eltype(mesh.dxidx)
@@ -39,6 +45,10 @@ function getGLS_test(mesh, sbp, eqn, opts)
 
 end  # end function
 
+"""
+  Test GLS against reference implemntation, also tau for some cases
+  where it is known exactly.
+"""
 function test_GLS2_term()
   facts("----- Testing GLS2 -----") do
 
@@ -84,6 +94,9 @@ end
 test_GLS2_term()
 add_func1!(AdvectionTests, test_GLS2_term)
 
+"""
+  Finite difference and complex step test for GLS term
+"""
 function test_GLS2_jac()
   # finite difference checks
   facts("----- Performing GLS2 Finite Difference Checks -----") do

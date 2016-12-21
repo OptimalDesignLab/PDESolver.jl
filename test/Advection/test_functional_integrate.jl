@@ -1,4 +1,8 @@
 # test boundary forces
+
+"""
+  Test integrating a function over a geometric edge
+"""
 function test_functional_integrate()
 facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
     clean_dict(arg_dict)

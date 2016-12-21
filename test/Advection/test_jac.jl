@@ -1,7 +1,8 @@
-#using FactCheck
-#using ODLCommonTools
-#global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
+# tests for the global system jacobian
 
+"""
+  Compare finite difference and complex step jacobians
+"""
 function test_jac_res()
 # check that finite differencing and complex stepping the residual agree
 
@@ -70,6 +71,10 @@ end
 
 test_jac_res()
 add_func1!(AdvectionTests, test_jac_res)
+
+"""
+  Test the various methods of calculating the jacobian
+"""
 function test_jac_calc()
   facts("----- Testing Jacobian calculation -----") do
     # back to finite differences

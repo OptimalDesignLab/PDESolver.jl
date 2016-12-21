@@ -28,7 +28,9 @@ include("../TestSystem.jl")
 global const AdvectionTests = TestList()
 
 
-
+"""
+  Test energy stability in parallel
+"""
 function runtests_parallel4()
   facts("----- Testing Parallel 4 -----") do
 

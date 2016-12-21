@@ -2,6 +2,9 @@
 
 global const test_dg_inputfile = "input_vals_channelDG.jl"
 
+"""
+  Test face flux for DG.
+"""
 function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG Flux ------") do
     eqn.params.LFalpha = 1.0
@@ -35,6 +38,9 @@ end
 #test_dg_flux(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_FLUX])
 
+"""
+  Test boundary conditions for DG.
+"""
 function test_dg_bc(mesh, sbp, eqn, opts)
   facts("\n----- Testing DG Boundary Condition -----") do
 

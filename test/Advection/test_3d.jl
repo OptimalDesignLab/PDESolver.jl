@@ -1,5 +1,8 @@
 global const test_3d_inputfile = "input_vals_3d.jl"
 
+"""
+  Test weakdifferentiate and that uniform flow goes to zero residual
+"""
 function test_3d_sbp(mesh, sbp, eqn, opts)
   facts("----- Testing 3D SummationByParts -----") do
     q = ones(1, mesh.numNodesPerElement, 2)
@@ -36,6 +39,9 @@ end
 #test_3d_sbp(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_3d_sbp, test_3d_inputfile)
 
+"""
+  Test boundary flux.
+"""
 function test_bc(flux_exp)
 # test summing boundary condition
  fill!(eqn.bndryflux, 0.0)
@@ -60,7 +66,9 @@ function test_bc(flux_exp)
  @fact abs(flux_out) --> roughly(abs(flux_in), atol=1e-13)
 end
 
-
+"""
+  Test Roe solver as used for face flux calculation
+"""
 function test_3d_bcsolver(mesh, sbp, eqn, opts)
   facts("----- Testing BCSolver -----") do
     # check that the solver produces the regular flux when qL = qR
@@ -105,6 +113,9 @@ end
 #test_3d_bcsolver(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_3d_bcsolver, test_3d_inputfile, [TAG_BC, TAG_FLUX])
 
+"""
+  Test boundary flux calcuation in all 3 directions.
+"""
 function test_3d_boundaryflux(mesh, sbp, eqn, opts)
    facts("----- Testing boundary flux calculation -----") do
      # set alpha_x = 1. all others zero, q = constant, check flux
@@ -143,6 +154,9 @@ end
 #test_3d_boundaryflux(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_3d_boundaryflux, test_3d_inputfile, [TAG_BC])
 
+"""
+  Test calculation of face flux.
+"""
 function test_3d_faceflux(mesh, sbp, eqn, opts)
   facts("----- Testing face flux -----") do
     # the interpolation should be exact for this case

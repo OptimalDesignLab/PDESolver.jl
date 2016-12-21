@@ -41,6 +41,10 @@ function make_input_mms(degree; dg=false, operator="SBPOmega")
   return fname
 end
 
+"""
+  Test manufactured solutions, including cases that should be exact, for both
+  gamma and omega operators.
+"""
 function test_mms()
   facts("----- Testing using manufactured polynomials -----") do
 

@@ -27,7 +27,10 @@ include("../TestSystem.jl")
 global const AdvectionTests = TestList()
 
 
-
+"""
+  Run parallel tests and compare to serial results calculated as part of
+  serial tests.
+"""
 function runtests_parallel()
   facts("----- Testing Parallel -----") do
 
