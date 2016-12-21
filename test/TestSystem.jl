@@ -76,7 +76,6 @@ end  # end type definition
 """
 function add_func1!(testlist::TestList, func::Function, tags::Array{ASCIIString}=ASCIIString[])
 
-  println("adding function ", func, " to test list")
   # function
   push!(testlist.funcs, func)
 
@@ -84,7 +83,6 @@ function add_func1!(testlist::TestList, func::Function, tags::Array{ASCIIString}
   tag_list_full = Array(ASCIIString, length(tags)+1)
   tag_list_full[1] = TAG_DEFAULT
   tag_list_full[2:end] = tags
-  println("with tags = ", tag_list_full)
   push!(testlist.func_tags, tag_list_full)
 
   # function type
@@ -205,7 +203,6 @@ end
 function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
 
   println("Running tests with tags matching = ", tags)
-  println("list of functions = ", testlist.funcs)
   tags_set = Set(tags)
   ntests = length(testlist.funcs)
   for i=1:ntests
@@ -215,11 +212,9 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
     input_name_i = testlist.input_name[i]
     input_mod_i = testlist.input_mod[i]
 
-    println("considering function ", func_i)
     for j=1:length(func_tags_i)
       tag_j = func_tags_i[j]
       if tag_j in tags_set
-        println("running this test")
         # run this test
         if functype_i == 1  # function with no arguments
           func_i()

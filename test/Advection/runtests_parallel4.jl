@@ -27,6 +27,7 @@ include("../TestSystem.jl")
 # test list
 global const AdvectionTests = TestList()
 
+include("Nonlinearsolvers/crank_nicolson_PETSc_parallel/runtests.jl")
 
 """
   Test energy stability in parallel
@@ -48,7 +49,7 @@ add_func1!(AdvectionTests, runtests_parallel4)
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Advection 2 processor tests -----") do
+facts("----- Running Advection 4 processor tests -----") do
   nargs = length(ARGS)
   if nargs == 0
     tags = ASCIIString[TAG_DEFAULT]
