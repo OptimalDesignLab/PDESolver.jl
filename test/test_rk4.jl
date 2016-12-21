@@ -26,6 +26,9 @@ function post_func(q_vec, res_vec, opts; calc_norm=true)
   return norm(res_vec)
 end
 
+"""
+  Use rk4 to solve an 4th order polynoial ODE, for which it is exact
+"""
 function test_rk4()
     facts("----- testing rk4 -----") do
     opts_rk = Dict{Any, Any}("output_freq" => 1, "write_vis" => false, "use_itermax" => false)

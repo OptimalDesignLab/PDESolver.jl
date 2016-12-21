@@ -1,31 +1,13 @@
 # tests for DG functionality
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using EulerEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-
-
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-=#
-# insert a command line argument
 
 # input file to modify, same for all test functions
 const test_dg_inputfile = "input_vals_channel.jl"
 const test_dg_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
 
+"""
+  This functino tests tests calculating fluxes as used for the DG face
+  integrals.
+"""
 function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG flux -----") do
 
@@ -91,6 +73,10 @@ end  # end function
 #test_dg_flux(mesh, sbp, eqn, opts)
 add_func3!(EulerTests, test_dg_flux, test_dg_inputfile, test_dg_moddict, [TAG_FLUX])
 
+"""
+  This function tests DG boundary integrals, including interpolation to
+  interfaces.
+"""
 function test_dg_boundary(mesh, sbp, eqn, opts)
 
   facts("----- Testing DG Boundary -----") do
@@ -136,6 +122,9 @@ end  # end function
 #test_dg_boundary(mesh, sbp, eqn, opts)
 add_func3!(EulerTests, test_dg_boundary, test_dg_inputfile, test_dg_moddict, [TAG_BC])
 
+"""
+  This functions tests that a uniform flow gives zero residual
+"""
 function test_dg_uniform(mesh, sbp, eqn, opts)
 
   # reset eqn

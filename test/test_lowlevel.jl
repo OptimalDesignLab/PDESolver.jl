@@ -1,6 +1,11 @@
 #using ArrayViews
 # using input_vals_channel.jl
 
+"""
+  This function tests whether the mesh counted the number of mesh entities
+  is correct.  It also checks the coordinates and mapping jacobian, which
+  means it is dependent on the element ordering
+"""
 function test_lowlevel_mesh(mesh, sbp, eqn, opts)
   facts("--- Testing Mesh --- ") do
 
@@ -71,6 +76,11 @@ end # end function
 #test_lowlevel_mesh(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_mesh, "input_vals_channel.jl")
 
+"""
+  This function tests calculation of quantities needed for using the
+  entropy variables: conversion, A0, A1
+
+"""
 function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
   facts("--- Testing Euler Low Level Functions --- ") do
@@ -194,6 +204,10 @@ end  # end function
 #test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS])
 
+"""
+  This function tests functions that are used to convert entire vectors/arrays
+  of values between conservative and entropy variables
+"""
 function test_lowlevel_convert(mesh, sbp, eqn, opts)
    opts["variable_type"] = :entropy
    eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
@@ -289,6 +303,10 @@ end
 #test_lowlevel_convert(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS])
 
+"""
+  This function tests calculation of dependent quantities: pressure, speed of
+  sound, Euler flux.
+"""
 function test_lowlevel_calc(mesh, sbp, eqn, opts)
    opts["variable_type"] = :entropy
    eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
@@ -322,6 +340,9 @@ end
 #test_lowlevel_convert(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS])
 
+"""
+  Ths function tests calculation of boundary conditions and the Roe solver.
+"""
 function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
   q = [1.0, 2.0, 3.0, 7.0]
@@ -414,6 +435,9 @@ end
 add_func2!(EulerTests, test_lowlevel_boundary, "input_vals_channel.jl", [TAG_BC, TAG_FLUX])
 
 
+"""
+  This function tests things in commonfuncs.jl
+"""
 function test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
 
   coords = [1.0,  0.0]
@@ -471,6 +495,9 @@ end
 #test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_commonfuncs, "input_vals_channel.jl")
 
+"""
+  This functinon tests dataprep and some auxiliary functions
+"""
 function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 
   facts("--- Testing dataPrep ---") do
@@ -549,6 +576,10 @@ end
 #test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_dataprep, "input_vals_channel.jl", [TAG_FLUX])
 
+"""
+  This function tests evaluating volume and boundary integrals over the
+  entire mesh.
+"""
 function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
   facts("--- Testing evalVolumeIntegrals ---")  do

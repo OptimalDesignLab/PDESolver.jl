@@ -1,5 +1,7 @@
 # Test functional Integrate and adjoint for euler equation.
-
+"""
+  Test adjoint calculation
+"""
 function test_adjoint(mesh, sbp, eqn, opts)
   facts("--- Testing Functional Computation On a Boundary ----") do
 

@@ -1,5 +1,7 @@
 # verify processing of input files works
-
+"""
+  This function tests whether the known keys list works correctly
+"""
 function test_input()
   facts("---- Testing input processing ------") do
 

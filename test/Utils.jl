@@ -1,33 +1,4 @@
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using EulerEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-
-
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-using Utils
-using FactCheck
-using ODLCommonTools
-using MPI
-
-if !MPI.Initialized()
-  MPI.Init()
-end
-=#
+# test Utils module
 
 type TestParams
   time::Timings
@@ -57,7 +28,9 @@ end
 type FakeSBP
 end
 
-
+"""
+  Test BufferedIO type
+"""
 function test_utils_io()
   facts("---- Testing IO -----") do
     fname = "iotest.dat"
@@ -85,6 +58,9 @@ end
 #test_utils_io()
 add_func1!(EulerTests, test_utils_io)
 
+"""
+  Test Timings type
+"""
 function test_utils_timing()
   facts("----- Testing Timings -----") do
     t = Timings()
@@ -131,6 +107,9 @@ end
 #test_utils_timing()
 add_func1!(EulerTests, test_utils_timing)
 
+"""
+  Test various functions: calcNorm, calcMeshH etc.
+"""
 function test_utils_misc()
   facts("----- Testing Utility Functions -----") do
     M = rand(10)
@@ -182,6 +161,9 @@ end
 #test_utils_misc()
 add_func1!(EulerTests, test_utils_misc)
 
+"""
+  Test permutation matrices, vectors, functions
+"""
 function test_utils_perm()
   facts("----- Testing Permutation Functions -----") do
 

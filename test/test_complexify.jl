@@ -1,8 +1,8 @@
 # test complexify.jl
 
-#using FactCheck
-#include(joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-
+"""
+  This function tests whether compexify.jl functions work correctly
+"""
 function test_complexify()
 
   facts("----- Testing Complexify.jl ------") do

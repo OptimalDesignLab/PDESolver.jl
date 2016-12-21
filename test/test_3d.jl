@@ -1,30 +1,13 @@
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using EulerEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-# insert a command line argument
-=#
-#resize!(ARGS, 1)
-# create entropy variable param type
 
 const test_3d_inputfile = "input_vals_3d.jl"  # input file used by all tests
 
+"""
+  Test converting back and forth between conservative and entropy variables
+  in 3d
+"""
 function test_3d_conversion(mesh, sbp, eqn, opts)
+
+# create entropy variable param type
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
   facts("----- Testing Conversion -----") do
@@ -65,6 +48,10 @@ end
 #test_3d_conversion(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS])
 
+"""
+  Test calculation of Euler flux in 3D, for both conservative and entropy
+  variables.
+"""
 function test_3d_flux(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
@@ -109,6 +96,9 @@ end  # end function
 #test_3d_flux(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_FLUX])
 
+"""
+  Test some auxiliary calculation functinos in 3D
+"""
 function test_3d_misc(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
@@ -135,6 +125,9 @@ end  # end function
 #test_3d_misc(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS])
 
+"""
+  Test calculation of A0
+"""
 function test_3d_matrices(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
@@ -172,6 +165,9 @@ end  # end function
 #test_3d_matrices(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile)
 
+"""
+  Test Roe solver in 3D
+"""
 function test_3d_bc(mesh, sbp, eqn, opts)
   facts("----- Testing BC Solvers -----") do
 

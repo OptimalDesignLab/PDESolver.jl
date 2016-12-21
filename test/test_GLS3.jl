@@ -18,7 +18,10 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 =#
 
 
-
+"""
+  This function tests GLS for a given state loaded in the eqn object.
+  This function is not a test function, but is called by test functions.
+"""
 function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
 
   eqn.params.tau_type = 2
@@ -153,6 +156,9 @@ end  # end function
 
 
 # run the tests
+"""
+  Test GLS on a channel flow
+"""
 function test_gls_channel(mesh, sbp, eqn, opts)
   #=
   include("input_vals_channel.jl")
@@ -181,6 +187,10 @@ test_gls_channel_moddict = Dict{ASCIIString, Any}("solve" => false, "variable_ty
 #test_gls_channel(mesh, sbp, eqn, opts)
 add_func3!(EulerTests, test_gls_channel, test_gls_channel_inputname, test_gls_channel_moddict, [TAG_ENTROPYVARS])
 
+
+"""
+  Test GLS on the isentropic vortex for all degree operators
+"""
 function test_gls_vortex()
   for p = 1:4
     if true
@@ -211,6 +221,9 @@ end
 #test_gls_vortex(mesh, sbp, eqn, opts)
 add_func1!(EulerTests, test_gls_vortex, [TAG_ENTROPYVARS])
 
+"""
+  Test finite differencing and complex stepping of the GLS term
+"""
 function test_gls_fd()
   for p = 1:4
     if true

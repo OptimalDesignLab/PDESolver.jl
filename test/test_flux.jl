@@ -1,25 +1,4 @@
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using EulerEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-# insert a command line argument
-resize!(ARGS, 1)
-=#
+# test_flux.jl: test flux calculation
 
 # logarithmic mean used by IR flux
 function logmean(aL, aR)
@@ -36,6 +15,10 @@ function logmean(aL, aR)
   return (aL + aR)/(2*F)
 end
 
+"""
+  Test that a flux is symmetric.  This is not a test function itself, but it
+  is called by test functions
+"""
 function test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
   # test symmetry
@@ -53,7 +36,10 @@ function test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_eu
 
 end
 
-
+"""
+  An inefficient version of the IR flux, used for comparison to the efficient
+  version.
+"""
 function ir_flux(params, qL, qR, nrm)
 
   pL = EulerEquationMod.calcPressure(params, qL)
@@ -81,7 +67,9 @@ function ir_flux(params, qL, qR, nrm)
 end
 
 
-
+"""
+  Test calculation of numerical flux functions in 2D
+"""
 function test_flux_2d()
   ARGS[1] = "input_vals_channel_dg.jl"
   include(STARTUP_PATH)
@@ -204,7 +192,9 @@ end  # end function
 #test_flux_2d()
 add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX])
 
-
+"""
+  Test calculation of numerical flux functions in 3D
+"""
 function test_flux_3d()
   # test 3D
   ARGS[1] = "input_vals_3d.jl"

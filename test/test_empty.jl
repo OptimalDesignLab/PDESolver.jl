@@ -1,4 +1,6 @@
-
+"""
+  A test of the test system itself
+"""
 function test_empty()
   facts("Testing empty...") do
 

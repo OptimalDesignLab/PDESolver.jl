@@ -25,7 +25,10 @@ include("./TestSystem.jl")
 global const EulerTests = TestList()
 # define global const tags here
 
-
+"""
+  Run the parallel tests and compare against serial results run as part of
+  the serial tests
+"""
 function test_parallel2()
   facts("----- Testing Parallel -----") do
 
