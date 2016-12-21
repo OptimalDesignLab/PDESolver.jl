@@ -92,6 +92,7 @@ arg_dict = Dict{Any,Any}(
 "BC1_name" => "p5BC",
 "write_sharedboundaries" => false,
 "jac_type" => 3,
+"jac_method" => 2,
 "use_DG" => true,
 "calc_havg" => false,
 "recalc_prec_freq" => 1,

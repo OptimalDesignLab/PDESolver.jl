@@ -1,28 +1,11 @@
 # test the entropy stable interface calculation
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using EulerEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-# insert a command line argument
-resize!(ARGS, 1)
-=#
-import EulerEquationMod: ParamType
-function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
+"""
+  A way of calculating the entropy stable face integral, used for comparison
+  and debugging.
+"""
+function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(
+                                params::AbstractParamType{Tdim},
                                 sbpface::AbstractFace,
                                 iface::Interface,
                                 qL::AbstractMatrix{Tsol},
@@ -105,6 +88,9 @@ function calcESFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim},
   return copy(workB)
 end
  
+"""
+  Calculate the entropy flux psi at a node
+"""
 function psi_vec(params, q_vals)
   s = EulerEquationMod.calcEntropy(params, q_vals)
   rho = q_vals[1]
@@ -114,6 +100,9 @@ function psi_vec(params, q_vals)
   return psi
 end
 
+"""
+  Calculate the entropy flux psi for an element.  
+"""
 function getPsi{Tsol}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector)
 
   numDofPerNode, numNodesPerElement = size(qL)
@@ -137,7 +126,10 @@ function getPsi{Tsol}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}
 end
 
 
-
+"""
+  Calculate the boundary operator in the specified direction times
+  the vector of entropy flux (psi) vals
+"""
 function getEPsi{Tsol}(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, dir::Integer)
   # this computes the regular E * psi
   # not what is needed for lemma 3
@@ -182,6 +174,9 @@ function getEPsi{Tsol}(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::Ab
 
 end
 
+"""
+  Contract resL and resR with entropy variables.
+"""
 function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 #  println("----- entered contractLHS -----")
@@ -191,6 +186,9 @@ function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, qR::AbstractM
   return val1, val2
 end
 
+"""
+  Contract a residual array for an element with the entropy variables
+"""
 function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres})
 
   numDofPerNode, numNodesPerElement = size(qL)
@@ -245,6 +243,9 @@ function getEface(iface, sbpface, dxidx_face, dir::Integer)
   return EL, ER
 end
 
+"""
+  Compute E for the current face (specified by dir) times psiL and psiR
+"""
 function reduceEface(iface, sbpface, dxidx_face, dir::Integer, psiL, psiR)
 
   dim = size(dxidx_face, 1)
@@ -276,7 +277,10 @@ end
   
 
 
-
+"""
+  Test the entropy stable volume terms and face integrals against the
+  analytical entropy flux
+"""
 function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
   functor = EulerEquationMod.IRFlux()
@@ -464,27 +468,35 @@ function runESSTest(mesh, sbp, eqn, opts; test_boundaryintegrate=false)
 
 end
 
-facts("----- testing ESS -----") do
-  ARGS[1] = "input_vals_channel_dg_large.jl"
-  include(STARTUP_PATH)
-  # evaluate the residual to confirm it is zero
-  EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
+"""
+  Running the entropy stable tests.
+"""
+function test_ESS()
+  facts("----- testing ESS -----") do
+    ARGS[1] = "input_vals_channel_dg_large.jl"
+    include(STARTUP_PATH)
+    # evaluate the residual to confirm it is zero
+    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
 
-  println("checking channel flow")
-  runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)
+    println("checking channel flow")
+    runESSTest(mesh, sbp, eqn, opts, test_boundaryintegrate=false)
 
-  println("\nchecking ICExp")
-  ICFunc = EulerEquationMod.ICDict["ICExp"]
-  ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  scale!(eqn.q_vec, 0.01)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+    println("\nchecking ICExp")
+    ICFunc = EulerEquationMod.ICDict["ICExp"]
+    ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
+    scale!(eqn.q_vec, 0.01)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    for i=1:mesh.numEl
+      for j=1:mesh.numNodesPerElement
+        eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
+      end
     end
-  end
-  runESSTest(mesh, sbp, eqn, opts)
+    runESSTest(mesh, sbp, eqn, opts)
 
-end
+  end  # end facts block
 
+  return nothing
+end  # end functions
 
+#test_ESS()
+add_func1!(EulerTests, test_ESS, [TAG_FLUX])

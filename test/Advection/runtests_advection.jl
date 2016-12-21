@@ -24,25 +24,60 @@ function clean_dict(collection)
 end
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-# insert a command line argument
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_channel.jl"
-include("test_empty.jl")
-#include("test_input.jl")
-include("test_lowlevel.jl")
-include("test_3d.jl")
-include("test_gamma.jl")
-include("test_mms.jl")
-include("test_jac.jl")
-include("test_GLS2.jl")
-include("test_dg.jl")
-include("test_functional_integrate.jl")
-include("test_parallel.jl")
 
-start_dir = pwd()
-cd("./energy")
-include( joinpath(pwd(), "runtests.jl"))
-cd(start_dir)
+#------------------------------------------------------------------------------
+# define tests and tags
+
+include("../TestSystem.jl")
+# define tags that will be used
+global const TAG_COMPLEX = "tag_complex"
+global const TAG_BC = "tag_bc"
+global const TAG_FLUX = "tag_flux"
+global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
+global const TAG_CONVERGENCE = "tag_convergence"
+
+# test list
+global const AdvectionTests = TestList()
+
+println("including test_lowlevel.jl")
+include("test_lowlevel.jl")
+println("including test_3d.jl")
+include("test_3d.jl")
+println("including test_gamma.jl")
+include("test_gamma.jl")
+println("including test_mms.jl")
+include("test_mms.jl")
+println("including test_jac.jl")
+include("test_jac.jl")
+println("including test_GLS2.jl")
+include("test_GLS2.jl")
+println("including test_dg.jl")
+include("test_dg.jl")
+println("including test_functional_integrate.jl")
+include("test_functional_integrate.jl")
+println("including test_parallel.jl")
+include("test_parallel.jl")
+println("including test_energy.jl")
+include( "./energy/runtests.jl")
+
+#------------------------------------------------------------------------------
+# run tests
+facts("----- Running Advection tests -----") do
+  nargs = length(ARGS)
+  if nargs == 0
+    tags = ASCIIString[TAG_DEFAULT]
+  else
+    tags = Array(ASCIIString, nargs)
+    copy!(tags, ARGS)
+  end
+
+  resize!(ARGS, 1)
+  ARGS[1] = ""
+  run_testlist(AdvectionTests, tags)
+end
+
+#------------------------------------------------------------------------------
+# cleanup
 
 cd("./Nonlinearsolvers/")
 include(joinpath(pwd(), "runtests_serial.jl"))
@@ -53,19 +88,3 @@ if MPI.Initialized()
 end
 
 FactCheck.exitstatus()
-
-
-# write your own tests here
-# @test 1 == 1
-
-
-# using SummationByParts
-# #using Base.Test
-# using FactCheck
-# 
-# include("test_orthopoly.jl")
-# include("test_symcubatures.jl")
-# include("test_cubature.jl")
-# include("test_SummationByParts.jl")
-# 
-# FactCheck.exitstatus()

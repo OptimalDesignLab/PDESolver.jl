@@ -4,6 +4,7 @@
 jflags=$@
 err=0
 start_dir=`pwd`
+
 cd ./Advection
   mpirun -np 2 julia $jflags ./runtests_parallel.jl
   tmp=$?

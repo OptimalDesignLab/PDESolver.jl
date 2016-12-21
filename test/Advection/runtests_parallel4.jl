@@ -1,3 +1,5 @@
+# run 4 processor tests
+
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -15,18 +17,54 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-# insert a command line argument
-resize!(ARGS, 1)
 
-facts("----- Testing Parallel 4 -----") do
+#------------------------------------------------------------------------------
+# define tests and tags
 
-  start_dir = pwd()
-  cd("./energy")
-  include(joinpath(pwd(), "runtests_parallel.jl"))
-  cd(start_dir)
- 
+include("../TestSystem.jl")
+# define tags that will be used
 
+# test list
+global const AdvectionTests = TestList()
+
+
+"""
+  Test energy stability in parallel
+"""
+function runtests_parallel4()
+  facts("----- Testing Parallel 4 -----") do
+
+    start_dir = pwd()
+    cd("./energy")
+    include(joinpath(pwd(), "runtests_parallel.jl"))
+    cd(start_dir)
+  end
+
+  return nothing
 end
+
+#runtests_parallel4()
+add_func1!(AdvectionTests, runtests_parallel4)
+
+#------------------------------------------------------------------------------
+# run tests
+facts("----- Running Advection 2 processor tests -----") do
+  nargs = length(ARGS)
+  if nargs == 0
+    tags = ASCIIString[TAG_DEFAULT]
+  else
+    tags = Array(ASCIIString, nargs)
+    copy!(tags, ARGS)
+  end
+
+  resize!(ARGS, 1)
+  ARGS[1] = ""
+  run_testlist(AdvectionTests, tags)
+end
+
+#------------------------------------------------------------------------------
+# cleanup
+
 
 if MPI.Initialized()
   MPI.Finalize()

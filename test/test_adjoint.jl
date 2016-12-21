@@ -1,20 +1,26 @@
 # Test functional Integrate and adjoint for euler equation.
+"""
+  Test adjoint calculation
+"""
+function test_adjoint(mesh, sbp, eqn, opts)
+  facts("--- Testing Functional Computation On a Boundary ----") do
 
-facts("--- Testing Functional Computation On a Boundary ----") do
-  ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
-  include("../src/solver/euler/startup.jl")  # initialization and construction
+    @fact mesh.isDG --> true
+    @fact opts["functional_name1"] --> "drag"
+    @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
+    @fact opts["geom_edges_functional1"] --> [4]
 
+    fname = "./functional_error1.dat"
+    relative_error = readdlm(fname)
 
-  @fact mesh.isDG --> true
-  @fact opts["functional_name1"] --> "drag"
-  @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
-  @fact opts["geom_edges_functional1"] --> [4]
+    @fact relative_error[1] --> roughly(0.00018849571, atol = 1e-6)
 
-  fname = "./functional_error1.dat"
-  relative_error = readdlm(fname)
+    rm("./functional_error1.dat") # Delete the file
 
-  @fact relative_error[1] --> roughly(0.00018849571, atol = 1e-6)
+  end  # End do
 
-  rm("./functional_error1.dat") # Delete the file
+  return nothing
+end  # end function
 
-end  # End do
+#test_adjoint(mesh, sbp, eqn, opts)
+add_func2!(EulerTests, test_adjoint, "input_vals_vortex_adjoint_DG.jl")

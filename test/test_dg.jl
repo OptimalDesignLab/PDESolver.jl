@@ -1,145 +1,147 @@
 # tests for DG functionality
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+# input file to modify, same for all test functions
+const test_dg_inputfile = "input_vals_channel.jl"
+const test_dg_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
 
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using EulerEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+"""
+  This functino tests tests calculating fluxes as used for the DG face
+  integrals.
+"""
+function test_dg_flux(mesh, sbp, eqn, opts)
+  facts("----- Testing DG flux -----") do
 
-
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-# insert a command line argument
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_channel.jl"
-include(STARTUP_PATH)
-
-arg_dict["Flux_name"] = "RoeFlux"
-arg_dict["use_DG"] = true
-
-make_input(arg_dict, "input_vals_channel_dg")
-ARGS[1] = "input_vals_channel_dg.jl"
-include(STARTUP_PATH)
+    # test the Roe Flux
+    uL = [1.0, 2.0, 3.0, 7.0]
+    uR = copy(uL)
+    flux_roe = zeros(4)
+    flux_euler = zeros(4)
+    func = EulerEquationMod.FluxDict["RoeFlux"]
+    for i=1:mesh.numInterfaces
+      iface = mesh.interfaces[i]
+      for j=1:mesh.sbpface.numnodes
+        dxidx = mesh.dxidx_face[:, :, j, i]
+        eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
+        aux_vars = eqn.aux_vars_face[:, j, i]
+        nrm = sbp.facenormal[:, iface.faceL]
 
 
-facts("----- Testing DG flux -----") do
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        nrm_scaled = [nx, ny]
+        EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
-  # test the Roe Flux
-  uL = [1.0, 2.0, 3.0, 7.0]
-  uR = copy(uL)
-  flux_roe = zeros(4)
-  flux_euler = zeros(4)
-  func = EulerEquationMod.FluxDict["RoeFlux"]
-  for i=1:mesh.numInterfaces
-    iface = mesh.interfaces[i]
-    for j=1:mesh.sbpface.numnodes
-      dxidx = mesh.dxidx_face[:, :, j, i]
-      eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
-      aux_vars = eqn.aux_vars_face[:, j, i]
-      nrm = sbp.facenormal[:, iface.faceL]
+        func(eqn.params, uL, uR, aux_vars, dxidx, nrm, flux_roe)
 
-
-      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      nrm_scaled = [nx, ny]
-      EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
-
-      func(eqn.params, uL, uR, aux_vars, dxidx, nrm, flux_roe)
-
-      @fact flux_roe --> roughly(flux_euler, atol=1e-13)
+        @fact flux_roe --> roughly(flux_euler, atol=1e-13)
+      end
     end
-  end
 
-  # now test calcFaceFlux
-  fill!(eqn.flux_face, 0.0)
-  for i=1:mesh.numInterfaces
-    for j=1:mesh.sbpface.numnodes
-      eqn.q_face[:, 1, j, i] = uL
-      eqn.q_face[:, 2, j, i] = uL
-      eqn.aux_vars_face[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
+    # now test calcFaceFlux
+    fill!(eqn.flux_face, 0.0)
+    for i=1:mesh.numInterfaces
+      for j=1:mesh.sbpface.numnodes
+        eqn.q_face[:, 1, j, i] = uL
+        eqn.q_face[:, 2, j, i] = uL
+        eqn.aux_vars_face[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
+      end
     end
-  end
 
-  EulerEquationMod.calcFaceFlux(mesh, sbp, eqn, func, mesh.interfaces, eqn.flux_face)
-  for i=1:mesh.numInterfaces
-    iface = mesh.interfaces[i]
-    for j=1:mesh.sbpface.numnodes
-      dxidx = mesh.dxidx_face[:, :, j, i]
-      aux_vars = eqn.aux_vars_face[:, j, i]
-      nrm = sbp.facenormal[:, iface.faceL]
+    EulerEquationMod.calcFaceFlux(mesh, sbp, eqn, func, mesh.interfaces, eqn.flux_face)
+    for i=1:mesh.numInterfaces
+      iface = mesh.interfaces[i]
+      for j=1:mesh.sbpface.numnodes
+        dxidx = mesh.dxidx_face[:, :, j, i]
+        aux_vars = eqn.aux_vars_face[:, j, i]
+        nrm = sbp.facenormal[:, iface.faceL]
 
 
-      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      nrm_scaled = [nx, ny]
-      EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        nrm_scaled = [nx, ny]
+        EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
-      @fact eqn.flux_face[:, j, i] --> roughly(flux_euler, atol=1e-13)
+        @fact eqn.flux_face[:, j, i] --> roughly(flux_euler, atol=1e-13)
+      end
     end
-  end
 
+  end  # end facts block
 
+  return nothing
+end  # end function
 
-end
+#test_dg_flux(mesh, sbp, eqn, opts)
+add_func3!(EulerTests, test_dg_flux, test_dg_inputfile, test_dg_moddict, [TAG_FLUX])
 
+"""
+  This function tests DG boundary integrals, including interpolation to
+  interfaces.
+"""
+function test_dg_boundary(mesh, sbp, eqn, opts)
 
-facts("----- Testing DG Boundary -----") do
+  facts("----- Testing DG Boundary -----") do
 
-  EulerEquationMod.ICRho1E2U3(mesh, sbp, eqn, opts, eqn.q_vec)
-  EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
-  mesh.bndry_funcs[1:end] = EulerEquationMod.BCDict["Rho1E2U3BC"]
+    EulerEquationMod.ICRho1E2U3(mesh, sbp, eqn, opts, eqn.q_vec)
+    EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    mesh.bndry_funcs[1:end] = EulerEquationMod.BCDict["Rho1E2U3BC"]
 
-  # check that the interpolation worked
-  for i=1:mesh.numBoundaryFaces
-    for j=1:mesh.sbpface.numnodes
-      @fact eqn.q_bndry[:, j, i] --> roughly( [1.0, 0.35355, 0.35355, 2.0], atol=1e-13)
+    # check that the interpolation worked
+    for i=1:mesh.numBoundaryFaces
+      for j=1:mesh.sbpface.numnodes
+        @fact eqn.q_bndry[:, j, i] --> roughly( [1.0, 0.35355, 0.35355, 2.0], atol=1e-13)
+      end
     end
-  end
 
-  uL = eqn.q_bndry[:, 1, 1]
-  flux_euler = zeros(4)
-  EulerEquationMod.getBCFluxes(mesh, sbp, eqn, opts)
+    uL = eqn.q_bndry[:, 1, 1]
+    flux_euler = zeros(4)
+    EulerEquationMod.getBCFluxes(mesh, sbp, eqn, opts)
 
-  for i=1:mesh.numBoundaryFaces
-    bndry_i = mesh.bndryfaces[i]
-    for j=1:mesh.sbpface.numnodes
-      dxidx = mesh.dxidx_bndry[:, :, j, i]
-      eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q_bndry[:, j, i])
-      aux_vars = eqn.aux_vars_bndry[:, j, i]
-      nrm = sbp.facenormal[:, bndry_i.face]
+    for i=1:mesh.numBoundaryFaces
+      bndry_i = mesh.bndryfaces[i]
+      for j=1:mesh.sbpface.numnodes
+        dxidx = mesh.dxidx_bndry[:, :, j, i]
+        eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q_bndry[:, j, i])
+        aux_vars = eqn.aux_vars_bndry[:, j, i]
+        nrm = sbp.facenormal[:, bndry_i.face]
 
-      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-      nrm_scaled = [nx, ny]
-      EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        nrm_scaled = [nx, ny]
+        EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
-      @fact eqn.bndryflux[:, j, i] --> roughly(flux_euler, atol=1e-13)
+        @fact eqn.bndryflux[:, j, i] --> roughly(flux_euler, atol=1e-13)
+      end
     end
-  end
 
 
-end
+  end  # end facts block
 
-# reset eqn
+  return nothing
+end  # end function
 
-include(STARTUP_PATH)
+#test_dg_boundary(mesh, sbp, eqn, opts)
+add_func3!(EulerTests, test_dg_boundary, test_dg_inputfile, test_dg_moddict, [TAG_BC])
 
-facts("----- Testing Uniform Channel -----") do
+"""
+  This functions tests that a uniform flow gives zero residual
+"""
+function test_dg_uniform(mesh, sbp, eqn, opts)
 
-  calcResidual(mesh, sbp, eqn, opts, evalEuler)
+  # reset eqn
+  include(STARTUP_PATH)
 
-  for i=1:mesh.numDof
-    @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-13)
-  end
+  facts("----- Testing Uniform Channel -----") do
 
-end
+    calcResidual(mesh, sbp, eqn, opts, evalEuler)
+
+    for i=1:mesh.numDof
+      @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-13)
+    end
+
+  end  # end facts block
+
+  return nothing
+end  # end function
+
+#test_dg_uniform(mesh, sbp, eqn, opts)
+add_func3!(EulerTests, test_dg_uniform, test_dg_inputfile, test_dg_moddict)

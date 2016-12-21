@@ -1,42 +1,29 @@
 # run tests related to parallel functionality that are not actually parallel
+"""
+  Run serial rk4 and newton cases, and generate input files for the
+  equivalent parallel cases
+"""
+function test_parallel()
+  ARGS[1] = "input_vals_vortex3.jl"
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+  cd("./rk4/serial")
+  include(STARTUP_PATH)
+  cd("../parallel")
 
+  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(arg_dict, "input_vals_parallel")
 
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using EulerEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
+  cd("../../newton/serial")
+  ARGS[1] = "input_vals_vortex3.jl"
+  include(STARTUP_PATH)
 
 
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_vortex3.jl"
+  cd("../parallel")
+  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(arg_dict, "input_vals_parallel")
 
-cd("./rk4/serial")
-include(STARTUP_PATH)
-cd("../parallel")
+  return nothing
+end
 
-arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-make_input(arg_dict, "input_vals_parallel")
-
-cd("../../newton/serial")
-ARGS[1] = "input_vals_vortex3.jl"
-include(STARTUP_PATH)
-
-
-cd("../parallel")
-arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-make_input(arg_dict, "input_vals_parallel")
-
-
+#test_parallel()
+add_func1!(EulerTests, test_parallel)
