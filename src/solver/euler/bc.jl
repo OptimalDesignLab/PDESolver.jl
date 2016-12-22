@@ -207,18 +207,22 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}, 
                           bndryflux::AbstractArray{Tres, 3})
-# calculate the boundary flux for the boundary condition evaluated by the functor
-
+  # calculate the boundary flux for the boundary condition evaluated by the 
+  # functor
+  #=
+  # println("functor = ", functor)
+  if functor == EulerEquationMod.isentropicVortexBC()
+    f = open("SAT_new_qg.dat", "a")
+    println(f, "Start of isentropicVortexBC")
+    close(f)
+  end
+  =#
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
-#    println("boundary ", i, "element = ", bndry_i.element, ", face = ", bndry_i.face)
     global_facenum = idx_range[i]
-#    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
-#    println("interface ", i)
     for j = 1:mesh.numNodesPerFace
-#      println("  node ", j)
 
       # get components
       q = sview(eqn.q_bndry, :, j, global_facenum)
@@ -228,12 +232,18 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
       nrm = sview(sbp.facenormal, :, bndry_i.face)
-      #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
     end
   end
+  #=
+  if functor == EulerEquationMod.isentropicVortexBC()
+    f = open("SAT_new_qg.dat", "a")
+    println(f, "End of isentropicVortexBC")
+    close(f)
+  end
+  =#
 
   return nothing
 end
@@ -251,40 +261,63 @@ end
 """->
 type isentropicVortexBC <: BCType
 end
-#=
+
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
               q::AbstractArray{Tsol,1}, 
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
+  gamma = params.gamma
+  gami = params.gamma_1
+
   # getting qg
   qg = params.qg
-  calcIsentropicVortex(x, params, qg)
-  # println("q = $(real(q))")
+  calcIsentropicVortex(x, params, qg) # Get the boundary value
+
+  v_vals = params.q_vals
+  convertFromNaturalToWorkingVars(params, q, v_vals)
 
   # Getting SAT terms
-  dq = zeros(qg)
-  dq = q - qg
+  #=
+  specific_vol = 1.0/qg[1]
+  u = qg[2]*specific_vol
+  v = qg[3]*specific_vol
+  phi = 0.5*(u*u + v*v)
+  H = gamma*qg[4]*specific_vol - gami*phi # Total Enthalpy
+  =#
+  
+  specific_vol = 1.0/v_vals[1]
+  u = v_vals[2]*specific_vol
+  v = v_vals[3]*specific_vol
+  phi = 0.5*(u*u + v*v)
+  H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
+  
+  dq = zeros(Tsol, 4)
+  dq = v_vals - qg
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
-  # println("sat pre = $sat")
-  calcSAT(params, nrm, q, dq, sat)
+  calcSAT(params, nrm2, dq, sat, u, v, H)
+  
+  #=
+  # Print SAT
+  f = open("SAT_new_qg.dat", "a")
+  println(f, real(sat))
+  close(f)
+  =#
   euler_flux = params.flux_vals1
-  v_vals = params.q_vals
-  nrm2 = params.nrm
-  # println("sat post = $sat")
-  convertFromNaturalToWorkingVars(params, q, v_vals)
-  calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
 
-  sat_fac = 1 # Multiplier for SAT term
+  sat_fac = 1.0 # Multiplier for SAT term
   for i=1:4
-    bndryflux[i] = sat_fac*sat[i]  + euler_flux[i]
+    bndryflux[i] = euler_flux[i] + sat_fac*sat[i]  
   end
 
   return nothing
 end
-=#
 
+#=
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
               q::AbstractArray{Tsol,1}, 
@@ -292,17 +325,14 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
-  # getting qg
   qg = params.qg
   calcIsentropicVortex(x, params, qg)
-  # println("q = $(real(q))")
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  # LFSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
-  # AvgSolver(q, qg, aux_vars, dxidx, nrm, bndryflux, params)
 
   return nothing
 
 end # ends the function isentropicVortexBC
+=#
 
 @doc """
 ### EulerEquationMod.isentropicVortexBC_physical <: BCTypes

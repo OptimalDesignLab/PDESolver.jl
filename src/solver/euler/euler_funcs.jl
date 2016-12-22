@@ -1222,6 +1222,42 @@ function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
     return nothing
 end
 
+@doc """
+
+"""->
+
+function calcSteadyFluxJacobian(params, A, q, nrm)
+
+  u = q[2]/q[1]
+  v = q[3]/q[1]
+
+  a1 = params.gamma*q[4]/q[1]
+  theta = nrm[1]*u + nrm[2]*v
+  phi_2 = 0.5*params.gamma_1*(u*u + v*v)
+
+  A[1,1] = 0.0
+  A[2,1] = -u*theta + nrm[1]*phi_2
+  A[3,1] = -v*theta + nrm[2]*phi_2
+  A[4,1] = theta*(phi_2-a1)
+
+  A[1,2] = nrm[1]
+  A[2,2] = theta - (params.gamma - 2)*nrm[1]*u
+  A[3,2] = nrm[1]*v - params.gamma_1*nrm[2]*u
+  A[4,2] = nrm[1]*a1 - params.gamma_1*u*theta
+
+  A[1,3] = nrm[2]
+  A[2,3] = nrm[2]*u - params.gamma_1*nrm[1]*v
+  A[3,3] = theta - (params.gamma - 2)*nrm[2]*v
+  A[4,3] = nrm[2]*a1 - params.gamma_1*v*theta
+
+  A[1,4] = 0.0
+  A[2,4] = params.gamma_1*nrm[1]
+  A[3,4] = params.gamma_1*nrm[2]
+  A[4,4] = params.gamma*theta
+
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.calcMaxWaveSpeed

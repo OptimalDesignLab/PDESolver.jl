@@ -98,6 +98,11 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
                                      
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
+  #=
+  f = open("SAT_new_qg.dat", "a")
+  println(f, "nrm = $nrm, nrm2 = $nrm2")
+  close(f)
+  =#
   RoeSolver(params, q, qg, aux_vars, nrm2, flux)
 
   return nothing
@@ -146,7 +151,6 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   d0_0 = 0.0
   d0_5 = 0.5
   tau = 1.0
-#  sgn = -1.0
   gamma = params.gamma
   gami = params.gamma_1
   sat_Vn = convert(Tsol, 0.025)
@@ -186,7 +190,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   dq = zeros(Tsol, 4)
   dq = q - qg
   sat = params.sat_vals
-  calcSAT(params, nrm, q, dq, sat, u, v, H)
+  calcSAT(params, nrm, dq, sat, u, v, H)
   =#
   
   phi = d0_5*(u*u + v*v)
@@ -214,13 +218,8 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   dq3 = q[3] - qg[3]
   dq4 = q[4] - qg[4]
 
-  # println("dq1 = $(real(dq1)), dq2 = $(real(dq2)), dq3 = $(real(dq3)), dq4 = $(real(dq4))")
-
-
   #-- diagonal matrix multiply
-#  sat = zeros(Tres, 4)
   sat = params.sat_vals
-  # println("sat pre = $sat")
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
@@ -265,9 +264,13 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   for i=1:length(sat)
     sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
   end
-  # println("sat post = $sat")
 
-
+  # Print SAT
+  #=
+  f = open("SAT_original.dat", "a")
+  println(f, real(sat))
+  close(f)
+  =#
   euler_flux = params.flux_vals1
   # calculate Euler flux in wall normal directiona
   # because edge numbering is rather arbitary, any memory access is likely to
@@ -450,16 +453,15 @@ end # ends the function eulerRoeSAT
 
 
 """->
+
 function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1}, 
-                 q::AbstractArray{Tsol,1}, dq::AbstractArray{Tsol,1}, 
+                 dq::AbstractArray{Tsol,1}, 
                  sat::AbstractArray{Tsol,1}, u, v, H)
  
-  sgn = -1 # Sign for Lambda
 
   # SAT parameters
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
-  # sat_fac = 1  # multiplier for SAT term
 
   gami = params.gamma_1
 
@@ -469,14 +471,8 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
 
   dA = sqrt(nx*nx + ny*ny)
 
-  # specific_vol = 1.0/q[1]
-
-  # u = q[2]*specific_vol
-  # v = q[3]*specific_vol
   Un = u*nx + v*ny # Normal Velocity
   
-  # press = calcPressure(params, q)
-  # a = sqrt(params.gamma*press*specific_vol) # Speed of sound
   phi = 0.5*(u*u + v*v)
   a = sqrt(gami*(H - phi)) # speed of sound
 
@@ -487,17 +483,14 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   rhoA = absvalue(Un) + dA*a
 
   # Compute Eigen Values of the Flux Jacobian
-  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) + sgn*lambda1)
-  lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) + sgn*lambda2)
-  lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) + sgn*lambda3)
+  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
 
-  dq1 = dq[1] #  - qg[1] 
-  dq2 = dq[2] #  - qg[2]
-  dq3 = dq[3] #  - qg[3]
-  dq4 = dq[4] #  - qg[4]
-
-  # phi = 0.5*(u*u + v*v)
-  # H = q[4]*specific_vol + specific_vol*press # Total Enthalpy
+  dq1 = dq[1]
+  dq2 = dq[2]
+  dq3 = dq[3]
+  dq4 = dq[4]
 
   sat = params.sat_vals
   sat[1] = lambda3*dq1

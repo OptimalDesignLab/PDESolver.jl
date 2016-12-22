@@ -12,7 +12,7 @@ include("startup.jl")
 
 #----  Write the surface pressure coefficient for the concerned edge  ----#
 g_edges = [3]
-
+#=
 # Create data structure for storing coefficient of pressure
 nface_arr = zeros(Int,length(g_edges))
 for i = 1:length(g_edges)
@@ -24,9 +24,13 @@ for i = 1:length(g_edges)
   pressCoeffArrWrite[i] = zeros(Float64, mesh.sbpface.numnodes, nface_arr[i])
 end
 EulerEquationMod.writeSurfacePressureCoeff(mesh, sbp, eqn, opts, g_edges, pressCoeffArrWrite)
+=#
+
 
 # Create the objective function data object
 objective = EulerEquationMod.OptimizationData{Tsol}(mesh, sbp, opts)
+
+
 
 #=
 #----  Read in the target surface pressure coefficients  ----#
@@ -53,9 +57,11 @@ if ctr == 0
 end
 =#
 
+
 #---- Get the objective function value  ----#\
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 println("objective.val = $(objective.val)")
+
 
 
 # Calculate the adjoint vector
