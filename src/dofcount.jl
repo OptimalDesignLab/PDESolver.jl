@@ -1,7 +1,7 @@
 function getNodeCounts(op_type, order)
 # get the number of nodes classifies on each vert, edge, and element
 # op type specifies the type of operator, order the order of accuracy
-  if op_type == 1  # SBPGamma, CG
+  if op_type == 1  # SBPGamma, CG, 2d
     if order == 1
       return nodecnts = [1, 0, 0]
     elseif order == 2
@@ -13,7 +13,7 @@ function getNodeCounts(op_type, order)
     else
       error("unsuported op_type/order")
     end
-  elseif op_type == 2  # SBPGamma DG
+  elseif op_type == 2  # SBPGamma DG, 2D
     if order == 1
       return [0, 0, 3]
     elseif order == 2
@@ -25,7 +25,7 @@ function getNodeCounts(op_type, order)
     else
       error("unsupported op_type/order")
     end
-  elseif op_type == 3  # SBPOmega DG
+  elseif op_type == 3  # SBPOmega DG, 2D
     if order == 1
       return [0, 0, 3]
     elseif order == 2
@@ -37,6 +37,31 @@ function getNodeCounts(op_type, order)
     else
       error("unsupported op_type/order")
     end
+  elseif op_type == 4  # SBPGamma DG, 3D
+    if order == 1
+      return [0, 0, 4]
+    elseif order == 2
+      return [0, 0, 11]
+    elseif order == 3
+      return [0, 0, 24]
+    elseif order == 4
+      return [0, 0, 45]
+    else
+      error("unsupported op_type/order")
+    end
+  elseif op_type == 5  # SBPOmega DG, 3D
+    if order == 1
+      return [0, 0, 4]
+    elseif order == 2
+      return [0, 0, 10]
+#    elseif order == 3
+#      return [0, 0, 10]
+#    elseif order == 4
+#      return [0, 0, 15]
+    else
+      error("unsupported op_type/order")
+    end
+ 
   end
 
 end
@@ -48,19 +73,71 @@ function calcDofs{T <: Integer}(m, nodecnt::AbstractArray{T})
 # m = number of elements per side
 # p = order of SBP operators
 
-  n = m  # number of elements in horiztonal direction
-  numV = (m+1)*(n+1)
-  numEdge = m*(n+1) + n*(m+1) + m*n
-  numEl = 2*m*n
+  if length(nodecnt) == 3
+    n = m  # number of elements in horiztonal direction
+    numV = (m+1)*(n+1)
+    numEdge = m*(n+1) + n*(m+1) + m*n
+    numEl = 2*m*n
 
-#  counts = [numV, numEdge, numEl]
+  #  counts = [numV, numEdge, numEl]
+    return numV*nodecnt[1] + numEdge*nodecnt[2] + numEl*nodecnt[3]
+  else
+    nx = m
+    ny = nx
+    nz = nx
+    nvert = (nx+1)*(ny+1)*(nz+1)
 
-  return numV*nodecnt[1] + numEdge*nodecnt[2] + numEl*nodecnt[3]
+    nedges = nx*(ny+1)*(nz+1) +  # cube dges
+             ny*(nx+1)*(nz+1) +
+             nz*(nx+1)*(ny+1) +  
+             nx*nz*(ny+1) +  # cube face edges
+             ny*nz*(nx+1) +
+             nx*ny*(nz+1) +
+             nx*ny*nz  # cube interior
+
+    nfaces = nx*ny*(nz+1)*2 +
+             ny*nz*(nx+1)*2 +
+             nx*ny*(ny+1)*2 +
+             nx*ny*nz*6
+
+    nel = nx*ny*nz*6
+
+    return nvert*nodecnt[1] + nedges*nodecnt[2] + nfaces*nodecnt[3] + nel*nodecnt[4]
+  end
+
+
+  return 0
 #  numDof = dot(nodecnts, counts)
 
 #  println("for a $m x $m mesh, there are $numDof dofs")
 #  return numDof
 end
+
+function calcDofs3D()
+
+  ny = nx
+  nz = nx
+  nvert = (nx+1)*(ny+1)*(nz+1)
+
+  nedges = nx*(ny+1)*(nz+1) +  # cube dges
+           ny*(nx+1)*(nz+1) +
+           nz*(nx+1)*(ny+1) +  
+           nx*nz*(ny+1) +  # cube face edges
+           ny*nz*(nx+1) +
+           nx*ny*(nz+1) +
+           nx*ny*nz  # cube interior
+
+  nfaces = nx*ny*(nz+1)*2 +
+           ny*nz*(nx+1)*2 +
+           nx*ny*(ny+1)*2 +
+           nx*ny*nz*6
+
+  nel = nx*ny*nz*6
+
+  return nvert*nodecnt[1] + nedges*nodecnt[2] + nfaces*nodecnt[3] + nel*nodecnt[4]
+
+end
+
 
 function findMeshSize(numdof::Integer, op_type, p::Integer)
 # find the size of the square mesh with elements of order p 

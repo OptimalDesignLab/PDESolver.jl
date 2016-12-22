@@ -619,10 +619,10 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
 
-      for i=1:size(resL, 1)
-        for j=1:size(resL, 2)
-          @fact abs(resL[i, j] - resL2[i, j]) --> roughly(0.0, atol=1e-12)
-          @fact abs(resR[i, j] - resR2[i, j]) --> roughly(0.0, atol=1e-12)
+      for j=1:size(resL, 1)
+        for k=1:size(resL, 2)
+          @fact abs(resL[j, k] - resL2[j, k]) --> roughly(0.0, atol=1e-12)
+          @fact abs(resR[j, k] - resR2[j, k]) --> roughly(0.0, atol=1e-12)
         end
       end
 
@@ -684,6 +684,7 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     delta_s = delta_sL + delta_sR
     @fact delta_s --> less_than(eps())
 
+    println("interface ", i, "delta_s = ", delta_s)
     if !(delta_s < eps())
       println("entropy growth at interface ", i)
       println("iface = ", iface)
@@ -892,7 +893,7 @@ facts("----- testing ESS -----") do
   penalty_lw = "ELWPenaltyFaceIntegral"
   penalty_lw2 = "ELW2PenaltyFaceIntegral"
 
-  for dim =2:3
+  for dim =3:3
     println("testing dimensions ", dim)
     if dim == 2
       meshname = "SRCMESHES/tri8l.smb"
@@ -901,7 +902,8 @@ facts("----- testing ESS -----") do
     end
 
     for p=1:4
-      if dim == 3 && p > 2
+      println("test p = ", p)
+      if dim == 3 && p > 2  # 3D Omega operators for p > 2 don't exists yet
         continue
       end
       println("testing p = ", p)
