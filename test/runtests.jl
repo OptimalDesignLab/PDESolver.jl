@@ -41,6 +41,8 @@ global const TAG_ENTROPYVARS = "tag_entropyvars"
 global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
 global const TAG_CONVERGENCE = "tag_convergence"
 global const TAG_NLSOLVERS = "tag_nlsolvers"
+global const TAG_ESS = "tag_ess"
+global const TAG_UTILS = "tag_utils"
 # test list
 global const EulerTests = TestList()
 
@@ -49,12 +51,14 @@ include("test_empty.jl")
 include("test_input.jl")
 include("test_complexify.jl")
 include("test_lowlevel.jl")
+
 include("test_dg.jl")
 #include("test_simplemesh.jl")
 include("test_GLS3.jl")
 # TODO: uncomment when SBP is fixed
 #include("test_modes.jl")
 include("test_3d.jl")
+
 include("test_adjoint.jl")
 include("test_flux.jl")
 include("test_ESS.jl")

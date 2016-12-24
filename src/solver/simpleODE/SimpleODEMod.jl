@@ -8,12 +8,11 @@ using PdePumiInterface
 using ForwardDiff
 using MPI
 using Utils
-import ODLCommonTools.get_uninitialized_SolutionData
+import ODLCommonTools: get_uninitialized_SolutionData, sview
 export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
 export evalSimpleODE, init # exported from simpleODE_funcs.jl
 export ICDict              # exported from ic.jl
 export ode_pre_func, ode_post_func    # exported from simpleODE_func.jl
-
 
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
 

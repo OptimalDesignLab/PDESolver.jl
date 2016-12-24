@@ -1,84 +1,4 @@
-
 # this file contains all the flux solvers for weakly imposed boundary conditions
-"""
-  Calculate the face integrals in an entropy stable manner for a given
-  interface.  Unlike standard face integrals, this requires data from
-  the entirety of both elements, not just data interpolated to the face
-
-  resL and resR are updated with the results of the computation for the 
-  left and right elements, respectively.
-
-  Note that dxidx_face must contains the scaled metric terms interpolated 
-  to the face nodes.
-
-  Aliasing restrictions: none, although its unclear what the meaning of this
-                         function would be if resL and resR alias
-
-  Performance note: the version in the tests is the same speed as this one
-                    for p=1 Omega elements and about 10% faster for 
-                    p=4 elements, but would not be able to take advantage of t
-                    he sparsity of R for SBP Gamma elements
-"""
-                  
-function calcESFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
-                             params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
-                             iface::Interface,
-                             qL::AbstractMatrix{Tsol}, 
-                             qR::AbstractMatrix{Tsol}, 
-                             aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::Abstract3DArray{Tmsh},
-                             functor::FluxType, 
-                             resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres})
-
-
-  Flux_tmp = params.flux_vals1
-  numDofPerNode = length(Flux_tmp)
-  nrm = params.nrm
-  for dim = 1:Tdim
-    fill!(nrm, 0.0)
-    nrm[dim] = 1
-
-    # loop over the nodes of "left" element that are in the stencil of interp
-    for i = 1:sbpface.stencilsize
-      p_i = sbpface.perm[i, iface.faceL]
-      qi = sview(qL, :, p_i)
-      aux_vars_i = sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
-
-      # loop over the nodes of "right" element that are in the stencil of interp
-      for j = 1:sbpface.stencilsize
-        p_j = sbpface.perm[j, iface.faceR]
-        qj = sview(qR, :, p_j)
-
-        # accumulate entry p_i, p_j of E
-        Eij = zero(Tres)  # should be Tres
-        for k = 1:sbpface.numnodes
-          # the computation of nrm_k could be moved outside i,j loops and saved
-          # in an array of size [3, sbp.numnodes]
-          nrm_k = zero(Tmsh)
-          for d = 1:Tdim
-            nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
-          end
-          kR = sbpface.nbrperm[k, iface.orient]
-          Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
-        end  # end loop k
-        
-        # compute flux and add contribution to left and right elements
-        functor(params, qi, qj, aux_vars_i, nrm, Flux_tmp)
-        for p=1:numDofPerNode
-          resL[p, p_i] -= Eij*Flux_tmp[p]
-          resR[p, p_j] += Eij*Flux_tmp[p]
-        end
-
-      end
-    end
-  end  # end loop Tdim
-
-
-  return nothing
-end
-
 
 """
   A wrapper for the Roe Solver that computes the scaled normal vector
@@ -411,15 +331,11 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
   v_vals = params.q_vals
-  v_vals2 = zeros(v_vals)
 
   convertFromNaturalToWorkingVars(params, q, v_vals)
-  convertFromNaturalToWorkingVars(params, qg, v_vals2)
   calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
-#  calcEulerFlux_Ducros(params, v_vals, v_vals2, nrm, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
-
     flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
     # when weak differentiate has transpose = true
   end
@@ -681,6 +597,101 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
 
   return nothing
 end
+
+# stabilized IR flux
+"""
+  This function calculates the flux across an interface using the IR 
+  numerical flux function and a Lax-Friedrich type of entropy dissipation.
+
+  Currently this is implemented for conservative variables only.
+
+  Methods are available that take in dxidx and a normal vector in parametric
+  space and compute and normal vector xy space and that take in a 
+  normal vector directly.
+
+  Inputs:
+    qL, qR: vectors conservative variables at left and right states
+    aux_vars: aux_vars for qL
+    dxidx: scaled mapping jacobian (2x2 or 3x3 in 3d)
+    nrm: normal vector in parametric space
+
+  Inputs/Outputs:
+    F: vector to be updated with the result
+
+  Aliasing restrictions:
+    nothing may alias params.nrm2.  See also getEntropyLFStab
+"""
+function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres}(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, 
+                      dxidx::AbstractMatrix{Tmsh},
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
+  calcEulerFlux_IRSLF(params, qL, qR, aux_vars, nrm2, F)
+  return nothing
+end
+
+"""
+  This is the second method that takes in a normal vector directly.
+  See the first method for a description of what this function does.
+
+  Inputs
+    qL, qR: vectors conservative variables at left and right states
+    aux_vars: aux_vars for qL
+    nrm: a normal vector in xy space
+
+  Inputs/Outputs
+    F: vector to be updated with the result
+
+  Alising restrictions:
+    See getEntropyLFStab
+
+"""
+function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres, Tdim}(
+                      params::ParamType{Tdim, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractVector{Tres},
+                      dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1})
+
+  calcEulerFlux_IR(params, qL, qR, aux_vars, dir, F)
+  getEntropyLFStab(params, qL, qR, aux_vars, dir, F)
+
+  return nothing
+end
+
+"""
+  This function is similar to calcEulerFlux_IRSLF, but uses Lax-Wendroff
+  dissipation rather than Lax-Friedrich.
+
+  Aliasing restrictions: see getEntropyLWStab
+"""
+function calcEulerFlux_IRSLW{Tmsh, Tsol, Tres}(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, 
+                      dxidx::AbstractMatrix{Tmsh},
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
+  calcEulerFlux_IRSLW(params, qL, qR, aux_vars, nrm2, F)
+  return nothing
+end
+
+function calcEulerFlux_IRSWF{Tmsh, Tsol, Tres, Tdim}(
+                      params::ParamType{Tdim, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractVector{Tres},
+                      dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1})
+
+  calcEulerFlux_IR(params, qL, qR, aux_vars, dir, F)
+  getEntropyLWStab(params, qL, qR, aux_vars, dir, F)
+
+  return nothing
+end
+
+
 
 
 function logavg(aL, aR)

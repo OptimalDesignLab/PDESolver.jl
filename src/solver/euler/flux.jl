@@ -68,12 +68,19 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
-function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+"""
+  This function loops over interfaces and computes a face integral that
+  uses data from all volume nodes. See FaceElementIntegralType for details on
+  the integral performed.
+"""
+function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
+                           mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                           functor::FluxType,
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
                            interfaces::AbstractArray{Interface, 1})
 
-#  println("----- entered getESFaceIntegral -----")
+#  println("----- entered getECFaceIntegral -----")
   nfaces = length(interfaces)
   for i=1:nfaces
     iface = interfaces[i]
@@ -86,19 +93,25 @@ function getESFaceIntegral{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    calcESFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
-                       dxidx_face, functor, resL, resR)
+    face_integral_functor(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
+                       dxidx_face, flux_functor, resL, resR)
   end
 
   return nothing
 end
 
-function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}( 
+"""
+  This function loops over shared interfaces and computes a face integral that
+  uses data from all volume nodes.  See FaceElementIntegralType for details on
+  the integral performed.
+"""
+function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}( 
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
-                            opts, functor::FluxType)
+                            opts, 
+                            face_integral_functor::FaceElementIntegralType, 
+                            flux_functor::FluxType)
 
-  println(eqn.params.f, "entered getEsSharedFaceIntegrals_element")
   if opts["parallel_data"] != "element"
     throw(ErrorException("cannot use getESSharedFaceIntegrals_element without parallel element data"))
   end
@@ -124,8 +137,6 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
       idx = i
     end
 
-    println(eqn.params.f, "\ndoing shared face integrals for peer ", i)
-
     # get the data for the parallel interface
     interfaces = mesh.shared_interfaces[idx]
     bndries_local = mesh.bndries_local[idx]
@@ -137,11 +148,9 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
 #    flux_arr = eqn.flux_sharedface[idx]
 
     start_elnum = mesh.shared_element_offsets[idx]
-    println(eqn.params.f, "numEl = ", mesh.numEl, ", start_elnum = ", start_elnum)
 
     # compute the integrals
     for j=1:length(interfaces)
-      println(eqn.params.f, "interface ", j)
       iface_j = interfaces[j]
       elL = iface_j.elementL
       elR = iface_j.elementR - start_elnum + 1  # is this always equal to j?
@@ -151,11 +160,8 @@ function getESSharedFaceIntegrals_element{Tmsh, Tsol, Tres}(
       dxidx_face = sview(dxidx_face_arr, :, :, :, j)
       resL = sview(eqn.res, :, :, elL)
 
-      println(eqn.params.f, "elL = ", elL, ", elR = ", elR)
-      println(eqn.params.f, "iface = ", iface_j)
-
-      calcESFaceIntegral(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
-                         dxidx_face, functor, resL, resR)
+      face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
+                         dxidx_face, flux_functor, resL, resR)
     end  # end loop j
 
   end  # end loop over peers
@@ -499,6 +505,29 @@ function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
   return nothing
 end
 
+type IRSLFFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IRSLFFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IRSLF(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+
+function call{Tsol, Tres}(obj::IRSLFFlux, params::ParamType, 
+              uL::AbstractArray{Tsol,1}, 
+              uR::AbstractArray{Tsol,1}, 
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector, 
+              F::AbstractVector{Tres})
+
+  calcEulerFlux_IRSLF(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
 
 
 
@@ -512,7 +541,8 @@ global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
 "StandardFlux" => StandardFlux(),
 "DucrosFlux" => DucrosFlux(),
-"IRFlux" => IRFlux()
+"IRFlux" => IRFlux(),
+"IRSLFFlux" => IRSLFFlux()
 )
 
 @doc """

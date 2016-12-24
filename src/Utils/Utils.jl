@@ -6,16 +6,19 @@ module Utils
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
+import ODLCommonTools.sview
 using ArrayViews
 using MPI
 using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
 
+include("../solver/euler/complexify.jl") #TODO: move this file into Utils
 include("parallel.jl")
 include("io.jl")
 include("logging.jl")
 include("initialization.jl")
-export disassembleSolution, writeQ, assembleSolution, assembleArray, sview
+include("projections.jl")
+export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export startDataExchange
@@ -28,6 +31,8 @@ export calcBCNormal
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
+# projections.jl functions
+export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
 @doc """
 ### Utils.disassembleSolution
@@ -320,20 +325,6 @@ function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
 end
 
 
-# it would be better if this used @boundscheck
-@doc """
-### Utils.safe_views
-
-  This bool value controls whether the function named sview refers to 
-  view or unsafe_view from the ArrayViews package
-"""->
-global const safe_views = true
-if safe_views
-  global const sview = ArrayViews.view
-else
-  global const sview = ArrayViews.unsafe_view
-end
-
 #=
 import Base.flush
 function flush(f::IOBuffer)
@@ -464,8 +455,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermRow{T}(permvec::AbstractVector, A::AbstractMatrix{T},
-                            B::AbstractMatrix{T})
+function applyPermRow(permvec::AbstractVector, A::AbstractMatrix,
+                            B::AbstractMatrix)
 
   m, n = size(A)
   for i=1:m
@@ -484,8 +475,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermRowInplace{T}(permvec::AbstractVector, A::AbstractMatrix{T},
-                            B::AbstractMatrix{T})
+function applyPermRowInplace(permvec::AbstractVector, A::AbstractMatrix,
+                            B::AbstractMatrix)
 
   applyPermRow(permvec, A, B)
 
@@ -508,8 +499,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermColumn{T}(permvec::AbstractVector, A::AbstractMatrix{T},
-                            B::AbstractMatrix{T})
+function applyPermColumn(permvec::AbstractVector, A::AbstractMatrix,
+                            B::AbstractMatrix)
 
   m, n = size(A)
   for i=1:m
@@ -527,8 +518,8 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermColumnInplace{T}(permvec::AbstractVector, 
-                            A::AbstractMatrix{T}, B::AbstractMatrix{T})
+function applyPermColumnInplace(permvec::AbstractVector, 
+                            A::AbstractMatrix, B::AbstractMatrix)
 
   applyPermColumn(permvec, A, B)
 

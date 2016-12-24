@@ -13,6 +13,7 @@ using SummationByParts
 using PdePumiInterface
 using ForwardDiff
 using Utils
+import ODLCommonTools.sview
 using MPI
 #using Debugging
 # the AbstractEquation type is declared in ODLCommonTools
@@ -61,12 +62,23 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
+  #TODO: consider making these vectors views of a matrix, to guarantee
+  #      spatial locality
   q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
+  q_vals2::Array{Tsol, 1}
+  q_vals3::Array{Tsol, 1}
   qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
   v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
+  v_vals2::Array{Tsol, 1}
+  Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
+
+  # numDofPerNode x stencilsize arrays for entropy variables
+  w_vals_stencil::Array{Tsol, 2}
+  w_vals2_stencil::Array{Tsol, 2}
 
   res_vals1::Array{Tres, 1}  # reusable residual type storage
   res_vals2::Array{Tres, 1}  # reusable residual type storage
+  res_vals3::Array{Tres, 1}  
 
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
@@ -77,15 +89,20 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
   A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
   A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
+  S2::Array{Tsol, 1}  # diagonal matrix of eigenvector scaling
 
   A_mats::Array{Tsol, 3}  # reusable storage for flux jacobians
 
   Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
   Rmat2::Array{Tres, 2}
 
+  P::Array{Tmsh, 2}  # projection matrix
+
   nrm::Array{Tmsh, 1}  # a normal vector
   nrm2::Array{Tmsh, 1}
   nrm3::Array{Tmsh, 1}
+
+  h::Float64 # temporary: mesh size metric
 
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -123,7 +140,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   Rprime::Array{Float64, 2}  # numfaceNodes x numNodesPerElement interpolation matrix
                              # this should live in sbpface instead
-  # temporary storage for calcESFaceIntegrals
+  # temporary storage for calcECFaceIntegrals
   A::Array{Tres, 2}
   B::Array{Tres, 3}
   iperm::Array{Int, 1}
@@ -151,11 +168,19 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     #TODO: don't open a file in non-debug mode
     f = open("log_$myrank.dat", "w")
     q_vals = Array(Tsol, Tdim + 2)
+    q_vals2 = Array(Tsol, Tdim + 2)
+    q_vals3 = Array(Tsol, Tdim + 2)
     qg = Array(Tsol, Tdim + 2)
     v_vals = Array(Tsol, Tdim + 2)
-  
+    v_vals2 = Array(Tsol, Tdim + 2)
+    Lambda = Array(Tsol, Tdim + 2)
+ 
+    w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
+    w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
+
     res_vals1 = Array(Tres, Tdim + 2)
     res_vals2 = Array(Tres, Tdim + 2)
+    res_vals3 = Array(Tres, Tdim + 2)
 
     flux_vals1 = Array(Tres, Tdim + 2)
     flux_vals2 = Array(Tres, Tdim + 2)
@@ -167,13 +192,18 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     A1 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A2 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A_mats = zeros(Tsol, Tdim + 2, Tdim + 2, Tdim)
+    S2 = Array(Tsol, Tdim + 2)
 
     Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
     Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
 
+    P = zeros(Tmsh, Tdim + 2, Tdim + 2)
+
     nrm = zeros(Tmsh, Tdim)
     nrm2 = zeros(nrm)
     nrm3 = zeros(nrm)
+
+    h = maximum(mesh.jac)
 
     gamma = opts[ "gamma"]
     gamma_1 = gamma - 1
@@ -240,9 +270,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
 
     time = Timings()
-    return new(f, t, order, q_vals, qg, v_vals, res_vals1, res_vals2, sat_vals, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, A_mats, Rmat1, Rmat2, nrm, 
-               nrm2, nrm3,cv, R, 
+    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
+               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
+               res_vals2, res_vals3, sat_vals, flux_vals1, 
+               flux_vals2, A0, A0inv, A1, A2, S2, A_mats, Rmat1, Rmat2, P,
+               nrm, nrm2, nrm3, h, cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 
@@ -420,6 +452,7 @@ include("euler.jl")
 include("ic.jl")
 include("bc.jl")
 include("stabilization.jl")
+include("faceElementIntegrals.jl")
 include("flux.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
@@ -428,7 +461,7 @@ include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
 include("entropy_flux.jl")
-
+include("eigensystem.jl")
 @doc """
 ### EulerEquationMod.EulerData_
 
@@ -531,6 +564,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   flux_func::FluxType  # functor for the face flux
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
+  face_element_integral_func::FaceElementIntegralType  # function for face
+                                                       # integrals that use
+                                                       # volume data
 # minorIterationCallback::Function # called before every residual evaluation
 
   # inner constructor

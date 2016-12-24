@@ -63,6 +63,11 @@ where input_file_name.jl is in your current directory.
 "Volume_flux_name" : name of the numerical flux function to use for the 
                      split form volume integrals, (ASCIIString), default
                      "StandardFlux"
+
+"FaceElementIntegral_name": name of integral type for "face_integral_type" == 2,
+                            (ASCIIString), default "EDissipativeFaceIntegral",
+                            note that for integrals that require a numerical flux
+                            function, "Flux_name" is used.
 # Solver options
 "use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
           default false
@@ -97,7 +102,7 @@ where input_file_name.jl is in your current directory.
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
 
-# source term specification (advection equation only)
+# source term specification
 "SRCname": the name of the source term to use, (ASCIIString), default SRC0
 
 # misc options

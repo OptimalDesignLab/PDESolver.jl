@@ -173,6 +173,62 @@ function call(obj::SRCExp, q::AbstractVector, coords::AbstractVector, params::Pa
   return nothing
 end
 
+"""
+  Functor for source term corresponding to ICPeriodicMMS
+"""
+type SRCPeriodicMMS <: SRCType
+end
+
+function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector, 
+              params::ParamType{2}, t)
+
+  x = coords[1]
+  y = coords[2]
+  gamma_1 = params.gamma_1
+
+  t4 = t*2.0;
+  t2 = -t4+x+y;
+  t3 = 3.141592653589793*t2;
+  t5 = cos(t3);
+  t6 = sin(t3);
+  t7 = t6+1.5E1;
+  t8 = 3.141592653589793*gamma_1*t5*t7*(1.0/5.0E1);
+  q[1] = 0
+  q[2] = t8;
+  q[3] = t8;
+  q[4] = 3.141592653589793*gamma_1*t5*t7*(1.0/2.5E1);
+
+  return nothing
+end
+
+function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector, 
+              params::ParamType{3}, t)
+
+  throw(ErrorException("SRCPeriodicMMS does not work correctly, do not use"))
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  gamma_1 = params.gamma_1
+  gamma = params.gamma
+
+  t2 = x+y+z;
+  t3 = 3.141592653589793*t2;
+  t4 = cos(t3);
+  t5 = sin(t3);
+  t6 = t5*(1.0/1.0E1);
+  t7 = t6+2.0;
+  t8 = 3.141592653589793*gamma_1*t4*t7*(1.0/5.0);
+  q[1] = 0;
+  q[2] = t8;
+  q[3] = t8;
+  q[4] = t8;
+  q[5] = 0;
+
+  return nothing
+end
+
+
+
 @doc """
 ### EulerEquationMod.SRCDict
 
@@ -189,6 +245,7 @@ end
 """->
 global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCExp" => SRCExp(),
+"SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
 )
 

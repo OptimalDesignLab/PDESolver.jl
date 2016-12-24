@@ -331,8 +331,9 @@ end  # end function calcOnes
 @doc """
 ### EulerEquationMod.calcRho1Energy2U3
 
-  Sets the density values 1.0, x and y momenta to 0.35355, and
+  Sets the density values 1.0, momenta to 0.35355, and
   energy to 2.0 at a node.
+
 
 
   This function uses conservative variables regardless of the static parameter
@@ -359,6 +360,20 @@ function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
 
   return nothing
 end
+
+function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+                           params::ParamType{3}, sol::AbstractArray{Tsol, 1})
+  # for square test case with rho = 1, digonal momentum, energy
+
+  sol[1] = 1.0
+  sol[2] = 0.35355
+  sol[3] = 0.35355
+  sol[4] = 0.35355
+  sol[5] = 2.0
+
+  return nothing
+end
+
 
 
 @doc """
@@ -460,6 +475,52 @@ function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   q[3] = d3*t2*exp(a*c3*x*y*z);
   q[4] = d4*t2*exp(a*c4*x*y*z);
   q[5] = (t2*exp(-t3)*((d2*d2)*exp(a*c2*x*y*z*2.0)+(d3*d3)*exp(a*c3*x*y*z*2.0)+(d4*d4)*exp(a*c4*x*y*z*2.0))*(1.0/2.0))/d1+(d5*t2*exp(a*c5*x*y*z))/gamma_1;
+
+  return nothing
+end
+
+"""
+  Calculates a manufactured solution from Gassner, Winters, Kopriva: Split 
+  Form Nodal DG Schemes with SBP Propertiy for the Compressible Euler Equations.
+  This is typically used with a mesh that spans [-1, 1] in all directions
+
+"""
+function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+                    params::ParamType{2}, q::AbstractArray{Tsol,1})
+
+  x = coords[1]
+  y = coords[2]
+  t = params.t
+
+  t7 = t*2.0;
+  t2 = -t7+x+y;
+  t3 = 3.141592653589793*t2;
+  t4 = sin(t3);
+  t5 = t4*(1.0/1.0E1);
+  t6 = t5+2.0;
+  q[1] = t6;
+  q[2] = t6;
+  q[3] = t6;
+  q[4] = t6*t6;
+
+  return nothing
+end
+
+function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+                    params::ParamType{3}, q::AbstractArray{Tsol,1})
+
+  throw(ErrorException("calcPeriodicMMS does not work correctly, do not use"))
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+  t = params.t
+
+  rho = 2 + 0.1*sin(pi*(x + y + z))
+  q[1] = rho
+  q[2] = 0
+  q[3] = 0
+  q[4] = 0
+  q[5] = rho*rho + 10
 
   return nothing
 end

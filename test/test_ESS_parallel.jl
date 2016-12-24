@@ -1,5 +1,4 @@
 # test the entropy stable interface calculation in parallel
-
 """
   Test the entropy stable integrals in parallel
 """

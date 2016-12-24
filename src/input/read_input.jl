@@ -88,8 +88,11 @@ end
 get!(arg_dict, "volume_integral_type", 1)
 get!(arg_dict, "Volume_flux_name", "StandardFlux")
 get!(arg_dict, "face_integral_type", 1)
+get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 
 # timestepping options
+get!(arg_dict, "t_max", 0.0)
+
 if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
   arg_dict["calc_dt"] = true
 else
