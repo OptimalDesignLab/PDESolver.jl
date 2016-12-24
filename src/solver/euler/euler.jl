@@ -240,6 +240,16 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
+#=
+      # DEBUGGING: write error to file
+      q_exact = zeros(eqn.q_vec)
+      ex_func = ICDict[opts["IC_name"]]
+      ex_func(mesh, sbp, eqn, opts, q_exact)
+      q_err = real(eqn.q_vec) - q_exact
+      saveSolutionToMesh(mesh, q_err)
+      fname = string("error_", itr)
+      writeVisFiles(mesh, fname)
+=#
     end
  
     # add an option on control this or something.  Large blocks of commented

@@ -331,15 +331,11 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
   v_vals = params.q_vals
-  v_vals2 = zeros(v_vals)
 
   convertFromNaturalToWorkingVars(params, q, v_vals)
-  convertFromNaturalToWorkingVars(params, qg, v_vals2)
   calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
-#  calcEulerFlux_Ducros(params, v_vals, v_vals2, nrm, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
-
     flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
     # when weak differentiate has transpose = true
   end

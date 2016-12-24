@@ -190,7 +190,6 @@ function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-println("enetered ICRho1E2U3, typeof(eqn) = ", typeof(eqn))
 
 numEl = mesh.numEl
 nnodes = mesh.numNodesPerElement

@@ -684,7 +684,6 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     delta_s = delta_sL + delta_sR
     @fact delta_s --> less_than(eps())
 
-    println("interface ", i, "delta_s = ", delta_s)
     if !(delta_s < eps())
       println("entropy growth at interface ", i)
       println("iface = ", iface)
@@ -893,7 +892,7 @@ facts("----- testing ESS -----") do
   penalty_lw = "ELWPenaltyFaceIntegral"
   penalty_lw2 = "ELW2PenaltyFaceIntegral"
 
-  for dim =3:3
+  for dim =2:3
     println("testing dimensions ", dim)
     if dim == 2
       meshname = "SRCMESHES/tri8l.smb"
