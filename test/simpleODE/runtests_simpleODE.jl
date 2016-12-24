@@ -24,60 +24,59 @@ function clean_dict(collection)
 end
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE/startup_simpleODE.jl")
-# insert a command line argument
-resize!(ARGS, 1)
 
-facts("---- testing SimpleODE ----") do
-  cd("./eqn4/")
-  ARGS[1] = "input_vals_simpleODE.jl"
-  include(STARTUP_PATH)
+#------------------------------------------------------------------------------
+# define tests and tags
 
-  for i = 1:length(eqn.q_vec)
-    @fact eqn.q_vec[i] --> roughly(4.0, atol=1e-10)
-  end
+
+include("../TestSystem.jl")
+# define tags that will be used
+
+# test list
+global const SimpleODETests = TestList()
+
+
+function test_eq4()
+  facts("---- testing SimpleODE ----") do
+    start_dir = pwd()
+    cd("./eqn4/")
+    ARGS[1] = "input_vals_simpleODE.jl"
+    include(STARTUP_PATH)
+
+    for i = 1:length(eqn.q_vec)
+      @fact eqn.q_vec[i] --> roughly(4.0, atol=1e-10)
+    end
+
+    cd(start_dir)
+  end  # end facts block
+
+  return nothing
 end
 
-#=
-include("test_empty.jl")
-#include("test_input.jl")
-include("test_lowlevel.jl")
-include("test_3d.jl")
-include("test_gamma.jl")
-include("test_mms.jl")
-include("test_jac.jl")
-include("test_GLS2.jl")
-include("test_dg.jl")
-include("test_functional_integrate.jl")
-include("test_parallel.jl")
+add_func1!(SimpleODETests, test_eq4)
 
-start_dir = pwd()
-cd("./energy")
-include( joinpath(pwd(), "runtests.jl"))
-cd(start_dir)
+#------------------------------------------------------------------------------
+# run tests
+facts("----- Running SimpleODE tests -----") do
+  nargs = length(ARGS)
+  if nargs == 0
+    tags = ASCIIString[TAG_DEFAULT]
+  else
+    tags = Array(ASCIIString, nargs)
+    copy!(tags, ARGS)
+  end
 
-cd("./Nonlinearsolvers/")
-include(joinpath(pwd(), "runtests_serial.jl"))
-cd("../")
-=#
+  resize!(ARGS, 1)
+  ARGS[1] = ""
+  run_testlist(SimpleODETests, tags)
+end
 
+
+#------------------------------------------------------------------------------
+# cleanup
 if MPI.Initialized()
   MPI.Finalize()
 end
 
 FactCheck.exitstatus()
 
-
-# write your own tests here
-# @test 1 == 1
-
-
-# using SummationByParts
-# #using Base.Test
-# using FactCheck
-# 
-# include("test_orthopoly.jl")
-# include("test_symcubatures.jl")
-# include("test_cubature.jl")
-# include("test_SummationByParts.jl")
-# 
-# FactCheck.exitstatus()
