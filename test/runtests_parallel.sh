@@ -5,7 +5,7 @@ jflags=$@
 err=0
 start_dir=`pwd`
 
-cd ./Advection
+cd ./advection
   mpirun -np 2 julia $jflags ./runtests_parallel.jl
   tmp=$?
   err=$((err + tmp))

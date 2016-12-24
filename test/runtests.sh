@@ -12,7 +12,7 @@ $jj $jflags ./runtests.jl
 tmp=$?
 err=$((err + tmp))
 
-cd ./Advection
+cd ./advection
 $jj $jflags ./runtests_advection.jl
 tmp=$?
 err=$((err + tmp))
