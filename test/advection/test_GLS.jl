@@ -19,7 +19,7 @@ facts("--- Check input arguments applied correctly ---") do
 end
 
 
-include("../../src/solver/advection/startup_advection.jl")
+include("../../src/solver/advection/startup.jl")
 include("../../src/solver/advection/GLS.jl")
 
 facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do

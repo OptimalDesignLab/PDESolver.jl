@@ -13,11 +13,11 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
+global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
 # insert a command line argument
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_channel.jl"
-include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
+include("../../src/solver/advection/startup.jl")  # initialization and construction
 include("../../src/solver/advection/DG_advection.jl")
 include("../../src/solver/advection/bc_solvers.jl")
 include("../../src/solver/euler/complexify.jl")

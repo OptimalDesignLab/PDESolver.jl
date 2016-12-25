@@ -13,13 +13,13 @@ tmp=$?
 err=$((err + tmp))
 
 cd ./advection
-$jj $jflags ./runtests_advection.jl
+$jj $jflags ./runtests.jl
 tmp=$?
 err=$((err + tmp))
 
 cd $start_dir
 cd ./simpleODE/
-$jj $jflags ./runtests_simpleODE.jl
+$jj $jflags ./runtests.jl
 tmp=$?
 err=$((err + tmp))
 

@@ -23,7 +23,7 @@ function clean_dict(collection)
   end
 end
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
+global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
 
 #------------------------------------------------------------------------------
 # define tests and tags

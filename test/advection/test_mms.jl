@@ -15,7 +15,7 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
+global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
 =#
 
 function make_input_mms(degree; dg=false, operator="SBPOmega")
