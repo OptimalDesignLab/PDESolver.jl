@@ -32,7 +32,7 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 #------------------------------------------------------------------------------
 # define tests and tags
 
-include("./TestSystem.jl")
+include("../TestSystem.jl")
 # define tags that will be used
 global const TAG_COMPLEX = "tag_complex"
 global const TAG_BC = "tag_bc"

@@ -1,4 +1,4 @@
-# run tests in parallel
+# run tests in parallel with 2 processes
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
@@ -21,16 +21,50 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/sta
 
 #------------------------------------------------------------------------------
 # define test list
-include("./TestSystem.jl")
+include("../TestSystem.jl")
 global const EulerTests = TestList()
 # define global const tags here
 
+"""
+  Run the parallel tests and compare against serial results run as part of
+  the serial tests
+"""
+function test_parallel2()
+  facts("----- Testing Parallel -----") do
 
-include("test_ESS_parallel.jl")
+    start_dir = pwd()
+    cd ("./rk4/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    include(STARTUP_PATH)
+
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
+
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    cd("../../")
+
+    cd("./newton/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    include(STARTUP_PATH)
+
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("./error_calc.dat")
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+
+    cd(start_dir)
+
+  end
+
+  return nothing
+end
+
+#test_parallel2()
+add_func1!(EulerTests, test_parallel2)
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Euler 4 process tests -----") do
+facts("----- Running Euler 2 process tests -----") do
   nargs = length(ARGS)
   if nargs == 0
     tags = ASCIIString[TAG_DEFAULT]
@@ -44,10 +78,11 @@ facts("----- Running Euler 4 process tests -----") do
   run_testlist(EulerTests, tags)
 end
 
-
 if MPI.Initialized()
   MPI.Finalize()
 end
+
+
 
 FactCheck.exitstatus()
 

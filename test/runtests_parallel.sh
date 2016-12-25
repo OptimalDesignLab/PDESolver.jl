@@ -16,13 +16,15 @@ cd ./advection
 
 cd $start_dir
 
-mpirun -np 2 julia $jflags ./runtests_parallel.jl
-tmp=$?
-err=$((err + tmp))
+cd ./euler
+  mpirun -np 2 julia $jflags ./runtests_parallel.jl
+  tmp=$?
+  err=$((err + tmp))
 
-mpirun -np 4 julia $jflags ./runtests_parallel4.jl
-tmp=$?
-err=$((err + tmp))
+  mpirun -np 4 julia $jflags ./runtests_parallel4.jl
+  tmp=$?
+  err=$((err + tmp))
+cd $start_dir
 
 echo $err
 
