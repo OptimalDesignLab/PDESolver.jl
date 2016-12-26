@@ -1,16 +1,17 @@
 module SimpleODEMod
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+using PDESolver
 using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+using NonlinearSolvers
 using MPI
 using Utils
 import ODLCommonTools: get_uninitialized_SolutionData, sview
 export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
-export evalSimpleODE, init # exported from simpleODE_funcs.jl
+export evalSimpleODE, init, run_simpleode # exported from simpleODE_funcs.jl
 export ICDict              # exported from ic.jl
 export ode_pre_func, ode_post_func    # exported from simpleODE_func.jl
 
@@ -175,6 +176,10 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("simpleODE_funcs.jl")
 include("common_funcs.jl")
 include("ic.jl")
+include(joinpath(Pkg.dir("PDESolver"),"src/solver/simpleODE/output.jl"))  # printing results to files
+include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+include("startup_func.jl")
+
 
 @doc """
 

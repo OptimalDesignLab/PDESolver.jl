@@ -8,7 +8,6 @@ facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
     clean_dict(arg_dict)
     ARGS[1] = "input_vals_functional_CG.jl"
     include("../../src/solver/advection/startup.jl")  # initialization and construction
-    println("use_DG = ", arg_dict["use_DG"])
 
 
     @fact mesh.isDG --> false

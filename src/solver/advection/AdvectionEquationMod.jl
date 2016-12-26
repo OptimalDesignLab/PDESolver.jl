@@ -1,17 +1,34 @@
 module AdvectionEquationMod
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+using PDESolver
+using ODLCommonTools
+using PdePumiInterface     # common mesh interface - pumi
+using SummationByParts     # SBP operators
+using ForwardDiff
+using NonlinearSolvers     # non-linear solvers
+using ArrayViews
+using Utils
+import ODLCommonTools.sview
+using MPI
+include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
+include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+
+
+
+using PDESolver  # setupf LOAD_PATH to find PDESolver components
 using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
+using NonlinearSolvers
 using MPI
 using Utils
 import ODLCommonTools.sview
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
-export evalAdvection, init # exported from advectionFunctions.jl
-export ICDict              # exported from ic.jl
+
+export evalAdvection, init, run_advection
+export ICDict              # exported from ic.jl  # TODO: stop exporting this
 
 # include("advectionFunctions.jl")
 # include("getMass.jl")
@@ -214,6 +231,9 @@ include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
 include("flux.jl")
+include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
+include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+include("startup_func.jl")  # function to invoke the solver
 
 @doc """
 ### AdvectionEquationMod.calcMassMatrix

@@ -6,12 +6,14 @@ using PDESolver
 #using Base.Test
 using FactCheck
 using ODLCommonTools
+using Utils
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+import ODLCommonTools.sview
 
 function clean_dict(collection)
   for i in keys(collection)
@@ -31,6 +33,7 @@ global const TAG_BC = "tag_bc"
 global const TAG_FLUX = "tag_flux"
 global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
 global const TAG_CONVERGENCE = "tag_convergence"
+global const TAG_MMS = "tag_mms"
 
 # test list
 global const AdvectionTests = TestList()

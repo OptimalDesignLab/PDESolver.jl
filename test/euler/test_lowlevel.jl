@@ -83,9 +83,12 @@ add_func2!(EulerTests, test_lowlevel_mesh, "input_vals_channel.jl")
 """
 function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+  Tmsh = eltype(mesh.dxidx)
   facts("--- Testing Euler Low Level Functions --- ") do
     opts["variable_type"] = :entropy
-    eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+    eqn_e = EulerData_{Tsol, Tres, 2, Tmsh, opts["variable_type"]}(mesh, sbp, opts)
 
     e_params = eqn_e.params
     opts["variable_type"] = :conservative
@@ -275,8 +278,11 @@ add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_
   of values between conservative and entropy variables
 """
 function test_lowlevel_convert(mesh, sbp, eqn, opts)
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+  Tmsh = eltype(mesh.dxidx)
   opts["variable_type"] = :entropy
-  eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+  eqn_e = EulerData_{Tsol, Tres, 2, Tmsh, opts["variable_type"]}(mesh, sbp, opts)
 
   e_params = eqn_e.params
   opts["variable_type"] = :conservative
@@ -455,8 +461,12 @@ add_func2!(EulerTests, test_lowlevel_eigsystem, "input_vals_channel.jl")
   sound, Euler flux.
 """
 function test_lowlevel_calc(mesh, sbp, eqn, opts)
+    Tsol = eltype(eqn.q)
+    Tres = eltype(eqn.res)
+    Tmsh = eltype(mesh.dxidx)
+
    opts["variable_type"] = :entropy
-   eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+   eqn_e = EulerData_{Tsol, Tres, 2, Tmsh, opts["variable_type"]}(mesh, sbp, opts)
 
    e_params = eqn_e.params
    opts["variable_type"] = :conservative

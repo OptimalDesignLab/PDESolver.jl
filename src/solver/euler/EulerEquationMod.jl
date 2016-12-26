@@ -4,22 +4,20 @@
 
 module EulerEquationMod
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-
+using PDESolver  # setup LOAD_PATH to find all PDESolver components
 using ArrayViews
-using ODLCommonTools
+using ODLCommonTools  # abstract type definitions + common functions
 using SummationByParts
-using PdePumiInterface
+using PdePumiInterface  # common mesh interface implementation - pumi
 using ForwardDiff
 using Utils
 import ODLCommonTools.sview
 using MPI
-#using Debugging
+
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
-
-export AbstractEulerData, EulerData, EulerData_
+export AbstractEulerData, EulerData, EulerData_, run_euler
 
 @doc """
 ### EulerEquationMod.ParamType
@@ -461,6 +459,9 @@ include("adjoint.jl")
 include("source.jl")
 include("entropy_flux.jl")
 include("eigensystem.jl")
+include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+include("startup_func.jl")  # function for invoking the solver
+
 @doc """
 ### EulerEquationMod.EulerData_
 

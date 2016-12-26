@@ -255,6 +255,8 @@ function test_lowlevel_volumeintegrals()
     ARGS[1] = "input_vals_8el.jl"
     include(STARTUP_PATH)
 
+    Tmsh = eltype(mesh.dxidx)
+
     fill!(eqn.q, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 1.0

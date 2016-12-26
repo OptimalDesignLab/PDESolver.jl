@@ -1,23 +1,24 @@
-function make_input_mms(degree; dg=false, operator="SBPOmega")
-  arg_dict["order"] = degree
-  arg_dict["IC_name"] = "ICp$degree"
-  arg_dict["BC1_name"] = string("p", degree, "BC")
-  arg_dict["SRCname"] = "SRCp$degree"
-  arg_dict["operator_type"] = operator
+function make_input_mms(opts, degree; dg=false, operator="SBPOmega")
+  opts["order"] = degree
+  opts["IC_name"] = "ICp$degree"
+  opts["BC1_name"] = string("p", degree, "BC")
+  opts["SRCname"] = "SRCp$degree"
+  opts["operator_type"] = operator
 
   if dg
-    arg_dict["use_DG"] = true
-    arg_dict["Flux_name"] = "LFFlux"
+    opts["use_DG"] = true
+    opts["Flux_name"] = "LFFlux"
   else
-    arg_dict["use_DG"] = false
+    opts["use_DG"] = false
   end
 
   fname = "input_vals_mms$degree.jl"
   rmfile(fname)
   f = open(fname, "w")
-  print(f, "arg_dict = ")
-  println(f, arg_dict)
+  print(f, "arg_dict = ")  # TODO: change this to use make_input
+  println(f, opts)
   ARGS[1] = fname
+  close(f)
   return fname
 end
 
@@ -45,7 +46,7 @@ function test_mms()
     println("testing DG")
 
     ARGS[1] = "input_vals_mms1.jl"
-    fname = make_input_mms(1, dg=true)
+    fname = make_input_mms(opts, 1, dg=true)
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -54,7 +55,7 @@ function test_mms()
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
     println("p1 dg test finished")
 
-    fname = make_input_mms(1, dg=true, operator="SBPOmega")
+    fname = make_input_mms(opts, 1, dg=true, operator="SBPOmega")
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -65,7 +66,7 @@ function test_mms()
 
     println("  -----testing degree 2 polynomial -----")
     #=
-    fname = make_input_mms(2)
+    fname = make_input_mms(opts, 2)
     ARGS[1] = fname
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
@@ -74,7 +75,7 @@ function test_mms()
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
     =#
-    fname = make_input_mms(2, dg=true)
+    fname = make_input_mms(opts, 2, dg=true)
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -86,7 +87,7 @@ function test_mms()
 
     println("  -----testing degree 3 polynomial -----")
     #=
-    fname = make_input_mms(3)
+    fname = make_input_mms(opts, 3)
     ARGS[1] = fname
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
@@ -95,7 +96,7 @@ function test_mms()
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
     =#
-    fname = make_input_mms(3, dg=true)
+    fname = make_input_mms(opts, 3, dg=true)
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -107,7 +108,7 @@ function test_mms()
 
     println("  -----testing degree 4 polynomial -----")
     #=
-    fname = make_input_mms(4)
+    fname = make_input_mms(opts, 4)
     ARGS[1] = fname
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
@@ -118,7 +119,7 @@ function test_mms()
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
     =#
 
-    fname = make_input_mms(4, dg=true)
+    fname = make_input_mms(opts, 4, dg=true)
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -132,7 +133,7 @@ function test_mms()
 
     println("  -----testing degree 1 polynomial-----")
 
-    make_input_mms(1, dg=true)
+    make_input_mms(opts, 1, dg=true)
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -140,7 +141,7 @@ function test_mms()
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
 
-    make_input_mms(1, dg=true, operator="SBPGamma")
+    make_input_mms(opts, 1, dg=true, operator="SBPGamma")
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -151,7 +152,7 @@ function test_mms()
 
 
     println("  -----testing degree 2 polynomial-----")
-    make_input_mms(2, dg=true)
+    make_input_mms(opts, 2, dg=true)
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -162,7 +163,7 @@ function test_mms()
     end
 
     println("testing gamma")
-    make_input_mms(2, dg=true, operator="SBPGamma")
+    make_input_mms(opts, 2, dg=true, operator="SBPGamma")
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -174,7 +175,7 @@ function test_mms()
 
     println("  ----- testing degree 3 polynomial-----")
     println("testing gamma")
-    make_input_mms(3, dg=true, operator="SBPGamma")
+    make_input_mms(opts, 3, dg=true, operator="SBPGamma")
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -186,7 +187,7 @@ function test_mms()
 
     println("  ----- testing degree 4 polynomial-----")
     println("testing gamma")
-    make_input_mms(4, dg=true, operator="SBPGamma")
+    make_input_mms(opts, 4, dg=true, operator="SBPGamma")
     include(STARTUP_PATH)
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -202,6 +203,6 @@ function test_mms()
 end  # end function
 
 #test_mms()
-add_func1!(AdvectionTests, test_mms)
+add_func1!(AdvectionTests, test_mms, [TAG_MMS])
 
 
