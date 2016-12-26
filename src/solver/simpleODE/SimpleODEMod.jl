@@ -175,15 +175,6 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("simpleODE_funcs.jl")
 include("common_funcs.jl")
 include("ic.jl")
-# include("boundaryconditions.jl")
-# include("bc_solvers.jl")
-# include("GLS.jl")
-# include("GLS2.jl")
-# include("boundary_functional.jl")
-# include("adjoint.jl")
-include("../euler/complexify.jl")
-# include("source.jl")
-# include("flux.jl")
 
 @doc """
 

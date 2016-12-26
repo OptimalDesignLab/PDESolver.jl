@@ -4,7 +4,6 @@
 
 module EulerEquationMod
 
-include("complexify.jl")
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
 using ArrayViews
