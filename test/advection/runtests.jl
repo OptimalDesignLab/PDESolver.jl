@@ -1,9 +1,5 @@
 # Run advection tests
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 
 using PDESolver
@@ -39,25 +35,15 @@ global const TAG_CONVERGENCE = "tag_convergence"
 # test list
 global const AdvectionTests = TestList()
 
-println("including test_lowlevel.jl")
 include("test_lowlevel.jl")
-println("including test_3d.jl")
 include("test_3d.jl")
-println("including test_gamma.jl")
 include("test_gamma.jl")
-println("including test_mms.jl")
 include("test_mms.jl")
-println("including test_jac.jl")
 include("test_jac.jl")
-println("including test_GLS2.jl")
 include("test_GLS2.jl")
-println("including test_dg.jl")
 include("test_dg.jl")
-println("including test_functional_integrate.jl")
 include("test_functional_integrate.jl")
-println("including test_parallel.jl")
 include("test_parallel.jl")
-println("including test_energy.jl")
 include( "./energy/runtests.jl")
 
 #------------------------------------------------------------------------------

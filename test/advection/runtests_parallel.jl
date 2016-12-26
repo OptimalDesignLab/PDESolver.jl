@@ -1,7 +1,4 @@
 # run 2 processor tests
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 
 using PDESolver

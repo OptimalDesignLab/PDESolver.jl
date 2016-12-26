@@ -152,6 +152,7 @@ function test_parallel_serialpart()
   opts["dmg_name"] = "SRCMESHES/psquare2.dmg"
   make_input( opts, string("./rk4/parallel/", fname, "p"))
 
+  # serial newton
   start_dir = pwd()
   cd("./newton/serial")
   ARGS[1] = "input_vals_serial.jl"
@@ -162,7 +163,7 @@ function test_parallel_serialpart()
   make_input(opts, string("./newton/parallel/", "input_vals_parallel"))
 
 
-  # same thing for 3D
+  # 3D rk4
   start_dir = pwd()
   cd("./rk4_3d/serial")
   ARGS[1] = "input_vals_rk4_3d.jl"
@@ -173,7 +174,7 @@ function test_parallel_serialpart()
   opts["smb_name"] = "SRCMESHES/ptet8cube.smb"
   make_input(opts, string("./rk4_3d/parallel/", "input_vals_parallel"))
 
-  # make the parallel newton's method
+  # 3D Newton's method
   opts["run_type"] = 5
   opts["jac_method"] = 2
   opts["jac_type"] = 3

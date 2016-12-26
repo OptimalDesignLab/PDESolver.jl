@@ -1,8 +1,3 @@
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-
 using PDESolver
 #using Base.Test
 using FactCheck

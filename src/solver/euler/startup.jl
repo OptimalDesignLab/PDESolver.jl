@@ -1,13 +1,7 @@
 # Name: startup.jl
 # Description: startup script for solving an equation
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-#include("complexify.jl")   # TODO: include location needs to be reconsidered
-
+using PDESolver
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators

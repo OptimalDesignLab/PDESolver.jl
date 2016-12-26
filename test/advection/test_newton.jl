@@ -1,8 +1,5 @@
 # Run advection tests
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 
 using PDESolver
@@ -41,21 +38,3 @@ facts("----- Testing Newtons Method: Petsc -----") do
   include(STARTUP_PATH)
   @fact calcNorm(eqn, eqn.res_vec, strongres=true) --> less_than(opts["res_abstol"])
 end
-
-# run a serial case to compare parallel against later
-cd ("./newton/serial")
-arg_dict["smb_name"] = "SRCMESHES/serial2.smb"
-arg_dict["dmg_name"] = "SRCMESHES/serial2.dmg"
-make_input(arg_dict, "input_vals_serial")
-ARGS[1] = "input_vals_serial.jl"
-include(STARTUP_PATH)
-
-# make parallel file
-cd("../parallel")
-arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-arg_dict["dmg_name"] = "SRCMESHES/psquare2.dmg"
-arg_dict["krylov_abstol"] = 1e-12
-make_input(arg_dict, "input_vals_parallel")
-cd("../../")
-
-

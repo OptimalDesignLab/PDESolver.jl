@@ -1,11 +1,7 @@
 # startup file for simple ODE test problem:
 #   q = t^2 + x^2
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+using PDESolver
 using ODLCommonTools
 using PdePumiInterface     # common mesh interface - pumi
 using SummationByParts     # SBP operators

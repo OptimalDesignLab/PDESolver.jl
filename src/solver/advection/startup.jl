@@ -1,10 +1,6 @@
 # Startup file for 1 dof advection equation
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+using PDESolver
 using ODLCommonTools
 using PdePumiInterface     # common mesh interface - pumi
 using SummationByParts     # SBP operators
