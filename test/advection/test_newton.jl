@@ -19,7 +19,7 @@ resize!(ARGS, 1)
 ARGS[1] = "input_vals_newton.jl"
 
 facts("----- Testing Newtons Method: Finite Difference -----") do
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec, strongres=true) --> less_than(opts["res_abstol"])
 end
 
@@ -27,7 +27,7 @@ facts("----- Testing Newtons Method: Complex Step -----") do
   arg_dict["jac_method"] = 2
   make_input(arg_dict, "input_vals_newton2")
   ARGS[1] = "input_vals_newton2.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec, strongres=true) --> less_than(opts["res_abstol"])
 end
 
@@ -35,6 +35,6 @@ facts("----- Testing Newtons Method: Petsc -----") do
   arg_dict["jac_type"] = 3
   make_input(arg_dict, "input_vals_newton3")
   ARGS[1] = "input_vals_newton3.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec, strongres=true) --> less_than(opts["res_abstol"])
 end

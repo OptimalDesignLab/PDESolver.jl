@@ -7,7 +7,7 @@ function test_parallel()
   ARGS[1] = "input_vals_vortex3.jl"
 
   cd("./rk4/serial")
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   cd("../parallel")
 
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
@@ -15,7 +15,7 @@ function test_parallel()
 
   cd("../../newton/serial")
   ARGS[1] = "input_vals_vortex3.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
 
   cd("../parallel")

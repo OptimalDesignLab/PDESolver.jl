@@ -18,7 +18,7 @@ global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection
 
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_parallel2.jl"
-include(STARTUP_PATH)
+mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
 myrank = mesh.myrank
 commsize = mesh.commsize

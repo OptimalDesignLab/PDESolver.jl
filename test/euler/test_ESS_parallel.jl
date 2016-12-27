@@ -14,7 +14,7 @@ function test_ESS_parallel()
     end
 
     ARGS[1] = "input_vals_ESS_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
     data = readdlm("entropy.dat")
 

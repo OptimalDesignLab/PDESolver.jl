@@ -8,7 +8,7 @@ function test_jac_res()
 
   facts("----- Testing Jacobian -----") do
     ARGS[1] = "input_vals_8el.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     jac_fd = zeros(Float64, 3, 3, mesh.numEl)
     for el = 1:mesh.numEl
@@ -42,7 +42,7 @@ function test_jac_res()
     println(f, arg_dict)
     close(f)
     ARGS[1] = "input_vals_8elc.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
 
     jac_c = zeros(Float64, 3,3, mesh.numEl)
@@ -69,7 +69,7 @@ function test_jac_res()
     # back to finite differences
     println("----- Testing Finite Difference Jacobian -----")
     ARGS[1] = "input_vals_8el.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # needed for calls to NewtonData below
@@ -114,7 +114,7 @@ function test_jac_res()
     println("----- Testing Complex Step Jacobian -----")
     ARGS[1] = "input_vals_8elc.jl"
     arg_dict["jac_method"] = 2  # something screwy is going on because this is necessary
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # now test full jacobian
@@ -156,7 +156,7 @@ function test_jac_calc()
     # back to finite differences
     println("----- Testing Finite Difference Jacobian -----")
     ARGS[1] = "input_vals_8el.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # needed for calls to NewtonData below
@@ -202,7 +202,7 @@ function test_jac_calc()
     ARGS[1] = "input_vals_8elc.jl"
     arg_dict["run_type"] = 5  # something screwy is going on because this is necessary
     arg_dict["jac_method"] = 2
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # now test full jacobian

@@ -35,7 +35,7 @@ function runtests_parallel()
     start_dir = pwd()
     cd ("./rk4/parallel")
     ARGS[1] = "input_vals_parallel_runp.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -46,7 +46,7 @@ function runtests_parallel()
 
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
@@ -56,7 +56,7 @@ function runtests_parallel()
 
     cd("./rk4_3d/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -66,7 +66,7 @@ function runtests_parallel()
 
     cd("./newton_3d/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
     @fact datas[1] --> roughly(datap[1], atol=1e-13)
@@ -91,7 +91,7 @@ facts("----- Running Advection 2 processor tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(AdvectionTests, tags)
+  run_testlist(AdvectionTests, run_advection, tags)
 end
 
 #------------------------------------------------------------------------------

@@ -37,7 +37,7 @@ function test_parallel2()
     start_dir = pwd()
     cd ("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -48,7 +48,7 @@ function test_parallel2()
 
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
@@ -77,7 +77,7 @@ facts("----- Running Euler 2 process tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(EulerTests, tags)
+  run_testlist(EulerTests, run_euler, tags)
 end
 
 if MPI.Initialized()

@@ -44,7 +44,7 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   # test entropy variables
   ARGS[1] = "input_vals_vortexa.jl"
   println("\n\ntesting ", ARGS[1])
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
   
@@ -52,39 +52,39 @@ facts("--- Testing Sparse/Dense Jacobian ---") do
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex2.jl"
   println("\n\ntesting ", ARGS[1])
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
 #=
   # test entropy variables
   ARGS[1] = "input_vals_vortex2a.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 =#
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex3.jl"
   println("\n\ntesting ", ARGS[1])
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
 #=
   # test entropy variables
   ARGS[1] = "input_vals_vortex3a.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 =#
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex4.jl"
   println("\n\ntesting ", ARGS[1])
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 
 #=
   # test entropy variables
   ARGS[1] = "input_vals_vortex4a.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
 =#
 end

@@ -62,7 +62,7 @@ facts("----- Running Advection tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(AdvectionTests, tags)
+  run_testlist(AdvectionTests, run_advection, tags)
 end
 
 #------------------------------------------------------------------------------

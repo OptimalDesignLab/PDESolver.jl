@@ -197,14 +197,25 @@ end
 
   Inputs:
     testlist: a TestList loaded with functions
+    prep_func = function used with test functions of type 2 or 3.  It must
+                have signature prep_func(fname::ASCIIString). fname is the
+                name of hte input file associated with the test function
     tags: an array of tags (optional)
 
 """
-function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
+function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
 
   println("Running tests with tags matching = ", tags)
   tags_set = Set(tags)
   ntests = length(testlist.funcs)
+
+  # need to declare these here so they have the right scope
+  # these variables are type unstable anways, the default the type of the
+  # default value doesn't matter
+  mesh = 0
+  sbp = 0
+  eqn = 0
+  opts = 0
   for i=1:ntests
     func_i = testlist.funcs[i]
     func_tags_i = testlist.func_tags[i]
@@ -222,7 +233,7 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
         elseif functype_i == 2  # function with all 4 arguments
           if ARGS[1] != input_name_i
             ARGS[1] = input_name_i
-            include(STARTUP_PATH)
+            mesh, sbp, eqn, opts = prep_func(ARGS[1])
           end
           func_i(mesh, sbp, eqn, opts)
         elseif functype_i == 3  # modify input before running
@@ -240,7 +251,7 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
             make_input(arg_dict, input_mod_i["new_fname"])
 
             ARGS[1] = new_fname
-            include(STARTUP_PATH)
+            mesh, sbp, eqn, opts = prep_func(ARGS[1])
           end  # end if file already created
 
           func_i(mesh, sbp, eqn, opts)

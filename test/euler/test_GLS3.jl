@@ -154,7 +154,7 @@ function test_gls_channel(mesh, sbp, eqn, opts)
   facts("----- Testing GLS3 channel -----") do
  #   resize!(ARGS, 1)
  #   ARGS[1] = "input_vals_channel_gls.jl"
- #   include(STARTUP_PATH)
+ #   mesh, sbp, eqn, opts = run_euler(ARGS[1])
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     test_GLS(mesh, sbp, eqn, opts)
   end  # end facts block
@@ -188,7 +188,7 @@ function test_gls_vortex()
 
         resize!(ARGS, 1)
         ARGS[1] = "input_vals_vortex3_gls.jl"
-        include(STARTUP_PATH)
+        mesh, sbp, eqn, opts = run_euler(ARGS[1])
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         test_GLS(mesh, sbp, eqn ,opts)
       end  # end facts block
@@ -209,7 +209,7 @@ function test_gls_fd()
     if true
       facts("----- Performing GLS3 p$p finite difference checks -----") do
         ARGS[1] = "input_vals_vortex3_gls.jl"
-        include(STARTUP_PATH)
+        mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
         arg_dict["order"] = p
         f = open("input_vals_vortex3_gls.jl", "w")
@@ -217,7 +217,7 @@ function test_gls_fd()
         println(f, arg_dict)
         close(f)
         ARGS[1] = "input_vals_vortex3_gls.jl"
-        include(STARTUP_PATH)
+        mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
         # rescale the problem
         for i = 1:length(eqn.q)
@@ -255,7 +255,7 @@ function test_gls_fd()
         println(f, arg_dict)
         close(f)
         ARGS[1] = "input_vals_vortex3c_gls.jl"
-        include(STARTUP_PATH)
+        mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
         # rescale the problem
         for i = 1:length(eqn.q)

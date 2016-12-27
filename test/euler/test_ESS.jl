@@ -202,7 +202,7 @@ function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, resL::Abstrac
     qL_i = qL[:, i]
 
     w_tmp = sview(wL, :, i)
-    EulerEquationMod.convertToEntropy_(eqn.params, qL_i, w_tmp)
+    EulerEquationMod.convertToEntropy_(params, qL_i, w_tmp)
     scale!(w_tmp, 1./params.gamma_1)
 
   end
@@ -324,7 +324,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
   for i=1:sbpface.numnodes
     wL_i = wL_face[:, i]
     wR_i = wR_face[:, i]
-    nrm = zeros(Tmsh, mesh.dim)
+    nrm = zeros(Tmsh, Tdim)
     # get the normal vector
     for dim = 1:Tdim
       for d = 1:Tdim
@@ -888,7 +888,7 @@ end
 function test_ESS()
   facts("----- testing ESS -----") do
     ARGS[1] = "input_vals_channel_dg_large.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
     # evaluate the residual to confirm it is zero
     EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
     penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
@@ -917,7 +917,7 @@ function test_ESS()
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
         ARGS[1] = fname*".jl"
-        include(STARTUP_PATH)
+        mesh, sbp, eqn, opts = run_euler(ARGS[1])
        
 
         println("checking channel flow")
@@ -965,7 +965,7 @@ function test_ESS()
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
         ARGS[1] = fname*".jl"
-        include(STARTUP_PATH)
+        mesh, sbp, eqn, opts = run_euler(ARGS[1])
         
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
