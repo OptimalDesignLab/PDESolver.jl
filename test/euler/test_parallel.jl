@@ -10,8 +10,8 @@ function test_parallel()
   include(STARTUP_PATH)
   cd("../parallel")
 
-  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-  make_input(arg_dict, "input_vals_parallel")
+  opts["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(opts, "input_vals_parallel")
 
   cd("../../newton/serial")
   ARGS[1] = "input_vals_vortex3.jl"
@@ -19,8 +19,8 @@ function test_parallel()
 
 
   cd("../parallel")
-  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-  make_input(arg_dict, "input_vals_parallel")
+  opts["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(opts, "input_vals_parallel")
 
   return nothing
 end

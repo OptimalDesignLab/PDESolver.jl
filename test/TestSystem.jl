@@ -215,6 +215,7 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
     for j=1:length(func_tags_i)
       tag_j = func_tags_i[j]
       if tag_j in tags_set
+        println("running function ", func_i)
         # run this test
         if functype_i == 1  # function with no arguments
           func_i()

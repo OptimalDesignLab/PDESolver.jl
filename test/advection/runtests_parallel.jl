@@ -11,6 +11,7 @@ using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+using Utils
 
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
 

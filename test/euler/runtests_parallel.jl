@@ -16,6 +16,8 @@ using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+import MPI
+
 include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
 
@@ -81,8 +83,6 @@ end
 if MPI.Initialized()
   MPI.Finalize()
 end
-
-
 
 FactCheck.exitstatus()
 
