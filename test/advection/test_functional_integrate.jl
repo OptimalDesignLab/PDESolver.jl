@@ -7,7 +7,7 @@ function test_functional_integrate()
 facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
     clean_dict(arg_dict)
     ARGS[1] = "input_vals_functional_CG.jl"
-    include("../../src/solver/advection/startup.jl")  # initialization and construction
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
 
     @fact mesh.isDG --> false
@@ -25,8 +25,7 @@ facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
 
   facts("--- Testing Boundary Functional Computation on DG Mesh ---") do
     ARGS[1] = "input_vals_functional_DG.jl"
-    include("../../src/solver/advection/startup.jl")  # initialization and construction
-
+    run_advection(ARGS[1])
 
     @fact mesh.isDG --> true
     @fact opts["functional_name1"] --> "qflux"
