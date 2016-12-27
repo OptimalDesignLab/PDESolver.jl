@@ -57,6 +57,10 @@ function run_simpleode(input_file::AbstractString)
   writedlm("solution_ic.dat", real(eqn.q_vec))
   writedlm("residual_ic_$myrank.dat", real(eqn.res_vec))
 
+  # because simpleODE is different in how it calls rk4, it does not use
+  # call_nlsolver
+#  call_nlsolver(mesh, sbp, eqn, opts, pmesh)
+
   if opts["solve"]
 
     # handle flags
@@ -96,17 +100,18 @@ function run_simpleode(input_file::AbstractString)
 
     # TODO: comparison with exact solution
 
-    if opts["do_postproc"]
-      exfname = opts["exact_soln_func"]
-      if haskey(ICDict, exfname)
-        exfunc = ICDict[exfname]
-        q_exact = zeros(Tsol, mesh.numDof)
-        exfunc(mesh, sbp, eqn, opts, q_exact)
-
-      end
-    end     # end of if opts["do_postproc"]
-
   end   # end of if opts["solve"]
+
+  if opts["do_postproc"] && opts["solve"]
+    exfname = opts["exact_soln_func"]
+    if haskey(ICDict, exfname)
+      exfunc = ICDict[exfname]
+      q_exact = zeros(Tsol, mesh.numDof)
+      exfunc(mesh, sbp, eqn, opts, q_exact)
+
+    end
+  end     # end of if opts["do_postproc"]
+
 
   return mesh, sbp, eqn, opts
 end  # end function

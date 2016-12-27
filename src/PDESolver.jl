@@ -7,6 +7,9 @@ export register_physics, retrieve_physics
 # from interface.jl
 export evalResidual
 
+# from nlsolver_invokation.jl
+export call_nlsolver
+
 # load paths for all the components of PDESolver
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
@@ -31,8 +34,10 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 
+include("./solver/euler/output.jl")  # TODO: figure out where to put this
 include("registration.jl")
 include("interface.jl")
+include("nlsolver_invokation.jl")
 
 
 # package code goes here

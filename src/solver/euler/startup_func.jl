@@ -161,198 +161,124 @@ function run_euler(input_file::AbstractString)
     opts["delta_t"] = delta_t
   end
 
-  # call timestepper
-  if opts["solve"]
-    
-    if flag == 1 # normal run
-     @time rk4(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
-  #   @time rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
-  #              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
-  #              res_tol=opts["res_abstol"], real_time=opts["real_time"])
+  call_nlsolver(mesh, sbp, eqn, opts, pmesh)
 
-    # println("rk4 @time printed above")
-    elseif flag == 2 # forward diff dR/du
+  ##### Do postprocessing ######
+  println("\nDoing postprocessing")
 
-      # define nested function
-      function dRdu_rk4_wrapper(u_vals::AbstractVector, res_vec::AbstractVector)
-        eqn.q_vec = u_vals
-        eqn.q_vec = res_vec
-        rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn)
-        return nothing
+  if opts["do_postproc"] && opts["solve"]
+    exfname = opts["exact_soln_func"]
+    if haskey(ICDict, exfname)
+      exfunc = ICDict[exfname]
+      q_exact = zeros(Tsol, mesh.numDof)
+      exfunc(mesh, sbp, eqn, opts, q_exact)
+#    if var_type == :entropy
+#      println("converting to entropy variables")
+#      for i=1:mesh.numDofPerNode:mesh.numDof
+#        q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
+#        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+#      end
+#    end
+
+      myrank = mesh.myrank
+      q_diff = eqn.q_vec - q_exact
+      saveSolutionToMesh(mesh, abs(real(q_diff)))
+      writeVisFiles(mesh, "solution_error")
+
+
+      diff_norm = calcNorm(eqn, q_diff)
+#      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
+#      diff_norm = sqrt(diff_norm)
+
+
+      @mpi_master println("solution error norm = ", diff_norm)
+      h_avg = calcMeshH(mesh, sbp, eqn, opts)
+
+      # print to file
+      @mpi_master begin
+        outname = opts["calc_error_outfname"]
+        f = open(outname, "w")
+        println(f, diff_norm, " ", h_avg)
+        close(f)
       end
 
-      # use ForwardDiff package to generate function that calculate jacobian
-      calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64, 
-                  fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
-
-      jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
-      calcdRdu!(eqn.q_vec, jac)
-
-    elseif flag == 3 # calculate dRdx
-
-      # dRdx here
-
-    elseif flag == 4 || flag == 5
-      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
-
-    elseif flag == 20
-
-  #     @time crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, 
-  #                          eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
-      @time crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, 
-                           opts, opts["res_abstol"], opts["real_time"])
-
-    end       # end of if/elseif blocks checking flag
-
-    println("total solution time printed above")
-    # evaluate residual at final q value
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    evalResidual( mesh, sbp, eqn, opts, eqn.params.t)
-
-    eqn.res_vec[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-
-
-    if opts["write_finalsolution"]
-      @mpi_master println("writing final solution")
-      writedlm("solution_final.dat", real(eqn.q_vec))
-    end
-
-    if opts["write_finalresidual"]
-      writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
-    end
-
-
-    ##### Do postprocessing ######
-    println("\nDoing postprocessing")
-
-    if opts["do_postproc"]
-      exfname = opts["exact_soln_func"]
-      if haskey(ICDict, exfname)
-        exfunc = ICDict[exfname]
-        q_exact = zeros(Tsol, mesh.numDof)
-        exfunc(mesh, sbp, eqn, opts, q_exact)
-  #    if var_type == :entropy
-  #      println("converting to entropy variables")
-  #      for i=1:mesh.numDofPerNode:mesh.numDof
-  #        q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
-  #        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
-  #      end
-  #    end
-
-        myrank = mesh.myrank
-        q_diff = eqn.q_vec - q_exact
-        saveSolutionToMesh(mesh, abs(real(q_diff)))
-        writeVisFiles(mesh, "solution_error")
-
-
-        diff_norm = calcNorm(eqn, q_diff)
-  #      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
-  #      diff_norm = sqrt(diff_norm)
-
-
-        @mpi_master println("solution error norm = ", diff_norm)
-        h_avg = calcMeshH(mesh, sbp, eqn, opts)
-
-        # print to file
-        @mpi_master begin
-          outname = opts["calc_error_outfname"]
-          f = open(outname, "w")
-          println(f, diff_norm, " ", h_avg)
-          close(f)
+      #---- Calculate functional on a boundary  -----#
+      if opts["calc_functional"]
+        
+        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        if mesh.isDG
+          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
         end
 
-        #---- Calculate functional on a boundary  -----#
-        if opts["calc_functional"]
-          
-          eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-          if mesh.isDG
-            boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-          end
-
-          # Calculate functional over edges
-          num_functionals = opts["num_functionals"]
-          for j = 1:num_functionals
-            # Geometric edge at which the functional needs to be integrated
-            key_j = string("geom_edges_functional", j)
-            functional_edges = opts[key_j]
-            functional_name = getFunctionalName(opts, j)
-
-            functional_val = zero(Tsol)
-            functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
-                             functional_name, functional_edges)
-
-            println("\nNumerical functional value on geometric edges ", 
-                    functional_edges, " = ", functional_val)
-
-            analytical_functional_val = opts["analytical_functional_val"]
-            println("analytical_functional_val = ", analytical_functional_val)
-
-            absolute_functional_error = norm((functional_val - 
-                                             analytical_functional_val), 2)
-            relative_functional_error = absolute_functional_error/
-                                        norm(analytical_functional_val, 2)
-
-            mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-
-            # write functional error to file
-            outname = string(opts["functional_error_outfname"], j, ".dat")
-            println("printed relative functional error = ", 
-                    relative_functional_error, " to file ", outname, '\n')
-            f = open(outname, "w")
-            println(f, relative_functional_error, " ", mesh_metric)
-            close(f)
-          end  # End for i = 1:num_functionals
-        end    # End if opts["calc_functional"]
-
-
-        #----- Calculate Adjoint Vector For A Functional -----#
-        if opts["calc_adjoint"]
-          eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-          if mesh.isDG
-            boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-          end
-
-          # TODO: Presently adjoint computation only for 1 functional. Figure out
-          # API based on future use.
-          j = 1
-          key = string("geom_edges_functional", j)
-          functional_edges = opts[key]
-          functional_number = j
+        # Calculate functional over edges
+        num_functionals = opts["num_functionals"]
+        for j = 1:num_functionals
+          # Geometric edge at which the functional needs to be integrated
+          key_j = string("geom_edges_functional", j)
+          functional_edges = opts[key_j]
           functional_name = getFunctionalName(opts, j)
-          
-          adjoint_vec = zeros(Tsol, mesh.numDof)
-          calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
+
+          functional_val = zero(Tsol)
+          functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
+                           functional_name, functional_edges)
+
+          println("\nNumerical functional value on geometric edges ", 
+                  functional_edges, " = ", functional_val)
+
+          analytical_functional_val = opts["analytical_functional_val"]
+          println("analytical_functional_val = ", analytical_functional_val)
+
+          absolute_functional_error = norm((functional_val - 
+                                           analytical_functional_val), 2)
+          relative_functional_error = absolute_functional_error/
+                                      norm(analytical_functional_val, 2)
+
+          mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
+
+          # write functional error to file
+          outname = string(opts["functional_error_outfname"], j, ".dat")
+          println("printed relative functional error = ", 
+                  relative_functional_error, " to file ", outname, '\n')
+          f = open(outname, "w")
+          println(f, relative_functional_error, " ", mesh_metric)
+          close(f)
+        end  # End for i = 1:num_functionals
+      end    # End if opts["calc_functional"]
 
 
-          # Write adjoint vector to file and mesh
-          file_object = open("adjoint_vector.dat", "w")
-          for iter = 1:length(adjoint_vec)
-            println(file_object, real(adjoint_vec[iter]))
-          end
-          close(file_object)
-          saveSolutionToMesh(mesh, real(adjoint_vec))
-          writeVisFiles(mesh, "adjoint_field")
+      #----- Calculate Adjoint Vector For A Functional -----#
+      if opts["calc_adjoint"]
+        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        if mesh.isDG
+          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+        end
 
-        end  # End if opts["calc_adjoint"]
+        # TODO: Presently adjoint computation only for 1 functional. Figure out
+        # API based on future use.
+        j = 1
+        key = string("geom_edges_functional", j)
+        functional_edges = opts[key]
+        functional_number = j
+        functional_name = getFunctionalName(opts, j)
+        
+        adjoint_vec = zeros(Tsol, mesh.numDof)
+        calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
 
 
-      end
-    end
+        # Write adjoint vector to file and mesh
+        file_object = open("adjoint_vector.dat", "w")
+        for iter = 1:length(adjoint_vec)
+          println(file_object, real(adjoint_vec[iter]))
+        end
+        close(file_object)
+        saveSolutionToMesh(mesh, real(adjoint_vec))
+        writeVisFiles(mesh, "adjoint_field")
 
-    saveSolutionToMesh(mesh, real(eqn.q_vec))
-    printSolution(mesh, real(eqn.q_vec))
-    printCoordinates(mesh)
-    writeVisFiles(mesh, "solution_done")
-    writedlm("solution_done.dat", real(eqn.q_vec))
+      end  # End if opts["calc_adjoint"]
 
-  end  # end if (opts[solve])
 
-  fname = "timing_breakdown_$myrank"
-  write_timings(eqn.params.time, fname)
-
+    end  # end if haskey(ICname)
+  end  # end if do_postproc
 
   return mesh, sbp, eqn, opts
 end  # end function
