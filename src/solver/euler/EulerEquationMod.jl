@@ -462,6 +462,8 @@ include("eigensystem.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function for invoking the solver
 
+register_physics("Euler", EulerEquationMod, run_euler)
+
 @doc """
 ### EulerEquationMod.EulerData_
 

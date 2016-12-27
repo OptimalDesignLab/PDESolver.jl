@@ -235,6 +235,9 @@ include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # prin
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function to invoke the solver
 
+# register this physics module
+register_physics("Advection", AdvectionEquationMod, run_advection)
+
 @doc """
 ### AdvectionEquationMod.calcMassMatrix
 

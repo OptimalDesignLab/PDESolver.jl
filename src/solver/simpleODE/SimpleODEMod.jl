@@ -180,6 +180,7 @@ include(joinpath(Pkg.dir("PDESolver"),"src/solver/simpleODE/output.jl"))  # prin
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")
 
+register_physics("SimpleODE", SimpleODEMod, run_simpleode)
 
 @doc """
 
