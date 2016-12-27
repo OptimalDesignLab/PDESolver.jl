@@ -72,7 +72,7 @@ function run_advection(input_file::AbstractString)
 
   if opts["calc_trunc_error"]  # calculate truncation error
     println("\nCalculating residual for truncation error")
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalAdvection)
+    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
     if myrank == 0
       f = open("error_trunc.dat", "w")
       println(f, tmp)
@@ -117,12 +117,12 @@ function run_advection(input_file::AbstractString)
   println("mesh.min_node_dist = ", mesh.min_node_dist)
   
   MPI.Barrier( mesh.comm)
-  # evalAdvection(mesh, sbp, eqn, opts, t)
+  # evalResidual(mesh, sbp, eqn, opts, t)
   if opts["solve"]
     
     solve_time = @elapsed if flag == 1 # normal run
       # RK4 solver
-      @time rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn, opts, 
+      @time rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts, 
                 res_tol=opts["res_abstol"], real_time=opts["real_time"])
       println("finish rk4")
   #    printSolution("rk4_solution.dat", eqn.res_vec)
@@ -133,7 +133,7 @@ function run_advection(input_file::AbstractString)
       function dRdu_rk4_wrapper(u_vals::AbstractVector, res_vec::AbstractVector)
         eqn.q_vec = u_vals
         eqn.q_vec = res_vec
-        rk4(evalAdvection, delta_t, t_max, mesh, sbp, eqn)
+        rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn)
         return nothing
       end
 
@@ -149,7 +149,7 @@ function run_advection(input_file::AbstractString)
       # dRdx here
 
     elseif flag == 4 || flag == 5
-      @time newton(evalAdvection, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
+      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
                    step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
                    res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
@@ -171,7 +171,7 @@ function run_advection(input_file::AbstractString)
         return nrm
       end
 
-      rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, pre_func, post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+      rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, pre_func, post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
     elseif flag == 10
       function test_pre_func(mesh, sbp, eqn, opts)
@@ -184,13 +184,13 @@ function run_advection(input_file::AbstractString)
       end
 
 
-      rk4(evalAdvection, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
+      rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
           test_post_func, (mesh, sbp, eqn), opts, 
           majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
     elseif flag == 20
 
-      @time t = crank_nicolson(evalAdvection, opts["delta_t"], t_max, mesh, sbp, eqn, 
+      @time t = crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, 
                            opts, opts["res_abstol"], opts["real_time"])
 
       eqn.t = t
@@ -216,7 +216,7 @@ function run_advection(input_file::AbstractString)
     need_res = false
     if need_res
       eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-      evalAdvection(mesh, sbp, eqn, opts, eqn.t)
+      evalResidual(mesh, sbp, eqn, opts, eqn.t)
 
       eqn.res_vec[:] = 0.0
       eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)

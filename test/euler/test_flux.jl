@@ -170,7 +170,7 @@ function test_flux_2d()
     opts["volume_integral_type"] = 2
     opts["Volume_flux_name"] = "IRFlux"
     EulerEquationMod.init(mesh, sbp, eqn, opts)
-    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         for k=1:mesh.numDofPerNode

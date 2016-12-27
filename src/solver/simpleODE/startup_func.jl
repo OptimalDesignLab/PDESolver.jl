@@ -65,12 +65,12 @@ function run_simpleode(input_file::AbstractString)
 
       # NOTE: needs to have a custom pde_pre_func & pde_post_func suited to ODEs, named ode_pre_func & ode_post_func
 
-      rk4(evalSimpleODE, opts["delta_t"], t_max, eqn.q_vec, eqn.res_vec, ode_pre_func, ode_post_func, 
+      rk4(evalResidual, opts["delta_t"], t_max, eqn.q_vec, eqn.res_vec, ode_pre_func, ode_post_func, 
           (mesh, sbp, eqn), opts; 
           majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
     elseif flag == 20   # Crank-Nicolson
-      @time crank_nicolson(evalSimpleODE, opts["delta_t"], t_max, mesh, sbp, eqn, 
+      @time crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, 
                            opts, opts["res_abstol"], opts["real_time"])
 
     else
@@ -81,7 +81,7 @@ function run_simpleode(input_file::AbstractString)
     end
 
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    evalSimpleODE(mesh, sbp, eqn, opts, eqn.params.t)
+    evalResidual(mesh, sbp, eqn, opts, eqn.params.t)
 
     eqn.res_vec[:] = 0.0
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)

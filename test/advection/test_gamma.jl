@@ -26,7 +26,7 @@ function test_gamma_sbp(mesh, sbp, eqn, opts)
     AdvectionEquationMod.ICConstant(mesh, sbp, eqn, opts, eqn.q_vec)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
-    evalAdvection(mesh, sbp, eqn, opts)
+    evalResidual(mesh, sbp, eqn, opts)
 
     for i=1:length(eqn.res)
       @fact eqn.res[i] --> roughly(0.0, atol=1e-13)

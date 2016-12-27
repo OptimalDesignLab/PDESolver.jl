@@ -756,11 +756,11 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
   end  # end facts block
 
-  facts("--- Testing evalEuler --- ")  do
+  facts("--- Testing evalResidual --- ")  do
 
     fill!(eqn.res_vec, 0.0)
     fill!(eqn.res, 0.0)
-    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
 
     # for uniform flow, residual is zero
     for i=1:mesh.numDof

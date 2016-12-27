@@ -27,7 +27,7 @@ using Utils
 import ODLCommonTools.sview
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 
-export evalAdvection, init, run_advection
+export evalResidual, init, run_advection
 export ICDict              # exported from ic.jl  # TODO: stop exporting this
 
 # include("advectionFunctions.jl")

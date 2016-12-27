@@ -1,10 +1,11 @@
 # advectionFunctions.jl
+import PDESolver.evalResidual
 
 @doc """
-### AdvectionEquationMod.evalAdvection
+### AdvectionEquationMod.evalResidual
 
 This function evaluates the Advection equation and preps it for the RK4 solver.
-Pass this function as an input argument to the RK4 solver just like evalAdvection.
+Pass this function as an input argument to the RK4 solver just like evalResidual.
 
 **Inputs**
 
@@ -21,17 +22,16 @@ Effectively updates eqn.res -- not eqn.res_vec. To make them consistent, use ass
 *  None
 
 """->
-
-function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                        sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                       opts, t = 0.0)
+                       opts::Dict, t=0.0)
 
   myrank = mesh.myrank
   params = eqn.params
-  @debug1 println(params.f, "-----entered evalAdvection -----")
+  @debug1 println(params.f, "-----entered evalResidual -----")
   @debug1 printbacktrace(params.f)
   #f = open("pfout_$myrank.dat", "a+")
-  #println(f, "----- entered evalAdvection -----")
+  #println(f, "----- entered evalResidual -----")
   #close(f)
 
   eqn.t = t
@@ -83,7 +83,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  params.time.t_barriers[7] += @elapsed MPI.Barrier(mesh.comm) 
 #=
   f = open("pfout_$myrank.dat", "a+")
-  println(f, "----- finished evalAdvection -----")
+  println(f, "----- finished evalResidual -----")
   close(f)
 =#
 
@@ -92,7 +92,7 @@ function evalAdvection{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   @debug1 flush(params.f)
-#  println(params.f, "----- finished evalAdvection -----")
+#  println(params.f, "----- finished evalResidual -----")
   return nothing
 end
 

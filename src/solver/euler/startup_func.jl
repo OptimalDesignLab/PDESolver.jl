@@ -70,7 +70,7 @@ function run_euler(input_file::AbstractString)
       end
     end
   #  println("eqn.q_vec = ", eqn.q_vec)
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
+    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
     res_real = real(eqn.res_vec)
   #  println("res_real = \n", res_real)
   #  println("eqn.res_vec = ", eqn.res_vec)
@@ -127,7 +127,7 @@ function run_euler(input_file::AbstractString)
 
   if opts["calc_trunc_error"]  # calculate truncation error
     @mpi_master println("\nCalculating residual for truncation error")
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalEuler)
+    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
 
     @mpi_master begin
       f = open("error_trunc.dat", "w")
@@ -165,8 +165,8 @@ function run_euler(input_file::AbstractString)
   if opts["solve"]
     
     if flag == 1 # normal run
-     @time rk4(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
-  #   @time rk4(evalEuler, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
+     @time rk4(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+  #   @time rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, 
   #              (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
   #              res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
@@ -177,7 +177,7 @@ function run_euler(input_file::AbstractString)
       function dRdu_rk4_wrapper(u_vals::AbstractVector, res_vec::AbstractVector)
         eqn.q_vec = u_vals
         eqn.q_vec = res_vec
-        rk4(evalEuler, delta_t, t_max, mesh, sbp, eqn)
+        rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn)
         return nothing
       end
 
@@ -193,15 +193,15 @@ function run_euler(input_file::AbstractString)
       # dRdx here
 
     elseif flag == 4 || flag == 5
-      @time newton(evalEuler, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
+      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
                    step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
                    res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
     elseif flag == 20
 
-  #     @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, 
+  #     @time crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, 
   #                          eqn, opts, res_tol=opts["res_abstol"], real_time=opts["real_time"])
-      @time crank_nicolson(evalEuler, opts["delta_t"], t_max, mesh, sbp, eqn, 
+      @time crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, 
                            opts, opts["res_abstol"], opts["real_time"])
 
     end       # end of if/elseif blocks checking flag
@@ -209,7 +209,7 @@ function run_euler(input_file::AbstractString)
     println("total solution time printed above")
     # evaluate residual at final q value
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    evalEuler( mesh, sbp, eqn, opts, eqn.params.t)
+    evalResidual( mesh, sbp, eqn, opts, eqn.params.t)
 
     eqn.res_vec[:] = 0.0
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)

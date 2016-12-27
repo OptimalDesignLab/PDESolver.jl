@@ -38,7 +38,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
   res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
   pert = complex(0, opts["epsilon"])
   NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts,
-                                       evalAdvection, pert, res_jac)
+                                       evalResidual, pert, res_jac)
 
   func_deriv = zeros(Tsol, mesh.numDof)
   func_deriv_arr = zeros(eqn.q) 
@@ -77,7 +77,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
   pert = complex(0, opts["epsilon"])
   NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts,
-                                       evalAdvection, pert, res_jac)
+                                       evalResidual, pert, res_jac)
   
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.

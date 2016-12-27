@@ -1,7 +1,9 @@
 # functions to make simpleODE work
 
+import PDESolver.evalResidual
+
 @doc """
-### SimpleODEMod.evalSimpleODE
+### SimpleODEMod.evalResidual
 
 This function evaluates the simple ODE equation.
 
@@ -18,9 +20,9 @@ This function evaluates the simple ODE equation.
 *  None
 
 """->
-function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                        sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
-                       opts, t = 0.0)
+                       opts::Dict, t = 0.0)
 
   myrank = mesh.myrank
   params = eqn.params
@@ -55,7 +57,7 @@ function evalSimpleODE{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     applyMassMatrixInv3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
-end   # end of function evalSimpleODE
+end   # end of function evalResidual
 
 function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,

@@ -11,7 +11,7 @@ using MPI
 using Utils
 import ODLCommonTools: get_uninitialized_SolutionData, sview
 export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
-export evalSimpleODE, init, run_simpleode # exported from simpleODE_funcs.jl
+export evalResidual, init, run_simpleode # exported from simpleODE_funcs.jl
 export ICDict              # exported from ic.jl
 export ode_pre_func, ode_post_func    # exported from simpleODE_func.jl
 

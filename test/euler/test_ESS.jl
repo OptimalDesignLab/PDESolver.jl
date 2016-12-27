@@ -880,7 +880,7 @@ function test_ESS()
     ARGS[1] = "input_vals_channel_dg_large.jl"
     mesh, sbp, eqn, opts = run_euler(ARGS[1])
     # evaluate the residual to confirm it is zero
-    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
     penalty_lf = "ELFPenaltyFaceIntegral"
     penalty_lw = "ELWPenaltyFaceIntegral"
