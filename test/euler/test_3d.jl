@@ -315,8 +315,6 @@ function test_3d_bc(mesh, sbp, eqn, opts)
     EulerEquationMod.RoeSolver(eqn.params, q, q, aux_vars, dxidx, nrm, F2)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
 
-  #  println("F = \n", F)
-  #  println("F2 = \n", F2)
     @fact F2 --> roughly(F, atol=1e-13)
   end  # end facts block
 

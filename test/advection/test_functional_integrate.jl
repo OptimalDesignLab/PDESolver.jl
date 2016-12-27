@@ -25,13 +25,14 @@ facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
 
   facts("--- Testing Boundary Functional Computation on DG Mesh ---") do
     ARGS[1] = "input_vals_functional_DG.jl"
-    run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     @fact mesh.isDG --> true
     @fact opts["functional_name1"] --> "qflux"
     @fact opts["analytical_functional_val"] --> roughly(2*(exp(1) - 1), atol=1e-12)
-    @fact opts["geom_edges_functional1"] --> [2,3]
-    
+    @fact opts["geom_edges_functional1"] --> [2,3] 
+    @fact opts["calc_adjoint"] --> true
+
     fname = "./functional_error1.dat"
     error = readdlm(fname)
 
@@ -42,8 +43,6 @@ facts("--- Testing Boundary Functional Computation on CG Mesh ---") do
 
   facts("--- Testing Adjoint Computation on DG Mesh ---") do
     
-    @fact mesh.isDG --> true
-    @fact opts["calc_adjoint"] --> true
 
     fname = "./adjoint_vector.dat"
     adjoint_vec = readdlm(fname)

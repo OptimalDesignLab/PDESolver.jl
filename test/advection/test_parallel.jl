@@ -131,7 +131,6 @@ end
 add_func1!(AdvectionTests, test_parallel_mpi)
 
 function test_parallel_serialpart()
-  println("test_parallel_serialpart")
   ARGS[1] = "input_vals_parallel.jl"
   mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
@@ -193,6 +192,4 @@ function test_parallel_serialpart()
 end
 
 #test_parallel_serialpart()
-println("adding test_parallel_serialpart to test list")
 add_func1!(AdvectionTests, test_parallel_serialpart)
-println("finished adding test_parallel_serialpart to test list")

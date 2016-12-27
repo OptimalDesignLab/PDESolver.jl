@@ -700,16 +700,6 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
       @fact delta_s2 --> less_than(eps())
     end
 
-#=
-    delta_sL = dot(sbp.w, resL_reduced)
-    delta_sR = dot(sbp.w, resR_reduced)
-
-    println("delta_sL = ", delta_sL)
-    println("delta_sR = ", delta_sR)
-=#
-#    @fact delta_sL --> less_than(eps())
-#    @fact delta_sR --> less_than(eps())
-
   end  # end loop over interfaces
 
   println("finished checking entropy dissipation")
@@ -920,10 +910,8 @@ function test_ESS()
         mesh, sbp, eqn, opts = run_euler(ARGS[1])
        
 
-        println("checking channel flow")
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
 
-        println("\nchecking ICExp")
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
         scale!(eqn.q_vec, 0.01)

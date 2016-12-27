@@ -1,13 +1,4 @@
 # this file tests the rk4 function
-
-#=
-using ODLCommonTools
-nl_solvers_path = joinpath(Pkg.dir("PDESolver", "src/NonlinearSolvers"))
-println("nl_solvers_path = ", nl_solvers_path)
-push!(LOAD_PATH, nl_solvers_path)
-using NonlinearSolvers
-=#
-
 # this uses rk4 to integrate the function t^4 + t^3 + t^2 +t + 1
 # thus the function supplied to rk4 is d/dt of that function
 # and q_vec_rk[1] is initially function(t=0) = 1
@@ -45,10 +36,6 @@ function test_rk4()
     f_approx = q_vec_rk[1]
     f_exact = true_f(t)
     err = abs(f_approx - f_exact)
-    println("returned t = ", t)
-    println("at end of rk4, q_vec_rk[1] = ", f_approx)
-    println("true_f(t) = ", f_exact)
-    println("error = ", err)
 
     @fact err --> less_than(1e-14)  # machine precision
   end  # end facts block

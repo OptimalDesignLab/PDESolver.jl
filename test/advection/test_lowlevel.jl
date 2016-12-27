@@ -28,7 +28,6 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
     @fact mesh.numNodesPerElement --> 3
     @fact mesh.numNodesPerType --> [1, 0 , 0]
 
-  #  println("mesh.bndryfaces = ", mesh.bndryfaces)
     @fact mesh.bndry_funcs[1] --> AdvectionEquationMod.x5plusy5BC()
     @fact mesh.bndryfaces[1].element --> 1
     @fact mesh.bndryfaces[1].face --> 3
@@ -39,7 +38,6 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
     @fact mesh.bndryfaces[4].element --> 2
     @fact mesh.bndryfaces[4].face --> 1
 
-  #  println("mesh.interfaces = ",  mesh.interfaces)
     @fact mesh.interfaces[1].elementL --> 1
     @fact mesh.interfaces[1].elementR --> 2
     @fact mesh.interfaces[1].faceL --> 2
@@ -47,12 +45,8 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
 
     jac_fac = 0.25
     fac = 2
-    println("mesh.coords = ", mesh.coords)
-  #  println("mesh.coords = ", mesh.coords)
     @fact mesh.coords[:, :, 2] --> roughly([4 4 0; 0 4 4.0])
     @fact mesh.coords[:, :, 1] --> roughly([0.0 4 0; 0 0 4])
-
-  #  println("mesh.dxidx = \n", mesh.dxidx)
 
     @fact mesh.dxidx[:, :, 1, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
     @fact mesh.dxidx[:, :, 2, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)

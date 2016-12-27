@@ -93,19 +93,15 @@ function test_flux_2d()
     EulerEquationMod.calcEulerFlux(eqn.params, qL, aux_vars, nrm, F_euler)
 
     functor = EulerEquationMod.FluxDict["StandardFlux"]
-    println("testing StandardFlux")
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing DucrosFlux")
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing IRFlux")
     functor = EulerEquationMod.FluxDict["IRFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
     # test against calculated solution
-    println("----- testing IR flux against calculated values -----")
     nrm = [1., 2.0]
     flux_test = ir_flux(eqn.params, qL, qR, nrm)
 
@@ -166,7 +162,6 @@ function test_flux_2d()
     end
 
     # test that constant field -> 0 residual
-    println("testing constant field")
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -215,15 +210,12 @@ function test_flux_3d()
     # get the euler flux
     EulerEquationMod.calcEulerFlux(eqn.params, qL, aux_vars, nrm, F_euler)
     aux_vars[1] = EulerEquationMod.calcPressure(eqn.params, qL)
-    println("testing StandardFlux")
     functor = EulerEquationMod.FluxDict["StandardFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing DucrosFlux")
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing IRFlux")
     functor = EulerEquationMod.FluxDict["IRFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 

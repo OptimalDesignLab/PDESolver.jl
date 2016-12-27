@@ -43,7 +43,6 @@ function test_mms()
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
     =#
-    println("testing DG")
 
     ARGS[1] = "input_vals_mms1.jl"
     fname = make_input_mms(opts, 1, dg=true)
@@ -53,7 +52,6 @@ function test_mms()
     AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
-    println("p1 dg test finished")
 
     fname = make_input_mms(opts, 1, dg=true, operator="SBPOmega")
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
@@ -62,7 +60,6 @@ function test_mms()
     AdvectionEquationMod.evalAdvection(mesh, sbp, eqn, opts)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
-    println("p1 dg test finished")
 
     println("  -----testing degree 2 polynomial -----")
     #=
