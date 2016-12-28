@@ -7,8 +7,8 @@ export register_physics, retrieve_physics
 # from interface.jl
 export evalResidual
 
-# from nlsolver_invokation.jl
-export call_nlsolver
+# from initialization.jl
+export createMeshAndOperator, call_nlsolver
 
 # from startup_func
 export run_solver
@@ -37,12 +37,11 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 
-include("./solver/euler/output.jl")  # TODO: figure out where to put this
-include("registration.jl")
-include("interface.jl")
-include("nlsolver_invokation.jl")
+include("registration.jl")  # registering physics modules
+include("interface.jl")  # functions all physics modules need to implement
+include("initialization.jl")  # startup related functions
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
-include("startup_func.jl")
+include("startup_func.jl")  # unified solver invokation
 
 # package code goes here
 

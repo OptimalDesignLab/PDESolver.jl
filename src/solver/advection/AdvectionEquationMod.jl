@@ -1,20 +1,5 @@
 module AdvectionEquationMod
 
-using PDESolver
-using ODLCommonTools
-using PdePumiInterface     # common mesh interface - pumi
-using SummationByParts     # SBP operators
-using ForwardDiff
-using NonlinearSolvers     # non-linear solvers
-using ArrayViews
-using Utils
-import ODLCommonTools.sview
-using MPI
-include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
-include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
-
-
-
 using PDESolver  # setupf LOAD_PATH to find PDESolver components
 using ArrayViews
 using ODLCommonTools
@@ -231,13 +216,13 @@ include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
 include("flux.jl")
-include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
 include("check_options.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function to invoke the solver
 
 # register this physics module
-register_physics("Advection", AdvectionEquationMod, run_advection)
+global const PhysicsName = "Advection"
+register_physics(PhysicsName, AdvectionEquationMod, run_advection)
 
 @doc """
 ### AdvectionEquationMod.calcMassMatrix

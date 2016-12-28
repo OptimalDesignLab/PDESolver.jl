@@ -10,9 +10,9 @@ function test_frontend()
 
 
     # test run_solver()
-    ARGS[1] = "input_vals_channel.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
-    mesh, sbp, eqn2, opts = run_solver(ARGS[1])
+    fname = "input_vals_channel.jl"
+    mesh, sbp, eqn, opts = run_advection(fname)
+    mesh, sbp, eqn2, opts = run_solver(fname)
 
     @fact eqn.q_vec --> roughly(eqn2.q_vec, atol=1e-13)
 

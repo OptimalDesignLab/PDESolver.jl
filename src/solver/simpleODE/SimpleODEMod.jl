@@ -176,11 +176,11 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("simpleODE_funcs.jl")
 include("common_funcs.jl")
 include("ic.jl")
-include(joinpath(Pkg.dir("PDESolver"),"src/solver/simpleODE/output.jl"))  # printing results to files
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")
 
-register_physics("SimpleODE", SimpleODEMod, run_simpleode)
+global const PhysicsName = "SimpleODE"
+register_physics(PhysicsName, SimpleODEMod, run_simpleode)
 
 @doc """
 

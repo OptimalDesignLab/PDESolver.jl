@@ -441,7 +441,6 @@ abstract EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres}
 # now that EulerData is declared, include other files that use it
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("euler_macros.jl")
-include("output.jl")
 include("common_funcs.jl")
 include("euler_funcs.jl")
 include("conversion.jl")
@@ -463,7 +462,8 @@ include("check_options.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function for invoking the solver
 
-register_physics("Euler", EulerEquationMod, run_euler)
+global const PhysicsName = "Euler"
+register_physics(PhysicsName, EulerEquationMod, run_euler)
 
 @doc """
 ### EulerEquationMod.EulerData_
