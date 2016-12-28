@@ -10,6 +10,9 @@ using NonlinearSolvers
 using MPI
 using Utils
 import ODLCommonTools.sview
+using Input
+
+
 export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
 
 export evalResidual, init, run_advection
@@ -217,7 +220,6 @@ include("adjoint.jl")
 include("source.jl")
 include("flux.jl")
 include("check_options.jl")
-include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function to invoke the solver
 
 # register this physics module

@@ -1,6 +1,6 @@
 # Run advection tests
 
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+#include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 
 using PDESolver
 #using Base.Test
@@ -14,6 +14,7 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 import ODLCommonTools.sview
+using Input
 
 function clean_dict(collection)
   for i in keys(collection)

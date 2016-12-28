@@ -13,6 +13,7 @@ using ForwardDiff
 using Utils
 import ODLCommonTools.sview
 using MPI
+using Input  # input file processing
 
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
@@ -459,7 +460,6 @@ include("source.jl")
 include("entropy_flux.jl")
 include("eigensystem.jl")
 include("check_options.jl")
-include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function for invoking the solver
 
 global const PhysicsName = "Euler"

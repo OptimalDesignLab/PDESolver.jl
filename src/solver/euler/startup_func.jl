@@ -164,9 +164,37 @@ function run_euler(input_file::AbstractString)
   end
 
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
+  postproc(mesh, sbp, eqn, opts)
+
+  MPI.Barrier(mesh.comm)
+  if opts["finalize_mpi"]
+    MPI.Finalize()
+  end
+
+  return mesh, sbp, eqn, opts
+end  # end function
+#runtest(1)
+
+"""
+  This function does post processing, if requested by the input options.
+  Typical post processing includes calculation of errors, norms of important
+  quantities, writing of files. etc.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""
+function postproc(mesh, sbp, eqn, opts)
 
   ##### Do postprocessing ######
   println("\nDoing postprocessing")
+
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+  Tmsh = eltype(mesh.dxidx)
+  myrank = mesh.myrank
 
   if opts["do_postproc"] && opts["solve"]
     exfname = opts["exact_soln_func"]
@@ -282,6 +310,7 @@ function run_euler(input_file::AbstractString)
     end  # end if haskey(ICname)
   end  # end if do_postproc
 
-  return mesh, sbp, eqn, opts
-end  # end function
-#runtest(1)
+  return nothing
+end
+
+

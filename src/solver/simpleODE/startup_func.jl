@@ -98,10 +98,31 @@ function run_simpleode(input_file::AbstractString)
     saveSolutionToMesh(mesh, real(eqn.q_vec))
     writeVisFiles(mesh, "solution_done")
 
+    postproc(mesh, sbp, eqn, opts)
     # TODO: comparison with exact solution
 
   end   # end of if opts["solve"]
 
+  MPI.Barrier(mesh.comm)
+  if opts["finalize_mpi"]
+    MPI.Finalize()
+  end
+
+  return mesh, sbp, eqn, opts
+end  # end function
+
+"""
+  This function does post processing, if requested by the input options.
+  Typical post processing includes calculation of errors, norms of important
+  quantities, writing of files. etc.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""
+function postproc(mesh, sbp, eqn, opts)
   if opts["do_postproc"] && opts["solve"]
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
@@ -112,6 +133,7 @@ function run_simpleode(input_file::AbstractString)
     end
   end     # end of if opts["do_postproc"]
 
+  return nothing
+end
 
-  return mesh, sbp, eqn, opts
-end  # end function
+

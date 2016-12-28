@@ -9,6 +9,7 @@ using ForwardDiff
 using NonlinearSolvers
 using MPI
 using Utils
+using Input
 import ODLCommonTools: get_uninitialized_SolutionData, sview
 export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
 export evalResidual, init, run_simpleode # exported from simpleODE_funcs.jl
@@ -176,7 +177,6 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("simpleODE_funcs.jl")
 include("common_funcs.jl")
 include("ic.jl")
-include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")
 
 global const PhysicsName = "SimpleODE"

@@ -18,6 +18,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
 
 # add physics modules to load path (but don't load them, because that would
 # create a circular dependency)
@@ -36,11 +37,11 @@ using ArrayViews
 using Utils
 import ODLCommonTools.sview
 using MPI
+using Input
 
 include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement
 include("initialization.jl")  # startup related functions
-include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # unified solver invokation
 
 # package code goes here

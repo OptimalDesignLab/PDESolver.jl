@@ -333,10 +333,6 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     fname = "timing_breakdown_$myrank"
     write_timings(params.time, fname)
 
-    MPI.Barrier(mesh.comm)
-    if opts["finalize_mpi"]
-      MPI.Finalize()
-    end
   end  # end if (opts[solve])
 
   return nothing

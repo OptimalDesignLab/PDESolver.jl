@@ -20,6 +20,7 @@ using ArrayViews
 using EulerEquationMod
 using Utils
 using MPI
+using Input
 
 if !MPI.Initialized()
   MPI.Init()
