@@ -34,6 +34,7 @@ global const TAG_FLUX = "tag_flux"
 global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
 global const TAG_CONVERGENCE = "tag_convergence"
 global const TAG_MMS = "tag_mms"
+global const TAG_FRONTEND = "tag_frontend"
 
 # test list
 global const AdvectionTests = TestList()

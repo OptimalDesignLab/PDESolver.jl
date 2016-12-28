@@ -10,6 +10,9 @@ export evalResidual
 # from nlsolver_invokation.jl
 export call_nlsolver
 
+# from startup_func
+export run_solver
+
 # load paths for all the components of PDESolver
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
@@ -38,7 +41,8 @@ include("./solver/euler/output.jl")  # TODO: figure out where to put this
 include("registration.jl")
 include("interface.jl")
 include("nlsolver_invokation.jl")
-
+include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
+include("startup_func.jl")
 
 # package code goes here
 
