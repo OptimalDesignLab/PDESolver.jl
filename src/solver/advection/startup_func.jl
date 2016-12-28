@@ -56,7 +56,8 @@ function run_advection(input_file::AbstractString)
   if opts["calc_error"]
     println("\ncalculating error of file ", opts["calc_error_infname"], 
             " compared to initial condition")
-    vals = readdlm(opts["calc_error_infname"])
+    # read in this processors portion of the solution
+    vals = readdlm(get_parallel_fname(opts["calc_error_infname"], mesy.myrank))
     @assert length(vals) == mesh.numDof
 
     err_vec = vals - eqn.q_vec

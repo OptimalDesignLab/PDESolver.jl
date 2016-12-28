@@ -101,9 +101,12 @@ function run_euler(input_file::AbstractString)
   # TODO: cleanup 20151009 start
 
   if opts["calc_error"]
-    @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"], 
-            " compared to initial condition")
-    vals = readdlm(opts["calc_error_infname"])
+    @mpi_master println("\ncalculating error of file ", 
+                       opts["calc_error_infname"], 
+                      " compared to initial condition")
+
+    # read in this processors portion of the solution
+    vals = readdlm(get_parallel_fname(opts["calc_error_infname"], myrank))
     @assert length(vals) == mesh.numDof
 
     err_vec = abs(vals - eqn.q_vec)
