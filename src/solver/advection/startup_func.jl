@@ -7,8 +7,8 @@ function run_advection(input_file::AbstractString)
   end
 
   #function runtest(flag::Int)
-  opts = read_input(input_file)
-
+  opts = read_input(input_file)  # read input file and gets default values
+  checkOptions(opts)  # physics specific options checking
   # timestepping parameters
   delta_t = opts["delta_t"]
   t_max = opts["t_max"]

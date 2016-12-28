@@ -19,7 +19,7 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function}}()
   Inputs:
     modname:  an ASCIIString name for this entry in the list.  It is used
               to retrieve the module and startup function in the 
-              retrieve_physics function
+              retrieve_physics function. Typically the name is capitalized.
     mod:  the Module itself
     startup_func: the function for running the physics.  It must have signature
                   startup_func(fname::ASCIIString), where fname is the name of

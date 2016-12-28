@@ -22,7 +22,8 @@ function run_euler(input_file::AbstractString)
     MPI.Init()
   end
 
-  opts = read_input(input_file)
+  opts = read_input(input_file)  # read input file and get default values
+  checkOptions(opts)  # physics specific options checking
   #opts = read_input("input_vals_channel2.jl")
 
   # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
@@ -97,8 +98,6 @@ function run_euler(input_file::AbstractString)
       convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
     end
   end
-
-  # TODO: cleanup 20151009 start
 
   if opts["calc_error"]
     @mpi_master println("\ncalculating error of file ", 

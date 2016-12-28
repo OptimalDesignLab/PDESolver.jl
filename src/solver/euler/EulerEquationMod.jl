@@ -459,6 +459,7 @@ include("adjoint.jl")
 include("source.jl")
 include("entropy_flux.jl")
 include("eigensystem.jl")
+include("check_options.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function for invoking the solver
 

@@ -232,6 +232,7 @@ include("adjoint.jl")
 include("source.jl")
 include("flux.jl")
 include(joinpath(Pkg.dir("PDESolver"),"src/solver/advection/output.jl"))  # printing results to files
+include("check_options.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 include("startup_func.jl")  # function to invoke the solver
 
