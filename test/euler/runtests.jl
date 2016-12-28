@@ -42,6 +42,7 @@ global const TAG_CONVERGENCE = "tag_convergence"
 global const TAG_NLSOLVERS = "tag_nlsolvers"
 global const TAG_ESS = "tag_ess"
 global const TAG_UTILS = "tag_utils"
+global const TAG_INPUT = "tag_input"
 # test list
 global const EulerTests = TestList()
 

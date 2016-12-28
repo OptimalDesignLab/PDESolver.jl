@@ -15,6 +15,7 @@ function test_input()
     @fact haskey(known_keys, "smb_name") --> true
     @fact haskey(known_keys, "var1") --> false
 
+    #TODO: make this statically compilable
     include("input_test.jl")
     @fact checkKeys(arg_dict, known_keys) --> 1
 
@@ -22,4 +23,4 @@ function test_input()
 end
 
 #test_input()
-add_func1!(EulerTests, test_input)
+add_func1!(EulerTests, test_input, [TAG_INPUT])
