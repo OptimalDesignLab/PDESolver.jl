@@ -1,8 +1,3 @@
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-using FactCheck
-
-#run(`cptest.sh`)
-#run(`cperr.sh`)
 facts("---- Crank-Nicolson Convergence Tests, Complex Step Jacobian -----") do
 start_dir = pwd()
 

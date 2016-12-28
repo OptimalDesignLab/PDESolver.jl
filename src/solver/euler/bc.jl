@@ -1,6 +1,6 @@
-export getBCFunctors
+# functions for calculating boundary integrals
 
-include("bc_solvers.jl")
+include("bc_solvers.jl")  # Roe solvers and related things
 
 
 @doc """

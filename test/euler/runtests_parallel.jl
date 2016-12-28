@@ -1,9 +1,6 @@
 # run tests in parallel with 2 processes
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -17,13 +14,13 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 import MPI
-
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
+using Input
 
 #------------------------------------------------------------------------------
 # define test list
-include("../TestSystem.jl")
+using TestSystem
+include("../tags.jl")
+
 global const EulerTests = TestList()
 # define global const tags here
 

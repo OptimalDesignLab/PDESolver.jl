@@ -1,6 +1,6 @@
 # Run advection tests
 
-#include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -22,20 +22,11 @@ function clean_dict(collection)
   end
 end
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
-
 #------------------------------------------------------------------------------
 # define tests and tags
-
-include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
-global const TAG_COMPLEX = "tag_complex"
-global const TAG_BC = "tag_bc"
-global const TAG_FLUX = "tag_flux"
-global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
-global const TAG_CONVERGENCE = "tag_convergence"
-global const TAG_MMS = "tag_mms"
-global const TAG_FRONTEND = "tag_frontend"
+include("../tags.jl")
 
 # test list
 global const AdvectionTests = TestList()

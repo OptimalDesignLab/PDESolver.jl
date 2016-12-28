@@ -1,10 +1,6 @@
 # Run advection tests
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -17,6 +13,7 @@ using SimpleODEMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+using Input
 
 function clean_dict(collection)
   for i in keys(collection)
@@ -24,14 +21,12 @@ function clean_dict(collection)
   end
 end
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE/startup.jl")
-
 #------------------------------------------------------------------------------
 # define tests and tags
 
-
-include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
+include("../tags.jl")
 
 # test list
 global const SimpleODETests = TestList()

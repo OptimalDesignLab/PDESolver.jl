@@ -1,6 +1,4 @@
 # Calculate boundary "forces" in advection
-export calcBndryfunctional, getFunctionalName
-
 @doc """
 AdvectionEquationMod.calcBndryforces
 

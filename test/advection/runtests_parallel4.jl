@@ -1,6 +1,6 @@
 # run 4 processor tests
 
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -13,14 +13,16 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
+using Input
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
 
 #------------------------------------------------------------------------------
 # define tests and tags
 
-include("../TestSystem.jl")
+#include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
+include("../tags.jl")
 
 # test list
 global const AdvectionTests = TestList()
@@ -64,8 +66,14 @@ end
 #------------------------------------------------------------------------------
 # cleanup
 
+# define global variable if needed
+# this trick allows running the test files for multiple physics in the same
+# session without finalizing MPI too soon
+if !isdefined(:TestFinalizeMPI)
+  TestFinalizeMPI = true
+end
 
-if MPI.Initialized()
+if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 FactCheck.exitstatus()

@@ -1,5 +1,6 @@
 # run 2 processor tests
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -12,14 +13,15 @@ using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
-
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
+using Input
 
 #------------------------------------------------------------------------------
 # define tests and tags
 
-include("../TestSystem.jl")
+#include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
+include("../tags.jl")
 
 # test list
 global const AdvectionTests = TestList()

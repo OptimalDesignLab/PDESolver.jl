@@ -9,6 +9,7 @@ using ArrayViews
 using ODLCommonTools  # abstract type definitions + common functions
 using SummationByParts
 using PdePumiInterface  # common mesh interface implementation - pumi
+using NonlinearSolvers
 using ForwardDiff
 using Utils
 import ODLCommonTools.sview

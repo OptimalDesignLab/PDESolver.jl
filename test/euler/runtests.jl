@@ -1,14 +1,9 @@
 using FactCheck
-using ArrayViews
 using ODLCommonTools
 import ODLCommonTools.sview
 using SummationByParts  # SBP operators
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -26,24 +21,13 @@ if !MPI.Initialized()
   MPI.Init()
 end
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-
-
 #------------------------------------------------------------------------------
 # define tests and tags
 
-include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
-global const TAG_COMPLEX = "tag_complex"
-global const TAG_BC = "tag_bc"
-global const TAG_FLUX = "tag_flux"
-global const TAG_ENTROPYVARS = "tag_entropyvars"
-global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
-global const TAG_CONVERGENCE = "tag_convergence"
-global const TAG_NLSOLVERS = "tag_nlsolvers"
-global const TAG_ESS = "tag_ess"
-global const TAG_UTILS = "tag_utils"
-global const TAG_INPUT = "tag_input"
+include("../tags.jl")
+
 # test list
 global const EulerTests = TestList()
 

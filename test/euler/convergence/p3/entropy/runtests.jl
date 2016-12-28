@@ -1,9 +1,3 @@
-#global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-#using FactCheck
-
-#run(`cptest.sh`)
-#run(`cperr.sh`)
-
 function test_convergence_p3_entropy()
   facts("---- P3 Entropy Convergence Tests -----") do
   start_dir = pwd()

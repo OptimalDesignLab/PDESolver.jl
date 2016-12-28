@@ -1,9 +1,4 @@
 # Adjoint Computation
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-using NonlinearSolvers
-
-export calcAdjoint
-
 @doc """
 ### AdvectionEquationMod.calcAdjoint
 

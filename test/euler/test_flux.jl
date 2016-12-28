@@ -111,7 +111,7 @@ function test_flux_2d()
 
     # test calculating -Q*f = -(2*S_ij f_star_ij + Eij*f_star_ij)
     # set eqn.q to something interesting
-    ic_func = ICDict["ICExp"]
+    ic_func = EulerEquationMod.ICDict["ICExp"]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)

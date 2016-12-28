@@ -1,10 +1,5 @@
 # Adjoint for Euler Equations
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-using NonlinearSolvers
-
-export calcAdjoint
-
 @doc """
 ### EulerEquationMod.calcAdjoint
 

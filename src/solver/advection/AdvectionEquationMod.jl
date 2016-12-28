@@ -13,10 +13,7 @@ import ODLCommonTools.sview
 using Input
 
 
-export AdvectionData, AdvectionData_ #getMass, assembleSolution, disassembleSolution
-
-export evalResidual, init, run_advection
-export ICDict              # exported from ic.jl  # TODO: stop exporting this
+export AdvectionData, AdvectionData_, run_advection #getMass, assembleSolution, disassembleSolution
 
 # include("advectionFunctions.jl")
 # include("getMass.jl")

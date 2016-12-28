@@ -1,11 +1,14 @@
 #module TestSystem
 # this module implements a mechanism for running tests, including 
 # subsets of tests defined by tags
-
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+module TestSystem
+using Input
 
 global const TAG_DEFAULT = "default_tag"  # tag that every function must have
 global const EmptyDict = Dict{Any, Any}()
+
+export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist
+
 """
   This type stores all the data that describes a set of tests and their
   associated tags.
@@ -240,7 +243,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
           new_fname = input_mod_i["new_fname"]*".jl"
 
           if ARGS[1] != new_fname  # don't create a file if it was done already
-            include(joinpath(pwd(), input_name_i))
+            arg_dict = evalfile(joinpath(pwd(), input_name_i))
 
             for (key, val) in input_mod_i
               if key != "new_fname"
@@ -271,4 +274,4 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
 end
 
 
-#end  # end module
+end  # end module

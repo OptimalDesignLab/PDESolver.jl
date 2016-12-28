@@ -1,25 +1,4 @@
 # run tests in parallel (np=4)
-
-#=
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using AdvectionEquationMod
-using Utils
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
-
-resize!(ARGS, 1)
-=#
-
 """
   Test the parallel communication primatives in the Utils module
 """

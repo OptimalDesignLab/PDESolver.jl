@@ -1,8 +1,6 @@
 # functions that populate the initial conditions
 # List of functions:
 
-export ICDict
-
 @doc """
 ### EulerEquationMod.ICZero
 
