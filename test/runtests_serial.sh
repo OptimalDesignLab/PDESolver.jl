@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# run all serial and parallel tests in single session
+# run all serial tests in separate sessions
 
 jj=julia
 
@@ -27,12 +27,8 @@ cd ./simpleODE/
   err=$((err + tmp))
 cd $start_dir
 
-./runtests_parallel.sh $jflags
-tmp=$?
-err=$((err + tmp))
-
 echo " "
-echo "runtests.sh retval: $err"
+echo "runtests_serial.sh retval: $err"
 
 exit $err
 

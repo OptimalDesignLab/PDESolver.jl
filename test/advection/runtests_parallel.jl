@@ -72,6 +72,8 @@ function runtests_parallel()
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
     @fact datas[1] --> roughly(datap[1], atol=1e-13)
+
+    cd(start_dir)
   end  # end facts block
 
   return nothing
@@ -99,7 +101,14 @@ end
 #------------------------------------------------------------------------------
 # cleanup
 
-if MPI.Initialized()
+# define global variable if needed
+# this trick allows running the test files for multiple physics in the same
+# session without finalizing MPI too soon
+if !isdefined(:TestFinalizeMPI)
+  TestFinalizeMPI = true
+end
+
+if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 FactCheck.exitstatus()

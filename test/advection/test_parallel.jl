@@ -136,7 +136,7 @@ function test_parallel_serialpart()
 
   # do a serial rk4 run to compare against later
   start_dir = pwd()
-  cd ("./rk4/serial")
+  cd("./rk4/serial")
   opts["order"] = 1
   opts["solve"] = true
   fname = "input_vals_parallel_run"
