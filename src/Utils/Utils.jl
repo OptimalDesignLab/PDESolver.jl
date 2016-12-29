@@ -18,6 +18,8 @@ include("io.jl")
 include("logging.jl")
 include("projections.jl")
 include("complexify.jl")
+include("mass_matrix.jl")
+
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
@@ -38,6 +40,10 @@ export absvalue
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
+
+# mass_matrix.jl
+export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D, 
+       applyMassMatrixInverse
 
 @doc """
 ### Utils.disassembleSolution
