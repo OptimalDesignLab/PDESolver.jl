@@ -13,6 +13,9 @@ export createMeshAndOperator, call_nlsolver
 # from startup_func
 export run_solver
 
+# from interative.jl
+export printICNames, printBCNames
+
 # load paths for all the components of PDESolver
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
@@ -43,7 +46,7 @@ include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement
 include("initialization.jl")  # startup related functions
 include("startup_func.jl")  # unified solver invokation
-
+include("interactive.jl")
 # package code goes here
 
 end # module
