@@ -1,3 +1,15 @@
+# define IC function, BC functor here
+function TestIC(mesh, sbp, eqn, opts, q_vec)
+  println("hello world")
+end
+
+type TestBCType <: BCType
+end
+
+function call(obj::TestBCType)
+  println("hello edge of the world")
+end
+
 function test_frontend()
 
   facts("----- Testing PDESolver Module frontend -----") do
@@ -15,6 +27,16 @@ function test_frontend()
     mesh, sbp, eqn2, opts = run_solver(fname)
 
     @fact eqn.q_vec --> roughly(eqn2.q_vec, atol=1e-13)
+
+    ic_name = "TestIC"
+    registerIC(AdvectionEquationMod, ic_name, TestIC)
+    @fact haskey(AdvectionEquationMod.ICDict, ic_name) --> true
+    @fact AdvectionEquationMod.ICDict[ic_name] == TestIC --> true
+
+    bc_name = "TestBC"
+    registerBC(AdvectionEquationMod, bc_name, TestBCType())
+    @fact haskey(AdvectionEquationMod.BCDict, bc_name) --> true
+    @fact AdvectionEquationMod.BCDict[bc_name] --> TestBCType()
 
   end  # end facts block
 

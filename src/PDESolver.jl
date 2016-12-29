@@ -2,7 +2,7 @@ __precompile__(false)
 module PDESolver
 
 # from registration.jl
-export register_physics, retrieve_physics
+export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
 export evalResidual
