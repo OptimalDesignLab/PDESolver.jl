@@ -78,7 +78,7 @@ The required fields of an `AbstractSolutionData are`:
   assembleSolution::Function
   multiplyA0inv::Function
   majorIterationCallback::Function
-  params{Tsol...}::AbstractParamType
+  params{Tsol..., Tdim}::AbstractParamType{Tdim}
 ```
 
 The purpose of these fields are:
@@ -141,7 +141,7 @@ Same shape as `q_face_send`.
                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.
                   The function must have the signature:
 
-                  `multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})`
+`multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})`
 
 
 `majorIterationCallback`:  function called before every step of Newton's method
@@ -288,6 +288,7 @@ the mesh variable in the future.
 
 `numSharedEl`: number of non-local elements that share a face with a locally owned
                element
+
 `local_element_counts`: array of length `npeers`, number of local elements
                         that share a face with each remote process
 
@@ -567,7 +568,7 @@ For unsteady problems, the form `M dq/dt = f(q)` is suitable for explicit time
 marching.
 
 ### Interface to NonlinearSolvers
-The `evalResidual` function and the fields `eqn.q` and `eqn.res` are
+The `evalResidual` function and the fields `eqn.q` and `eqn.res` are the
 interface between the NonlinearSolvers and the physics modules.  The Nonlinear
 solvers populate `eqn.q`, and use `evalResidual` to populate `eqn.res`, from
 which the next value if `eqn.q` is calculated.  The algorthmic differentiation
@@ -576,8 +577,8 @@ Jacobian if needed for a given method.  Some methods, such as RK4, are better
 expressed in terms of `eqn.q_vec` and `eqn.res_vec` rather than `eqn.q` and
 `eqn.res`.  `eqn.assembleSolution` and `eqn.disassmbleSolution` exist to
 transform back and forth between the vector and 3D array forms.  In order to
-compute the Jacobian efficiently, it is necessary to work with teh 3D arrays.
-For this reason, the `evalResidual` must work only with `eqn.q` and `eqn.res`
+compute the Jacobian efficiently, it is necessary to work with the 3D arrays.
+For this reason, `evalResidual` must work only with `eqn.q` and `eqn.res`
 and let the caller decide whether or not to transform into the vector form.
 
 Newton's method supports both finite differences and complex step for
@@ -590,7 +591,7 @@ The interface to users is described in `src/Readme.md`
 
 ### Interface to Summation-by-Parts
 The physics modules use the interface provided by the Summation-by-Parts package
-to approximate derivative numerically.  The reason for passing around the
+to approximate derivatives numerically.  The reason for passing around the
 `sbp` object is that the SBP interface requires it to be passed in along with
 the data arrays it operates on.
 

@@ -3,9 +3,6 @@ This document describes some best practices for implementing a physics module.
 These practices are not required, but have proven to be useful for producing
 organized, readable, and reusable code.
 
-# Static Parameters
-# High, mid, and low level functions
-# functors
 
 ## Levels of Functions
 It is useful to divide functions into 3 catagories, high, mid, and low level
@@ -27,13 +24,23 @@ themselves.
 Low level functions calculate a quantity at a node.  For example, `calcEulerFlux`
 calculates the Euler flux at a single node.  Low level function names usually
 start with `calc` to indicate that they perform a specific calculation.
-Often different discretizations use the same structure of loops, but do a
+Often, different discretizations use the same structure of loops, but do a
 slightly different calculation at each node.  Low level functions are called
 inside the innermost loop of the code, so it would be too expensive to have
 if statements to select which low level function to call, so various tricks
 involving Julia's multiple dispatch system are used to get the compiler to
 decide which low level function to call.  These will be described later in
 this document.
+
+It is often useful to dispatch to low level functions based on `Tdim` and
+`var_type`.  For this reason the Euler equation implementation of `AbstractParamType`
+is
+```
+type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
+```
+
+The other static parameters are necessary because `ParamType` has fields of
+those datatypes.
 
 ## `AbstractSolutionData` implementation
 
@@ -120,15 +127,15 @@ function call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)
 end
 ```
 
-This defines a datatype adds a method to the `call` function for that type.
-The call function is what makes a datatype callable like a functions.  This
+This defines a datatype and adds a method to the `call` function for that type.
+The call function is what makes a datatype callable like a function.  This
 method is called as follows:
 
 ```julia
-  functor = myBC()  # construct and object of type myBC
-  q = rand(4)
-  bndryflux = zeros(4)
-  functor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bndryflux)  
+functor = myBC()  # construct and object of type myBC
+q = rand(4)
+bndryflux = zeros(4)
+functor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bndryflux)  
 ```
 
 The way this is used for boundary conditions is through a two level construct
@@ -147,6 +154,7 @@ function getBCFluxes(mesh, sbp, eqn, opts)
 
     calcBoundaryFlux(functor_i, data for boundary faces start_index:end_index)
   end
+end  # end function
 
   function calcBoundaryFlux(functor_i::BCType, data for boundary faces start_index:end_index)
     for i=1:length(start_index:end_index)
@@ -161,19 +169,17 @@ function getBCFluxes(mesh, sbp, eqn, opts)
 
 The benefit of this arrangement is that `mesh.numBC` different version of
 calcBoundaryFlux get compiled, one for each functor, and each version knows
-about the `call` method that was defined for the functor.  This two level
+about the `call` method that was defined for the functor it is passed.  This two level
 scheme allows the compiler to make all the decisions about what function to call
-(ie. the `call` method of the functor), avoid any conditional logic at runtime
+(ie. the `call` method of the functor), avoiding any conditional logic at runtime
 
 This idea is also applicable to the flux functions used by DG methods.
 ##Initialization of a Simulation
-Now that all the individual pieces have been described, here is how a simulation is launched.
-
-
+This section lists an outline of how a simulation gets launched
 After step 4, the procedure becomes a bit more complicated because there are optional steps.
 Only the required steps are listed below.
 
-1, The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.
+1. The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.
 
 2. Second, the `sbp` operator is constructed.
 
