@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# run all parallel tests in separate sessions
+
 #jflags="--code-coverage=user"
 jflags=$@
 err=0

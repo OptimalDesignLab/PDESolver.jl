@@ -1,28 +1,7 @@
-#=
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-
-using PDESolver
-#using Base.Test
-using FactCheck
-using ODLCommonTools
-using PdePumiInterface  # common mesh interface - pumi
-using SummationByParts  # SBP operators
-using AdvectionEquationMod
-using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
-using ArrayViews
-
-resize!(ARGS, 1)
-
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup_advection.jl")
-=#
 function test_energy(mesh, sbp, eqn, opts)
   energy_final = calcNorm(eqn, eqn.q_vec)
   q_initial = zeros(eqn.q_vec)
+  ICfunc = AdvectionEquationMod.ICDict[opts["IC_name"]]
   ICfunc(mesh, sbp, eqn, opts, q_initial)
   energy_initial = calcNorm(eqn, q_initial)
 
@@ -37,11 +16,11 @@ function test_energy_parallel()
 
     ARGS[1] = "input_vals_periodic.jl"
     cd("./2dp4")
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     test_energy(mesh, sbp, eqn, opts)
 
     cd("../3dp4")
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     test_energy(mesh, sbp, eqn, opts)
 
 

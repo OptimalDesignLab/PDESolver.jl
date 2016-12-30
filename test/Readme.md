@@ -6,8 +6,25 @@ Currently, each physics module has its own set of tags and test list.
 The serial tests for a single physics module  are run as follows:
 
 ```julia
-  julia ./runtest.jl  TAG1 TAG2 ...
+  cd test/physics_module
+  julia ./runtests.jl  TAG1 TAG2 ...
 ```
+
+The parallel tests are run with:
+
+```julia
+  cd test/physics_module
+  mpirun -np 2 julia ./runtests_parallel.jl  TAG1 TAG2 ...
+```
+
+```julia
+  cd test/physics_module
+  mpirun -np 4 julia ./runtests_parallel4.jl  TAG1 TAG2 ...
+```
+
+for the 2 and 4 processors tests, respectively
+
+
 
 The parallel tests for all physics modules are run with:
 
@@ -18,11 +35,37 @@ The parallel tests for all physics modules are run with:
 and all tests (serial + parallel) for all physics modules are run with
 
 ```julia
-  ./runtests.sh TAG1 TAG 2
+  ./runtests.sh TAG1 TAG2
+```
+
+Running the tests in a single julia session can be faster because the code
+does not have to be recompiled for each physics.  The serial tests can be
+run with:
+
+```
+  julia ./runtests.jl TAG1 TAG2 ...
+```
+
+the 2 processor tests with
+
+```
+  mpirun -np 2 julia ./runtests_parallel2.jl TAG1 TAG2 ...
+```
+
+and the 4 processor tests with
+
+```
+  mpirun -np 4 julia ./runtests_parallel4.jl TAG1 TAG2 ...
+```
+
+All the tests (serial + parallel) can be run with
+
+```
+  ./runtests_fast.sh TAG1 TAG2 ...
 ```
 
 If no tags are specified, all tests are run.
-The list of currently defined tags can be found at the top of runtests.jl.
+The list of currently defined tags can be found in `./tags.jl`
 Note that the serial tests must  be run before the parallel tests.
 
 

@@ -1,9 +1,6 @@
 # run tests in parallel with 2 processes
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -11,17 +8,19 @@ using FactCheck
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
+using Utils
 using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
-include( joinpath(Pkg.dir("PDESolver"), "src/solver/euler/complexify.jl"))
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
+import MPI
+using Input
 
 #------------------------------------------------------------------------------
 # define test list
-include("../TestSystem.jl")
+using TestSystem
+include("../tags.jl")
+
 global const EulerTests = TestList()
 # define global const tags here
 
@@ -35,7 +34,7 @@ function test_parallel2()
     start_dir = pwd()
     cd ("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -46,7 +45,7 @@ function test_parallel2()
 
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
@@ -75,14 +74,20 @@ facts("----- Running Euler 2 process tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(EulerTests, tags)
+  run_testlist(EulerTests, run_euler, tags)
 end
 
-if MPI.Initialized()
+# define global variable if needed
+# this trick allows running the test files for multiple physics in the same
+# session without finalizing MPI too soon
+if !isdefined(:TestFinalizeMPI)
+  TestFinalizeMPI = true
+end
+
+
+if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
-
-
 
 FactCheck.exitstatus()
 

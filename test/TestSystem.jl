@@ -1,11 +1,14 @@
 #module TestSystem
 # this module implements a mechanism for running tests, including 
 # subsets of tests defined by tags
-
-include( joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+module TestSystem
+using Input
 
 global const TAG_DEFAULT = "default_tag"  # tag that every function must have
 global const EmptyDict = Dict{Any, Any}()
+
+export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist
+
 """
   This type stores all the data that describes a set of tests and their
   associated tags.
@@ -197,14 +200,25 @@ end
 
   Inputs:
     testlist: a TestList loaded with functions
+    prep_func = function used with test functions of type 2 or 3.  It must
+                have signature prep_func(fname::ASCIIString). fname is the
+                name of hte input file associated with the test function
     tags: an array of tags (optional)
 
 """
-function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
+function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
 
   println("Running tests with tags matching = ", tags)
   tags_set = Set(tags)
   ntests = length(testlist.funcs)
+
+  # need to declare these here so they have the right scope
+  # these variables are type unstable anways, the default the type of the
+  # default value doesn't matter
+  mesh = 0
+  sbp = 0
+  eqn = 0
+  opts = 0
   for i=1:ntests
     func_i = testlist.funcs[i]
     func_tags_i = testlist.func_tags[i]
@@ -215,20 +229,21 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
     for j=1:length(func_tags_i)
       tag_j = func_tags_i[j]
       if tag_j in tags_set
+        println("running function ", func_i)
         # run this test
         if functype_i == 1  # function with no arguments
           func_i()
         elseif functype_i == 2  # function with all 4 arguments
           if ARGS[1] != input_name_i
             ARGS[1] = input_name_i
-            include(STARTUP_PATH)
+            mesh, sbp, eqn, opts = prep_func(ARGS[1])
           end
           func_i(mesh, sbp, eqn, opts)
         elseif functype_i == 3  # modify input before running
           new_fname = input_mod_i["new_fname"]*".jl"
 
           if ARGS[1] != new_fname  # don't create a file if it was done already
-            include(joinpath(pwd(), input_name_i))
+            arg_dict = evalfile(joinpath(pwd(), input_name_i))
 
             for (key, val) in input_mod_i
               if key != "new_fname"
@@ -239,7 +254,7 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
             make_input(arg_dict, input_mod_i["new_fname"])
 
             ARGS[1] = new_fname
-            include(STARTUP_PATH)
+            mesh, sbp, eqn, opts = prep_func(ARGS[1])
           end  # end if file already created
 
           func_i(mesh, sbp, eqn, opts)
@@ -259,4 +274,4 @@ function run_testlist(testlist::TestList, tags::Vector{ASCIIString}=ASCIIString[
 end
 
 
-#end  # end module
+end  # end module

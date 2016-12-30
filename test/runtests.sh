@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# run all tests
+# run all serial and parallel tests in single session
 
 jj=julia
 

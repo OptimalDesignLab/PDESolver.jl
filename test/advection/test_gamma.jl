@@ -26,7 +26,7 @@ function test_gamma_sbp(mesh, sbp, eqn, opts)
     AdvectionEquationMod.ICConstant(mesh, sbp, eqn, opts, eqn.q_vec)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
-    evalAdvection(mesh, sbp, eqn, opts)
+    evalResidual(mesh, sbp, eqn, opts)
 
     for i=1:length(eqn.res)
       @fact eqn.res[i] --> roughly(0.0, atol=1e-13)
@@ -44,10 +44,10 @@ add_func2!(AdvectionTests, test_gamma_sbp, test_gamma_inputfile)
   Test boundary conditions.  This is not a test function, but is used
   by test functions.
 """
-function test_bc(flux_exp)
+function test_bc(flux_exp, mesh, sbp, eqn)
 # test summing boundary condition
  fill!(eqn.bndryflux, 0.0)
- AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
+ AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
 
  flux_in = zero(eltype(eqn.bndryflux))
  flux_out = zero(flux_in)
@@ -78,7 +78,7 @@ function test_gamma_bcsolver(mesh, sbp, eqn, opts)
     q1 = eqn.q
     eqn.q = q2
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     nrm = [1., 1, 1]  # arbirary normal vector
     alphas_xy = [eqn.params.alpha_x, eqn.params.alpha_y, eqn.params.alpha_z]
     for i=1:mesh.numEl
@@ -93,7 +93,7 @@ function test_gamma_bcsolver(mesh, sbp, eqn, opts)
 
         # calculate boundary flux
         bndryflux_calc = AdvectionEquationMod.RoeSolver(u, u, eqn.params, nrm, dxidx)
-        # calculate flux from evalSCResidual
+        # calculate flux from evalVolumeIntegrals
         bndryflux_weak = zero(eltype(eqn.flux_parametric))
         for d=1:3
            bndryflux_weak += nrm[d]*eqn.flux_parametric[1, j, i, d]
@@ -131,21 +131,21 @@ function test_gamma_bcflux(mesh, sbp, eqn, opts)
      opts["numBC"] = 1
      AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
-     test_bc(8.0)
+     test_bc(8.0, mesh, sbp, eqn)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 0.0
 
-     test_bc(8.0)
+     test_bc(8.0, mesh, sbp, eqn)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 0.0
      eqn.params.alpha_z = 1.0
 
-     test_bc(8.0)
+     test_bc(8.0, mesh, sbp, eqn)
      eqn.params.alpha_x = 1.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 1.0
-     test_bc(3*8.0)
+     test_bc(3*8.0, mesh, sbp, eqn)
    end  # end facts block
 
   return nothing
@@ -164,7 +164,7 @@ function test_gamma_faceflux(mesh, sbp, eqn, opts)
     fill!(eqn.q_face, 0.0)
     fill!(eqn.flux_face, 0.0)
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalFaceTerm(mesh, sbp, eqn, opts)
+    AdvectionEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
     sbpface = mesh.sbpface
     for i=1:mesh.numInterfaces
       iface_i = mesh.interfaces[i]

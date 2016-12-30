@@ -1,13 +1,10 @@
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-
 using PDESolver
 #using Base.Test
 using FactCheck
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
+using Utils
 using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
@@ -20,7 +17,6 @@ ARGS[1] = "input_vals_channel.jl"
 include("../../src/solver/advection/startup.jl")  # initialization and construction
 include("../../src/solver/advection/DG_advection.jl")
 include("../../src/solver/advection/bc_solvers.jl")
-include("../../src/solver/euler/complexify.jl")
 
 fill!(eqn.res_vec, 0.0)
 println("eqn.q_vec = \n", eqn.q_vec)

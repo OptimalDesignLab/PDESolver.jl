@@ -70,16 +70,16 @@ loss of efficiency by using low level functions.
 The Params type is also passed to low level function, which has all the 
 type parameters as the EulerEquation object, so it can be used for dispatch.
 """
-export evalEuler, init
 
 # Rules for paramaterization:
 # Tmsh = mesh data type
 # Tsbp = SBP operator data type
 # Tsol = equation, res_vec, q_vec data type
 
+import PDESolver.evalResidual
 
 @doc """
-### EulerEquationMod.evalEuler
+### EulerEquationMod.evalResidual
 
   This function drives the evaluation of the EulerEquations.
   It is agnostic to the dimension of the equation. and the types the arguments
@@ -106,14 +106,14 @@ export evalEuler, init
 """->
 # this function is what the timestepper calls
 # high level function
-function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts, 
-                   t=0.0)
+function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
+                     opts::Dict, t=0.0)
 
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-#  println("entered evalEuler")
+#  println("entered evalResidual")
 #  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
     println(eqn.params.f, "starting data exchange")
@@ -186,7 +186,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   end
 
   return nothing
-end  # end evalEuler
+end  # end evalResidual
 
 
 

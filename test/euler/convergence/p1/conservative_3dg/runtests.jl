@@ -1,8 +1,3 @@
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/euler/startup.jl")
-using FactCheck
-
-#run(`cptest.sh`)
-#run(`cperr.sh`)
 function test_convergence_p1_3dg()
   facts("---- P1 Conservative DG Convergence Tests -----") do
     start_dir = pwd()
@@ -11,11 +6,11 @@ function test_convergence_p1_3dg()
 
     cd("./m1")
     ARGS[1] = "input_vals_vortex3.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
     cd("../m2")
     ARGS[1] = "input_vals_vortex3.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
     cd("..")
     include("calc_line.jl")

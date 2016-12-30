@@ -11,22 +11,22 @@ function test_CN()
     cd("./m1")
     println("======", pwd())
     ARGS[1] = "input_vals1.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     cd("../m2")
     println("======", pwd())
     ARGS[1] = "input_vals1.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
 #    cd("../m3")
 #    println("======", pwd())
 #    ARGS[1] = "input_vals1.jl"
-#    include(STARTUP_PATH)
+#    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     cd("..")
     println("======", pwd())
     ARGS[1] = "calc_line.jl"  #???
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     slope = calc_line()
     # println("slope = ", slope)
@@ -53,19 +53,19 @@ function test_CN()
 
     cd("./m1")
     ARGS[1] = "input_vals1.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     cd("../m2")
     ARGS[1] = "input_vals1.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
 #    cd("../m3")
 #    ARGS[1] = "input_vals1.jl"
-#    include(STARTUP_PATH)
+#    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     cd("..")
     ARGS[1] = "calc_line.jl"
-    include(STARTUP_PATH)  #???
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])  #???
 
     slope = calc_line()
     # println("slope = ", slope)
@@ -92,19 +92,19 @@ function test_CN()
 
     cd("./m1")
     ARGS[1] = "input_vals1.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     cd("../m2")
     ARGS[1] = "input_vals1.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
 #    cd("../m3")
 #    ARGS[1] = "input_vals1.jl"
-#    include(STARTUP_PATH)
+#    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     cd("..")
     ARGS[1] = "calc_line.jl"
-    include(STARTUP_PATH) #???
+    mesh, sbp, eqn, opts = run_advection(ARGS[1]) #???
 
     slope = calc_line()
     # println("slope = ", slope)

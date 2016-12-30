@@ -1,4 +1,4 @@
-# boundaryconditions.jl
+# bc.jl
 
 @doc """
 ### AdvectionEquationMod.calcBoundaryFlux

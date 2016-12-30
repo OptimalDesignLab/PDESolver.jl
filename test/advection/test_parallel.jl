@@ -5,7 +5,7 @@
 """
 function test_parallel_mpi()
   ARGS[1] = "input_vals_parallel.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
   # test the Utils parallel functions
   facts("----- Testing Parallel Functions -----") do
@@ -131,20 +131,19 @@ end
 add_func1!(AdvectionTests, test_parallel_mpi)
 
 function test_parallel_serialpart()
-  println("test_parallel_serialpart")
   ARGS[1] = "input_vals_parallel.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
   # do a serial rk4 run to compare against later
   start_dir = pwd()
-  cd ("./rk4/serial")
+  cd("./rk4/serial")
   opts["order"] = 1
   opts["solve"] = true
   fname = "input_vals_parallel_run"
   make_input(opts, fname)
 
   ARGS[1] = string(fname, ".jl")
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
   cd(start_dir)
 
   # make the parallel version
@@ -152,28 +151,29 @@ function test_parallel_serialpart()
   opts["dmg_name"] = "SRCMESHES/psquare2.dmg"
   make_input( opts, string("./rk4/parallel/", fname, "p"))
 
+  # serial newton
   start_dir = pwd()
   cd("./newton/serial")
   ARGS[1] = "input_vals_serial.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
   cd(start_dir)
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
   opts["dmg_name"] = "SRCMESHES/psquare2.dmg"
   make_input(opts, string("./newton/parallel/", "input_vals_parallel"))
 
 
-  # same thing for 3D
+  # 3D rk4
   start_dir = pwd()
   cd("./rk4_3d/serial")
   ARGS[1] = "input_vals_rk4_3d.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
   # make the parallel version
   cd(start_dir)
   opts["smb_name"] = "SRCMESHES/ptet8cube.smb"
   make_input(opts, string("./rk4_3d/parallel/", "input_vals_parallel"))
 
-  # make the parallel newton's method
+  # 3D Newton's method
   opts["run_type"] = 5
   opts["jac_method"] = 2
   opts["jac_type"] = 3
@@ -186,12 +186,10 @@ function test_parallel_serialpart()
 
   cd("./newton_3d/serial")
   ARGS[1] = "input_vals_serial.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
   cd(start_dir)
 end
 
 #test_parallel_serialpart()
-println("adding test_parallel_serialpart to test list")
 add_func1!(AdvectionTests, test_parallel_serialpart)
-println("finished adding test_parallel_serialpart to test list")

@@ -25,8 +25,6 @@
 #  to conservative and and then convert back (converting back is the problem
 #  this function solves).
 
-export convertFromNaturalToWorkingVars
-
 #------------------------------------------------------------------------------
 # convert variables without checking what type they currently are (unsafe)
 #------------------------------------------------------------------------------

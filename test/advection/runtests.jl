@@ -1,21 +1,20 @@
 # Run advection tests
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
 using FactCheck
 using ODLCommonTools
+using Utils
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+import ODLCommonTools.sview
+using Input
 
 function clean_dict(collection)
   for i in keys(collection)
@@ -23,41 +22,25 @@ function clean_dict(collection)
   end
 end
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
-
 #------------------------------------------------------------------------------
 # define tests and tags
-
-include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
-global const TAG_COMPLEX = "tag_complex"
-global const TAG_BC = "tag_bc"
-global const TAG_FLUX = "tag_flux"
-global const TAG_VOLUMEINTEGRALS = "tag_volumeintegral"
-global const TAG_CONVERGENCE = "tag_convergence"
+include("../tags.jl")
 
 # test list
 global const AdvectionTests = TestList()
 
-println("including test_lowlevel.jl")
+include("test_frontend.jl")
 include("test_lowlevel.jl")
-println("including test_3d.jl")
 include("test_3d.jl")
-println("including test_gamma.jl")
 include("test_gamma.jl")
-println("including test_mms.jl")
 include("test_mms.jl")
-println("including test_jac.jl")
 include("test_jac.jl")
-println("including test_GLS2.jl")
 include("test_GLS2.jl")
-println("including test_dg.jl")
 include("test_dg.jl")
-println("including test_functional_integrate.jl")
 include("test_functional_integrate.jl")
-println("including test_parallel.jl")
 include("test_parallel.jl")
-println("including test_energy.jl")
 include( "./energy/runtests.jl")
 
 #------------------------------------------------------------------------------
@@ -73,17 +56,25 @@ facts("----- Running Advection tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(AdvectionTests, tags)
+  run_testlist(AdvectionTests, run_advection, tags)
 end
-
-#------------------------------------------------------------------------------
-# cleanup
 
 cd("./Nonlinearsolvers/")
 include(joinpath(pwd(), "runtests_serial.jl"))
 cd("../")
 
-if MPI.Initialized()
+
+#------------------------------------------------------------------------------
+# cleanup
+
+# define global variable if needed
+# this trick allows running the test files for multiple physics in the same
+# session without finalizing MPI too soon
+if !isdefined(:TestFinalizeMPI)
+  TestFinalizeMPI = true
+end
+
+if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 

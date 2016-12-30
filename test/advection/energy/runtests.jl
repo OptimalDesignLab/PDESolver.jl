@@ -1,6 +1,7 @@
 function test_energy(mesh, sbp, eqn, opts)
   energy_final = calcNorm(eqn, eqn.q_vec)
   q_initial = zeros(eqn.q_vec)
+  ICfunc = AdvectionEquationMod.ICDict[opts["IC_name"]]
   ICfunc(mesh, sbp, eqn, opts, q_initial)
   energy_initial = calcNorm(eqn, q_initial)
 
@@ -19,11 +20,11 @@ function test_energy_serial()
 
     ARGS[1] = "input_vals_periodic.jl"
     cd("./2dp1")
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     test_energy(mesh, sbp, eqn, opts)
 
     cd("../3dp1")
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     test_energy(mesh, sbp, eqn, opts)
 
     cd(start_dir)

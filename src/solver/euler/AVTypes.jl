@@ -1,9 +1,3 @@
-using ODLCommonTools
-
-# TODO: long-form document this
-export ArtificialViscosityType
-
-
 @doc """
 ### ArtificialViscosityType
 

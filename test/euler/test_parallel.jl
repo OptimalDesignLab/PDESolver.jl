@@ -4,23 +4,26 @@
   equivalent parallel cases
 """
 function test_parallel()
+  start_dir = pwd()
   ARGS[1] = "input_vals_vortex3.jl"
 
   cd("./rk4/serial")
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   cd("../parallel")
 
-  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-  make_input(arg_dict, "input_vals_parallel")
+  opts["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(opts, "input_vals_parallel")
 
   cd("../../newton/serial")
   ARGS[1] = "input_vals_vortex3.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
 
   cd("../parallel")
-  arg_dict["smb_name"] = "SRCMESHES/psquare2.smb"
-  make_input(arg_dict, "input_vals_parallel")
+  opts["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(opts, "input_vals_parallel")
+
+  cd(start_dir)
 
   return nothing
 end

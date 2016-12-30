@@ -19,17 +19,17 @@ end
   Test that a flux is symmetric.  This is not a test function itself, but it
   is called by test functions
 """
-function test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
   # test symmetry
-  functor(eqn.params, qL, qR, aux_vars, nrm, F_num)
-  functor(eqn.params, qR, qL, aux_vars, nrm, F_num2)
+  functor(params, qL, qR, aux_vars, nrm, F_num)
+  functor(params, qR, qL, aux_vars, nrm, F_num2)
   for i=1:length(F_num)
     @fact F_num[i] --> roughly(F_num2[i], atol=1e-12)
   end
 
   # test consistency
-  functor(eqn.params, qL, qL, aux_vars, nrm, F_num)
+  functor(params, qL, qL, aux_vars, nrm, F_num)
   for i=1:length(F_num)
     @fact F_num[i] --> roughly(F_euler[i])
   end
@@ -72,7 +72,7 @@ end
 """
 function test_flux_2d()
   ARGS[1] = "input_vals_channel_dg.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
   facts("----- Testing 2D Numerical Fluxes -----") do
  
@@ -93,19 +93,15 @@ function test_flux_2d()
     EulerEquationMod.calcEulerFlux(eqn.params, qL, aux_vars, nrm, F_euler)
 
     functor = EulerEquationMod.FluxDict["StandardFlux"]
-    println("testing StandardFlux")
-    test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing DucrosFlux")
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
-    test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing IRFlux")
     functor = EulerEquationMod.FluxDict["IRFlux"]
-    test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
     # test against calculated solution
-    println("----- testing IR flux against calculated values -----")
     nrm = [1., 2.0]
     flux_test = ir_flux(eqn.params, qL, qR, nrm)
 
@@ -115,7 +111,7 @@ function test_flux_2d()
 
     # test calculating -Q*f = -(2*S_ij f_star_ij + Eij*f_star_ij)
     # set eqn.q to something interesting
-    ic_func = ICDict["ICExp"]
+    ic_func = EulerEquationMod.ICDict["ICExp"]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -166,7 +162,6 @@ function test_flux_2d()
     end
 
     # test that constant field -> 0 residual
-    println("testing constant field")
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -175,7 +170,7 @@ function test_flux_2d()
     opts["volume_integral_type"] = 2
     opts["Volume_flux_name"] = "IRFlux"
     EulerEquationMod.init(mesh, sbp, eqn, opts)
-    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         for k=1:mesh.numDofPerNode
@@ -198,7 +193,7 @@ add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX])
 function test_flux_3d()
   # test 3D
   ARGS[1] = "input_vals_3d.jl"
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
   facts("----- testing 3D  Numerical Fluxes -----") do
 
     qL =  [1., 2, 3, 4, 15]
@@ -215,17 +210,14 @@ function test_flux_3d()
     # get the euler flux
     EulerEquationMod.calcEulerFlux(eqn.params, qL, aux_vars, nrm, F_euler)
     aux_vars[1] = EulerEquationMod.calcPressure(eqn.params, qL)
-    println("testing StandardFlux")
     functor = EulerEquationMod.FluxDict["StandardFlux"]
-    test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing DucrosFlux")
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
-    test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
-    println("testing IRFlux")
     functor = EulerEquationMod.FluxDict["IRFlux"]
-    test_symmetric_flux(functor, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
 
     # test calculating -Q*f = -(2*S_ij f_star_ij + Eij*f_star_ij)

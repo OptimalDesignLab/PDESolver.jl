@@ -1,29 +1,196 @@
-The Mesh:
-  File PdePumiInterface.jl (part of PUMI.jl), defines a the mesh type PumiMesh2.  It has several useful fields, including the number of vertices, edges, elements, degrees of freedom, nodes, number of degrees of freedom per node and the number of edges on the boundary of the mesh.  The rest of this file defines some useful functions that take in the PumiMesh2 type.  Use these as much as possible for mesh operations.
+#`AbstractSolutionData` and Physics Module Implementation
+This document describes some best practices for implementing a physics module.
+These practices are not required, but have proven to be useful for producing
+organized, readable, and reusable code.
 
-  If you need to do something that these functions don't do, look in the PumiInterface.jl and PumiInterface2.jl files, which provide access to many of the functions in Pumi's APF interface.
 
-The Equation
-  The file Equation.jl (in PDESolver.jl/equation) defines an EulerEquation type, which constains some useful constants needed to evaluate F1 and F2.  It also contains the vector element stiffness matricies bigQT_xi and bigQT_eta ( by vector element, I mean an element with more than one degree of freedom per node).  These are the QT_zi double under bar and QT_eta double under bar in the weak form.  Because these matrices are stored here, you do not need to use Summation by Parts to evaluate the volume integrals (except for the source term, which we are omitting for now).
+## Levels of Functions
+It is useful to divide functions into 3 catagories, high, mid, and low level
+functions.  The purpose of high level functions is to decide which method of
+performing an operation should be used and call other functions to do it.
+For example, the Euler physics modules has `evalVolumeIntegrals` and
+`evalBoundaryIntegrals` as high level functions.  There are several different
+ways of calculating both the volume and boundary integrals.  The options
+dictionary is used to decide what mid level function to call.  Each mid
+level function implements a different way of doing the calculation.
 
-Summation by Parts
-  You will need to use summation by parts to do the boundary integrals.  the function boundaryintegrate!() is what you want, and requires as arguments: an SBP operator (the variable named operator in the code), an array with elements of type Boundary (an type defined by SBP that contains the element number and the local face number of all faces (edges) on the boundary of the mesh), u, the array of data that is being integrated over the boundary, dxideta, the output from mappingjacobian!(), bndryflux, a function that evalautes the flux at the boundary (you will have to ask Prof. Hicken about this), and res, and array that the result of the boundary integral is stored in.  
+The purpose of mid level functions is to loop over the mesh and call a
+low level function for each node.  For example, the function `getEulerFlux`
+loops over the nodes of the mesh and calls a function to calculate the Euler
+flux at each node.  Mid level function names usually start with `get` to indicate
+that their purpose is to calculate some quantity but don't do the calculation
+themselves.
 
-  A few more details on the arguments might be helpful.  for bndryfaces, the local face (edge) number means the number of the face (edge) within the element (first, second, third...).  PdePumiInterface.jl provides a way to get this.  u, the array being integrated over the boundary is an array with dimension number of dofs per node by number of nodes per element by number of elements being integrated (its a 3d array).  I recommend doing one element at a time for simplicity.  See the weak form form exactly what the data inside u needs to be.  res needs to be the same shape as u.  After calling boundaryintegrate!, you will need to assemble res into the global solution vector.
+Low level functions calculate a quantity at a node.  For example, `calcEulerFlux`
+calculates the Euler flux at a single node.  Low level function names usually
+start with `calc` to indicate that they perform a specific calculation.
+Often, different discretizations use the same structure of loops, but do a
+slightly different calculation at each node.  Low level functions are called
+inside the innermost loop of the code, so it would be too expensive to have
+if statements to select which low level function to call, so various tricks
+involving Julia's multiple dispatch system are used to get the compiler to
+decide which low level function to call.  These will be described later in
+this document.
 
-Some Extra Functions
-  There are three functions at the bottom of euler.jl (in PDESolver.jl/solver/euler), that evaluate terms you will need in the weak form and help assemble them into the global solution vector.  The first two are getF1() and getF2(), which evalaute F1 and F2 (see the weak form derivation).  You have to pass these function the arguments: a mesh object (like PumiMesh2), and SBP operator, and equation (of type EulerEquation), u0, the solution at the previous timestep, and element number, and a vector of length 12, and it will populate the vector with either F1 or F2, for getF1() and getF2() respectively.  F1 and F2 are used many times in the weak form, so having a function to evaluate them should make things easier.  The elements in the vector get overwritten, so its ok if there is still data in there from a previous iteration or something.
+It is often useful to dispatch to low level functions based on `Tdim` and
+`var_type`.  For this reason the Euler equation implementation of `AbstractParamType`
+is
+```
+type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
+```
 
-  The third function is assembleU(), and it has two methods (different sets are arguments).  The first one takes a vector of length 12, and element number, and the global solution vector and assemble the vector into it.  The elements in the vector must be ordered as follows: [the solution for node 1 dofs 1 through 4, the solution for node 2 dofs 1 through 4, the solution for node 3 dofs 1 through 4].  getF1 and getF2 provide F1 and F2 in this order, so as along as you keep things in the original order, these assembleU() will work properly.  The element argument (an integer) specifies which element the nodes belong to.
+The other static parameters are necessary because `ParamType` has fields of
+those datatypes.
 
-  The second method of assembleU() takes in a vector of length 3, an element number, a component number, and the global solution vector.  The method assembles the solution for a particular dof of all the nodes of a particular element into the global solution vector.  The element argument specifies which element, the component argument specifies which degree of freedom on the node (1 through 4).  I'm not sure if this function will be needed or not, but its here just in case.
+## `AbstractSolutionData` implementation
 
-Startup.jl
-  This script runs the simulation.  It loads a mesh (creates the PumiMesh2 object), creates the SBP operator, creates the vectors to hold the solution at the current and previous timestep, and calls a function to apply an initial condition to the solution at the previous timestep, and calls the rk4 timestepping function.
+Each physics module should define and export a subtype of `AbstractSolutionData{Tsol, Tres}`.
+The implementation of `AbstractSolutionData{Tsol, Tres}` must inherit the `Tsol`
+and `Tres` static parameters, and may have additional static parameters as well.
+It may also be helpful to define additional abstract types within the physics
+module to provide different levels of abstractions.
+For example, the Euler physics module defines:
 
-The layout of the files is
-PDESolver/Equation : Equation.jl
-PDESolver/rk4  : rk4.jl
-PDESolver/solver : Startup.jl
-PDESolver/euler : euler.jl
+```
+abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+abstract EulerData {Tsol, Tdim, Tres, var_type} <: AbstractEulerData{Tsol, Tres}
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tdim, Tres, var_type}
+```
 
+The first line is effectively just a name change and may not be necessary.
+The second line adds the static parameters `Tdim`, and `var_type` while
+inheriting the `Tsol` and `Tres` types from `AbstractEulerData`.
+`Tdim` is the dimensionality of the equation, `Tres` is the datatype of the
+residual variables, and `var_type` is a symbol indicating whether the equation
+is being solved with conservative or entropy variables.
+The third line defines a concrete type that implements all the features required
+of an `AbstractSolutionData`, and adds a static parameter `Tmsh`, the datatype
+of the mesh variables.  
+The additional static parameter is necessary because one field of `EulerData_`
+has type `Tmsh`.
+Note that there could be multiple implementations of `AbstractSolutionData` for
+the Euler equations, perhaps with different fields to store certain data or not.
+All these implementations will need to have the static parameters `Tsol`,
+`Tdim`, `Tres`, and `var_type`, so `EulerData` is defined as an abstract type,
+ allowing all implementations to inherit from it.
+All high level functions involved in evaluating the residual will take in an
+argument of type `EulerData`.
+Only when low level functions need to dispatch based on which implementation is
+ used would it take in an `EulerData_` or another implementation.
+
+
+
+### Variable Conversion
+Some equations can be written in different variables, and need to convert
+between them.  To do this, it is
+`function convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type},
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})`
+
+that converts from the "natural" variables in which to write an equation to
+some other set of variables at a node.  For the Euler equations, the "natural"
+variables would be the conservative variables, and one example of "other"
+variables would be the entropy variables.
+
+It is also sometimes useful to define the opposite conversion, ie. from
+the working variables to the natural variables.
+
+
+
+##Input Options
+Many of the components of PDESolver have different options that control how they
+work and what they do.
+In order to  provide a unified method of specifying these options, an dictionary
+ of type `Dict{ASCIIString, Any}` is read in from a disk file.
+This dictionary (called `opts` in function signatures), is passed to all high
+and mid level function so they can use values in the dictionary to determine their
+ control flow.
+Low level functions need to be extremely efficient, so they cannot have
+conditional logic, therefore they are not passed the dictionary.
+Note that retrieving values from a dictionary is very slow compared to accessing
+the fields of a type, so all values that are accessed repeatedly should be stored
+ as the field of a type.
+
+## Functors
+Functors are a trick used to get Julia's dispatch system to make decisions at
+compile time rather than runtime.  This is particularly useful for boundary
+conditions, where the list of mesh faces that have boundary conditions applied
+is determined at runtime, but having conditional statements that execute for
+every node on the mesh boundary would be slow.  Instead a construct is used
+as follows:
+
+```julia
+type myBC <: BCType  # create a singleton type
+end
+
+function call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)
+  # calculate boundary flux here
+end
+```
+
+This defines a datatype and adds a method to the `call` function for that type.
+The call function is what makes a datatype callable like a function.  This
+method is called as follows:
+
+```julia
+functor = myBC()  # construct and object of type myBC
+q = rand(4)
+bndryflux = zeros(4)
+functor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bndryflux)  
+```
+
+The way this is used for boundary conditions is through a two level construct
+where an outer function passes a functor to an inner function.  Julia's JIT with
+generate a method of the inner function that is specialized to the functor (this
+is why it is important that the functor is a datatype).  For example:
+
+```julia
+function getBCFluxes(mesh, sbp, eqn, opts)
+
+  for i=1:mesh.numBC  # loop over different boundary conditions
+    functor_i = mesh.bndry_functor[i]  # get the functor for this boundary condition
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1] - 1
+    # get data for boundary faces start_index:end_index
+
+    calcBoundaryFlux(functor_i, data for boundary faces start_index:end_index)
+  end
+end  # end function
+
+  function calcBoundaryFlux(functor_i::BCType, data for boundary faces start_index:end_index)
+    for i=1:length(start_index:end_index)
+      for j=1:num_nodes_on_face
+        # get data for this boundary face node
+        functor_i(data for this boundary face node)
+      end
+    end
+
+  end  # end function
+  ```
+
+The benefit of this arrangement is that `mesh.numBC` different version of
+calcBoundaryFlux get compiled, one for each functor, and each version knows
+about the `call` method that was defined for the functor it is passed.  This two level
+scheme allows the compiler to make all the decisions about what function to call
+(ie. the `call` method of the functor), avoiding any conditional logic at runtime
+
+This idea is also applicable to the flux functions used by DG methods.
+##Initialization of a Simulation
+This section lists an outline of how a simulation gets launched
+After step 4, the procedure becomes a bit more complicated because there are optional steps.
+Only the required steps are listed below.
+
+1. The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.
+
+2. Second, the `sbp` operator is constructed.
+
+3. The `mesh` object is constructed, using the options dictionary and the `sbp` operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.
+
+4. The `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects.
+
+5. The physics module `init` function is called, which initializes the physics module and finishes any initialization that `mesh` and `eqn` objects require.
+
+6. The initial condition is applied to `eqn.q_vec`.
+
+7. A nonlinear solver is called.  Which solver is called and what parameters it uses are determined by the options dictionary.
+
+8. Post-processing is done, if required by the options dictionary.

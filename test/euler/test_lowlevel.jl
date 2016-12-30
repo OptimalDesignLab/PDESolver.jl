@@ -22,7 +22,6 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
     @fact mesh.numNodesPerType --> [1, 0 , 0]
 
     @fact mesh.bndry_funcs[1] --> EulerEquationMod.Rho1E2U3BC()
-    println("bndryfaces = ", mesh.bndryfaces)
     @fact mesh.bndryfaces[1].element --> 1
     @fact mesh.bndryfaces[1].face --> 3
     @fact mesh.bndryfaces[2].element --> 2
@@ -32,7 +31,6 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
     @fact mesh.bndryfaces[4].element --> 2
     @fact mesh.bndryfaces[4].face --> 2
 
-    println("mesh.interfaces = ",  mesh.interfaces)
     @fact mesh.interfaces[1].elementL --> 1
     @fact mesh.interfaces[1].elementR --> 2
     @fact mesh.interfaces[1].faceL --> 1
@@ -83,9 +81,12 @@ add_func2!(EulerTests, test_lowlevel_mesh, "input_vals_channel.jl")
 """
 function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+  Tmsh = eltype(mesh.dxidx)
   facts("--- Testing Euler Low Level Functions --- ") do
     opts["variable_type"] = :entropy
-    eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+    eqn_e = EulerData_{Tsol, Tres, 2, Tmsh, opts["variable_type"]}(mesh, sbp, opts)
 
     e_params = eqn_e.params
     opts["variable_type"] = :conservative
@@ -109,7 +110,6 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
     q2 = copy(q)
     EulerEquationMod.convertToEntropy(eqn.params, q2, q2)
     @fact q2 --> v_analytic
-    println("v = ", v)
     q_ret = zeros(4)
     EulerEquationMod.convertToConservative(e_params, v, q_ret)
     @fact q_ret --> roughly(q)
@@ -131,10 +131,7 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
     # test IR variables
     EulerEquationMod.convertToIR(eqn.params, q, vIR)
-    println("vIR = ", vIR)
-    println("q2./params.gamma_1 = ", q2./eqn.params.gamma_1)
     diff = vIR - q2./eqn.params.gamma_1
-    println("diff = ", diff)
     @fact norm(diff) --> roughly(0.0, atol=1e-12)
 
     # test inplace operation
@@ -275,8 +272,11 @@ add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_
   of values between conservative and entropy variables
 """
 function test_lowlevel_convert(mesh, sbp, eqn, opts)
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+  Tmsh = eltype(mesh.dxidx)
   opts["variable_type"] = :entropy
-  eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+  eqn_e = EulerData_{Tsol, Tres, 2, Tmsh, opts["variable_type"]}(mesh, sbp, opts)
 
   e_params = eqn_e.params
   opts["variable_type"] = :conservative
@@ -403,10 +403,6 @@ function test_lowlevel_eigsystem(mesh, sbp, eqn, opts)
       qc[i] -= pert
     end
 
-    println("Ax = \n", Ax)
-    println("Ax3 = \n", Ax3)
-    println("diff = \n", Ax - Ax3)
-
     # now compute Ax and and Ay from their eigensystem and compare
     Yx = zeros(4,4)
     Yy = zeros(4,4)
@@ -455,8 +451,12 @@ add_func2!(EulerTests, test_lowlevel_eigsystem, "input_vals_channel.jl")
   sound, Euler flux.
 """
 function test_lowlevel_calc(mesh, sbp, eqn, opts)
+    Tsol = eltype(eqn.q)
+    Tres = eltype(eqn.res)
+    Tmsh = eltype(mesh.dxidx)
+
    opts["variable_type"] = :entropy
-   eqn_e = EulerData_{opts["Tsol"], opts["Tres"], 2, opts["Tmsh"], opts["variable_type"]}(mesh, sbp, opts)
+   eqn_e = EulerData_{Tsol, Tres, 2, Tmsh, opts["variable_type"]}(mesh, sbp, opts)
 
    e_params = eqn_e.params
    opts["variable_type"] = :conservative
@@ -472,8 +472,6 @@ function test_lowlevel_calc(mesh, sbp, eqn, opts)
     @fact EulerEquationMod.calcPressure(e_params, v) --> roughly(0.2)
     a_cons = EulerEquationMod.calcSpeedofSound(eqn.params, q)
     a_ent = EulerEquationMod.calcSpeedofSound(e_params, v)
-    println("a_cosn = ", a_cons)
-    println("a_ent = ", a_ent)
     @fact a_cons --> roughly(a_ent)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
     EulerEquationMod.calcEulerFlux(e_params, v, aux_vars, dir, Fe)
@@ -507,7 +505,6 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
   EulerEquationMod.convertToEntropy(eqn.params, q, v)
 
   facts("--- Testing Boundary Function ---") do
-#   println("q = ", q)
 
     nx = dxidx[1,1]*dir[1] + dxidx[2,1]*dir[2]
     ny = dxidx[1,2]*dir[1] + dxidx[2,2]*dir[2]
@@ -524,7 +521,6 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
     EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, dxidx, dir, F_roe)
-     println("roe 1")
     @fact F_roe --> roughly(F) 
 
 
@@ -537,12 +533,10 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
 
-     println("q = ", q)
     func1 = EulerEquationMod.isentropicVortexBC()
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
 
-     println("roe 2")
     @fact F_roe --> roughly(F) 
 
     q[3] = 0  # make flow parallel to wall
@@ -556,7 +550,6 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
 
-     println("roe 3")
     @fact F_roe --> roughly(F) 
 
     EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
@@ -679,7 +672,6 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 
     # test calcEulerFlux
     for i=1:mesh.numNodesPerElement
-       println("eq.flux_parametric[:, $i, 1, 1] = ", eqn.flux_parametric[:, i, 1, 1])
       @fact eqn.flux_parametric[:, i, 1, 2] --> roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
     end
 
@@ -764,11 +756,11 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
   end  # end facts block
 
-  facts("--- Testing evalEuler --- ")  do
+  facts("--- Testing evalResidual --- ")  do
 
     fill!(eqn.res_vec, 0.0)
     fill!(eqn.res, 0.0)
-    EulerEquationMod.evalEuler(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
 
     # for uniform flow, residual is zero
     for i=1:mesh.numDof

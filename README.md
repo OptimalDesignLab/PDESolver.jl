@@ -1,5 +1,8 @@
 # PDESolver
- 
+PDESolver is a multi-physics solver primarily focused on Computational Fluid
+Dynamics.  It has been designed from ground up to support optimization,
+robust simulation, and parallel scalability.
+
 ## Installation
 The obtain this package, do `Pkg.clone(url)`, then `Pkg.build("PDESolver")`.  This will install all dependences, including those not listed in Metadata.
 
@@ -17,102 +20,118 @@ PumiInterface and Petsc are the only packages with non-trivial installation requ
 
 See those packages for details.
 
-## Known issues:
-Need to build PumiInterface every time:
-
-cd ~/.julia/v0.4/PumiInterface/src/
-source use_julialib.sh
-./build_shared.scorec.sh6
-cd PDESolver/tests
-julia runtests.jl
 
 ## Running the Code
-To run the code, execute `julia /path/to/startup.jl "input_file_name"`, where startup.jl is located in the subdirctory for the physics you are solving.  Each physics has its own startup.jl
+Before running the code, you must `source` the shell script
+`PumiInterface/src/use_julialib.sh`.  This enables Julia to find and use Pumi.
 
+The code takes an input file that defines all options for the solver, including
+the which physics to solve, which mesh to use, initial conditions,
+boundary conditions, and discretization.  The file `src/input/input_vals.txt`
+describes the input file format and all valid options.
+
+### Simple Mode
+Once an input file is prepared, the solver can be invoked with
+
+```julia
+mpirun -np x julia /path/to/PDESolver/src/startup.jl "input_file_name"
+```
+
+This will run the solver in parallel with `x` processes, solving the physics
+specified in the input file.
+
+### Advanced Mode
+The code also provides a scripting interface.  This enables users to supply
+initial conditions and boundary conditions, as well as do advanced
+post-processing if desired.
+
+The template script is:
+
+```julia
+using PDESolver  # load the interface to the code
+using AdvectionEquationMod  # load the desired physics module
+
+# register ICs and BCs here
+
+input_fname = ARGS[1]  # use the first command line argument as the input file
+                       # name
+
+# solve the equation defined in the input file
+mesh, sbp, eqn, opts = run_solver(input_fname)
+
+# do post-processing using mesh, sbp, eqn, opts here
+
+```
+
+`mesh, sbp, eqn, opts` are the `AbstractMesh` object, the SummationByParts operator, the `AbstractSolutionData`, and the options dictionary, respectively.
+
+The `AbstractMesh` object contains all the data about the mesh, including
+coordinates and mapping jacobian information.  The `sbp` object is used for
+numerically approximating derivatives. The `AbstractSolutionData` object contains
+all the data about the solution and the residual of the equation.  The input
+file gets parsed into the options dictionary, which is used to by the rest of
+the code.
+
+The PDESolver module exports several functions for use by the scripting
+interface.  The first two `registerIC` and `registerBC` allow users to supply
+initial conditions and boundary conditions.  See the documentation of the
+functions for details.  The functions `printICNames` and `printBCNames` print
+the names of all currently registers initial conditions and boundary conditions.
+
+For example a user can, either in a Julia script or interactive (REPL) session:
+```julia
+using PDESolver
+using AdvectionEquationMod
+
+printBCNames(AdvectionEquationMod)
+```
+
+And this will print the names of all the boundary conditions currently known
+to the Advection Equation module.
 
 ## Developer Guide
+
+The abstraction hierarchy of the code is described in two documents.
+`doc/interfaces.md` describes the required implementation and rationale for
+the `AbstractMesh` and `AbstractSolutionData` types, as well as how different
+parts of the code interact (ie. how the NonlinearSolvers interact with the
+physics modules etc.).  `src/Readme.md` describes the user-facing interface
+for the physics modules as well as what functions each physics module must
+implement in order to be usable.
+
+The code is organized as follows:
+
 The code for evaluating the residual for an equation is in the src/solver directory.  
 There are subdirectories for each physics.  Currently src/solver/euler is the most well developed physics.
 
-The nl_solvers directory contains the files to solve non-linear equations.
-It defines a module, nl_solvers, that export all the currently available methods, including Newtons method and RK4
+The NonlinarSolvers module (`src/NonlinearSolvers`) implements both
+time stepping methods for unsteady equations and non-linear root finding methods for steady problems.
 
-The input directory contains the files to read and process the input arguments dictionary.  
-The input_vals.txt file details the recognized arguments.
+The Utils module (`src/Utils`) contains auxiliary functions used by all
+ physics modules.
 
-The directory simple_mesh contains the files to create simple structured meshes.
+The Input module (`src/input`) parses input files, provides default values,
+and checks for unrecognized keys.  `src/input/input_vals.txt` lists all
+possible user-supplied keys. `src/input/input_vals_internal.txt` list keys
+used internally by the solver.  Users should never specify these keys in an
+input file.
 
-The file src/estimateMem.jl reads the file counts.txt, which is written by the mesh initialization, and estimates the steady state memory usage of the solver.
-While this is not an upper bounds, it has proven to be quite accurate.  It does not include memory usage by the linear solver.
+The `src/mesh_files` contains meshes used by the tests.  Please use the
+smallest meshes possible for tests.
 
-### Mesh
-Any implementation of the abstract type AbstractMesh must provide the data required by the solver about the mesh.
-For performance reasons, all data used by the solver should be stored in the mesh object, typically in arrays.  During a resdual evaluation, the underlying mesh software should not be accessed.
-More details about this are forthcoming.
+The directory `src/simple_mesh` contains the files to create simple structured meshes.
 
-
-### Structure of each solver
-The following describes the structure of the Euler solver.  Other solvers use a similar structure.
-
-EulerEquationMod.jl contains the defintion for the EulerData object, which stores all data needed to solve the equation related to the physics.
-euler.jl contains most of the functions needed to evaluate the equation.
-bc.jl contains the functions that calculate the boundary flux for the supported boundary conditions.
-bc_solvers.jl contains the boundary flux solvers such as the Roe solver.
-ic.jl contains the functions to populate eqn.q_vec with the initial condition
-common_funcs.jl contains functions that evaluate different conditions used by initial and boundary conditions.
-stabilization.jl contains the functions to add stabilization.
-euler_macros.jl contains macros to access the values stored in eqn.aux_vars
-
-
-#### Data Structures
-EulerData.q stores the conservative variables in a 3 dimensional array, numDofPerNode x numNodesPerElement x numEl.
-Although this contains some duplicate information compared to a column vector, it is much more convienient for doing computations.
-EulerData.res stores the non-linear residual, and is the same shape ad EulerData.q.
-The workflow of the solver is to take EulerData.q, do some operation on it, and store the residual in EulerData.res.
-The evalEuler function is the driver function for evaluating the residual for a given EulerData object and mesh.
-The input to the function is the q array, and the output is the res array.
-Functions are provided for to take a column vector, usually EulerData.q_vec, and disassmble it into EulerData.q, and conversely, to take EulerData.res and assemble it into a column vector, usually eqn.res_vec.
-
-#### Precalculation of Quantities
-Some quantities are preallocated and stored in the EulerData object.
-The equation flux is stored for all equations.  
-The 'aux_vars' field is used to store any additional variables.
-The macros in euler_macros.jl provide the means to access the variables stored there, so the user does not have to do the bookkeeping.
-If using Newtons method to solve the non-linear equation, the cost of storing the Jacobian dominates the total memory cost, to it is usually worth it to precalculate and store variables for speed.
-
-
-#### Volume Integrals
-The volume integrals are computed using the stored flux using the function evalVolumeIntegrals.
-
-
-#### Boundary Conditions
-Boundary integrals are computed using evalBoundaryIntegrals.  
-The boundary flux must be calculated first using the function getBCFluxes.
-
-Boundary conditions are implimented with functors.  
-For each type of boundary condition, a dummy type is defined and the call function for it.
-The dummy type should be suffixed with 'BC', and be a subtype of 'BCTypes'.  
-All call functions should take the same arguments, even if they are not needed.
-The function should calculate the boundary flux at a node, where flux going into the element is positive.
-An instance of the dummy type must be added  to the dictionary BCDict.  
-The function getBCFunctors is called during initialization to get the dummy types from the dictionary and store
-them in the mesh object for use by calcBoundaryFlux, which calculates and stores the boundary flux.
-
-#### Stabilization 
-The addStabilization function add the stabilization term to the residual.  It calls functions in the stabilization.jl file.
-
-
+The file `src/estimateMem.jl` reads the file counts.txt, which is written by the mesh initialization, and estimates the steady state memory usage of the solver.
+While this is not an upper bounds, it has proven to be quite accurate.  It does not include memory used by any factorizations the linear solver might do.
 
 
 ## Visualization
 Paraview is used for visualization.  High order elements (p>2) are automatically
-subtriangulated into a set of linear elements and nodal solutions are copied 
-from the high order mesh to the linear mesh.  The field faceNums_old_1 on the 
-linear mesh shows the the element number of the high order element the linear 
-element was created from.
+interpolated onto either a linear or quadratic mesh for visualization.
+Empirically, this has been shown to produce better images than
+sub-triangulating each element and doing an exact projection onto the finer
+mesh.
 
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
-[![Coverage Status](https://coveralls.io/repos/OptimalDesignLab/PDESolver.jl/badge.png)](https://coveralls.io/r/OptimalDesignLab/PDESolver.jl)
 [![Documentation Status](https://readthedocs.org/projects/pdesolverjl/badge/?version=latest)](https://readthedocs.org/projects/pdesolverjl/?badge=latest)
 [![codecov](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl)
-

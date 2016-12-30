@@ -1,8 +1,6 @@
 # functions that populate the initial conditions
 # List of functions:
 
-export ICDict
-
 @doc """
 ### EulerEquationMod.ICZero
 
@@ -619,7 +617,7 @@ function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values from a disk file
 # the file name comes from opts["ICfname"]
 
-fname = opts["ICfname"]
+fname = get_parallel_fname(opts["ICfname"], mesh.myrank)
 vals = readdlm(fname)
 
 @assert length(vals) == mesh.numDof

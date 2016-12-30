@@ -1,10 +1,6 @@
 # Run advection tests
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -12,10 +8,12 @@ using FactCheck
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
+using Utils
 using SimpleODEMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+using Input
 
 function clean_dict(collection)
   for i in keys(collection)
@@ -23,14 +21,12 @@ function clean_dict(collection)
   end
 end
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE/startup.jl")
-
 #------------------------------------------------------------------------------
 # define tests and tags
 
-
-include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
+include("../tags.jl")
 
 # test list
 global const SimpleODETests = TestList()
@@ -41,7 +37,7 @@ function test_eq4()
     start_dir = pwd()
     cd("./eqn4/")
     ARGS[1] = "input_vals_simpleODE.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_simpleode(ARGS[1])
 
     for i = 1:length(eqn.q_vec)
       @fact eqn.q_vec[i] --> roughly(4.0, atol=1e-10)
@@ -68,13 +64,22 @@ facts("----- Running SimpleODE tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(SimpleODETests, tags)
+  run_testlist(SimpleODETests, run_simpleode, tags)
 end
 
 
 #------------------------------------------------------------------------------
 # cleanup
-if MPI.Initialized()
+
+# define global variable if needed
+# this trick allows running the test files for multiple physics in the same
+# session without finalizing MPI too soon
+if !isdefined(:TestFinalizeMPI)
+  TestFinalizeMPI = true
+end
+
+
+if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 

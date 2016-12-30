@@ -128,11 +128,11 @@ add_func3!(EulerTests, test_dg_boundary, test_dg_inputfile, test_dg_moddict, [TA
 function test_dg_uniform(mesh, sbp, eqn, opts)
 
   # reset eqn
-  include(STARTUP_PATH)
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
   facts("----- Testing Uniform Channel -----") do
 
-    calcResidual(mesh, sbp, eqn, opts, evalEuler)
+    calcResidual(mesh, sbp, eqn, opts, evalResidual)
 
     for i=1:mesh.numDof
       @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-13)

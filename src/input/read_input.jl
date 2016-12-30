@@ -31,12 +31,14 @@ function read_input(fname::AbstractString)
 
 println("pwd = ", pwd())
 println("fname = ", fname)
+fpath = joinpath(pwd(), fname)
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
 #include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary
 
-include(joinpath(pwd(), fname))  # include file in the users pwd()
-include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
+# this uses eval, which is evil (and not statically compilable)
+arg_dict = evalfile(fpath)  # include file in the users pwd()
+known_keys = evalfile(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 
 # record fname in dictionary
 arg_dict["fname"] = fname
@@ -291,7 +293,6 @@ get!(arg_dict, "exact_soln_func", "nothing")
 get!(arg_dict, "write_timing", false)
 get!(arg_dict, "finalize_mpi", false)
 
-# write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
 # Functional computational options

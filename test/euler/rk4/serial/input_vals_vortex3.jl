@@ -4,7 +4,7 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 
-arg_dict = Dict{Any, Any} (
+arg_dict = Dict{ASCIIString, Any} (
 "var1" => 1,
 "var2" => "a",
 "var3" => 3.5,
@@ -26,7 +26,7 @@ arg_dict = Dict{Any, Any} (
 #"BC2" => [4, 10],
 #"BC2_name" => "noPenetrationBC",
 #"BC2_name" => "isentropicVortexBC",
-"delta_t" => 0.005,
+"delta_t" => 0.1,
 "t_max" => 500.000,
 "smb_name" => "SRCMESHES/serial2.smb",
 #"dmg_name" => "/users/creanj/fasttmp/meshfiles/psquare4_1_.dmg",

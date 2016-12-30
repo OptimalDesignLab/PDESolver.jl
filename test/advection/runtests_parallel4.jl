@@ -1,9 +1,6 @@
 # run 4 processor tests
 
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -15,20 +12,23 @@ using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+using Utils
+using Input
 
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
 
 #------------------------------------------------------------------------------
 # define tests and tags
 
-include("../TestSystem.jl")
+#include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
+include("../tags.jl")
 
 # test list
 global const AdvectionTests = TestList()
 
 include("Nonlinearsolvers/crank_nicolson_PETSc_parallel/runtests.jl")
-
+include("test_parallel2.jl")
 """
   Test energy stability in parallel
 """
@@ -60,14 +60,20 @@ facts("----- Running Advection 4 processor tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(AdvectionTests, tags)
+  run_testlist(AdvectionTests, run_advection, tags)
 end
 
 #------------------------------------------------------------------------------
 # cleanup
 
+# define global variable if needed
+# this trick allows running the test files for multiple physics in the same
+# session without finalizing MPI too soon
+if !isdefined(:TestFinalizeMPI)
+  TestFinalizeMPI = true
+end
 
-if MPI.Initialized()
+if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 FactCheck.exitstatus()

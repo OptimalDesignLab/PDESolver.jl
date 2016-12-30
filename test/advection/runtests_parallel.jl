@@ -1,8 +1,6 @@
 # run 2 processor tests
-push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
-include(joinpath(Pkg.dir("PDESolver"), "src/input/make_input.jl"))
+
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
@@ -14,14 +12,16 @@ using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
-
-global const STARTUP_PATH = joinpath(Pkg.dir("PDESolver"), "src/solver/advection/startup.jl")
+using Utils
+using Input
 
 #------------------------------------------------------------------------------
 # define tests and tags
 
-include("../TestSystem.jl")
+#include("../TestSystem.jl")
+using TestSystem
 # define tags that will be used
+include("../tags.jl")
 
 # test list
 global const AdvectionTests = TestList()
@@ -37,7 +37,7 @@ function runtests_parallel()
     start_dir = pwd()
     cd ("./rk4/parallel")
     ARGS[1] = "input_vals_parallel_runp.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -48,7 +48,7 @@ function runtests_parallel()
 
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
@@ -58,7 +58,7 @@ function runtests_parallel()
 
     cd("./rk4_3d/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -68,10 +68,12 @@ function runtests_parallel()
 
     cd("./newton_3d/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
     @fact datas[1] --> roughly(datap[1], atol=1e-13)
+
+    cd(start_dir)
   end  # end facts block
 
   return nothing
@@ -93,13 +95,20 @@ facts("----- Running Advection 2 processor tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(AdvectionTests, tags)
+  run_testlist(AdvectionTests, run_advection, tags)
 end
 
 #------------------------------------------------------------------------------
 # cleanup
 
-if MPI.Initialized()
+# define global variable if needed
+# this trick allows running the test files for multiple physics in the same
+# session without finalizing MPI too soon
+if !isdefined(:TestFinalizeMPI)
+  TestFinalizeMPI = true
+end
+
+if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 FactCheck.exitstatus()

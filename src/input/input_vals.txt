@@ -8,6 +8,8 @@ where input_file_name.jl is in your current directory.
 # TODO: a required keys section
 
 # The following keys are used for the options dictionary in the input file
+"physics" : which physics to run, ASCIIString, must match the name each
+            physics module uses to register itself with the PDESolver module
 
 "run_type"  : what type of run: 
               1 = rk4
