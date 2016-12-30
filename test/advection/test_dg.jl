@@ -83,7 +83,7 @@ function test_dg_bc(mesh, sbp, eqn, opts)
     fill!(eqn.q_bndry, 0.0)
     AdvectionEquationMod.ICp1(mesh, sbp, eqn, opts, eqn.q_vec)
     mesh.bndry_funcs[1] = AdvectionEquationMod.BCDict["p1BC"]
-    AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
+    AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
 
     for i=1:mesh.numBoundaryFaces
       for j=1:mesh.sbpface.numnodes

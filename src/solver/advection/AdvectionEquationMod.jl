@@ -15,7 +15,7 @@ using Input
 
 export AdvectionData, AdvectionData_, run_advection #getMass, assembleSolution, disassembleSolution
 
-# include("advectionFunctions.jl")
+# include("advection.jl")
 # include("getMass.jl")
 
 
@@ -24,9 +24,9 @@ abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
 
 include("types.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
-include("advectionFunctions.jl")
+include("advection.jl")
 include("common_funcs.jl")
-include("boundaryconditions.jl")
+include("bc.jl")
 include("bc_solvers.jl")
 include("ic.jl")
 include("GLS.jl")

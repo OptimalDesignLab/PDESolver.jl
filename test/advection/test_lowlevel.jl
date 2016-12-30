@@ -258,7 +258,7 @@ function test_lowlevel_volumeintegrals()
     alpha_y = zero(eqn.params.alpha_x)
 
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res --> roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-12)
 
@@ -277,7 +277,7 @@ function test_lowlevel_volumeintegrals()
     q = [eqn.q[1, 1, 1], eqn.q[1, 2, 1], eqn.q[1, 3, 1]]  # extract q values
     # sum reduces the vector to the value of the integral
     val_test = sum(Qx.'*q)  
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     # extract residual values
     vec_code =  [eqn.res[1, 1, 1], eqn.res[1, 2, 1], eqn.res[1, 3, 1]]
     val_code = sum(vec_code)
@@ -313,7 +313,7 @@ function test_lowlevel_volumeintegrals()
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
     # check the boundry contribution
-    AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
+    AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
 
     @fact sum(eqn.res[:, :, 1]) --> roughly(-2.0, atol=1e-14)
     @fact sum(eqn.res[:, :, 3]) --> roughly(-2.0, atol=1e-14)
@@ -322,7 +322,7 @@ function test_lowlevel_volumeintegrals()
     @fact sum(eqn.res[:, :, 8]) --> roughly(-2.0, atol=1e-14)
 
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -345,7 +345,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -370,7 +370,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -398,7 +398,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -429,7 +429,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     println("called eval SCResidual")
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]

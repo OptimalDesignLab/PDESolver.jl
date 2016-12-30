@@ -1,11 +1,10 @@
-# advectionFunctions.jl
+# advection.jl
 import PDESolver.evalResidual
 
 @doc """
 ### AdvectionEquationMod.evalResidual
 
-This function evaluates the Advection equation and preps it for the RK4 solver.
-Pass this function as an input argument to the RK4 solver just like evalResidual.
+This function evaluates the Advection equation.
 
 **Inputs**
 
@@ -49,22 +48,22 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     #  println("send parallel data @time printed above")
   end
 
-  params.time.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn)
-#  println("evalSCResidual @time printed above")
+  params.time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn)
+#  println("evalVolumeIntegrals @time printed above")
 
 #  params.time.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
   params.time.t_face += @elapsed if mesh.isDG
-    evalFaceTerm(mesh, sbp, eqn, opts)
+    evalFaceIntegrals(mesh, sbp, eqn, opts)
   end
-#  println("evalFaceTerm @time printed above")
+#  println("evalFaceIntegrals @time printed above")
 
 #  params.time.t_barriers[3] += @elapsed MPI.Barrier(mesh.comm) 
   params.time.t_source += @elapsed evalSRCTerm(mesh, sbp, eqn, opts)
 #  println("evalSRCTerm @time printed above")
 
 #  params.time.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
-  params.time.t_bndry += @elapsed evalBndry(mesh, sbp, eqn)
-#  println("evalBndry @time printed above")
+  params.time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
+#  println("evalBoundaryIntegrals @time printed above")
 
 #  params.time.t_barriers[5] += @elapsed MPI.Barrier(mesh.comm) 
 
@@ -97,7 +96,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 end
 
 @doc """
-### AdvectionEquationMod.evalSCResidual
+### AdvectionEquationMod.evalVolumeIntegrals
 
 Evaluate the residual using summation by parts (not including boundary 
 integrals) this only works for triangular meshes, where are elements are same
@@ -113,11 +112,11 @@ integrals) this only works for triangular meshes, where are elements are same
 *  None
 
 """->
-function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
                                            eqn::AdvectionData{Tsol, Tres, Tdim})
 
-  println(eqn.params.f, "entered evalSCResidual")
+  println(eqn.params.f, "entered evalVolumeIntegrals")
 
   # storing flux_parametric in eqn, rather than re-allocating it every time
   flux_parametric = eqn.flux_parametric
@@ -159,7 +158,7 @@ end
 
 
 @doc """
-### AdvectionEquationMod.evalBndry
+### AdvectionEquationMod.evalBoundaryIntegrals
 
 Evaluate boundary integrals for advection equation
 
@@ -174,10 +173,10 @@ Evaluate boundary integrals for advection equation
 *  None
 
 """->
-function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                    sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
 
-#  println("----- Entered evalBndry -----")
+#  println("----- Entered evalBoundaryIntegrals -----")
 
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -205,12 +204,12 @@ function evalBndry{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 #  println("    boundaryintegrate! @time printed above")
 
-#  println("----- Finished evalBndry -----")
+#  println("----- Finished evalBoundaryIntegrals -----")
   return nothing
-end # end function evalBndry
+end # end function evalBoundaryIntegrals
 
 @doc """
-### AdvectionEquationMod.evalFaceTerm
+### AdvectionEquationMod.evalFaceIntegrals
 
   This function evaluates the interior face integrals for DG methods, using
   the flux function from eqn.flux_func.  The solution variables are interpolated
@@ -224,10 +223,10 @@ end # end function evalBndry
     opts
 
 """->
-function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData,
+function evalFaceIntegrals(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData,
                       opts)
 
-#  println("----- Entered evalFaceTerm -----")
+#  println("----- Entered evalFaceIntegrals -----")
   # interpolate solution to faces
   interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
 #  println("    interiorface interpolate @time printed above")
@@ -249,11 +248,11 @@ function evalFaceTerm(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData
   if mesh.isDG
     interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
   else
-    error("cannot evalFaceTerm for non DG mesh")
+    error("cannot evalFaceIntegrals for non DG mesh")
   end
 #  println("    interiorfaceintegrate @time printed above")
 
-#  println("----- Finished evalFaceTerm -----")
+#  println("----- Finished evalFaceIntegrals -----")
   return nothing
 end
 
@@ -332,31 +331,6 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
   return nothing
 end
 
-#=
-@doc """
-### AdvectionEquationMod.sendParallelData
-
-  This function interpolates the data into the send buffer and post
-  the Isends and Irecvs.  It does not wait for them to finish
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-"""->
-function sendParallelData(mesh::AbstractDGMesh, sbp, eqn, opts)
-
-  for i=1:mesh.npeers
-    # interpolate
-    mesh.send_waited[i] = getSendData(mesh, opts, eqn.q, mesh.bndries_local[i], eqn.q_face_send[i], mesh.send_reqs[i], mesh.send_waited[i])
-  end
-
-  exchangeFaceData(mesh, opts, eqn.q_face_send, eqn.q_face_recv)
-
-  return nothing
-end
-=#
 
 @doc """
 ### AdvectionEquationMod.evalSharedFaceIntegrals

@@ -45,7 +45,7 @@ add_func2!(AdvectionTests, test_3d_sbp, test_3d_inputfile)
 function test_bc(flux_exp, mesh, sbp, eqn)
 # test summing boundary condition
  fill!(eqn.bndryflux, 0.0)
- AdvectionEquationMod.evalBndry(mesh, sbp, eqn)
+ AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
 
  flux_in = zero(eltype(eqn.bndryflux))
  flux_out = zero(flux_in)
@@ -76,7 +76,7 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
     q1 = eqn.q
     eqn.q = q2
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalSCResidual(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
     nrm = [1., 1, 1]  # arbirary normal vector
     alphas_xy = [eqn.params.alpha_x, eqn.params.alpha_y, eqn.params.alpha_z]
     for i=1:mesh.numEl
@@ -91,7 +91,7 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
 
         # calculate boundary flux
         bndryflux_calc = AdvectionEquationMod.RoeSolver(u, u, eqn.params, nrm, dxidx)
-        # calculate flux from evalSCResidual
+        # calculate flux from evalVolumeIntegrals
         bndryflux_weak = zero(eltype(eqn.flux_parametric))
         for d=1:3
            bndryflux_weak += nrm[d]*eqn.flux_parametric[1, j, i, d]
@@ -164,7 +164,7 @@ function test_3d_faceflux(mesh, sbp, eqn, opts)
     fill!(eqn.q_face, 0.0)
     fill!(eqn.flux_face, 0.0)
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalFaceTerm(mesh, sbp, eqn, opts)
+    AdvectionEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
     sbpface = mesh.sbpface
     for i=1:mesh.numInterfaces
       iface_i = mesh.interfaces[i]

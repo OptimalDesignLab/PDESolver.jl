@@ -12,7 +12,7 @@ using Utils
 using Input
 import ODLCommonTools: get_uninitialized_SolutionData, sview
 export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
-export evalResidual, init, run_simpleode # exported from simpleODE_funcs.jl
+export evalResidual, init, run_simpleode # exported from simpleODE.jl
 export ICDict              # exported from ic.jl
 export ode_pre_func, ode_post_func    # exported from simpleODE_func.jl
 
@@ -24,7 +24,7 @@ abstract SimpleODEData{Tsol, Tres, Tdim} <: AbstractSimpleODEData{Tsol, Tres}
 # TODO: which of these
 include("types.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
-include("simpleODE_funcs.jl")
+include("simpleODE.jl")
 include("common_funcs.jl")
 include("ic.jl")
 include("startup_func.jl")

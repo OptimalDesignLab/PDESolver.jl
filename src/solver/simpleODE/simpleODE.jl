@@ -39,7 +39,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     end
   end
 
-  params.time.t_volume += @elapsed evalSCResidual(mesh, sbp, eqn, opts, t)
+  params.time.t_volume += @elapsed evalEquation(mesh, sbp, eqn, opts, t)
 #   params.time.t_face += @elapsed if mesh.isDG
 #     evalFaceTerm(mesh, sbp, eqn, opts)
 #   end
@@ -59,7 +59,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 end   # end of function evalResidual
 
-function evalSCResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalEquation{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
                                            eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
                                            t)
