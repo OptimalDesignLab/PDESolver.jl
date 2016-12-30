@@ -484,6 +484,7 @@ end
    Aliasing restrictions: none
 
 """->
+#TODO: replace this with arrToVecAssign?
 function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
                          sbp::AbstractSBP, eqn::AbstractAdvectionData{Tsol}, opts, 
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
@@ -537,3 +538,21 @@ function applyMassMatrixInverse3D(mesh, sbp, eqn, opts, arr)
 
   return arr
 end
+
+
+# functions needed to make it compatible with the NonLinearSolvers module
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
+                     opts, res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                  sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+                  res_arr::AbstractArray{Tsol, 3})
+
+  return nothing
+end
+
+

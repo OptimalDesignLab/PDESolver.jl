@@ -628,7 +628,6 @@ end
 #-----------------------------------------------------------------------------
 # do the functor song and dance
 
-abstract FaceElementIntegralType
 
 """
   Entropy conservative term only
