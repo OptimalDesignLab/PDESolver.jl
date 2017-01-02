@@ -47,6 +47,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 	# this will dispatch to the proper calcEulerFlux
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
       end
+
     end
   end
 

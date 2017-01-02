@@ -144,7 +144,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # check stopping conditions
     if (sol_norm < res_tol)
       if myrank == 0
-        println(fstdout, "breaking due to res_tol")
+        println(fstdout, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
         flush(fstdout)
       end

@@ -213,8 +213,10 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
-#    println("boundary ", i, "element = ", bndry_i.element, ", face = ", bndry_i.face)
     global_facenum = idx_range[i]
+#    println("boundary ", i, ", element = ", bndry_i.element, ", face = ", bndry_i.face)
+#    println("element q = \n", eqn.q[:, :, bndry_i.element])
+#    println("eqn.q_bndry = \n", eqn.q_bndry[:, :, global_facenum])
 #    println("element = ", bndry_i.element, ", face = ", bndry_i.face)
 #    println("interface ", i)
     for j = 1:mesh.numNodesPerFace
@@ -230,7 +232,12 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       nrm = sview(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = sview(bndryflux, :, j, i)
-
+#=
+      # DEBUGGING: use analytical solution (avoid interpolation inexactness)
+      calcPeriodicMMS(x, eqn.params, q2)
+      println("after overwriting q with analytical solution, q_nodes = \n", q2)
+=#
+#      println("coords = ", x)
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
     end
   end
