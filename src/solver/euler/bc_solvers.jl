@@ -336,6 +336,16 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
+    #=
+    if  abs(sat[i]) > 1e-13
+      println("sat = ", sat)
+      println("q = \n", q)
+      println("qg = \n", qg)
+      println("dq = \n", q - qg)
+      printbacktrace()
+      error("sat is non zero")
+    end
+    =#
     flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
     # when weak differentiate has transpose = true
   end

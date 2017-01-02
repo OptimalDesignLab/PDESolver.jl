@@ -38,13 +38,18 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           functor::FluxType, 
                           interfaces::AbstractArray{Interface,1}, 
                           face_flux::AbstractArray{Tres, 3})
-
+#  println("----- entered calcFaceFlux -----")
+#  q_exact = zeros(Tsol, mesh.numDofPerNode)  # DEBUGGING
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
 #    println("calculating face flux for interface ", i)
     interface_i = interfaces[i]
-#    println("element ", interface_i.elementL, ", face ", interface_i.faceL)
+#    println("elementL ", interface_i.elementL, ", faceL ", interface_i.faceL)
+#    println("elementR ", interface_i.elementR, ", faceR ", interface_i.faceR)
+#    println("qL = \n", eqn.q[:, :, interface_i.elementL])
+#    println("qR = \n", eqn.q[:, :, interface_i.elementR])
     for j = 1:mesh.numNodesPerFace
+#      println("node ", j)
       eL = interface_i.elementL
       fL = interface_i.faceL
 
@@ -55,6 +60,14 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
       nrm = sview(sbp.facenormal, :, fL)
 
+#      # debugging
+      x = sview(mesh.coords_interface, :, j, i)
+#      println("coords = \n", x)
+#      calcPeriodicMMS(x, eqn.params, q_exact)
+#      println("q_exact = \n", q_exact)
+
+#      println("qfaceL = \n", qL)
+#      println("qfaceR = \n", qR)
 
       flux_j = sview(face_flux, :, j, i)
       functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)

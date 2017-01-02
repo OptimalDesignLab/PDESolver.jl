@@ -509,18 +509,18 @@ end
 function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
                     params::ParamType{3}, q::AbstractArray{Tsol,1})
 
-  throw(ErrorException("calcPeriodicMMS does not work correctly, do not use"))
   x = coords[1]
   y = coords[2]
   z = coords[3]
   t = params.t
 
   rho = 2 + 0.1*sin(pi*(x + y + z))
+#  rho = 2 + 0.5*(x*x + y*y + z*z)
   q[1] = rho
   q[2] = 0
   q[3] = 0
   q[4] = 0
-  q[5] = rho*rho + 10
+  q[5] = 10
 
   return nothing
 end

@@ -109,6 +109,8 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
                      opts::Dict, t=0.0)
 
+#  println("----- entered evalResidual -----")
+
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
@@ -499,6 +501,7 @@ end
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+
   integral_type = opts["volume_integral_type"]
   if integral_type == 1
     if opts["Q_transpose"] == true
@@ -515,7 +518,6 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
-
 
   # artificialViscosity(mesh, sbp, eqn) 
 
