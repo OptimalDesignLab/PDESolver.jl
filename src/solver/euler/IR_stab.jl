@@ -302,6 +302,54 @@ function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim},
   return lambda_max
 end
 
+"""
+  Calculates the maximum magnitude eigenvalue of the Euler flux 
+  jacobian at the arithmatic average of two states.
+
+  This functions works in both 2D and 3D
+  Inputs:
+    params:  ParamType, conservative variable
+    qL: left state
+    qR: right state
+    dir: direction vector (does *not* have to be unit vector)
+
+  Outputs:
+    lambda_max: eigenvalue of maximum magnitude
+
+  Aliasing restrictions: params.q_vals3 must be unused
+"""
+function getLambdaMaxSimple{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh})
+# calculate maximum eigenvalue at simple average state
+
+  gamma = params.gamma
+  Tres = promote_type(Tsol, Tmsh)
+  q_avg = params.q_vals3
+
+  for i=1:length(q_avg)
+    q_avg[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  Un = zero(Tres)
+  dA = zero(Tres)
+  rhoinv = 1/q_avg[1]
+  p = calcPressure(params, q_avg)
+  a = sqrt(gamma*p*rhoinv)  # speed of sound
+
+  for i=1:Tdim
+    Un += dir[i]*q_avg[i+1]*rhoinv
+    dA += dir[i]*dir[i]
+  end
+
+  dA = sqrt(dA)
+
+  lambda_max = absvalue(Un) + dA*a
+
+  return lambda_max
+end
+
+
 function getLambdaMaxRoe{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
                       dir::AbstractVector{Tmsh})

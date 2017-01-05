@@ -93,7 +93,6 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
                            flux_functor::FluxType,
                            interfaces::AbstractArray{Interface, 1})
 
-#  println("----- entered getECFaceIntegral -----")
   nfaces = length(interfaces)
   for i=1:nfaces
     iface = interfaces[i]

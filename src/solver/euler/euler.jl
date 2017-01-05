@@ -162,7 +162,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
    #println("boundary integral @time printed above")
   end
 
-
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
 #    println("stabilizing @time printed above")

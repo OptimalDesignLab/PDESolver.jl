@@ -232,11 +232,11 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       nrm = sview(sbp.facenormal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = sview(bndryflux, :, j, i)
-#=
+
       # DEBUGGING: use analytical solution (avoid interpolation inexactness)
-      calcPeriodicMMS(x, eqn.params, q2)
-      println("after overwriting q with analytical solution, q_nodes = \n", q2)
-=#
+#      calcPeriodicMMS(x, eqn.params, q2)
+#      println("after overwriting q with analytical solution, q_nodes = \n", q2)
+
 #      println("coords = ", x)
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
     end
@@ -517,7 +517,8 @@ function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
 
   qg = params.qg
   calcPeriodicMMS(coords, params, qg)
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  use_efix = 0
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux, use_efix)
 
   # println("bndryflux = ", bndryflux)
   return nothing

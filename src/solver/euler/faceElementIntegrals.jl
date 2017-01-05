@@ -45,7 +45,6 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-
   Flux_tmp = params.flux_vals1
   numDofPerNode = length(Flux_tmp)
   nrm = params.nrm
@@ -162,11 +161,32 @@ function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
+#  print("\n")
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
                      functor, resL, resR)
+#=
+  resL2 = copy(resL)
+  resR2 = copy(resR)
+  resL_initial = copy(resL)
+=#
   calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                             dxidx_face, resL, resR)
+                                dxidx_face, resL, resR)
 
+#=
+  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
+                             dxidx_face, resL2, resR2)
+
+  println("LW residual = \n", resL_initial - resL)
+  println("LF residual = \n", resL_initial - resL2)
+  println("diff = \n", resL - resL2)
+  if norm(resL2 - resL) > 1e-12
+#    println("finally, resL = \n", resL, "\nresL2 = \n", resL2)
+    println("resL diff = \n", resL2 - resL)
+#    println("resL_initial - resL = \n", resL_initial - resL)
+#    println("resL_initial - resL2 = \n", resL_initial - resL2)
+    error("")
+  end
+=#
   return nothing
 end
 
@@ -195,7 +215,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
-#  println("----- entered calcEntropyDissipativeIntegral -----")
+#  println("----- entered calcLFEntropyPenaltyIntegral -----")
 
   numDofPerNode = size(qL, 1)
 
@@ -264,7 +284,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
-    lambda_max = getLambdaMax(params, qL_i, qR_i, dir)
+    lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
     @assert lambda_max > 0
 #    lambda_max *= sqrt(params.h)
     # poor mans entropy fix
@@ -289,12 +309,16 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     smallmatvec!(A0, wL_i, wR_i)
     scale!(wR_i, sbpface.wface[i]*lambda_max)
 
+    middle_term = scale(A0, sbpface.wface[i]*lambda_max)
+#    println("middle_term = \n", middle_term)
+
     # interpolate back to volume nodes
     for j=1:sbpface.stencilsize
       j_pL = sbpface.perm[j, iface.faceL]
       j_pR = sbpface.perm[j, iface.faceR]
 
       for p=1:numDofPerNode
+        res_old = resL[p, j_pL]  # DEBUGGING
         resL[p, j_pL] -= sbpface.interp[j, i]*wR_i[p]
         resR[p, j_pR] += sbpface.interp[j, ni]*wR_i[p]
       end
@@ -504,7 +528,6 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 #  println("----- entered calcLW2EntropyPenaltyIntegral -----")
-
   numDofPerNode = size(qL, 1)
 
   # convert qL and qR to entropy variables (only the nodes that will be used)
@@ -518,7 +541,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   tmp1 = params.res_vals1  # work vectors
   tmp2 = params.res_vals2
 
-  @simd for i=1:sbpface.stencilsize
+  for i=1:sbpface.stencilsize
     # apply sbpface.perm here
     p_iL = sbpface.perm[i, iface.faceL]
     p_iR = sbpface.perm[i, iface.faceR]
@@ -542,16 +565,16 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   nrm = params.nrm2
   P = params.P  # projection matrix
 
-  @simd for i=1:sbpface.numnodes  # loop over face nodes
+  for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i, iface.orient]
     fill!(wL_i, 0.0)
     fill!(wR_i, 0.0)
     # interpolate wL and wR to this node
-    @simd for j=1:sbpface.stencilsize
+    for j=1:sbpface.stencilsize
       interpL = sbpface.interp[j, i]
       interpR = sbpface.interp[j, ni]
 
-      @simd for k=1:numDofPerNode
+      for k=1:numDofPerNode
         wL_i[k] += interpL*wL[k, j]
         wR_i[k] += interpR*wR[k, j]
       end
@@ -561,7 +584,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
 
-    @simd for j=1:numDofPerNode
+    for j=1:numDofPerNode
       # use flux jacobian at arithmetic average state
       qL_i[j] = 0.5*( qL_i[j] + qR_i[j])
       # put delta w into wL_i
@@ -571,9 +594,9 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
     # get the normal vector (scaled)
 
-    @simd for dim =1:Tdim
+    for dim =1:Tdim
       nrm_dim = zero(Tmsh)
-      @simd for d = 1:Tdim
+      for d = 1:Tdim
         nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
       end
 
@@ -582,7 +605,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
     # normalize direction vector
     len_fac = calcLength(params, nrm)
-    @simd for dim=1:Tdim
+    for dim=1:Tdim
       nrm[dim] /= len_fac
     end
 
@@ -596,30 +619,111 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     calcEvalsx(params, qR_i, Lambda)
     calcEScalingx(params, qR_i, S2)
 
+    calcEntropyFix(params, Lambda)
+ 
+    #DEBUGGING: make this into LF
+#    fill!(Lambda, maximum(abs(Lambda)))
+#    lambda_max_scaled = len_fac*maximum(abs(Lambda))
+
     # compute LF term in n-t coordinates, then rotate back to x-y
     projectToNT(params, P, wL_i, tmp1)
     smallmatTvec!(Y, tmp1, tmp2)
     # multiply by diagonal Lambda and S2, also include the scalar
     # wface and len_fac components
-    @simd for j=1:length(tmp2)
+    for j=1:length(tmp2)
       tmp2[j] *= len_fac*sbpface.wface[i]*absvalue(Lambda[j])*S2[j]
     end
     smallmatvec!(Y, tmp2, tmp1)
     projectToXY(params, P, tmp1, tmp2)
 
-
     # interpolate back to volume nodes
-    @simd for j=1:sbpface.stencilsize
+    for j=1:sbpface.stencilsize
       j_pL = sbpface.perm[j, iface.faceL]
       j_pR = sbpface.perm[j, iface.faceR]
 
-      @simd for p=1:numDofPerNode
+      for p=1:numDofPerNode
+        res_old = resL[p, j_pL]  # DEBUGGING
         resL[p, j_pL] -= sbpface.interp[j, i]*tmp2[p]
         resR[p, j_pR] += sbpface.interp[j, ni]*tmp2[p]
       end
     end
 
   end  # end loop i
+
+  return nothing
+end
+
+"""
+  This function modifies the eigenvalues of the euler flux jacobian such
+  that if any value is zero, a little dissipation is still added.  The
+  absolute values of the eigenvalues modified eigenvalues are calculated.
+
+  Methods are available for 2 and 3 dimensions
+
+  This function depends on the ordering of the eigenvalues produced by
+  calcEvals.
+
+  Inputs:
+    params: ParamType, used to dispatch to 2 or 3D method
+
+  Inputs/Outputs:
+    Lambda: vector of eigenvalues to be modified
+
+  Aliasing restrictions: none
+"""
+function calcEntropyFix(params::ParamType{2}, Lambda::AbstractVector)
+  # entropy fix parameters
+  sat_Vn = 0.025
+  sat_Vl = 0.05
+
+
+  # this is dependent on the ordering of the eigenvalues produced
+  # by calcEvals
+  lambda3 = Lambda[2]  # Un
+  lambda4 = Lambda[4]  # Un + a
+  lambda5 = Lambda[5]  # Un - a
+
+
+  # if any eigenvalue is zero, introduce dissipation that is a small
+  # fraction of the maximum eigenvalue
+  rhoA = max(absvalue(lambda4), absvalue(lambda5))  # absvalue(Un) + a
+  lambda3 = max( absvalue(lambda3), sat_Vl*rhoA)
+  lambda4 = max( absvalue(lambda4), sat_Vn*rhoA)
+  lambda5 = max( absvalue(lambda5), sat_Vn*rhoA)
+
+  Lambda[1] = lambda3
+  Lambda[2] = lambda3
+  Lambda[4] = lambda4
+  Lambda[5] = lambda5
+
+  return nothing
+end
+
+function calcEntropyFix(params::ParamType{3}, Lambda::AbstractVector)
+  # entropy fix parameters
+  sat_Vn = 0.025
+  sat_Vl = 0.05
+
+
+  # this is dependent on the ordering of the eigenvalues produced
+  # by calcEvals
+  lambda3 = Lambda[3]  # Un
+  lambda4 = Lambda[4]  # Un + a
+  lambda5 = Lambda[5]  # Un - a
+
+
+  # if any eigenvalue is zero, introduce dissipation that is a small
+  # fraction of the maximum eigenvalue
+  rhoA = max(absvalue(lambda4), absvalue(lambda5))  # absvalue(Un) + a
+  lambda3 = max( absvalue(lambda3), sat_Vl*rhoA)
+  lambda4 = max( absvalue(lambda4), sat_Vn*rhoA)
+  lambda5 = max( absvalue(lambda5), sat_Vn*rhoA)
+
+  Lambda[1] = lambda3
+  Lambda[2] = lambda3
+  Lambda[3] = lambda3
+  Lambda[4] = lambda4
+  Lambda[5] = lambda5
 
   return nothing
 end
