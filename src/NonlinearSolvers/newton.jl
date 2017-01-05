@@ -383,7 +383,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
 
-    println(eqn.params.f, "===== newton iteration: $i")
+    println(fstdout, "===== newton iteration: $i")
 
     # Calculate Jacobian here
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
@@ -571,7 +571,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
      flush(fstdout)
 
-     println(eqn.params.f, "============ end of Newton")
      return nothing
     end  # end if tolerances satisfied
 
@@ -587,7 +586,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       
       flush(fstdout)
 
-      println(eqn.params.f, "============ end of Newton")
       return nothing
     end
 

@@ -14,11 +14,12 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
                                      aux_vars::AbstractArray{Tres, 1}, 
                                      dxidx::AbstractArray{Tmsh,2}, 
                                      nrm::AbstractArray{Tmsh,1}, 
-                                     flux::AbstractArray{Tres, 1})
+                                     flux::AbstractArray{Tres, 1},
+                                     use_efix::Int=1)
                                      
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
-  RoeSolver(params, q, qg, aux_vars, nrm2, flux)
+  RoeSolver(params, q, qg, aux_vars, nrm2, flux, use_efix)
 
   return nothing
 end
@@ -38,6 +39,7 @@ end
   dxidx : dxidx matrix at the node
   nrm : sbp face normal vector
   params : ParamType
+  use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)
 
   Outputs:
     flux : vector to populate with solution
@@ -52,7 +54,8 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
                                      qg::AbstractArray{Tsol, 1}, 
                                      aux_vars::AbstractArray{Tres, 1}, 
                                      nrm::AbstractArray{Tmsh,1}, 
-                                     flux::AbstractArray{Tres, 1})
+                                     flux::AbstractArray{Tres, 1}, 
+                                     use_efix::Int=1)
 
   # SAT terms are used for ensuring consistency with the physical problem. Its 
   # similar to upwinding which adds dissipation to the problem. SATs on the 
@@ -109,9 +112,9 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
 
-  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+  lambda1 = use_efix*d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1) + (1-use_efix)*lambda1
+  lambda2 = use_efix*d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2) + (1-use_efix)*lambda2
+  lambda3 = use_efix*d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3) + (1-use_efix)*lambda3
 
 
   dq1 = q[1] - qg[1] 
@@ -200,14 +203,14 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
                                      qg::AbstractArray{Tsol, 1}, 
                                      aux_vars::AbstractArray{Tres, 1}, 
                                      nrm::AbstractArray{Tmsh,1}, 
-                                     flux::AbstractArray{Tres, 1})
+                                     flux::AbstractArray{Tres, 1}, 
+                                     use_efix::Int=1)
                                      
 
   # SAT terms are used for ensuring consistency with the physical problem. Its 
   # similar to upwinding which adds dissipation to the problem. SATs on the 
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
-
   E1dq = params.res_vals1
   E2dq = params.res_vals2
 
@@ -259,10 +262,10 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   lambda2 = Un - dA*a
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
-
-  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+  
+  lambda1 = use_efix*d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1) + (1-use_efix)*lambda1
+  lambda2 = use_efix*d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2) + (1-use_efix)*lambda2
+  lambda3 = use_efix*d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3) + (1-use_efix)*lambda3
   
   dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
@@ -324,19 +327,18 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
     sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
   end
 
-  euler_flux = params.flux_vals1
-
 
   # calculate Euler flux in wall normal directiona
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
+  euler_flux = params.flux_vals1
   v_vals = params.q_vals
 
   convertFromNaturalToWorkingVars(params, q, v_vals)
   calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
-    #=
+   #= 
     if  abs(sat[i]) > 1e-13
       println("sat = ", sat)
       println("q = \n", q)
@@ -345,9 +347,16 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
       printbacktrace()
       error("sat is non zero")
     end
-    =#
+   =#
     flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
     # when weak differentiate has transpose = true
+  end
+
+  if use_efix == 0
+#    println("q = \n", q)
+#    println("qg = \n", qg)
+#    println("lambda1,2,3 = ", lambda1, ", ", lambda2, ", ", lambda3)
+    calcEulerFlux(params, 0.5*(q + qg), aux_vars, nrm, flux)
   end
 
   return nothing
