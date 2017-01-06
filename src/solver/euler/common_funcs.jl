@@ -513,7 +513,7 @@ function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   y = coords[2]
   z = coords[3]
   t = params.t
-
+#=
   rho = 2 + 0.1*sin(pi*(x + y + z))
 #  rho = 2 + 0.5*(x*x + y*y + z*z)
   q[1] = rho
@@ -521,6 +521,21 @@ function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   q[3] = 0
   q[4] = 0
   q[5] = 10
+=#
+  t7 = t*2.0;
+  t2 = -t7+x+y+z;
+  t3 = 3.141592653589793*t2;
+  t4 = sin(t3);
+  t5 = t4*(1.0/1.0E1);
+  t6 = t5+2.0;
+
+  q[1] = t6
+  q[2] = t6
+  q[3] = t6
+  q[4] = t6
+  q[5] = t6*t6
+
+
 
   return nothing
 end
