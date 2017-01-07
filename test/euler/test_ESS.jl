@@ -337,7 +337,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
 
     q_avg = 0.5*(qL_i + qR_i)
     EulerEquationMod.getIRA0(params, q_avg, A0)
-    lambda_max = EulerEquationMod.getLambdaMax(params, qL_i, qR_i, nrm)
+    lambda_max = EulerEquationMod.getLambdaMaxSimple(params, qL_i, qR_i, nrm)
 
     middle_term[:, :, i] = lambda_max*sbpface.wface[i]*A0
   end

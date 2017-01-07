@@ -109,7 +109,7 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
                      opts::Dict, t=0.0)
 
-#  println("----- entered evalResidual -----")
+  println("----- entered evalResidual -----")
 
   time = eqn.params.time
   eqn.params.t = t  # record t to params
@@ -125,13 +125,13 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
  
 
-  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-  #println("dataPrep @time printed above")
+  @time time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
+  println("dataPrep @time printed above")
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
-    evalVolumeIntegrals(mesh, sbp, eqn, opts)
-#    println("volume integral @time printed above")
+    @time evalVolumeIntegrals(mesh, sbp, eqn, opts)
+    println("volume integral @time printed above")
   end
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
@@ -158,8 +158,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   #----------------------------------------------------------------------------
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-   evalBoundaryIntegrals(mesh, sbp, eqn)
-   #println("boundary integral @time printed above")
+   @time evalBoundaryIntegrals(mesh, sbp, eqn)
+   println("boundary integral @time printed above")
   end
 
   time.t_stab += @elapsed if opts["addStabilization"]
@@ -168,18 +168,17 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    evalFaceIntegrals(mesh, sbp, eqn, opts)
-    #println("face integral @time printed above")
-#    println("after face integrals res = \n", eqn.res)
+    @time evalFaceIntegrals(mesh, sbp, eqn, opts)
+    println("face integral @time printed above")
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
-    evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("evalSharedFaceIntegrals @time printed above")
+    @time evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+    println("evalSharedFaceIntegrals @time printed above")
   end
 
-  time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-#  println("source integral @time printed above")
+  @time time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
+  println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -631,7 +630,7 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 #    println("calculating ESS face integrals")
    
     getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
-                           eqn.flux_func, mesh.interfaces)
+                           eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))

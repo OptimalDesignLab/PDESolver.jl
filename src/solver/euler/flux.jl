@@ -91,8 +91,11 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
+                           sbpface::AbstractFace,
                            interfaces::AbstractArray{Interface, 1})
 
+  params = eqn.params
+#  sbpface = mesh.sbpface
   nfaces = length(interfaces)
   for i=1:nfaces
     iface = interfaces[i]
@@ -105,7 +108,7 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    face_integral_functor(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
+    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
                        dxidx_face, flux_functor, resL, resR)
   end
 
