@@ -943,7 +943,7 @@ function test_ESS()
         println("finished testing LW dissipation")
         # check full calling sequence
         fill!(eqn.res, 0.0)
-        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
 
@@ -974,7 +974,7 @@ function test_ESS()
 
         # check full calling sequence
         fill!(eqn.res, 0.0)
-        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
 
