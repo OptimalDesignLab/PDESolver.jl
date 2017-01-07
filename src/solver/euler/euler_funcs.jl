@@ -168,15 +168,8 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
   nrm = zeros(Tmsh, Tdim)
   aux_vars = eqn.aux_vars
   F_d = eqn.params.flux_vals1
-  # calculate S
-  stencil_size = size(sbp.Q, 1)
-  S = Array(Float64, stencil_size, stencil_size, Tdim)
-#  E = Array(Float64, stencil_size, stencil_size, Tdim)
-  for i=1:Tdim
-    S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
-#    E[:, :, i] = sbp.Q[:, :, i] + sbp.Q[:, :, i].'
-  end
-
+  S = eqn.params.S
+  
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       q_j = sview(q, :, j, i)
@@ -184,7 +177,7 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
       for k=1:(j-1)  # loop over lower triangle of S
         q_k = sview(q, :, k, i)
         # loop over parametric dimensions at this point
-        for d=1:Tdim  # DEBUGGINg 1:mesh.dim
+        for d=1:Tdim
           # get the normal vector
           for p=1:Tdim
             nrm[p] = dxidx[d, p, j, i] 

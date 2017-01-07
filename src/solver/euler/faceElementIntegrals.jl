@@ -285,7 +285,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
     lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
-    @assert lambda_max > 0
+#    @assert lambda_max > 0
 #    lambda_max *= sqrt(params.h)
     # poor mans entropy fix
 #    lambda_max *= 0.1
@@ -309,7 +309,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     smallmatvec!(A0, wL_i, wR_i)
     scale!(wR_i, sbpface.wface[i]*lambda_max)
 
-    middle_term = scale(A0, sbpface.wface[i]*lambda_max)
+#    middle_term = scale(A0, sbpface.wface[i]*lambda_max)
 #    println("middle_term = \n", middle_term)
 
     # interpolate back to volume nodes
@@ -672,6 +672,7 @@ end
   Aliasing restrictions: none
 """
 function calcEntropyFix(params::ParamType{2}, Lambda::AbstractVector)
+  
   # entropy fix parameters
   sat_Vn = 0.025
   sat_Vl = 0.05
@@ -680,8 +681,8 @@ function calcEntropyFix(params::ParamType{2}, Lambda::AbstractVector)
   # this is dependent on the ordering of the eigenvalues produced
   # by calcEvals
   lambda3 = Lambda[2]  # Un
-  lambda4 = Lambda[4]  # Un + a
-  lambda5 = Lambda[5]  # Un - a
+  lambda4 = Lambda[3]  # Un + a
+  lambda5 = Lambda[4]  # Un - a
 
 
   # if any eigenvalue is zero, introduce dissipation that is a small
@@ -693,13 +694,14 @@ function calcEntropyFix(params::ParamType{2}, Lambda::AbstractVector)
 
   Lambda[1] = lambda3
   Lambda[2] = lambda3
-  Lambda[4] = lambda4
-  Lambda[5] = lambda5
-
+  Lambda[3] = lambda4
+  Lambda[4] = lambda5
+  
   return nothing
 end
 
 function calcEntropyFix(params::ParamType{3}, Lambda::AbstractVector)
+  
   # entropy fix parameters
   sat_Vn = 0.025
   sat_Vl = 0.05
@@ -724,7 +726,7 @@ function calcEntropyFix(params::ParamType{3}, Lambda::AbstractVector)
   Lambda[3] = lambda3
   Lambda[4] = lambda4
   Lambda[5] = lambda5
-
+  
   return nothing
 end
 
@@ -759,7 +761,7 @@ end
 type ESLFFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLFFaceIntegral, 
+@inline function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLFFaceIntegral, 
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 

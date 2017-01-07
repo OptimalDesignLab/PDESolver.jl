@@ -122,6 +122,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   A::Array{Tres, 2}
   B::Array{Tres, 3}
   iperm::Array{Int, 1}
+
+  S::Array{Float64, 3}  # SBP S matrix
   #=
   # timings
   t_volume::Float64  # time for volume integrals
@@ -245,6 +247,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     B = zeros(Tres, numNodesPerElement, numNodesPerElement, 2)
     iperm = zeros(Int, size(sbpface.perm, 1))
 
+    stencil_size = size(sbp.Q, 1)
+    S = Array(Float64, stencil_size, stencil_size, Tdim)
+    for i=1:Tdim
+      S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
+    end
+
 
 
     time = Timings()
@@ -261,6 +269,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                vortex_strength, 
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
+               S,
                time)
 
     end   # end of ParamType function
