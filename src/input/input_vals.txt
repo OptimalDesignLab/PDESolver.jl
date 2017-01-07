@@ -296,8 +296,9 @@ Note that any values associated with these options are shared with the regular
 
 # Adjoint computation options
 "calc_adjoint" : calculates the adjoint vector for a particular functional, default false
-"write_timing" : write the mesh initialization and compute times to the file
-                 timing.dat, (Bool), default false
+"write_timing" : write timings for each part of calculation to file 
+                 timing_breakdown.dat, and the name of each time to 
+                 timing_breakdown_names.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
 
 # SimpleODE equation selection

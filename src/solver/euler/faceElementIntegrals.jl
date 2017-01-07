@@ -48,7 +48,7 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
   Flux_tmp = params.flux_vals1
   numDofPerNode = length(Flux_tmp)
   nrm = params.nrm
-  for dim = 1:Tdim
+  for dim = 1:Tdim  # move this inside the j loop, at least
     fill!(nrm, 0.0)
     nrm[dim] = 1
 
