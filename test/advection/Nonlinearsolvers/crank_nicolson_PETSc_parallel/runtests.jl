@@ -18,9 +18,11 @@ function test_CN_parallel()
     cd("..")
     include(joinpath(pwd(), "calc_line.jl"))
 
+    MPI.Barrier(mesh.comm)
     slope = calc_line()
     # println("slope = ", slope)
 
+    MPI.Barrier(mesh.comm)
     data = readdlm("err_data.dat")
     err_vals = data[:, 2]
     #println("err_vals = ", err_vals)
