@@ -109,7 +109,7 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
                      opts::Dict, t=0.0)
 
-  println("----- entered evalResidual -----")
+#  println("----- entered evalResidual -----")
 
   time = eqn.params.time
   eqn.params.t = t  # record t to params
@@ -118,20 +118,18 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #  println("entered evalResidual")
 #  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
-    println(eqn.params.f, "starting data exchange")
-
     startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
     #  println(" startDataExchange @time printed above")
   end
  
 
-  @time time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-  println("dataPrep @time printed above")
+  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
+  #println("dataPrep @time printed above")
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
-    @time evalVolumeIntegrals(mesh, sbp, eqn, opts)
-    println("volume integral @time printed above")
+    evalVolumeIntegrals(mesh, sbp, eqn, opts)
+    #println("volume integral @time printed above")
   end
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
@@ -147,7 +145,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   =#
 
   if opts["use_GLS"]
-    println("adding boundary integrals")
     GLS(mesh,sbp,eqn)
   end
   
@@ -158,8 +155,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   #----------------------------------------------------------------------------
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-   @time evalBoundaryIntegrals(mesh, sbp, eqn)
-   println("boundary integral @time printed above")
+   evalBoundaryIntegrals(mesh, sbp, eqn)
+   #println("boundary integral @time printed above")
   end
 
   time.t_stab += @elapsed if opts["addStabilization"]
@@ -168,17 +165,17 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    @time evalFaceIntegrals(mesh, sbp, eqn, opts)
-    println("face integral @time printed above")
+    evalFaceIntegrals(mesh, sbp, eqn, opts)
+    #println("face integral @time printed above")
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
-    @time evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-    println("evalSharedFaceIntegrals @time printed above")
+    evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+    #println("evalSharedFaceIntegrals @time printed above")
   end
 
-  @time time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-  println("source integral @time printed above")
+  time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
+  #println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]

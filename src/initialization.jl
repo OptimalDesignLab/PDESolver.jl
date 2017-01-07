@@ -291,11 +291,8 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     if opts["write_timing"]
       MPI.Barrier(mesh.comm)
-      if mesh.myrank == 0
-        f = open("timing.dat", "a+")
-        println(f, solve_time)
-        close(f)
-      end
+      fname = "timing_breakdown_$myrank"
+      write_timings(params.time, fname)
     end
 
     # evaluate residual at final q value
@@ -330,9 +327,6 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     # write timings
   #  timings = [params.t_volume, params.t_face, params.t_source, params.t_sharedface, params.t_bndry, params.t_send, params.t_wait, params.t_allreduce, params.t_jacobian, params.t_solve, params.t_barrier, params.t_barrier2, params.t_barrier3]
   #  writedlm("timing_breakdown_$myrank.dat", vcat(timings, params.t_barriers))
-    fname = "timing_breakdown_$myrank"
-    write_timings(params.time, fname)
-
   end  # end if (opts[solve])
 
   return nothing
