@@ -95,7 +95,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   Ma::Float64  # free stream Mach number
   Re::Float64  # free stream Reynolds number
-  aoa::Float64  # angle of attack
+  aoa::Tsol # Float64  # angle of attack. specified in degrees in input dict. used as radians.
   rho_free::Float64  # free stream density
   E_free::Float64 # free stream energy (4th conservative variable)
 

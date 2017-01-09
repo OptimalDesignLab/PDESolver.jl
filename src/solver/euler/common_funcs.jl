@@ -198,6 +198,50 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   return nothing
 end
 
+@doc """
+### EulerEquationMod.calcFreeStream_dAlpha
+
+  This function calculates the free stream solution for an airfoil problem 
+  based on the angle of attack and Mach number in nondimensionalized variables.
+
+  Density and energy are set to params.rho_free (usually 1.0) and params.E_free,
+  (usually 1/(gamma*gamma_1) + 0.5*Ma*Ma), and the x and y momenta as
+
+  rho*Ma*cos(angle of attack)  and rho*Ma*sin(angle of attack).
+
+  The angle of attack must be in radians.
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+
+function calcFreeStream_dAlpha{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+                        params::ParamType{2}, sol::AbstractArray{Tsol, 1})
+# calculate the free stream conditions using the fields of params
+
+  
+  rho = sol[1] = params.rho_free
+  E = sol[4] = params.E_free
+
+  Ma = params.Ma
+
+  sol[2] = -rho*Ma*sin(params.aoa)
+  sol[3] = -rho*Ma*cos(params.aoa)
+
+  return nothing
+end
+
+
 
 @doc """
 ### EulerEquationMod.calcUnsteadyVortex
@@ -326,6 +370,33 @@ function calcOnes{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
 
   return nothing
 end  # end function calcOnes
+
+@doc """
+### EulerEquationMod.calcZeros
+
+  This function sets all the solution variables at a node to 0.0
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+
+function calcZeros{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+                  params::ParamType{2}, sol::AbstractArray{Tsol,1})
+  
+  fill!(sol, 0.0)
+
+  return nothing
+end  # end function calcZeros
 
 
 @doc """

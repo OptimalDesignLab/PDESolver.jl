@@ -182,6 +182,7 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
               node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
 
+  aoa = params.aoa # Angle of attack
   euler_flux = zeros(Tsol, length(q))
   nx = nrm[1]
   ny = nrm[2]
@@ -202,7 +203,40 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
 
   calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
   
-  val = euler_flux[2]
+  val = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
+
+  return val
+end
+
+type dDragdAlpha <: FunctionalType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::dDragdAlpha, params, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
+
+  aoa = params.aoa # Angle of attack
+  euler_flux = zeros(Tsol, length(q))
+  nx = nrm[1]
+  ny = nrm[2]
+
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac  
+  ny *= fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  
+  val = -euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
 
   return val
 end
@@ -232,12 +266,61 @@ function call{Tsol, Tres, Tmsh}(obj::lift, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
               node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
 
+  aoa = params.aoa # Angle of attack
   euler_flux = zeros(Tsol, length(q))
+  nx = nrm[1]
+  ny = nrm[2]
+
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac  
+  ny *= fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
   calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
-  val = euler_flux[3]
+  val = -euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
 
   return val
 end
+
+type dLiftdAlpha <: FunctionalType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::dLiftdAlpha, params, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
+
+  aoa = params.aoa # Angle of attack
+  euler_flux = zeros(Tsol, length(q))
+  nx = nrm[1]
+  ny = nrm[2]
+
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac  
+  ny *= fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
+  val = euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
+
+  return val
+end
+
 
 @doc """
 ### EulerEquationMod.targetCp
@@ -274,6 +357,8 @@ global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
 "drag" => drag(),
 "lift" => lift(),
 "targetCp" => targetCp(),
+"dLiftdAlpha" => dLiftdAlpha(),
+"dDragdAlpha" => dDragdAlpha(),
 )
 
 

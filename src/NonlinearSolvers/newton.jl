@@ -433,7 +433,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       flush(fstdout)
 
       if write_eigs
-        writedlm("eigs$i.dat", eigs_i)
+        writedlm("eigs_real$i.dat", real(eigs_i))
+        writedlm("eigs_imag$i.dat", imag(eigs_i))
       end
 
     end

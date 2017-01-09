@@ -527,6 +527,30 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
   return nothing
 end
 
+@doc """
+### EulerEquationMod.FreeStreamBC_dAlpha <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
+
+  This is a low level functor
+"""->
+type FreeStreamBC_dAlpha <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+  qg = params.qg
+
+  calcFreeStream_dAlpha(x, params, qg)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.allOnesBC <: BCTypes
@@ -535,7 +559,7 @@ end
   state where all the conservative variables have a value 1.0
 
   This is a low level functor
-"""
+"""->
 
 type allOnesBC <: BCType
 end
@@ -547,6 +571,32 @@ function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
 
   qg = zeros(Tsol, 4)
   calcOnes(x, params, qg)
+
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+
+  # println("bndryflux = ", bndryflux)
+  return nothing
+end # end function call
+
+@doc """
+### EulerEquationMod.allZerosBC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where all the conservative variables have a value 0.0
+
+  This is a low level functor
+"""->
+
+type allZerosBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::allZerosBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+
+  qg = zeros(Tsol, 4)
+  calcZeros(x, params, qg)
 
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
@@ -582,6 +632,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "Rho1E2U3BC" => Rho1E2U3BC(),
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),
+"FreeStreamBC_dAlpha" => FreeStreamBC_dAlpha(),
 "allOnesBC" => allOnesBC(),
 "unsteadyVortexBC" => unsteadyVortexBC(),
 "ExpBC" => ExpBC(),
