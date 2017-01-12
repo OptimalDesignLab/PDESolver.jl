@@ -466,8 +466,8 @@ function call{Tsol, Tres}(obj::StandardFlux, params::ParamType,
               uL::AbstractArray{Tsol,1}, 
               uR::AbstractArray{Tsol,1}, 
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector, 
-              F::AbstractVector{Tres})
+              nrm::AbstractArray, 
+              F::AbstractArray{Tres})
 
   calcEulerFlux_standard(params, uL, uR, aux_vars, nrm, F)
   return nothing
@@ -513,9 +513,10 @@ function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
               uL::AbstractArray{Tsol,1}, 
               uR::AbstractArray{Tsol,1}, 
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector, 
-              F::AbstractVector{Tres})
+              nrm::AbstractArray, 
+              F::AbstractArray{Tres})
 
+  # this will dispatch to either the sinlge director or multi-dimension method
   calcEulerFlux_IR(params, uL, uR, aux_vars, nrm, F)
   return nothing
 end
@@ -551,6 +552,15 @@ end
 
   This dictonary maps the names of the fluxes (ASCIIStrings) to the
   functor object itself.  All flux functors should be added to the dictionary.
+
+  All fluxes have one method that calculates the flux in a particular direction
+  at a node.  Some fluxes have an additional method that computes the flux
+  in several directions at a node in a single function call, which can be
+  more efficient.  See calcEulerFlux_standard for an example.
+
+  In general, these functors call similarly-named function in bc_solvers.jl.
+  It is recommened to look at the documentation for those functions.
+
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),

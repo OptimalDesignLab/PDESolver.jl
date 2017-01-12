@@ -60,6 +60,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
+  flux_valsD::Array{Tres, 2}  # numDofPerNode x Tdim for flux vals 3 directions
 
   sat_vals::Array{Tres, 1}  # reusable storage for SAT term
 
@@ -79,9 +80,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   nrm::Array{Tmsh, 1}  # a normal vector
   nrm2::Array{Tmsh, 1}
   nrm3::Array{Tmsh, 1}
+  nrmD::Array{Tmsh, 2}  # Tdim x Tdim array for Tdim normal vectors 
+                        # (one per column)
+  nrm_face::Array{Tmsh, 2}  # Tdim x sbpface.numnodes array for normal vectors 
+                            # of all face nodes on an element  
 
   h::Float64 # temporary: mesh size metric
-
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -164,6 +168,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     flux_vals1 = Array(Tres, Tdim + 2)
     flux_vals2 = Array(Tres, Tdim + 2)
+    flux_valsD = Array(Tres, Tdim + 2, Tdim)
 
     sat_vals = Array(Tres, Tdim + 2)
 
@@ -182,6 +187,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     nrm = zeros(Tmsh, Tdim)
     nrm2 = zeros(nrm)
     nrm3 = zeros(nrm)
+    nrmD = zeros(Tmsh, Tdim, Tdim)
+    nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
 
     h = maximum(mesh.jac)
 
@@ -258,9 +265,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
                Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
-               res_vals2, res_vals3, sat_vals, flux_vals1, 
-               flux_vals2, A0, A0inv, A1, A2, S2, A_mats, Rmat1, Rmat2, P,
-               nrm, nrm2, nrm3, h, cv, R, 
+               res_vals2, res_vals3,  flux_vals1, 
+               flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
+               A_mats, Rmat1, Rmat2, P,
+               nrm, nrm2, nrm3, nrmD, nrm_face, h, cv, R, 
                gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 

@@ -1,7 +1,7 @@
 # Startup function for 1 dof advection equation
 
 function run_advection(input_file::AbstractString)
-    
+
   if !MPI.Initialized()
     MPI.Init()
   end
@@ -10,8 +10,6 @@ function run_advection(input_file::AbstractString)
   opts = read_input(input_file)  # read input file and gets default values
   checkOptions(opts)  # physics specific options checking
   # timestepping parameters
-  delta_t = opts["delta_t"]
-  t_max = opts["t_max"]
   dim = opts["dimensions"]
   # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
   flag = opts["run_type"]
