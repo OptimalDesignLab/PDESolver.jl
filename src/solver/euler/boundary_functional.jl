@@ -122,7 +122,6 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
-        # println("element number = ", bndry_i.element-1, " face = ", bndry_i.face)
         q = sview(eqn.q_bndry, :, j, global_facenum)
         convertToConservative(eqn.params, q, q2)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)

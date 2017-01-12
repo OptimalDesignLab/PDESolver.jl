@@ -45,14 +45,13 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", 
+      "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", 
+      "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", 
+      "-ksp_gmres_restart", "30" ])
   end
+  
   # Calculate the Jacobian of the residual
-
-  # res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
-  # pert = complex(0, opts["epsilon"])
-  # NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts,
-  #                                      evalEuler, pert, res_jac)
   res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
   println("typeof res_jac = ", typeof(res_jac))
   # Re-interpolate interior q to q_bndry. This is done because the above step
@@ -132,6 +131,7 @@ function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
   jac_type = opts["jac_type"]
+  Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
   if jac_type == 4 # For now. Date: 28/11/2016
     error("jac_type = 4 not yet supported")
   end
@@ -139,12 +139,12 @@ function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   # Initialize shape of Jacobian Matrix
   if jac_type == 1
-    jac = zeros(Tres, mesh.numDof, mesh.numDof)
+    jac = zeros(Tjac, mesh.numDof, mesh.numDof)
   elseif jac_type == 2
     if typeof(mesh) <: AbstractCGMesh
-      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tres)
+      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
     else
-      jac = SparseMatrixCSC(mesh, Tres)
+      jac = SparseMatrixCSC(mesh, Tjac)
     end
   elseif jac_type == 3
     obj_size = PetscInt(mesh.numDof)

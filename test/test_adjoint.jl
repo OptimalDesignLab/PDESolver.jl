@@ -87,4 +87,46 @@ facts("--- Testing Functional Computation On a Boundary ---") do
 
 
 end  # End do
+
+facts("--- Tesing adjoint computation on the boundary for DG Meshes---") do
+
+  resize!(ARGS, 1)
+  ARGS[1] = "input_vals_airfoil.jl"
+  include("../src/solver/euler/startup.jl")
+
+  context("--- Checking dR/dq Calculation") do
+    
+    # Copy all the original values
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    orig_q_vec = deepcopy(eqn.q_vec)
+    original_res_vec = copy(eqn.res_vec)
+    
+    rand_vec = rand(length(eqn.q_vec))
+    fill!(eqn.res, 0.0)
+    fill!(eqn.res_vec, 0.0)
+    res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalEuler)
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+    res_jac, jacData = EulerEquationMod.calcResidualJacobian(mesh, sbp, eqn, opts)
+    contract_vec = res_jac*rand_vec
+
+    # Check against FD
+    copy!(eqn.q_vec, orig_q_vec)
+    for i = 1:length(q_vec)
+      eqn.q_vec[i] += 1e-6*rand_vec[i]
+    end
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    fill!(eqn.res, 0.0)
+    fill!(eqn.res_vec, 0.0)
+    res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalEuler)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    partialRpartialu = (eqn.res_vec - original_res_vec)/1e-6
+
+    for i = 1:length(partialRpartialu)
+      @fact abs(real(contract_vec[i] - partialRpartialu[i])) --> roughly(0.0, atol = 1e-6)
+      # println(f,real(contract_vec[i] - partialRpartialu[i]))
+    end
+
+  end # End Checking dR/dq
+
+end # End do
 =#

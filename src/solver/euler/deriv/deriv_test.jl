@@ -21,11 +21,10 @@ orig_val = copy(real(objective.val))
 adjoint_vec = zeros(Tsol, mesh.numDof)
 calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
-# Write VTK files
 #=
+# Write VTK files
 saveSolutionToMesh(mesh, real(adjoint_vec))
 writeVisFiles(mesh, "adjoint_field")
-=#
 
 # Initialize FFD and MeshWarping
 geom_faces = opts["BC2"]
@@ -85,7 +84,7 @@ end
 close(f)
 println("dRdAlpha error norm = ", norm(dRdAlpha_FD - dRdAlpha, 2))
 
-#=
+
 dLdx_adjoint = dJdAlpha - dot(adjoint_vec, dRdAlpha)
 
 
