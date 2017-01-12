@@ -21,7 +21,6 @@ orig_val = copy(real(objective.val))
 adjoint_vec = zeros(Tsol, mesh.numDof)
 calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
-#=
 # Write VTK files
 saveSolutionToMesh(mesh, real(adjoint_vec))
 writeVisFiles(mesh, "adjoint_field")
@@ -62,10 +61,8 @@ for i = 1:length(eqn.res_vec)
 end
 close(f)
 =#
-println("length of adjoint vector = $(length(adjoint_vec))")
-println("length of dRdAlpha = $(length(dRdAlpha))")
-
-# Verify against complex step
+#=
+# Verify against finite difference
 eqn.params.aoa = opts["aoa"]
 fill!(eqn.res, 0.0)
 fill!(eqn.res_vec, 0.0)
@@ -83,7 +80,7 @@ for i = 1:length(eqn.res_vec)
 end
 close(f)
 println("dRdAlpha error norm = ", norm(dRdAlpha_FD - dRdAlpha, 2))
-
+=#
 
 dLdx_adjoint = dJdAlpha - dot(adjoint_vec, dRdAlpha)
 
@@ -95,7 +92,7 @@ x_dv = append!([eqn.params.aoa], x_dv)
 
 # Finite difference derivative of Lagrangian wrt aoa, which is x_dv[1]
 
-pert = 1e-5 # FD perturbation
+pert = 1e-6 # FD perturbation
 eqn.params.aoa = opts["aoa"] + pert
 fill!(eqn.q, 0.0)
 fill!(eqn.q_vec, 0.0)
@@ -119,5 +116,6 @@ println("orig_val = $orig_val, new_val = $(real(objective.val)), dLdx = $dLdx")
 println("dLdx_adjoint = $dLdx_adjoint")
 
 errfd_norm = norm(dLdx - dLdx_adjoint,2)
-println("err_norm = $errfd_norm")
-=#
+println("err dLdx = $errfd_norm")
+println("dJdAlpha = $dJdAlpha, dJdAlpha_comp = $dJdAlpha_comp")
+println("dJdAlpha error = ", norm(dJdAlpha - dJdAlpha_comp,2))
