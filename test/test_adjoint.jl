@@ -94,7 +94,7 @@ facts("--- Tesing adjoint computation on the boundary for DG Meshes---") do
   ARGS[1] = "input_vals_airfoil.jl"
   include("../src/solver/euler/startup.jl")
 
-  context("--- Checking dR/dq Calculation") do
+  context("--- Checking partial dR/dq Calculation") do
     
     # Copy all the original values
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -126,7 +126,36 @@ facts("--- Tesing adjoint computation on the boundary for DG Meshes---") do
       # println(f,real(contract_vec[i] - partialRpartialu[i]))
     end
 
+    for i = 1:length(q_vec)
+      eqn.q_vec[i] = orig_q_vec[i]
+    end
+
   end # End Checking dR/dq
+  
+  context("--- Checking partial dJ/dq Calculation") do
+    
+    func_deriv_arr = zeros(eqn.q)
+    func_deriv = zeros(eqn.q_vec)
+    functional_edges = opts["geom_faces_objective"]
+    functional_name = EulerEquationMod.FunctionalDict[opts["objective_function"]]
+
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+    EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, functional_name, functional_edges,
+                          objective, func_deriv_arr)  # populate df_dq_bndry
+    assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+
+    rand_vec = rand(length(eqn.q_vec))
+    contract_val = dot(rand_vec,func_deriv)
+
+    # Check with finite difference
+    eqn.q_vec += 1e-6*rand_vec
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    dJdu_fd = (objective.val-orig_Ju)/1e-6
+
+    @fact norm(dJdu_fd - contract_val, 2) --> roughly(0.0, atol = 1e-8)
+
+  end # End dJ/dq
 
 end # End do
 =#

@@ -71,7 +71,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                       functionalData, func_deriv_arr)  # populate df_dq_bndry
 
   # Assemble func_deriv
-  assembleArray(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
 
   # Solve for adjoint vector. This depends on whether PETSc is used or not.
 

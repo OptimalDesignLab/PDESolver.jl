@@ -161,7 +161,7 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(res_arr) != pointer(res_vec)
     for i = 1:length(res_vec)
-      res_arr[i] = res_vec[i]
+      res_vec[i] = res_arr[i]
     end
   end
 
