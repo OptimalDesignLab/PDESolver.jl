@@ -32,66 +32,6 @@ include("IR_stab.jl")  # stabilization for the IR flux
                     p=4 elements, but would not be able to take advantage of 
                     the sparsity of R for SBP Gamma elements
 """
-#=                  
-function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
-                             params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
-                             iface::Interface,
-                             qL::AbstractMatrix{Tsol}, 
-                             qR::AbstractMatrix{Tsol}, 
-                             aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::Abstract3DArray{Tmsh},
-                             functor::FluxType, 
-                             resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres})
-
-  Flux_tmp = params.flux_vals1
-  numDofPerNode = length(Flux_tmp)
-  nrm = params.nrm
-  for dim = 1:Tdim  # move this inside the j loop, at least
-    fill!(nrm, 0.0)
-    nrm[dim] = 1
-
-    # loop over the nodes of "left" element that are in the stencil of interp
-    for i = 1:sbpface.stencilsize
-      p_i = sbpface.perm[i, iface.faceL]
-      qi = sview(qL, :, p_i)
-      aux_vars_i = sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
-
-      # loop over the nodes of "right" element that are in the stencil of interp
-      for j = 1:sbpface.stencilsize
-        p_j = sbpface.perm[j, iface.faceR]
-        qj = sview(qR, :, p_j)
-
-        # accumulate entry p_i, p_j of E
-        Eij = zero(Tres)  # should be Tres
-        for k = 1:sbpface.numnodes
-          # the computation of nrm_k could be moved outside i,j loops and saved
-          # in an array of size [3, sbp.numnodes]
-          nrm_k = zero(Tmsh)
-          for d = 1:Tdim
-            nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
-          end
-          kR = sbpface.nbrperm[k, iface.orient]
-          Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
-        end  # end loop k
-        
-        # compute flux and add contribution to left and right elements
-        functor(params, qi, qj, aux_vars_i, nrm, Flux_tmp)
-        for p=1:numDofPerNode
-          resL[p, p_i] -= Eij*Flux_tmp[p]
-          resR[p, p_j] += Eij*Flux_tmp[p]
-        end
-
-      end
-    end
-  end  # end loop Tdim
-
-
-  return nothing
-end
-=#
-# a (hopefully) faster version
 function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
                              sbpface::AbstractFace, 
