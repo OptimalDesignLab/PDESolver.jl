@@ -124,12 +124,12 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
  
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-  #println("dataPrep @time printed above")
+#  println("dataPrep @time printed above")
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
-    #println("volume integral @time printed above")
+#    println("volume integral @time printed above")
   end
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
@@ -166,7 +166,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-    #println("face integral @time printed above")
+#    println("face integral @time printed above")
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1

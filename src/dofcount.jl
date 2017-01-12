@@ -237,9 +237,9 @@ end
 
 
 #run_dof()
-op_type = 3
-p = 4
-numel = 14
+op_type = 5
+p = 2
+numel = 38
 findMeshSizeEl(numel, op_type, p)
 #findMeshSize(771, 4)
 

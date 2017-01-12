@@ -32,7 +32,7 @@ include("IR_stab.jl")  # stabilization for the IR flux
                     p=4 elements, but would not be able to take advantage of 
                     the sparsity of R for SBP Gamma elements
 """
-                  
+#=                  
 function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
                              sbpface::AbstractFace, 
@@ -90,6 +90,88 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   return nothing
 end
+=#
+# a (hopefully) faster version
+function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+                             params::AbstractParamType{Tdim}, 
+                             sbpface::AbstractFace, 
+                             iface::Interface,
+                             qL::AbstractMatrix{Tsol}, 
+                             qR::AbstractMatrix{Tsol}, 
+                             aux_vars::AbstractMatrix{Tres}, 
+                             dxidx_face::Abstract3DArray{Tmsh},
+                             functor::FluxType, 
+                             resL::AbstractMatrix{Tres}, 
+                             resR::AbstractMatrix{Tres})
+
+#  Flux_tmp = params.flux_vals1
+  fluxD = params.flux_valsD
+  numDofPerNode = size(fluxD, 1)
+#  numDofPerNode = length(Flux_tmp)
+#  nrm = params.nrm
+
+  # calculate the normal vector in x-y space
+  nrmD = params.nrmD
+  nrm_xy = params.nrm_face
+  fill!(nrmD, 0.0)
+#  nrm_xy = zeros(Tmsh, 3, sbpface.numnodes)
+  for dim=1:Tdim
+    nrmD[dim, dim] = 1  # calculate fluxes in x, y, z directions
+    for k=1:sbpface.numnodes
+      nrm_k = zero(Tmsh)
+      for d = 1:Tdim
+        nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
+      end
+      nrm_xy[k, dim] = nrm_k
+    end
+  end
+
+
+    # loop over the nodes of "left" element that are in the stencil of interp
+  for i = 1:sbpface.stencilsize
+    p_i = sbpface.perm[i, iface.faceL]
+    qi = sview(qL, :, p_i)
+    aux_vars_i = sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
+
+    # loop over the nodes of "right" element that are in the stencil of interp
+    for j = 1:sbpface.stencilsize
+      p_j = sbpface.perm[j, iface.faceR]
+      qj = sview(qR, :, p_j)
+
+      # compute flux and add contribution to left and right elements
+      functor(params, qi, qj, aux_vars_i, nrmD, fluxD)
+
+      @simd for dim = 1:Tdim  # move this inside the j loop, at least
+#        for d=1:Tdim
+#          nrm[d] = 0
+#        end
+#        fill!(nrm, 0.0)
+#        nrm[dim] = 1
+
+        # accumulate entry p_i, p_j of E
+        Eij = zero(Tres)  # should be Tres
+        @simd for k = 1:sbpface.numnodes
+          # the computation of nrm_k could be moved outside i,j loops and saved
+          # in an array of size [3, sbp.numnodes]
+          nrm_k = nrm_xy[k, dim]
+          kR = sbpface.nbrperm[k, iface.orient]
+          Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
+        end  # end loop k
+ 
+       
+        @simd for p=1:numDofPerNode
+          resL[p, p_i] -= Eij*fluxD[p, dim]
+          resR[p, p_j] += Eij*fluxD[p, dim]
+        end
+
+      end  # end loop dim
+    end  # end loop j
+  end  # end loop i
+
+
+  return nothing
+end
+
 
 """
   Calculate the face integral in an entropy stable manner using Lax-Friedrich
@@ -254,21 +336,25 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 #  qR_i = zeros(Tsol, numDofPerNode)
   dir = params.nrm2
   A0 = params.A0
-  fill!(A0, 0.0)
+  fastzero!(A0)
 
-  for i=1:sbpface.numnodes  # loop over face nodes
+  @simd for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i, iface.orient]
-    fill!(wL_i, 0.0)
-    fill!(wR_i, 0.0)
+    fastzero!(wL_i)
+    fastzero!(wR_i)
+#    fastzero!(qL_i)
+#    fastzero!(qR_i)
 
     # interpolate wL and wR to this node
-    for j=1:sbpface.stencilsize
+    @simd for j=1:sbpface.stencilsize
       interpL = sbpface.interp[j, i]
       interpR = sbpface.interp[j, ni]
 
-      for k=1:numDofPerNode
+      @simd for k=1:numDofPerNode
         wL_i[k] += interpL*wL[k, j]
         wR_i[k] += interpR*wR[k, j]
+#        qL_i[k] += interpL*qL[k, j]
+#        qR_i[k] += interpR*qR[k, j]
       end
     end
 
@@ -295,7 +381,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     
     # compute average qL
     # also delta w (used later)
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       qL_i[j] = 0.5*(qL_i[j] + qR_i[j])
       wL_i[j] -= wR_i[j]
     end
@@ -307,17 +393,17 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
     # wface[i] * lambda_max * A0 * delta w
     smallmatvec!(A0, wL_i, wR_i)
-    scale!(wR_i, sbpface.wface[i]*lambda_max)
+    fastscale!(wR_i, sbpface.wface[i]*lambda_max)
 
 #    middle_term = scale(A0, sbpface.wface[i]*lambda_max)
 #    println("middle_term = \n", middle_term)
 
     # interpolate back to volume nodes
-    for j=1:sbpface.stencilsize
+    @simd for j=1:sbpface.stencilsize
       j_pL = sbpface.perm[j, iface.faceL]
       j_pR = sbpface.perm[j, iface.faceR]
 
-      for p=1:numDofPerNode
+      @simd for p=1:numDofPerNode
         res_old = resL[p, j_pL]  # DEBUGGING
         resL[p, j_pL] -= sbpface.interp[j, i]*wR_i[p]
         resR[p, j_pR] += sbpface.interp[j, ni]*wR_i[p]

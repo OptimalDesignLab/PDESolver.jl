@@ -8,6 +8,10 @@
 """
 function run_solver(input_file::AbstractString)
 
+  if !MPI.Initialized()
+    MPI.Init()
+  end
+
   # load the input file in order to figure out what physics to solve
   opts = read_input(input_file)
 

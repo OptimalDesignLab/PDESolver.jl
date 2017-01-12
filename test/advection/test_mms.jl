@@ -78,7 +78,7 @@ function test_mms()
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
+    @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-11)
 
 
 
@@ -156,7 +156,7 @@ function test_mms()
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     for i=1:mesh.numDof
-      @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-12)
+      @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-11)
     end
 
     println("testing gamma")
