@@ -94,10 +94,10 @@ function edgestabilize!{T, Tres}(sbp::AbstractSBP{T}, ifaces::Array{Interface},
       smallmatvec!(sview(alpha,:,:,iL,face.elementL), 
                    sview(sbp.facenormal,:,face.faceL), dirL)
       Dn = zero(T)
-      Dn = directionaldifferentiate!(sbp, dirL, sview(u,:,face.elementL), iL)
+      Dn = directionalDifferentiateElement!(sbp, dirL, sview(u,:,face.elementL), iL)
       smallmatvec!(sview(alpha,:,:,iR,face.elementR), 
                    sview(sbp.facenormal,:,face.faceR), dirR)
-      Dn += directionaldifferentiate!(sbp, dirR, sview(u,:,face.elementR), iR)
+      Dn += directionalDifferentiateElement!(sbp, dirR, sview(u,:,face.elementR), iR)
       # get differential area element: need 1/ds for each Dn term (here and loop
       # below)to get unit normal, and then need ds for integration, so net
       # result is 1/ds
@@ -179,10 +179,10 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::AbstractSBP,
                    sview(sbp.facenormal,:,face.faceL), dirL)
 
       fill!(Dn, zero(Tres))
-      directionaldifferentiate!(sbp, dirL, sview(u,:,:,face.elementL), iL, Dn)
+      directionalDifferentiateElement!(sbp, dirL, sview(u,:,:,face.elementL), iL, Dn)
       smallmatvec!(sview(alpha,:,:,iR,face.elementR), 
                    sview(sbp.facenormal,:,face.faceR), dirR)
-      directionaldifferentiate!(sbp, dirR, sview(u,:,:,face.elementR), iR, Dn)
+      directionalDifferentiateElement!(sbp, dirR, sview(u,:,:,face.elementR), iR, Dn)
       # get differential area element: need 1/ds for each Dn term (here and loop
       # below) to get unit normals, and then need ds for integration, so net
       # result is 1/ds
@@ -292,10 +292,10 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn,
       smallmatvec!(sview(alpha,:,:,iL,face.elementL),
                    sview(sbp.facenormal,:,face.faceL), dirL)
       fill!(Dn, zero(Tres))
-      directionaldifferentiate!(sbp, dirL, uL, iL, Dn)
+      directionalDifferentiateElement!(sbp, dirL, uL, iL, Dn)
       smallmatvec!(sview(alpha,:,:,iR,face.elementR), 
                    sview(sbp.facenormal,:,face.faceR), dirR)
-      directionaldifferentiate!(sbp, dirR, uR, iR, Dn)
+      directionalDifferentiateElement!(sbp, dirR, uR, iR, Dn)
       # get differential area element: need 1/ds for each Dn term (here and loop
       # below) to get unit normals, and then need ds for integration, so net
       # result is 1/ds
@@ -403,10 +403,10 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn,
       smallmatvec!(sview(alpha,:,:,iL,face.elementL),
                    sview(sbp.facenormal,:,face.faceL), dirL)
       fill!(Dn, zero(Tres))
-      directionaldifferentiate!(sbp, dirL, uL, iL, Dn)
+      directionalDifferentiateElement!(sbp, dirL, uL, iL, Dn)
       smallmatvec!(sview(alpha,:,:,iR,face.elementR), 
                    sview(sbp.facenormal,:,face.faceR), dirR)
-      directionaldifferentiate!(sbp, dirR, uR, iR, Dn)
+      directionalDifferentiateElement!(sbp, dirR, uR, iR, Dn)
       # get differential area element: need 1/ds for each Dn term (here and loop
       # below) to get unit normals, and then need ds for integration, so net
       # result is 1/ds

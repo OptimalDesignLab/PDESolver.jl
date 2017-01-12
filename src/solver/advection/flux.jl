@@ -213,8 +213,8 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
       el_r = iface_j.elementR - start_elnum + 1
       qR = sview(qR_arr, :, :, el_r)
 
-      boundaryinterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
-      boundaryinterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
+      boundaryFaceInterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
+      boundaryFaceInterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
 
       # permute elementR
       permvec = sview(mesh.sbpface.nbrperm, :, iface_j.orient)
