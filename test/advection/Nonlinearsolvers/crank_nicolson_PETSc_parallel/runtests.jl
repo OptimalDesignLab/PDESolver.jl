@@ -21,6 +21,8 @@ function test_CN_parallel()
     slope = calc_line()
     # println("slope = ", slope)
 
+    MPI.Barrier(mesh.comm)
+
     data = readdlm("err_data.dat")
     err_vals = data[:, 2]
     #println("err_vals = ", err_vals)
