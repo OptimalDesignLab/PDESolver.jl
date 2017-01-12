@@ -80,7 +80,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   #       needs to change.
 
   if opts["jac_type"] == 1 || opts["jac_type"] == 2
-    adjoint_vec[:] = (res_jac.')\func_deriv # There is no negative sign because
+    adjoint_vec[:] = -(res_jac.')\func_deriv # There is no negative sign because
                                             # the weak residual is computed on
                                             # the right hand side
   elseif opts["jac_type"] == 3
@@ -95,6 +95,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
     println("Before NonlinearSolvers.petscSolve")
     NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts, func_deriv, adjoint_vec)
+    adjoint_vec = -adjoint_vec
   end # End how to solve for adjoint_vec
 
   outname = string("adjoint_vec.dat")

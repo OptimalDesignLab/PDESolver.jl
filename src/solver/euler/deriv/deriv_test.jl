@@ -82,7 +82,7 @@ close(f)
 println("dRdAlpha error norm = ", norm(dRdAlpha_FD - dRdAlpha, 2))
 =#
 
-dLdx_adjoint = dJdAlpha - dot(adjoint_vec, dRdAlpha)
+dLdx_adjoint = dJdAlpha + dot(adjoint_vec, dRdAlpha)
 
 
 #----- Finite Differencing -----#
