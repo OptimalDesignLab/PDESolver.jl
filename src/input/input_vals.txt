@@ -8,12 +8,16 @@ where input_file_name.jl is in your current directory.
 # TODO: a required keys section
 
 # The following keys are used for the options dictionary in the input file
+"physics" : which physics to run, ASCIIString, must match the name each
+            physics module uses to register itself with the PDESolver module
 
 "run_type"  : what type of run: 
               1 = rk4
-              4 = Newton finite difference
-              5 = Newton complex step (integer)
+              5 = steady Newton, FD or CS is specified with jac_method
               20 = Crank-Nicolson
+"jac_method" : what method to use for computing the Jacobian (finite difference,
+               or complex step, determined from "run_type", 1 finite difference
+               2 = complex step
 
 "order" : order of accuracy of elements, 1-4 will be supported eventually (integer)
 "dimensions" : specifies the dimensions of the physical problem, 2D or 3D (integer). Default = 2
@@ -29,6 +33,8 @@ where input_file_name.jl is in your current directory.
 
 "operator_type" : name of discretization operator to use for DG, currently 
                   either SBPOmega or SBPGamma , (String), default SBPOmega
+
+"use_Minv" : apply the inverse mass matrix to the residual within the physics module
 
 # time stepping options
 "real_time" : have time marching scheme advance real time instead of pseudo-time,
@@ -59,6 +65,11 @@ where input_file_name.jl is in your current directory.
 "Volume_flux_name" : name of the numerical flux function to use for the 
                      split form volume integrals, (ASCIIString), default
                      "StandardFlux"
+
+"FaceElementIntegral_name": name of integral type for "face_integral_type" == 2,
+                            (ASCIIString), default "EDissipativeFaceIntegral",
+                            note that for integrals that require a numerical flux
+                            function, "Flux_name" is used.
 # Solver options
 "use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
           default false
@@ -93,7 +104,7 @@ where input_file_name.jl is in your current directory.
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
 
-# source term specification (advection equation only)
+# source term specification
 "SRCname": the name of the source term to use, (ASCIIString), default SRC0
 
 # misc options
@@ -244,6 +255,7 @@ Note that any values associated with these options are shared with the regular
 "recalc_prec_freq" : recalculate the preconditioner matrix every this many 
                      iterations, if doing an interative solve, (Integer),
                      default 1
+"cleansheet_CN_newton" : use the Newton's method internal to CN. Only for debugging - it supports dense FD Jacs only
 
 # Newton's Method options
 "jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)
@@ -297,3 +309,13 @@ Note that any values associated with these options are shared with the regular
                        acts on the same faces as the boundary functional.
 "geom_faces_objective": Geometric faces on which an objective is being computed. Similar to
                         geom_edges_functional$i 
+
+# SimpleODE equation selection
+"simpleODE_eqn" : integer to select the equation being solved 
+                  1: u = x^2 + t^4
+                  2: u = x^2 + t^3
+                  3: u = x^2 + t^2
+                  4: u = x^2 + t
+                  5: u = t
+                  6: du/dt = u + 2t
+                  7: du/dt = u

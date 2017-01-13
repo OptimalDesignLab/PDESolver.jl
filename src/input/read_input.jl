@@ -28,18 +28,23 @@
 """->
 function read_input(fname::AbstractString)
 
+
 println("pwd = ", pwd())
 println("fname = ", fname)
+fpath = joinpath(pwd(), fname)
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
 #include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary
 
-include(joinpath(pwd(), fname))  # include file in the users pwd()
-include(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
+# this uses eval, which is evil (and not statically compilable)
+arg_dict = evalfile(fpath)  # include file in the users pwd()
+known_keys = evalfile(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 
 # record fname in dictionary
 arg_dict["fname"] = fname
 
+# new (201612) options checking function
+checkForIllegalOptions(arg_dict)
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -85,8 +90,11 @@ end
 get!(arg_dict, "volume_integral_type", 1)
 get!(arg_dict, "Volume_flux_name", "StandardFlux")
 get!(arg_dict, "face_integral_type", 1)
+get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 
 # timestepping options
+get!(arg_dict, "t_max", 0.0)
+
 if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
   arg_dict["calc_dt"] = true
 else
@@ -149,6 +157,14 @@ else
   get!(arg_dict, "parallel_data", "element")
 end
 
+#-----------------------------------------------
+# physics module options
+get!(arg_dict, "use_Minv", false)       # apply inverse mass matrix to residual calc in physics module. needed for CN
+
+if arg_dict["use_Minv"] == false && arg_dict["run_type"] == 20
+  println("INPUT: User did not specify use_Minv but selected run_type is CN. Setting use_Minv = true.")
+  arg_dict["use_Minv"] = true
+end
 
 
 # misc options
@@ -245,11 +261,6 @@ get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
-if run_type == 4
-  arg_dict["jac_method"] = 1  # finite difference
-elseif run_type == 5
-  arg_dict["jac_method"] = 2  # complex step
-end
 
 if haskey(arg_dict, "jac_method")
   if arg_dict["jac_method"] == 1
@@ -259,6 +270,8 @@ if haskey(arg_dict, "jac_method")
   end
 end
 
+# clean-sheet Newton's method (internal to CN) option - only for debugging
+get!(arg_dict, "cleansheet_CN_newton", false)
 
 get!(arg_dict, "real_time", false)
 
@@ -280,7 +293,6 @@ get!(arg_dict, "exact_soln_func", "nothing")
 get!(arg_dict, "write_timing", false)
 get!(arg_dict, "finalize_mpi", false)
 
-# write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
 # Functional computational options
@@ -419,4 +431,25 @@ function update_path(path)
   end
 
   return path
+end
+
+function checkForIllegalOptions(arg_dict)
+
+  # Ensure that jac-method is not specified 
+  if haskey(arg_dict, "jac_method")
+    if arg_dict["run_type"] == 1
+      warn("jac_method specified, but run_type is RK4.")
+    end
+  end
+
+  if haskey(arg_dict, "jac_type")
+    if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
+      if arg_dict["jac_method"] != 2
+        warn("PETSc jac_type specified, but jac_method is not 2 (complex step)")
+      end
+    end
+  end
+
+  return nothing
+
 end

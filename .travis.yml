@@ -24,7 +24,7 @@ script:
   - cd ~/.julia/v0.4/PumiInterface/src
   - source ./use_julialib.sh
   - cd ~/.julia/v0.4/PDESolver/test
-  - ./runtests.sh
+  - ./runtests_fast.sh
 #  - julia ./runtests.jl
 #  - cd ./Advection
 #  - julia ./runtests_advection.jl

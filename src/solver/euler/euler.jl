@@ -70,16 +70,16 @@ loss of efficiency by using low level functions.
 The Params type is also passed to low level function, which has all the 
 type parameters as the EulerEquation object, so it can be used for dispatch.
 """
-export evalEuler, init
 
 # Rules for paramaterization:
 # Tmsh = mesh data type
 # Tsbp = SBP operator data type
 # Tsol = equation, res_vec, q_vec data type
 
+import PDESolver.evalResidual
 
 @doc """
-### EulerEquationMod.evalEuler
+### EulerEquationMod.evalResidual
 
   This function drives the evaluation of the EulerEquations.
   It is agnostic to the dimension of the equation. and the types the arguments
@@ -106,13 +106,15 @@ export evalEuler, init
 """->
 # this function is what the timestepper calls
 # high level function
-function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts, 
-                   t=0.0)
+function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
+                     opts::Dict, t=0.0)
 
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
+#  println("entered evalResidual")
+#  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
     println(eqn.params.f, "starting data exchange")
 
@@ -122,7 +124,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
  
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  #println("dataPrep @time printed above")
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
@@ -155,7 +157,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
    evalBoundaryIntegrals(mesh, sbp, eqn)
-#   println("boundary integral @time printed above")
+   #println("boundary integral @time printed above")
   end
 
 
@@ -166,7 +168,7 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("face integral @time printed above")
+    #println("face integral @time printed above")
 #    println("after face integrals res = \n", eqn.res)
   end
 
@@ -178,8 +180,13 @@ function evalEuler(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts,
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
 #  println("source integral @time printed above")
 
+  # apply inverse mass matrix to eqn.res, necessary for CN
+  if opts["use_Minv"]
+    applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
+  end
+
   return nothing
-end  # end evalEuler
+end  # end evalResidual
 
 
 
@@ -205,7 +212,9 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   getSRCFunctors(mesh, sbp, eqn, opts)
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
+    getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
+
 
 
   return nothing
@@ -227,9 +236,23 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
     if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
       vals = real(eqn.q_vec)  # remove unneded imaginary part
+
+#      println("writing vtk, q1319-3 = ", eqn.q[:, 3, 1319])
+#      dofs = mesh.dofs[:, 3, 1319]
+#      println("writing vtk, q_vec1319-3 = ", vals[dofs])
       saveSolutionToMesh(mesh, vals)
       fname = string("solution_", itr)
       writeVisFiles(mesh, fname)
+#=
+      # DEBUGGING: write error to file
+      q_exact = zeros(eqn.q_vec)
+      ex_func = ICDict[opts["IC_name"]]
+      ex_func(mesh, sbp, eqn, opts, q_exact)
+      q_err = real(eqn.q_vec) - q_exact
+      saveSolutionToMesh(mesh, q_err)
+      fname = string("error_", itr)
+      writeVisFiles(mesh, fname)
+=#
     end
  
     # add an option on control this or something.  Large blocks of commented
@@ -447,9 +470,10 @@ function checkPressure(eqn::EulerData)
 
 for i=1:numel
   for j=1:nnodes
+    q = sview(eqn.q, :, j, i)
     aux_vars = sview(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
-    @assert( real(press) > 0.0, "element $i, node $j")
+    @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
   end
 end
 
@@ -604,8 +628,9 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
-    
-    getESFaceIntegral(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces)
+   
+    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+                           eqn.flux_func, mesh.interfaces)
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))
@@ -656,16 +681,13 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  println(eqn.params.f, "evaluating shared face integrals")
+#  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
-    println(eqn.params.f, "face integral type 1")
 
     if opts["parallel_data"] == "face"
-      println(eqn.params.f, "doing face integrals using face data")
       calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
     elseif opts["parallel_data"] == "element"
-      println(eqn.params.f, "doing face integrals using element data")
       calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
     else
       throw(ErrorException("unsupported parallel data type"))
@@ -673,8 +695,7 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   elseif face_integral_type == 2
 
-    println(eqn.params.f, "face integral type 2")
-    getESSharedFaceIntegrals_element(mesh, sbp, eqn, opts,eqn.flux_func)
+    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts, eqn.face_element_integral_func,  eqn.flux_func)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end
@@ -715,4 +736,30 @@ function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+@doc """
+### EulerEquationMod.applyMassMatrixInverse3D
+
+  This function applies the 3D inverse mass matrix to an array. 
+    The array passed in should always be eqn.res
+
+  Inputs:
+    mesh: mesh object, needed for numEl and numDofPerNode fields
+    sbp: sbp object, needed for numnodes field
+    eqn: equation object, needed for Minv3D field
+    opts
+    arr: the 3D array to have the 3D mass matrix inverse applied to it
+
+"""->
+function applyMassMatrixInverse3D(mesh, sbp, eqn, opts, arr)
+
+  for i = 1:mesh.numEl
+    for j = 1:sbp.numnodes
+      for k = 1:mesh.numDofPerNode
+        arr[k, j, i] = eqn.Minv3D[k, j, i] * arr[k, j, i]
+      end
+    end
+  end
+
+  return arr
+end
 

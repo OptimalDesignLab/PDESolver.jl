@@ -9,10 +9,6 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
-# DEBUG = false
-DEBUG = true
-
-
 @doc """
 crank_nicolson
 
@@ -58,7 +54,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
   #----------------------------------------------------------------------
-  throw(ErrorException("Crank-Nicolson is in development. Exiting."))
+#   throw(ErrorException("Crank-Nicolson is in development. Exiting."))
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -73,6 +69,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   jac_type = opts["jac_type"]
   if use_itermax
     itermax = opts["itermax"]
+  end
+
+  if jac_type == 4
+    throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
   end
 
   if myrank == 0
@@ -90,12 +90,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
-  # for the number of times eqn data is flipped btwn one or the other memory locations
-  nflips_eqn = 0
-
-  q_vec_old_DEBUG = zeros(eqn.q_vec)
-
-  println("============ In CN ============")
+  @debug1 println("============ In CN ============")
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
@@ -103,28 +98,20 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
   # TODO TODO: f should be the rhs function. this is createPetsc ctx stuff, 20161123
 
-
   for i = 2:(t_steps + 1)
 
-    println("CN: at the top of time-stepping loop, t = $t, i = $i")
-    q_vec_old_DEBUG = deepcopy(eqn.q_vec)
+    @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
+    @debug1 flush(eqn.params.f)
 
+    #----------------------------
     # zero out Jac
-    fill!(jac, 0.0)
+    #   this works for both PETSc and Julia matrices.
+    #   when jac is a Julia matrix, this is effectively wrapping: fill!(jac, 0.0)
+    PetscMatZeroEntries(jac)
 
     # TODO: Allow for some kind of stage loop: ES-Dirk
 
     # TODO: output freq
-
-    DEBUG = false
-    if DEBUG
-      q_file = "q$i.dat"
-      writedlm(q_file, eqn.q_vec)
-    end
-    if DEBUG
-      res_file = "res$i.dat"
-      writedlm(res_file, eqn.res_vec)
-    end
 
     # NOTE:
     # majorIterationCallback: called before every step of Newton's method
@@ -138,54 +125,37 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #       end
 #       break
 #     end
-#     println("mark3")
 
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
     # NOTE: eqn_nextstep changed to eqn 20161013
-#     ctx_residual = (f, eqn_nextstep, h, newton_data)
     ctx_residual = (f, eqn, h, newton_data)
 
     println(fstdout, "in CN: before call to newtonInner")
 
     t_nextstep = t + h
 
-    @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
-#     cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+    # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
+    if opts["cleansheet_CN_newton"]
+      cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+    else
+      @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+    end
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
     #   and this flips the location of eqn & eqn_nextstep every time step
-    nflips_eqn += 1
     eqn_temp = eqn
     eqn = eqn_nextstep
     eqn_nextstep = eqn_temp
 
-    # 20161116
     # Note: we now need to copy the updated q over for the initial newton guess
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] = eqn.q_vec[i]
     end
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
-    delta_q_vec_DEBUG = eqn.q_vec - q_vec_old_DEBUG
-#     println("============+++++++++ norm(q_vec): ", norm(eqn.q_vec))
-#     println("============+++++++++ norm(delta_q_vec_DEBUG): ", norm(delta_q_vec_DEBUG))
-
-#     if (nflips_eqn % 2) == 0
-#       eqn = eqn1
-#       eqn_nextstep = eqn2
-#     else
-#       eqn = eqn2
-#       eqn_nextstep = eqn1
-#     end
-
-    # Old way
-#     eqn = deepcopy(eqn_nextstep)
-#     eqn.q = reshape(eqn.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-#     eqn.res = reshape(eqn.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  
     t = t_nextstep
 
   end   # end of t step loop
@@ -201,7 +171,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
 
-  println("============= end of CN: t = $t ===============")
+  @debug1 println("============= end of CN: t = $t ===============")
   return t
 
 end   # end of crank_nicolson function
@@ -227,33 +197,61 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   physics_func = ctx[1]
   # NOTE: eqn instead of eqn_nextstep, 20161013
   eqn = ctx[2]
-#   eqn_nextstep = ctx[2]
   h = ctx[3]
   newton_data = ctx[4]
 
+  jac_type = opts["jac_type"]
+
   t_nextstep = t + h
 
-  # Orig CN: 
+  # Forming the CN Jacobian:
   #   call physicsJac with eqn_nextstep & t_nextstep
   #   then form CN_Jac = I + dt/2 * physics_Jac
 
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
-# TODO: CN dismantle 20161116 NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
 
+  # need to flush assembly cache before performing the scale operation.
+  #   These are defined for Julia matrices; they're just noops
+  PetscMatAssemblyBegin(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
 
+  #--------------------------
+  # applying dt/2 to jac
   # Jacobian is always 2D
-  scale!(jac, h*-0.5)
+  scale_factor = h*-0.5
+  # make this into a petsc_scale_factor
+  petsc_scale_factor = PetscScalar(scale_factor)
 
+  # PetscMatScale is defined for all jac types, PETSc and Julia
+  # when jac is julia array, this effectively does: scale!(jac, scale_factor)
+  PetscMatScale(jac, petsc_scale_factor)
+
+  # PetscMatAssembly___ not necessary here; PetscMatScale is provably local so it doesn't cache its stuff
+
+  #--------------------------
   # adding identity
+  ix_petsc_row = zeros(PetscInt, 1)
+  ix_petsc_col = zeros(PetscInt, 1)
+  value_to_add = zeros(PetscScalar, 1, 1)
+  value_to_add[1,1] = 1.0
+  flag = PETSc.PETSC_ADD_VALUES
+
   for i = 1:mesh.numDof
+    ix_petsc_row[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
+    ix_petsc_col[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
 
-    jac[i,i] += 1
-
+    # PETSc function: set_values1!(Jac, [2], [2], Jac[2,2] + 1)
+    # args: array, row (as an array of len 1), col (as an array of len 1), new values (as a 2D array of len 1)
+    #   set_values1! has different methods for both PETSc matrices and Julia matrices
+    #   for Julia dense & sparse arrays, set_values1! effectively does this: jac[i,i] += 1
+    #   in serial, mesh.dof_offset is set to 0 automatically
+    set_values1!(jac, ix_petsc_row, ix_petsc_col, value_to_add, flag)
   end
 
-#   println("==== in cnJac: h: $h ====")
+  # set_values1! only caches the results; need to be assembled. This happens in petscSolve in petsc_funcs.jl
+  #   (The assemble funcs are defined for Julia matrices; they're just noops)
 
-#   writedlm("jac_inside_cnJac.dat", full(jac))
+  # jac is now I + dt/2 * physics_jac
 
   return nothing
 
@@ -276,60 +274,34 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   physics_func = ctx[1]
   # NOTE: changed to eqn 20161013
-#   eqn_nextstep = ctx[2]
   eqn = ctx[2]
   h = ctx[3]
 
   t_nextstep = t + h
 
-  physics_func(mesh, sbp, eqn, opts, t)
-#   println("---- physics_func: ",physics_func)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-
-# TODO: CN dismantle 20161116 physics_func(mesh, sbp, eqn_nextstep, opts, t)
-# Orig CN: physics_func called with eqn_nextstep & t_nextstep
-# dismantled: physics_func called with eqn_nextstep & t
+  # these two flipped 20161219
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+
+  if opts["parallel_type"] == 2 && mesh.npeers > 0
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+  end
+  physics_func(mesh, sbp, eqn, opts, t)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
   for i = 1:mesh.numDof
-# #     rhs_vec[i] = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - 0.5*h*eqn.res_vec[i]
 
-# TODO: CN dismantle 20161116 rhs_vec[i] = eqn_nextstep.res_vec[i]
     temp1 = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i]
     temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
-# 
+
     rhs_vec[i] = temp1 - temp2 
 
     # NOTE: question: is there a sign problem here? should rhs_vec = -rhs_vec ?
     #     NO. this negative gets applied in newton.jl, where res_0[i] = -res_0[i]
 
-    # local dof index, node, el
-    loc_dof, node, el = ind2sub(mesh.coords, findfirst(mesh.dofs, i))
-
-    DEBUG = false
-    if DEBUG
-      # mesh.coords indices: [dimension index, node num, el num]
-      # 20161118: this threw an error in the vortex case???
-      x = mesh.coords[1, node, el]
-      y = mesh.coords[2, node, el]
-
-      println("x: $x    y: $y    t: $t    t_nextstep: $t_nextstep")
-      println("dof_ix: $i    rhs_vec[i]: ",rhs_vec[i])
-      println("dof_ix: $i    eqn.q_vec[i]: ",eqn.q_vec[i])
-      println("dof_ix: $i    eqn.res_vec[i]: ",eqn.res_vec[i])
-      println("dof_ix: $i    eqn_nextstep.q_vec[i]: ",eqn_nextstep.q_vec[i])
-      println("dof_ix: $i    eqn_nextstep.res_vec[i]: ",eqn_nextstep.res_vec[i])
-      println("-")
-    end
-
   end
-
-#   println("==== in cnRhs: h: $h ====")
-
-#   writedlm("rhs_inside_cnRhs.dat", full(rhs_vec))
 
   return nothing
 
@@ -385,6 +357,7 @@ end
 # the goal is to replace newton.jl.
 # this will go into CN in the time-stepping loop
 function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
+  println("++++++++++++++++ clean sheet Newton being run ++++++++++")
 
   println("---- physics_func: ",physics_func)
 
@@ -402,7 +375,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
   #   d res[3]/d q[1]   d res[3]/d q[2]   d res[3]/d q[3] ...
   #   ...               ...               ...
 
-  newton_itermax = 14
+  newton_itermax = 2
   delta_q_vec = zeros(eqn_nextstep.q_vec)
 
   # newton_loop starting here?
@@ -415,6 +388,8 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
     # needed b/c physics_func only updates eqn.res
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    # Comment here about mass matrix inv multiplication TODO
+    applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
     unperturbed_res_vec = copy(eqn_nextstep.res_vec)
 
     for i = 1:mesh.numDof
@@ -422,6 +397,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
       physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
       assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+      applyMassMatrixInv(mesh, eqn, eqn_nextstep.res_vec)
 
       jac[:,i] = (eqn_nextstep.res_vec - unperturbed_res_vec)/epsilon
 
@@ -440,6 +416,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     # emulates cnRhs
     #   what this is doing:
     #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
+    #=
     physics_func(mesh, sbp, eqn, opts, t)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
@@ -450,6 +427,38 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     for i = 1:mesh.numDof
       rhs_vec[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
     end
+    =#
+    physics_func(mesh, sbp, eqn, opts, t)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    applyMassMatrixInv(mesh, eqn, eqn.res_vec)
+    current_t_step_contribution = zeros(eqn.q_vec)
+    for i = 1:mesh.numDof
+      current_t_step_contribution[i] = - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
+    end
+
+    # Test for 3D Minv results
+    # this works!
+#     res_vec_control = deepcopy(eqn.res_vec)
+#     res_vec_test = deepcopy(eqn.res_vec)
+#     res_control = deepcopy(eqn.res)
+#     res_test = deepcopy(eqn.res)
+#     applyMassMatrixInv3D(mesh, sbp, eqn, res_test)
+#     assembleSolution(mesh, sbp, eqn, opts, res_test, res_vec_test)
+#     println("=+=+=+ norm of diff btwn res_vec_test & res_vec_control: ", norm(res_vec_test - res_vec_control))
+
+    physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+    assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
+    next_t_step_contribution = zeros(eqn.q_vec)
+    for i = 1:mesh.numDof
+      next_t_step_contribution[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] 
+    end
+
+    rhs_vec = zeros(eqn.q_vec)
+
+    for i = 1:mesh.numDof
+      rhs_vec[i] = current_t_step_contribution[i] + next_t_step_contribution[i]
+    end
 
     # TODO: check these args
     rhs_norm = calcNorm(eqn, rhs_vec, strongres=true)
@@ -459,11 +468,8 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     neg_rhs = scale(rhs_vec, -1.0)
 
     fill!(delta_q_vec, 0.0)
-    # TODO: do these need to be column wise? why in newton.jl is it [:]?
     delta_q_vec = jac\neg_rhs
     fill!(jac, 0.0)
-
-#     eqn_nextstep.q_vec += delta_q_vec
 
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] += delta_q_vec[i]
@@ -475,14 +481,36 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       return nothing
     end
 
-
   end   # end of newton iterations
-
 
   println("=== cnNewton did not converge ===")
   return nothing
 
 
+end
+
+# TODO: comment here
+function applyMassMatrixInv(mesh, eqn, vec)
+
+  for k = 1:mesh.numDof
+    vec[k] = eqn.Minv[k] * vec[k]
+  end
+
+  return vec
+end
+
+# TODO: comment here
+function applyMassMatrixInv3D(mesh, sbp, eqn, arr)
+
+  for i = 1:mesh.numEl
+    for j = 1:sbp.numnodes
+      for k = 1:mesh.numDofPerNode
+        arr[k, j, i] = eqn.Minv3D[k, j, i] * arr[k, j, i]
+      end
+    end
+  end
+
+  return arr
 end
 
 

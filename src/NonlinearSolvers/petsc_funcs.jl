@@ -346,6 +346,12 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   println("works till here")
   KSPSetUp(ksp)
 
+  # DEBUGGING output
+  # MPI.Barrier(MPI.COMM_WORLD)
+  # PetscView(A)
+  # PetscView(b)
+  # MPI.Barrier(MPI.COMM_WORLD)
+
   nx = PetscVecGetSize(x)
   nb = PetscVecGetSize(b)
   KSPSolve(ksp, b, x)

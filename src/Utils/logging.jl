@@ -52,7 +52,7 @@ function sharedFaceLogging{Tsol}(mesh, sbp, eqn::AbstractSolutionData{Tsol},
     end
   end
 
-  flush(params.f)
+  flush(eqn.params.f)
   return nothing
 end
 

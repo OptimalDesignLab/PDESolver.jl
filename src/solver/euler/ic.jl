@@ -1,8 +1,6 @@
 # functions that populate the initial conditions
 # List of functions:
 
-export ICDict
-
 @doc """
 ### EulerEquationMod.ICZero
 
@@ -190,27 +188,19 @@ function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
+
 numEl = mesh.numEl
 nnodes = mesh.numNodesPerElement
 dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, 4)
+sol = zeros(Tsol, mesh.numDofPerNode)
 for i=1:numEl
   for j=1:nnodes
 
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
       # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
-
-      x = coords_j[1]
-      y = coords_j[2]
 
       calcRho1Energy2U3(coords_j, eqn.params, sol)
-
-      sol[2] += 0*sin(x)  # add a perturbation
 
       for k=1:dofpernode
         u0[dofnums_j[k]] = sol[k]
@@ -627,7 +617,7 @@ function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values from a disk file
 # the file name comes from opts["ICfname"]
 
-fname = opts["ICfname"]
+fname = get_parallel_fname(opts["ICfname"], mesh.myrank)
 vals = readdlm(fname)
 
 @assert length(vals) == mesh.numDof
@@ -659,6 +649,27 @@ function ICExp{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol},
   return nothing
 end
 
+"""
+  Writes calcPeriodicMMS to the initial condition vector u0
+"""
+function ICPeriodicMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      calcPeriodicMMS(coords, eqn.params, q)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
+
+  return nothing
+end
+
+
 # declare a const dictionary here that maps strings to function (used for input arguments)
 
 global const ICDict = Dict{Any, Function}(
@@ -676,6 +687,7 @@ global const ICDict = Dict{Any, Function}(
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
 "ICFile" => ICFile,
 "ICExp" => ICExp,
+"ICPeriodicMMS" => ICPeriodicMMS,
 )
 
 

@@ -602,17 +602,32 @@ function calcEntropy{Tsol}(params::ParamType{3, :entropy},
   return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[5]
 end
 
+"""
+  This function calculates the entropy function U used to define the IR 
+  variablesat a node and returns it.   It does not return the physical entropy
+  s.  This function is agnostic to the dimension of the equation.
 
-function calcEntropyIR{Tsol}(params::ParamType{2, :conservative}, 
+  Inputs:
+    params: a ParamType
+    q: a vector of conservative variables at a node
+
+  Outputs:
+    U: the value of the entropy function
+
+  Aliasing restrictions: none.
+"""
+function calcEntropyIR{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, 
                            q::AbstractArray{Tsol,1} )
+# this calculate the entropy functiion U associated with the IR variables,
+# not the physical entropy s
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
 
   p = calcPressure(params, q)
   rho = q[1]
-  s = -rho*(log(p) - gamma*log(rho))/gamma_1
-  return s
+  U = -rho*(log(p) - gamma*log(rho))/gamma_1
+  return U
 end
 
 
@@ -1263,8 +1278,8 @@ end
 ### EulerEquationMod.calcMaxWaveSpeed
 
   This function calculates the maximum wave speed (ie. acoustic wave speed)
-  present in the domain and returns it.  Methods are available for conservative and entropy
-  variables.
+  present in the domain and returns it.  Methods are available for conservative   and entropy variables.  This function uses eqn.q_vec, not eqn.q to do the
+  calculation.
 
   This is a mid level function
 """->
@@ -1272,14 +1287,17 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
                           eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
-  q = eqn.q
+  q = eqn.q_vec
   max_speed = zero(eltype(q))
-  for i=1:4:length(q)
-    q_i = sview(q, i:(i+3))
+  for i=1:mesh.numDofPerNode:length(q)
+    q_i = sview(q, i:(i+mesh.numDofPerNode - 1))
     a = calcSpeedofSound(eqn.params, q_i)
-    ux = q_i[2]/q_i[1]
-    uy = q_i[3]/q_i[1]
-    u_norm = sqrt(ux*ux + uy*uy)
+    u_nrm = zero(Tsol)
+    for j=1:Tdim
+      u_j = q_i[j+1]/q_i[1] 
+      u_nrm += u_j*u_j
+    end
+    u_norm = sqrt(u_nrm)
     speed = a + u_norm
 
     if speed > max_speed
@@ -1292,27 +1310,30 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
 end  # end function
 
 
-function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
-                          eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts)
+function calcMaxWaveSpeed{Tsol, Tres}(mesh, sbp, 
+                          eqn::EulerData{Tsol, Tres, 2, :entropy}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
-  q = eqn.q
+  q = eqn.q_vec
   gamma = eqn.params.gamma
   gamma_1 = eqn.params.gamma_1
  
   max_speed = zero(eltype(q))
-  for i=1:4:length(q)
-    q_i = sview(q, i:(i+3))
+  for i=1:mesh.numDofPerNode:length(q)
+    q_i = sview(q, i:(i+mesh.numDofPerNode - 1))
     a = calcSpeedofSound(eqn.params, q_i)
 
-   
+    # this is dimension specific
     k1 = 0.5*(q_i[2]*q_i[2] + q_i[3]*q_i[3])/q_i[4]  # a constant from Hughes' paper
     s = gamma - q_i[1] + k1    # entropy
     rho_int = exp(-s/gamma_1)*(gamma_1/((-q_i[4])^gamma))^(1/gamma_1)
     rho = -rho_int*q_i[4]
-    ux = rho_int*q[2]/rho
-    uy = rho_int*q[3]/rho
-    u_norm = sqrt(ux*ux + uy*uy)
+    u_norm = zero(Tsol)
+    for j=1:2
+      u_j = rho_int*q[j+1]/rho
+      u_norm += u_j*u_j
+    end
+    u_norm = sqrt(u_norm)
     speed = a + u_norm
 
     if speed > max_speed

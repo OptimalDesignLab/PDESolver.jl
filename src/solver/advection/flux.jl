@@ -34,9 +34,14 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           interfaces::AbstractArray{Interface,1}, 
                           face_flux::AbstractArray{Tres, 3})
  
+  @debug1 println(eqn.params.f, "entered calcFaceFlux")
+  @debug1 flush(eqn.params.f)
+
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
     interface_i = interfaces[i]
+    @debug1 println(eqn.params.f, "i: $i  interface_i.elementL: ", interface_i.elementL, "  elementR: ", interface_i.elementR)
+    @debug1 flush(eqn.params.f)
     for j = 1:mesh.numNodesPerFace
       eL = interface_i.elementL
       fL = interface_i.faceL
@@ -48,6 +53,8 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       nrm = sview(sbp.facenormal, :, fL)
 
       face_flux[1, j, i] = -functor(qL, qR, dxidx, nrm, eqn.params)
+      @debug1 println(eqn.params.f, "  j: $j  face_flux[1, j, i]: ", face_flux[1, j, i], "  qL: $qL  qR: $qR")
+      @debug1 flush(eqn.params.f)
     end
   end
 
@@ -134,6 +141,9 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
                             opts, functor::FluxType)
 
+  @debug1 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
+  @debug1 flush(eqn.params.f)
+
   q = eqn.q
   params = eqn.params
 
@@ -178,20 +188,25 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
     bndries_remote = mesh.bndries_remote[idx]
 #    qL_arr = eqn.q_face_send[i]
     qR_arr = eqn.q_face_recv[idx]
+    @debug1 println(eqn.params.f, "=== pointer of qR_arr: ", pointer(qR_arr))
+    @debug1 flush(eqn.params.f)
     dxidx_arr = mesh.dxidx_sharedface[idx]
     flux_arr = eqn.flux_sharedface[idx]
 
     start_elnum = mesh.shared_element_offsets[idx]
 
-    @debug1 qL_face_arr_i = qL_face_arr[i]
-    @debug1 qR_face_arr_i = qR_face_arr[i]
+    @debug1 qL_face_arr_i = qL_face_arr[idx]
+    @debug1 qR_face_arr_i = qR_face_arr[idx]
 
-    flush(params.f)
+    @debug1 flush(params.f)
     for j=1:length(interfaces)
       iface_j = interfaces[j]
       bndryL_j = bndries_local[j]
       bndryR_j = bndries_remote[j]
       fL = bndryL_j.face
+
+      @debug1 println(eqn.params.f, "j: $j   iface_j.elementL: ", iface_j.elementL)
+      @debug1 flush(eqn.params.f)
 
       # interpolate to face
       qL = sview(q, :, :, iface_j.elementL)
@@ -215,11 +230,13 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
         dxidx = sview(dxidx_arr, :, :, k, j)
         nrm = sview(sbp.facenormal, :, fL)
 
-         flux_tmp = -functor(qL_k, qR_k, dxidx, nrm, 
-                                      eqn.params)
-         flux_arr[1,k,j] = flux_tmp
-       end
-     end  # end loop over interfaces
+        flux_tmp = -functor(qL_k, qR_k, dxidx, nrm, 
+                                     eqn.params)
+        flux_arr[1,k,j] = flux_tmp
+        @debug1 println(eqn.params.f, "  k: $k  flux_arr[1, k, j]: ", flux_arr[1, k, j], "  qL_k: $qL_k   qR_k: $qR_k")
+        @debug1 flush(eqn.params.f)
+      end
+    end  # end loop over interfaces
 
     # evaluate integral
     boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)
