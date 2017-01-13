@@ -14,6 +14,16 @@ input_vals.txt.
 PDESolver supplies default values for all keys for which there is a sane
 default.  Values that might be unused are initialized to -1 or "none".
 
+## Conventions
+Physics modules generally use the `majorIterationCallback` function to
+log important quantities to files.  Such logging should be controlled by
+two keys, `"write_outname" where `outname` is the name of the quantity, which
+has a boolean value, and `"write_outname_fname"` that has a string value
+containing the name of the file to write (including extension).  Examples
+out things that can be logged are entropy and kinetic energy.  Both these keys
+should have default values, and users should generally not need to modify the
+second one.
+
 ##Key Validation
 After supplying default values, PDESolver checks that all keys in the dictonary
 are recognized keys.  It does this by comparing against the list of keys

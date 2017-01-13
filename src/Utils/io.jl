@@ -28,12 +28,34 @@ end
   Outputs:
     a BufferedIO object
 """->
-function BufferedIO(f::IO= fdio(0, false))
-  fbuf = IOBuffer()
-  return BufferedIO{typeof(f)}(f, fbuf)
+function BufferedIO(f::IO=fdio(0, false))
+  buf = IOBuffer()
+  fbuf = BufferedIO{typeof(f)}(f, buf)
+
+  # register atexit hook to make sure any buffered data is flushed before
+  # julia exits
+  atexit( () -> close(f))
+  return fbuf
 end
 
 
+"""
+  Alternative constructor for BufferedIO, emulating the open() function.
+  This function creates the underlying file using open() and then creates
+  a BufferedIO around it.
+
+  Inputs:
+    fname: AbstractString, name of file to open
+    mode: file open mode, see documentation of open(), defaults to append
+
+  Outputs:
+    a BufferedIO object
+"""
+function BufferedIO(fname::AbstractString, mode::AbstractString="a")
+
+  f = open(fname, mode)
+  return BufferedIO(f)
+end
 # only provide write functionality, for now
 import Base.write, Base.flush, Base.close
 

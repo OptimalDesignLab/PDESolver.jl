@@ -392,6 +392,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
 
+  file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
+
   # inner constructor
   function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
 
@@ -529,12 +531,74 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
     end
 
-    println("Tres = ", Tres)
+    eqn.file_dict = openLoggingFiles(opts)
 
     return eqn
 
   end  # end of constructor
 
 end  # end of type declaration
+
+
+"""
+  This function opens all used for logging data.  In particular, every data
+  file that has data appended to it in majorIterationCallback should be
+  opened here.  Most files are of type BufferedIO, so they must be flushed
+  periodically.
+
+  This function requires each output to have two keys: "write_outname"
+  and "write_outname_fname", where the first has a boolean value that
+  controls whether or not to write the output, and the second is the
+  file name (including extension) to write.
+
+  This function contains a list of all possible log files.  Every new 
+  log file must be added to the list
+
+  Inputs:
+    opts: options dictionary
+
+  Outputs:
+    file_dict: dictionary mapping names of files to the file object
+               ie. opts["write_entropy_fname"] => f
+
+  Exceptions: this function will throw an exception if any two file names
+              are the same
+"""
+function openLoggingFiles(opts)
+
+  # output dictionary
+  file_dict = Dict{AbstractString, IO}()
+
+  # map output file names to the key name that specified them
+  used_names = Dict{AbstractString, AbstractString}()
+
+
+  # use the fact that the key names are formulaic
+  names = ["entropy", "integralq"]
+  for name in names
+    keyname = string("write_", name)
+    if opts[keyname]  # if this file is being written
+      fname_key = string("write_", name, "_fname")
+      fname = opts[fname_key]
+
+      if fname_key in keys(used_names)
+        other_keyname = used_names[fname]
+        throw(ErrorException("data file name $fname used for key $keyname is already used for key $other_keyname"))
+      end
+
+      used_names[fname] = keyname  # record this fname as used
+
+      f = BufferedIO(opts[fname_key], "a")  # append to files (safe default)
+
+      file_dict[fname] = f
+
+    end  # end if
+  end  # end 
+
+  return file_dict
+end
+
+
+
 
 
