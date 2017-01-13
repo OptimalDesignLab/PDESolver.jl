@@ -226,32 +226,31 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 #  println("Performing major Iteration Callback")
 
   myrank = mesh.myrank
+  output_freq = opts["output_freq"]::Int
+
 #  println("eqn.q = \n", eqn.q)
   # undo multiplication by inverse mass matrix
   res_vec_orig = eqn.M.*copy(eqn.res_vec)
   res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
-    if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
-      vals = real(eqn.q_vec)  # remove unneded imaginary part
+  if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
+    vals = real(eqn.q_vec)  # remove unneded imaginary part
 
-#      println("writing vtk, q1319-3 = ", eqn.q[:, 3, 1319])
-#      dofs = mesh.dofs[:, 3, 1319]
-#      println("writing vtk, q_vec1319-3 = ", vals[dofs])
-      saveSolutionToMesh(mesh, vals)
-      fname = string("solution_", itr)
-      writeVisFiles(mesh, fname)
+    saveSolutionToMesh(mesh, vals)
+    fname = string("solution_", itr)
+    writeVisFiles(mesh, fname)
 #=
-      # DEBUGGING: write error to file
-      q_exact = zeros(eqn.q_vec)
-      ex_func = ICDict[opts["IC_name"]]
-      ex_func(mesh, sbp, eqn, opts, q_exact)
-      q_err = real(eqn.q_vec) - q_exact
-      saveSolutionToMesh(mesh, q_err)
-      fname = string("error_", itr)
-      writeVisFiles(mesh, fname)
+    # DEBUGGING: write error to file
+    q_exact = zeros(eqn.q_vec)
+    ex_func = ICDict[opts["IC_name"]]
+    ex_func(mesh, sbp, eqn, opts, q_exact)
+    q_err = real(eqn.q_vec) - q_exact
+    saveSolutionToMesh(mesh, q_err)
+    fname = string("error_", itr)
+    writeVisFiles(mesh, fname)
 =#
-    end
- 
+  end
+
     # add an option on control this or something.  Large blocks of commented
     # out code are bad
 #=
@@ -294,35 +293,48 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     #--------------------------------------------------------------------------
   end
 =#
-  if opts["write_entropy"] && (itr % opts["write_entropy_freq"] == 0)
-    # calculate the entropy norm
-    val = calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec)
+  if opts["write_entropy"]
+    f = eqn.file_dict[opts["write_entropy_fname"]]
 
-    # compute w^T * res_vec
-    val2 = contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig)
+    if(itr % opts["write_entropy_freq"] == 0)
+      # calculate the entropy norm
+      val = calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec)
 
-    # DEBUGGING: compute the potential flux from q
-    #            directly, to verify the boundary terms are the problem
-#    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
-#    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+      # compute w^T * res_vec
+      val2 = contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig)
 
-    @mpi_master begin
-      f = open(opts["write_entropy_fname"], "a+")
-      println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
-      close(f)
+      # DEBUGGING: compute the potential flux from q
+      #            directly, to verify the boundary terms are the problem
+  #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+  #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+
+      @mpi_master begin
+  #      f = open(opts["write_entropy_fname"], "a+")
+        println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
+  #      close(f)
+      end
     end
-  end
+
+    if (itr % output_freq) == 0
+      flush(f)
+    end
+  end  # end if write_entropy
 
   if opts["write_integralq"]
     integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
-    f = open(opts["write_integralq_fname"], "a+")
+    f = eqn.file_dict[opts["write_integralq_fname"]]
+#    f = open(opts["write_integralq_fname"], "a+")
     print(f, itr, " ", eqn.params.t)
     for i=1:length(integralq_vals)
       print(f, " ", integralq_vals[i])
     end
     print(f, "\n")
-    close(f)
-  end
+#    close(f)
+
+    if (itr % output_freq) == 0
+      flush(f)
+    end
+  end  # end if write_integralq
   
   return nothing
 
