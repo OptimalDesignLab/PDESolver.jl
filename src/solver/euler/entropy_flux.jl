@@ -264,5 +264,57 @@ function calcVolumePotentialFlux{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh},
 end
 
 
+"""
+  Calculates ( 1/(2V) )*integral(rho * omega dot omega dV), where V is the
+  volume of the mesh omega is the vorticity vector, and rho is the density.
+  3D, conservative variables only.
+
+  Inputs:
+    mesh: an AbstractMesh
+    sbp: an SBP operator
+    eqn: an EulerData object
+    opts: options dictionary
+    q_arr: a 3D array of conservative variables 
+
+  Outputs:
+    val: the value of the integral (over the entire domain, not just the
+         part owned by this process)
+
+  Aliasing restrictions: see calcVorticity
+"""
+function calcEnstrophy{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,
+                                         eqn::EulerData{Tsol, Tres}, opts,
+                                         q_arr::Abstract3DArray{Tsol})
+
+  @assert mesh.dim == 3
+  Tdim = 3
+
+  val = zero(Tres)
+  vorticity = zeros(Tres, Tdim, mesh.numNodesPerElement)
+  for i=1:mesh.numEl
+    q_i = sview(q_arr, :, :, i)
+    dxidx_i = sview(mesh.dxidx, :, :, :, i)
+    jac_i = sview(mesh.jac, :, i)
+
+    calcVorticity(eqn.params, sbp, q_i, dxidx_i, jac_i, vorticity)
+
+    for j=1:mesh.numNodesPerElement
+
+      rho = q_i[1, j]
+
+      # accumulate vorticity dot vorticity
+      vorticity_mag = zero(Tres)
+      for k=1:Tdim
+        vorticity_mag += vorticity[k, j]*vorticity[k, j]
+      end
+
+      val += sbp.w[j]*rho*vorticity_mag/jac_i[j]
+    end  # end loop j
+  end  # end loop i
+
+  val = MPI.Allreduce(val, MPI.SUM, mesh.comm)
+
+  return 0.5*val/mesh.volume
+end
 
 

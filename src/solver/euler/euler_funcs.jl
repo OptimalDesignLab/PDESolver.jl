@@ -630,9 +630,91 @@ function calcEntropyIR{Tdim, Tsol}(params::ParamType{Tdim, :conservative},
   return U
 end
 
+"""
+  This function calculates the vorticity at every node of an element
+  (because vorticity requires derivatives of the velocity, it would be
+  awkward to compute it at a node level).
 
+  3D, conservative variables only
 
+  Inputs:
+    params: a ParamType
+    q: numDofPerNode x numNodesPerElement array of conservative variables at 
+       each node
+    dxidx: the 3 x 3 x numNodesPerElement  scaled  mapping jacobian at the node
+    jac: numNodesPerElement vector of the mapping jacobian determinant at
+         each node
 
+  Input/Outputs:
+    vorticity: a 3 x numNodesPerElement array  containing the vorticity in the 
+               x, y, and z directions at each node, overwritten
+
+  Aliasing restrictions: from params: dxidx_element, velocities, velocity_deriv,
+                                      velocity_deriv_xy
+"""
+function calcVorticity{Tsol, Tmsh, Tres}(params::ParamType{3, :conservative}, sbp,
+                       q::AbstractMatrix{Tsol}, dxidx::Abstract3DArray{Tmsh}, 
+                       jac::AbstractVector{Tmsh}, 
+                       vorticity::AbstractMatrix{Tres})
+
+  Tdim = 3
+  numDofPerNode = size(q, 1)
+  numNodesPerElement = size(q, 2)
+  dxidx_unscaled = params.dxidx_element
+  velocities = params.velocities
+  # velocity derivatives in parametric space
+  # first dimension: velocity component, 3rd dimension parametric direction
+  velocity_deriv = params.velocity_deriv
+  fill!(velocity_deriv, 0.0)
+  # velocity derivatives in xy space
+  # first dimension: velocity, second dimension derivative direction
+  velocity_deriv_xy = params.velocity_deriv_xy
+  fill!(velocity_deriv_xy, 0.0)
+  fill!(vorticity, 0.0)
+
+  # unscale the mapping jacobian
+  for i=1:numNodesPerElement
+    jac_i = jac[i]
+    for j=1:Tdim
+      for k=1:Tdim
+        dxidx_unscaled[k, j, i] = dxidx[k, j, i]*jac_i
+      end
+    end
+  end
+
+  # compute velocities
+  for i=1:numNodesPerElement
+    rho_i = q[1, i]
+    for j=1:Tdim
+      velocities[j, i] = q[j+1, i]/rho_i
+    end
+  end
+
+  # differentiate velocities
+  for d=1:Tdim
+    differentiateElement!(sbp, d, velocities, sview(velocity_deriv, :, :, d))
+  end
+
+  for i=1:numNodesPerElement
+    for v=1:3 # velocity component
+      for cart_dim=1:3  # cartesian direction
+        for para_dim=1:3  # parametric direction, summed
+          velocity_deriv_xy[v, cart_dim, i] += 
+              velocity_deriv[v, i, para_dim]*dxidx_unscaled[para_dim, cart_dim]
+        end
+      end
+    end
+  end
+
+  # finally, compute the vorticity
+  for i=1:numNodesPerElement
+    vorticity[1, i] = velocity_deriv_xy[3, 2, i] - velocity_deriv_xy[2, 3, i]
+    vorticity[2, i] = -velocity_deriv_xy[3, 1, i] + velocity_deriv_xy[1, 3, i]
+    vorticity[3, i] = velocity_deriv_xy[2, 1, i] - velocity_deriv_xy[1, 2, i]
+  end
+
+  return nothing
+end
 
 #------------------------------------------------------------------------------
 # function to calculate various coefficient matrices
