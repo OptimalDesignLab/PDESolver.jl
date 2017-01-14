@@ -85,6 +85,21 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   nrm_face::Array{Tmsh, 2}  # Tdim x sbpface.numnodes array for normal vectors 
                             # of all face nodes on an element  
 
+  dxidx_element::Array{Tmsh, 3}  # Tdim x Tdim x numNodesPerElement array for
+                                 # dxidx of an entire element
+  velocities::Array{Tsol, 2}  # Tdim x numNodesPerElement array of velocities
+                              # at each node of an element
+  velocity_deriv::Array{Tsol, 3}  # Tdim x numNodesPerElement x Tdim for
+                                  # derivative of velocities.  First two
+                                  # dimensions are same as velocities array,
+                                  # 3rd dimensions is direction of 
+                                  # differentiation
+  velocity_deriv_xy::Array{Tres, 3} # Tdim x Tdim x numNodesPerElement array 
+                                    # for velocity derivatives in x-y-z
+                                    # first dim is velocity direction, second
+                                    # dim is derivative direction, 3rd is node
+
+
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -190,6 +205,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     nrmD = zeros(Tmsh, Tdim, Tdim)
     nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
 
+    dxidx_element = Array(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
+    velocities = Array(Tsol, Tdim, mesh.numNodesPerElement)
+    velocity_deriv = Array(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
+    velocity_deriv_xy = Array(Tres, Tdim, Tdim, mesh.numNodesPerElement) 
+
+
     h = maximum(mesh.jac)
 
     gamma = opts[ "gamma"]
@@ -268,8 +289,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                res_vals2, res_vals3,  flux_vals1, 
                flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
                A_mats, Rmat1, Rmat2, P,
-               nrm, nrm2, nrm3, nrmD, nrm_face, h, cv, R, 
-               gamma, gamma_1, Ma, Re, aoa, 
+               nrm, nrm2, nrm3, nrmD, nrm_face, dxidx_element, velocities,
+               velocity_deriv, velocity_deriv_xy,
+               h, cv, R, gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary, 
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
@@ -598,7 +620,24 @@ function openLoggingFiles(opts)
   return file_dict
 end
 
+"""
+  This function performs all cleanup activities before the run_physics()
+  function returns.  The mesh, sbp, eqn, opts are returned by run_physics()
+  so there is not much cleanup that needs to be done, mostly closing files.
 
+  Inputs/Outputs:
+    mesh: an AbstractMesh object
+    sbp: an SBP operator
+    eqn: the EulerData object
+    opts: the options dictionary
 
+"""
+function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
 
+  for f in values(eqn.file_dict)
+    close(f)
+  end
+
+  return nothing
+end
 
