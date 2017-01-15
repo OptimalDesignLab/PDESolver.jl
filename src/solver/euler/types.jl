@@ -596,7 +596,7 @@ function openLoggingFiles(opts)
 
 
   # use the fact that the key names are formulaic
-  names = ["entropy", "integralq"]
+  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy"]
   for name in names
     keyname = string("write_", name)
     if opts[keyname]  # if this file is being written
