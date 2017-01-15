@@ -302,6 +302,7 @@ function test_3d_secondary_quantities()
   # solution 2*p - 1
   for pprime = 3:4
     p = pprime - 2
+#    p = 1
     opts["order"] = pprime
     fname = "input_vals_3d_p$p"
     make_input(opts, fname)
@@ -332,6 +333,20 @@ function test_3d_secondary_quantities()
     enstrophy_numerical = EulerEquationMod.calcEnstrophy(mesh, sbp, eqn, opts, q)
 
     @fact enstrophy_exact --> roughly(enstrophy_numerical, atol=1e-12)
+
+    q_vec = reshape(q, mesh.numDof)
+
+    if p == 1
+      ke_exact = 1992
+    elseif p== 2
+      ke_exact = 132712/15
+    end
+
+    ke_exact /= 2*mesh.volume
+
+    ke_numerical = EulerEquationMod.calcKineticEnergy(mesh, sbp, eqn, opts, q_vec)
+
+    @fact ke_exact --> roughly(ke_numerical, atol=1e-12)
   end  # end loop over p
 
 

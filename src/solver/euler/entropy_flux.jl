@@ -267,7 +267,8 @@ end
 """
   Calculates ( 1/(2V) )*integral(rho * omega dot omega dV), where V is the
   volume of the mesh omega is the vorticity vector, and rho is the density.
-  3D, conservative variables only.
+  3D, conservative variables only.  This should work for CG and DG, but
+  has only been tested for the latter
 
   Inputs:
     mesh: an AbstractMesh
@@ -316,5 +317,53 @@ function calcEnstrophy{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,
 
   return 0.5*val/mesh.volume
 end
+
+"""
+  This function calculates ( 1/(2*V) )*integral(rho * v dot v dV), where
+  V is the volume of the mesh, v is the velocity vector, and rho is the density.
+  This is the total kinetic energy normalized by the volume of the domain
+  Conservative variables only.
+
+  This function contains an MPI blocking collective operation.  It must be
+  called by all processes at the same time.
+
+  This function relies on the sequential numbering of dofs on the same node
+
+  Inputs:
+    mesh: a mesh
+    sbp: an SBP Operator
+    eqn: an EulerData object
+    opts: options dictionary
+    q_vec: the vector of conservative variables for the entire mesh
+
+  Outputs:
+    val: the value of the integral (over the entire domain, not just teh part
+         owned by this procss)
+  Aliasing restrictions: none
+"""
+function calcKineticEnergy{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, 
+                           eqn::EulerData{Tsol, Tres, Tdim}, opts, 
+                           q_vec::AbstractVector{Tsol})
+
+
+  val = zero(Tsol)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    rho_i = q_vec[i]
+
+    # compute v dot v
+    v_magnitude = zero(Tsol)
+    for j=1:Tdim
+      v_j = q_vec[i+j]/rho_i
+      v_magnitude += v_j*v_j
+    end
+
+    val += eqn.M[i]*rho_i*v_magnitude
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, mesh.comm)
+
+  return 0.5*val/mesh.volume
+end
+
 
 
