@@ -232,6 +232,8 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec, using an assignment reduction
+# the length of res_vec is mesh.numDof/mesh.numDofPerNode, only the last
+# dof on the node is placed into res_vec
 
 #  println("in assembleSolution")
 
