@@ -389,9 +389,6 @@ function calcKineticEnergydt{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh},
 
   val = zero(Tres)
   for i=1:mesh.numDofPerNode:mesh.numDof
-    dofnum = findfirst(mesh.dofs, i)
-    dof, node, el = ind2sub(size(mesh.dofs), dofnum)
-
     rho_i = q_vec[i]
     drhodt = res_vec[i]  # time derivative of rho
     # accumulate v dot rho*dv/dt
