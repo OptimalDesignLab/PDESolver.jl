@@ -327,6 +327,7 @@ function test_3d_secondary_quantities()
       end
     end
 
+    # ----- test enstrophy ------
     enstrophy_exact = (24*3^p - (24*p^2)/(2*p - 1) - 12*3^(2*p) + (8*3^(2*p)*p^2)/(2*p - 1) - 12)/(2*mesh.volume)
 
 
@@ -334,6 +335,7 @@ function test_3d_secondary_quantities()
 
     @fact enstrophy_exact --> roughly(enstrophy_numerical, atol=1e-12)
 
+    #----- test Kinetic Energy -----
     q_vec = reshape(q, mesh.numDof)
 
     if p == 1
@@ -347,6 +349,61 @@ function test_3d_secondary_quantities()
     ke_numerical = EulerEquationMod.calcKineticEnergy(mesh, sbp, eqn, opts, q_vec)
 
     @fact ke_exact --> roughly(ke_numerical, atol=1e-12)
+
+
+    # ----- test kinetic energy dissipation rate ------
+    t = 0.5
+    ufunc = (x, y, z) -> 2*x^p + y^p + z^p + 1 + t^p
+    vfunc = (x, y, z) -> x^p + 2*y^p + z^p + 1 + t^p
+    wfunc = (x, y, z) -> x^p + y^p + 2*z^p + 1 + t^p
+    rhofunc = (x, y, z) -> t^p
+
+    dudt = (x, y, z) -> p*t^(p-1)
+    dvdt = (x, y, z) -> p*t^(p-1)
+    dwdt = (x, y, z) -> p*t^(p-1)
+    drhodt = (x, y, z) -> p*t^(p-1)
+
+    q = eqn.q
+    res = zeros(q)
+    for el = 1:mesh.numEl
+      for i=1:mesh.numNodesPerElement
+        x = mesh.coords[1, i, el]
+        y = mesh.coords[2, i, el]
+        z = mesh.coords[3, i, el]
+
+        rho = rhofunc(x, y, z)
+        q[1, i, el] = rho
+        q[2, i, el] = rho*ufunc(x, y, z)
+        q[3, i, el] = rho*vfunc(x, y, z)
+        q[4, i, el] = rho*wfunc(x, y, z)
+        q[5, i, el] = 10
+
+        res[1, i, el] = drhodt(x, y, z)
+        res[2, i, el] = rhofunc(x,  y, z)*dudt(x, y, z) + ufunc(x, y, z)*drhodt(x, y, z)
+        res[3, i, el] = rhofunc(x,  y, z)*dvdt(x, y, z) + vfunc(x, y, z)*drhodt(x, y, z)
+
+        res[4, i, el] = rhofunc(x,  y, z)*dwdt(x, y, z) + wfunc(x, y, z)*drhodt(x, y, z)
+
+        res[5, i, el] = 0
+
+      end
+    end
+
+    q_vec = reshape(q, mesh.numDof)
+    res_vec = reshape(res, mesh.numDof)
+
+    if p == 1
+      dkedt_exact = 24*t + 216
+    else
+      dkedt_exact = 16*t*(3*t^2 + 55)
+    end
+    dkedt_exact *= rhofunc(1, 1, 1)/mesh.volume
+
+    dkedt_numerical = EulerEquationMod.calcKineticEnergydt(mesh, sbp, eqn, opts, q_vec, res_vec)
+
+    @fact dkedt_exact --> roughly(dkedt_numerical, atol=1e-12)
+
+
   end  # end loop over p
 
 

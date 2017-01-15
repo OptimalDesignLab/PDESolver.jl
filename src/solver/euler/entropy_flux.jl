@@ -339,6 +339,7 @@ end
   Outputs:
     val: the value of the integral (over the entire domain, not just teh part
          owned by this procss)
+
   Aliasing restrictions: none
 """
 function calcKineticEnergy{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, 
@@ -365,5 +366,49 @@ function calcKineticEnergy{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp
   return 0.5*val/mesh.volume
 end
 
+
+"""
+  This function calclates the time derivative of calcKineticEnergy.
+
+  The idea is to expand the left hand side of d rho*u/dt = res using the 
+  product rule and solve for du/dt, then use it to compute the integral.
+  Inputs:
+    mesh: a mesh
+    sbp: a SBP operator
+    eqn: an EulerData
+    opts: options dictionary
+    q_vec: vector of conservative variables for the entire mesh
+    res_vec: residual vector (dq/dt) of entire mesh
+
+  Aliasing restrictions: none
+"""
+function calcKineticEnergydt{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh},
+                              sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, 
+                              q_vec::AbstractVector{Tsol}, 
+                              res_vec::AbstractVector{Tres})
+
+  val = zero(Tres)
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    dofnum = findfirst(mesh.dofs, i)
+    dof, node, el = ind2sub(size(mesh.dofs), dofnum)
+
+    rho_i = q_vec[i]
+    drhodt = res_vec[i]  # time derivative of rho
+    # accumulate v dot rho*dv/dt
+    term_i = zero(Tres)
+    for j=1:Tdim
+      v_j = q_vec[i + j]/rho_i
+      rho_dvdt = res_vec[i + j] - drhodt*v_j
+
+      term_i += v_j*rho_dvdt
+    end
+
+    val += eqn.M[i]*term_i
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, mesh.comm)
+
+  return val/mesh.volume
+end
 
 
