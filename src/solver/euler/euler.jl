@@ -335,7 +335,47 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       flush(f)
     end
   end  # end if write_integralq
-  
+
+  if opts["write_enstrophy"]
+    f = eqn.file_dict[opts["write_enstrophy_fname"]]
+
+    if (itr % opts["write_enstrophy_freq"]) == 0
+      enstrophy = calcEnstrophy(mesh, sbp, eqn, opts, eqn.q)
+      println(f, itr, " ", eqn.params.t, " ", enstrophy)
+    end
+
+    if (itr % opts["output_freq"]) == 0
+      flush(f)
+    end
+  end
+
+  if opts["write_kinetic_energy"]
+    f = eqn.file_dict[opts["write_kinetic_energy_fname"]]
+
+    if (itr % opts["write_kinetic_energy_freq"]) == 0
+      kinetic_energy = calcKineticEnergy(mesh, sbp, eqn, opts, eqn.q_vec)
+      println(f, itr, " ", eqn.params.t, " ", kinetic_energy)
+    end
+
+    if (itr % opts["output_freq"]) == 0
+      flush(f)
+    end
+  end
+ 
+  if opts["write_kinetic_energydt"]
+    f = eqn.file_dict[opts["write_kinetic_energydt_fname"]]
+
+    if (itr % opts["write_kinetic_energydt_freq"]) == 0
+      kinetic_energydt = calcKineticEnergydt(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
+      println(f, itr, " ", eqn.params.t, " ", kinetic_energydt)
+    end
+
+    if (itr % opts["output_freq"]) == 0
+      flush(f)
+    end
+  end
+ 
+
   return nothing
 
 end
