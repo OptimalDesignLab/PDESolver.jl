@@ -39,7 +39,7 @@ include("test_mms.jl")
 include("test_jac.jl")
 include("test_GLS2.jl")
 include("test_dg.jl")
-include("test_functional_integrate.jl")
+include("test_adjoint.jl")
 include("test_parallel.jl")
 include( "./energy/runtests.jl")
 

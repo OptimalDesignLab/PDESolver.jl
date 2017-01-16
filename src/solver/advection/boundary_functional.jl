@@ -46,12 +46,13 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     MPI.Barrier(eqn.comm)
     if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
       if opts["functional_error"]
-        println("\nNumerical functional value on geometric edges $functional_edges = $functional_val")
+        println("\nNumerical functional value on geometric edges 
+            $functional_edges = $(functionalData.val)")
         
         analytical_functional_val = opts["analytical_functional_val"]
         println("analytical_functional_val = $analytical_functional_val")
 
-        absolute_functional_error = norm((functional_val - 
+        absolute_functional_error = norm((functionalData.val - 
                                          analytical_functional_val), 2)
         relative_functional_error = absolute_functional_error/
                                     norm(analytical_functional_val, 2)
@@ -59,8 +60,9 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
         mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
         
         # write functional error to file
-        outname = string(opts["functional_error_outfname"], j, ".dat")
-        println("printed relative functional error = $relative_functional_error to file $outname\n") 
+        outname = string(opts["functional_error_outfname"], functional_number, ".dat")
+        println("printed relative functional error = $relative_functional_error
+            to file $outname\n") 
         f = open(outname, "w")
         println(f, relative_functional_error, " ", mesh_metric)
         close(f)

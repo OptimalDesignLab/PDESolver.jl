@@ -15,6 +15,7 @@ if !tag_defs
   global const TAG_CONVERGENCE = "tag_convergence"
   global const TAG_MMS = "tag_mms"
   global const TAG_FRONTEND = "tag_frontend"
+  global const TAG_ADJOINT = "tag_adjoint"
 
   # euler
   global const TAG_ENTROPYVARS = "tag_entropyvars"
