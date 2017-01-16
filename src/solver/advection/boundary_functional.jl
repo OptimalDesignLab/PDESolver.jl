@@ -2,7 +2,7 @@
 export evalFunctional, calcBndryfunctional, getFunctionalName
 
 @doc """
-### EulerEquationMod.evalFunctional
+### AdvectionEquationMod.evalFunctional
 
 Hight level function that evaluates all the functionals specified over 
 various edges 

@@ -198,7 +198,7 @@ function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
   # Now function call for calculating Jacobian
-  ctx_residual = (evalAdvection,)
+  ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, jac, ctx_residual)
 
   return jac, jacData
