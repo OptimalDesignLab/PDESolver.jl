@@ -33,7 +33,7 @@
     * Ma  : free stream Mach number
     * Re  : free stream Reynolds number
     * aoa : angle of attack (radians)
- 
+
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   f::IOStream
@@ -56,7 +56,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   res_vals1::Array{Tres, 1}  # reusable residual type storage
   res_vals2::Array{Tres, 1}  # reusable residual type storage
-  res_vals3::Array{Tres, 1}  
+  res_vals3::Array{Tres, 1}
 
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
@@ -89,7 +89,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   Ma::Float64  # free stream Mach number
   Re::Float64  # free stream Reynolds number
-  aoa::Float64  # angle of attack
+  aoa::Tsol  # angle of attack
   rho_free::Float64  # free stream density
   E_free::Float64 # free stream energy (4th conservative variable)
 
@@ -140,7 +140,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
-    
+
     t = 0.0
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
@@ -152,7 +152,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     v_vals = Array(Tsol, Tdim + 2)
     v_vals2 = Array(Tsol, Tdim + 2)
     Lambda = Array(Tsol, Tdim + 2)
- 
+
     w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
     w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
 
@@ -249,16 +249,16 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
-               res_vals2, res_vals3, sat_vals, flux_vals1, 
+               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1,
+               res_vals2, res_vals3, sat_vals, flux_vals1,
                flux_vals2, A0, A0inv, A1, A2, S2, A_mats, Rmat1, Rmat2, P,
-               nrm, nrm2, nrm3, h, cv, R, 
-               gamma, gamma_1, Ma, Re, aoa, 
+               nrm, nrm2, nrm3, h, cv, R,
+               gamma, gamma_1, Ma, Re, aoa,
                rho_free, E_free,
-               edgestab_gamma, writeflux, writeboundary, 
-               writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
-               use_dissipation, dissipation_const, tau_type, vortex_x0, 
-               vortex_strength, 
+               edgestab_gamma, writeflux, writeboundary,
+               writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
+               use_dissipation, dissipation_const, tau_type, vortex_x0,
+               vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
                time)
@@ -276,7 +276,7 @@ end  # end type declaration
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
   It is also paremterized by var_type, which should be a symbol describing
-  the set of variables stored in eqn.q.  Currently supported values are 
+  the set of variables stored in eqn.q.  Currently supported values are
   :conservative and :entropy, which indicate the conservative variables and
   the entropy variables described in 'A New Finite Element Formulation for
   Computational Fluid Dynamics: Part I' by Hughes et al.
@@ -285,19 +285,19 @@ end  # end type declaration
   specifically a 3D one.
 
   Static Parameters:
-    Tsol : datatype of variables solution variables, ie. the 
+    Tsol : datatype of variables solution variables, ie. the
            q vector and array
     Tres : datatype of residual. ie. eltype(res_vec)
     Tdim : dimensionality of equation, integer, (2 or 3, currently only 2 is
            supported).
     Tmsh : datatype of mesh related quantities
-    var_type : symbol describing variables used in weak form, (:conservative 
+    var_type : symbol describing variables used in weak form, (:conservative
                or :entropy)
 
 
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}  
-# hold any constants needed for euler equation, as well as solution and data 
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
+# hold any constants needed for euler equation, as well as solution and data
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
 # Only the constants are initilized here, the arrays are not.
@@ -318,16 +318,16 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
-  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
+  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
   q_vec::Array{Tres,1}            # initial condition in vector form
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
-  aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
+  aux_vars::Array{Tres, 3}        # storage for auxiliary variables
   aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
                                   # to interior faces
   aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
                                        # to shared faces
-  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
+  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated
                                   # to the boundaries
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
@@ -351,7 +351,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # artificial dissipation operator:
   #   a square numnodes x numnodes matrix for every element
-  dissipation_mat::Array{Tmsh, 3}  
+  dissipation_mat::Array{Tmsh, 3}
 
   Minv3D::Array{Float64, 3}       # inverse mass matrix for application to res, not res_vec
   Minv::Array{Float64, 1}         # inverse mass matrix
@@ -362,7 +362,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
-                                  # is the coefficient matrix of the time 
+                                  # is the coefficient matrix of the time
 				  # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
@@ -425,8 +425,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     else
       eqn.dissipation_mat = Array(Tmsh, 0, 0, 0)
     end
-    
-    # Must initialize them because some datatypes (BigFloat) 
+
+    # Must initialize them because some datatypes (BigFloat)
     #   don't automatically initialize them
     # Taking a sview(A,...) of undefined values is illegal
     # I think its a bug that Array(Float64, ...) initializes values
@@ -437,12 +437,12 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                     mesh.numEl)
     eqn.Aeta = zeros(eqn.Axi)
     eqn.aux_vars = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, 
+    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes,
                                 mesh.numEl, Tdim)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
     if opts["use_edge_res"]
-      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, 
+      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl,
                            mesh.numTypePerElement[2])
     else
       eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
@@ -470,7 +470,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
-    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
+    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes,
                           mesh.numBoundaryFaces)
 
     # send and receive buffers
@@ -493,19 +493,19 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
         throw(ErrorException("Unsupported parallel type requested: $ptype"))
       end
       for i=1:mesh.npeers
-        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
+        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2,
                                          dim3_send[i])
         eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
                                         dim3_recv[i])
-        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes, 
+        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes,
                                        mesh.peer_face_counts[i])
-        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode, 
+        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end
     end
-   
+
     if eqn.params.use_edgestab
-      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
+      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
       calcEdgeStabAlpha(mesh, sbp, eqn)
     else
       eqn.stabscale = Array(Tres, 0, 0)
@@ -519,5 +519,3 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   end  # end of constructor
 
 end  # end of type declaration
-
-

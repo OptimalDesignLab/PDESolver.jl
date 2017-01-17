@@ -15,6 +15,7 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 using Input  # input file processing
+using PETSc
 
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation

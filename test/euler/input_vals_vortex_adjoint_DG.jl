@@ -20,6 +20,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "BC3_name" => "isentropicVortexBC",
 "BC4" => [3],
 "BC4_name" => "isentropicVortexBC",
+"aoa" => 0.0,
 "smb_name" => "SRCMESHES/gvortex1.smb",
 "dmg_name" => ".null",
 "use_DG" => true,
