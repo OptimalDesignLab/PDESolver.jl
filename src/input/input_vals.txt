@@ -299,6 +299,7 @@ Note that any values associated with these options are shared with the regular
 "write_timing" : write the mesh initialization and compute times to the file
                  timing.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
+"revolve"      : whether or not to use revolve adjoint checkpointing, default false
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved 

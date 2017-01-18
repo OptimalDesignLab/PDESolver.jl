@@ -58,17 +58,11 @@ rk4
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
    should be eqn.q_vec and eqn.res_vec.
 """->
-# function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-#              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-#              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-#              res_tol = -1.0, real_time=false)
 function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
 # TODO cleanup
-# TODO t_start as arg
-# TODO t_finish as arg
 # TODO revolve structure
 # TODO revolve if-else
 
@@ -116,6 +110,10 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
   #-----------------------------------------------------
   ### Main timestepping loop ###
   # beginning of RK4 time stepping loop
+
+  # TODO
+  if opts["revolve"] == false
+
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
 #     q_vec_old_DEBUG = deepcopy(q_vec)
@@ -264,6 +262,30 @@ end
 
 @doc """
 ### NonlinearSolvers.rk4
+
+  This method of rk4 is the 'original' rk4, before revolve/adjoint implementation. 
+  It passes in only t_max, and sets t_start to equal 0. This preserves readability 
+  and reverse compatibility with non-revolve/adjoint rk4 calls.
+"""->
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+             q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+             post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+             res_tol = -1.0, real_time=false)
+             
+  t_start = 0.0
+  t_end = t_max
+  rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
+      q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+      post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+      res_tol = -1.0, real_time=false)
+
+
+end
+
+
+@doc """
+### NonlinearSolvers.rk4
+
 
   This is the original (non-general) interface for rk4.
 
