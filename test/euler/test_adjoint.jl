@@ -180,11 +180,6 @@ function test_adjoint()
       EulerEquationMod.init(mesh, sbp, eqn, opts, pmesh)
       call_nlsolver(mesh, sbp, eqn, opts, pmesh)
 
-      #=
-      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
-      =#
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
       dLdx = (real(lift.val) - orig_Ju)/pert
 
