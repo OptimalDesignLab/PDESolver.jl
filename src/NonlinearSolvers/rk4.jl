@@ -58,12 +58,19 @@ rk4
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
    should be eqn.q_vec and eqn.res_vec.
 """->
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+# function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+#              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+#              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+#              res_tol = -1.0, real_time=false)
+function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
-#function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
-#function rk4(f, h, x_new, x_ic, t_max, extra_args)
+# TODO cleanup
+# TODO t_start as arg
+# TODO t_finish as arg
+# TODO revolve structure
+# TODO revolve if-else
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
