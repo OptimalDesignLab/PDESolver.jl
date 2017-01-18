@@ -1,7 +1,46 @@
 # Startup function for 1 dof advection equation
+"""
+  This function invokes the solver for the advection equation, using the
+  specified input file
 
+  Inputs:
+    input_file: a string containing the path to an input file, or just a file
+                name.  If it is just a file name, it is taken to be in the
+                users pwd.
+
+  Outputs:
+    mesh: an AbstractMesh object
+    sbp: the SBP operator used in solving the equation
+    eqn: the AbstractSolutionData object used to solve the equation
+    opts: the options dictonary
+
+"""
 function run_advection(input_file::AbstractString)
-    
+
+  mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
+  solve_advection(mesh, sbp, eqn, opts, pmesh)
+
+  return mesh, sbp, eqn, opts
+end
+
+
+"""
+  This function creates and initializes the mesh, sbp, eqn, and opts objects
+
+  Inputs:
+    file_name: input file name
+
+  Outputs:
+    mesh: an AbstractMesh.  The concrete type is determined by the options
+          dictionary
+    sbp: an AbstractSBP.  The concrete type is determined by the options
+         dictionary
+    eqn: an EulerData object
+    opts: the options dictionary
+    pmesh: mesh used for preconditioning, can be same object as mesh
+"""
+function createObjects(input_file::AbstractString)
+
   if !MPI.Initialized()
     MPI.Init()
   end
@@ -10,11 +49,8 @@ function run_advection(input_file::AbstractString)
   opts = read_input(input_file)  # read input file and gets default values
   checkOptions(opts)  # physics specific options checking
   # timestepping parameters
-  delta_t = opts["delta_t"]
-  t_max = opts["t_max"]
   dim = opts["dimensions"]
   # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
-  flag = opts["run_type"]
 
   dofpernode = 1
 
@@ -32,17 +68,49 @@ function run_advection(input_file::AbstractString)
     end
   end
 
-  myrank = mesh.myrank
-
   # Create advection equation object
   Tdim = dim
   eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
-  q_vec = eqn.q_vec
-
-
   # Initialize the advection equation
   init(mesh, sbp, eqn, opts)
+
+  return mesh, sbp, eqn, opts, pmesh
+end
+
+
+"""
+  Given fully initialized mesh, sbp, eqn, opts, this function solves
+  the advection equations.  The 4 object should be obtained from 
+  createObjects().
+  
+
+  Specifically, it applies an initial condition and invokes a nonlinear
+  solver according to the options dictionary.
+
+  Inputs:
+    mesh: an AbstractMesh
+    sbp: an AbstractSBP
+    eqn: an AdvectionData
+    opts: the options dictionary.  This must be the options dictionary returned
+          by createObjects().  Changing values in the options dictionary after
+          calling createObjects() results in undefined behavior.
+    pmesh: mesh used for preconditioning, can be same object as mesh.
+           default value of mesh
+
+"""
+function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmesh=mesh)
+
+  myrank = mesh.myrank
+  delta_t = opts["delta_t"]
+  t_max = opts["t_max"]
+  flag = opts["run_type"]
+
+  fill!(eqn.res, 0.0)
+  fill!(eqn.res_vec, 0.0)
+
+  q_vec = eqn.q_vec
+
 
   # Populate with initial conditions
   println("\nEvaluating initial condition")

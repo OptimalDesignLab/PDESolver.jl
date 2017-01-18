@@ -1,7 +1,46 @@
 # startup file for simple ODE test problem:
 #   q = t^2 + x^2
 
+"""
+  This function invokes the solver for the simpleODE equation, using the
+  specified input file
+
+  Inputs:
+    input_file: a string containing the path to an input file, or just a file
+                name.  If it is just a file name, it is taken to be in the
+                users pwd.
+
+  Outputs:
+    mesh: an AbstractMesh object
+    sbp: the SBP operator used in solving the equation
+    eqn: the AbstractSolutionData object used to solve the equation
+    opts: the options dictonary
+
+"""
 function run_simpleode(input_file::AbstractString)
+
+  mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
+  solve_simpleODE(mesh, sbp, eqn, opts, pmesh)
+
+  return mesh, sbp, eqn, opts
+end
+
+"""
+  This function creates and initializes the mesh, sbp, eqn, and opts objects
+
+  Inputs:
+    file_name: input file name
+
+  Outputs:
+    mesh: an AbstractMesh.  The concrete type is determined by the options
+          dictionary
+    sbp: an AbstractSBP.  The concrete type is determined by the options
+         dictionary
+    eqn: an EulerData object
+    opts: the options dictionary
+    pmesh: mesh used for preconditioning, can be same object as mesh
+"""
+function createObjects(input_file::AbstractString)
 
   if !MPI.Initialized()
     MPI.Init()
@@ -9,13 +48,7 @@ function run_simpleode(input_file::AbstractString)
 
   opts = read_input(input_file)
 
-  # timestepping parameters
-  delta_t = opts["delta_t"]
-  t_max = opts["t_max"]
   dim = opts["dimensions"]
-  # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
-  flag = opts["run_type"]
-
   dofpernode = 1
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
@@ -29,7 +62,6 @@ function run_simpleode(input_file::AbstractString)
     end
   end
 
-  myrank = mesh.myrank
 
   println("\ntypeof(mesh) = ", typeof(mesh))
   println("is subtype of DG mesh = ", typeof(mesh) <: AbstractDGMesh)
@@ -39,10 +71,47 @@ function run_simpleode(input_file::AbstractString)
   Tdim = dim
   eqn = SimpleODEData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
-  q_vec = eqn.q_vec
 
   init(mesh, sbp, eqn, opts)
 
+  return mesh, sbp, eqn, opts, pmesh
+end
+
+
+"""
+  Given fully initialized mesh, sbp, eqn, opts, this function solves
+  the simpleODE equation.  The 4 object should be obtained from 
+  createObjects().
+  
+
+  Specifically, it applies an initial condition and invokes a nonlinear
+  solver according to the options dictionary.
+
+  Inputs:
+    mesh: an AbstractMesh
+    sbp: an AbstractSBP
+    eqn: an AdvectionData
+    opts: the options dictionary.  This must be the options dictionary returned
+          by createObjects().  Changing values in the options dictionary after
+          calling createObjects() results in undefined behavior.
+    pmesh: mesh used for preconditioning, can be same object as mesh.
+           default value of mesh
+
+"""
+function solve_simpleODE(mesh::AbstractMesh, sbp, eqn::SimpleODEData, opts, pmesh=mesh)
+
+  # timestepping parameters
+  delta_t = opts["delta_t"]
+  t_max = opts["t_max"]
+  # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
+  flag = opts["run_type"]
+
+  myrank = mesh.myrank
+
+  fill!(eqn.res, 0.0)
+  fill!(eqn.res_vec, 0.0)
+
+  q_vec = eqn.q_vec
   # Apply IC's
   println("\nEvaluating initial condition")
   ICfunc_name = opts["IC_name"]

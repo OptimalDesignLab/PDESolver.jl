@@ -18,6 +18,30 @@
 """
 function run_euler(input_file::AbstractString)
 
+  mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
+  solve_euler(mesh, sbp, eqn, opts, pmesh)
+  
+  return mesh, sbp, eqn, opts
+end
+
+
+"""
+  This function creates and initializes the mesh, sbp, eqn, and opts objects
+
+  Inputs:
+    file_name: input file name
+
+  Outputs:
+    mesh: an AbstractMesh.  The concrete type is determined by the options
+          dictionary
+    sbp: an AbstractSBP.  The concrete type is determined by the options
+         dictionary
+    eqn: an EulerData object
+    opts: the options dictionary
+    pmesh: mesh used for preconditioning, can be same object as mesh
+"""
+function createObjects(input_file::AbstractString)
+  
   if !MPI.Initialized()
     MPI.Init()
   end
@@ -26,18 +50,11 @@ function run_euler(input_file::AbstractString)
   checkOptions(opts)  # physics specific options checking
   #opts = read_input("input_vals_channel2.jl")
 
-  # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
-  t_max = opts["t_max"]
-  flag = opts["run_type"]
-
-  # timestepping parameters
-  order = opts["order"]       # order of accuracy
   Tdim = opts["dimensions"]
   dofpernode = Tdim + 2
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
-  myrank = mesh.myrank
   # TODO: input argument for dofpernode
 
   # create euler equation
@@ -48,9 +65,45 @@ function run_euler(input_file::AbstractString)
   # depend on the physics module
   init(mesh, sbp, eqn, opts, pmesh)
 
+  return mesh, sbp, eqn, opts, pmesh
+end
+
+"""
+  Given fully initialized mesh, sbp, eqn, opts, this function solves
+  the Euler equations.  The 4 object should be obtained from createObjects().
+  
+
+  Specifically, it applies an initial condition and invokes a nonlinear
+  solver according to the options dictionary.
+
+  Inputs:
+    mesh: an AbstractMesh
+    sbp: an AbstractSBP
+    eqn: an AbstractEulerData
+    opts: the options dictionary.  This must be the options dictionary returned
+          by createObjects().  Changing values in the options dictionary after
+          calling createObjects() results in undefined behavior.
+    pmesh: mesh used for preconditioning, can be same object as mesh.
+           default value of mesh
+
+"""
+function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
+  myrank = mesh.myrank
+  # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
+  t_max = opts["t_max"]
+  flag = opts["run_type"]
+  var_type = opts["variable_type"]
 
+  # timestepping parameters
+  order = opts["order"]       # order of accuracy
+
+
+  # zero some arrays out in case the user forgot
+
+  fill!(eqn.res, 0.0)
+  fill!(eqn.res_vec, 0.0)
   res_vec = eqn.res_vec 
   q_vec = eqn.q_vec       # solution at current timestep
 
