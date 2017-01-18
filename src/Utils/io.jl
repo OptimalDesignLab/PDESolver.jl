@@ -34,7 +34,7 @@ function BufferedIO(f::IO=fdio(0, false))
 
   # register atexit hook to make sure any buffered data is flushed before
   # julia exits
-  atexit( () -> close(f))
+  atexit( () -> close(fbuf))
   return fbuf
 end
 

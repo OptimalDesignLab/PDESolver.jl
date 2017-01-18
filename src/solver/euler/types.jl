@@ -553,7 +553,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
     end
 
-    eqn.file_dict = openLoggingFiles(opts)
+    eqn.file_dict = openLoggingFiles(mesh, opts)
 
     return eqn
 
@@ -577,6 +577,7 @@ end  # end of type declaration
   log file must be added to the list
 
   Inputs:
+    mesh: an AbstractMesh (needed for MPI Communicator)
     opts: options dictionary
 
   Outputs:
@@ -586,7 +587,10 @@ end  # end of type declaration
   Exceptions: this function will throw an exception if any two file names
               are the same
 """
-function openLoggingFiles(opts)
+function openLoggingFiles(mesh, opts)
+
+  # comm rank
+  myrank = mesh.myrank
 
   # output dictionary
   file_dict = Dict{AbstractString, IO}()
@@ -597,7 +601,7 @@ function openLoggingFiles(opts)
 
   # use the fact that the key names are formulaic
   names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy"]
-  for name in names
+  @mpi_master for name in names  # only open files on the master process
     keyname = string("write_", name)
     if opts[keyname]  # if this file is being written
       fname_key = string("write_", name, "_fname")

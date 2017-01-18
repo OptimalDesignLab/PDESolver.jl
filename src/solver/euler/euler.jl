@@ -294,7 +294,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   end
 =#
   if opts["write_entropy"]
-    f = eqn.file_dict[opts["write_entropy_fname"]]
+    @mpi_master f = eqn.file_dict[opts["write_entropy_fname"]]
 
     if(itr % opts["write_entropy_freq"] == 0)
       # calculate the entropy norm
@@ -308,21 +308,17 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
   #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
 
-      @mpi_master begin
-  #      f = open(opts["write_entropy_fname"], "a+")
-        println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
-  #      close(f)
-      end
+      @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
     end
 
-    if (itr % output_freq) == 0
+    @mpi_master if (itr % output_freq) == 0
       flush(f)
     end
   end  # end if write_entropy
 
   if opts["write_integralq"]
     integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
-    f = eqn.file_dict[opts["write_integralq_fname"]]
+    @mpi_master f = eqn.file_dict[opts["write_integralq_fname"]]
 #    f = open(opts["write_integralq_fname"], "a+")
     print(f, itr, " ", eqn.params.t)
     for i=1:length(integralq_vals)
@@ -337,40 +333,40 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   end  # end if write_integralq
 
   if opts["write_enstrophy"]
-    f = eqn.file_dict[opts["write_enstrophy_fname"]]
+    @mpi_master f = eqn.file_dict[opts["write_enstrophy_fname"]]
 
     if (itr % opts["write_enstrophy_freq"]) == 0
       enstrophy = calcEnstrophy(mesh, sbp, eqn, opts, eqn.q)
-      println(f, itr, " ", eqn.params.t, " ", enstrophy)
+      @mpi_master println(f, itr, " ", eqn.params.t, " ", enstrophy)
     end
 
-    if (itr % opts["output_freq"]) == 0
+    @mpi_master if (itr % opts["output_freq"]) == 0
       flush(f)
     end
   end
 
   if opts["write_kinetic_energy"]
-    f = eqn.file_dict[opts["write_kinetic_energy_fname"]]
+    @mpi_master f = eqn.file_dict[opts["write_kinetic_energy_fname"]]
 
     if (itr % opts["write_kinetic_energy_freq"]) == 0
       kinetic_energy = calcKineticEnergy(mesh, sbp, eqn, opts, eqn.q_vec)
-      println(f, itr, " ", eqn.params.t, " ", kinetic_energy)
+      @mpi_master println(f, itr, " ", eqn.params.t, " ", kinetic_energy)
     end
 
-    if (itr % opts["output_freq"]) == 0
+    @mpi_master if (itr % opts["output_freq"]) == 0
       flush(f)
     end
   end
  
   if opts["write_kinetic_energydt"]
-    f = eqn.file_dict[opts["write_kinetic_energydt_fname"]]
+    @mpi_master f = eqn.file_dict[opts["write_kinetic_energydt_fname"]]
 
     if (itr % opts["write_kinetic_energydt_freq"]) == 0
       kinetic_energydt = calcKineticEnergydt(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
-      println(f, itr, " ", eqn.params.t, " ", kinetic_energydt)
+      @mpi_master println(f, itr, " ", eqn.params.t, " ", kinetic_energydt)
     end
 
-    if (itr % opts["output_freq"]) == 0
+    @mpi_master if (itr % opts["output_freq"]) == 0
       flush(f)
     end
   end

@@ -669,6 +669,50 @@ function ICPeriodicMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerDat
   return nothing
 end
 
+"""
+  This function applies the initial condition for the Taylor Green vortex,
+  using the constants in Gassner, Winters, and Kopriva's Split form Nodal
+  DG paper
+"""
+function ICTaylorGreen{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, 
+                       eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+
+  # parameters
+  M = 0.1  # Mach number
+  rho0 = 1 
+  p0 = 1/eqn.params.gamma
+  gamma_1 = eqn.params.gamma_1
+  gamma = eqn.params.gamma
+
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      x = coords[1]
+      y = coords[2]
+      z = coords[3]
+
+      p = 100/gamma + (1/16)*( cos(2*x)*cos(2*z) + 2*cos(2*y) + 2*cos(2*x) + cos(2*y)*cos(2*z) )
+      q[1] = 1
+      q[2] = q[1]*M*sin(x)*cos(y)*cos(z)
+      q[3] = -q[1]*M*cos(x)*sin(y)*cos(z)
+      q[4] = 0
+      q[5] = p/gamma_1 + (q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/(2*q[1])
+
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
+
+  return nothing
+end
+
+      
+
+
+
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
 
@@ -688,6 +732,7 @@ global const ICDict = Dict{Any, Function}(
 "ICFile" => ICFile,
 "ICExp" => ICExp,
 "ICPeriodicMMS" => ICPeriodicMMS,
+"ICTaylorGreen" => ICTaylorGreen,
 )
 
 
