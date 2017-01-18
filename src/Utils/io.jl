@@ -28,13 +28,17 @@ end
   Outputs:
     a BufferedIO object
 """->
-function BufferedIO(f::IO=fdio(0, false))
+function BufferedIO(f::IO=DevNull)
   buf = IOBuffer()
   fbuf = BufferedIO{typeof(f)}(f, buf)
 
   # register atexit hook to make sure any buffered data is flushed before
   # julia exits
-  atexit( () -> close(fbuf))
+  # this causes errors to be printed when julia exists, possible #10431
+#  atexit( () -> if isopen(fbuf.fstream)
+#                  close(fbuf)
+#                end
+#        )
   return fbuf
 end
 

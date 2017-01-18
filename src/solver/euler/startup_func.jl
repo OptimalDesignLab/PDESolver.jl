@@ -216,6 +216,9 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     opts["delta_t"] = delta_t
   end
 
+  # DEBUGGING
+  calcKineticEnergy(mesh,sbp, eqn, opts, eqn.q_vec)
+
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 

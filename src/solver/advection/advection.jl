@@ -116,8 +116,6 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
                                            eqn::AdvectionData{Tsol, Tres, Tdim})
 
-  println(eqn.params.f, "entered evalVolumeIntegrals")
-
   # storing flux_parametric in eqn, rather than re-allocating it every time
   flux_parametric = eqn.flux_parametric
 
@@ -143,7 +141,6 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         flux_parametric[1,j,i,k] = alpha_k*q_val
       end
     end
-    println(eqn.params.f, "i: $i")
   end
 
   # for each dimension, grabbing everything in the mesh and applying weakdifferentiate!

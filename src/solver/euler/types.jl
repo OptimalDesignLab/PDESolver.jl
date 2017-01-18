@@ -36,7 +36,7 @@
  
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
-  f::IOStream
+  f::BufferedIO
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
@@ -165,7 +165,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     t = 0.0
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
-    f = open("log_$myrank.dat", "w")
+    if DB_LEVEL > 1
+      f = BufferedIO("log_$myrank.dat", "w")
+    else
+      f = BufferedIO(DevNull)
+    end
     q_vals = Array(Tsol, Tdim + 2)
     q_vals2 = Array(Tsol, Tdim + 2)
     q_vals3 = Array(Tsol, Tdim + 2)

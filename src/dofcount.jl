@@ -238,9 +238,10 @@ end
 
 #run_dof()
 op_type = 5
-p = 2
+p = 1
 numel = 38
-findMeshSizeEl(numel, op_type, p)
-#findMeshSize(771, 4)
+numdof = 64^3
+#findMeshSizeEl(numel, op_type, p)
+findMeshSize(numdof, op_type, p)
 
 
