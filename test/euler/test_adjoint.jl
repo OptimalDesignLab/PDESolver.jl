@@ -1,5 +1,6 @@
 #Test functional Integrate and adjoint for euler equation.
 function test_adjoint()
+
   facts("--- Testing Functional Computation On a Boundary ---") do
     ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
     include("../../src/solver/euler/startup.jl")  # initialization and construction
@@ -15,7 +16,7 @@ function test_adjoint()
     fname = "./functional_error1.dat"
     relative_error = readdlm(fname)
 
-    @fact relative_error[1] --> roughly(0.00018849571, atol = 1e-6)
+    @fact relative_error[1] --> roughly(0.0001, atol = 1e-4)
 
     rm("./functional_error1.dat") # Delete the file
 
@@ -52,9 +53,10 @@ function test_adjoint()
     analytical_val = -1/1.4
     println("drag.val = ", drag.val)
     drag_err = norm(drag.val - analytical_val)
-    @fact drag_err --> roughly(0.0001346397, atol = 1e-6)
+    @fact drag_err --> roughly(0.0001, atol = 1e-4)
 
   end # End facts("--- Testing Objective Function Computation On a Boundary ---")
+
 
   facts("--- Tesing adjoint computation on the boundary for DG Meshes---") do
     println("testing adjoint functions\n")
@@ -188,9 +190,9 @@ function test_adjoint()
 
     end # End context("checking derivative computation using adjoint vector")
 
-  end # End do
-#=
-
+  end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
+  
+  #=
   facts("--- Testing Functional Computation On a Boundary ---") do
     include("./input_vals_vortex_adjoint_DG.jl")
     arg_dict["smb_name"] = "src/mesh_files/gvortex1np2.smb"
@@ -221,8 +223,7 @@ function test_adjoint()
     rm("./input_vals_vortex_adjoint_DG_parallel.jl")
 
 
-  end  # End do
-
+  end  # End facts("--- Testing Functional Computation On a Boundary ---") do
   =#
 end # End function test_adjoint
 

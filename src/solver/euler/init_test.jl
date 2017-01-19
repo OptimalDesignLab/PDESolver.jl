@@ -2,7 +2,7 @@
 # include("pressure.jl")
 
 resize!(ARGS, 1)
-ARGS[1] = "input_vals_vortex.jl"
+ARGS[1] = "input_vals_airfoil.jl"
 
 
 #----  Initialize EulerEquationMod for all the global variables necessary  ----#
@@ -28,7 +28,7 @@ EulerEquationMod.writeSurfacePressureCoeff(mesh, sbp, eqn, opts, g_edges, pressC
 
 
 # Create the objective function data object
-objective = EulerEquationMod.OptimizationData{Tsol}(mesh, sbp, opts)
+objective = EulerEquationMod.OptimizationData{Complex128}(mesh, sbp, opts)
 
 #=
 #----  Read in the target surface pressure coefficients  ----#
@@ -60,14 +60,14 @@ EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 println("Objective function name = ", opts["objective_function"])
 println("objective.val = $(objective.val)")
 
-
+#=
 # Calculate the adjoint vector
 adjoint_vec = zeros(Tsol, mesh.numDof)
 calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
 saveSolutionToMesh(mesh, real(adjoint_vec))
 writeVisFiles(mesh, "adjoint_field")
-
+=#
 if MPI.Initialized()
   MPI.Finalize()
 end

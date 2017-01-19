@@ -179,7 +179,7 @@ end
 function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
               node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
-
+#=
   aoa = params.aoa # Angle of attack
   euler_flux = zeros(Tsol, length(q))
   nx = nrm[1]
@@ -187,7 +187,7 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
 
   fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
-  nx *= fac  
+  nx *= fac
   ny *= fac
 
   normal_momentum = nx*q[2] + ny*q[3]
@@ -200,7 +200,14 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
   qg[3] -= ny*normal_momentum
 
   calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
-  
+
+  val = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
+=#
+
+  aoa = params.aoa # Angle of attack
+  euler_flux = zeros(Tsol, length(q))
+  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
+
   val = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
 
   return val
@@ -215,12 +222,12 @@ function call{Tsol, Tres, Tmsh}(obj::dDragdAlpha, params, q::AbstractArray{Tsol,
 
   aoa = params.aoa # Angle of attack
   euler_flux = zeros(Tsol, length(q))
-  nx = nrm[1]
+  #=nx = nrm[1]
   ny = nrm[2]
 
   fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
-  nx *= fac  
+  nx *= fac
   ny *= fac
 
   normal_momentum = nx*q[2] + ny*q[3]
@@ -231,9 +238,9 @@ function call{Tsol, Tres, Tmsh}(obj::dDragdAlpha, params, q::AbstractArray{Tsol,
   end
   qg[2] -= nx*normal_momentum
   qg[3] -= ny*normal_momentum
+  =#
+  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
 
-  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
-  
   val = -euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
 
   return val
@@ -266,12 +273,12 @@ function call{Tsol, Tres, Tmsh}(obj::lift, params, q::AbstractArray{Tsol,1},
 
   aoa = params.aoa # Angle of attack
   euler_flux = zeros(Tsol, length(q))
-  nx = nrm[1]
+#=nx = nrm[1]
   ny = nrm[2]
 
   fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
-  nx *= fac  
+  nx *= fac
   ny *= fac
 
   normal_momentum = nx*q[2] + ny*q[3]
@@ -281,7 +288,7 @@ function call{Tsol, Tres, Tmsh}(obj::lift, params, q::AbstractArray{Tsol,1},
     qg[i] = q[i]
   end
   qg[2] -= nx*normal_momentum
-  qg[3] -= ny*normal_momentum
+  qg[3] -= ny*normal_momentum  =#
   calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
   val = -euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
 
@@ -302,7 +309,7 @@ function call{Tsol, Tres, Tmsh}(obj::dLiftdAlpha, params, q::AbstractArray{Tsol,
 
   fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
-  nx *= fac  
+  nx *= fac
   ny *= fac
 
   normal_momentum = nx*q[2] + ny*q[3]
