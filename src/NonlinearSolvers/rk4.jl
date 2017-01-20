@@ -3,6 +3,9 @@
 
 export rk4
 
+global const REVOLVELIB = "librevolvewrap"
+global const REVOLVEINFO = 3
+
 # base RK4 method:
 # dxdt = f(t,x)
 
@@ -282,6 +285,166 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end
 
+# TODO TODO
+function rk4_revolve(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+             q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+             post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+             res_tol = -1.0, real_time=false)
+
+  revolve_type = 1
+  steps = round(Integer, t_max/h)
+  snaps = 10
+  snaps_in_ram = 4
+  info = 3
+
+  RevolveClassPtr = ccall((:revolve_init, REVOLVELIB), Ptr{Void}, (Cint, Cint, Cint, Cint, Cint), 
+                          revolve_type, steps, snaps, snaps_in_ram, info)
+  
+  t = 0.0
+
+  println(" entering rk4_revolve do-while")
+  whilestop = false
+
+  while (whilestop == false)
+
+    whatodo = ccall((:revolve, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+    # whatodo enum:
+    #   1:  ACTION::takeshot
+    #   2:  ACTION::advance
+    #   3:  ACTION::firsturn
+    #   4:  ACTION::youturn
+    #   5:  ACTION::restore
+    #   98: ACTION::terminate
+    #   99: ACTION::error
+
+    # Revolve function outputs/relevant variables
+    #   r_getcheck: index of checkpoint
+    #   TODO r_getcapo & r_getoldcapo comments
+
+    if (whatodo == 1)   # takeshot
+      r_getcheck = ccall((:getcheck, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      ### store(F, F_Check, t, r_getcheck)
+      # store function should store all state vars (i.e. q_vec) & t
+      revolve_store(q_vec, t, r_getcheck)
+      if (REVOLVEINFO > 1) 
+        println(" takeshot at ", r_getcapo, " in CP ", r_getcheck)
+      end
+    elseif (whatodo == 2)   # advance
+      r_getoldcapo = ccall((:getoldcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      for j = r_getoldcapo:(r_getcapo-1)    # cpp: j=r->getoldcapo();j<r->getcapo();j++
+        #### advance(F, F_H, t, h)
+        # advance is intended to perform one time integration step
+        t_start = t
+        t_end = t+h
+        rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, 
+            timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+            res_tol = -1.0, real_time=false)
+        t = t+h
+      end
+      if (REVOLVEINFO > 1) 
+        println(" advance to ", r_getcapo)
+      end
+    elseif (whatodo == 3)   # firsturn
+      ### advance(F_final, F_H, t, h)
+      t_start = t
+      t_end = t+h
+      rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, 
+          timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+          res_tol = -1.0, real_time=false)
+
+      t = 1.0 - h
+      ### t[1] = 1.0 - h        # caution, must assign to t[1], not t, or else t changes to Float64 type
+      ### adjoint(L_H, F_H, L, t, h)
+      revolve_adjoint(q_vec, t, h)
+      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      if (REVOLVEINFO > 1) 
+        println(" firsturn at ", r_getcapo)
+      end
+    elseif (whatodo == 4)   # youturn
+      ### adjoint(L_H, F, L, t, h)
+      revolve_adjoint(q_vec, t, h)
+      t = t - h
+      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      if (REVOLVEINFO > 1) 
+        println(" youturn at ", r_getcapo)
+      end
+    elseif (whatodo == 5)   # restore
+      r_getcheck = ccall((:getcheck, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      ### restore(F, F_Check, t, r_getcheck)
+      (q_vec, t) = revolve_restore(r_getcheck)
+      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      if (REVOLVEINFO > 1) 
+        println(" restore at ", r_getcapo, " in CP ", r_getcheck)
+      end
+    elseif (whatodo == 99)  # error
+      r_getinfo = ccall((:getinfo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+      if (r_getinfo == 10)
+        println(" number of checkpoints stored exceeds checkup,")
+        println(" increase constant 'checkup' and recompile")
+        error()
+      elseif (r_getinfo == 11)
+        r_getcheck = ccall((:getcheck, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
+        println(" number of checkpoints stored = ", r_getcheck+1, " exceeds snaps = ", snaps)
+        println(" ensure 'snaps' > 0 and increase initial 'fine'")
+        error()
+      elseif (r_getinfo == 12)
+        println(" error occurs in numforw")
+        error()
+      elseif (r_getinfo == 13)
+        println(" enhancement of 'fine', 'snaps' checkpoints stored, increase 'snaps'")
+        error()
+      elseif (r_getinfo == 14)
+        println(" number of snaps exceeds snapsup, increase constant 'snapsup' and recompile")
+        error()
+      elseif (r_getinfo == 15)
+        println(" number of reps exceeds repsup, increase constant 'repsup' and recompile")
+        error()
+      end   # end of r_getinfo checking if-block
+
+    end   # end of whatodo checking if-block
+
+    if ((whatodo == 98) || (whatodo == 99))   # 98: terminate, 99: error
+      whilestop = true
+    end
+  end   # end of do-while
+
+
+
+
+  rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
+      q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+      post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+      res_tol = -1.0, real_time=false)
+
+end
+
+# TODO comment
+function revolve_store(q_vec, t, ix)
+
+  filename = string("revolve_chkpt_", ix, ".dat")
+  # TODO file existence check, fail if already exists
+  data = vcat(q_vec, t)
+  writedlm(filename, data)
+    
+  # TODO disassemble/assemble?
+end
+
+# distant TODO: ram storage
+
+# TODO comment
+function revolve_restore(ix)
+
+  filename = string("revolve_chkpt_", ix, ".dat")
+  data = readdlm(filename)
+  q_vec = data[1:end-1]
+  t = data[end]
+
+  return (q_vec, t)
+
+  # TODO disassemble/assemble?
+end
 
 @doc """
 ### NonlinearSolvers.rk4
