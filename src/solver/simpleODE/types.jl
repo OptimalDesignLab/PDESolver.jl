@@ -2,7 +2,7 @@
 
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
 
-  f::BufferedIO{IOStream}     # TODO: needed?
+  f::BufferedIO     # TODO: needed?
 
   t::Float64
   time::Timings
@@ -10,10 +10,9 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   function ParamType(mesh, sbp, opts)
     myrank = mesh.myrank
     if DB_LEVEL >= 1
-      _f = open("log_$myrank.dat", "w")
-      f = BufferedIO(_f)
+      f = BufferedIO("log_$myrank.dat", "w")
     else
-      f = BufferedIO()  # create a dummy IOStream
+      f = BufferedIO(DevNull)  # create a dummy IOStream
     end
 
     t = 0.0

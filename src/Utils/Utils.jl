@@ -32,6 +32,8 @@ export calcBCNormal
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
+export fastzero!, fastscale!
+
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
@@ -230,6 +232,8 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec, using an assignment reduction
+# the length of res_vec is mesh.numDof/mesh.numDofPerNode, only the last
+# dof on the node is placed into res_vec
 
 #  println("in assembleSolution")
 
@@ -594,6 +598,35 @@ end
 
 # TODO: write functions to apply inverse permutation from permvec, without
 #       needing to explicetly compute the inverse permutation vector
+
+"""
+  This function zeros out an array, and should be faster than fill! (branch
+  free)
+
+  Inputs/Outputs:
+    x: an array
+"""
+@inline function fastzero!(x::AbstractArray)
+
+  @inbounds @simd for i=1:length(x)
+    x[i] = 0
+  end
+
+  return nothing
+end
+
+"""
+  This function scales an array by a constant, and should be faster than scale!
+  because it is branch free
+"""
+@inline function fastscale!(x::AbstractArray, c::Number)
+
+  @inbounds @simd for i=1:length(x)
+    x[i] *= c
+  end
+
+  return nothing
+end
 
 end  # end module
 

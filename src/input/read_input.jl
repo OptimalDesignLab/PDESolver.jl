@@ -198,11 +198,34 @@ get!(arg_dict, "addVolumeIntegrals", true)
 get!(arg_dict, "addBoundaryIntegrals", true)
 get!(arg_dict, "addFaceIntegrals", true)
 get!(arg_dict, "addStabilization", true)
+
+# logging options
+
+# entropy
 get!(arg_dict, "write_entropy", false)
 get!(arg_dict, "write_entropy_freq", 1)
 get!(arg_dict, "write_entropy_fname", "entropy.dat")
+
+# integral q
 get!(arg_dict, "write_integralq", false)
 get!(arg_dict, "write_integralq_fname", "integralq.dat")
+
+# enstrophy
+get!(arg_dict, "write_enstrophy", false)
+get!(arg_dict, "write_enstrophy_fname", "enstrophy.dat")
+get!(arg_dict, "write_enstrophy_freq", 1)
+
+# kinetic energy
+get!(arg_dict, "write_kinetic_energy", false)
+get!(arg_dict, "write_kinetic_energy_fname", "kinetic_energy.dat")
+get!(arg_dict, "write_kinetic_energy_freq", 1)
+
+# kinetic energy dt
+get!(arg_dict, "write_kinetic_energydt", false)
+get!(arg_dict, "write_kinetic_energydt_fname", "kinetic_energydt.dat")
+get!(arg_dict, "write_kinetic_energydt_freq", 1)
+
+
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
 

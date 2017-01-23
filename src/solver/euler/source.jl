@@ -204,13 +204,12 @@ end
 function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector, 
               params::ParamType{3}, t)
 
-  throw(ErrorException("SRCPeriodicMMS does not work correctly, do not use"))
   x = coords[1]
   y = coords[2]
   z = coords[3]
   gamma_1 = params.gamma_1
   gamma = params.gamma
-
+#=
   t2 = x+y+z;
   t3 = 3.141592653589793*t2;
   t4 = cos(t3);
@@ -218,11 +217,30 @@ function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector,
   t6 = t5*(1.0/1.0E1);
   t7 = t6+2.0;
   t8 = 3.141592653589793*gamma_1*t4*t7*(1.0/5.0);
+=#
+#  tmp = pi*gamma_1*cos(pi*(x + y + z))*(sin(pi*(x + y + z))/10 + 2)/5
+#=
   q[1] = 0;
-  q[2] = t8;
-  q[3] = t8;
-  q[4] = t8;
+  q[2] = 0
+  q[3] = 0
+  q[4] = 0
   q[5] = 0;
+=#
+
+  t5 = t*2.0;
+  t2 = -t5+x+y+z;
+  t3 = 3.141592653589793*t2;
+  t4 = cos(t3);
+  t6 = gamma_1*2.5E1;
+  t7 = sin(t3);
+  t8 = gamma_1*t7*2.0;
+  t9 = t6+t8+1.0E1;
+  t10 = 3.141592653589793*t4*t9*(1.0/1.0E2);
+  q[1] = 3.141592653589793*t4*(1.0/1.0E1);
+  q[2] = t10;
+  q[3] = t10;
+  q[4] = t10;
+  q[5] = 3.141592653589793*t4*(gamma_1*7.5E1+t7*2.0+gamma_1*t7*6.0+4.0E1)*(1.0/1.0E2);
 
   return nothing
 end

@@ -102,9 +102,6 @@ end
 function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmesh=mesh)
 
   myrank = mesh.myrank
-  delta_t = opts["delta_t"]
-  t_max = opts["t_max"]
-  flag = opts["run_type"]
 
   fill!(eqn.res, 0.0)
   fill!(eqn.res_vec, 0.0)

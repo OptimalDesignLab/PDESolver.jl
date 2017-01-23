@@ -6,7 +6,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   alpha_y::Float64
   alpha_z::Float64
 
-  f::BufferedIO{IOStream}
+  f::BufferedIO
   time::Timings
   #=
   # timings

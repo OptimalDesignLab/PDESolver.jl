@@ -219,6 +219,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
+  cleanup(mesh, sbp, eqn, opts)
+
   MPI.Barrier(mesh.comm)
   if opts["finalize_mpi"]
     MPI.Finalize()

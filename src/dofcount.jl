@@ -1,3 +1,27 @@
+"""
+  This function returns an array with the number of nodes classified on each
+  mesh vertex, edge, face, and region (in 3d) for the different operator
+  types and degrees.
+
+  op_type    Description
+    1        SBP Gamma, CG, 2d
+    2        SBPGamma, DG, 2d
+    3        SBPOmega, DG 2d
+    4        SBPGamma, DG, 3d
+    5        SBPOmega, DG, 3d
+
+  Degree 1 - 4 is supported for all operators.
+  An exception will be thrown if an unsupported op_type and degree
+  combinatino is specified.
+
+  Inputs:
+    op_type: integer specifying which operator type
+    p: degree of the operator (linear, quadratic, etc.)
+
+  Outputs:
+    nodecnts: array of length 3 in 2D or 4 in 3D specifying number of
+              nodes classified on each dimension mesh entity
+"""
 function getNodeCounts(op_type, order)
 # get the number of nodes classifies on each vert, edge, and element
 # op type specifies the type of operator, order the order of accuracy
@@ -39,25 +63,25 @@ function getNodeCounts(op_type, order)
     end
   elseif op_type == 4  # SBPGamma DG, 3D
     if order == 1
-      return [0, 0, 4]
+      return [0, 0, 0, 4]
     elseif order == 2
-      return [0, 0, 11]
+      return [0, 0, 0, 11]
     elseif order == 3
-      return [0, 0, 24]
+      return [0, 0, 0, 24]
     elseif order == 4
-      return [0, 0, 45]
+      return [0, 0, 0, 45]
     else
       error("unsupported op_type/order")
     end
   elseif op_type == 5  # SBPOmega DG, 3D
     if order == 1
-      return [0, 0, 4]
+      return [0, 0, 0, 4]
     elseif order == 2
-      return [0, 0, 10]
-#    elseif order == 3
-#      return [0, 0, 10]
-#    elseif order == 4
-#      return [0, 0, 15]
+      return [0, 0, 0, 10]
+    elseif order == 3
+      return [0, 0, 0, 20]
+    elseif order == 4
+      return [0, 0, 0, 38]
     else
       error("unsupported op_type/order")
     end
@@ -138,7 +162,20 @@ function calcDofs3D()
 
 end
 
+"""
+  Find the mesh with specified operator operator type and degree elements 
+  with the closest number of degrees of freedom to the specified number
 
+  Inputs:
+    numdof: the number of dofs to try to match
+    op_type: operator type (see getNumNodes)
+    p: degree of operator
+
+  Outputs:
+    mesh_size_i: number of degree p element in each direction
+    dof_mesh_size_i: total number of degrees of freedom on the mesh
+
+"""
 function findMeshSize(numdof::Integer, op_type, p::Integer)
 # find the size of the square mesh with elements of order p 
 # with the closest number of dofs to 
@@ -183,6 +220,20 @@ function findMeshSize(numdof::Integer, op_type, p::Integer)
   return mesh_size_i, dof_mesh_size_i
 end
 
+"""
+  This function finds the number of element in each direction of a square
+  (or cubic) mesh that has the closest number of degrees of freedom to
+  a p=1 mesh with the specified number of elements
+
+  Inputs:
+    p1_el: number of element in each direction of the p=1 mesh
+    op_type: operator type (see getNodeCounts)
+    p: degree of operator
+
+  Outputs:
+    mesh_size_i: number of degree p element in each direction
+    dof_mesh_size_i: total number of degrees of freedom on the mesh
+"""
 function findMeshSizeEl(p1_el, op_type, p)
 # find the size of of mesh with the closest numbere of dofs to a p1 mesh
 # of the specified size
@@ -195,6 +246,10 @@ function findMeshSizeEl(p1_el, op_type, p)
   return findMeshSize(p1dofs, op_type, p)
 end
 
+"""
+  This function calls findMeshSizeEl for a range of element sizes
+  and writes the results to a file.
+"""
 function run_el()
   p1_mesh_sizes = collect(11:5:50)
   p = 4
@@ -213,6 +268,10 @@ function run_el()
   return nothing
 end
 
+"""
+  This function calls findMeshSize for a range of dof values and writes the
+  resutls to a file.
+"""
 function run_dof()
   dof_spacing = collect(linspace(2751, 12865, 10))
   dof_counts = zeros(Int, length(dof_spacing))
@@ -237,10 +296,11 @@ end
 
 
 #run_dof()
-op_type = 3
+op_type = 5
 p = 4
-numel = 14
-findMeshSizeEl(numel, op_type, p)
-#findMeshSize(771, 4)
+numel = 181
+numdof = 64^3
+#findMeshSizeEl(numel, op_type, p)
+findMeshSize(numdof, op_type, p)
 
 

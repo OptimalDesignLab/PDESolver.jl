@@ -39,12 +39,16 @@ end
   globalization (aka. Implicit Euler) of Newton's method, using a spatially 
   varying pseudo-timestep.
 
-  updates the jacobian with a diagonal term, as though the jac was the 
+  Updates the jacobian with a diagonal term, as though the jac was the 
   jacobian of this function:
-  (u - u_i_1)/tau + f(u)
+  (u - u_i_1)/delta_t + f(u)
   where f is the original residual and u_i_1 is the previous step solution
 
-  The timestep varies according to 1/(1 + sqrt(det(jac))).
+  The timestep varies according to tau/(1 + sqrt(det(jac))).
+
+  This globalization is activated using the option `newton_globalize_euler`.
+  The initial value of the scaling factor tau is specified by the option 
+  `euler_tau`.
 
   Inputs:
     mesh
@@ -119,8 +123,6 @@ function updateEuler(newton_data)
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
 
 
-  println("updating tau")
-
   tau_l_old = newton_data.tau_l
 
   # update tau
@@ -156,8 +158,6 @@ end
 function applyEuler(mesh, sbp, eqn, opts, newton_data, 
                     jac::Union{Array, SparseMatrixCSC})
 # updates the jacobian with a diagonal term, as though the jac was the 
-  println("applying Euler globalization to julia jacobian, tau = ",
-           newton_data.tau_l)
 
   for i=1:mesh.numDof
     jac[i,i] -= eqn.M[i]/newton_data.tau_vec[i]
@@ -197,7 +197,6 @@ function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray,
                     newton_data::NewtonData, b::AbstractArray)
 # apply the diagonal update term to the jacobian vector product
 
-  println("applying matrix free Euler gloablization, tau = ", newton_data.tau_l)
   for i=1:mesh.numDof
     b[i] -= eqn.M[i]*(1/newton_data.tau_vec[i])*vec[i]
   end

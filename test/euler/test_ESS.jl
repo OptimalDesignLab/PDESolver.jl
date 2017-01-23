@@ -337,7 +337,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
 
     q_avg = 0.5*(qL_i + qR_i)
     EulerEquationMod.getIRA0(params, q_avg, A0)
-    lambda_max = EulerEquationMod.getLambdaMax(params, qL_i, qR_i, nrm)
+    lambda_max = EulerEquationMod.getLambdaMaxSimple(params, qL_i, qR_i, nrm)
 
     middle_term[:, :, i] = lambda_max*sbpface.wface[i]*A0
   end
@@ -393,10 +393,12 @@ end
   Test the entropy stable volume terms and face integrals against the
   analytical entropy flux
 """
-function runECTest(mesh, sbp, eqn, opts; test_ref=false)
+function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=false)
 # test_ref: whether or not to compare against the reference implementations above
+# func_name: name of functor from FaceelementDict
 
   functor = EulerEquationMod.IRFlux()
+  ec_integral = EulerEquationMod.FaceElementDict[func_name]
   eqn.flux_func = functor
   fill!(eqn.res, 0.0)
   res_test = copy(eqn.res)
@@ -418,7 +420,7 @@ function runECTest(mesh, sbp, eqn, opts; test_ref=false)
     resR_test2 = sview(res_test2, :, :, elR)
 
 
-    EulerEquationMod.calcECFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
+    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
 
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
@@ -468,7 +470,7 @@ function runECTest(mesh, sbp, eqn, opts; test_ref=false)
     resR = zeros(resL)
 
     # calculate the integral of entropy flux from the residual
-    EulerEquationMod.calcECFaceIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
 
     nrm = zeros(mesh.dim)
@@ -943,7 +945,7 @@ function test_ESS()
         println("finished testing LW dissipation")
         # check full calling sequence
         fill!(eqn.res, 0.0)
-        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
 
@@ -974,7 +976,7 @@ function test_ESS()
 
         # check full calling sequence
         fill!(eqn.res, 0.0)
-        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.interfaces)
+        EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
 

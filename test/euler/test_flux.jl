@@ -37,6 +37,34 @@ function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_nu
 end
 
 """
+  Test the multi-directional version of a flux function
+
+  F_num is a vector of flux values from the 1 direction  version, F_num2
+  is an array numDofPerNode x Tdim for the multi-directional flux
+"""
+function test_multiD_flux(functor, params, qL, qR, aux_vars, F_num, F_num2)
+
+  if length(qL) == 4
+    nrm = rand(2, 2)
+    dim = 2
+  else
+    nrm = rand(3, 3)
+    dim = 3
+  end
+
+  functor(params, qL, qR, aux_vars, nrm, F_num2)
+
+  for i=1:dim
+    functor(params, qL, qR, aux_vars, nrm[:, i], F_num)
+    @fact F_num --> roughly(F_num2[:, i])
+  end
+
+  return nothing
+end
+
+
+
+"""
   An inefficient version of the IR flux, used for comparison to the efficient
   version.
 """
@@ -82,6 +110,7 @@ function test_flux_2d()
     F_euler = zeros(qL)
     F_num = zeros(F_euler)
     F_num2 = zeros(F_euler)
+    F_numD = zeros(4, 2)
 
 
     aux_vars = zeros(1)
@@ -94,12 +123,14 @@ function test_flux_2d()
 
     functor = EulerEquationMod.FluxDict["StandardFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_multiD_flux(functor, eqn.params, qL, qR, aux_vars, F_num, F_numD)
 
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
     functor = EulerEquationMod.FluxDict["IRFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_multiD_flux(functor, eqn.params, qL, qR, aux_vars, F_num, F_numD)
 
     # test against calculated solution
     nrm = [1., 2.0]
@@ -145,7 +176,7 @@ function test_flux_2d()
         for k=1:mesh.numNodesPerElement
           q_k = sview(eqn.q, :, k, i)
           for dim=1:2
-            nrm = mesh.dxidx[dim, :, j, i]
+            nrm = vec(mesh.dxidx[dim, :, j, i])
             EulerEquationMod.calcEulerFlux_standard(eqn.params, q_j, q_k, aux_vars, nrm, F_tmp)
             res_split[:, j, i] -= E[j, k, dim]*F_tmp
           end
@@ -201,6 +232,7 @@ function test_flux_3d()
     F_euler = zeros(qL)
     F_num = zeros(F_euler)
     F_num2 = zeros(F_euler)
+    F_numD = zeros(eltype(F_euler), length(F_euler), 3)
     nrm = [1., 1, 1]
 
     aux_vars = zeros(1)
@@ -212,13 +244,14 @@ function test_flux_3d()
     aux_vars[1] = EulerEquationMod.calcPressure(eqn.params, qL)
     functor = EulerEquationMod.FluxDict["StandardFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    test_multiD_flux(functor, eqn.params, qL, qR, aux_vars, F_num, F_numD)
 
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
 
     functor = EulerEquationMod.FluxDict["IRFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
-
+    test_multiD_flux(functor, eqn.params, qL, qR, aux_vars, F_num, F_numD)
 
     # test calculating -Q*f = -(2*S_ij f_star_ij + Eij*f_star_ij)
     fill!(eqn.res, 0.0)
@@ -243,7 +276,7 @@ function test_flux_3d()
         for k=1:mesh.numNodesPerElement
           q_k = sview(eqn.q, :, k, i)
           for dim=1:3
-            nrm = mesh.dxidx[dim, :, j, i]
+            nrm = vec(mesh.dxidx[dim, :, j, i])
             EulerEquationMod.calcEulerFlux_standard(eqn.params, q_j, q_k, aux_vars, nrm, F_tmp)
             res_split[:, j, i] -= E[j, k, dim]*F_tmp
           end

@@ -168,7 +168,7 @@ where input_file_name.jl is in your current directory.
 Note that any values associated with these options are shared with the regular 
 (non preconditioning) version
 
-# solve options
+# logging options
 "write_entropy" : write the norm of the entropy during every major iteration, 
                   (Bool), default false
 "write_entropy_freq" : write the entropy every this many timesteps if 
@@ -181,6 +181,33 @@ Note that any values associated with these options are shared with the regular
 
 "write_integralq_fname": file name to write integral of q to, (ASCIIString),
                          default "integralq.dat"
+
+"write_enstrophy" : write the integral of the enstrophy during every major 
+                    iteration, (Bool), default false
+"write_enstrophy_freq" : write the enstrophy every this many timesteps if 
+                       "write_enstrophy" is true, (Integer), default 1
+"write_enstrophy_fname" : file name (with extension) to write enstrophy to, 
+                        (ASCIIString), default "enstrophy.dat"
+
+"write_kinetic_energy" : write the norm of the kinetic_energy during every 
+                         major iteration, (Bool), default false
+"write_kinetic_energy_freq" : write the kinetic_energy every this many 
+                              timesteps if "write_kinetic_energy" is true, 
+                              (Integer), default 1
+"write_kinetic_energy_fname" : file name (with extension) to write 
+                               kinetic_energy to, (ASCIIString), default 
+                               "kinetic_energy.dat"
+
+"write_kinetic_energydt" : write the norm of the kinetic_energydt during every 
+                         major iteration, (Bool), default false
+"write_kinetic_energydt_freq" : write the kinetic_energydt every this many 
+                              timesteps if "write_kinetic_energydt" is true, 
+                              (Integer), default 1
+"write_kinetic_energydt_fname" : file name (with extension) to write 
+                               kinetic_energydt to, (ASCIIString), default 
+                               "kinetic_energydt.dat"
+
+
 
 "check_density" : whether not to check that density > 0 every residual 
                   evalution, (Bool), default true
@@ -296,8 +323,9 @@ Note that any values associated with these options are shared with the regular
 
 # Adjoint computation options
 "calc_adjoint" : calculates the adjoint vector for a particular functional, default false
-"write_timing" : write the mesh initialization and compute times to the file
-                 timing.dat, (Bool), default false
+"write_timing" : write timings for each part of calculation to file 
+                 timing_breakdown.dat, and the name of each time to 
+                 timing_breakdown_names.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
 
 # SimpleODE equation selection

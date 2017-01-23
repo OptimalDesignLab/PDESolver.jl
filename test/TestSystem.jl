@@ -230,6 +230,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
       tag_j = func_tags_i[j]
       if tag_j in tags_set
         println("running function ", func_i)
+        println("function type = ", functype_i)
         # run this test
         if functype_i == 1  # function with no arguments
           func_i()
