@@ -678,9 +678,7 @@ function ICTaylorGreen{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp,
                        eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
 
   # parameters
-  M = 0.1  # Mach number
-  rho0 = 1 
-  p0 = 1/eqn.params.gamma
+  M = 1.0  # Mach number
   gamma_1 = eqn.params.gamma_1
   gamma = eqn.params.gamma
 

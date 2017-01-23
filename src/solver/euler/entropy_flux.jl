@@ -346,9 +346,7 @@ function calcKineticEnergy{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp
                            eqn::EulerData{Tsol, Tres, Tdim}, opts, 
                            q_vec::AbstractVector{Tsol})
 
-  f = eqn.params.f
-  println(f, "sbp.w = ", sbp.w)
-  println(f, "jac = ", mesh.jac[:, 1])
+
   val = zero(Tsol)
   for i=1:mesh.numDofPerNode:mesh.numDof
 #    println(f, "node ", i)
@@ -360,24 +358,16 @@ function calcKineticEnergy{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp
       v_j = q_vec[i+j]/rho_i
       v_magnitude += v_j*v_j
     end
-#    println(f, "v_magnitude = ", v_magnitude)
-#    println(f, "eqn.M[i] = ", eqn.M[i])
 
     val += eqn.M[i]*rho_i*v_magnitude
   end
 
-  println(eqn.params.f, "before allreduce, val = ", val)
-
   val = MPI.Allreduce(val, MPI.SUM, mesh.comm)
-
-  println(eqn.params.f, "after allreduce, val = ", val)
 
   val = 0.5*val/mesh.volume
 
-  println(eqn.params.f, "after volume normalization, val = ", val)
   return val
 end
-
 
 """
   This function calclates the time derivative of calcKineticEnergy.

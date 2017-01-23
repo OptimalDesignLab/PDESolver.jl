@@ -35,10 +35,10 @@ function BufferedIO(f::IO=DevNull)
   # register atexit hook to make sure any buffered data is flushed before
   # julia exits
   # this causes errors to be printed when julia exists, possible #10431
-#  atexit( () -> if isopen(fbuf.fstream)
-#                  close(fbuf)
-#                end
-#        )
+  atexit( () -> if isopen(fbuf.fstream)
+                  close(fbuf)
+                end
+        )
   return fbuf
 end
 

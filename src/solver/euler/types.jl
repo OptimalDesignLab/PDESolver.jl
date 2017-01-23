@@ -165,7 +165,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     t = 0.0
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
-    if DB_LEVEL > 1
+    if DB_LEVEL >= 1
       f = BufferedIO("log_$myrank.dat", "w")
     else
       f = BufferedIO(DevNull)
