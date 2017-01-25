@@ -14,9 +14,9 @@ using MeshMovement
 
 # Get the adjoint vector
 include("../startup.jl")
-objective = EulerEquationMod.OptimizationData{Tsol}(mesh, sbp, opts)
+objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
-println("objective.val = $(objective.val)")
+println("objective.lift_val = $(objective.lift_val)")
 orig_val = copy(real(objective.val))
 adjoint_vec = zeros(Tsol, mesh.numDof)
 calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)

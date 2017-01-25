@@ -28,7 +28,8 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                   #functor, functional_number, adjoint_vec::Array{Tsol, 1})
 
   # Get information corresponding to functional
-  functional_edges = []
+  functional_edges = functionalData.geom_faces_functional
+  #=
   if functionalData.is_objective_fn == true
     functional_edges = opts["geom_faces_objective"]
     functional_name = FunctionalDict[opts["objective_function"]]
@@ -37,15 +38,15 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     functional_name = getFunctionalName(opts, functional_number)
     functional_edges = opts[key]
   end
-
+  =#
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", 
-      "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", 
-      "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", 
+    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
+      "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4",
+      "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right",
       "-ksp_gmres_restart", "30" ])
   end
-  
+
   # Calculate the Jacobian of the residual
   res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
   println("typeof res_jac = ", typeof(res_jac))
@@ -62,8 +63,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Calculate df/dq_bndry on edges where the functional is calculated and put
   # it back in func_deriv_arr
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functional_name, functional_edges,
-                      functionalData, func_deriv_arr)  # populate df_dq_bndry
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)  # populate df_dq_bndry
 
   # Assemble func_deriv
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
@@ -194,10 +194,11 @@ mesh nodes.
 """->
 
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
-	                         eqn::EulerData{Tsol}, opts, functor, functional_edges,
+	                         eqn::EulerData{Tsol}, opts,
 	                         functionalData, func_deriv_arr)
 
   integrand = zeros(eqn.q_bndry)
+  functional_edges = functionalData.geom_faces_functional
 
   # Populate integrand
   for itr = 1:length(functional_edges)
@@ -232,8 +233,10 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         node_info = Int[itr,j,i]
         integrand_i = sview(integrand, :, j, global_facenum)
 
-        calcIntegrandDeriv(opts, eqn.params, q2, aux_vars, [nx, ny], integrand_i,
-                           node_info, functor, functionalData)
+        # calcIntegrandDeriv(opts, eqn.params, q2, aux_vars, [nx, ny], integrand_i,
+        #                    node_info, functor, functionalData)
+        calcIntegrandDeriv(opts, eqn.params, q2, aux_vars,[nx,ny], integrand_i, node_info,
+                           functionalData)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
@@ -266,6 +269,48 @@ degrees of freedom at the node.
 
 """->
 
+function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+                            q::AbstractArray{Tsol,1},
+	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                          functionalData::BoundaryForceData{Tsol,:lift})
+
+  pert = complex(0, 1e-20)
+  aoa = params.aoa
+  momentum = zeros(Tsol,2)
+
+  for i = 1:length(q)
+    q[i] += pert
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, momentum)
+    val = -momentum[1]*sin(aoa) + momentum[2]*cos(aoa)
+    integrand_deriv[i] = imag(val)/norm(pert)
+    q[i] -= pert
+  end # End for i = 1:length(q)
+
+  return nothing
+end
+
+function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+                            q::AbstractArray{Tsol,1},
+	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                          functionalData::BoundaryForceData{Tsol,:drag})
+
+  pert = complex(0, 1e-20)
+  aoa = params.aoa
+  momentum = zeros(Tsol,2)
+
+  for i = 1:length(q)
+    q[i] += pert
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, functionalData, momentum)
+    val = momentum[1]*cos(aoa) + momentum[2]*sin(aoa)
+    integrand_deriv[i] = imag(val)/norm(pert)
+    q[i] -= pert
+  end # End for i = 1:length(q)
+
+  return nothing
+end
+#=
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params, q::AbstractArray{Tsol,1},
 	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
 	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
@@ -283,3 +328,4 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params, q::AbstractArray{Tso
 
   return nothing
 end  # End function calcIntegrandDeriv
+=#

@@ -25,7 +25,7 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
     bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
- 
+
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
     calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
@@ -37,7 +37,7 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
 end
 
 @doc """
-### EulerEquationMod.writeBoundary 
+### EulerEquationMod.writeBoundary
 
   This function writes information about the boundary faces and fluxes to files.
   It is controlled by the input argument writeboundary, of type Bool.
@@ -45,9 +45,9 @@ end
   It generates the files:
     * boundaryfaces.dat : writes mesh.bndryfaces, an array with eltype Boundary
                           to a file, one element per line
-    * boundaryflux.dat  : writes the element, local node number and boundary 
+    * boundaryflux.dat  : writes the element, local node number and boundary
                           flux to a line in a human readable format
-    * boundaryflux2.dat : writes the real part ofmesh.bndryflux to space 
+    * boundaryflux2.dat : writes the real part ofmesh.bndryflux to space
                           delimited file
 
    This is a high level function.
@@ -81,7 +81,7 @@ function writeBoundary(mesh, sbp, eqn, opts)
     face = mesh.bndryfaces[i].face
     for j=1:sbp.numfacenodes
       jb = sbp.facenodes[j, face]
-      println(f, "el ", el, ", node_index ", jb, ", flux = ", 
+      println(f, "el ", el, ", node_index ", jb, ", flux = ",
                real(eqn.bndryflux[:, j, i]))
     end
   end
@@ -89,7 +89,7 @@ function writeBoundary(mesh, sbp, eqn, opts)
 
   # write boundaryflux2.dat
   writedlm(flux_dlm, real(eqn.bndryflux))
-  
+
   return nothing
 end
 
@@ -105,7 +105,7 @@ end
     sbp
     eqn
     opts
-    q : the 3D array of solution variables for all elements, numdofpernode x 
+    q : the 3D array of solution variables for all elements, numdofpernode x
         numNodesPerElement x numEl
 
   Inputs/Outputs:
@@ -136,7 +136,7 @@ end
 ### EulerEquationMod.calcBoundaryFlux
 
   This function calculates the boundary flux for the portion of the boundary
-  with a particular boundary condition.  The eqn.q are converted to 
+  with a particular boundary condition.  The eqn.q are converted to
   conservative variables if needed
 
   Inputs:
@@ -148,7 +148,7 @@ end
   bndry_facenums:  An array with elements of type Boundary that tell which
                    element faces have the boundary condition
   Outputs:
-  bndryflux : the array to store the boundary flux, corresponds to 
+  bndryflux : the array to store the boundary flux, corresponds to
               bndry_facenums
 
   The functor must have the signature
@@ -162,15 +162,15 @@ end
   This is a mid level function.
 """->
 # mid level function
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::EulerData{Tsol}, 
-                          functor::BCType, idx_range::UnitRange, 
-                          bndry_facenums::AbstractArray{Boundary,1}, 
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
+                          sbp::AbstractSBP, eqn::EulerData{Tsol},
+                          functor::BCType, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1},
                           bndryflux::AbstractArray{Tres, 3})
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
 #  println("enterted calcBoundaryFlux")
-  
+
 
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
@@ -202,12 +202,12 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
 end
 
 # DG version
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::EulerData{Tsol}, 
+function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP, eqn::EulerData{Tsol},
                           functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1}, 
+                          bndry_facenums::AbstractArray{Boundary,1},
                           bndryflux::AbstractArray{Tres, 3})
-  # calculate the boundary flux for the boundary condition evaluated by the 
+  # calculate the boundary flux for the boundary condition evaluated by the
   # functor
   #=
   # println("functor = ", functor)
@@ -258,14 +258,26 @@ end
   must support.
 
   This is a low level functor.
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
 """->
 type isentropicVortexBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
-              q::AbstractArray{Tsol,1}, 
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   gamma = params.gamma
@@ -286,20 +298,20 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   phi = 0.5*(u*u + v*v)
   H = gamma*qg[4]*specific_vol - gami*phi # Total Enthalpy
   =#
-  
+
   specific_vol = 1.0/v_vals[1]
   u = v_vals[2]*specific_vol
   v = v_vals[3]*specific_vol
   phi = 0.5*(u*u + v*v)
   H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
-  
+
   dq = zeros(Tsol, 4)
   dq = v_vals - qg
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
   calcSAT(params, nrm2, dq, sat, u, v, H)
-  
+
   #=
   # Print SAT
   f = open("SAT_new_qg.dat", "a")
@@ -311,7 +323,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
 
   sat_fac = 1.0 # Multiplier for SAT term
   for i=1:4
-    bndryflux[i] = euler_flux[i] + sat_fac*sat[i]  
+    bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
   end
 
   return nothing
@@ -319,10 +331,10 @@ end
 
 #=
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, 
-              q::AbstractArray{Tsol,1}, 
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
@@ -347,10 +359,10 @@ end # ends the function isentropicVortexBC
 type isentropicVortexBC_physical <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical, 
-              q::AbstractArray{Tsol,1}, 
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -368,15 +380,30 @@ end # end function isentropicVortexBC_physical
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state where the fluid velocity is projected into the wall.
-  
+
 
   This is a low level functor
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
 """
 type noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -389,7 +416,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
   fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
-  nx *= fac  
+  nx *= fac
   ny *= fac
 
   # Get the normal momentum
@@ -400,7 +427,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
     qg[i] = q[i]
   end
 
-  # Subtract the normal component of the momentum from \xi & \eta components 
+  # Subtract the normal component of the momentum from \xi & \eta components
   # of the momentum
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
@@ -414,21 +441,11 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
   # params says we are using entropy variables
-  
+
 
   calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
-  #=
-  press = calcPressure(params, v_vals)
-  U = (v_vals[2]*nx2 + v_vals[3]*ny2)/v_vals[1]
-  bndryflux[1] = q[1]*U
-  bndryflux[2] = nx2*press
-  bndryflux[3] = ny2*press
-  bndryflux[4] = (v_vals[4] + press)*U
-  =#
 
-return nothing
-
-
+  return nothing
 end
 
 
@@ -441,13 +458,25 @@ end
   must support.
 
   This is a low level functor.
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
 """->
 type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},                aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},                aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
 
@@ -475,16 +504,28 @@ end # ends the function unsteadyVortex BC
   state where the fluid density is 1, energy = 2, and x velocity = 0.5
 
   This is a low level functor
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
 """
 type Rho1E2U3BC <: BCType
 end
 
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC,
-              q::AbstractArray{Tsol,1},  
-              aux_vars::AbstractArray{Tres, 1},  
-              x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, 
-              nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, 
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2},
+              nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1},
               params::ParamType{2})
 
 
@@ -510,20 +551,32 @@ end
   state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
 
   This is a low level functor
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
 """
 type FreeStreamBC <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = params.qg
 
   calcFreeStream(x, params, qg)
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  
+
   return nothing
 end
 
@@ -534,20 +587,32 @@ end
   state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
 
   This is a low level functor
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
 """->
 type FreeStreamBC_dAlpha <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = params.qg
 
   calcFreeStream_dAlpha(x, params, qg)
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  
+
   return nothing
 end
 
@@ -566,7 +631,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = zeros(Tsol, 4)
@@ -592,7 +657,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allZerosBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = zeros(Tsol, 4)
@@ -609,7 +674,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
@@ -625,9 +690,9 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
-# use the exact solution as the boundary condition for the PeriodicMMS 
+# use the exact solution as the boundary condition for the PeriodicMMS
 # solutions
 
   qg = params.qg
@@ -681,4 +746,3 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   return nothing
 
 end
-

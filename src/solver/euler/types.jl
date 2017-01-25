@@ -519,3 +519,37 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   end  # end of constructor
 
 end  # end of type declaration
+
+@doc """
+###EulerEquationMod.BoundaryForceData
+
+Composite data type for storing data pertaining to the boundaryForce. It holds
+lift and drag values
+
+"""->
+
+type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
+  is_objective_fn::Bool
+  geom_faces_functional::AbstractArray{Int,1}
+  ndof::Int
+  bndry_force::AbstractArray{Topt,1}
+  lift_val::Topt
+  drag_val::Topt
+  dLiftdAlpha::Topt # Partial derivative of lift w.r.t. alpha
+  dDragdAlpha::Topt # Partial derivative of drag w.r.t. alpha
+
+  function BoundaryForceData(mesh, sbp, eqn, opts, geom_faces_functional)
+
+    functional = new()
+    functional.is_objective_fn = false
+    functional.geom_faces_functional = geom_faces_functional
+    functional.ndof = mesh.dim
+    functional.bndry_force = zeros(Topt, mesh.dim)
+    functional.lift_val = 0.0
+    functional.drag_val = 0.0
+    functional.dLiftdAlpha = 0.0
+    functional.dDragdAlpha = 0.0
+
+    return functional
+  end
+end

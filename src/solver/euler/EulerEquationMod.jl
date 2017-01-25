@@ -261,8 +261,8 @@ end
 @doc """
 ### EulerEquationMod.DragData
 
-Subtype of AbstractOptimizationData. Stores all the information relevant to computing
-an objective function pertaining to drag. Presently its an empty type
+Subtype of AbstractOptimizationData. Stores all the information relevant to
+computing an objective function pertaining to drag. Presently its an empty type
 
 """->
 
@@ -274,6 +274,71 @@ type DragData{Topt} <: AbstractOptimizationData
   end
 end
 
+@doc """
+###EulerEquationMod.createObjectiveFunctionalData
+
+Function for create an object for functional and adjoint computation where the
+functional is an objective function in an optimization.
+
+**Arguments**
+
+* `mesh` : Abstract PUMI mesh
+* `sbp`  : Summation-by-parts operator
+* `eqn`  : Euler equation object
+* `opts` : Options dictionary
+
+"""->
+function createObjectiveFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                             eqn::EulerData{Tsol}, opts)
+
+  functional_faces = opts["geom_faces_objective"]
+
+  if opts["objective_function"] == "lift"
+    objective = BoundaryForceData{Tsol, :lift}(mesh, sbp, eqn, opts, functional_faces)
+    objective.is_objective_fn = true
+  elseif opts["objective_function"] == "drag"
+    objective = BoundaryForceData{Tsol, :drag}(mesh, sbp, eqn, opts, functional_faces)
+    objective.is_objective_fn = true
+  end # End if opts["objective_function"]
+
+  return objective
+end # End function createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+
+@doc """
+###EulerEquationMod.createFunctionalData
+
+Creates an object for functional computation. This function needs to be called
+the same number of times as the number of functionals EXCLUDING the objective
+function are being computed
+
+**Arguments**
+
+* `mesh` : Abstract PUMI mesh
+* `sbp`  : Summation-by-parts operator
+* `eqn`  : Euler equation object
+* `opts` : Options dictionary
+* `functional_number` : Which functional object is being generated. Default = 1
+
+"""->
+
+function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                    eqn::EulerData{Tsol}, opts,
+                                    functional_number::Int=1)
+
+  dict_val = string("functional_name", functional_number)
+  key = string("geom_edges_functional", functional_number)
+  functional_faces = opts[key]
+
+  if opts[dict_val] == "lift"
+    functional = BoundaryForceData{Tsol, :lift}(mesh, sbp, eqn, opts, functional_faces)
+  elseif opts[dict_val] == "drag"
+    functional = BoundaryForceData{Tsol, :drag}(mesh, sbp, eqn, opts, functional_faces)
+  end
+
+  return functional
+end
+
+#=
 @doc """
 ### EulerEquationMod.OptimizationData
 
@@ -302,15 +367,18 @@ objective = OptimizationData(mesh, sbp, opts)
 type OptimizationData{Topt} <: AbstractOptimizationData
 
   is_objective_fn::Bool
+  ndof::Int
   val::Topt
   pressCoeff_obj::PressureData{Topt} # Objective function related to pressure coeff
   lift_obj::LiftData{Topt} # Objective function is lift
   drag_obj::DragData{Topt} # Objective function is drag
+  force_obj::BoundaryForceData{Topt} # Objective function is boundaryForce
 
   function OptimizationData(mesh::AbstractMesh, sbp::AbstractSBP, opts)
 
     functional = new()
     functional.val = zero(Topt)
+
     for i = 1:opts["num_functionals"]
       dict_val = string("functional_name", i)
 
@@ -327,6 +395,7 @@ type OptimizationData{Topt} <: AbstractOptimizationData
           nface_arr[j] = getnFaces(mesh, g_edges[j])
         end
         functional.pressCoeff_obj = PressureData{Topt}(mesh, g_edges, nface_arr)
+        functional.ndof = 1
 
       elseif opts[dict_val] == "lift" || opts["objective_function"] == "lift"
 
@@ -336,6 +405,7 @@ type OptimizationData{Topt} <: AbstractOptimizationData
           functional.is_objective_fn = false
         end
         functional.lift_obj = LiftData{Topt}()
+        functional.dof = 1
 
       elseif opts[dict_val] == "drag" || opts["objective_function"] == "drag"
 
@@ -345,13 +415,15 @@ type OptimizationData{Topt} <: AbstractOptimizationData
           functional.is_objective_fn = false
         end
         functional.drag_obj = DragData{Topt}()
+        functional.ndof = 1
 
-      end
+
+      end # End if
     end   # End for i = 1:opts["num_functionals"]
 
     return functional
   end  # End inner constructor
 end    # End OptimizationData
-
+=#
 
 end # end module

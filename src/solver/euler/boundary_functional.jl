@@ -12,7 +12,13 @@ various edges. At the moment, it can only handle one functional.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-
+*  `functionalData` : Object of type OptimizationData. This is type is associated
+                      with the functional being computed and holds all the
+                      relevant data.
+*  `functional_number` : A number identifying which functional is being computed.
+                         This is important when multiple functions, that aren't
+                         objective functions are being evaluated. Default value
+                         is 1.
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
@@ -29,8 +35,11 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     # The function to be evaluated is an objective function
     functional_edges = opts["geom_faces_objective"]
     functional_name = FunctionalDict[opts["objective_function"]]
-    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
-                     functional_name, functional_edges)
+
+    # functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
+    #                  functional_name, functional_edges)
+
+    calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
   else
     # Geometric edge at which the functional needs to be integrated
     key = string("geom_edges_functional", functional_number)
@@ -82,7 +91,12 @@ nonlinear solve while computing eqn.q
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `g_edge_number` : Geometric edge number
+*  `functionalData` : Object of type OptimizationData. This is type is associated
+                      with the functional being computed and holds all the
+                      relevant data.
+*  `functional_name` : Name of the functional being computed.
+*  `functional_edges` : Geometric faces (edges in 2D) over which the functional
+                        is being evaluated.
 
 **Outputs**
 
@@ -91,11 +105,11 @@ nonlinear solve while computing eqn.q
 """->
 
 function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol}, opts, functionalData::AbstractOptimizationData,
-                         functional_name::FunctionalType, functional_edges::AbstractArray{Int,1})
+                         eqn::EulerData{Tsol}, opts, functionalData::BoundaryForceData)
 
-
-  local_functional_val = zero(Tsol)
+  local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
+  bndry_force = functionalData.bndry_force
+  functional_edges = functionalData.geom_faces_functional
 
   # Get bndry_offsets for the functional edge concerned
   for itr = 1:length(functional_edges)
@@ -114,7 +128,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
-    boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
+    boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
     q2 = zeros(Tsol, mesh.numDofPerNode)
 
     for i = 1:nfaces
@@ -130,31 +144,141 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         node_info = Int[itr,j,i]
-        boundary_integrand[1,j,i] = functional_name(eqn.params, q2, aux_vars,
-                                    [nx, ny], node_info, functionalData)
-
+        b_integrand_ji = sview(boundary_integrand,:,j,i)
+        calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, [nx, ny],
+                                        node_info, functionalData, b_integrand_ji)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
-    val_per_geom_edge = zeros(Tsol, 1)
+    val_per_geom_edge = zeros(Tsol, functionalData.ndof)
 
     integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range],
                            boundary_integrand, val_per_geom_edge)
 
-    local_functional_val += val_per_geom_edge[1]
+    local_functional_val[:] += val_per_geom_edge[:]
 
   end # End for itr = 1:length(functional_edges)
 
-  functional_val = zero(Tsol)
-  functional_val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
+  for i = 1:functionalData.ndof
+    bndry_force[i] = MPI.Allreduce(local_functional_val[i], MPI.SUM, eqn.comm)
+  end
+
+  # Compute lift, drag and their corresponding derivatives w.r.t alpha
+  aoa = eqn.params.aoa # Angle of attack
+  functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+  functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
+  functionalData.dLiftdAlpha = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
+  functionalData.dDragdAlpha = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+
+  return nothing
+end
+
+#=
+function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+                         eqn::EulerData{Tsol}, opts, functionalData::AbstractOptimizationData,
+                         functional_name::FunctionalType, functional_edges::AbstractArray{Int,1})
+
+
+  local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
+  functional_val = zeros(Tsol, functionalData.ndof) # Over all processors
+
+  # Get bndry_offsets for the functional edge concerned
+  for itr = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
+    # get the boundary array associated with the geometric edge
+    itr2 = 0
+    for itr2 = 1:mesh.numBC
+      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
+        break
+      end
+    end
+
+    start_index = mesh.bndry_offsets[itr2]
+    end_index = mesh.bndry_offsets[itr2+1]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
+    nfaces = length(bndry_facenums)
+    boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
+    q2 = zeros(Tsol, mesh.numDofPerNode)
+
+    for i = 1:nfaces
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+      for j = 1:mesh.sbpface.numnodes
+        q = sview(eqn.q_bndry, :, j, global_facenum)
+        convertToConservative(eqn.params, q, q2)
+        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = sview(mesh.coords_bndry, :, j, global_facenum)
+        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+        nrm = sview(sbp.facenormal, :, bndry_i.face)
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        node_info = Int[itr,j,i]
+        b_integrand_ji = sview(boundary_integrand,:,j,i)
+        functional_name(eqn.params, q2, aux_vars, [nx, ny], node_info,
+                        functionalData, b_integrand_ji)
+#       boundary_integrand[1,j,i] = functional_name(eqn.params, q2, aux_vars,
+#                                   [nx, ny], node_info, functionalData)
+
+      end  # End for j = 1:mesh.sbpface.numnodes
+    end    # End for i = 1:nfaces
+
+    val_per_geom_edge = zeros(Tsol, functionalData.ndof)
+
+    integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range],
+                           boundary_integrand, val_per_geom_edge)
+
+    local_functional_val[:] += val_per_geom_edge[:]
+
+  end # End for itr = 1:length(functional_edges)
+
+  for i = 1:functionalData.ndof
+    functional_val[i] = MPI.Allreduce(local_functional_val[i], MPI.SUM, eqn.comm)
+  end
 
   return functional_val
+end
+=#
+function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
+                                         q::AbstractArray{Tsol,1},
+                                         aux_vars::AbstractArray{Tres, 1},
+                                         nrm::AbstractArray{Tmsh},
+                                         node_info::AbstractArray{Int},
+                                         objective::BoundaryForceData,
+                                         val::AbstractArray{Tsol,1})
+
+  aoa = params.aoa # Angle of attack
+  euler_flux = params.flux_vals1 # Reuse existing memory
+  nx = nrm[1]
+  ny = nrm[2]
+
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  val[:] = euler_flux[2:3]
+
+  return nothing
 end
 
 @doc """
 ### EulerEquationMod.drag
 
-Computes the force in the X-direction.
+Computes the integrand at a node for computing the drag force on a boundary
+surface/edge. Note that the drag is always tangential to the free-stream
+velocity.
 
 **Inputs**
 
@@ -178,10 +302,11 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
-#=
+              node_info::AbstractArray{Int},
+              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
+
   aoa = params.aoa # Angle of attack
-  euler_flux = zeros(Tsol, length(q))
+  euler_flux = params.flux_vals1 # Reuse existing memory
   nx = nrm[1]
   ny = nrm[2]
 
@@ -201,28 +326,35 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
 
   calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
 
-  val = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
-=#
+  val[1] = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
 
+#=
   aoa = params.aoa # Angle of attack
-  euler_flux = zeros(Tsol, length(q))
+  euler_flux = params.flux_vals1 # Reuse predefined memory
   calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
 
-  val = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
-
-  return val
+  val[1] = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
+=#
+  return nothing
 end
 
+@doc """
+###EulerEquationMod.dDragdALpha
+
+Compute the integrand for computing \frac{\partial Drag}/{\partial Alpha}
+
+"""->
 type dDragdAlpha <: FunctionalType
 end
 
 function call{Tsol, Tres, Tmsh}(obj::dDragdAlpha, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
+              node_info::AbstractArray{Int},
+              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
 
   aoa = params.aoa # Angle of attack
-  euler_flux = zeros(Tsol, length(q))
-  #=nx = nrm[1]
+  euler_flux = params.flux_vals1 # Reuse existing memory
+  nx = nrm[1]
   ny = nrm[2]
 
   fac = 1.0/(sqrt(nx*nx + ny*ny))
@@ -238,18 +370,20 @@ function call{Tsol, Tres, Tmsh}(obj::dDragdAlpha, params, q::AbstractArray{Tsol,
   end
   qg[2] -= nx*normal_momentum
   qg[3] -= ny*normal_momentum
-  =#
-  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
 
-  val = -euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
+  # calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
 
-  return val
+  val[1] = -euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
+
+  return nothing
 end
 
 @doc """
 ### EulerEquationMod.lift
 
-Computes the force in the Y-direction.
+Computes the lift force. Note lift is always perpendicular to the free-stream
+velocity.
 
 **Inputs**
 
@@ -269,41 +403,11 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::lift, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
+              node_info::AbstractArray{Int},
+              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
 
   aoa = params.aoa # Angle of attack
-  euler_flux = zeros(Tsol, length(q))
-#=nx = nrm[1]
-  ny = nrm[2]
-
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
-  # normalize normal vector
-  nx *= fac
-  ny *= fac
-
-  normal_momentum = nx*q[2] + ny*q[3]
-
-  qg = params.qg
-  for i=1:length(q)
-    qg[i] = q[i]
-  end
-  qg[2] -= nx*normal_momentum
-  qg[3] -= ny*normal_momentum  =#
-  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
-  val = -euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
-
-  return val
-end
-
-type dLiftdAlpha <: FunctionalType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::dLiftdAlpha, params, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
-
-  aoa = params.aoa # Angle of attack
-  euler_flux = zeros(Tsol, length(q))
+  euler_flux = params.flux_vals1 # Reuse existing memory
   nx = nrm[1]
   ny = nrm[2]
 
@@ -320,12 +424,84 @@ function call{Tsol, Tres, Tmsh}(obj::dLiftdAlpha, params, q::AbstractArray{Tsol,
   end
   qg[2] -= nx*normal_momentum
   qg[3] -= ny*normal_momentum
-  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
-  val = euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  # calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
+  val[1] = -euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
 
-  return val
+  return nothing
 end
 
+@doc """
+### EulerEquationMod.dLiftdALpha
+
+Compute the integrand for computing \frac{\partial lift}/{\partial alpha}
+
+"""->
+type dLiftdAlpha <: FunctionalType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::dLiftdAlpha, params, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+              node_info::AbstractArray{Int},
+              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
+
+  aoa = params.aoa # Angle of attack
+  euler_flux = params.flux_vals1 # Reuse existing memory
+  nx = nrm[1]
+  ny = nrm[2]
+
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  val[1] = euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
+
+  return nothing
+end
+
+type boundaryForce <: FunctionalType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::boundaryForce, params, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+              node_info::AbstractArray{Int},
+              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
+
+
+  aoa = params.aoa # Angle of attack
+  euler_flux = params.flux_vals1 # Reuse existing memory
+  nx = nrm[1]
+  ny = nrm[2]
+
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  val[:] = euler_flux[2:3]
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod.targetCp
@@ -337,7 +513,8 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::targetCp, params, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int}, objective::AbstractOptimizationData)
+              node_info::AbstractArray{Int},
+              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
 
   cp_node = calcPressureCoeff(params, q)
   g_face = node_info[1]
@@ -345,9 +522,9 @@ function call{Tsol, Tres, Tmsh}(obj::targetCp, params, q::AbstractArray{Tsol,1},
   face = node_info[3]
   cp_target = objective.pressCoeff_obj.targetCp_arr[g_face][node, face]
 
-  val = 0.5*((cp_node - cp_target).^2)
+  val[1] = 0.5*((cp_node - cp_target).^2)
 
-  return val
+  return nothing
 end
 
 
@@ -364,6 +541,7 @@ global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
 "targetCp" => targetCp(),
 "dLiftdAlpha" => dLiftdAlpha(),
 "dDragdAlpha" => dDragdAlpha(),
+"boundaryForce" => boundaryForce()
 )
 
 
