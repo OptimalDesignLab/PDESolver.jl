@@ -281,7 +281,7 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
 
   for i = 1:length(q)
     q[i] += pert
-    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, momentum)
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, functionalData, momentum)
     val = -momentum[1]*sin(aoa) + momentum[2]*cos(aoa)
     integrand_deriv[i] = imag(val)/norm(pert)
     q[i] -= pert

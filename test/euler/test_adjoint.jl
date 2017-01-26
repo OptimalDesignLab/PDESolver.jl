@@ -2,26 +2,55 @@
 function test_adjoint()
 
   facts("--- Testing Functional Computation On a Boundary ---") do
+
     ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
-    include("../../src/solver/euler/startup.jl")  # initialization and construction
-
+    mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(ARGS[1])
+    @assert mesh.isDG == true
     @assert opts["jac_method"] == 2
-    @fact mesh.isDG --> true
-    @fact opts["calc_functional"] --> true
-    @fact opts["functional_error"] --> true
-    @fact opts["functional_name1"] --> "drag"
-    @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
-    @fact opts["geom_edges_functional1"] --> [3]
+    @assert opts["run_type"] == 5
 
-    fname = "./functional_error1.dat"
-    relative_error = readdlm(fname)
+    context("Checking Functional Object Creation") do
 
-    @fact relative_error[1] --> roughly(0.0001, atol = 1e-4)
+      lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts, opts["num_functionals"])
+      @fact lift.is_objective_fn --> false
+      @fact lift.geom_faces_functional --> [3]
+      @fact lift.ndof --> 2
+      @fact lift.bndry_force --> Complex{Float64}[0.0, 0.0]
+      @fact lift.lift_val --> zero(Complex{Float64})
+      @fact lift.drag_val --> zero(Complex{Float64})
+      @fact lift.dLiftdAlpha --> zero(Complex{Float64})
+      @fact lift.dDragdAlpha --> zero(Complex{Float64})
 
-    rm("./functional_error1.dat") # Delete the file
+    end # End context("Checking Functional Object Creation")
 
+    drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+
+    context("Checking Objective Functional Object Creation") do
+
+      @fact drag.is_objective_fn --> true
+      @fact drag.geom_faces_functional --> [3]
+      @fact drag.ndof --> 2
+      @fact drag.bndry_force --> Complex{Float64}[0.0, 0.0]
+      @fact drag.lift_val --> zero(Complex{Float64})
+      @fact drag.drag_val --> zero(Complex{Float64})
+      @fact drag.dLiftdAlpha --> zero(Complex{Float64})
+      @fact drag.dDragdAlpha --> zero(Complex{Float64})
+
+    end # context("Checking Objective Functional Object Creation")
+
+    EulerEquationMod.solve_euler(mesh, sbp, eqn, opts, pmesh)
+    EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
+
+    context("Checking Functional Computation") do
+
+      analytical_drag = -1/1.4
+      drag_error = norm(drag.drag_val - analytical_drag, 2)
+      @fact drag_error --> roughly(0.0, atol = 1e-2)
+
+    end # End context("Checking Functional Computation")
+    
   end  # End do
-
+  #=
   facts("--- Testing Objective Function Computation On a Boundary ---") do
 
     include("./input_vals_vortex_adjoint_DG.jl")
@@ -191,7 +220,7 @@ function test_adjoint()
     end # End context("checking derivative computation using adjoint vector")
 
   end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
-  
+  =#
   #=
   facts("--- Testing Functional Computation On a Boundary ---") do
     include("./input_vals_vortex_adjoint_DG.jl")

@@ -19,7 +19,8 @@ arg_dict = Dict{ASCIIString, Any}(
 "BC3" => [2],
 "BC3_name" => "isentropicVortexBC",
 "BC4" => [3],
-"BC4_name" => "isentropicVortexBC",
+# "BC4_name" => "isentropicVortexBC",
+"BC4_name" => "noPenetrationBC",
 "aoa" => 0.0,
 "smb_name" => "SRCMESHES/gvortex1.smb",
 "dmg_name" => ".null",
@@ -33,13 +34,17 @@ arg_dict = Dict{ASCIIString, Any}(
 "step_tol" => 1e-10,
 "itermax" => 30,
 
-#Functional computation keys
-"calc_functional" => true,
-"functional_error" => true,
+# Non-objective Functional computation keys
+# "calc_functional" => true,
+# "functional_error" => true,
 "num_functionals" => 1,
-"functional_name1" => "drag",
-"geom_edges_functional1" => [3],
-"analytical_functional_val" => -1/1.4,
+"functional_name1" => "lift",
+"geom_faces_functional1" => [3],
+# "analytical_functional_val" => -1/1.4,
+
+# Objective Functional computation keys
+"objective_function" => "drag",
+"geom_faces_objective" => [3],
 
 # Adjoint computation keys
 "calc_adjoint" => false,

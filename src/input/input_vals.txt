@@ -293,7 +293,7 @@ Note that any values associated with these options are shared with the regular
                          writing the file a numerical suffix and .dat extension is added
 "analytical_functional_val" : The analytical functional value of the functional over
                               the specified geometric edges.
-"geom_edges_functionali" : Array of geometric edges (2D) where functional is being calculated
+"geom_faces_functionali" : Array of geometric edges (2D)/faces (3D) where functional is being calculated
 "functional_namei" : Name of the ith functional that needs to be computed over specified
                      geometric edges(2D)/faces(3D), (ASCIIString)
 

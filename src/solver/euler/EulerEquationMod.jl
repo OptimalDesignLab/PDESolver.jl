@@ -326,7 +326,7 @@ function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
                                     functional_number::Int=1)
 
   dict_val = string("functional_name", functional_number)
-  key = string("geom_edges_functional", functional_number)
+  key = string("geom_faces_functional", functional_number)
   functional_faces = opts[key]
 
   if opts[dict_val] == "lift"

@@ -20,7 +20,7 @@ function run_euler(input_file::AbstractString)
 
   mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
   solve_euler(mesh, sbp, eqn, opts, pmesh)
-  
+
   return mesh, sbp, eqn, opts
 end
 
@@ -41,7 +41,7 @@ end
     pmesh: mesh used for preconditioning, can be same object as mesh
 """
 function createObjects(input_file::AbstractString)
-  
+
   if !MPI.Initialized()
     MPI.Init()
   end
@@ -71,7 +71,7 @@ end
 """
   Given fully initialized mesh, sbp, eqn, opts, this function solves
   the Euler equations.  The 4 object should be obtained from createObjects().
-  
+
 
   Specifically, it applies an initial condition and invokes a nonlinear
   solver according to the options dictionary.
@@ -104,7 +104,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
 
   fill!(eqn.res, 0.0)
   fill!(eqn.res_vec, 0.0)
-  res_vec = eqn.res_vec 
+  res_vec = eqn.res_vec
   q_vec = eqn.q_vec       # solution at current timestep
 
   # calculate residual of some other function for res_reltol0
@@ -115,7 +115,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     Relfunc = ICDict[Relfunc_name]
     @mpi_master println("Relfunc = ", Relfunc)
     Relfunc(mesh, sbp, eqn, opts, q_vec)
-   
+
     if var_type == :entropy
       @mpi_master println("converting to entropy variables")
       for i=1:mesh.numDofPerNode:mesh.numDof
@@ -131,7 +131,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   #  println("res_real = ", res_real)
     opts["res_reltol0"] = tmp
     println("res_reltol0 = ", tmp)
-    
+
   #  writedlm("relfunc_res.dat", eqn.res)
   #  writedlm("relfunc_resvec.dat", res_real)
     saveSolutionToMesh(mesh, res_real)
@@ -153,8 +153,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   end
 
   if opts["calc_error"]
-    @mpi_master println("\ncalculating error of file ", 
-                       opts["calc_error_infname"], 
+    @mpi_master println("\ncalculating error of file ",
+                       opts["calc_error_infname"],
                       " compared to initial condition")
 
     # read in this processors portion of the solution
@@ -284,7 +284,7 @@ function postproc(mesh, sbp, eqn, opts)
         println(f, diff_norm, " ", h_avg)
         close(f)
       end
-
+      #=
       #---- Calculate functional on a boundary  -----#
       if opts["calc_functional"]
         num_functionals = opts["num_functionals"]
@@ -310,7 +310,7 @@ function postproc(mesh, sbp, eqn, opts)
         functional_edges = opts[key]
         functional_number = j
         functional_name = getFunctionalName(opts, j)
-        
+
         adjoint_vec = zeros(Tsol, mesh.numDof)
         calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
 
@@ -325,12 +325,10 @@ function postproc(mesh, sbp, eqn, opts)
         writeVisFiles(mesh, "adjoint_field")
 
       end  # End if opts["calc_adjoint"]
-
+      =#
 
     end  # end if haskey(ICname)
   end  # end if do_postproc
 
   return nothing
 end
-
-

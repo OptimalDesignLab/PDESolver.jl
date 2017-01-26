@@ -31,6 +31,8 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
+  calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
+  #=
   if functionalData.is_objective_fn == true
     # The function to be evaluated is an objective function
     functional_edges = opts["geom_faces_objective"]
@@ -73,7 +75,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
       end  # End if opts["functional_error"]
     end    # End @mpi_master
   end # End if is_objective_fn == true
-
+  =#
   return nothing
 end
 
