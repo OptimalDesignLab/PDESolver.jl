@@ -416,13 +416,38 @@ end
     Y, S2, Lambda, res_vals1, res_vals2, res_vals3,  w_vals_stencil, 
     w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2
 """
+function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::AbstractFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+  # calculate the normal vector in x-y space
+  nrm_xy = params.nrm_face2
+#  nrm_xy = zeros(Tmsh, 3, sbpface.numnodes)
+  for dim=1:Tdim
+    for k=1:sbpface.numnodes
+      nrm_k = zero(Tmsh)
+      for d = 1:Tdim
+        nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
+      end
+      nrm_xy[dim, k] = nrm_k
+    end
+  end
+
+  calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_xy, resL, resR)
+
+  return nothing
+end
+
 
 
 function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::AbstractFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-             aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 #  println("----- entered calcEntropyLWEntropyPenaltyIntegral -----")
@@ -494,10 +519,13 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     # get the normal vector (scaled)
 
     for dim =1:Tdim
+      #=
       nrm_dim = zero(Tmsh)
       for d = 1:Tdim
         nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
       end
+      =#
+      nrm_dim = nrm_face[dim, i]
 
       # get the eigensystem in the current direction
       if dim == 1

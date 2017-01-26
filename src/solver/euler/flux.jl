@@ -114,8 +114,8 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     copy!(resL2, resL)
     copy!(resR2, resR)
 
-    calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
-    calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
+    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
+    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
 
     @assert norm(resL2 - resL) < 1e-12
     @assert norm(resR2 - resR) < 1e-12
