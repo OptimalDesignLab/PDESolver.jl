@@ -97,8 +97,8 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
   params = eqn.params
 #  sbpface = mesh.sbpface
   nfaces = length(interfaces)
-  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-  resR2 = zeros(resL2)
+#  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+#  resR2 = zeros(resL2)
   for i=1:nfaces
     iface = interfaces[i]
     elL = iface.elementL
@@ -111,18 +111,18 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    copy!(resL2, resL)
-    copy!(resR2, resR)
+#    copy!(resL2, resL)
+#    copy!(resR2, resR)
 
-    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
-    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
+#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
+#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
 
-    @assert norm(resL2 - resL) < 1e-12
-    @assert norm(resR2 - resR) < 1e-12
+#    @assert norm(resL2 - resL) < 1e-12
+#    @assert norm(resR2 - resR) < 1e-12
 
 
-#    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
-#                       dxidx_face, flux_functor, resL, resR)
+    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
+                       nrm_face, flux_functor, resL, resR)
   end
 
   return nothing
@@ -172,6 +172,7 @@ function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
 #    qL_arr = eqn.q_face_send[i]
     qR_arr = eqn.q_face_recv[idx]
     dxidx_face_arr = mesh.dxidx_sharedface[idx]
+    nrm_face_arr = mesh.nrm_sharedface[idx]
 #    aux_vars_arr = eqn.aux_vars_sharedface[idx]
 #    flux_arr = eqn.flux_sharedface[idx]
 
@@ -185,11 +186,12 @@ function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
       qL = sview(q, :, :, elL)
       qR = sview(qR_arr, :, :, elR)
       aux_vars = sview(eqn.aux_vars, :, :, elL)
-      dxidx_face = sview(dxidx_face_arr, :, :, :, j)
+#      dxidx_face = sview(dxidx_face_arr, :, :, :, j)
+      nrm_face = sview(nrm_face_arr, :, :, j)
       resL = sview(eqn.res, :, :, elL)
 
       face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
-                         dxidx_face, flux_functor, resL, resR)
+                         nrm_face, flux_functor, resL, resR)
     end  # end loop j
 
   end  # end loop over peers

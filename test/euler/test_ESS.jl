@@ -411,6 +411,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     qR = eqn.q[:, :, iface.elementR]
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
     dxidx_face = mesh.dxidx_face[:, :, :, i]
+    nrm_face = mesh.nrm_face[:, :, i]
     Tres = eltype(eqn.res)
     resL_code = sview(eqn.res, :, :, elL)
     resR_code = sview(eqn.res, :, :, elR)
@@ -420,7 +421,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     resR_test2 = sview(res_test2, :, :, elR)
 
 
-    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_code, resR_code)
+    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_code, resR_code)
 
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
@@ -463,6 +464,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
 
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
     dxidx_face = mesh.dxidx_face[:, :, :, i]
+    nrm_face = mesh.nrm_face[:, :, i]
     Tres = eltype(eqn.res)
     numDofPerNode = size(eqn.res, 1)
     numNodesPerElement = size(eqn.res, 2)
@@ -470,7 +472,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     resR = zeros(resL)
 
     # calculate the integral of entropy flux from the residual
-    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
 
     nrm = zeros(mesh.dim)
@@ -604,6 +606,7 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     qR = eqn.q[:, :, iface.elementR]
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
     dxidx_face = mesh.dxidx_face[:, :, :, i]
+    nrm_face = mesh.nrm_face[:, :, i]
 
     resL = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
     resR = zeros(resL)
@@ -617,8 +620,8 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     penalty_func = EulerEquationMod.FaceElementDict[penalty_name]
     lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
 
-    penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_func,  resL, resR)
-#    lf_penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_func,  resL3, resR3)
+    penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
+#    lf_penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL3, resR3)
 #    EulerEquationMod.calcLFEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
 
     if test_ref
