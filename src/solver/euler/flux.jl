@@ -105,11 +105,16 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     qR = sview(eqn.q, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
     dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+    nrm_face = sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
-                       dxidx_face, flux_functor, resL, resR)
+    calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
+#    calcECFaceIntegral2(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL, resR)
+
+
+#    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
+#                       dxidx_face, flux_functor, resL, resR)
   end
 
   return nothing
