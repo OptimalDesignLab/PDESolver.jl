@@ -592,6 +592,35 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
+
+  # calculate the normal vector in x-y space
+  nrm_xy = params.nrm_face2
+#  nrm_xy = zeros(Tmsh, 3, sbpface.numnodes)
+  for dim=1:Tdim
+    for k=1:sbpface.numnodes
+      nrm_k = zero(Tmsh)
+      for d = 1:Tdim
+        nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
+      end
+      nrm_xy[dim, k] = nrm_k
+    end
+  end
+
+
+  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_xy, resL, resR)
+
+  return nothing
+end
+
+
+
+function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::AbstractFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
 #  println("----- entered calcLW2EntropyPenaltyIntegral -----")
   numDofPerNode = size(qL, 1)
 
@@ -658,7 +687,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
 
     # get the normal vector (scaled)
-
+#=
     for dim =1:Tdim
       nrm_dim = zero(Tmsh)
       for d = 1:Tdim
@@ -667,11 +696,14 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
       nrm[dim] = nrm_dim
     end
-
+=#
+    for dim=1:Tdim
+      nrm[dim] = nrm_face[dim, i]
+    end
     # normalize direction vector
     len_fac = calcLength(params, nrm)
     for dim=1:Tdim
-      nrm[dim] /= len_fac
+      nrm[dim] = nrm[dim]/len_fac
     end
 
     # project q into n-t coordinate system
