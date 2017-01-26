@@ -97,6 +97,8 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
   params = eqn.params
 #  sbpface = mesh.sbpface
   nfaces = length(interfaces)
+  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  resR2 = zeros(resL2)
   for i=1:nfaces
     iface = interfaces[i]
     elL = iface.elementL
@@ -109,8 +111,14 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
-#    calcECFaceIntegral2(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL, resR)
+    copy!(resL2, resL)
+    copy!(resR2, resR)
+
+    calcESLFFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
+    calcESLFFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
+
+    @assert norm(resL2 - resL) < 1e-12
+    @assert norm(resR2 - resR) < 1e-12
 
 
 #    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
