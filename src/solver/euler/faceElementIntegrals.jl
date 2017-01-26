@@ -85,7 +85,7 @@ function calcECFaceIntegral2{Tdim, Tsol, Tres, Tmsh}(
   nrmD = params.nrmD
   fill!(nrmD, 0.0)
   for d=1:Tdim
-    nrmD[d] = 1
+    nrmD[d, d] = 1
   end
 
     # loop over the nodes of "left" element that are in the stencil of interp
