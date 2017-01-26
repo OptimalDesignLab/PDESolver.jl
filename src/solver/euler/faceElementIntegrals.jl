@@ -44,28 +44,49 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
+  # calculate the normal vector in x-y space
+  nrm_xy = params.nrm_face2
+#  nrm_xy = zeros(Tmsh, 3, sbpface.numnodes)
+  for dim=1:Tdim
+    for k=1:sbpface.numnodes
+      nrm_k = zero(Tmsh)
+      for d = 1:Tdim
+        nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
+      end
+      nrm_xy[dim, k] = nrm_k
+    end
+  end
+
+  calcECFaceIntegral2(params, sbpface, iface, qL, qR, aux_vars, nrm_xy, functor,
+                     resL, resR)
+
+  return nothing
+end
+
+function calcECFaceIntegral2{Tdim, Tsol, Tres, Tmsh}(
+                             params::AbstractParamType{Tdim}, 
+                             sbpface::AbstractFace, 
+                             iface::Interface,
+                             qL::AbstractMatrix{Tsol}, 
+                             qR::AbstractMatrix{Tsol}, 
+                             aux_vars::AbstractMatrix{Tres}, 
+                             nrm_xy::AbstractMatrix{Tmsh},
+                             functor::FluxType, 
+                             resL::AbstractMatrix{Tres}, 
+                             resR::AbstractMatrix{Tres})
+
+
 #  Flux_tmp = params.flux_vals1
   fluxD = params.flux_valsD
   numDofPerNode = size(fluxD, 1)
 #  numDofPerNode = length(Flux_tmp)
 #  nrm = params.nrm
 
-  # calculate the normal vector in x-y space
   nrmD = params.nrmD
-  nrm_xy = params.nrm_face
   fill!(nrmD, 0.0)
-#  nrm_xy = zeros(Tmsh, 3, sbpface.numnodes)
-  for dim=1:Tdim
-    nrmD[dim, dim] = 1  # calculate fluxes in x, y, z directions
-    for k=1:sbpface.numnodes
-      nrm_k = zero(Tmsh)
-      for d = 1:Tdim
-        nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
-      end
-      nrm_xy[k, dim] = nrm_k
-    end
+  for d=1:Tdim
+    nrmD[d] = 1
   end
-
 
     # loop over the nodes of "left" element that are in the stencil of interp
   for i = 1:sbpface.stencilsize
@@ -93,7 +114,7 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
         @simd for k = 1:sbpface.numnodes
           # the computation of nrm_k could be moved outside i,j loops and saved
           # in an array of size [3, sbp.numnodes]
-          nrm_k = nrm_xy[k, dim]
+          nrm_k = nrm_xy[dim, k]
           kR = sbpface.nbrperm[k, iface.orient]
           Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
         end  # end loop k
@@ -781,6 +802,28 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral,
 
 end
 
+
+"""
+  Entropy conservative term only
+"""
+type ECFaceIntegral2 <: FaceElementIntegralType
+end
+
+function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral2, 
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+
+  calcECFaceIntegral2(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
+                      functor, resL, resR)
+
+end
+
+
 """
   Entropy conservative integral + Lax-Friedrich penalty
 """
@@ -898,6 +941,7 @@ end
 
 global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
 "ECFaceIntegral" => ECFaceIntegral(),
+"ECFaceIntegral2" => ECFaceIntegral2(),
 "ESLFFaceIntegral" => ESLFFaceIntegral(),
 "ELFPenaltyFaceIntegral" => ELFPenaltyFaceIntegral(),
 "ESLWFaceIntegral" => ESLWFaceIntegral(),

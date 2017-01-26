@@ -82,8 +82,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   nrm3::Array{Tmsh, 1}
   nrmD::Array{Tmsh, 2}  # Tdim x Tdim array for Tdim normal vectors 
                         # (one per column)
-  nrm_face::Array{Tmsh, 2}  # Tdim x sbpface.numnodes array for normal vectors 
+  nrm_face::Array{Tmsh, 2}  # sbpface.numnodes x Tdim array for normal vectors 
                             # of all face nodes on an element  
+  nrm_face2::Array{Tmsh, 2}  # like nrm_face, but transposed
 
   dxidx_element::Array{Tmsh, 3}  # Tdim x Tdim x numNodesPerElement array for
                                  # dxidx of an entire element
@@ -208,6 +209,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     nrm3 = zeros(nrm)
     nrmD = zeros(Tmsh, Tdim, Tdim)
     nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
+    nrm_face2 = zeros(Tmsh, Tdim, mesh.sbpface.numnodes)
 
     dxidx_element = Array(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
     velocities = Array(Tsol, Tdim, mesh.numNodesPerElement)
@@ -293,7 +295,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                res_vals2, res_vals3,  flux_vals1, 
                flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
                A_mats, Rmat1, Rmat2, P,
-               nrm, nrm2, nrm3, nrmD, nrm_face, dxidx_element, velocities,
+               nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
                velocity_deriv, velocity_deriv_xy,
                h, cv, R, gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
