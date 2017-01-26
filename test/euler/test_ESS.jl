@@ -10,7 +10,7 @@ function calcECFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamTyp
                                 qL::AbstractMatrix{Tsol},
                                 qR::AbstractMatrix{Tsol}, 
                                 aux_vars::AbstractMatrix{Tres},
-                                dxidx_face::Abstract3DArray{Tmsh},
+                                nrm_face::AbstractArray{Tmsh, 2},
                                 functor::FluxType,
                                 resL::AbstractMatrix{Tres}, 
                                 resR::AbstractMatrix{Tres})
@@ -44,11 +44,7 @@ function calcECFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamTyp
 
     # Nx, wface times Rprime
     for i=1:numFaceNodes
-      nrm_i = zero(Tmsh)
-      for d=1:Tdim
-        nrm_i += facenormal[d]*dxidx_face[d, dim, i]
-      end
-      fac = sbpface.wface[i]*nrm_i
+      fac = sbpface.wface[i]*nrm_face[dim, i]
       # multiply by Rprime into A
       for j=1:numNodesPerElement
         # should nbrperm be after perm_nu?
@@ -212,11 +208,11 @@ function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, resL::Abstrac
   return dot(wL_vec, resL_vec)
 end
 
-function getEface(iface, sbpface, dxidx_face, dir::Integer)
+function getEface(iface, sbpface, nrm_face, dir::Integer)
   # this is inconsistent with reduceEface, for reasons I don't understand
   error("getEface does not work correctly")
 
-  dim = size(dxidx_face, 1)
+  dim = size(nrm_face, 1)
   EL = zeros(sbpface.stencilsize, sbpface.stencilsize)
   ER = zeros(EL)
   for i=1:sbpface.stencilsize
@@ -228,10 +224,7 @@ function getEface(iface, sbpface, dxidx_face, dir::Integer)
       p_jL = sbpface.perm[j, iface.faceL]
       p_jR = sbpface.perm[j, iface.faceR]
       for k=1:sbpface.numnodes
-        nrm_k = 0.0
-        for d=1:dim
-          nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dir, k]
-        end
+        nrm_k = nrm_face[dir, k]
         EL[i, p_j] += sbpface.interp[i, k]*sbpface.interp[j,k]*sbpface.wface[k]*nrm_k
         kR = sbpface.nbrperm[k, iface.orient]
         # need to consider nbrperm for p_i?
@@ -246,9 +239,9 @@ end
 """
   Compute E for the current face (specified by dir) times psiL and psiR
 """
-function reduceEface(iface, sbpface, dxidx_face, dir::Integer, psiL, psiR)
+function reduceEface(iface, sbpface, nrm_face::AbstractMatrix, dir::Integer, psiL, psiR)
 
-  dim = size(dxidx_face, 1)
+  dim = size(nrm_face, 1)
   RHS1 = 0.0
   RHS2 = 0.0
 
@@ -257,10 +250,7 @@ function reduceEface(iface, sbpface, dxidx_face, dir::Integer, psiL, psiR)
       val_acc = 0.0
       psi_val = psiL[sbpface.perm[j, iface.faceL]]
       for k=1:sbpface.numnodes
-        nrm_k = 0.0
-        for d=1:dim
-          nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dir, k]
-        end
+        nrm_k = nrm_face[dir, k]
         val = sbpface.interp[i,k]*sbpface.interp[j,k]*sbpface.wface[k]*nrm_k
         val_acc += val
         RHS1 += val*psi_val
@@ -279,7 +269,7 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
               params::AbstractParamType{Tdim},
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol},
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 #  println("----- entered entropyDissipativeRef -----")
@@ -324,14 +314,8 @@ function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
   for i=1:sbpface.numnodes
     wL_i = wL_face[:, i]
     wR_i = wR_face[:, i]
-    nrm = zeros(Tmsh, Tdim)
-    # get the normal vector
-    for dim = 1:Tdim
-      for d = 1:Tdim
-        nrm[dim] += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
-      end
-    end
-    
+    nrm = nrm_face[:, i]
+
     EulerEquationMod.convertToConservativeFromIR_(params, wL_i, qL_i)
     EulerEquationMod.convertToConservativeFromIR_(params, wR_i, qR_i)
 
@@ -410,7 +394,6 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     qL = eqn.q[:, :, iface.elementL]
     qR = eqn.q[:, :, iface.elementR]
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
-    dxidx_face = mesh.dxidx_face[:, :, :, i]
     nrm_face = mesh.nrm_face[:, :, i]
     Tres = eltype(eqn.res)
     resL_code = sview(eqn.res, :, :, elL)
@@ -424,7 +407,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_code, resR_code)
 
     if test_ref
-      calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL_test2, resR_test2)
+      calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_test2, resR_test2)
 
       for j=1:size(resL_code, 1)
         for k=1:size(resR_code, 2)
@@ -463,7 +446,6 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     qR = eqn.q[:, :, iface.elementR]
 
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
-    dxidx_face = mesh.dxidx_face[:, :, :, i]
     nrm_face = mesh.nrm_face[:, :, i]
     Tres = eltype(eqn.res)
     numDofPerNode = size(eqn.res, 1)
@@ -483,7 +465,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
       fill!(nrm, 0.0)
       nrm[dir] = 1.0
       psiL, psiR = getPsi(eqn.params, qL, qR, nrm)
-      rhs += reduceEface(iface, mesh.sbpface, dxidx_face, dir, psiL, psiR)
+      rhs += reduceEface(iface, mesh.sbpface, nrm_face, dir, psiL, psiR)
     end
 
 
@@ -605,7 +587,6 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     qL = eqn.q[:, :, iface.elementL]
     qR = eqn.q[:, :, iface.elementR]
     aux_vars = eqn.aux_vars[:,:, iface.elementL]
-    dxidx_face = mesh.dxidx_face[:, :, :, i]
     nrm_face = mesh.nrm_face[:, :, i]
 
     resL = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
@@ -621,11 +602,9 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
 
     penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
-#    lf_penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL3, resR3)
-#    EulerEquationMod.calcLFEntropyPenaltyIntegral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
 
     if test_ref
-      entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, dxidx_face, resL2, resR2)
+      entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, resL2, resR2)
 
       for j=1:size(resL, 1)
         for k=1:size(resL, 2)
@@ -711,6 +690,9 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
 
 end
 
+"""
+  Used for debugging LW functions, not used for regular testing
+"""
 function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts)
   # computes the Lax-Wendroff term using the maximum eigenvalue for all 
   # eigenvalue, turning it into Lax-Friedrich
