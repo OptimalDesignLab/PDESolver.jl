@@ -62,15 +62,20 @@ end
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 println("Objective function name = ", opts["objective_function"])
 println("objective.drag_val = $(objective.drag_val)")
+println("objective.lift_val = $(objective.lift_val)")
 
-
+EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+println("Objective function name = ", opts["objective_function"])
+println("objective.drag_val = $(objective.drag_val)")
+println("objective.lift_val = $(objective.lift_val)")
+#=
 # Calculate the adjoint vector
 adjoint_vec = zeros(Complex128, mesh.numDof)
 EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
 PdePumiInterface.saveSolutionToMesh(mesh, real(adjoint_vec))
 PdePumiInterface.writeVisFiles(mesh, "adjoint_field")
-
+=#
 if MPI.Initialized()
   MPI.Finalize()
 end

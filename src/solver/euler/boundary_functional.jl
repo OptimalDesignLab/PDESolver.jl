@@ -111,6 +111,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
 
   local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
   bndry_force = functionalData.bndry_force
+  fill!(bndry_force, 0.0)
   functional_edges = functionalData.geom_faces_functional
 
   # Get bndry_offsets for the functional edge concerned

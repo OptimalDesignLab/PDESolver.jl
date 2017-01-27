@@ -48,58 +48,21 @@ function test_adjoint()
       @fact drag_error --> roughly(0.0, atol = 1e-2)
 
     end # End context("Checking Functional Computation")
-    
-  end  # End do
-  #=
-  facts("--- Testing Objective Function Computation On a Boundary ---") do
 
-    include("./input_vals_vortex_adjoint_DG.jl")
-    arg_dict["calc_functional"] = false
-    arg_dict["objective_function"] = "drag"
-    arg_dict["geom_faces_objective"] = [3]
-
-    f = open("input_vals_vortex_objective_computation_DG.jl", "w")
-    println(f, "arg_dict = ")
-    println(f, arg_dict)
-    close(f)
-
-    ARGS[1] = "input_vals_vortex_objective_computation_DG.jl"
-    include("../../src/solver/euler/startup.jl")
-
-    # Assert basic facts
-    @assert mesh.isDG == true
-    @assert opts["jac_method"] == 2
-    @assert opts["calc_functional"] == false
-
-    # Check facts
-    @fact opts["objective_function"] --> "drag"
-    @fact opts["geom_faces_objective"] --> [3]
-
-    drag = EulerEquationMod.OptimizationData{Complex128}(mesh, sbp, opts)
-    EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
-
-    @fact drag.is_objective_fn --> true
-    analytical_val = -1/1.4
-    println("drag.val = ", drag.val)
-    drag_err = norm(drag.val - analytical_val)
-    @fact drag_err --> roughly(0.0001, atol = 1e-4)
-
-  end # End facts("--- Testing Objective Function Computation On a Boundary ---")
-
-
+  end # End facts("--- Testing Functional Computation On a Boundary ---")
+  
   facts("--- Tesing adjoint computation on the boundary for DG Meshes---") do
-    println("testing adjoint functions\n")
+    # println("testing adjoint functions\n")
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_airfoil.jl"
     include("../../src/solver/euler/startup.jl")
-    @assert opts["aoa"] == -2.0*pi/180
-    # @fact eqn.params.aoa --> roughly(-2.0*pi/180, atol=1e-12)
+    @assert opts["aoa"] == 2.0*pi/180
 
-    lift = EulerEquationMod.OptimizationData{Complex128}(mesh, sbp, opts)
+    lift = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    orig_Ju = deepcopy(lift.val) # Copy the original objective value
+    orig_Ju = deepcopy(lift.lift_val) # Copy the original objective value
     orig_q_vec = deepcopy(eqn.q_vec)
     original_res_vec = deepcopy(eqn.res_vec)
 
@@ -147,9 +110,8 @@ function test_adjoint()
       functional_name = EulerEquationMod.FunctionalDict[opts["objective_function"]]
 
       boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-      lift.val = 0.0
-      EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, functional_name,
-          functional_edges, lift, func_deriv_arr)  # populate df_dq_bndry
+      EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, lift,
+                                        func_deriv_arr)  # populate df_dq_bndry
       assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
 
       rand_vec = rand(length(eqn.q_vec))
@@ -159,30 +121,37 @@ function test_adjoint()
       eqn.q_vec += 1e-6*rand_vec
       disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
-      dJdu_fd = (lift.val-orig_Ju)/1e-6
+      dJdu_fd = (lift.lift_val-orig_Ju)/1e-6
 
       @fact norm(dJdu_fd - contract_val, 2) --> roughly(0.0, atol = 1e-8)
 
+      # Restore q_vec
+      for i = 1:length(eqn.q_vec)
+        eqn.q_vec[i] = orig_q_vec[i]
+      end
+
     end # End context("--- Checking partial dJ/dq Calculation")
+
 
     context("checking derivative computation using adjoint vector") do
 
-      eqn.q_vec = orig_q_vec
+      @assert opts["aoa"] == 2.0*pi/180
+
+      EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
+      dJdAlpha = lift.dLiftdAlpha
+
+      f = open("lift_Val.dat", "w")
+      println(f, orig_Ju,'\n', lift.lift_val)
+      close(f)
+
       adjoint_vec = zeros(Complex128, mesh.numDof)
       EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, lift, adjoint_vec)
-
-      functional_edges = opts["geom_faces_objective"]
-      functional_name = EulerEquationMod.FunctionalDict["dLiftdAlpha"]
-      dJdAlpha = EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, lift,
-                                     functional_name, functional_edges)
 
       # Check dJdALpha against the complex step method
       @assert opts["epsilon"] == 1e-20
       eqn.params.aoa += opts["epsilon"]*im
-      functional_name = EulerEquationMod.FunctionalDict["lift"]
-      dJdAlpha_comp = EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, lift,
-                                    functional_name, functional_edges)
-      dJdAlpha_comp = imag(dJdAlpha_comp)/opts["epsilon"]
+      EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, lift)
+      dJdAlpha_comp = imag(lift.lift_val)/opts["epsilon"]
 
       # Get the partial derivative of the residual vector w.r.t aoa
       eqn.params.aoa = opts["aoa"]
@@ -211,15 +180,56 @@ function test_adjoint()
       EulerEquationMod.init(mesh, sbp, eqn, opts, pmesh)
       call_nlsolver(mesh, sbp, eqn, opts, pmesh)
 
+      # lift.lift_val = 0.0
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
-      dLdx = (real(lift.val) - orig_Ju)/pert
+      dLdx = (real(lift.lift_val) - orig_Ju)/pert
 
       errfd_norm = norm(dLdx - dLdx_adjoint,2)
+      println("errfd_norm = $errfd_norm")
       @fact errfd_norm --> roughly(0.0, atol = 1e-6)
 
     end # End context("checking derivative computation using adjoint vector")
 
   end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
+
+  #=
+  facts("--- Testing Objective Function Computation On a Boundary ---") do
+
+    include("./input_vals_vortex_adjoint_DG.jl")
+    arg_dict["calc_functional"] = false
+    arg_dict["objective_function"] = "drag"
+    arg_dict["geom_faces_objective"] = [3]
+
+    f = open("input_vals_vortex_objective_computation_DG.jl", "w")
+    println(f, "arg_dict = ")
+    println(f, arg_dict)
+    close(f)
+
+    ARGS[1] = "input_vals_vortex_objective_computation_DG.jl"
+    include("../../src/solver/euler/startup.jl")
+
+    # Assert basic facts
+    @assert mesh.isDG == true
+    @assert opts["jac_method"] == 2
+    @assert opts["calc_functional"] == false
+
+    # Check facts
+    @fact opts["objective_function"] --> "drag"
+    @fact opts["geom_faces_objective"] --> [3]
+
+    drag = EulerEquationMod.OptimizationData{Complex128}(mesh, sbp, opts)
+    EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
+
+    @fact drag.is_objective_fn --> true
+    analytical_val = -1/1.4
+    println("drag.val = ", drag.val)
+    drag_err = norm(drag.val - analytical_val)
+    @fact drag_err --> roughly(0.0001, atol = 1e-4)
+
+  end # End facts("--- Testing Objective Function Computation On a Boundary ---")
+
+
+
   =#
   #=
   facts("--- Testing Functional Computation On a Boundary ---") do

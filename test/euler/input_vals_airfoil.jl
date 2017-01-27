@@ -6,7 +6,6 @@ arg_dict = Dict{Any, Any}(
 "order" => 1,
 "real_time" => false,
 "variable_type" => :conservative,
-# "smb_name" => "src/mesh_files/2D_airfoil.smb",
 "smb_name" => "SRCMESHES/2D_airfoil.smb",
 "dmg_name" => "SRCMESHES/2D_airfoil.dmg", # "src/mesh_files/2D_airfoil.dmg",
 "IC_name" => "ICFreeStream",
@@ -15,7 +14,7 @@ arg_dict = Dict{Any, Any}(
 "BC1_name" => "FreeStreamBC",
 "BC2" => [5],
 "BC2_name" => "noPenetrationBC",
-"aoa" => -2.0,
+"aoa" => 2.0,
 "Ma" => 0.5,# default working = 0.3
 "use_DG" => true,
 "Flux_name" => "RoeFlux",
@@ -38,11 +37,10 @@ arg_dict = Dict{Any, Any}(
 "output_freq" => 100000,
 "solve" => true,
 "do_postproc" => true,
-"calc_functional" => false,
+
+# Objective functional options
 "objective_function" => "lift",
 "geom_faces_objective" => [5],
-"num_functionals" => 1,
-"functional_name1" => "lift",
-# "geom_edges_functional1" => [5],
+
 "exact_soln_func" => "ICFreeStream",
 )
