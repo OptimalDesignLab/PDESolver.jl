@@ -50,7 +50,7 @@ function test_adjoint()
     end # End context("Checking Functional Computation")
 
   end # End facts("--- Testing Functional Computation On a Boundary ---")
-  
+
   facts("--- Tesing adjoint computation on the boundary for DG Meshes---") do
     # println("testing adjoint functions\n")
     resize!(ARGS, 1)
@@ -139,10 +139,6 @@ function test_adjoint()
 
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
       dJdAlpha = lift.dLiftdAlpha
-
-      f = open("lift_Val.dat", "w")
-      println(f, orig_Ju,'\n', lift.lift_val)
-      close(f)
 
       adjoint_vec = zeros(Complex128, mesh.numDof)
       EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, lift, adjoint_vec)

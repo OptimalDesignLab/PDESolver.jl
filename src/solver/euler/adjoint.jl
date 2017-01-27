@@ -49,7 +49,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Calculate the Jacobian of the residual
   res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
-  println("typeof res_jac = ", typeof(res_jac))
+
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)

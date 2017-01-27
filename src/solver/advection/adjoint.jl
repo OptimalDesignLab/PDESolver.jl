@@ -65,7 +65,8 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
                      functional_number::Int=1)
 
   # Get information corresponding to functional
-  functional_edges = []
+  functional_edges = functionalData.geom_faces_functional
+  #=
   if functionalData.is_objective_fn == true
     functional_edges = opts["geom_faces_objective"]
     functional_name = FunctionalDict[opts["objective_function"]]
@@ -74,7 +75,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
     functional_name = getFunctionalName(opts, functional_number)
     functional_edges = opts[key]
   end
-
+  =#
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
@@ -96,21 +97,14 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Calculate df/dq_bndry on edges where the functional is calculated and put
   # it back in func_deriv_arr
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functional_name, functional_edges,
-                      functionalData, func_deriv_arr)  # populate df_dq_bndry
-  #=
-  for i = 1:size(func_deriv_arr,3)
-    for j = 1:size(func_deriv_arr,2)
-      println("func_deriv_arr[1,$j,$i] = $(func_deriv_arr[1,j,i])")
-    end
-  end
-  =#
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)  # populate df_dq_bndry
+
   # Assemble func_deriv
-  assembleArray(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
 
   # Solve for adjoint vector. This depends on whether PETSc is used or not.
   if opts["jac_type"] == 1 || opts["jac_type"] == 2
-    adjoint_vec[:] = -(res_jac.')\func_deriv 
+    adjoint_vec[:] = -(res_jac.')\func_deriv
   elseif opts["jac_type"] == 3
     b = PetscVec(eqn.comm)
     PetscVecSetType(b, VECMPI)
@@ -282,15 +276,15 @@ end
 
 # DG Version
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
-                             eqn::AdvectionData{Tsol}, opts, functor, functional_edges,
-                             functionalData, func_deriv_arr)
+                             eqn::AdvectionData{Tsol}, opts,
+                             functionalData::QfluxData, func_deriv_arr)
 
   alpha_x = eqn.params.alpha_x
   alpha_y = eqn.params.alpha_y
 
   # Obtain the derivative of the integrand at all mesh.bndry
   integrand = zeros(eqn.q_bndry)
-
+  functional_edges = functionalData.geom_faces_functional
   # Populate integrand
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
@@ -319,7 +313,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, eqn.params,
+        integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, eqn.params,
                                         nx, ny, q, functionalData)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
@@ -340,7 +334,6 @@ step to compute the derivative
 **Inputs**
 
 *  `opts`    : Input dictionary
-*  `functor` : Functional name
 *  `params`  : the ParamType for the equation
 *  `nx` & `ny` : Normal vectors
 *  `q`       : Solution variable
@@ -351,13 +344,13 @@ step to compute the derivative
 
 """->
 
-function calcIntegrandDeriv(opts, functor, params::ParamType2, nx, ny, q, functionalData)
+function calcIntegrandDeriv(opts, params::ParamType2, nx, ny, q,
+                            functionalData::QfluxData)
 
   pert = complex(0, opts["epsilon"])  # complex perturbation
   q += pert
-  val = functor(params, nx, ny, q, functionalData)
+  val = calcBoundaryFunctionalIntegrand(params, nx, ny, q, functionalData)
   integrand_deriv = imag(val)/norm(pert)
-
 
   return integrand_deriv
 end

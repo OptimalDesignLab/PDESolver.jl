@@ -6,7 +6,7 @@
 
 arg_dict = Dict{Any, Any}(
 "run_type" => 5,
-"jac_type" => 1,
+# "jac_type" => 1,
 "jac_method" => 2,
 "order" => 1,
 "real_time" => true,
@@ -39,16 +39,16 @@ arg_dict = Dict{Any, Any}(
 "itermax" => 30,
 
 # Compute functional value
-"calc_functional" => true,
+# "calc_functional" => true,
 "num_functionals" => 1,
 "functional_name1" => "qflux",
-"functional_error" => true,
-"geom_edges_functional1" => [1,2], # 0 based indexing for mesh edges
-"analytical_functional_val" => 3.0,
+# "functional_error" => true,
+"geom_faces_functional1" => [1,2], # 0 based indexing for mesh edges
+# "analytical_functional_val" => 3.0,
 
 # Compute the objective function
-#"objective_function" => "qflux",
-#"geom_faces_objective" => [1,2],
+"objective_function" => "qflux",
+"geom_faces_objective" => [1,2],
 
 # Compute adjoint vector
 "calc_adjoint" => false,
