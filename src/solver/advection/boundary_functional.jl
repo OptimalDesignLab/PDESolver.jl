@@ -4,8 +4,10 @@ export evalFunctional, calcBndryfunctional, getFunctionalName
 @doc """
 ### AdvectionEquationMod.evalFunctional
 
-Hight level function that evaluates all the functionals specified over
-various edges
+Hight level function that evaluates functionals specified in the options
+dictionary. This function is agnostic which type of a functional is being
+computed and calls a mid level type specific function for the actual functional
+evaluation.
 
 **Arguments**
 
@@ -13,6 +15,10 @@ various edges
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
+*  `functionalData` : Object of the functional being computed.
+*  `functional_number` : Optional argument. This needs to be specified for all
+                         non-objective functionals being computed, if there are
+                         more than 1 of them.
 
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
@@ -28,52 +34,6 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
-  #=
-  # Calculate functional over edges
-  if functionalData.is_objective_fn == true
-    # The function to be evaluated is an objective function
-    functional_edges = opts["geom_faces_objective"]
-    functional_name = FunctionalDict[opts["objective_function"]]
-    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
-                                             functional_name, functional_edges)
-  else
-    # Geometric edge at which the functional needs to be integrated
-    key = string("geom_edges_functional", functional_number)
-    functional_edges = opts[key]
-    functional_name = getFunctionalName(opts, functional_number)
-
-    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
-                                             functional_name, functional_edges)
-
-    # Print statements
-    MPI.Barrier(eqn.comm)
-    if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
-      if opts["functional_error"]
-        println("\nNumerical functional value on geometric edges
-            $functional_edges = $(functionalData.val)")
-
-        analytical_functional_val = opts["analytical_functional_val"]
-        println("analytical_functional_val = $analytical_functional_val")
-
-        absolute_functional_error = norm((functionalData.val -
-                                         analytical_functional_val), 2)
-        relative_functional_error = absolute_functional_error/
-                                    norm(analytical_functional_val, 2)
-
-        mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-
-        # write functional error to file
-        outname = string(opts["functional_error_outfname"], functional_number, ".dat")
-        println("printed relative functional error = $relative_functional_error
-            to file $outname\n")
-        f = open(outname, "w")
-        println(f, relative_functional_error, " ", mesh_metric)
-        close(f)
-      end  # End if opts["functional_error"]
-    end    # End @mpi_master
-
-  end  # End if is_objective_fn == true
-  =#
   return nothing
 end
 
@@ -81,21 +41,19 @@ end
 @doc """
 AdvectionEquationMod.calcBndryfunctional
 
-This function calculates the forces on a geometric boundary of a the
-computational space. There is no need to call this function withing the
-nonlinear solve while computing eqn.q
+This function calculates the functional on a geometric boundary of a the
+computational space. This is a mid level function that should not be called
+from outside the mid workspace. Depending on the functional being computed, it
+may be necessary to define another method for this function based on a 
+different boundary functional type.
 
-**Inputs**
+**Arguments**
 
 *  `mesh` :  Abstract mesh object
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Advection equation object
 *  `opts` : Options dictionary
-*  `g_edge_number` : Geometric edge number
-
-**Outputs**
-
-*  `functional_val` : computed numerical functional at the boundary.
+*  `functionalData` : Object of the functional being computed
 
 """->
 #=  TODO: uncomment and run test when mesh.bndry_geo_nums gets added to CG meshes
@@ -230,8 +188,21 @@ end
 @doc """
 ### AdvectionEquationMod.calcBoundaryFunctionalIntegrand
 
-Computes the flux direction and multiplies it with eqn.q_bndry. This is nodal
-level operation
+Computes the integrand for boundary functional on every surface SBP node. Every
+functional needs to have its own method and the functional type determines
+which method is called.
+
+**Inputs**
+
+*  `params` : 
+*  `nx` : X component of face normal vector
+*  `ny` : Y component of face normal vector
+*  `q`  : Nodal solution variable
+*  `functionalData` : Object of the functional being computed
+
+**Outputs**
+
+* `functional_integrand` : Computed integrand at the surface node
 
 """->
 

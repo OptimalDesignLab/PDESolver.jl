@@ -66,16 +66,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Get information corresponding to functional
   functional_edges = functionalData.geom_faces_functional
-  #=
-  if functionalData.is_objective_fn == true
-    functional_edges = opts["geom_faces_objective"]
-    functional_name = FunctionalDict[opts["objective_function"]]
-  else
-    key = string("geom_edges_functional", functional_number)
-    functional_name = getFunctionalName(opts, functional_number)
-    functional_edges = opts[key]
-  end
-  =#
+  
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
@@ -337,6 +328,7 @@ step to compute the derivative
 *  `params`  : the ParamType for the equation
 *  `nx` & `ny` : Normal vectors
 *  `q`       : Solution variable
+*  `functionalData` : Functional object
 
 **Outputs**
 
@@ -347,7 +339,7 @@ step to compute the derivative
 function calcIntegrandDeriv(opts, params::ParamType2, nx, ny, q,
                             functionalData::QfluxData)
 
-  pert = complex(0, opts["epsilon"])  # complex perturbation
+  pert = complex(0, 1e-20)  # complex perturbation
   q += pert
   val = calcBoundaryFunctionalIntegrand(params, nx, ny, q, functionalData)
   integrand_deriv = imag(val)/norm(pert)
@@ -355,7 +347,7 @@ function calcIntegrandDeriv(opts, params::ParamType2, nx, ny, q,
   return integrand_deriv
 end
 
-
+#=
 @doc """
 ### AdvectionEquationMod.functionalBoundaryInfo
 
@@ -464,3 +456,4 @@ function boundaryToVolumeInterpolation{Tsbp,Tsol}(sbpface::TriFace{Tsbp},
 
   return nothing
 end
+=#

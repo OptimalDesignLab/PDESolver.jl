@@ -16,7 +16,6 @@ using Input
 
 
 export AdvectionData, AdvectionData_, run_advection #getMass, assembleSolution, disassembleSolution
-export OptimizationData
 
 # include("advection.jl")
 # include("getMass.jl")
@@ -48,7 +47,7 @@ register_physics(PhysicsName, AdvectionEquationMod, run_advection)
 @doc """
 ###AdvectionEquationMod.createObjectiveFunctionalData
 
-Function for create an object for functional and adjoint computation where the
+Function for creating an object for functional and adjoint computation where the
 functional is an objective function in an optimization.
 
 **Arguments**
@@ -104,39 +103,4 @@ function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
   return functional
 end
 
-#=
-@doc """
-###AdvectionEquationMod.OptimizationData
-
-"""->
-
-type OptimizationData{Topt} <: AbstractOptimizationData
-
-  is_objective_fn::Bool
-  val::Topt
-  qflux_obj::QfluxData{Topt}
-
-  function OptimizationData(mesh::AbstractMesh, sbp::AbstractSBP, opts)
-
-    functional = new()
-    functional.val = zero(Topt)
-
-    for i = 1:opts["num_functionals"]
-      dict_val = string("functional_name",i)
-
-      if opts[dict_val] == "qflux" || opts["objective_function"] == "qflux"
-        if opts["objective_function"] == "qflux"
-          functional.is_objective_fn = true
-        else
-          functional.is_objective_fn = false
-        end
-        functional.qflux_obj = QfluxData{Topt}()
-      end # End if opts[dict_val]
-
-    end  # End  for i = 1:opts["num_functionals"]
-
-    return functional
-  end # End inner constructor
-end # End type OptimizationData
-=#
 end # end module
