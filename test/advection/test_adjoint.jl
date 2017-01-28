@@ -1,4 +1,15 @@
 # test boundary forces
+@doc """
+Advection Equation -- test_adjoint
+
+The function tests for the correctness of objective and non-objective functional
+computation and then tests if the adjoint vector is being computed correctly.
+Adjoint vector computation is based on an objective function. This is a serial
+test and uses the input file called
+
+`input_vals_functional_DG.jl`
+
+"""->
 function test_adjoint()
   #= TODO: Uncomment when CG meshes support mesh.bndry_geo_nums
 

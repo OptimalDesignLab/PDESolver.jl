@@ -43,7 +43,7 @@ AdvectionEquationMod.calcBndryfunctional
 
 This function calculates the functional on a geometric boundary of a the
 computational space. This is a mid level function that should not be called
-from outside the mid workspace. Depending on the functional being computed, it
+from outside the module. Depending on the functional being computed, it
 may be necessary to define another method for this function based on a 
 different boundary functional type.
 
@@ -188,13 +188,13 @@ end
 @doc """
 ### AdvectionEquationMod.calcBoundaryFunctionalIntegrand
 
-Computes the integrand for boundary functional on every surface SBP node. Every
+Computes the integrand for boundary functional at a surface SBP node. Every
 functional needs to have its own method and the functional type determines
 which method is called.
 
 **Inputs**
 
-*  `params` : 
+*  `params` : eqn.params object 
 *  `nx` : X component of face normal vector
 *  `ny` : Y component of face normal vector
 *  `q`  : Nodal solution variable

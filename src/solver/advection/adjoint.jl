@@ -10,9 +10,12 @@ Calcualtes the adjoint vector for a single functional
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Advection equation object
 *  `opts` : Options dictionary
-*  `functional_number` : The functional for which the adjoint vector is being
-                         computed
+*  `functionalData` : Object of type AbstractOptimizationData. This is the type
+                      associated with the adjoint of the functional being 
+                      computed and holds all the necessary data.
 *  `adjoint_vec` : Adjoint vector corresponding to the particular functional
+                         computed
+*  `functional_number` : The functional for which the adjoint vector is being
 
 **Outputs**
 
@@ -69,7 +72,10 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
+                    "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels",
+                    "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side",
+                    "right", "-ksp_gmres_restart", "30" ])
   end
 
   # Calculate the Jacobian of the residual
@@ -202,16 +208,18 @@ mesh nodes.
 *  `sbp`   : Summation-By-Parts operator
 *  `eqn`   : Advection equation object
 *  `opts`  : Options dictionary
-*  `functional_edges` : Array of geometric edges over which a functional acts
-*  `func_deriv_arr`   : 3D array that stors the derivative of functional w.r.t
-                        eqn.q. It has a structure [1, numnodes_per_element, numEl]
+*  `functionalData` : Object of subtype of AbstractOptimizationData. This is
+                      the type associated with the adjoint of the functional 
+                      being computed and holds all the necessary data.
+*  `func_deriv_arr` : 3D array that stors the derivative of functional w.r.t
+                      eqn.q. It has a structure [1, numnodes_per_element, numEl]
 
 **Outputs**
 
 *  None
 
 """->
-
+#=
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn ::AdvectionData{Tsol}, opts, functor, functional_edges,
                              functionalData, func_deriv_arr)
@@ -264,7 +272,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
 
   return nothing
 end
-
+=#
 # DG Version
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn::AdvectionData{Tsol}, opts,

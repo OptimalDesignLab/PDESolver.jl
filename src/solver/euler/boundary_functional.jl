@@ -4,7 +4,9 @@ export evalFunctional, calcBndryFunctional, getFunctionalName
 ### EulerEquationMod.evalFunctional
 
 Hight level function that evaluates all the functionals specified over
-various edges. At the moment, it can only handle one functional.
+various edges. This function is agnostic to the type of the functional being
+computed and calls a mid level functional-type specific function for the actual
+evaluation.
 
 **Arguments**
 
@@ -12,7 +14,7 @@ various edges. At the moment, it can only handle one functional.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type OptimizationData. This is type is associated
+*  `functionalData` : Object of type AbstractOptimizationData. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 *  `functional_number` : A number identifying which functional is being computed.
@@ -32,50 +34,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   # Calculate functional over edges
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
-  #=
-  if functionalData.is_objective_fn == true
-    # The function to be evaluated is an objective function
-    functional_edges = opts["geom_faces_objective"]
-    functional_name = FunctionalDict[opts["objective_function"]]
-
-    # functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
-    #                  functional_name, functional_edges)
-
-    calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
-  else
-    # Geometric edge at which the functional needs to be integrated
-    key = string("geom_edges_functional", functional_number)
-    functional_edges = opts[key]
-    functional_name = getFunctionalName(opts, functional_number)
-
-    functionalData.val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData,
-                     functional_name, functional_edges)
-
-    # Print statements
-    if MPI.Comm_rank(eqn.comm) == 0 # If rank is master
-      if opts["functional_error"]
-        println("\nNumerical functional value on geometric edges ",
-                    functional_edges, " = ", functionalData.val)
-        analytical_functional_val = opts["analytical_functional_val"]
-        println("analytical_functional_val = ", analytical_functional_val)
-
-        absolute_functional_error = norm((functionalData.val -
-                                         analytical_functional_val), 2)
-        relative_functional_error = absolute_functional_error/
-                                    norm(analytical_functional_val, 2)
-
-        mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-        # write functional error to file
-        outname = string(opts["functional_error_outfname"], functional_number, ".dat")
-        println("printed relative functional error = ",
-                relative_functional_error, " to file ", outname, '\n')
-        f = open(outname, "w")
-        println(f, relative_functional_error, " ", mesh_metric)
-        close(f)
-      end  # End if opts["functional_error"]
-    end    # End @mpi_master
-  end # End if is_objective_fn == true
-  =#
+  
   return nothing
 end
 
@@ -84,8 +43,10 @@ end
 ### EulerEquationMod.calcBndryFunctional
 
 This function calculates a functional on a geometric boundary of a the
-computational space. There is no need to call this function withing the
-nonlinear solve while computing eqn.q
+computational space. This is a mid level function that should not be called from
+outside the module. DEpending on the functional being computd, it may be 
+necessary to define another method for this function based on a different
+boundary functional type or parameters.
 
 **Inputs**
 
@@ -93,16 +54,9 @@ nonlinear solve while computing eqn.q
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type OptimizationData. This is type is associated
-                      with the functional being computed and holds all the
-                      relevant data.
-*  `functional_name` : Name of the functional being computed.
-*  `functional_edges` : Geometric faces (edges in 2D) over which the functional
-                        is being evaluated.
-
-**Outputs**
-
-*  `functional_val` : computed numerical force at the boundary.
+*  `functionalData` : Object which is a subtype of Abstract OptimizationData.
+                      This is type is associated with the functional being 
+                      computed and holds all the relevant data.
 
 """->
 
@@ -176,73 +130,25 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
   return nothing
 end
 
-#=
-function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol}, opts, functionalData::AbstractOptimizationData,
-                         functional_name::FunctionalType, functional_edges::AbstractArray{Int,1})
+@doc """
+###EulerEquationMod.calcBoundaryFunctionalIntegrand
 
+Computes the integrand for boundary functional at a surface SBP node. Every
+functional of a different type may need a corresponding method to compute the
+integrand. The type of the functional object, which is a subtype of 
+`AbstractOptimizationData`. 
 
-  local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
-  functional_val = zeros(Tsol, functionalData.ndof) # Over all processors
+**Arguments**
 
-  # Get bndry_offsets for the functional edge concerned
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    # get the boundary array associated with the geometric edge
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-        break
-      end
-    end
+*  `params` : eqn.params object
+*  `q` : Nodal solution
+*  `aux_vars` : Auxiliary variables
+*  `nrm` : Face normal vector in the physical space
+*  `node_info` : Information about the SBP node
+*  `objective` : Functional data type
+*  `val` : Function output value
 
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
-    idx_range = start_index:(end_index-1)
-    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
-
-    nfaces = length(bndry_facenums)
-    boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
-    q2 = zeros(Tsol, mesh.numDofPerNode)
-
-    for i = 1:nfaces
-      bndry_i = bndry_facenums[i]
-      global_facenum = idx_range[i]
-      for j = 1:mesh.sbpface.numnodes
-        q = sview(eqn.q_bndry, :, j, global_facenum)
-        convertToConservative(eqn.params, q, q2)
-        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
-        x = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        node_info = Int[itr,j,i]
-        b_integrand_ji = sview(boundary_integrand,:,j,i)
-        functional_name(eqn.params, q2, aux_vars, [nx, ny], node_info,
-                        functionalData, b_integrand_ji)
-#       boundary_integrand[1,j,i] = functional_name(eqn.params, q2, aux_vars,
-#                                   [nx, ny], node_info, functionalData)
-
-      end  # End for j = 1:mesh.sbpface.numnodes
-    end    # End for i = 1:nfaces
-
-    val_per_geom_edge = zeros(Tsol, functionalData.ndof)
-
-    integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range],
-                           boundary_integrand, val_per_geom_edge)
-
-    local_functional_val[:] += val_per_geom_edge[:]
-
-  end # End for itr = 1:length(functional_edges)
-
-  for i = 1:functionalData.ndof
-    functional_val[i] = MPI.Allreduce(local_functional_val[i], MPI.SUM, eqn.comm)
-  end
-
-  return functional_val
-end
-=#
+"""->
 function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},
@@ -250,6 +156,9 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
                                          node_info::AbstractArray{Int},
                                          objective::BoundaryForceData,
                                          val::AbstractArray{Tsol,1})
+
+  # Compute the numerical flux for the euler equation and extract the X & Y
+  # momentum values
 
   aoa = params.aoa # Angle of attack
   euler_flux = params.flux_vals1 # Reuse existing memory
@@ -276,6 +185,7 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
   return nothing
 end
 
+#=
 @doc """
 ### EulerEquationMod.drag
 
@@ -331,13 +241,6 @@ function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
 
   val[1] = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
 
-#=
-  aoa = params.aoa # Angle of attack
-  euler_flux = params.flux_vals1 # Reuse predefined memory
-  calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
-
-  val[1] = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
-=#
   return nothing
 end
 
@@ -472,40 +375,6 @@ function call{Tsol, Tres, Tmsh}(obj::dLiftdAlpha, params, q::AbstractArray{Tsol,
   return nothing
 end
 
-type boundaryForce <: FunctionalType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::boundaryForce, params, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int},
-              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
-
-
-  aoa = params.aoa # Angle of attack
-  euler_flux = params.flux_vals1 # Reuse existing memory
-  nx = nrm[1]
-  ny = nrm[2]
-
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
-  # normalize normal vector
-  nx *= fac
-  ny *= fac
-
-  normal_momentum = nx*q[2] + ny*q[3]
-
-  qg = params.qg
-  for i=1:length(q)
-    qg[i] = q[i]
-  end
-  qg[2] -= nx*normal_momentum
-  qg[3] -= ny*normal_momentum
-
-  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
-  val[:] = euler_flux[2:3]
-
-  return nothing
-end
-
 @doc """
 ### EulerEquationMod.targetCp
 
@@ -589,42 +458,9 @@ function getnFaces(mesh::AbstractDGMesh, g_face::Int)
 
   return nfaces
 end
-
+=#
 
 #=
-function calcForceError()
-
-  #--- Getting nodal errors
-  numfacenodes, nfaces, ndimensions = size(boundary_force)
-  force_error_mag = zeros(analytical_force)
-
-  for i = 1:nfaces
-    for j = 1:numfacenodes
-      boundary_force_mag = sqrt(boundary_force[j,i,1]*boundary_force[j,i,1] +
-                                boundary_force[j,i,2]*boundary_force[j,i,2])
-      force_error_mag[j,i] = analytical_force[j,i] - boundary_force_mag
-    end
-  end
-
-
-  #--- Calculate the integral norm of the force error
-
-  # Get a 1D force error array
-
-
-  M = Array(Tmsh, 1)
-  # Get the corresponding mass matrix
-  for i = 1:nfaces
-    for j = 1:numfacenodes
-      for k = 1:mesh.numDofPerNode
-        dofnum_k = mesh.dofs[k,j,i]
-        M[dofnum_k] += (sbp.w[j]/mesh.jac[j,i])
-      end
-    end
-  end
-
-  return nothing
-end
 
 function calcPhysicalEulerFlux{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
                                F::AbstractArray{Tsol, 2})
@@ -649,9 +485,6 @@ function calcPhysicalEulerFlux{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol
   return nothing
 end
 
-=#
-
-#=
 function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                             opts, g_edge_number)

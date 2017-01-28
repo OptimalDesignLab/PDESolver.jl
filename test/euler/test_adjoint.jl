@@ -1,4 +1,17 @@
 #Test functional Integrate and adjoint for euler equation.
+
+@doc """
+Euler Equation -- test_adjoint
+
+The function tests for the correctness of objective and non-objective functional
+computation and then tests if the adjoint vector is being computed correctly.
+Adjoint vector computation is based on an objective function. This is a serial
+test and uses the input file called
+
+`input_vals_vortex_adjoint_DG.jl`
+
+"""->
+
 function test_adjoint()
 
   facts("--- Testing Functional Computation On a Boundary ---") do
@@ -11,7 +24,8 @@ function test_adjoint()
 
     context("Checking Functional Object Creation") do
 
-      lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts, opts["num_functionals"])
+      lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts, 
+                                                   opts["num_functionals"])
       @fact lift.is_objective_fn --> false
       @fact lift.geom_faces_functional --> [3]
       @fact lift.ndof --> 2
@@ -188,45 +202,6 @@ function test_adjoint()
 
   end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
 
-  #=
-  facts("--- Testing Objective Function Computation On a Boundary ---") do
-
-    include("./input_vals_vortex_adjoint_DG.jl")
-    arg_dict["calc_functional"] = false
-    arg_dict["objective_function"] = "drag"
-    arg_dict["geom_faces_objective"] = [3]
-
-    f = open("input_vals_vortex_objective_computation_DG.jl", "w")
-    println(f, "arg_dict = ")
-    println(f, arg_dict)
-    close(f)
-
-    ARGS[1] = "input_vals_vortex_objective_computation_DG.jl"
-    include("../../src/solver/euler/startup.jl")
-
-    # Assert basic facts
-    @assert mesh.isDG == true
-    @assert opts["jac_method"] == 2
-    @assert opts["calc_functional"] == false
-
-    # Check facts
-    @fact opts["objective_function"] --> "drag"
-    @fact opts["geom_faces_objective"] --> [3]
-
-    drag = EulerEquationMod.OptimizationData{Complex128}(mesh, sbp, opts)
-    EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
-
-    @fact drag.is_objective_fn --> true
-    analytical_val = -1/1.4
-    println("drag.val = ", drag.val)
-    drag_err = norm(drag.val - analytical_val)
-    @fact drag_err --> roughly(0.0001, atol = 1e-4)
-
-  end # End facts("--- Testing Objective Function Computation On a Boundary ---")
-
-
-
-  =#
   #=
   facts("--- Testing Functional Computation On a Boundary ---") do
     include("./input_vals_vortex_adjoint_DG.jl")

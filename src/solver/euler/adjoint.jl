@@ -29,16 +29,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Get information corresponding to functional
   functional_edges = functionalData.geom_faces_functional
-  #=
-  if functionalData.is_objective_fn == true
-    functional_edges = opts["geom_faces_objective"]
-    functional_name = FunctionalDict[opts["objective_function"]]
-  else
-    key = string("geom_edges_functional", functional_number)
-    functional_name = getFunctionalName(opts, functional_number)
-    functional_edges = opts[key]
-  end
-  =#
+  
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
@@ -183,9 +174,13 @@ mesh nodes.
 *  `sbp`  : Summation-By-parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functor` : Functional name which is to be evaluated
-*  `functional_edges` : Numerical identifier to obtain geometric edges on
-                         which a functional acts
+*  `functionalData` : Functional object of super-type AbstractOptimizationData
+                      that is needed for computing the adjoint vector. 
+                      Depending on the functional being computed, a different
+                      method based on functional type may be needed to be 
+                      defined.
+*  `func_deriv_arr` : 3D array that stores the derivative of the functional
+                      w.r.t. eqn.q. The array is the same size as eqn.q
 
 **Outputs**
 
@@ -195,7 +190,7 @@ mesh nodes.
 
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
 	                         eqn::EulerData{Tsol}, opts,
-	                         functionalData, func_deriv_arr)
+	                         functionalData::AbstractOptimizationData, func_deriv_arr)
 
   integrand = zeros(eqn.q_bndry)
   functional_edges = functionalData.geom_faces_functional
@@ -261,7 +256,8 @@ degrees of freedom at the node.
 *  `aux_vars` : Auxiliary variables
 *  `nrm`    : normal vector in the physical space
 *  `integrand_deriv` : Derivative of the integrand at that particular node
-*  `functor`: Functional that is to be evaluated
+*  `node_info` : Tuple containing information about the node
+*  `functionalData` : Functional object that is a subtype of AbstractOptimizationData.
 
 **Outputs**
 
