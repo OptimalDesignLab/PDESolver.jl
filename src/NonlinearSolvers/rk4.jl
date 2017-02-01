@@ -60,6 +60,8 @@ rk4
 
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
    should be eqn.q_vec and eqn.res_vec.
+
+  For searching: RK4_1
 """->
 function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
@@ -94,8 +96,7 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
 
   (m,) = size(q_vec)
 
-  if myrank == 0
-    _f1 = open("convergence.dat", "a+")
+  if myrank == 0 _f1 = open("convergence.dat", "a+")
     f1 = BufferedIO(_f1)
   end
 
@@ -114,18 +115,15 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
   ### Main timestepping loop ###
   # beginning of RK4 time stepping loop
 
-  # TODO
-  if opts["revolve"] == false
-
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
 #     q_vec_old_DEBUG = deepcopy(q_vec)
 
     @mpi_master if i % output_freq == 0
-       println(fstdout, "\ntimestep ",i)
-       if i % 5*output_freq == 0
-         flush(fstdout)
-       end
+      println(fstdout, "\ntimestep ",i)
+      if i % 5*output_freq == 0
+        flush(fstdout)
+      end
     end
 
     pre_func(ctx..., opts)
@@ -139,7 +137,7 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
-   
+  
     @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
     end
@@ -251,6 +249,8 @@ end
     majorIterationCallback
     res_tol
     real_time
+
+    For searching: RK4_2
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
@@ -258,7 +258,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              real_time=false)
 
     rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
-        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
+        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts, timing::Timings=Timings(); 
         majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
 end
@@ -269,6 +269,8 @@ end
   This method of rk4 is the 'original' rk4, before revolve/adjoint implementation. 
   It passes in only t_max, and sets t_start to equal 0. This preserves readability 
   and reverse compatibility with non-revolve/adjoint rk4 calls.
+
+  For searching: RK4_3
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
@@ -286,6 +288,13 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 end
 
 # TODO TODO
+@doc """
+### NonlinearSolvers.rk4_revolve
+
+  Document this
+
+  For searching: RK4_4
+"""->
 function rk4_revolve(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
@@ -411,15 +420,15 @@ function rk4_revolve(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end   # end of do-while
 
 
-
-
-  rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
-      q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-      post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-      res_tol = -1.0, real_time=false)
+  # this is here just as an example of function signature
+#   rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
+#       q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+#       post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+#       res_tol = -1.0, real_time=false)
 
 end
 
+# TODO put these in RevolveCheckpointing
 # TODO comment
 function revolve_store(q_vec, t, ix)
 
@@ -446,11 +455,28 @@ function revolve_restore(ix)
   # TODO disassemble/assemble?
 end
 
+# TODO
+function revolve_adjoint(eqn, t, ix)
+
+  # need objective
+
+  # need dRdy
+  # since linear, inverse of dRdy is transpose of dRdy
+  adj = transpose(eqn.res)
+
+
+  # what is the jacobian produced by newton
+
+
+
+end
+
 @doc """
 ### NonlinearSolvers.rk4
 
 
   This is the original (non-general) interface for rk4.
+  It is called by call_nlsolver within startup_func.
 
   The argument names are the same as for the main rk4 method, unless noted
   otherwise
@@ -471,12 +497,21 @@ end
   eqn.q_vec for q_vec, eqn.res_vec for res_vec, pde_pre_func and pde_post func
   for the pre and post functions, eqn.majorIterationCallback for the 
   majorIterationCallback, and (mesh, sbp, eqn) as the ctx
-"""->
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
-      (mesh, sbp, eqn), opts, eqn.params.time;
-      majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+  For searching: RK4_5
+"""->
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts;
+             res_tol=-1.0, real_time=false)
+
+  if opts["revolve"] == true
+    rk4_revolve(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
+                (mesh, sbp, eqn), opts, eqn.params.time;
+                majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+  else
+    rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
+        (mesh, sbp, eqn), opts, eqn.params.time;
+        majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+  end
 
 end
 
