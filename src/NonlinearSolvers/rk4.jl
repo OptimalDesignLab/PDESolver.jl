@@ -287,11 +287,18 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end
 
-# TODO TODO
 @doc """
 ### NonlinearSolvers.rk4_revolve
 
-  Document this
+  This function is the implementation of rk4 that includes the revolve 
+  adjoint checkpointing algorithm.
+
+  It is required to have the RevolveCheckpointing julia package installed,
+  and the shell script within sourced to update LD_LIBRARY_PATH.
+
+  rk4_revolve is called by the rk4 function signature (search for RK4_5), which
+  checks the options dictionary for ["revolve"] and either calls this function
+  or a standard rk4 function.
 
   For searching: RK4_4
 """->
@@ -299,6 +306,8 @@ function rk4_revolve(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
+
+  # TODO: RevolveCheckpointing loaded check
 
   revolve_type = 1
   steps = round(Integer, t_max/h)
@@ -462,7 +471,14 @@ function revolve_adjoint(eqn, t, ix)
 
   # need dRdy
   # since linear, inverse of dRdy is transpose of dRdy
-  adj = transpose(eqn.res)
+
+  # TODO: need mesh, sbp, opts, calcResidual
+  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, calcResidual)
+
+  tmp, t_jac, t_gc, alloc = calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac, t)
+
+
+  adj = transpose(jac)
 
 
   # what is the jacobian produced by newton

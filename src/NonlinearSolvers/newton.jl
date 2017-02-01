@@ -1,7 +1,7 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
 # includes residual_evaluation.jl and petsc_funcs.jl
 
-export newton
+export newton, calcJacobianComplex
 global const insert_freq = 1
 @doc """
   This type holds all the data the might be needed for Newton's method,
