@@ -120,8 +120,6 @@ function test_adjoint()
 
       func_deriv_arr = zeros(eqn.q)
       func_deriv = zeros(eqn.q_vec)
-      functional_edges = opts["geom_faces_objective"]
-      functional_name = EulerEquationMod.FunctionalDict[opts["objective_function"]]
 
       boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
       EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, lift,
