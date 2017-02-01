@@ -67,9 +67,6 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
-# TODO cleanup
-# TODO revolve structure
-# TODO revolve if-else
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)

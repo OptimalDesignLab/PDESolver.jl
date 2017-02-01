@@ -44,7 +44,7 @@ crank_nicolson
    entropy) that the simulation should use.
 
    The idea behind pre_func, post func, and ctx is that they abstract what kind
-   of system rk4 is timestepping.  rk4 only needs to know about q_vec and
+   of system CN is timestepping. CN only needs to know about q_vec and
    res_vec.
 
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
