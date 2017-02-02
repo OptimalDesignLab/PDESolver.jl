@@ -103,24 +103,30 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   if opts["jac_type"] == 1 || opts["jac_type"] == 2
     adjoint_vec[:] = -(res_jac.')\func_deriv
   elseif opts["jac_type"] == 3
-    @time res_jac = MatTranspose(res_jac)
-    # println("typeof A = $(typeof(A))")
+
+    PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
+    PetscMatAssemblyEnd(res_jac)
+    res_jac = MatTranspose(res_jac)
+
     b = PetscVec(eqn.comm)
     PetscVecSetType(b, VECMPI)
     PetscVecSetSizes(b, PetscInt(mesh.numDof), PETSC_DECIDE)
+
     x = PetscVec(eqn.comm)
     PetscVecSetType(x, VECMPI)
     PetscVecSetSizes(x, PetscInt(mesh.numDof), PETSC_DECIDE)
+
     ksp = KSP(eqn.comm)
     KSPSetFromOptions(ksp)
     KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
-    println("Before NonlinearSolvers.petscSolve")
+
     NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts,
                      func_deriv, adjoint_vec)
     adjoint_vec = -adjoint_vec
+
   end # End how to solve for adjoint_vec
 
-  outname = string("adjoint_vec.dat")
+  outname = string("adjoint_vec_", mesh.myrank,".dat")
   f = open(outname, "w")
   for i = 1:length(adjoint_vec)
     println(f, real(adjoint_vec[i]))
@@ -194,7 +200,7 @@ function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # Now function call for calculating Jacobian
   ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, jac, ctx_residual)
-
+  #=
   jac_value = zeros(Float64, mesh.numDof, mesh.numDof)
   if jac_type == 3
     idx_range = collect(PetscInt, 0:(mesh.numDof-1)) # Array(0:mesh.numDof-1)
@@ -214,6 +220,8 @@ function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     println(f, real(jac_value[i]))
   end
   close(f)
+  =#
+
   return jac, jacData
 end
 
