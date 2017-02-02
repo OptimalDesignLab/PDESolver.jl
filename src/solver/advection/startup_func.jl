@@ -251,7 +251,7 @@ function postproc(mesh, sbp, eqn, opts)
         println(f, diff_norm, " ", h_avg)
         close(f)
       end
-
+      #=
       #----  Calculate functional on a boundary  -----#
 
       if opts["calc_functional"]
@@ -293,7 +293,7 @@ function postproc(mesh, sbp, eqn, opts)
         saveSolutionToMesh(mesh, real(adjoint_vec))
         writeVisFiles(mesh, "adjoint_field")
       end  # end if opts["calc_adjoint"]
-
+      =#
 #=
       outname = opts["calc_error_outfname"]
       f = open(outname, "w")

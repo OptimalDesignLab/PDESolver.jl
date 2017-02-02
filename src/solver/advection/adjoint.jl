@@ -11,7 +11,7 @@ Calcualtes the adjoint vector for a single functional
 *  `eqn`  : Advection equation object
 *  `opts` : Options dictionary
 *  `functionalData` : Object of type AbstractOptimizationData. This is the type
-                      associated with the adjoint of the functional being 
+                      associated with the adjoint of the functional being
                       computed and holds all the necessary data.
 *  `adjoint_vec` : Adjoint vector corresponding to the particular functional
                          computed
@@ -69,7 +69,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Get information corresponding to functional
   functional_edges = functionalData.geom_faces_functional
-  
+
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
@@ -103,6 +103,8 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   if opts["jac_type"] == 1 || opts["jac_type"] == 2
     adjoint_vec[:] = -(res_jac.')\func_deriv
   elseif opts["jac_type"] == 3
+    @time res_jac = MatTranspose(res_jac)
+    # println("typeof A = $(typeof(A))")
     b = PetscVec(eqn.comm)
     PetscVecSetType(b, VECMPI)
     PetscVecSetSizes(b, PetscInt(mesh.numDof), PETSC_DECIDE)
@@ -113,7 +115,8 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
     KSPSetFromOptions(ksp)
     KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
     println("Before NonlinearSolvers.petscSolve")
-    NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts, func_deriv, adjoint_vec)
+    NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts,
+                     func_deriv, adjoint_vec)
     adjoint_vec = -adjoint_vec
   end # End how to solve for adjoint_vec
 
@@ -192,6 +195,25 @@ function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, jac, ctx_residual)
 
+  jac_value = zeros(Float64, mesh.numDof, mesh.numDof)
+  if jac_type == 3
+    idx_range = collect(PetscInt, 0:(mesh.numDof-1)) # Array(0:mesh.numDof-1)
+    PetscMatAssemblyBegin(jac)
+    PetscMatAssemblyEnd(jac)
+    PetscMatGetValues(jac, idx_range, idx_range, jac_value)
+    jac_value = jac_value.'
+  elseif jac_type == 2
+    jac_value = full(jac)
+  elseif jac_type == 1
+    jac_value = jac
+  end
+
+  val = string("res_jac_type_",jac_type,".dat" )
+  f = open(val, "w")
+  for i = 1:length(jac_value)
+    println(f, real(jac_value[i]))
+  end
+  close(f)
   return jac, jacData
 end
 
@@ -209,7 +231,7 @@ mesh nodes.
 *  `eqn`   : Advection equation object
 *  `opts`  : Options dictionary
 *  `functionalData` : Object of subtype of AbstractOptimizationData. This is
-                      the type associated with the adjoint of the functional 
+                      the type associated with the adjoint of the functional
                       being computed and holds all the necessary data.
 *  `func_deriv_arr` : 3D array that stors the derivative of functional w.r.t
                       eqn.q. It has a structure [1, numnodes_per_element, numEl]

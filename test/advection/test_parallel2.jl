@@ -85,6 +85,7 @@ end
 
 add_func1!(AdvectionTests, test_parallel2_comm)
 
+#=
 function test_adjoint_parallel()
 
   facts("--- Testing Functional Computation on a Geometric Boundary ---") do
@@ -111,3 +112,4 @@ function test_adjoint_parallel()
 end
 
 add_func1(AdvectionTests, test_adjoint_parallel, [TAG_ADJOINT])
+=#
