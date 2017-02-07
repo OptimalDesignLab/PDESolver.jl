@@ -27,15 +27,20 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                   adjoint_vec::Array{Tsol,1}; functional_number::Int=1)
                   #functor, functional_number, adjoint_vec::Array{Tsol, 1})
 
-  # Get information corresponding to functional
-  functional_edges = functionalData.geom_faces_functional
-  
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
       "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4",
       "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right",
       "-ksp_gmres_restart", "30" ])
+  end
+
+  if opts["parallel_type"] == 1
+
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
+                      params.f, wait=true)
+    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
+
   end
 
   # Calculate the Jacobian of the residual
@@ -66,10 +71,14 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   #       needs to change.
 
   if opts["jac_type"] == 1 || opts["jac_type"] == 2
-    adjoint_vec[:] = -(res_jac.')\func_deriv # There is no negative sign because
-                                            # the weak residual is computed on
-                                            # the right hand side
+    adjoint_vec[:] = -(res_jac.')\func_deriv
+
   elseif opts["jac_type"] == 3
+
+    PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
+    PetscMatAssemblyEnd(res_jac)
+    res_jac = MatTranspose(res_jac)
+
     b = PetscVec(eqn.comm)
     PetscVecSetType(b, VECMPI)
     PetscVecSetSizes(b, PetscInt(mesh.numDof), PETSC_DECIDE)
@@ -79,12 +88,12 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     ksp = KSP(eqn.comm)
     KSPSetFromOptions(ksp)
     KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
-    println("Before NonlinearSolvers.petscSolve")
-    NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts, func_deriv, adjoint_vec)
+    NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts,
+                     func_deriv, adjoint_vec)
     adjoint_vec = -adjoint_vec
   end # End how to solve for adjoint_vec
 
-  outname = string("adjoint_vec.dat")
+  outname = string("adjoint_vec_", mesh.myrank,".dat")
   f = open(outname, "w")
   for i = 1:length(adjoint_vec)
     println(f, real(adjoint_vec[i]))
@@ -175,9 +184,9 @@ mesh nodes.
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
 *  `functionalData` : Functional object of super-type AbstractOptimizationData
-                      that is needed for computing the adjoint vector. 
+                      that is needed for computing the adjoint vector.
                       Depending on the functional being computed, a different
-                      method based on functional type may be needed to be 
+                      method based on functional type may be needed to be
                       defined.
 *  `func_deriv_arr` : 3D array that stores the derivative of the functional
                       w.r.t. eqn.q. The array is the same size as eqn.q

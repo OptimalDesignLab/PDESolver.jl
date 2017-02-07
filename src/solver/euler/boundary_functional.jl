@@ -27,6 +27,14 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         functionalData::AbstractOptimizationData;
                         functional_number::Int=1)
 
+  if opts["parallel_type"] == 1
+
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
+                      params.f, wait=true)
+    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
+
+  end
+
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -34,7 +42,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   # Calculate functional over edges
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
-  
+
   return nothing
 end
 
@@ -44,7 +52,7 @@ end
 
 This function calculates a functional on a geometric boundary of a the
 computational space. This is a mid level function that should not be called from
-outside the module. DEpending on the functional being computd, it may be 
+outside the module. DEpending on the functional being computd, it may be
 necessary to define another method for this function based on a different
 boundary functional type or parameters.
 
@@ -55,7 +63,7 @@ boundary functional type or parameters.
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
 *  `functionalData` : Object which is a subtype of Abstract OptimizationData.
-                      This is type is associated with the functional being 
+                      This is type is associated with the functional being
                       computed and holds all the relevant data.
 
 """->
@@ -135,8 +143,8 @@ end
 
 Computes the integrand for boundary functional at a surface SBP node. Every
 functional of a different type may need a corresponding method to compute the
-integrand. The type of the functional object, which is a subtype of 
-`AbstractOptimizationData`. 
+integrand. The type of the functional object, which is a subtype of
+`AbstractOptimizationData`.
 
 **Arguments**
 

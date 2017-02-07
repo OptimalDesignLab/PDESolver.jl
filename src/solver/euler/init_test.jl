@@ -2,7 +2,8 @@
 # include("pressure.jl")
 
 resize!(ARGS, 1)
-ARGS[1] = "input_vals_vortex.jl"
+# ARGS[1] = "input_vals_vortex.jl"
+ARGS[1] = "input_vals_vortex_parallel.jl"
 
 #----  Initialize EulerEquationMod for all the global variables necessary  ----#
 include("startup.jl")
@@ -68,11 +69,11 @@ EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 println("Objective function name = ", opts["objective_function"])
 println("objective.drag_val = $(objective.drag_val)")
 println("objective.lift_val = $(objective.lift_val)")
-#=
+
 # Calculate the adjoint vector
 adjoint_vec = zeros(Complex128, mesh.numDof)
 EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
-
+#=
 PdePumiInterface.saveSolutionToMesh(mesh, real(adjoint_vec))
 PdePumiInterface.writeVisFiles(mesh, "adjoint_field")
 =#

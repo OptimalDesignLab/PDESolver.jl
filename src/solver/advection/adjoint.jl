@@ -67,9 +67,6 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
                      functionalData::AbstractOptimizationData, adjoint_vec::Array{Tsol,1};
                      functional_number::Int=1)
 
-  # Get information corresponding to functional
-  functional_edges = functionalData.geom_faces_functional
-
   # Check if PETSc is initialized
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
@@ -78,6 +75,14 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
                     "right", "-ksp_gmres_restart", "30" ])
   end
 
+  if opts["parallel_type"] == 1
+
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
+                      params.f, wait=true)
+    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
+
+  end
+  
   # Calculate the Jacobian of the residual
   res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
 

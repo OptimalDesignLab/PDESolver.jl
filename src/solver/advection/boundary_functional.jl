@@ -26,6 +26,13 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         functionalData::AbstractOptimizationData;
                         functional_number::Int=1)
 
+  if opts["parallel_type"] == 1
+
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
+                      params.f, wait=true)
+    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
+
+  end
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
@@ -44,7 +51,7 @@ AdvectionEquationMod.calcBndryfunctional
 This function calculates the functional on a geometric boundary of a the
 computational space. This is a mid level function that should not be called
 from outside the module. Depending on the functional being computed, it
-may be necessary to define another method for this function based on a 
+may be necessary to define another method for this function based on a
 different boundary functional type.
 
 **Arguments**
@@ -194,7 +201,7 @@ which method is called.
 
 **Inputs**
 
-*  `params` : eqn.params object 
+*  `params` : eqn.params object
 *  `nx` : X component of face normal vector
 *  `ny` : Y component of face normal vector
 *  `q`  : Nodal solution variable
