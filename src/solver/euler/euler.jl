@@ -239,6 +239,16 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     saveSolutionToMesh(mesh, vals)
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
+
+    if opts["write_vorticity_vis"]
+      # write vorticity field
+      new_field = vec(getVorticity(mesh, sbp, eqn, opts))
+      saveSolutionToMesh(mesh, new_field)
+      fname = string("solution_vorticity_", itr)
+      writeVisFiles(mesh, fname)
+    end
+
+
 #=
     # DEBUGGING: write error to file
     q_exact = zeros(eqn.q_vec)
@@ -298,10 +308,10 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
     if(itr % opts["write_entropy_freq"] == 0)
       # calculate the entropy norm
-      val = calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec)
+      val = real(calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec))
 
       # compute w^T * res_vec
-      val2 = contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig)
+      val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
 
       # DEBUGGING: compute the potential flux from q
       #            directly, to verify the boundary terms are the problem
@@ -336,7 +346,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     @mpi_master f = eqn.file_dict[opts["write_enstrophy_fname"]]
 
     if (itr % opts["write_enstrophy_freq"]) == 0
-      enstrophy = calcEnstrophy(mesh, sbp, eqn, opts, eqn.q)
+      enstrophy = real(calcEnstrophy(mesh, sbp, eqn, opts, eqn.q))
       @mpi_master println(f, itr, " ", eqn.params.t, " ", enstrophy)
     end
 
@@ -349,7 +359,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     @mpi_master f = eqn.file_dict[opts["write_kinetic_energy_fname"]]
 
     if (itr % opts["write_kinetic_energy_freq"]) == 0
-      kinetic_energy = calcKineticEnergy(mesh, sbp, eqn, opts, eqn.q_vec)
+      kinetic_energy = real(calcKineticEnergy(mesh, sbp, eqn, opts, eqn.q_vec))
       @mpi_master println(f, itr, " ", eqn.params.t, " ", kinetic_energy)
     end
 
@@ -362,7 +372,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     @mpi_master f = eqn.file_dict[opts["write_kinetic_energydt_fname"]]
 
     if (itr % opts["write_kinetic_energydt_freq"]) == 0
-      kinetic_energydt = calcKineticEnergydt(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
+      kinetic_energydt = real(calcKineticEnergydt(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec))
       @mpi_master println(f, itr, " ", eqn.params.t, " ", kinetic_energydt)
     end
 
@@ -370,7 +380,6 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       flush(f)
     end
   end
- 
 
   return nothing
 

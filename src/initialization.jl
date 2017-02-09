@@ -279,9 +279,8 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
       eqn.t = t
 
-  #   else
-  #     throw(ErrorException("No flag specified: no solve will take place"))
-  #     return nothing
+     else
+       throw(ErrorException("No flag specified: no solve will take place"))
 
     end       # end of if/elseif blocks checking flag
 

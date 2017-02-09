@@ -1334,7 +1334,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
   q = eqn.q_vec
-  max_speed = zero(eltype(q))
+  max_speed = zero(Float64)
   for i=1:mesh.numDofPerNode:length(q)
     q_i = sview(q, i:(i+mesh.numDofPerNode - 1))
     a = calcSpeedofSound(eqn.params, q_i)
@@ -1343,8 +1343,8 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
       u_j = q_i[j+1]/q_i[1] 
       u_nrm += u_j*u_j
     end
-    u_norm = sqrt(u_nrm)
-    speed = a + u_norm
+    u_norm = sqrt(real(u_nrm))
+    speed = real(a) + u_norm
 
     if speed > max_speed
       max_speed = speed

@@ -100,6 +100,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
+    println("i = ", i)
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 

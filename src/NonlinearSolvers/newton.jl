@@ -383,7 +383,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
 
-    println(fstdout, "===== newton iteration: $i")
+    @mpi_master println(fstdout, "===== newton iteration: $i")
 
     # Calculate Jacobian here
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
@@ -431,7 +431,13 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
     # if eigenvalues requested and we can calculate them
     if (( print_eigs || write_eigs) && (jac_type == 1 || jac_type == 2))
-      eigs_i = reverse(eigvals(jac))
+      println(fstdout, "calculating eigenvalues of jacobian")
+      flush(fstdout)
+      if typeof(jac) <: Array
+        eigs_i = reverse(eigvals(jac))
+      else
+        eigs_i = reverse(eigvals(full(jac)))
+      end
       if print_eigs
         println(fstdout, "eigenvalues =")
         for i=1:length(eigs_i)

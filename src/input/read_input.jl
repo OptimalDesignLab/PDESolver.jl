@@ -95,7 +95,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
-if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -267,6 +267,7 @@ get!(arg_dict, "print_cond", false)
 get!(arg_dict, "write_sol", false)
 get!(arg_dict, "write_qic", false)
 get!(arg_dict, "write_vis", false)
+get!(arg_dict, "write_vorticity_vis", false)
 get!(arg_dict, "exact_visualization", false)
 get!(arg_dict, "write_res", false)
 get!(arg_dict, "output_freq", 1)
