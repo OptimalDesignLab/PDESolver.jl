@@ -124,7 +124,7 @@ function createMeshAndOperator(opts, dofpernode)
       sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
-      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
+#      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
       sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
     else 
       sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
@@ -140,7 +140,7 @@ function createMeshAndOperator(opts, dofpernode)
     println("constructing DG mesh")
     if dim == 2
 
-      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
     else
       mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
     end
