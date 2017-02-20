@@ -19,6 +19,7 @@ include("logging.jl")
 include("projections.jl")
 include("complexify.jl")
 include("mass_matrix.jl")
+include("curvilinear.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH
@@ -46,6 +47,9 @@ export printSolution, printCoordinates, printMatrix
 # mass_matrix.jl
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D, 
        applyMassMatrixInverse
+
+# curvilinear.jl
+export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
 
 @doc """
 ### Utils.disassembleSolution
