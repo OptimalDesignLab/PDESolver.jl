@@ -106,11 +106,8 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     qL = sview(eqn.q, :, :, elL)
     qR = sview(eqn.q, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
-<<<<<<< HEAD
 #    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
-=======
     dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
->>>>>>> 6e95254c582027dafb30b710465b014a54820969
     nrm_face = sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
