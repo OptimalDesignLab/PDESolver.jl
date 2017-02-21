@@ -21,7 +21,7 @@ objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
 dFluxdM = EulerEquationMod.getdFdm(mesh, sbp, eqn, opts)
-
+#=
 # Check against complex step
 pert = complex(0, 1e-20)
 epsilon = imag(pert)
@@ -61,6 +61,35 @@ for i = 1:length(dFluxdM)
 end
 
 println("error counter = $ctr")
+=#
+
+deriv_bndry_funcs = EulerEquationMod.getBCDerivFunctors(mesh, sbp, eqn, opts)
+# println(deriv_bndry_funcs)
+dBndryFluxdm = EulerEquationMod.getdBndryFluxdm(mesh, sbp, eqn, opts, deriv_bndry_funcs)
+
+
+# Check agains complex step
+pert = complex(0, 1e-20)
+
+for i=1:mesh.numBC
+  functor_i = mesh.bndry_funcs[i]
+  if functor_i == EulerEquationMod.noPenetrationBC()
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1]
+    idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
+    bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
+
+    # call the function that calculates the flux for this boundary condition
+    # passing the functor into another function avoid type instability
+    EulerEquationMod.complex_calcBoundaryFluxdm(mesh, sbp, eqn, functor_i, 
+                                        idx_range, bndry_facenums_i, bndryflux_i)
+
+    # Check against analytical value
+    dbndryflux_i = sview(dBndryFluxdm, :, 1, :, start_index:(end_index -  1))
+  end # End if noPenetrationBC  
+end
+
 
 #=
 # Get the adjoint vector

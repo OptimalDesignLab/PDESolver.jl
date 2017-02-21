@@ -200,6 +200,46 @@ function test_adjoint()
 
   end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
 
+  facts("--- Checking Derivative of Weak Residual w.r.t to mesh metrics") do
+    resize!(ARGS, 1)
+    ARGS[1] = "../input_vals_vortex.jl"
+    include("../../src/solver/euler/startup.jl")
+
+    dFluxdM = EulerEquationMod.getdFdm(mesh, sbp, eqn, opts)
+
+    # Check against complex step
+    pert = complex(0, 1e-20)
+    epsilon = imag(pert)
+    complex_dFluxdM = zeros(dFluxdM)
+    Tdim = 2
+    nrm = zeros(Complex{Float64}, Tdim)
+    for i = 1:mesh.numEl
+      for j = 1:mesh.numNodesPerElement
+        q_vals = sview(eqn.q, :,j,i)
+        aux_vars = sview(eqn.aux_vars, :, j, i)
+        for k=1:Tdim  # loop over dimensions
+          for p=1:Tdim
+            nrm[p] = mesh.dxidx[k, p, j, i]
+          end
+          for p = 1:Tdim
+            flux = eqn.params.flux_vals1
+            fill!(flux, 0.0)
+            nrm[p] += pert
+            EulerEquationMod.calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
+            complex_dFluxdM[:,p,k,j,i] = imag(flux[:])/epsilon
+            nrm[p] -= pert
+          end # End for p = 1:Tdim
+        end # End for k = 1:Tdim
+      end   # End for j = 1:mesh.numNodesPerElement
+    end     # End for i = 1:mesh.numEl
+
+    for i = 1:length(dFluxdM)
+      err = norm(dFluxdM[i] - complex_dFluxdM[i], 2)
+      @fact err --> roughly(0.0, atol = 1e-12)
+    end
+
+  end # End facts("--- Checking Derivative of Weak Residual w.r.t to mesh metrics")
+
   #=
   facts("--- Testing Functional Computation On a Boundary ---") do
     include("./input_vals_vortex_adjoint_DG.jl")

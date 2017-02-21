@@ -1153,7 +1153,9 @@ end
 
  
 """->
-function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, pert, jac::Union{SparseMatrixCSC, PetscMat}, t=0.0)
+function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
+                            res_0::Abstract3DArray, pert, 
+                            jac::Union{SparseMatrixCSC, PetscMat}, t=0.0)
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type
@@ -1166,14 +1168,15 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   myrank = mesh.myrank
   f = eqn.params.f
   time = eqn.params.time
-  time.t_color += @elapsed for color=1:mesh.maxColors  # loop over max colors, only do calculation for numColors
+  time.t_color += @elapsed for color=1:mesh.maxColors  # loop over max colors, 
+                                                       # only do calculation for numColors
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
-	# apply perturbation to q
+      	# apply perturbation to q
         if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
-  	  # evaluate residual
+      	  # evaluate residual
           time.t_func += @elapsed func(mesh, sbp, eqn, opts, t)
         end
 
@@ -1181,7 +1184,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
           PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
         end
 
-	# assemble res into jac
+      	# assemble res into jac
         if color <= mesh.numColors
           time.t_insert += @elapsed for k=1:mesh.numEl  # loop over elements in residual
             el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
@@ -1191,7 +1194,8 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 
               col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
               #TODO: make an immutable type to hold the bookeeping info
-              assembleElement(newton_data, mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
+              assembleElement(newton_data, mesh, eqn, eqn.res, res_0, k, el_pert,
+                              col_idx, epsilon, jac)
             end  # end if el_pert != 0
           end  # end loop over k
 

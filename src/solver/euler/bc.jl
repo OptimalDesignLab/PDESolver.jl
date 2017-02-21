@@ -209,14 +209,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           bndryflux::AbstractArray{Tres, 3})
   # calculate the boundary flux for the boundary condition evaluated by the
   # functor
-  #=
-  # println("functor = ", functor)
-  if functor == EulerEquationMod.isentropicVortexBC()
-    f = open("SAT_new_qg.dat", "a")
-    println(f, "Start of isentropicVortexBC")
-    close(f)
-  end
-  =#
+
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
   for i=1:nfaces  # loop over faces with this BC
@@ -237,13 +230,6 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
     end
   end
-  #=
-  if functor == EulerEquationMod.isentropicVortexBC()
-    f = open("SAT_new_qg.dat", "a")
-    println(f, "End of isentropicVortexBC")
-    close(f)
-  end
-  =#
 
   return nothing
 end
@@ -291,14 +277,6 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   convertFromNaturalToWorkingVars(params, q, v_vals)
 
   # Getting SAT terms
-  #=
-  specific_vol = 1.0/qg[1]
-  u = qg[2]*specific_vol
-  v = qg[3]*specific_vol
-  phi = 0.5*(u*u + v*v)
-  H = gamma*qg[4]*specific_vol - gami*phi # Total Enthalpy
-  =#
-
   specific_vol = 1.0/v_vals[1]
   u = v_vals[2]*specific_vol
   v = v_vals[3]*specific_vol
@@ -312,12 +290,6 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   sat = params.sat_vals
   calcSAT(params, nrm2, dq, sat, u, v, H)
 
-  #=
-  # Print SAT
-  f = open("SAT_new_qg.dat", "a")
-  println(f, real(sat))
-  close(f)
-  =#
   euler_flux = params.flux_vals1
   calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
 
@@ -411,7 +383,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   # calculate normal vector in xy space
   nx = zero(Tmsh)
   ny = zero(Tmsh)
-  tngt = Array(Tmsh, 2)  # tangent vector
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
   fac = 1.0/(sqrt(nx*nx + ny*ny))
@@ -432,8 +403,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
 
-  # call Roe solver
-  #RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
   nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
