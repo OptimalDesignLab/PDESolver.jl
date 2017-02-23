@@ -9,7 +9,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
-@doc """
+"""
 crank_nicolson
 
   This function performs Crank-Nicolson implicit time solution, using a function 
@@ -54,7 +54,7 @@ crank_nicolson
    should be eqn.q_vec and eqn.res_vec.
 
    TODO: fully document eqn/eqn_nextstep
-"""->
+"""
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true; neg_time=false, obj_fn=obj_zero)
@@ -125,11 +125,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: Allow for some kind of stage loop: ES-Dirk
 
-    # TODO: output freq
-
     # NOTE:
-    # majorIterationCallback: called before every step of Newton's method
-    # majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)
+    # majorIterationCallback: called before every step of Newton's method. signature: 
+    #   majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)
 
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
@@ -148,12 +146,23 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       t_nextstep = t - h
     end
 
-    # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
-    if opts["cleansheet_CN_newton"]
-      cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
-    else
-      @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+    if neg_time == false
+      # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
+      if opts["cleansheet_CN_newton"]
+        # cnNewton: in cnNewton.jl
+        cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+      else
+        @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+      end
+    else      # call newtonInner using cnAdjJac and cnAdjRhs
+      @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
+      # TODO: contents of ctx_residual? needs to have adj instead of eqn
     end
+
+
+    # TODO: cnAdj call here
+    #       need to load dRdu_i
+    #       need to place dJdu
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     #   There are two memory locations used by eqn & eqn_nextstep, 
@@ -168,17 +177,17 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
-    t = t_nextstep
+    t = t_nextstep        # update time step
 
   end   # end of t step loop
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copy!(dest, src)
-  copy!(eqn, eqn_nextstep)
+  copy!(eqn, eqn_nextstep)      # copying eqn_nextstep to eqn
   writedlm("solution_final_inCN.dat", real(eqn.q_vec))
 
 
-  if jac_type == 3
+  if jac_type == 3      # if jac is a Petsc matrix, it needs to be freed when we're done using it
     # contents of ctx_newton: (jacp, x, b, ksp)
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
@@ -188,8 +197,87 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end   # end of crank_nicolson function
 
-@doc """
-###NonlinearSolvers.cnJac
+# function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
+function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, eqn, ctx, t)
+  # adj_nextstep contains psi_i
+  # ctx will pass in adj, which contains psi_(i+1)
+  # eqn contains q at time i (check not i+1)
+
+  myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+
+  physics_func = ctx[1]
+  # NOTE: eqn instead of eqn_nextstep, 20161013
+  adj = ctx[2]
+  h = ctx[3]
+  newton_data = ctx[4]
+
+  # Forming the CN Adjoint Jacobian:
+  #   call physicsJac with eqn_nextstep & t_nextstep
+  #   then form cnAdjJac = I - dt/2 * physics_Jac
+
+  # instead of allocating another cnJac, modify this jac
+  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
+  # get jacobian from eqn here
+  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn, opts, jac, ctx, t)
+
+  # need to flush assembly cache before performing the scale operation.
+  #   These are defined for Julia matrices; they're just noops
+  PetscMatAssemblyBegin(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
+
+  #--------------------------
+  # applying dt/2 to jac
+  # Jacobian is always 2D
+  scale_factor = h*-0.5
+  # make this into a petsc_scale_factor
+  petsc_scale_factor = PetscScalar(scale_factor)
+
+  # PetscMatScale is defined for all jac types, PETSc and Julia
+  # when jac is julia array, this effectively does: scale!(jac, scale_factor)
+  PetscMatScale(jac, petsc_scale_factor)
+
+  # PetscMatAssembly___ not necessary here; PetscMatScale is provably local so it doesn't cache its stuff
+
+  #--------------------------
+  # adding identity
+  ix_petsc_row = zeros(PetscInt, 1)
+  ix_petsc_col = zeros(PetscInt, 1)
+  value_to_add = zeros(PetscScalar, 1, 1)
+  value_to_add[1,1] = 1.0
+  flag = PETSc.PETSC_ADD_VALUES
+
+  for i = 1:mesh.numDof
+    ix_petsc_row[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
+    ix_petsc_col[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
+
+    # PETSc function: set_values1!(Jac, [2], [2], Jac[2,2] + 1)
+    # args: array, row (as an array of len 1), col (as an array of len 1), new values (as a 2D array of len 1)
+    #   set_values1! has different methods for both PETSc matrices and Julia matrices
+    #   for Julia dense & sparse arrays, set_values1! effectively does this: jac[i,i] += 1
+    #   in serial, mesh.dof_offset is set to 0 automatically
+    set_values1!(jac, ix_petsc_row, ix_petsc_col, value_to_add, flag)
+  end
+
+  # set_values1! only caches the results; need to be assembled. This happens in petscSolve in petsc_funcs.jl
+  #   (The assemble funcs are defined for Julia matrices; they're just noops)
+
+  # jac is now I - dt/2 * physics_jac
+
+end
+
+#=
+Boundary condition data:
+
+numBC: # of different types of BCs used
+bndryfaces: array of Boundary objects
+numBoundaryEdges: # of mesh edges that have boundary conditions applied to them
+bndry_offsets: array of length numBC+1. bndry_offsets[i]: index in bndryfaces where the edges that have BC i applied to them start
+
+=#
+  
+
+"""
+NonlinearSolvers.cnJac
 
   Jac of the CN calculation.
   Effectively a wrapper for physicsJac, because the CN Jac is:
@@ -200,7 +288,7 @@ end   # end of crank_nicolson function
     eqn_nextstep must be the second element
     h must be the third element
     newton_data must be the fourth element
-"""->
+"""
 function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
                eqn_nextstep::AbstractSolutionData, opts, jac, ctx, t)
 
@@ -269,8 +357,37 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
 end
 
-@doc """
-###NonlinearSolvers.cnRhs
+"""
+NonlinearSolvers.cnAdjRhs
+
+  RHS of the CN unsteady adjoint calculation
+
+  cnAdjRhs counts on the fact that crank_nicolson above will call it stepping through time in the negative direction
+
+
+"""
+function cnAdjRhs(mesh, sbp, adj_nextstep, opts, rhs_vec, ctx, t)
+
+  physics_func = ctx[1]
+  adj = ctx[2]
+  h = ctx[3]
+  dJdu = ctx[4]
+  dRdu_i = ctx[5]
+
+  t_nextstep = t - h    # adjoint going backwards in time
+
+  for i = 1:mesh.numDof
+
+    # TODO adj vs adj_vec in dRdu_i * adj.adj____
+    rhs_vec[i] = dJdu[i] + adj_nextstep.adj_vec[i] - 0.5*h*dRdu_i*adj_nextstep.adj[i] - adj.adj_vec[i] - 0.5*h*dRdu_i*adj.adj[i]
+
+  end
+
+
+end
+
+"""
+NonlinearSolvers.cnRhs
 
   RHS of the CN calculation
 
@@ -279,8 +396,9 @@ end
     eqn_nextstep must be the second element
     h must be the third element
 
-"""->
-function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
+"""
+# function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
+function cnRhs(mesh, sbp, eqn_nextstep, opts, rhs_vec, ctx, t)
 
   # eqn comes in through ctx_residual, which is set up in CN before the newtonInner call
 
@@ -291,7 +409,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   t_nextstep = t + h
 
-  # these two flipped 20161219
+  # assembleSolution needs to be called after physics_func TODO: explain why
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
@@ -319,8 +437,8 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
 end     # end of function cnRhs
 
-@doc """
-### NonlinearSolvers.pde_pre_func
+"""
+NonlinearSolvers.pde_pre_func
 
   The pre-function for solving partial differential equations with a physics
   module.  The only operation it performs is disassembling eqn.q_vec into
@@ -331,15 +449,15 @@ end     # end of function cnRhs
     sbp
     eqn
     opts
-"""->
+"""
 function pde_pre_func(mesh, sbp, eqn, opts)
   
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 end
 
 
-@doc """
-### NonlinearSolvers.pde_post_func
+"""
+NonlinearSolvers.pde_post_func
 
   The post-function for solving partial differential equations with a physics
   module.  This function multiplies by A0inv, assembles eqn.res into
@@ -352,7 +470,7 @@ end
     eqn
     opts
 
-"""->
+"""
 function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
