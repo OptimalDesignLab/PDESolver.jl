@@ -149,7 +149,24 @@ function test_flux_2d()
     fill!(eqn.res, 0.0)
     EulerEquationMod.calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
     res_split = copy(eqn.res)
+
     fill!(eqn.res, 0.0)
+
+    # test that the curvilinear version is consistent with the regular one
+    # for straight sided elements
+    EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn, opts, eqn.volume_flux_func)
+
+    for i=1:mesh.numEl
+      for j=1:mesh.numNodesPerElement
+        for p=1:mesh.numDofPerNode
+          @fact eqn.res[p, j, i] --> roughly(res_split[p, j, i], atol=1e-12)
+        end
+      end
+    end
+
+    fill!(eqn.res, 0.0)
+
+
 
     # check that 1^T * volume integrals using S * F_Star * 1 == 0, because 
     # S is skew symmetric and F_star is symmetric
@@ -216,7 +233,7 @@ function test_flux_2d()
 end  # end function
 
 #test_flux_2d()
-add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX])
+add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILINEAR])
 
 """
   Test calculation of numerical flux functions in 3D

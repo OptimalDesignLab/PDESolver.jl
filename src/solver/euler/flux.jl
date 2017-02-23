@@ -107,7 +107,6 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     qR = sview(eqn.q, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
 #    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
-    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
     nrm_face = sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
@@ -173,7 +172,6 @@ function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
 #    qL_arr = eqn.q_face_send[i]
     qR_arr = eqn.q_face_recv[idx]
 #    dxidx_face_arr = mesh.dxidx_sharedface[idx]
-    dxidx_face_arr = mesh.dxidx_sharedface[idx]
     nrm_face_arr = mesh.nrm_sharedface[idx]
 #    aux_vars_arr = eqn.aux_vars_sharedface[idx]
 #    flux_arr = eqn.flux_sharedface[idx]

@@ -467,7 +467,7 @@ end
 """
   Permute the rows of A according to the permvec, storing the result in B
   The permvec contains the source indices for each entry in B, ie.
-  B[permvec[i]] comes from A[i].  This is consistent with the mathematical
+  B[i] comes from A[permvec[i]].  This is consistent with the mathematical
   definition of a permutation that pre-multiplication by a permutation 
   matrix (obtained from permMatrix) is a row permutation, ie.
   B = P*A
