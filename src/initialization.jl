@@ -10,7 +10,7 @@
   Outputs
     sbp : an AbstractSBP
     mesh : an AbstractMesh
-    pmesh : an AbstractMesh, used for preconditioning, may be same object as 
+    pmesh : an AbstractMesh, used for preconditioning, may be same object as
             mesh
     Tsol : DataType that should be used for eqn.q
     Tres : DataType that should be used for eqn.res
@@ -45,7 +45,7 @@ function createMeshAndOperator(opts, dofpernode)
     Tsbp = Float64
     Tsol = Dual{Float64}
     Tres = Dual{Float64}
-  elseif flag == 5  
+  elseif flag == 5
     if jac_method == 1 # use Newton method using finite difference  (former flag 4)
       # println("========== utils/initialization: flag 5, jac_method 1")
       Tmsh = Float64
@@ -54,11 +54,11 @@ function createMeshAndOperator(opts, dofpernode)
       Tres = Float64
     elseif jac_method == 2 # use complex step dR/du
       # println("========== utils/initialization: flag 5, jac_method 2")
-      Tmsh = Float64
+      Tmsh = Complex128
       Tsbp = Float64
       Tsol = Complex128
       Tres = Complex128
-    else 
+    else
       throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
     end
   elseif flag == 6 || flag == 7  # evaluate residual error and print to paraview
@@ -83,7 +83,7 @@ function createMeshAndOperator(opts, dofpernode)
   else
     throw(ErrorException("Illegal flag or jac_method combination specified in input."))
   end
-  # If the user specifies a flag other than the ones within the above if checks, 
+  # If the user specifies a flag other than the ones within the above if checks,
   #   then an error will be thrown now because Tsol is not defined
   opts["Tsol"] = Tsol
   opts["Tres"] = Tres
@@ -126,7 +126,7 @@ function createMeshAndOperator(opts, dofpernode)
       ref_verts = [-1. 1 -1; -1 -1 1]
       interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
       sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
-    else 
+    else
       sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       ref_verts = sbp.vtx
       interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
@@ -146,7 +146,7 @@ function createMeshAndOperator(opts, dofpernode)
     end
     if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
       @assert dim == 2
-      pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts; 
+      pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts;
                      coloring_distance=opts["coloring_distance_prec"])
     else
       pmesh = mesh
@@ -192,23 +192,23 @@ end
   Aliasing restrictions: none (specificaly, mesh and pmesh *can* be the same
                          object)
 """
-function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP, 
-                       eqn::AbstractSolutionData, opts::Dict, 
+function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
+                       eqn::AbstractSolutionData, opts::Dict,
                        pmesh::AbstractMesh=mesh)
   flag = opts["run_type"]::Int
   if opts["solve"]
-    
+
     solve_time = @elapsed if flag == 1 # normal run
       # RK4 solver
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
-      @time rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts, 
+      @time rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts,
                 res_tol=opts["res_abstol"], real_time=opts["real_time"])
       println("finish rk4")
   #    printSolution("rk4_solution.dat", eqn.res_vec)
-    
+
     elseif flag == 2 # forward diff dR/du
-    #= 
+    #=
       # define nested function
       function dRdu_rk4_wrapper(u_vals::AbstractVector, res_vec::AbstractVector)
         eqn.q_vec = u_vals
@@ -218,7 +218,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       end
 
       # use ForwardDiff package to generate function that calculate jacobian
-      calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64, 
+      calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64,
                   fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
 
       jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
@@ -229,8 +229,8 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       # dRdx here
 
     elseif flag == 4 || flag == 5
-      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"], 
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"], 
+      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
+                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
                    res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
       printSolution("newton_solution.dat", eqn.res_vec)
@@ -257,7 +257,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     elseif flag == 10
       function test_pre_func(mesh, sbp, eqn, opts)
-        
+
         eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       end
 
@@ -268,13 +268,13 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       t_max = opts["t_max"]
 
       rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
-          test_post_func, (mesh, sbp, eqn), opts, 
+          test_post_func, (mesh, sbp, eqn), opts,
           majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
     elseif flag == 20
 
-      @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
-                               mesh, sbp, eqn, opts, opts["res_abstol"], 
+      @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                               mesh, sbp, eqn, opts, opts["res_abstol"],
                                opts["real_time"])
 
       eqn.t = t

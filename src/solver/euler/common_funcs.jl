@@ -2,9 +2,9 @@
 ### EulerEquationMod.calcIsentropicVortex
 
   This function calculates the isentropic vortex solution to the Euler
-  equations at a node.  This function uses an inner radius of 1, an inner 
+  equations at a node.  This function uses an inner radius of 1, an inner
   radius density of 2, an inner radius Mach number of 0.95, and an inner radius
-  pressure of 1/gamma.  The denstiy as a function of radius r can be found in, 
+  pressure of 1/gamma.  The denstiy as a function of radius r can be found in,
   for example,
   "Output Error Estimates for Summation-by-parts Finite-difference Schemes",
   JE Hicken.
@@ -22,7 +22,7 @@
   Aliasing restrictions: none
 
 """->
-function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
                               params::ParamType{2}, sol::AbstractVector{Tsol})
 # calculates the solution at a point of the isentropic vortex
 # 2D only
@@ -46,7 +46,7 @@ p_in =  1/gamma
 
 # calculate r, theta coordinates from x,y
 r = sqrt(x*x + y*y)
-theta = atan2(y,x)  # angle in radians
+theta = atan2(real(y),real(x))  # angle in radians
 
 # calculate values at r radius
 tmp1 = ((gamma-1)/2)*M_in*M_in
@@ -75,7 +75,7 @@ return nothing
 end
 
 
-function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
                               params::ParamType{3}, sol::AbstractVector{Tsol})
 # calculates the solution at a point of the isentropic vortex
 
@@ -159,7 +159,7 @@ end
 @doc """
 ### EulerEquationMod.calcFreeStream
 
-  This function calculates the free stream solution for an airfoil problem 
+  This function calculates the free stream solution for an airfoil problem
   based on the angle of attack and Mach number in nondimensionalized variables.
 
   Density and energy are set to params.rho_free (usually 1.0) and params.E_free,
@@ -182,11 +182,11 @@ end
   Aliasing restrictions: none
 
 """->
-function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                         params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 # calculate the free stream conditions using the fields of params
 
-  
+
   rho = sol[1] = params.rho_free
   E = sol[4] = params.E_free
 
@@ -201,7 +201,7 @@ end
 @doc """
 ### EulerEquationMod.calcFreeStream_dAlpha
 
-  This function calculates the free stream solution for an airfoil problem 
+  This function calculates the free stream solution for an airfoil problem
   based on the angle of attack and Mach number in nondimensionalized variables.
 
   Density and energy are set to params.rho_free (usually 1.0) and params.E_free,
@@ -225,11 +225,11 @@ end
 
 """->
 
-function calcFreeStream_dAlpha{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+function calcFreeStream_dAlpha{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                         params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 # calculate the free stream conditions using the fields of params
 
-  
+
   rho = sol[1] = params.rho_free
   E = sol[4] = params.E_free
 
@@ -247,7 +247,7 @@ end
 ### EulerEquationMod.calcUnsteadyVortex
 
   This function calculates the unsteady vortex solution to the Euler equations
-  at time params.t, where the vortex was centered at x = params.vortex_x0 at 
+  at time params.t, where the vortex was centered at x = params.vortex_x0 at
   time t=0.  The analytical solution can be found in, for example,
   K. Mattsson et al./ Computers & Fluxs 36 (2007) 636-649
 
@@ -264,7 +264,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                             params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 
   function f(coords, params)
@@ -274,7 +274,7 @@ function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
     x0 = params.vortex_x0
     return 1 - ( (  (x-x0) - t)^2 + y*y)
   end
-  
+
   fval = f(coords, params)
   t = params.t
   epsilon = params.vortex_strength
@@ -301,7 +301,7 @@ function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   # the paper gives pressure, so calculate E from that and the
   # pressure expression in terms of E
   term1 = (rho^gamma)/(gamma_1*gamma*Ma*Ma)
-  term2 = 0.5*(q2*q2 + q3*q3)/rho  
+  term2 = 0.5*(q2*q2 + q3*q3)/rho
   E = term1 + term2
 
   sol[1] = rho
@@ -332,7 +332,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+function calcRho1Energy2{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                          params::ParamType{2}, sol::AbstractArray{Tsol,1})
   # for square test case with rho = 1, everything else  = 0
 
@@ -363,9 +363,9 @@ end
   Aliasing restrictions: none
 
 """->
-function calcOnes{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+function calcOnes{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                   params::ParamType{2}, sol::AbstractArray{Tsol,1})
-  
+
   fill!(sol, 1.0)
 
   return nothing
@@ -390,9 +390,9 @@ end  # end function calcOnes
 
 """->
 
-function calcZeros{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+function calcZeros{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                   params::ParamType{2}, sol::AbstractArray{Tsol,1})
-  
+
   fill!(sol, 0.0)
 
   return nothing
@@ -420,7 +420,7 @@ end  # end function calcZeros
   Aliasing restrictions: none
 
 """->
-function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
                            params::ParamType{2}, sol::AbstractArray{Tsol, 1})
   # for square test case with rho = 1, digonal momentum, energy
 
@@ -432,7 +432,7 @@ function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
   return nothing
 end
 
-function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh}, 
+function calcRho1Energy2U3{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
                            params::ParamType{3}, sol::AbstractArray{Tsol, 1})
   # for square test case with rho = 1, digonal momentum, energy
 
@@ -451,7 +451,7 @@ end
 ### EulerEquationMod.calcVortex
 
   Sets the density 1.0, energy to 2.0 at a node.  The momenta are calculated
-  according to solid body rotation with an angular velocity of 0.5 centered 
+  according to solid body rotation with an angular velocity of 0.5 centered
   at x = 0.
 
 
@@ -468,7 +468,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+function calcVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
                     params::ParamType{2}, sol::AbstractArray{Tsol,1})
 # solid body rotation
   x = coords[1]
@@ -498,7 +498,7 @@ end
 """
   Calculates a manufactured solution based on exponentials
 """
-function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
                     params::ParamType{2}, q::AbstractArray{Tsol,1})
 
   x = coords[1]
@@ -516,7 +516,7 @@ function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   return nothing
 end
 
-function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
                     params::ParamType{3}, q::AbstractArray{Tsol,1})
   x = coords[1]
   y = coords[2]
@@ -525,7 +525,7 @@ function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   # constant parameters
   a = MMSExp_a
   b = MMSExp_b
-  c1 = MMSExp_c1 
+  c1 = MMSExp_c1
   c2 = MMSExp_c2
   c3 = MMSExp_c3
   c4 = MMSExp_c4
@@ -551,12 +551,12 @@ function calcExp{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
 end
 
 """
-  Calculates a manufactured solution from Gassner, Winters, Kopriva: Split 
+  Calculates a manufactured solution from Gassner, Winters, Kopriva: Split
   Form Nodal DG Schemes with SBP Propertiy for the Compressible Euler Equations.
   This is typically used with a mesh that spans [-1, 1] in all directions
 
 """
-function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
                     params::ParamType{2}, q::AbstractArray{Tsol,1})
 
   x = coords[1]
@@ -577,7 +577,7 @@ function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
   return nothing
 end
 
-function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1}, 
+function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
                     params::ParamType{3}, q::AbstractArray{Tsol,1})
 
   throw(ErrorException("calcPeriodicMMS does not work correctly, do not use"))

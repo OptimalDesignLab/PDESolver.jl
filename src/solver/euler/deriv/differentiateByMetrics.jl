@@ -1,4 +1,11 @@
 # This script holds differentiation by the mesh metrics. Write functions in here.
+@doc """
+getdFdm
+
+Get the derivatives of the euler flux with respect to the mesh metrics dxi/dx
+This is a high level function.
+
+"""->
 
 function getdFdm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
@@ -22,6 +29,22 @@ function getdFdm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   return dFluxdm
 end
+
+@doc """
+calcdFluxdm
+
+SBP node level function that actually computes the derivative w.r.t mesh metrics
+
+**Arguments**
+
+* `params` : Parameter object
+* `q`      : Solution at the node
+* `aux_vars` : Auxiliary variables
+* `dir`    : Normal vector direction
+* `dF`     : Flux derivative. 2D array with dim 1 = flux dof at a node,
+             dim 2 = [dxi/dx, dxi/dy] or [deta/dx, deta/dy] in 2D
+
+"""->
 
 function calcdFluxdm{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1},
@@ -108,58 +131,28 @@ function getdBndryFluxdm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = sview(dBndryFluxdm, :, :, :, start_index:(end_index - 1))
+    dbndryflux_i = sview(dBndryFluxdm, :, :, :, start_index:(end_index - 1))
 
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
-    calcdBndryFluxdm(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
+    calcdBndryFluxdm(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, dbndryflux_i)
   end
+
+  # println("dBndryFluxdm = \n", dBndryFluxdm)
 
   return dBndryFluxdm
 end
-#=
-function calcdBndryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol},
-                          functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1},
-                          bndryflux::AbstractArray{Tres, 4})
-
-
-  nfaces = length(bndry_facenums)
-  q2 = zeros(Tsol, mesh.numDofPerNode)
-  for i=1:nfaces  # loop over faces with this BC
-    bndry_i = bndry_facenums[i]
-    global_facenum = idx_range[i]
-    for j = 1:mesh.numNodesPerFace
-
-      # get components
-      q = sview(eqn.q_bndry, :, j, global_facenum)
-      # convert to conservative variables if needed
-      convertToConservative(eqn.params, q, q2)
-      aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
-      x = sview(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
-      bndryflux_i = sview(bndryflux, :, :, j, i)
-
-      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
-    end
-  end
-
-  return nothing
-end
-=#
 
 function calcdBndryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
                             functor::BCType, idx_range::UnitRange,
                             bndry_facenums::AbstractArray{Boundary,1},
-                            bndryflux::AbstractArray{Tres, 4})
+                            dbndryflux::AbstractArray{Tres, 4})
   # calculate the boundary flux for the boundary condition evaluated by the
   # functor
-  println("shape of bndryflux = ", size(bndryflux))
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
+  nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
@@ -172,10 +165,13 @@ function calcdBndryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
-      bndryflux_i = sview(bndryflux, :, :, j, i)
+      # nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      dbndryflux_i = sview(dbndryflux, :, :, j, i)
 
-      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      functor(q2, aux_vars, x, dxidx, nrm, dbndryflux_i, eqn.params)
+      # println("bndryflux_i = $bndryflux_i")
+
     end
   end
 
@@ -189,7 +185,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::disentropicVortexBC_dm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 2}, params::ParamType{2})
+              dbndryflux::AbstractArray{Tres, 2}, params::ParamType{2})
 
 
 
@@ -202,7 +198,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::dnoPenetrationBC_dm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 2}, params::ParamType{2})
+              dbndryflux::AbstractArray{Tres, 2}, params::ParamType{2})
 
   nx = zero(Tmsh)
   ny = zero(Tmsh)
@@ -233,7 +229,8 @@ function call{Tmsh, Tsol, Tres}(obj::dnoPenetrationBC_dm, q::AbstractArray{Tsol,
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
 
-  calcEulerFlux(params, v_vals, aux_vars, [dnx2_dxidx, dny2_dxidx], bndryflux[:,1])
+  calcEulerFlux(params, v_vals, aux_vars, [dnx2_dxidx, dny2_dxidx], sview(dbndryflux,:,1))
+  # println("bndryflux = ", bndryflux[:,1])
 
   # DbndryFlux/dxidy
 
@@ -280,6 +277,7 @@ function complex_calcBoundaryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tms
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
   dxidx = zeros(Complex{Float64}, mesh.dim, mesh.dim)
+  nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
@@ -293,7 +291,7 @@ function complex_calcBoundaryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tms
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx[:,:] = mesh.dxidx_bndry[:, :, j, global_facenum]
       dxidx[1,1] += pert
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm[:] = sbp.facenormal[:, bndry_i.face]
       bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
