@@ -258,30 +258,30 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 
 end
 
-function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar)
+function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar, dir_bar)
 
   # Compute the reverse mode
   # Differentiate euler flux product with F_bar in reverse mode w.r.t dir to get
   # q_bar
 
   press = calcPressure(params, q)
-  dir_bar = zeros(dir)
+  # dir_bar = zeros(dir)
 
   # intermediate function that is only used in computing F so has to be reverse
   # diffed only in F_bar
-  U_bar = 0.0
-  U_bar += F_bar[1]*q[1] + F_bar[2]*q[2] + F_bar[3]*q[3] + F_bar[4]*(q[4] + press)
 
   # dir_bar has dependence on both F and U
   # Reverse mode using F_bar
   dir_bar[1] += F_bar[2]*press
   dir_bar[2] += F_bar[3]*press
+  U_bar = 0.0
+  U_bar += F_bar[1]*q[1] + F_bar[2]*q[2] + F_bar[3]*q[3] + F_bar[4]*(q[4] + press)
 
   # Reverse mode using U_bar
   dir_bar[1] += U_bar*q[2]/q[1]
   dir_bar[2] += U_bar*q[3]/q[1]
 
-  #=
+
   # Similarly, q_bar has dependence on both F & U
   q_bar[1] += F_bar[1]*U
   q_bar[2] += F_bar[2]*U
@@ -291,7 +291,7 @@ function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar)
   q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
   q_bar[2] += U_bar*dir[1]/q[1]
   q_bar[3] += U_bar*dir[3]/q[1]
-  =#
+
   return nothing
 end
 

@@ -193,6 +193,53 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
   return nothing
 end
 
+function calcBoundaryFunctionalIntegrand_revnrm{Tsol, Tres, Tmsh}(params,
+                                         q::AbstractArray{Tsol,1},
+                                         aux_vars::AbstractArray{Tres, 1},
+                                         nrm::AbstractArray{Tmsh},
+                                         node_info::AbstractArray{Int},
+                                         objective::BoundaryForceData,
+                                         val::AbstractArray{Tsol,1}
+                                         nrm_bar, val_bar)
+
+  aoa = params.aoa # Angle of attack
+  nx = nrm[1]
+  ny = nrm[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  nx *= fac # Normalize nx & ny
+  ny *= fac
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  euler_flux_bar = zeros(Tsol, 4) # For 2D
+  qg_bar = zeros(Tsol, 4)
+  euler_flux_bar[2:3] += val_bar[:]
+
+  calcEulerFlux_revm(params, q, aux_vars, dir, euler_flux_bar, qg_bar, nrm_bar)
+  normal_momentum_bar = zero(Tsol)
+
+  # Reverse diff qg[3] -= ny*normal_momentum
+  ny_bar -= qg_bar[3]*normal_momentum
+  normal_momentum_bar -= qg_bar[3]*ny
+  # Reverse diff qg[2] -= nx*normal_momentum
+  nx_bar -= qg_bar[2]*normal_momentum
+  normal_momentum_bar -= qg_bar[2]*nx
+
+  q_bar[:] += qg_bar[:]
+
+  # Reverse diff normal_momentum = nx*q[2] + ny*q[3]
+  q_bar[2] += normal_momentum_bar*nx
+  nx_bar += normal_momentum_bar*q[2]
+  q_bar[3] += normal_momentum_bar*ny
+  ny_bar += normal_momentum_bar*q[3]
+
+  # Reverse diff ny *= fac
+  fac_bar = zero(Tsol)
+  fac_bar += nx_bar*nx
+  nx_bar += nx_bar*fac
+
+  return nothing
+end
+
 #=
 @doc """
 ### EulerEquationMod.drag
