@@ -193,13 +193,20 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
   return nothing
 end
 
-function calcBoundaryFunctionalIntegrand_revnrm{Tsol, Tres, Tmsh}(params,
+@doc """
+calcBoundaryFunctionalIntegrand_revm
+
+Reverse mode for boundary functional integrand w.r.t. nrm. Takes in input
+val_bar and return nrm_bar for further reverse propagation.
+
+"""->
+
+function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},
                                          nrm::AbstractArray{Tmsh},
                                          node_info::AbstractArray{Int},
                                          objective::BoundaryForceData,
-                                         val::AbstractArray{Tsol,1}
                                          nrm_bar, val_bar)
 
   aoa = params.aoa # Angle of attack
@@ -234,8 +241,19 @@ function calcBoundaryFunctionalIntegrand_revnrm{Tsol, Tres, Tmsh}(params,
 
   # Reverse diff ny *= fac
   fac_bar = zero(Tsol)
+  fac_bar += ny_bar*ny
+  ny_bar += ny_bar*fac
+
+  # Reverse diff nx *= fac
   fac_bar += nx_bar*nx
   nx_bar += nx_bar*fac
+
+  # Reverse diff fac = 1.0/(sqrt(nx*nx + ny*ny))
+  nx_bar += -fac_bar*((nx*nx + ny*ny)^(-1.5))*nx
+  ny_bar += -fac_bar*((nx*nx + ny*ny)^(-1.5))*ny
+
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
 
   return nothing
 end
