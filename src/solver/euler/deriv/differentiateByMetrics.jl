@@ -6,8 +6,8 @@ function getdFdm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   dFluxdm = zeros(Tsol, mesh.numDofPerNode, Tdim, Tdim, sbp.numnodes, mesh.numEl)
   nrm = zeros(Tmsh, Tdim)
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
-  	  q_vals = sview(eqn.q, :, j, i)
+    for j = 1:mesh.numNodesPerElement
+      q_vals = sview(eqn.q, :, j, i)
       aux_vars = sview(eqn.aux_vars, :, j, i)
       for k=1:Tdim  # loop over dimensions
         for p=1:Tdim
@@ -16,9 +16,8 @@ function getdFdm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         dfdm = sview(dFluxdm, :, :, k, j, i)
         calcdFluxdm(eqn.params, q_vals, aux_vars, nrm, dfdm)
       end
-  	end
+    end
   end
-
 
   return dFluxdm
 end

@@ -532,7 +532,7 @@ type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
   is_objective_fn::Bool
   geom_faces_functional::AbstractArray{Int,1}
   ndof::Int
-  bndry_force::AbstractArray{Topt,1}
+  bndry_force::AbstractArray{Topt,1}  
   lift_val::Topt
   drag_val::Topt
   dLiftdAlpha::Topt # Partial derivative of lift w.r.t. alpha
