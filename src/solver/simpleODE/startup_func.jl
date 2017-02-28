@@ -74,8 +74,7 @@ function run_simpleode(input_file::AbstractString)
           majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
     elseif flag == 20   # Crank-Nicolson
-      @time crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, 
-                           opts, opts["res_abstol"], opts["real_time"])
+      @time crank_nicolson(evalResidual, opts["delta_t"], t_max, mesh, sbp, eqn, opts, opts["res_abstol"])
 
     else
 

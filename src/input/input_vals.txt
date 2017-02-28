@@ -301,6 +301,11 @@ Note that any values associated with these options are shared with the regular
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
 "revolve"      : whether or not to use revolve adjoint checkpointing, default false
 
+# Unsteady adjoint options
+"adjoint_straight" : calculate the unsteady adjoint by saving the state at every timestep
+"adjoint_revolve"  : calculate the unsteady adjoint, but using revolve to handle checkpointing
+                     and state saving
+
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved 
                   1: u = x^2 + t^4

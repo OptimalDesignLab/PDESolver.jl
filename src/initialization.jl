@@ -136,13 +136,16 @@ function createMeshAndOperator(opts, dofpernode)
     end
 
     # create mesh with 4 dof per node
-
     println("constructing DG mesh")
     if dim == 2
 
-      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface; 
+                               dofpernode=dofpernode, coloring_distance=opts["coloring_distance"],
+                               shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; 
+                               dofpernode=dofpernode, coloring_distance=opts["coloring_distance"],
+                               shape_type=shape_type)
     end
     if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
       @assert dim == 2
@@ -160,7 +163,9 @@ function createMeshAndOperator(opts, dofpernode)
     # create linear mesh with 4 dof per node
 
     println("constructing CG mesh")
-    mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+    mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface;
+                           dofpernode=dofpernode, coloring_distance=opts["coloring_distance"],
+                           shape_type=shape_type)
 
     if opts["jac_type"] == 3 || opts["jac_type"] == 4
       pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
@@ -253,7 +258,9 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
 
-      rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, pre_func, post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+      rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, pre_func, post_func, 
+          (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, 
+          real_time=opts["real_time"])
 
     elseif flag == 10
       function test_pre_func(mesh, sbp, eqn, opts)
@@ -271,11 +278,26 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
           test_post_func, (mesh, sbp, eqn), opts, 
           majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
-    elseif flag == 20
+    elseif flag == 20     # Crank-Nicolson
 
-      @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
-                               mesh, sbp, eqn, opts, opts["res_abstol"], 
-                               opts["real_time"])
+      if opts["adjoint_revolve"]
+        error("adjoint_revolve not fully implemented yet.")
+      end
+
+      if opts["adjoint_straight"] 
+
+        # forward sweep
+        @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
+                                 mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
+
+        # reverse sweep
+        @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
+                                 mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
+
+      else
+        @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
+                                 mesh, sbp, eqn, opts, opts["res_abstol"])
+      end
 
       eqn.t = t
 
