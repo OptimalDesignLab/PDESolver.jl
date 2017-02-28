@@ -23,5 +23,6 @@ if !tag_defs
   global const TAG_ESS = "tag_ess"
   global const TAG_UTILS = "tag_utils"
   global const TAG_INPUT = "tag_input"
+  global const TAG_REVERSEMODE = "tag_reversemode"
 end
 

@@ -265,7 +265,7 @@ function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar, dir_bar)
   # q_bar
 
   press = calcPressure(params, q)
-  # dir_bar = zeros(dir)
+  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
 
   # intermediate function that is only used in computing F so has to be reverse
   # diffed only in F_bar
@@ -290,7 +290,7 @@ function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar, dir_bar)
 
   q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
   q_bar[2] += U_bar*dir[1]/q[1]
-  q_bar[3] += U_bar*dir[3]/q[1]
+  q_bar[3] += U_bar*dir[2]/q[1]
 
   return nothing
 end

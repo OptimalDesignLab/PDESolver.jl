@@ -45,6 +45,7 @@ include("test_GLS3.jl")
 include("test_3d.jl")
 
 include("test_adjoint.jl")
+include("test_reversemode.jl")
 include("test_flux.jl")
 include("test_ESS.jl")
 include("test_rk4.jl")
@@ -85,4 +86,3 @@ if MPI.Initialized() && TestFinalizeMPI
 end
 
 FactCheck.exitstatus()
-
