@@ -68,13 +68,14 @@ boundary functional type or parameters.
 
 """->
 
-function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol}, opts, functionalData::BoundaryForceData)
+function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+                         eqn::EulerData{Tsol, Tres, Tdim}, opts, functionalData::BoundaryForceData)
 
   local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
   bndry_force = functionalData.bndry_force
   fill!(bndry_force, 0.0)
   functional_edges = functionalData.geom_faces_functional
+  phys_nrm = zeros(Tmsh, Tdim)
 
   # Get bndry_offsets for the functional edge concerned
   for itr = 1:length(functional_edges)
@@ -106,11 +107,14 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm = sview(sbp.facenormal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        for k = 1:Tdim
+            # nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+            # ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+            phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
+          end # End for k = 1:Tdim
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
-        calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, [nx, ny],
+        calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
                                         node_info, functionalData, b_integrand_ji)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
@@ -219,15 +223,18 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
 
   euler_flux_bar = zeros(Tsol, 4) # For 2D
   qg_bar = zeros(Tsol, 4)
+  q_bar = zeros(Tsol,4)
   euler_flux_bar[2:3] += val_bar[:]
 
-  calcEulerFlux_revm(params, q, aux_vars, dir, euler_flux_bar, qg_bar, nrm_bar)
+  calcEulerFlux_revm(params, q, aux_vars, nrm, euler_flux_bar, qg_bar, nrm_bar)
   normal_momentum_bar = zero(Tsol)
 
   # Reverse diff qg[3] -= ny*normal_momentum
+  ny_bar = zero(Tsol)
   ny_bar -= qg_bar[3]*normal_momentum
   normal_momentum_bar -= qg_bar[3]*ny
   # Reverse diff qg[2] -= nx*normal_momentum
+  nx_bar = zero(Tsol)
   nx_bar -= qg_bar[2]*normal_momentum
   normal_momentum_bar -= qg_bar[2]*nx
 

@@ -24,7 +24,7 @@ function test_adjoint()
 
     context("Checking Functional Object Creation") do
 
-      lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts, 
+      lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts,
                                                    opts["num_functionals"])
       @fact lift.is_objective_fn --> false
       @fact lift.geom_faces_functional --> [3]
@@ -202,7 +202,7 @@ function test_adjoint()
 
   facts("--- Checking Derivative of Weak Residual w.r.t to mesh metrics") do
     resize!(ARGS, 1)
-    ARGS[1] = "../input_vals_vortex.jl"
+    ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
     include("../../src/solver/euler/startup.jl")
 
     dFluxdM = EulerEquationMod.getdFdm(mesh, sbp, eqn, opts)
