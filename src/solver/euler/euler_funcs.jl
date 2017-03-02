@@ -44,7 +44,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #        nrm[2] = mesh.dxidx[k, 2, j, i]
         flux = sview(eqn.flux_parametric, :, j, i, k)
 
-	# this will dispatch to the proper calcEulerFlux
+      	# this will dispatch to the proper calcEulerFlux
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
       end
     end

@@ -362,12 +362,24 @@ end # ends the function eulerRoeSAT
 @doc """
 ###EulerEquationMod.calcSAT
 
+Computes the simultaneous approximation term for use in computing the numerical
+flux
+
+**Arguments**
+
+* `params` : Parameter object of type ParamType
+* `nrm` : Normal to face in the physical space
+* `dq`  : Boundary condition penalty variable
+* `sat` : Simultaneous approximation Term
+* `u`   : Velocity in the X-direction in physical space
+* `v`   : Velocity in the Y-direction in physical space
+* `H`   : Total enthalpy
 
 """->
 
 function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
-                 dq::AbstractArray{Tsol,1},
-                 sat::AbstractArray{Tsol,1}, u, v, H)
+                 dq::AbstractArray{Tsol,1}, sat::AbstractArray{Tsol,1}, u::Tsol,
+                 v::Tsol, H::Tsol)
 
 
   # SAT parameters

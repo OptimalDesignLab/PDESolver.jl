@@ -70,8 +70,11 @@ function test_reversemode()
 
       # Uses conservative variables
       Tdim = mesh.dim
-      val_bar = rand(Tdim) # Random seed
+      # val_bar = rand(Tdim) # Random seed
+      val_bar = [0.79658, 0.559469]
+      println("val_bar = $val_bar")
       nxny_bar = zeros(Float64, 2)
+      nxny_bar_complex = zeros(Complex128, 2)
       pert = complex(0, 1e-20) # Complex step perturbation
 
       # Test on geometric edge 3 (0 based indexing) with no penetration BC
@@ -81,9 +84,11 @@ function test_reversemode()
       bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
       nfaces = length(bndry_facenums)
-      boundary_integrand = zeros(Complex128, drag.ndof, mesh.sbpface.numnodes, nfaces)
+      # boundary_integrand = zeros(Complex128, drag.ndof, mesh.sbpface.numnodes, nfaces)
       phys_nrm = zeros(Complex128, Tdim)
+      boundary_integrand = zeros(Complex128, drag.ndof)
 
+      ctr = 0
       for i = 1:nfaces
         bndry_i = bndry_facenums[i]
         global_facenum = idx_range[i]
@@ -99,21 +104,31 @@ function test_reversemode()
             phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
           end # End for k = 1:Tdim
           node_info = Int[1,j,i]
-          b_integrand_ji = sview(boundary_integrand,:,j,i)
+          fill!(boundary_integrand, 0.0)
 
           # Reverse mode
           fill!(nxny_bar, 0.0)
-          EulerEquationMod.calcBoundaryFunctionalIntegrand_revm(eqn.params, q, aux_vars, phys_nrm,
-                                             node_info, drag, nxny_bar, val_bar)
+          EulerEquationMod.calcBoundaryFunctionalIntegrand_revm(eqn.params, q,
+                       aux_vars, phys_nrm, node_info, drag, nxny_bar, val_bar)
 
           # Do Complex step
           for k = 1:Tdim
-            phys_nrm(k)
+            phys_nrm[k] += pert
+            EulerEquationMod.calcBoundaryFunctionalIntegrand(eqn.params, q, aux_vars, phys_nrm,
+                                        node_info, drag, boundary_integrand)
+            boundary_integrand[:] = imag(boundary_integrand[:])/imag(pert)
+            nxny_bar_complex[k] = dot(boundary_integrand, val_bar)
+            println("nxny_bar_complex[$k] = $(nxny_bar_complex[k]), nxny_bar[$k] = $(nxny_bar[k])")
+            phys_nrm[k] -= pert
+            error = norm(nxny_bar_complex[k] - nxny_bar[k], 2)
+            if error > 1e-10
+              ctr += 1
+            end
           end # End for k = 1:Tdim
 
         end # End for j = 1:mesh.sbpface.numnodes
       end   # End for i = 1:nfaces
-
+      println("ctr = $ctr")
     end # End context("Checking Boundary Functional Integrand")
 
 

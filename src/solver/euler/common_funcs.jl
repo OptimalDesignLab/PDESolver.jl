@@ -24,51 +24,51 @@
 """->
 function calcIsentropicVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh},
                               params::ParamType{2}, sol::AbstractVector{Tsol})
-# calculates the solution at a point of the isentropic vortex
-# 2D only
+  # calculates the solution at a point of the isentropic vortex
+  # 2D only
 
 
-# unpack arguments
-x = coords[1]
-y = coords[2]
+  # unpack arguments
+  x = coords[1]
+  y = coords[2]
 
-# get some values out of eqn
-cv = params.cv
-R = params.R
-gamma = params.gamma
+  # get some values out of eqn
+  cv = params.cv
+  R = params.R
+  gamma = params.gamma
 
-# the (hard coded) parameters are
-r_in = 1  # inner radius of sector of circle
-rho_in = 2 # density at inner radius
-M_in = 0.95  # Mach number
-p_in =  1/gamma
+  # the (hard coded) parameters are
+  r_in = 1  # inner radius of sector of circle
+  rho_in = 2 # density at inner radius
+  M_in = 0.95  # Mach number
+  p_in =  1/gamma
 
 
-# calculate r, theta coordinates from x,y
-r = sqrt(x*x + y*y)
-theta = atan2(real(y),real(x))  # angle in radians
+  # calculate r, theta coordinates from x,y
+  r = sqrt(x*x + y*y)
+  theta = atan2(real(y),real(x))  # angle in radians
 
-# calculate values at r radius
-tmp1 = ((gamma-1)/2)*M_in*M_in
-rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
+  # calculate values at r radius
+  tmp1 = ((gamma-1)/2)*M_in*M_in
+  rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
 
-p_r = p_in*(rho_r/rho_in)^gamma
+  p_r = p_in*(rho_r/rho_in)^gamma
 
-a_r = sqrt( gamma*p_r/rho_r )
+  a_r = sqrt( gamma*p_r/rho_r )
 
-M_r = sqrt( (2/(gamma-1))*((rho_in/rho_r)^(gamma-1))*(1 + tmp1) - 2/(gamma-1) )
-U_r = M_r*a_r  # velocity magnitude
+  M_r = sqrt( (2/(gamma-1))*((rho_in/rho_r)^(gamma-1))*(1 + tmp1) - 2/(gamma-1) )
+  U_r = M_r*a_r  # velocity magnitude
 
-u_r = U_r*sin(theta)
-v_r = -U_r*cos(theta)
-e_r = cv*p_r/(rho_r*R)
-E_r = rho_r*e_r + 0.5*rho_r*U_r*U_r
+  u_r = U_r*sin(theta)
+  v_r = -U_r*cos(theta)
+  e_r = cv*p_r/(rho_r*R)
+  E_r = rho_r*e_r + 0.5*rho_r*U_r*U_r
 
-# save solution to sol
-sol[1] = rho_r
-sol[2] = rho_r*u_r
-sol[3] = rho_r*v_r
-sol[4] = E_r
+  # save solution to sol
+  sol[1] = rho_r
+  sol[2] = rho_r*u_r
+  sol[3] = rho_r*v_r
+  sol[4] = E_r
 
 return nothing
 

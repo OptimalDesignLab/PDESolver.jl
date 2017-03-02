@@ -213,6 +213,7 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
                                          objective::BoundaryForceData,
                                          nrm_bar, val_bar)
 
+  #---- Forward sweep
   aoa = params.aoa # Angle of attack
   nx = nrm[1]
   ny = nrm[2]
@@ -220,24 +221,34 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   nx *= fac # Normalize nx & ny
   ny *= fac
   normal_momentum = nx*q[2] + ny*q[3]
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
 
+  #---- Reverse Sweep
   euler_flux_bar = zeros(Tsol, 4) # For 2D
   qg_bar = zeros(Tsol, 4)
   q_bar = zeros(Tsol,4)
+
+  # Reverse diff val[:] = euler_flux[2:3]
   euler_flux_bar[2:3] += val_bar[:]
 
-  calcEulerFlux_revm(params, q, aux_vars, nrm, euler_flux_bar, qg_bar, nrm_bar)
-  normal_momentum_bar = zero(Tsol)
+  # Reverse diff calcEulerFlux
+  calcEulerFlux_revm(params, qg, aux_vars, nrm, euler_flux_bar, qg_bar, nrm_bar)
 
   # Reverse diff qg[3] -= ny*normal_momentum
-  ny_bar = zero(Tsol)
+  ny_bar = zero(Tsol)               # Initialize
+  normal_momentum_bar = zero(Tsol)  #
   ny_bar -= qg_bar[3]*normal_momentum
   normal_momentum_bar -= qg_bar[3]*ny
+
   # Reverse diff qg[2] -= nx*normal_momentum
-  nx_bar = zero(Tsol)
+  nx_bar = zero(Tsol)               # Initialize
   nx_bar -= qg_bar[2]*normal_momentum
   normal_momentum_bar -= qg_bar[2]*nx
 
+  # Reverse diff qg[:] = q[:]
   q_bar[:] += qg_bar[:]
 
   # Reverse diff normal_momentum = nx*q[2] + ny*q[3]
@@ -256,8 +267,8 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   nx_bar += nx_bar*fac
 
   # Reverse diff fac = 1.0/(sqrt(nx*nx + ny*ny))
-  nx_bar += -fac_bar*((nx*nx + ny*ny)^(-1.5))*nx
-  ny_bar += -fac_bar*((nx*nx + ny*ny)^(-1.5))*ny
+  nx_bar -= fac_bar*((nx*nx + ny*ny)^(-1.5))*nx
+  ny_bar -= fac_bar*((nx*nx + ny*ny)^(-1.5))*ny
 
   nrm_bar[1] += nx_bar
   nrm_bar[2] += ny_bar
