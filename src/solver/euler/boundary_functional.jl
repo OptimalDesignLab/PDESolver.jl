@@ -172,15 +172,15 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
   # Compute the numerical flux for the euler equation and extract the X & Y
   # momentum values
 
-  aoa = params.aoa # Angle of attack
+  # aoa = params.aoa # Angle of attack
   euler_flux = params.flux_vals1 # Reuse existing memory
-  nx = nrm[1]
-  ny = nrm[2]
+  # nx = nrm[1]
+  # ny = nrm[2]
 
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
   # normalize normal vector
-  nx *= fac
-  ny *= fac
+  nx = nrm[1]*fac
+  ny = nrm[2]*fac
 
   normal_momentum = nx*q[2] + ny*q[3]
 
@@ -214,12 +214,9 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
                                          nrm_bar, val_bar)
 
   #---- Forward sweep
-  aoa = params.aoa # Angle of attack
-  nx = nrm[1]
-  ny = nrm[2]
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
-  nx *= fac # Normalize nx & ny
-  ny *= fac
+  fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
+  nx = nrm[1]*fac # Normalized unit vectors
+  ny = nrm[2]*fac #
   normal_momentum = nx*q[2] + ny*q[3]
   qg = params.qg
   for i=1:length(q)
@@ -235,16 +232,17 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   euler_flux_bar[2:3] += val_bar[:]
 
   # Reverse diff calcEulerFlux
-  calcEulerFlux_revm(params, qg, aux_vars, nrm, euler_flux_bar, qg_bar, nrm_bar)
+  calcEulerFlux_revm(params, qg, aux_vars, nrm, euler_flux_bar, nrm_bar)
+  calcEulerFlux_revq(params, qg, aux_vars, nrm, euler_flux_bar, qg_bar)
+  ny_bar = zero(Tsol)               # Initialize
+  nx_bar = zero(Tsol)               #
+  normal_momentum_bar = zero(Tsol)  #
 
   # Reverse diff qg[3] -= ny*normal_momentum
-  ny_bar = zero(Tsol)               # Initialize
-  normal_momentum_bar = zero(Tsol)  #
   ny_bar -= qg_bar[3]*normal_momentum
   normal_momentum_bar -= qg_bar[3]*ny
 
   # Reverse diff qg[2] -= nx*normal_momentum
-  nx_bar = zero(Tsol)               # Initialize
   nx_bar -= qg_bar[2]*normal_momentum
   normal_momentum_bar -= qg_bar[2]*nx
 
@@ -252,26 +250,23 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   q_bar[:] += qg_bar[:]
 
   # Reverse diff normal_momentum = nx*q[2] + ny*q[3]
-  q_bar[2] += normal_momentum_bar*nx
   nx_bar += normal_momentum_bar*q[2]
-  q_bar[3] += normal_momentum_bar*ny
   ny_bar += normal_momentum_bar*q[3]
+  q_bar[2] += normal_momentum_bar*nx
+  q_bar[3] += normal_momentum_bar*ny
 
-  # Reverse diff ny *= fac
+  # Reverse diff ny = nrm[2]*fac
   fac_bar = zero(Tsol)
-  fac_bar += ny_bar*ny
-  ny_bar += ny_bar*fac
+  nrm_bar[2] += ny_bar*fac
+  fac_bar += ny_bar*nrm[2]
 
-  # Reverse diff nx *= fac
-  fac_bar += nx_bar*nx
-  nx_bar += nx_bar*fac
+  # Reverse diff nx = nrm[1]*fac
+  nrm_bar[1] += nx_bar*fac
+  fac_bar += nx_bar*nrm[1]
 
-  # Reverse diff fac = 1.0/(sqrt(nx*nx + ny*ny))
-  nx_bar -= fac_bar*((nx*nx + ny*ny)^(-1.5))*nx
-  ny_bar -= fac_bar*((nx*nx + ny*ny)^(-1.5))*ny
-
-  nrm_bar[1] += nx_bar
-  nrm_bar[2] += ny_bar
+  # Reverse diff fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
+  nrm_bar[1] += -fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[1]
+  nrm_bar[2] += -fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[2]
 
   return nothing
 end

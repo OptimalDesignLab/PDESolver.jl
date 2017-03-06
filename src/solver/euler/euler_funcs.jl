@@ -258,7 +258,16 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 
 end
 
-function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar, dir_bar)
+@doc """
+###EulerEquationMod.calcEulerFlux_revm
+
+Compute the derivative of the euler flux in reverse mode w.r.t to unit vector
+flux direction.
+
+"""->
+function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{2, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1}, F_bar, dir_bar)
 
   # Compute the reverse mode
   # Differentiate euler flux product with F_bar in reverse mode w.r.t dir to get
@@ -281,7 +290,7 @@ function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar, dir_bar)
   dir_bar[1] += U_bar*q[2]/q[1]
   dir_bar[2] += U_bar*q[3]/q[1]
 
-
+#=
   # Similarly, q_bar has dependence on both F & U
   q_bar[1] += F_bar[1]*U
   q_bar[2] += F_bar[2]*U
@@ -291,6 +300,52 @@ function calcEulerFlux_revm(params, q, aux_vars, dir, F_bar, q_bar, dir_bar)
   q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
   q_bar[2] += U_bar*dir[1]/q[1]
   q_bar[3] += U_bar*dir[2]/q[1]
+=#
+  return nothing
+end
+
+@doc """
+###EulerEquationMod.calcEulerFlux_revq
+
+Compute the derivative of the Euler flux in reverse mode w.r.t q
+
+"""->
+
+function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{2, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1}, F_bar, q_bar)
+
+  press = calcPressure(params, q)
+  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+
+  U_bar = zero(Tsol)     # Initialize
+  press_bar = zero(Tsol) #
+  # Reverse diff F[4] = (q[4] + press)*U
+  q_bar[4] += F_bar[4]*U
+  U_bar += F_bar[4]*(q[4] + press)
+  press_bar += F_bar[4]*U
+
+  # Reverse diff F[3] = q[3]*U + dir[2]*press
+  q_bar[3] += F_bar[3]*U
+  U_bar += F_bar[3]*q[3]
+  press_bar += F_bar[3]*dir[2]
+
+  # Reverse diff F[2] =  q[2]*U + dir[1]*press
+  q_bar[2] += F_bar[2]*U
+  U_bar += F_bar[2]*q[2]
+  press_bar += F_bar[2]*dir[1]
+
+  # Reverse diff  F[1] = q[1]*U
+  q_bar[1] += F_bar[1]*U
+  U_bar += F_bar[1]*q[1]
+
+  # Reverse diff U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+  q_bar[2] += U_bar*dir[1]/q[1]
+  q_bar[3] += U_bar*dir[2]/q[1]
+  q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
+
+  # Reverse diff press = calcPressure(params, q)
+  calcPressure_revq(params, q, press_bar, q_bar)
 
   return nothing
 end
@@ -482,6 +537,34 @@ function calcPressure{Tsol}(params::ParamType{2, :entropy},
   s = gamma - q[1] + k1    # entropy
   rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
   return gamma_1*rho_int
+end
+
+@doc """
+###EulerEquationMod.calcPressure_revq
+
+Compute the gradient of pressure w.r.t q in the reverse mode
+
+**Arguments**
+
+* `params` : Parameter object
+* `q` : Forward sweep solution variable
+* `press_bar` : Reverse pressure gradient
+* `q_bar` : Reverse mode solution gradient
+`
+"""->
+
+function calcPressure_revq{Tsol}(params::ParamType{2, :conservative},
+                           q::AbstractArray{Tsol,1}, press_bar, 
+                           q_bar)
+
+  gamma_1 = params.gamma_1
+  q1_inv = 1.0/q[1]
+  q_bar[4] += press_bar*gamma_1
+  q_bar[3] -= gamma_1*press_bar*q[3]*q1_inv
+  q_bar[2] -= gamma_1*press_bar*q[2]*q1_inv
+  q_bar[1] += 0.5*gamma_1*press_bar*(q[2]*q[2] + q[3]*q[3])*q1_inv*q1_inv
+
+  return nothing
 end
 
 

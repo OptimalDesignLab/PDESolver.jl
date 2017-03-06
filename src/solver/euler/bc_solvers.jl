@@ -102,8 +102,8 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   H = (sqL*HL + sqR*HR)*fac
 
   #=
-  dq = zeros(Tsol, 4)
-  dq = q - qg
+  dq = params.v_vals2 # zeros(Tsol, 4)
+  dq[:] = q[:] - qg[:]
   sat = params.sat_vals
   calcSAT(params, nrm, dq, sat, u, v, H)
   =#
@@ -179,13 +179,8 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   for i=1:length(sat)
     sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
   end
+  
 
-  # Print SAT
-  #=
-  f = open("SAT_original.dat", "a")
-  println(f, real(sat))
-  close(f)
-  =#
   euler_flux = params.flux_vals1
   # calculate Euler flux in wall normal directiona
   # because edge numbering is rather arbitary, any memory access is likely to
