@@ -5,7 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 arg_dict = Dict{ASCIIString, Any}(
 "physics" => "Euler",
-"run_type" => 5,
+"run_type" => 11,
 "jac_method" => 2,
 "order" => 1,
 "real_time" => true,
@@ -19,7 +19,6 @@ arg_dict = Dict{ASCIIString, Any}(
 "BC3" => [2],
 "BC3_name" => "isentropicVortexBC",
 "BC4" => [3],
-# "BC4_name" => "isentropicVortexBC",
 "BC4_name" => "noPenetrationBC",
 "aoa" => 0.0,
 "smb_name" => "SRCMESHES/gvortex1.smb",
@@ -34,9 +33,6 @@ arg_dict = Dict{ASCIIString, Any}(
 "step_tol" => 1e-10,
 "itermax" => 30,
 
-# Non-objective Functional computation keys
-# "calc_functional" => true,
-# "functional_error" => true,
 "num_functionals" => 1,
 "functional_name1" => "lift",
 "geom_faces_functional1" => [3],

@@ -10,7 +10,7 @@ module
 function test_reversemode()
 
   resize!(ARGS, 1)
-  ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
+  ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
 
   facts("--- Testing Pressure derivative in reverse mode ---") do
