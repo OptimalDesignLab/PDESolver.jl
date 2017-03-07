@@ -170,9 +170,9 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
                                          val::AbstractArray{Tsol,1})
 
   # Compute the numerical flux for the euler equation and extract the X & Y
-  # momentum values
+  # momentum values. The normal vector supplied has already been converted
+  # to the physical space from the parametric space.
 
-  # aoa = params.aoa # Angle of attack
   euler_flux = params.flux_vals1 # Reuse existing memory
   # nx = nrm[1]
   # ny = nrm[2]
@@ -222,6 +222,8 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   for i=1:length(q)
     qg[i] = q[i]
   end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
 
   #---- Reverse Sweep
   euler_flux_bar = zeros(Tsol, 4) # For 2D
@@ -241,10 +243,12 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   # Reverse diff qg[3] -= ny*normal_momentum
   ny_bar -= qg_bar[3]*normal_momentum
   normal_momentum_bar -= qg_bar[3]*ny
+  qg_bar[3] += qg_bar[3]
 
   # Reverse diff qg[2] -= nx*normal_momentum
   nx_bar -= qg_bar[2]*normal_momentum
   normal_momentum_bar -= qg_bar[2]*nx
+  qg_bar[2] += qg_bar[2]
 
   # Reverse diff qg[:] = q[:]
   q_bar[:] += qg_bar[:]
@@ -265,8 +269,8 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   fac_bar += nx_bar*nrm[1]
 
   # Reverse diff fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
-  nrm_bar[1] += -fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[1]
-  nrm_bar[2] += -fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[2]
+  nrm_bar[1] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[1]
+  nrm_bar[2] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[2]
 
   return nothing
 end

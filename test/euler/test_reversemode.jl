@@ -131,10 +131,8 @@ function test_reversemode()
 
 
   facts("--- Testing Boundary Functional In Reverse Mode ---") do
-#=
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
-    include("../../src/solver/euler/startup.jl")=#
+
+    # Create functional object
     drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
 
@@ -142,9 +140,7 @@ function test_reversemode()
 
       # Uses conservative variables
       Tdim = mesh.dim
-      # val_bar = rand(Tdim) # Random seed
-      val_bar = [0.79658, 0.559469]
-      println("val_bar = $val_bar")
+      val_bar = rand(Tdim) # Random seed
       nxny_bar = zeros(Float64, 2)
       nxny_bar_complex = zeros(Complex128, 2)
       pert = complex(0, 1e-20) # Complex step perturbation
@@ -156,7 +152,6 @@ function test_reversemode()
       bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
       nfaces = length(bndry_facenums)
-      # boundary_integrand = zeros(Complex128, drag.ndof, mesh.sbpface.numnodes, nfaces)
       phys_nrm = zeros(Complex128, Tdim)
       boundary_integrand = zeros(Complex128, drag.ndof)
 
@@ -171,8 +166,6 @@ function test_reversemode()
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
           nrm = sview(sbp.facenormal, :, bndry_i.face)
           for k = 1:Tdim
-            # nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-            # ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
             phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
           end # End for k = 1:Tdim
           node_info = Int[1,j,i]
@@ -190,24 +183,17 @@ function test_reversemode()
                                         node_info, drag, boundary_integrand)
             boundary_integrand[:] = imag(boundary_integrand[:])/imag(pert)
             nxny_bar_complex[k] = dot(boundary_integrand, val_bar)
-            println("nxny_bar_complex[$k] = $(nxny_bar_complex[k]), nxny_bar[$k] = $(nxny_bar[k])")
             phys_nrm[k] -= pert
             error = norm(nxny_bar_complex[k] - nxny_bar[k], 2)
-            if error > 1e-10
-              ctr += 1
-            end
+            @fact error --> roughly(0.0, atol=1e-10)
           end # End for k = 1:Tdim
-
         end # End for j = 1:mesh.sbpface.numnodes
       end   # End for i = 1:nfaces
-      println("ctr = $ctr")
     end # End context("Checking Boundary Functional Integrand")
-
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 
   return nothing
-end
+end # End function test_reversemode
 
-# test_reverseMode()
 add_func1!(EulerTests, test_reversemode, [TAG_REVERSEMODE])

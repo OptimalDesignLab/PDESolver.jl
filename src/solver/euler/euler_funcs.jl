@@ -290,17 +290,6 @@ function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{2, :conservative},
   dir_bar[1] += U_bar*q[2]/q[1]
   dir_bar[2] += U_bar*q[3]/q[1]
 
-#=
-  # Similarly, q_bar has dependence on both F & U
-  q_bar[1] += F_bar[1]*U
-  q_bar[2] += F_bar[2]*U
-  q_bar[3] += F_bar[3]*U
-  q_bar[4] += F_bar[4]*U
-
-  q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
-  q_bar[2] += U_bar*dir[1]/q[1]
-  q_bar[3] += U_bar*dir[2]/q[1]
-=#
   return nothing
 end
 
