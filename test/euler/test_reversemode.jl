@@ -19,7 +19,7 @@ function test_reversemode()
     q_bar = zeros(Complex128, mesh.numDofPerNode)
     q_bar_complex = zeros(Complex128, mesh.numDofPerNode)
     pert = complex(0,1e-20)
-
+    println("type of eqn.q = ", typeof(eqn.q))
     for i = 1:mesh.numEl
       for j = 1:mesh.numNodesPerElement
         q_vals = sview(eqn.q, :,j,i)

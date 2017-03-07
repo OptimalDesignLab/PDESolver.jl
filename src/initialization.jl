@@ -54,7 +54,7 @@ function createMeshAndOperator(opts, dofpernode)
       Tres = Float64
     elseif jac_method == 2 # use complex step dR/du
       # println("========== utils/initialization: flag 5, jac_method 2")
-      Tmsh = Complex128
+      Tmsh = Float64
       Tsbp = Float64
       Tsol = Complex128
       Tres = Complex128
@@ -66,6 +66,22 @@ function createMeshAndOperator(opts, dofpernode)
     Tsbp = Float64
     Tsol = Complex128
     Tres = Complex128
+  elseif flag == 11 # Same as Flag 5 but Tmsh is complex
+    if jac_method == 1 # use Newton method using finite difference  (former flag 4)
+      # println("========== utils/initialization: flag 11, jac_method 1")
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Float64
+      Tres = Float64
+    elseif jac_method == 2 # use complex step dR/du
+      # println("========== utils/initialization: flag 11, jac_method 2")
+      Tmsh = Complex128
+      Tsbp = Float64
+      Tsol = Complex128
+      Tres = Complex128
+    else
+      throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
+    end
   elseif flag == 20 # jac_method needs to be symbol
     if jac_method == 1 # Crank-Nicolson, FD Jac
       Tmsh = Float64
@@ -228,7 +244,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
       # dRdx here
 
-    elseif flag == 4 || flag == 5
+    elseif flag == 4 || flag == 5 || flag == 11
       @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
                    step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
                    res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
