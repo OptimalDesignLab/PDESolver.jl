@@ -134,6 +134,13 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
+    #-------------
+    # objective function section
+    # 1. read option to indicate which obj fun
+    # 2. call it, complex step it, and store it in dJdu
+    dJdu = calcdJdu(mesh, sbp, eqn, opts)
+
+
     if neg_time == false
       ctx_residual = (f, eqn, h, newton_data)
     else
@@ -144,7 +151,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #     loop's time step, the index i does not correspond to the same i of the forward sweep.
       #   The adjustment is not just (t_steps - i) because the loop starts at 2 and ends at t_steps + 1.
       i_actual = t_steps + 3 - i
-      ctx_residual = (f, adj, h, newton_data, i_actual)
+      ctx_residual = (f, adj, h, newton_data, i_actual, dJdu)
     end
 
     @debug1 println(fstdout, "in CN: before call to newtonInner")
@@ -192,7 +199,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # for adjoint_straight option: stores every time step's q to disk
     if store_u_to_disk == true
       filename = string("u_for_adj-", i, ".dat")
-      writedlm(filename, eqn.q_vec)
+      writedlm(filename, eqn)
     end
 
     # Note: we now need to copy the updated q over for the initial newton guess
@@ -228,3 +235,95 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   return t
 
 end   # end of crank_nicolson function
+
+function calcdJdu{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+
+  # complex step it
+  pert = complex(0, 1e-20)
+
+  for i = 1:length(eqn.q_vec)
+    eqn.q_vec[i] += pert
+
+    calcObjectiveFn(mesh, sbp, eqn, opts)
+    integrand_deriv[i] = imag(val)/norm(pert)
+    eqn.q_vec[i] -= pert
+  end
+
+  return integrand_deriv
+
+end
+
+# function calcObjectiveFn{Tmsh, Tsol}(mesh, sbp, eqn, opts)
+function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
+  # TODO: get functional edges in a non BS way
+  functional_edges = 3
+  nDof = 1
+
+  for itr = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr]
+    itr2 = 0
+    for itr2 = 1:mesh.numBC
+      if findfirst(mesh.bndry_geo_nums[itr2], g_edge_number) > 0
+        break
+      end
+    end
+
+    start_index = mesh.bndry_offsets[itr2]
+    end_index = mesh.bndry_offsets[itr2+1]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = sview(mesh.bndryfaces, idx_range)
+
+    nfaces = length(bndry_facenums)
+
+    # TODO: boundary_integrand my way, not KPs
+    #boundary_integrand = zeros(Tsol
+
+    integrand = zeros(Tsol, 1)
+
+    for i = 1:nfaces
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+
+      for j = 1:mesh.sbpface.numnodes
+        q = sview(eqn.q_bndry, :, j, global_facenum)
+        # convertToConservative(eqn.params, q, q2)
+
+        # replaces calcBoundaryFunctionalIntegrand
+        # integrand = zeros(Tsol, ndof, mesh.sbpface.numnodes, nfaces)    # dims?
+        integrand = q.^2
+
+
+      end   # end of loop: j = 1:mesh.sbpfacenumnodes
+
+
+      # val_per_geom_edge = zeros(Tsol, 1)
+      val_per_geom_edge = zeros(1)
+
+#       integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
+      boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
+
+      local_functional_val[:] += val_per_geom_edge[:]
+
+    end   # end of loop: i = 1:nfaces
+
+  end   # end of loop: itr = 1:length(functional_edges)
+
+end
+
+"""
+  obj_zero
+
+  Inputs: none
+  Outputs: 0
+
+  Zero-valued objective function
+"""
+function obj_zero()
+  return 0.0
+end

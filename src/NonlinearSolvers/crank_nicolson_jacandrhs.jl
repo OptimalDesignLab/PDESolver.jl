@@ -168,15 +168,19 @@ function cnAdjRhs(mesh, sbp, adj_nextstep, opts, rhs_vec, ctx, t)
   h = ctx[3]
   newton_data = ctx[4]
   i_actual = ctx[5]
+  dJdu = ctx[6]
 
   # TODO need to put actual dJdu here.
-  dJdu = zeros(mesh.numDof)
+#   dJdu = zeros(mesh.numDof)
 
-  readdlm
+  filename = string("eqn_for_adj-", i_actual, ".dat")
+  eqn = readdlm(filename)
+
+  newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
 
   # TODO: check newton_data
   #       actually check all args
-  #calcJacobianComplex(newton_data, mesh, sbp, eqn, ops, func, res_copy, pert, jac, t)
+  calcJacobianComplex(newton_data, mesh, sbp, eqn, ops, func, res_copy, pert, jac, t)
 
   t_nextstep = t - h    # adjoint going backwards in time
 

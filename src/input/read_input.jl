@@ -304,6 +304,8 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 # Adjoint computation options
 get!(arg_dict, "calc_adjoint", false)
 get!(arg_dict, "revolve", false)
+get!(arg_dict, "adjoint_revolve", false)
+get!(arg_dict, "adjoint_straight", false)
 
 # write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)

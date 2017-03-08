@@ -254,8 +254,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
-        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts, timing::Timings=Timings(); 
+    rk4(f, h, t_max, q_vec, res_vec, pde_pre_func, pde_post_func, ctx, opts; 
         majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
 end
@@ -276,10 +275,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              
   t_start = 0.0
   t_end = t_max
-  rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
-      q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-      post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-      res_tol = -1.0, real_time=false)
+  rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, timing;
+      majorIterationCallback=majorIterationCallback, res_tol = -1.0, real_time=false)
 
 
 end
@@ -353,9 +350,8 @@ function rk4_revolve(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # advance is intended to perform one time integration step
         t_start = t
         t_end = t+h
-        rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, 
-            timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-            res_tol = -1.0, real_time=false)
+        rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, timing;
+            majorIterationCallback=majorIterationCallback, res_tol = -1.0, real_time=false)
         t = t+h
       end
       if (REVOLVEINFO > 1) 
@@ -365,9 +361,8 @@ function rk4_revolve(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       ### advance(F_final, F_H, t, h)
       t_start = t
       t_end = t+h
-      rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, 
-          timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-          res_tol = -1.0, real_time=false)
+      rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, timing;
+          majorIterationCallback=majorIterationCallback, res_tol = -1.0, real_time=false)
 
       t = 1.0 - h
       ### t[1] = 1.0 - h        # caution, must assign to t[1], not t, or else t changes to Float64 type
