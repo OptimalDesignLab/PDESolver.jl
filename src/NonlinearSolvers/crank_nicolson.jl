@@ -178,11 +178,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # TODO: contents of ctx_residual? needs to have adj instead of eqn
     end
 
-
-    # TODO: cnAdj call here
-    #       need to load dRdu_i
-    #       need to place dJdu
-
     # This allows the solution to be updated from _nextstep without a deepcopy.
     #   There are two memory locations used by eqn & eqn_nextstep, 
     #   and this flips the location of eqn & eqn_nextstep every time step
@@ -241,10 +236,12 @@ function calcdJdu{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::A
   # complex step it
   pert = complex(0, 1e-20)
 
+  integrand_deriv = zeros(Tsol, length(eqn.q_vec))
+
   for i = 1:length(eqn.q_vec)
     eqn.q_vec[i] += pert
 
-    calcObjectiveFn(mesh, sbp, eqn, opts)
+    val = calcObjectiveFn(mesh, sbp, eqn, opts)
     integrand_deriv[i] = imag(val)/norm(pert)
     eqn.q_vec[i] -= pert
   end
@@ -265,6 +262,8 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   functional_edges = 3
   nDof = 1
 
+  local_functional_val = zeros(Tsol, nDof)
+
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr]
     itr2 = 0
@@ -284,35 +283,48 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     # TODO: boundary_integrand my way, not KPs
     #boundary_integrand = zeros(Tsol
 
-    integrand = zeros(Tsol, 1)
+    integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
 
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
 
       for j = 1:mesh.sbpface.numnodes
-        q = sview(eqn.q_bndry, :, j, global_facenum)
+        #q = sview(eqn.q_bndry, :, j, global_facenum)
+        q = eqn.q_bndry[:, j, global_facenum]
+        println("====== type of q: ", typeof(q))
+        println("====== size of q: ", size(q))
+        println("====== q: ", q)
         # convertToConservative(eqn.params, q, q2)
 
         # replaces calcBoundaryFunctionalIntegrand
         # integrand = zeros(Tsol, ndof, mesh.sbpface.numnodes, nfaces)    # dims?
-        integrand = q.^2
+#         integrand[1, j, i] = q.^2
+        integrand[1, j, i] = q[1]*q[1]      # TODO: figure out why [1]'s are required
 
 
       end   # end of loop: j = 1:mesh.sbpfacenumnodes
 
 
-      # val_per_geom_edge = zeros(Tsol, 1)
-      val_per_geom_edge = zeros(1)
+      val_per_geom_edge = zeros(Tsol, 1)
 
-#       integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
-      boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
+      # use integratefunctional, not boundaryintegrate
+      integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
+#       boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
 
       local_functional_val[:] += val_per_geom_edge[:]
+
+
+      # TODO:
+      # serial: print out local_functional_val, compare with analytical
+      # parallel: mpi all reduce then do the same
+
 
     end   # end of loop: i = 1:nfaces
 
   end   # end of loop: itr = 1:length(functional_edges)
+
+  return local_functional_val
 
 end
 
