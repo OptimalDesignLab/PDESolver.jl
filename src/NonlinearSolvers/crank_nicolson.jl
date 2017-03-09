@@ -54,8 +54,8 @@ crank_nicolson
 
    TODO: fully document eqn/eqn_nextstep
 """
-function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
-                        mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+                        mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
                         # NEWNEW: neg_time, obj_fn
   #----------------------------------------------------------------------
@@ -138,6 +138,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # objective function section
     # 1. read option to indicate which obj fun
     # 2. call it, complex step it, and store it in dJdu
+    dJdu = zeros(Tsol, length(eqn.q_vec))
     dJdu = calcdJdu(mesh, sbp, eqn, opts)
 
 
