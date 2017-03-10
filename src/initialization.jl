@@ -271,6 +271,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
           test_post_func, (mesh, sbp, eqn), opts, 
           majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
+
     elseif flag == 20
 
       @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
@@ -278,6 +279,10 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                                opts["real_time"])
 
       eqn.t = t
+    elseif flag == 30  # lserk54
+
+      lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params,time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_tol"], real_time=opts["real_time"])
+
 
      else
        throw(ErrorException("No flag specified: no solve will take place"))

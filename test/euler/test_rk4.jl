@@ -40,6 +40,26 @@ function test_rk4()
     @fact err --> less_than(1e-14)  # machine precision
   end  # end facts block
 
+  facts("----- testing lserk54 -----") do
+    opts_rk = Dict{Any, Any}("output_freq" => 1, "write_vis" => false, "use_itermax" => false)
+
+    q_vec_rk = [1.0]
+    res_vec_rk = [0.0]
+    ctx = (q_vec_rk, res_vec_rk)
+
+    delta_t = 0.1
+    t_max = 1.0
+
+    t = lserk54(test_f, delta_t, t_max, q_vec_rk, res_vec_rk, pre_func, post_func, ctx, opts_rk, real_time=true)
+
+    f_approx = q_vec_rk[1]
+    f_exact = true_f(t)
+    err = abs(f_approx - f_exact)
+
+    @fact err --> less_than(1e-14)  # machine precision
+
+  end
+
   return nothing
 end
 

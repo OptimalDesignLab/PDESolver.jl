@@ -33,7 +33,7 @@
   See the documentation for rk4.
 """
 
-function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), 
@@ -55,8 +55,10 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   const c_coeffs = [0; 
                     1432997174477/9575080441755; 
                     2526269341429/6820363962896; 
-                    2006345519317;3224310063776; 
+                    2006345519317/3224310063776; 
                     2802321613138/2924317926251]
+
+  println("c_coeffs = \n", c_coeffs)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -74,11 +76,13 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
+  println("real_time = ", real_time)
+
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
-  t_steps = round(Int, t_max/h)
+  t_steps = round(Int, t_max/delta_t)
   println(fstdout, "t_steps: ",t_steps)
-  println(fstdout, "delta_t = ", h)
+  println(fstdout, "delta_t = ", delta_t)
 
   (m,) = size(q_vec)
 
@@ -97,6 +101,7 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # Main timestepping loop
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
+    println("timestep ", i)
     #--------------------------------------------------------------------------
     # stage 1
 #    f(params, u, F_vals, t_i)
@@ -145,24 +150,36 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # remaining stages
 
     # stage 1 update
+    print("\n")
+    println("after stage 1, treal = ", treal)
+    println("res = ", res_vec)
+    println("q = ", q_vec)
     fac = b_coeffs[1]
-    @inbounds @simd for j=1:length(u)
-      dq_vec[j] = delta_t*F_vals[j]
+    @inbounds @simd for j=1:length(q_vec)
+      dq_vec[j] = delta_t*res_vec[j]
       q_vec[j] += fac*dq_vec[j]
     end
 
     # loop over remaining stages
     for i=2:5
       pre_func(ctx..., opts) 
-      if real_time  treal = t + c_coeffs[i]*delta_t end
+      if real_time
+        println("t update = ", c_coeffs[i]*delta_t)
+        treal = t + c_coeffs[i]*delta_t 
+      end
       timing.t_func += @elapsed f( ctx..., opts, treal)
       post_func(ctx..., opts, calc_norm=false)
+
+      print("\n")
+      println("after stage $i, treal = ", treal)
+      println("res = ", res_vec)
+      println("q = ", q_vec)
 
       # update
       fac = a_coeffs[i]
       fac2 = b_coeffs[i]
-      @inbounds @simd for j=1:length(u)
-        dq_vec[j] = fac*dq_vec[j] + delta_t*F_vals[j]
+      @inbounds @simd for j=1:length(q_vec)
+        dq_vec[j] = fac*dq_vec[j] + delta_t*res_vec[j]
         q_vec[j] += fac2*dq_vec[j]
       end
     end  # end loop over stages
@@ -173,5 +190,18 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end  # end loop over timesteps
 
   return t
-end
+end  # end lserk54
 
+"""
+  See rk4 method with same signature
+"""
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
+             majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
+             real_time=false)
+
+    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
+        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
+        majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+
+end
