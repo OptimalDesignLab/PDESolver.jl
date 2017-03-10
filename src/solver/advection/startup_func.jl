@@ -216,6 +216,7 @@ function postproc(mesh, sbp, eqn, opts)
   myrank = mesh.myrank
 
   if opts["do_postproc"] && opts["solve"]
+    println("final time = ", eqn.t)
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
       exfunc = ICDict[exfname]

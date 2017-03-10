@@ -101,7 +101,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   # Main timestepping loop
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
-    println("timestep ", i)
+    @mpi_master if i % output_freq == 0
+       println(fstdout, "\ntimestep ",i)
+       if i % output_freq == 0
+         flush(fstdout)
+       end
+    end
+
     #--------------------------------------------------------------------------
     # stage 1
 #    f(params, u, F_vals, t_i)
@@ -150,10 +156,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     # remaining stages
 
     # stage 1 update
-    print("\n")
-    println("after stage 1, treal = ", treal)
-    println("res = ", res_vec)
-    println("q = ", q_vec)
     fac = b_coeffs[1]
     @inbounds @simd for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
@@ -164,16 +166,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     for i=2:5
       pre_func(ctx..., opts) 
       if real_time
-        println("t update = ", c_coeffs[i]*delta_t)
         treal = t + c_coeffs[i]*delta_t 
       end
       timing.t_func += @elapsed f( ctx..., opts, treal)
       post_func(ctx..., opts, calc_norm=false)
-
-      print("\n")
-      println("after stage $i, treal = ", treal)
-      println("res = ", res_vec)
-      println("q = ", q_vec)
 
       # update
       fac = a_coeffs[i]
@@ -195,12 +191,12 @@ end  # end lserk54
 """
   See rk4 method with same signature
 """
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
+    lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
         res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
         majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 

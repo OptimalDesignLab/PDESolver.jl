@@ -30,7 +30,7 @@ function createMeshAndOperator(opts, dofpernode)
   end
   dim = opts["dimensions"]
 
-  if flag == 1 || flag == 8  || flag == 9 || flag == 10  # normal run
+  if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
     Tmsh = Float64
     Tsbp = Float64
     Tsol = Float64
@@ -281,7 +281,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       eqn.t = t
     elseif flag == 30  # lserk54
 
-      lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params,time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_tol"], real_time=opts["real_time"])
+      lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
 
      else
