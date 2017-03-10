@@ -381,6 +381,12 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     end
   end
 
+  #=
+  #DEBUGGING: write q_vec to file
+  fname = get_parallel_fname("qvec_$itr.dat", mesh.myrank)
+  writedlm(fname, eqn.q_vec)
+  =#
+
   return nothing
 
 end
