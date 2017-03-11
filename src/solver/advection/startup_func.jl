@@ -233,6 +233,9 @@ function postproc(mesh, sbp, eqn, opts)
         println("solution discrete L2 norm = ", discrete_norm)
       end
 
+      saveSolutionToMesh(mesh, real(q_diff))
+      writeVisFiles(mesh, "solution_error")
+
       sol_norm = calcNorm(eqn, eqn.q_vec)
       exact_norm = calcNorm(eqn, q_exact)
       @mpi_master println("numerical solution norm = ", sol_norm)

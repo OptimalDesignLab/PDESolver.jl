@@ -518,28 +518,28 @@ function calc_unsteadypoly{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2
   x = coords[1]
   y = coords[2]
 
-  return x*x + x + 1 + y*y + y + t*t + t 
+  return x + 1 + y + t 
 end
 
 function calc_unsteadypolydx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
   y = coords[2]
 
-  return 2*x + 1
+  return 1
 end
 
 function calc_unsteadypolydy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
   y = coords[2]
 
-  return 2*y + 1
+  return 1
 end
 
 function calc_unsteadypolydt{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
   y = coords[2]
 
-  return 2*t + 1
+  return 1
 end
 
 

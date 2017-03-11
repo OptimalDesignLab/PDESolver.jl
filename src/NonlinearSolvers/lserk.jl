@@ -62,10 +62,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
+#  MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0
     println(fstdout, "\nEntered lserk54")
     println(fstdout, "res_tol = ", res_tol)
   end
+#  flush(fstdout)
+#  MPI.Barrier(MPI.COMM_WORLD)
 # res_tol is alternative stopping criteria
 
 
@@ -75,8 +78,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   if use_itermax
     itermax = opts["itermax"]
   end
-
-  println("real_time = ", real_time)
 
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
@@ -117,7 +118,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     timing.t_func += @elapsed f(ctx..., opts, treal)
     sol_norm = post_func(ctx..., opts)
  
-
     #--------------------------------------------------------------------------
     # callback and logging
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
@@ -156,25 +156,26 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     # remaining stages
 
     # stage 1 update
+
     fac = b_coeffs[1]
-    @inbounds @simd for j=1:length(q_vec)
+    for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
       q_vec[j] += fac*dq_vec[j]
     end
 
     # loop over remaining stages
-    for i=2:5
+    for stage=2:5
       pre_func(ctx..., opts) 
       if real_time
-        treal = t + c_coeffs[i]*delta_t 
+        treal = t + c_coeffs[stage]*delta_t 
       end
       timing.t_func += @elapsed f( ctx..., opts, treal)
       post_func(ctx..., opts, calc_norm=false)
 
       # update
-      fac = a_coeffs[i]
-      fac2 = b_coeffs[i]
-      @inbounds @simd for j=1:length(q_vec)
+      fac = a_coeffs[stage]
+      fac2 = b_coeffs[stage]
+      for j=1:length(q_vec)
         dq_vec[j] = fac*dq_vec[j] + delta_t*res_vec[j]
         q_vec[j] += fac2*dq_vec[j]
       end
@@ -184,6 +185,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     t += delta_t
 
   end  # end loop over timesteps
+
+  mesh, sbp, eqn = ctx
+  eqn.t = t
+
+  if myrank == 0
+    close(f1)
+  end
+
 
   return t
 end  # end lserk54

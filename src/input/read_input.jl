@@ -141,13 +141,13 @@ else
 end
 
 # parallel options
-if arg_dict["run_type"] == 1
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
   get!(arg_dict, "parallel_type", 1)
 else
   get!(arg_dict, "parallel_type", 2)
 end
 
-if arg_dict["run_type"] == 1
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
   if arg_dict["face_integral_type"] == 2  # entropy stable 
     get!(arg_dict, "parallel_data", "element")
   else
@@ -352,7 +352,7 @@ if myrank == 0
 end
 # do some sanity checks here
 
-if commsize > 1 && arg_dict["jac_type"] != 3 && arg_dict["run_type"] != 1
+if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
   throw(ErrorException("Invalid jacobian type for parallel run"))
 end
 
