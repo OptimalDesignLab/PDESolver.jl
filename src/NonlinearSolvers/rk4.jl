@@ -123,21 +123,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # stage 1
     pre_func(ctx..., opts)
     if real_time treal = t end
-    @mpi_master println(fstdout, "evaluating residual at treal = ", treal)
-    if i == 2
-      writedlm("qvec_$myrank.dat", q_vec)
-    end
     timing.t_func += @elapsed f( ctx..., opts, treal)
     sol_norm = post_func(ctx..., opts)
 
-    if i == 2 
-      writedlm("resvec_$myrank.dat", res_vec)
-    end
-    globalnorm = globalNorm(res_vec)
-    @mpi_master println(fstdout, "stage 1 res norm = ", globalnorm)
-    flush(fstdout)
-
-   
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
     for j=1:m
       k1[j] = res_vec[j]
@@ -183,11 +171,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j] + (h/2)*k2[j]
     end
 
-    globalnorm = globalNorm(res_vec)
-    @mpi_master println(fstdout, "stage 2 res norm = ", globalnorm)
-    flush(fstdout)
-
-
     # stage 3
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
@@ -199,11 +182,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j] + h*k3[j]
     end
 
-    globalnorm = globalNorm(res_vec)
-    @mpi_master println(fstdout, "stage 3 res norm = ", globalnorm)
-    flush(fstdout)
-
-
     # stage 4
     pre_func(ctx..., opts)
     if real_time treal = t + h end
@@ -212,11 +190,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     for j=1:m
       k4[j] = res_vec[j]
     end
-
-    globalnorm = globalNorm(res_vec)
-    @mpi_master println(fstdout, "stage 4 res norm = ", globalnorm)
-    flush(fstdout)
-
 
 #     println("k1 = \n", k1)
 #     println("k2 = \n", k2)

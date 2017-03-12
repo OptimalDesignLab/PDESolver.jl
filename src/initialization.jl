@@ -196,13 +196,15 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                        eqn::AbstractSolutionData, opts::Dict, 
                        pmesh::AbstractMesh=mesh)
   flag = opts["run_type"]::Int
+  t = 0.0  # for steady methods, t = 0.0 always, for unsteady, the time
+           # stepper returns a new t value
   if opts["solve"]
     
     solve_time = @elapsed if flag == 1 # normal run
       # RK4 solver
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
-      @time rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts, 
+      @time t = rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts, 
                 res_tol=opts["res_abstol"], real_time=opts["real_time"])
       println("finish rk4")
   #    printSolution("rk4_solution.dat", eqn.res_vec)
@@ -253,7 +255,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
 
-      rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, pre_func, post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+      t = rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, pre_func, post_func, (mesh, sbp, eqn), opts, majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
     elseif flag == 10
       function test_pre_func(mesh, sbp, eqn, opts)
@@ -267,7 +269,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
 
-      rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
+      t = rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
           test_post_func, (mesh, sbp, eqn), opts, 
           majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
@@ -281,7 +283,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       eqn.t = t
     elseif flag == 30  # lserk54
 
-      lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+      t = lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
 
      else
@@ -300,10 +302,14 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     end
 
     # evaluate residual at final q value
-    need_res = false
+    need_res = true
     if need_res
       eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-      evalResidual(mesh, sbp, eqn, opts, eqn.t)
+      # this will make sure the t value is stored into the equation object
+      # this is important for calculating error norms later, to make sure
+      # they exact solution is calculated at the right time
+      # TODO: better way to update final time
+      evalResidual(mesh, sbp, eqn, opts, t)
 
       eqn.res_vec[:] = 0.0
       eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)

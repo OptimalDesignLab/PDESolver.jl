@@ -186,9 +186,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
   end  # end loop over timesteps
 
-  mesh, sbp, eqn = ctx
-  eqn.t = t
-
   if myrank == 0
     close(f1)
   end
@@ -205,8 +202,9 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-    lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
+  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
         res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
         majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
+        return t
 end
