@@ -193,6 +193,7 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
     end
 
     # for adjoint_straight option: stores every time step's q to disk
+    # TODO: decide between storing eqn or just eqn.q
     if store_u_to_disk == true
       filename = string("u_for_adj-", i, ".dat")
       writedlm(filename, eqn)
@@ -232,7 +233,7 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
 
 end   # end of crank_nicolson function
 
-function calcdJdu{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
 
   # complex step it
   pert = complex(0, 1e-20)
@@ -251,8 +252,10 @@ function calcdJdu{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::A
 
 end
 
-# function calcObjectiveFn{Tmsh, Tsol}(mesh, sbp, eqn, opts)
-function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+# function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+
+# function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts; isDeriv=false)
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
@@ -300,8 +303,13 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
         # replaces calcBoundaryFunctionalIntegrand
         # integrand = zeros(Tsol, ndof, mesh.sbpface.numnodes, nfaces)    # dims?
-#         integrand[1, j, i] = q.^2
-        integrand[1, j, i] = q[1]*q[1]      # TODO: figure out why [1]'s are required
+        # integrand[1, j, i] = q.^2
+        # TODO: figure out why [1]'s are required
+        if isDeriv == false                 # calculates J = int(u^2)
+          integrand[1, j, i] = q[1]*q[1]
+        else                                # calculates dJdu = deriv(int(u^2)) = 2*u
+          integrand[1, j, i] = 2*q[1]
+        end
 
 
       end   # end of loop: j = 1:mesh.sbpfacenumnodes
