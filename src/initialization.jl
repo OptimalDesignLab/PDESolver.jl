@@ -129,7 +129,7 @@ function createMeshAndOperator(opts, dofpernode)
     else 
       sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       ref_verts = sbp.vtx
-      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
+#      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
       topo = ElementTopology{3}(face_verts)
       sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
@@ -142,7 +142,7 @@ function createMeshAndOperator(opts, dofpernode)
 
       mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, interp_op, sbpface, topo; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface, topo; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
     end
     if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
       @assert dim == 2
