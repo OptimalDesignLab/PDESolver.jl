@@ -139,7 +139,8 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
     # 1. read option to indicate which obj fun
     # 2. call it, complex step it, and store it in dJdu
     dJdu = zeros(Tsol, length(eqn.q_vec))
-    dJdu = calcdJdu(mesh, sbp, eqn, opts)
+    #dJdu = calcdJdu(mesh, sbp, eqn, opts)
+    dJdu = calcObjectiveFn(mesh, sbp, eqn, opts; isDeriv=true)
 
 
     if neg_time == false
@@ -195,8 +196,8 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
     # for adjoint_straight option: stores every time step's q to disk
     # TODO: decide between storing eqn or just eqn.q
     if store_u_to_disk == true
-      filename = string("u_for_adj-", i, ".dat")
-      writedlm(filename, eqn)
+      filename = string("qvec_for_adj-", i, ".dat")
+      writedlm(filename, eqn.q_vec)
     end
 
     # Note: we now need to copy the updated q over for the initial newton guess
@@ -296,9 +297,9 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       for j = 1:mesh.sbpface.numnodes
         #q = sview(eqn.q_bndry, :, j, global_facenum)
         q = eqn.q_bndry[:, j, global_facenum]
-        println("====== type of q: ", typeof(q))
-        println("====== size of q: ", size(q))
-        println("====== q: ", q)
+        # println("====== type of q: ", typeof(q))
+        # println("====== size of q: ", size(q))
+        # println("====== q: ", q)
         # convertToConservative(eqn.params, q, q2)
 
         # replaces calcBoundaryFunctionalIntegrand

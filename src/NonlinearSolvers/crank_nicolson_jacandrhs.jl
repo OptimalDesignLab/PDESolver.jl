@@ -3,6 +3,8 @@
 # Contains Jacobian and RHS calculation functions,
 #   for both forward sweep CN equation and reverse sweep adjoint CN equation
 #----------------------------------------------------------------------------------
+export cnJac, cnRhs
+export cnAdjJac, cnAdjRhs
 
 function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, eqn, ctx, t)
   # adj_nextstep contains psi_i
@@ -161,7 +163,8 @@ NonlinearSolvers.cnAdjRhs
 
 
 """
-function cnAdjRhs(mesh, sbp, adj_nextstep, opts, rhs_vec, ctx, t)
+function cnAdjRhs{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                                          adj_nextstep::AbstractSolutionData{Tsol, Tres, Tdim}, opts, rhs_vec, ctx, t)
 
   physics_func = ctx[1]
   adj = ctx[2]
@@ -173,23 +176,46 @@ function cnAdjRhs(mesh, sbp, adj_nextstep, opts, rhs_vec, ctx, t)
   # TODO need to put actual dJdu here.
 #   dJdu = zeros(mesh.numDof)
 
-  filename = string("eqn_for_adj-", i_actual, ".dat")
-  eqn = readdlm(filename)
+  #=
+  # initialize dummy eqn object for jacobian calculation use
+  eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
-  newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
+  # load needed q_vec checkpoint file into eqn_dummy
+  filename = string("qvec_for_adj-", i_actual, ".dat")
+  eqn_dummy.q_vec = readdlm(filename)
 
-  # TODO: check newton_data
-  #       actually check all args
-  calcJacobianComplex(newton_data, mesh, sbp, eqn, ops, func, res_copy, pert, jac, t)
+  # sync up eqn_dummy.q and eqn_dummy.q_vec
+  disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
+
+  # use startDataExchange to sync up q/q_vec and q_face_send/recv
+  if opts["parallel_type"] == 2 && mesh.npeers > 0
+    startDataExchange(mesh, opts, eqn_dummy.q, eqn_dummy.q_face_send, eqn_dummy.q_face_recv, eqn_dummy.params.f)
+  end
+
+  newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
+
+  # make sure we're doing complex step! since res_copy is zeros, it would mess up the FD calc
+  assert(jac_method == 2)
+  epsilon = opts["epsilon"]
+  pert = complex(0, epsilon)
+
+  calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, ops, func, pert, jac, t)
+
+  dRdu_i = jac
 
   t_nextstep = t - h    # adjoint going backwards in time
 
   for i = 1:mesh.numDof
 
-    # TODO adj vs adj_vec in dRdu_i * adj.adj____
-    rhs_vec[i] = dJdu[i] + adj_nextstep.adj_vec[i] - 0.5*h*dRdu_i*adj_nextstep.adj[i] - adj.adj_vec[i] - 0.5*h*dRdu_i*adj.adj[i]
+    # the Jacobian vector product needs to be jac * a vector, so use q_vec, not q in:
+    #   dRdu_i*adj_nextstep.q_vec
+    rhs_vec[i] = dJdu[i] + adj_nextstep.q_vec[i] - 0.5*h*dRdu_i*adj_nextstep.q_vec[i] - adj.q_vec[i] - 0.5*h*dRdu_i*adj.q_vec[i]
+
+    # TODO: actually q_vec instead of adj_vec ?
+    # NOTE: as written above: I think I'm using the q_vec field for psi in the unsteady adj eqn
 
   end
+  =#
 
 
 end
