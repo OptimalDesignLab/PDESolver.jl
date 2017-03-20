@@ -1,3 +1,23 @@
+
+#import PDESolver.register_physics
+#importall AdvectionEquationMod
+#include("../solver/advection/AdvectionEquationMod.jl")
+#include("../solver/advection/types.jl")
+
+#push!(LOAD_PATH, "../solver/advection")
+
+#=
+if opts["physics"] == "advection"
+  using AdvectionEquationMod
+elseif opts["physics"] == "euler"
+  using EulerEquationMod
+elseif opts["physics"] == "simpleODE"
+  using SimpleODEMod
+end
+=#
+
+#include("../solver/advection/types.jl")
+
 # crank_nicolson_jacandrhs.jl
 #
 # Contains Jacobian and RHS calculation functions,
@@ -24,7 +44,7 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, eqn, ctx, t)
   #   then form cnAdjJac = I - dt/2 * physics_Jac
 
   # instead of allocating another cnJac, modify this jac
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
+  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
   # get jacobian from eqn here
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn, opts, jac, ctx, t)
 
@@ -163,8 +183,14 @@ NonlinearSolvers.cnAdjRhs
 
 
 """
-function cnAdjRhs{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-                                          adj_nextstep::AbstractSolutionData{Tsol, Tres, Tdim}, opts, rhs_vec, ctx, t)
+function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
+
+  # this doesn't work inside here
+  # using PDESolver
+  # using AdvectionEquationMod
+
+  #push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
+  #importall AdvectionEquationMod
 
   physics_func = ctx[1]
   adj = ctx[2]
@@ -176,13 +202,22 @@ function cnAdjRhs{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Abstrac
   # TODO need to put actual dJdu here.
 #   dJdu = zeros(mesh.numDof)
 
-  #=
+#   Tsol = opts["Tsol"]
+#   Tres = opts["Tres"]
+#   Tmsh = opts["Tmsh"]
+#   Tdim = opts["Tdim"]
+
   # initialize dummy eqn object for jacobian calculation use
-  eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+#   eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+#   eqn_dummy = AdvectionEquationMod.AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+  eqn_dummy = deepcopy(adj)
 
   # load needed q_vec checkpoint file into eqn_dummy
   filename = string("qvec_for_adj-", i_actual, ".dat")
-  eqn_dummy.q_vec = readdlm(filename)
+#   eqn_dummy.q_vec = readdlm(filename)
+  q_vec_with_complex = readdlm(filename)
+  eqn_dummy.q_vec = q_vec_with_complex[:,1]
+
 
   # sync up eqn_dummy.q and eqn_dummy.q_vec
   disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
@@ -195,27 +230,47 @@ function cnAdjRhs{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Abstrac
   newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
 
   # make sure we're doing complex step! since res_copy is zeros, it would mess up the FD calc
-  assert(jac_method == 2)
+  assert(opts["jac_method"] == 2)
   epsilon = opts["epsilon"]
   pert = complex(0, epsilon)
 
-  calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, ops, func, pert, jac, t)
+  calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
   dRdu_i = jac
 
   t_nextstep = t - h    # adjoint going backwards in time
 
+  println(" mesh.numDof: ", mesh.numDof)
+
+  println(" size dJdu: ", size(dJdu))
+  println(" size rhs_vec: ", size(rhs_vec))
+  println(" size adj.q_vec: ", size(adj.q_vec))
+  println(" size adj_nextstep.q_vec: ", size(adj_nextstep.q_vec))
+  println(" size dRdu_i: ", size(dRdu_i))
+
+  println(" typeof dJdu: ", typeof(dJdu))
+  println(" typeof rhs_vec: ", typeof(rhs_vec))
+  println(" typeof adj.q_vec: ", typeof(adj.q_vec))
+  println(" typeof adj_nextstep.q_vec: ", typeof(adj_nextstep.q_vec))
+  println(" typeof dRdu_i: ", typeof(dRdu_i))
+
   for i = 1:mesh.numDof
 
     # the Jacobian vector product needs to be jac * a vector, so use q_vec, not q in:
     #   dRdu_i*adj_nextstep.q_vec
-    rhs_vec[i] = dJdu[i] + adj_nextstep.q_vec[i] - 0.5*h*dRdu_i*adj_nextstep.q_vec[i] - adj.q_vec[i] - 0.5*h*dRdu_i*adj.q_vec[i]
+#     rhs_vec[i] = dJdu[i] 
+    rhs_vec[i] = dJdu[1]
+                  + adj_nextstep.q_vec[i]
+                  - 0.5*h*(dRdu_i*adj_nextstep.q_vec)[i] 
+                  - adj.q_vec[i]
+                  - 0.5*h*(dRdu_i*adj.q_vec)[i]
+
+    # note: something about how I'm multiplying dRdu_i & q_vec
 
     # TODO: actually q_vec instead of adj_vec ?
     # NOTE: as written above: I think I'm using the q_vec field for psi in the unsteady adj eqn
 
   end
-  =#
 
 
 end

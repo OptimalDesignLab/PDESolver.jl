@@ -90,6 +90,9 @@ function createMeshAndOperator(opts, dofpernode)
   opts["Tsbp"] = Tsbp
   opts["Tmsh"] = Tmsh
 
+  #
+  optsPhysicsName(opts)
+
   # figure out reorder, internal args for SBP, shape_type for Pumi
   # should shape_type live here or be encapsulated in Pumi?
   if opts["use_DG"]
@@ -175,6 +178,27 @@ function createMeshAndOperator(opts, dofpernode)
   end
 
   return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
+end
+
+"""
+  This function stores the current running physics module into the opts dictionary.
+"""
+function optsPhysicsName(opts)
+
+  calling_file = @__FILE__
+
+  if contains(calling_file, "advection/startup.jl")
+    opts["physics"] = "advection"
+  elseif contains(calling_file, "euler/startup.jl")
+    opts["physics"] = "euler"
+  elseif contains(calling_file, "simpleODE/startup.jl")
+    opts["physics"] = "simpleODE"
+  else
+    println("Could not store physics name in opts dictionary.")
+  end
+
+  return nothing
+
 end
 
 

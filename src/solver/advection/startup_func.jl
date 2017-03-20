@@ -36,6 +36,7 @@ function run_advection(input_file::AbstractString)
 
   # Create advection equation object
   Tdim = dim
+  opts["Tdim"] = Tdim
   eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
   q_vec = eqn.q_vec

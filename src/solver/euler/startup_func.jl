@@ -33,6 +33,7 @@ function run_euler(input_file::AbstractString)
   # timestepping parameters
   order = opts["order"]       # order of accuracy
   Tdim = opts["dimensions"]
+  opts["Tdim"] = Tdim
   dofpernode = Tdim + 2
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)

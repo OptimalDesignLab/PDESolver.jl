@@ -322,6 +322,8 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
 #       boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
 
+#       println(" size of val_per_geom_edge: ", size(val_per_geom_edge))
+
       local_functional_val[:] += val_per_geom_edge[:]
 
 
