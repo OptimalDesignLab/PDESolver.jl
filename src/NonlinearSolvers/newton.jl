@@ -386,6 +386,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     println(eqn.params.f, "===== newton iteration: $i")
 
     # Calculate Jacobian here
+    println(" ==== in newtonInner: typeof eqn: ", typeof(eqn))
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
 
     if use_jac_precond

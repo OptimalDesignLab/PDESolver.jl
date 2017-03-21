@@ -1,23 +1,3 @@
-
-#import PDESolver.register_physics
-#importall AdvectionEquationMod
-#include("../solver/advection/AdvectionEquationMod.jl")
-#include("../solver/advection/types.jl")
-
-#push!(LOAD_PATH, "../solver/advection")
-
-#=
-if opts["physics"] == "advection"
-  using AdvectionEquationMod
-elseif opts["physics"] == "euler"
-  using EulerEquationMod
-elseif opts["physics"] == "simpleODE"
-  using SimpleODEMod
-end
-=#
-
-#include("../solver/advection/types.jl")
-
 # crank_nicolson_jacandrhs.jl
 #
 # Contains Jacobian and RHS calculation functions,
@@ -26,7 +6,10 @@ end
 export cnJac, cnRhs
 export cnAdjJac, cnAdjRhs
 
-function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, eqn, ctx, t)
+# function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
+# function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, eqn, ctx, t)
+# TODO: why was eqn in the function signature instead of jac
+function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   # adj_nextstep contains psi_i
   # ctx will pass in adj, which contains psi_(i+1)
   # eqn contains q at time i (check not i+1)
@@ -44,9 +27,13 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, eqn, ctx, t)
   #   then form cnAdjJac = I - dt/2 * physics_Jac
 
   # instead of allocating another cnJac, modify this jac
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
+  #println(" === typeof eqn: ", typeof(eqn))
+  # TODO: why is eqn Array{Float64,2}
+  println(" === typeof adj: ", typeof(adj))
+  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, physics_func)
+  # TODO: setupNewton shouldn't be here? because Newton can't properly iterate on this
   # get jacobian from eqn here
-  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn, opts, jac, ctx, t)
+  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, adj, opts, jac, ctx, t)
 
   # need to flush assembly cache before performing the scale operation.
   #   These are defined for Julia matrices; they're just noops
@@ -107,8 +94,7 @@ NonlinearSolvers.cnJac
     h must be the third element
     newton_data must be the fourth element
 """
-function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
-               eqn_nextstep::AbstractSolutionData, opts, jac, ctx, t)
+function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
@@ -217,7 +203,6 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 #   eqn_dummy.q_vec = readdlm(filename)
   q_vec_with_complex = readdlm(filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]
-
 
   # sync up eqn_dummy.q and eqn_dummy.q_vec
   disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)

@@ -43,6 +43,23 @@ function calc_sinwave{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
 end
 
 @doc """
+### AdvectionEquationMod.calc_sinwave_ampl
+
+  Calculates and returns sin(-x + t)
+"""->
+function calc_sinwave_ampl{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+
+  x = coords[1]
+  y = coords[2]
+
+  omega = 1.0
+  A = 2.0
+
+  return A*sin(-x + omega*t)
+#  return sin( (-x + -y)/2 + t)
+end
+
+@doc """
 ### AdvectionEquationMod.calc_sinwavey
 
   Calculates and returns sin(y)^2 + 5*sin(y) + 3/sin(y)
