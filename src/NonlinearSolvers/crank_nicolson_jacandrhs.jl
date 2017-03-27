@@ -30,8 +30,8 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   #println(" === typeof eqn: ", typeof(eqn))
   # TODO: why is eqn Array{Float64,2}
   println(" === typeof adj: ", typeof(adj))
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, physics_func)
-  # TODO: setupNewton shouldn't be here? because Newton can't properly iterate on this
+  # Note: setupNewton shouldn't be here. because Newton can't properly iterate on this
+  # newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, physics_func)
   # get jacobian from eqn here
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, adj, opts, jac, ctx, t)
 
@@ -166,7 +166,6 @@ NonlinearSolvers.cnAdjRhs
   RHS of the CN unsteady adjoint calculation
 
   cnAdjRhs counts on the fact that crank_nicolson above will call it stepping through time in the negative direction
-
 
 """
 function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)

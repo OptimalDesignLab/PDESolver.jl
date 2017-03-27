@@ -114,7 +114,20 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
+  println("===== neg_time: ", neg_time, " =====")
+  if neg_time == false
+    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
+  else
+    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, f)
+  end
+
+  # Setting IC for reverse sweep
+  if neg_time == true
+    # B = (I - (dt/2) * (dRdu_n))^T
+    # psi = B^T\(-dJdu)
+    # TODO: check the transposes
+    # adj.q_vec = 
+  end
 
   for i = 2:(t_steps + 1)
 
@@ -138,9 +151,13 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
     # objective function section
     # 1. read option to indicate which obj fun
     # 2. call it, complex step it, and store it in dJdu
-    dJdu = zeros(Tsol, length(eqn.q_vec))
-    #dJdu = calcdJdu(mesh, sbp, eqn, opts)
-    dJdu = calcObjectiveFn(mesh, sbp, eqn, opts; isDeriv=true)
+    if neg_time == true
+      dJdu = zeros(Tsol, length(eqn.q_vec))
+      #dJdu = calcdJdu(mesh, sbp, eqn, opts)
+      dJdu = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=true)
+    end
+
+      
 
 
     if neg_time == false
@@ -284,9 +301,6 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     bndry_facenums = sview(mesh.bndryfaces, idx_range)
 
     nfaces = length(bndry_facenums)
-
-    # TODO: boundary_integrand my way, not KPs
-    #boundary_integrand = zeros(Tsol
 
     integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
 

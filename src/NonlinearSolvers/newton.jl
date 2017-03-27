@@ -69,6 +69,7 @@ type NewtonData{Tsol, Tres}
     # NOTE: we are leaving ctx_newton uninitialized because 
     #   createPetscData needs it, but ctx_newton depends on its returned values
 
+    println("at end of constructor for NewtonData")
     return new(myrank, commsize, reltol, abstol, dtol, 
                       itermax, krylov_gamma, 
                       res_norm_i, res_norm_i_1, tau_l, tau_vec, 1, localsize, vals_tmp, 
@@ -321,7 +322,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     res_0[i] = real(rhs_vec[i])
   end
 #   res_0 = deepcopy(real(rhs_vec))
-  # TODO TODO TODO: changed to deepcopy 20161113
+  # Note: changed to deepcopy 20161113
 #   writedlm("rhs_before_newton_loop.dat", res_0)
 
   @mpi_master begin
