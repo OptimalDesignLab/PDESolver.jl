@@ -123,10 +123,13 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
 
   # Setting IC for reverse sweep
   if neg_time == true
+    # need dJdu
+    # need dims of I
+    # need dRdu_n
     # B = (I - (dt/2) * (dRdu_n))^T
     # psi = B^T\(-dJdu)
     # TODO: check the transposes
-    # adj.q_vec = 
+    # adj.q_vec = psi
   end
 
   for i = 2:(t_steps + 1)
@@ -285,6 +288,11 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   nDof = 1
 
   local_functional_val = zeros(Tsol, nDof)
+  println("===dJdu=== size(local_functional_val): ", size(local_functional_val))
+  println("===dJdu=== size(eqn.q_vec): ", size(eqn.q_vec))
+  # eqn.q_vec: (96,)
+  # local_functional_val: (96,)
+
 
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr]
@@ -303,6 +311,9 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     nfaces = length(bndry_facenums)
 
     integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
+    println("===dJdu=== size(integrand): ", size(integrand))
+    println("===dJdu=== nfaces: ", nfaces)
+    println("===dJdu=== mesh.sbpface.numnodes: ", mesh.sbpface.numnodes)
 
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
@@ -326,13 +337,16 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
           integrand[1, j, i] = 2*q[1]
         end
 
+        # TODO: how to get the analytical derivative outside of integral
+
 
       end   # end of loop: j = 1:mesh.sbpfacenumnodes
 
 
       val_per_geom_edge = zeros(Tsol, 1)
+      println("===dJdu=== size(val_per_geom_edge): ", size(val_per_geom_edge))
 
-      # use integratefunctional, not boundaryintegrate
+      # use integratefunctional, not boundaryintegrate: why?
       integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
 #       boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
 
