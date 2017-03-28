@@ -157,7 +157,9 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
     if neg_time == true
       dJdu = zeros(Tsol, length(eqn.q_vec))
       #dJdu = calcdJdu(mesh, sbp, eqn, opts)
-      dJdu = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=true)
+      # dJdu = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=true)
+      J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
+      dJdu = calcdJdu_CS(mesh, sbp, eqn, opts)
     end
 
       
@@ -264,8 +266,13 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
   for i = 1:length(eqn.q_vec)
     eqn.q_vec[i] += pert
 
-    val = calcObjectiveFn(mesh, sbp, eqn, opts)
-    integrand_deriv[i] = imag(val)/norm(pert)
+    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+    J = J_arr[1]
+    println("=== in dJdu_CS: typeof(J_arr): ", typeof(J_arr))
+    println("=== in dJdu_CS: typeof(J): ", typeof(J))
+    println("=== in dJdu_CS: typeof(integrand_deriv): ", typeof(integrand_deriv))
+    println("=== in dJdu_CS: typeof(pert): ", typeof(pert))
+    integrand_deriv[i] = imag(J)/norm(pert)
     eqn.q_vec[i] -= pert
   end
 
