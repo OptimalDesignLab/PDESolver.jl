@@ -220,7 +220,7 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
   calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
-  dRdu_i = jac
+  dRdu_i = jac    # dRdu_i: we don't need dRdu_(i-1), see derivation
 
   t_nextstep = t - h    # adjoint going backwards in time
 
@@ -242,8 +242,8 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
     # the Jacobian vector product needs to be jac * a vector, so use q_vec, not q in:
     #   dRdu_i*adj_nextstep.q_vec
-#     rhs_vec[i] = dJdu[i] 
-    rhs_vec[i] = dJdu[1]
+    # rhs_vec[i] = dJdu[1]  # this was when dJdu wasn't being aggregated properly
+    rhs_vec[i] = dJdu[i] 
                   + adj_nextstep.q_vec[i]
                   - 0.5*h*(dRdu_i*adj_nextstep.q_vec)[i] 
                   - adj.q_vec[i]
@@ -251,8 +251,7 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
     # note: something about how I'm multiplying dRdu_i & q_vec
 
-    # TODO: actually q_vec instead of adj_vec ?
-    # NOTE: as written above: I think I'm using the q_vec field for psi in the unsteady adj eqn
+    # Note: as written above: the q_vec field is being used for psi in the unsteady adj eqn
 
   end
 

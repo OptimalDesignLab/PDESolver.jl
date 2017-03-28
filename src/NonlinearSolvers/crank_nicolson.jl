@@ -123,13 +123,41 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
 
   # Setting IC for reverse sweep
   if neg_time == true
+
+    #----------------
+    # this section obtains q_vec at n
+    i_actual = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
+    filename = string("qvec_for_adj-", i_actual, ".dat")
+    q_vec_with_complex = readdlm(filename)
+    eqn_dummy.q_vec = q_vec_with_complex[:,1]
+
+    # sync up eqn_dummy.q and eqn_dummy.q_vec
+    disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
+
+    # use startDataExchange to sync up q/q_vec and q_face_send/recv
+    if opts["parallel_type"] == 2 && mesh.npeers > 0
+      startDataExchange(mesh, opts, eqn_dummy.q, eqn_dummy.q_face_send, eqn_dummy.q_face_recv, eqn_dummy.params.f)
+    end
+
+    newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
+
+    # make sure we're doing complex step! since res_copy is zeros, it would mess up the FD calc
+    assert(opts["jac_method"] == 2)
+    epsilon = opts["epsilon"]
+    pert = complex(0, epsilon)
+
+    calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
+
+    dRdu_n = jac    # dRdu_i: we don't need dRdu_(i-1), see derivation
+    #----------------
+
     # need dJdu
-    # need dims of I
+    dJdu = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)
     # need dRdu_n
-    # B = (I - (dt/2) * (dRdu_n))^T
-    # psi = B^T\(-dJdu)
-    # TODO: check the transposes
-    # adj.q_vec = psi
+    I = eye(length(eqn_dummy.q_vec))
+    B = (I - (h/2) * (dRdu_n))^T
+    psi = transpose(B)\(-dJdu)
+    adj.q_vec = psi
   end
 
   for i = 2:(t_steps + 1)
@@ -159,7 +187,7 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
       #dJdu = calcdJdu(mesh, sbp, eqn, opts)
       # dJdu = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=true)
       J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
-      dJdu = calcdJdu_CS(mesh, sbp, eqn, opts)
+      dJdu = calcdJdu_CS(mesh, sbp, adj, opts)
     end
 
       
@@ -268,10 +296,10 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
     J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
     J = J_arr[1]
-    println("=== in dJdu_CS: typeof(J_arr): ", typeof(J_arr))
-    println("=== in dJdu_CS: typeof(J): ", typeof(J))
-    println("=== in dJdu_CS: typeof(integrand_deriv): ", typeof(integrand_deriv))
-    println("=== in dJdu_CS: typeof(pert): ", typeof(pert))
+    # println("=== in dJdu_CS: typeof(J_arr): ", typeof(J_arr))
+    # println("=== in dJdu_CS: typeof(J): ", typeof(J))
+    # println("=== in dJdu_CS: typeof(integrand_deriv): ", typeof(integrand_deriv))
+    # println("=== in dJdu_CS: typeof(pert): ", typeof(pert))
     integrand_deriv[i] = imag(J)/norm(pert)
     eqn.q_vec[i] -= pert
   end
@@ -279,8 +307,6 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
   return integrand_deriv
 
 end
-
-# function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
 
 # function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
 function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts; isDeriv=false)
