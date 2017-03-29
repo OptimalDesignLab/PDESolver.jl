@@ -129,6 +129,7 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
     i_actual = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
     filename = string("qvec_for_adj-", i_actual, ".dat")
     q_vec_with_complex = readdlm(filename)
+    eqn_dummy = deepcopy(adj)
     eqn_dummy.q_vec = q_vec_with_complex[:,1]
 
     # sync up eqn_dummy.q and eqn_dummy.q_vec
