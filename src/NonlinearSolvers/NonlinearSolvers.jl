@@ -17,6 +17,7 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
 include("crank_nicolson.jl")
 include("crank_nicolson_jacandrhs.jl")
+include("crank_nicolson_objective.jl")
 include("newton.jl")
 include("globalization.jl")
 #include("newton_fd_old.jl")

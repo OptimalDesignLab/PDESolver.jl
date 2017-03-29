@@ -86,7 +86,7 @@ NonlinearSolvers.cnJac
 
   Jac of the CN calculation.
   Effectively a wrapper for physicsJac, because the CN Jac is:
-    CN_Jac = I + dt/2 * physicsJac
+    CN_Jac = I - dt/2 * physicsJac
 
   ctx:    
     physics func must be the first element, i.e. evalEuler
@@ -109,7 +109,7 @@ function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
 
   # Forming the CN Jacobian:
   #   call physicsJac with eqn_nextstep & t_nextstep
-  #   then form CN_Jac = I + dt/2 * physics_Jac
+  #   then form CN_Jac = I - dt/2 * physics_Jac
 
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
 
@@ -154,7 +154,7 @@ function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
   # set_values1! only caches the results; need to be assembled. This happens in petscSolve in petsc_funcs.jl
   #   (The assemble funcs are defined for Julia matrices; they're just noops)
 
-  # jac is now I + dt/2 * physics_jac
+  # jac is now I - dt/2 * physics_jac
 
   return nothing
 
@@ -170,13 +170,6 @@ NonlinearSolvers.cnAdjRhs
 """
 function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
 
-  # this doesn't work inside here
-  # using PDESolver
-  # using AdvectionEquationMod
-
-  #push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
-  #importall AdvectionEquationMod
-
   physics_func = ctx[1]
   adj = ctx[2]
   h = ctx[3]
@@ -184,24 +177,17 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
   i_actual = ctx[5]
   dJdu = ctx[6]
 
-  # TODO need to put actual dJdu here.
-#   dJdu = zeros(mesh.numDof)
-
-#   Tsol = opts["Tsol"]
-#   Tres = opts["Tres"]
-#   Tmsh = opts["Tmsh"]
-#   Tdim = opts["Tdim"]
-
   # initialize dummy eqn object for jacobian calculation use
-#   eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
-#   eqn_dummy = AdvectionEquationMod.AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+  # Note: can't just call this:
+  #   eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+  # because it needs AdvectionEquationMod loaded, which needs PDESolver loaded, which can't be loaded more than once.
   eqn_dummy = deepcopy(adj)
 
   # load needed q_vec checkpoint file into eqn_dummy
   filename = string("qvec_for_adj-", i_actual, ".dat")
-#   eqn_dummy.q_vec = readdlm(filename)
+  # can't just read straight into eqn_dummy because julia can't deal with complex files
   q_vec_with_complex = readdlm(filename)
-  eqn_dummy.q_vec = q_vec_with_complex[:,1]
+  eqn_dummy.q_vec = q_vec_with_complex[:,1]     # get only the real values
 
   # sync up eqn_dummy.q and eqn_dummy.q_vec
   disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
@@ -242,18 +228,22 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
     # the Jacobian vector product needs to be jac * a vector, so use q_vec, not q in:
     #   dRdu_i*adj_nextstep.q_vec
-    # rhs_vec[i] = dJdu[1]  # this was when dJdu wasn't being aggregated properly
+
+    # adj_nextstep corresponds to psi_i
+    # adj corresponds to psi_i+1
+
     rhs_vec[i] = dJdu[i] 
                   + adj_nextstep.q_vec[i]
                   - 0.5*h*(dRdu_i*adj_nextstep.q_vec)[i] 
                   - adj.q_vec[i]
                   - 0.5*h*(dRdu_i*adj.q_vec)[i]
 
+
     # note: something about how I'm multiplying dRdu_i & q_vec
 
     # Note: as written above: the q_vec field is being used for psi in the unsteady adj eqn
 
-  end
+  end     # end of loop: i = 1:mesh.numDof
 
 
 end
