@@ -156,7 +156,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     dJdu = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)
     # need dRdu_n
     I = eye(length(eqn_dummy.q_vec))
-    B = (I - (h/2) * (dRdu_n))^T
+    B = (I - (h/2) * (dRdu_n))
     psi = transpose(B)\(-dJdu)
     adj.q_vec = psi
   end
@@ -190,9 +190,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
       dJdu = calcdJdu_CS(mesh, sbp, adj, opts)
     end
-
-      
-
 
     if neg_time == false
       ctx_residual = (physics_func, eqn, h, newton_data)
