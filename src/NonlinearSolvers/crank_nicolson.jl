@@ -16,11 +16,11 @@ crank_nicolson
   of the form du/dt = f(u, t)
   
   Arguments:
-    * f  : function evaluation, must have signature (ctx..., opts, t)
+    * physics_func  : function evaluation, must have signature (ctx..., opts, t)
     * h  : time step size
     * t_max: time value to stop time stepping (time starts at 0)
     * q_vec: vector of the u values
-    * res_vec: vector of du/dt values (the output of the function f)
+    * res_vec: vector of du/dt values (the output of the function physics_func)
     * pre_func: function to to be called after the new u values are put into
                 q_vec but before the function f is evaluated.  Must have
                 signature: pre_func(ctx..., opts)
@@ -54,7 +54,7 @@ crank_nicolson
 
    TODO: fully document eqn/eqn_nextstep
 """
-function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
                         # NEWNEW: neg_time, obj_fn
@@ -116,9 +116,9 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
   # allocate Jac outside of time-stepping loop
   println("===== neg_time: ", neg_time, " =====")
   if neg_time == false
-    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
+    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
   else
-    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, f)
+    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, physics_func)
   end
 
   # Setting IC for reverse sweep
@@ -195,7 +195,7 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
 
 
     if neg_time == false
-      ctx_residual = (f, eqn, h, newton_data)
+      ctx_residual = (physics_func, eqn, h, newton_data)
     else
       # i is the time step index in the reverse sweep.
       #   It moves forward from 2 to (t_steps+1) even though the adjoint is going backwards in time.
@@ -204,7 +204,7 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
       #     loop's time step, the index i does not correspond to the same i of the forward sweep.
       #   The adjustment is not just (t_steps - i) because the loop starts at 2 and ends at t_steps + 1.
       i_actual = t_steps + 3 - i
-      ctx_residual = (f, adj, h, newton_data, i_actual, dJdu)
+      ctx_residual = (physics_func, adj, h, newton_data, i_actual, dJdu)
     end
 
     @debug1 println(fstdout, "in CN: before call to newtonInner")
@@ -222,7 +222,7 @@ function crank_nicolson{Tmsh, Tsol}(f::Function, h::AbstractFloat, t_max::Abstra
       # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
       if opts["cleansheet_CN_newton"]
         # cnNewton: in cnNewton.jl
-        cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+        cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       else
         @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
       end
