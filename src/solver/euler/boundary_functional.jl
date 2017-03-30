@@ -68,13 +68,14 @@ boundary functional type or parameters.
 
 """->
 
-function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol}, opts, functionalData::BoundaryForceData)
+function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+                         eqn::EulerData{Tsol, Tres, Tdim}, opts, functionalData::BoundaryForceData)
 
   local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
   bndry_force = functionalData.bndry_force
   fill!(bndry_force, 0.0)
   functional_edges = functionalData.geom_faces_functional
+  phys_nrm = zeros(Tmsh, Tdim)
 
   # Get bndry_offsets for the functional edge concerned
   for itr = 1:length(functional_edges)
@@ -106,11 +107,14 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},sbp::Abstrac
         x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm = sview(sbp.facenormal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        for k = 1:Tdim
+            # nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+            # ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+            phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
+          end # End for k = 1:Tdim
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
-        calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, [nx, ny],
+        calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
                                         node_info, functionalData, b_integrand_ji)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
@@ -166,17 +170,17 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
                                          val::AbstractArray{Tsol,1})
 
   # Compute the numerical flux for the euler equation and extract the X & Y
-  # momentum values
+  # momentum values. The normal vector supplied has already been converted
+  # to the physical space from the parametric space.
 
-  aoa = params.aoa # Angle of attack
   euler_flux = params.flux_vals1 # Reuse existing memory
-  nx = nrm[1]
-  ny = nrm[2]
+  # nx = nrm[1]
+  # ny = nrm[2]
 
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
   # normalize normal vector
-  nx *= fac
-  ny *= fac
+  nx = nrm[1]*fac
+  ny = nrm[2]*fac
 
   normal_momentum = nx*q[2] + ny*q[3]
 
@@ -189,6 +193,84 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
 
   calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
   val[:] = euler_flux[2:3]
+
+  return nothing
+end
+
+@doc """
+calcBoundaryFunctionalIntegrand_revm
+
+Reverse mode for boundary functional integrand w.r.t. nrm. Takes in input
+val_bar and return nrm_bar for further reverse propagation.
+
+"""->
+
+function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
+                                         q::AbstractArray{Tsol,1},
+                                         aux_vars::AbstractArray{Tres, 1},
+                                         nrm::AbstractArray{Tmsh},
+                                         node_info::AbstractArray{Int},
+                                         objective::BoundaryForceData,
+                                         nrm_bar, val_bar)
+
+  #---- Forward sweep
+  fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
+  nx = nrm[1]*fac # Normalized unit vectors
+  ny = nrm[2]*fac #
+  normal_momentum = nx*q[2] + ny*q[3]
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+
+  #---- Reverse Sweep
+  euler_flux_bar = zeros(Tsol, 4) # For 2D
+  qg_bar = zeros(Tsol, 4)
+  q_bar = zeros(Tsol,4)
+
+  # Reverse diff val[:] = euler_flux[2:3]
+  euler_flux_bar[2:3] += val_bar[:]
+
+  # Reverse diff calcEulerFlux
+  calcEulerFlux_revm(params, qg, aux_vars, nrm, euler_flux_bar, nrm_bar)
+  calcEulerFlux_revq(params, qg, aux_vars, nrm, euler_flux_bar, qg_bar)
+  ny_bar = zero(Tsol)               # Initialize
+  nx_bar = zero(Tsol)               #
+  normal_momentum_bar = zero(Tsol)  #
+
+  # Reverse diff qg[3] -= ny*normal_momentum
+  ny_bar -= qg_bar[3]*normal_momentum
+  normal_momentum_bar -= qg_bar[3]*ny
+  qg_bar[3] += qg_bar[3]
+
+  # Reverse diff qg[2] -= nx*normal_momentum
+  nx_bar -= qg_bar[2]*normal_momentum
+  normal_momentum_bar -= qg_bar[2]*nx
+  qg_bar[2] += qg_bar[2]
+
+  # Reverse diff qg[:] = q[:]
+  q_bar[:] += qg_bar[:]
+
+  # Reverse diff normal_momentum = nx*q[2] + ny*q[3]
+  nx_bar += normal_momentum_bar*q[2]
+  ny_bar += normal_momentum_bar*q[3]
+  q_bar[2] += normal_momentum_bar*nx
+  q_bar[3] += normal_momentum_bar*ny
+
+  # Reverse diff ny = nrm[2]*fac
+  fac_bar = zero(Tsol)
+  nrm_bar[2] += ny_bar*fac
+  fac_bar += ny_bar*nrm[2]
+
+  # Reverse diff nx = nrm[1]*fac
+  nrm_bar[1] += nx_bar*fac
+  fac_bar += nx_bar*nrm[1]
+
+  # Reverse diff fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
+  nrm_bar[1] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[1]
+  nrm_bar[2] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[2]
 
   return nothing
 end

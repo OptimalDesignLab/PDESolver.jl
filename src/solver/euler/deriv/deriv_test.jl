@@ -66,11 +66,11 @@ println("error counter = $ctr")
 deriv_bndry_funcs = EulerEquationMod.getBCDerivFunctors(mesh, sbp, eqn, opts)
 # println(deriv_bndry_funcs)
 dBndryFluxdm = EulerEquationMod.getdBndryFluxdm(mesh, sbp, eqn, opts, deriv_bndry_funcs)
-
+# println("dBndryFluxdm = \n", dBndryFluxdm)
 
 # Check agains complex step
 pert = complex(0, 1e-20)
-
+ctr = 0
 for i=1:mesh.numBC
   functor_i = mesh.bndry_funcs[i]
   if functor_i == EulerEquationMod.noPenetrationBC()
@@ -82,14 +82,26 @@ for i=1:mesh.numBC
 
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
-    EulerEquationMod.complex_calcBoundaryFluxdm(mesh, sbp, eqn, functor_i, 
+    EulerEquationMod.complex_calcBoundaryFluxdm(mesh, sbp, eqn, functor_i,
                                         idx_range, bndry_facenums_i, bndryflux_i)
 
     # Check against analytical value
     dbndryflux_i = sview(dBndryFluxdm, :, 1, :, start_index:(end_index -  1))
-  end # End if noPenetrationBC  
-end
+    println(" size of dbndryflux_i = ", size(dbndryflux_i), " length = ", length(dbndryflux_i))
+    println("size of bndryflux_i = ", size(bndryflux_i), " length = ", length(dbndryflux_i))
 
+    for j = 1:length(bndryflux_i)
+      error = norm(dbndryflux_i[j] - bndryflux_i[j])
+      if error > 1e-12
+        println("dbndryflux_i[$j] = $(dbndryflux_i[j]) , bndryflux_i[$j] = $(bndryflux_i[j])")
+        ctr += 1
+      end
+    end
+    
+
+  end # End if noPenetrationBC
+end
+println("ctr = $ctr")
 
 #=
 # Get the adjoint vector
