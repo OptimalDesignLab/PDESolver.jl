@@ -79,7 +79,7 @@ function writeBoundary(mesh, sbp, eqn, opts)
   for i=1:mesh.numBoundaryFaces
     el = mesh.bndryfaces[i].element
     face = mesh.bndryfaces[i].face
-    for j=1:sbp.numfacenodes
+    for j=1:sbp.numfacenodes  # TODO: should be mesh.numNodesPerFace?
       jb = sbp.facenodes[j, face]
       println(f, "el ", el, ", node_index ", jb, ", flux = ", 
                real(eqn.bndryflux[:, j, i]))

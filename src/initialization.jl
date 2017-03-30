@@ -280,7 +280,6 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                                mesh, sbp, eqn, opts, opts["res_abstol"], 
                                opts["real_time"])
 
-      eqn.t = t
     elseif flag == 30  # lserk54
 
       t = lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
