@@ -317,26 +317,42 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
+  q_bar::Array{Tsol, 3}  # adjoint part of q
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
+  q_face_bar::Array{Tsol, 4}  # adjoint part of q_face
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
+  q_bndry_bar::Array{Tsol, 3}  # adjoint part
   q_vec::Array{Tres,1}            # initial condition in vector form
-  # hold fluxes in all directions
-  # [ndof per node by nnodes per element by num element by num dimensions]
+
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables
-  aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
+  aux_vars_bar::Array{Tres, 3}    # adjoint part
+  aux_vars_face::Array{Tres, 3}    # storage for aux variables interpolated
                                   # to interior faces
+  aux_vars_face_bar::Array{Tres, 3}  # adjoint part
   aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
                                        # to shared faces
+  aux_vars_sharedface_bar::Array{Array{Tres, 3}} # adjoint part
   aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated
                                   # to the boundaries
+  aux_vars_bndry_bar::Array{Tres, 3}  # adjoint part
+
+  # hold fluxes in all directions
+  # [ndof per node by nnodes per element by num element by num dimensions]
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
+  flux_parametric_bar::Array{Tsol, 4}  # adjoint part
   q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
+  q_face_send_bar::Array{Array{Tsol, 3}, 1}  # adjoint part
   q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
+  q_face_recv_bar::Array{Array{Tsol, 3}, 1}  # adjoint part
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
+  flux_face_bar::Array{Tres, 3}  # adjoint part
   flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
+  flux_sharedface_bar::Array{Array{Tres, 3}, 1}  # adjoint part
   res::Array{Tres, 3}             # result of computation
+  res_bar::Array{Tres, 3}         # adjoint part
+
   res_vec::Array{Tres, 1}         # result of computation in vector form
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
   Aeta::Array{Tsol,4}               # Flux Jacobian in the eta-direction
@@ -347,6 +363,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
                                   # Tdim x Tdim x nnodesPerElement x numEl
   bndryflux::Array{Tsol, 3}       # boundary flux
+  bndryflux_bar::Array{Tsol, 3}   # adjoint part
   stabscale::Array{Tsol, 2}       # stabilization scale factor
 
   # artificial dissipation operator:
@@ -512,7 +529,50 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
     end
 
-    println("Tres = ", Tres)
+    if opts["need_adjoint"]
+      eqn.q_bar = zeros(eqn.q)
+      eqn.q_face_bar = zeros(eqn.q_face)
+      eqn.q_bndry_bar = zeros(eqn.q_bndry_bar)
+      eqn.flux_parametric_bar = zeros(eqn.flux_parametric)
+
+      eqn.aux_vars_bar = zeros(eqn.aux_vars)
+      eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
+      eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
+
+      eqn.q_face_send_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.q_face_recv_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
+
+      for i=1:mesh.npeers
+        eqn.q_face_send_bar[i] = zeros(eqn.q_face_send[i])
+        eqn.q_face_recv_bar[i] = zeros(eqn.q_face_recv[i])
+        eqn.flux_shareface_bar[i] = zeros(eqn.flux_sharedface[i])
+        eqn.aux_vars_sharedface_bar[i] = zeros(eqn.aux_vars_sharedface[i])
+      end
+
+      eqn.flux_face_bar = zeros(eqn.flux_face)
+      eqn.bndryflux_bar = zeros(eqn.bndryflux)
+      eqn.res_bar = zeros(eqn.res)
+    else  # don't allocate arrays if they are not needed
+      eqn.q_bar = Array(Tsol, 0, 0, 0)
+      eqn.q_face_bar = zeros(Tsol, 0, 0, 0, 0)
+      eqn.q_bndry_bar = zeros(Tsol, 0, 0, 0)
+      eqn.flux_parametric_bar = zeros(Tsol, 0, 0, 0, 0)
+
+      eqn.aux_vars_bar = zeros(Tres, 0, 0, 0)
+      eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
+      eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
+
+      eqn.q_face_send_bar = Array(Array{Tsol, 3}, 0)
+      eqn.q_face_recv_bar = Array(Array{Tsol, 3}, 0)
+      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, 0)
+      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, 0)
+
+      eqn.flux_face_bar = zeros(Tres, 0, 0, 0)
+      eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
+      eqn.res_bar = zeros(Tres, 0, 0, 0)
+   end
 
     return eqn
 

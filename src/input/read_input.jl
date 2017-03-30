@@ -64,6 +64,8 @@ else
   get!(arg_dict, "operator_type", "SBPGamma")
 end
 
+get!(arg_dict, "need_adjoint", false)
+
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
 aoa = get!(arg_dict, "aoa", -1.0)
