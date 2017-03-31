@@ -210,19 +210,19 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
   t_nextstep = t - h    # adjoint going backwards in time
 
-  println(" mesh.numDof: ", mesh.numDof)
+  # println(" mesh.numDof: ", mesh.numDof)
 
-  println(" size dJdu: ", size(dJdu))
-  println(" size rhs_vec: ", size(rhs_vec))
-  println(" size adj.q_vec: ", size(adj.q_vec))
-  println(" size adj_nextstep.q_vec: ", size(adj_nextstep.q_vec))
-  println(" size dRdu_i: ", size(dRdu_i))
+  # println(" size dJdu: ", size(dJdu))
+  # println(" size rhs_vec: ", size(rhs_vec))
+  # println(" size adj.q_vec: ", size(adj.q_vec))
+  # println(" size adj_nextstep.q_vec: ", size(adj_nextstep.q_vec))
+  # println(" size dRdu_i: ", size(dRdu_i))
 
-  println(" typeof dJdu: ", typeof(dJdu))
-  println(" typeof rhs_vec: ", typeof(rhs_vec))
-  println(" typeof adj.q_vec: ", typeof(adj.q_vec))
-  println(" typeof adj_nextstep.q_vec: ", typeof(adj_nextstep.q_vec))
-  println(" typeof dRdu_i: ", typeof(dRdu_i))
+  # println(" typeof dJdu: ", typeof(dJdu))
+  # println(" typeof rhs_vec: ", typeof(rhs_vec))
+  # println(" typeof adj.q_vec: ", typeof(adj.q_vec))
+  # println(" typeof adj_nextstep.q_vec: ", typeof(adj_nextstep.q_vec))
+  # println(" typeof dRdu_i: ", typeof(dRdu_i))
 
   for i = 1:mesh.numDof
 

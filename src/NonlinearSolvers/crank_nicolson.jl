@@ -130,6 +130,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # this section obtains q_vec at n
     i_actual = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
     filename = string("qvec_for_adj-", i_actual, ".dat")
+    println("Setting IC for reverse sweep with file: ", filename)
     q_vec_with_complex = readdlm(filename)
     eqn_dummy = deepcopy(adj)
     eqn_dummy.q_vec = q_vec_with_complex[:,1]
@@ -269,9 +270,13 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copy!(dest, src)
-  copy!(eqn, eqn_nextstep)      # copying eqn_nextstep to eqn
-  writedlm("solution_final_inCN.dat", real(eqn.q_vec))
-
+  if neg_time == false
+    copy!(eqn, eqn_nextstep)      # copying eqn_nextstep to eqn
+    writedlm("solution_final_inCN.dat", real(eqn.q_vec))
+  else
+    copy!(adj, adj_nextstep)      # copying adj_nextstep to eqn
+    writedlm("adjoint_final_inCN.dat", real(adj.q_vec))
+  end
 
   if jac_type == 3      # if jac is a Petsc matrix, it needs to be freed when we're done using it
     # contents of ctx_newton: (jacp, x, b, ksp)
