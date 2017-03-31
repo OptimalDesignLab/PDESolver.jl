@@ -6,9 +6,6 @@
 export cnJac, cnRhs
 export cnAdjJac, cnAdjRhs
 
-# function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
-# function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, eqn, ctx, t)
-# TODO: why was eqn in the function signature instead of jac
 function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   # adj_nextstep contains psi_i
   # ctx will pass in adj, which contains psi_(i+1)
@@ -26,14 +23,14 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   #   call physicsJac with eqn_nextstep & t_nextstep
   #   then form cnAdjJac = I - dt/2 * physics_Jac
 
-  # instead of allocating another cnJac, modify this jac
   #println(" === typeof eqn: ", typeof(eqn))
   # TODO: why is eqn Array{Float64,2}
   @debug1 println(" === typeof adj: ", typeof(adj))
-  # Note: setupNewton shouldn't be here. because Newton can't properly iterate on this
-  # newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, physics_func)
-  # get jacobian from eqn here
-  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, adj, opts, jac, ctx, t)
+  # Note: setupNewton shouldn't be here, bc Newton can't properly iterate on it if the jac is cleared. 
+  #       jac is passed in as arg to cnAdjJac
+
+  # Fixed 20170330: physicsJac needs to be calculated at time i, which corresponds to adj_nextstep in the reverse sweep
+  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
 
   # need to flush assembly cache before performing the scale operation.
   #   These are defined for Julia matrices; they're just noops
@@ -78,7 +75,7 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
 
   # jac is now I - dt/2 * physics_jac
 
-end
+end     # end of function cnAdjJac
 
 
 """
@@ -158,7 +155,7 @@ function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
 
   return nothing
 
-end
+end     # end of function cnJac
 
 """
 NonlinearSolvers.cnAdjRhs
@@ -246,7 +243,7 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
   end     # end of loop: i = 1:mesh.numDof
 
 
-end
+end     # end of function cnAdjRhs
 
 """
 NonlinearSolvers.cnRhs
