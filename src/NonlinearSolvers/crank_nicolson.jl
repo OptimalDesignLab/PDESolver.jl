@@ -116,6 +116,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
+  # these jacs are for full CN or CN adj jac
   println("===== neg_time: ", neg_time, " =====")
   if neg_time == false
     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
@@ -127,13 +128,15 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   if neg_time == true
 
     #----------------
-    # this section obtains q_vec at n
+    # this section:
+    #   1) reads the checkpointed q_vec at the last time step of the forward sweep (n'th time step)
+    #   2) uses calcJacobianComplex to calculate dRdu at time step n
     i_actual = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
     filename = string("qvec_for_adj-", i_actual, ".dat")
     println("Setting IC for reverse sweep with file: ", filename)
     q_vec_with_complex = readdlm(filename)
-    eqn_dummy = deepcopy(adj)
-    eqn_dummy.q_vec = q_vec_with_complex[:,1]
+    eqn_dummy = deepcopy(adj)                     # allocate a dummy eqn object
+    eqn_dummy.q_vec = q_vec_with_complex[:,1]     # 
 
     # sync up eqn_dummy.q and eqn_dummy.q_vec
     disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
@@ -143,6 +146,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       startDataExchange(mesh, opts, eqn_dummy.q, eqn_dummy.q_face_send, eqn_dummy.q_face_recv, eqn_dummy.params.f)
     end
 
+    # Note: probably don't need to allocate another jac, but this should cause no problems aside from allocation cost
     newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
 
     # make sure we're doing complex step! since res_copy is zeros, it would mess up the FD calc
@@ -152,16 +156,16 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
-    dRdu_n = jac    # dRdu_i: we don't need dRdu_(i-1), see derivation
+    dRdu_n = jac
     #----------------
 
-    # need dJdu
-    dJdu = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)
-    # need dRdu_n
+    dJdu = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
+    # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
     I = eye(length(eqn_dummy.q_vec))
     B = (I - (h/2) * (dRdu_n))
     psi = transpose(B)\(-dJdu)
     adj.q_vec = psi
+
   end
 
   for i = 2:(t_steps + 1)
@@ -188,8 +192,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # 2. call it, complex step it, and store it in dJdu
     if neg_time == true
       dJdu = zeros(Tsol, length(eqn.q_vec))
-      #dJdu = calcdJdu(mesh, sbp, eqn, opts)
-      # dJdu = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=true)
       J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
       dJdu = calcdJdu_CS(mesh, sbp, adj, opts)
     end
