@@ -203,7 +203,8 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
   calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
-  dRdu_i = jac    # dRdu_i: we don't need dRdu_(i-1), see derivation
+  # Fix 20170330: the dRdu_i used below in forming rhs_vec needs to be transposed
+  dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation
 
   t_nextstep = t - h    # adjoint going backwards in time
 
