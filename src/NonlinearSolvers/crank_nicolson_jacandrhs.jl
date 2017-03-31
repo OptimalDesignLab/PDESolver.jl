@@ -29,7 +29,7 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   # instead of allocating another cnJac, modify this jac
   #println(" === typeof eqn: ", typeof(eqn))
   # TODO: why is eqn Array{Float64,2}
-  println(" === typeof adj: ", typeof(adj))
+  @debug1 println(" === typeof adj: ", typeof(adj))
   # Note: setupNewton shouldn't be here. because Newton can't properly iterate on this
   # newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, physics_func)
   # get jacobian from eqn here
