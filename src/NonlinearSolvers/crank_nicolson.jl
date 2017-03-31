@@ -230,7 +230,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       end
     else      # call newtonInner using cnAdjJac and cnAdjRhs
       @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
-      # TODO: contents of ctx_residual? needs to have adj instead of eqn
     end
 
     # This allows the solution to be updated from _nextstep without a deepcopy.

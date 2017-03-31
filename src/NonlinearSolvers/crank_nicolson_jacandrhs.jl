@@ -29,8 +29,11 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   # Note: setupNewton shouldn't be here, bc Newton can't properly iterate on it if the jac is cleared. 
   #       jac is passed in as arg to cnAdjJac
 
+  # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
+  t_nextstep = t - h
+
   # Fixed 20170330: physicsJac needs to be calculated at time i, which corresponds to adj_nextstep in the reverse sweep
-  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
+  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t_nextstep)
 
   # need to flush assembly cache before performing the scale operation.
   #   These are defined for Julia matrices; they're just noops
@@ -186,6 +189,9 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
   q_vec_with_complex = readdlm(filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # get only the real values
 
+  # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
+  t_nextstep = t - h    # adjoint going backwards in time
+
   # sync up eqn_dummy.q and eqn_dummy.q_vec
   disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
 
@@ -205,8 +211,6 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
   # Fix 20170330: the dRdu_i used below in forming rhs_vec needs to be transposed
   dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation
-
-  t_nextstep = t - h    # adjoint going backwards in time
 
   # println(" mesh.numDof: ", mesh.numDof)
 
