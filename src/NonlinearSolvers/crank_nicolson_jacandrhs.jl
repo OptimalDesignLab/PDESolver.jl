@@ -177,9 +177,7 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
   i_actual = ctx[5]
   dJdu = ctx[6]
 
-  eqn_dummy = deepcopy(adj)
-
-  jac = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
+  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
   dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation
 
   # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
