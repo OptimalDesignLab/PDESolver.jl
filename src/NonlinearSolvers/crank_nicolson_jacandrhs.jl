@@ -177,37 +177,15 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
   i_actual = ctx[5]
   dJdu = ctx[6]
 
-  # initialize dummy eqn object for jacobian calculation use
-  # Note: can't just call this:
-  #   eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
-  # because it needs AdvectionEquationMod loaded, which needs PDESolver loaded, which can't be loaded more than once.
   eqn_dummy = deepcopy(adj)
 
-  # load needed q_vec checkpoint file into eqn_dummy
-  filename = string("qvec_for_adj-", i_actual, ".dat")
-  # can't just read straight into eqn_dummy because julia can't deal with complex files
-  q_vec_with_complex = readdlm(filename)
-  eqn_dummy.q_vec = q_vec_with_complex[:,1]     # get only the real values
+  jac = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
+  dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation
 
   # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
   t_nextstep = t - h    # adjoint going backwards in time
 
-  # sync up eqn_dummy.q and eqn_dummy.q_vec
-  disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
-
-  # use startDataExchange to sync up q/q_vec and q_face_send/recv
-  if opts["parallel_type"] == 2 && mesh.npeers > 0
-    startDataExchange(mesh, opts, eqn_dummy.q, eqn_dummy.q_face_send, eqn_dummy.q_face_recv, eqn_dummy.params.f)
-  end
-
-  newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
-
-  # make sure we're doing complex step! since res_copy is zeros, it would mess up the FD calc
-  assert(opts["jac_method"] == 2)
-  epsilon = opts["epsilon"]
-  pert = complex(0, epsilon)
-
-  calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
+  jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
 
   # Fix 20170330: the dRdu_i used below in forming rhs_vec needs to be transposed
   dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation

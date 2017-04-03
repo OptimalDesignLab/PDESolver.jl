@@ -132,31 +132,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     #   1) reads the checkpointed q_vec at the last time step of the forward sweep (n'th time step)
     #   2) uses calcJacobianComplex to calculate dRdu at time step n
     i_actual = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
-    filename = string("qvec_for_adj-", i_actual, ".dat")
-    println("Setting IC for reverse sweep with file: ", filename)
-    q_vec_with_complex = readdlm(filename)
-    eqn_dummy = deepcopy(adj)                     # allocate a dummy eqn object
-    eqn_dummy.q_vec = q_vec_with_complex[:,1]     # 
 
-    # sync up eqn_dummy.q and eqn_dummy.q_vec
-    disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
+    # load checkpoint to calculate dRdu at this time step
+    eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
 
-    # use startDataExchange to sync up q/q_vec and q_face_send/recv
-    if opts["parallel_type"] == 2 && mesh.npeers > 0
-      startDataExchange(mesh, opts, eqn_dummy.q, eqn_dummy.q_face_send, eqn_dummy.q_face_recv, eqn_dummy.params.f)
-    end
-
-    # Note: probably don't need to allocate another jac, but this should cause no problems aside from allocation cost
-    newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
-
-    # make sure we're doing complex step! since res_copy is zeros, it would mess up the FD calc
-    assert(opts["jac_method"] == 2)
-    epsilon = opts["epsilon"]
-    pert = complex(0, epsilon)
-
-    calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
-
-    dRdu_n = jac
+    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
+    dRdu_n = jac      # TODO: check transpose
     #----------------
 
     dJdu = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
@@ -230,6 +211,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       end
     else      # call newtonInner using cnAdjJac and cnAdjRhs
       @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
+    # else    # direct solve for psi_i
+
+      # # TODO TODO TODO
+      # adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_actual, t_nextstep)
+      # disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
+
     end
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
