@@ -209,13 +209,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       else
         @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
       end
-    else      # call newtonInner using cnAdjJac and cnAdjRhs
-      @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
-    # else    # direct solve for psi_i
+    # else      # call newtonInner using cnAdjJac and cnAdjRhs
+      # @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
+    else    # direct solve for psi_i
 
-      # # TODO TODO TODO
-      # adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_actual, t_nextstep)
-      # disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
+      # TODO TODO TODO
+      # adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, physics_func, jac, i_actual, h, t)
+      adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
+      disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
     end
 
