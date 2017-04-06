@@ -28,7 +28,7 @@ export exchangeElementData
 export @mpi_master, @time_all, print_time_all
 export Timings, write_timings
 export sharedFaceLogging
-export calcBCNormal
+export calcBCNormal, calcBCNormal_revm
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
@@ -36,14 +36,16 @@ export arrToVecAssign
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
 # complexify.jl functions
-export absvalue
+export absvalue, absvalue_deriv
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
 
 # mass_matrix.jl
-export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D, 
+export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
        applyMassMatrixInverse
+
+export max_deriv_rev
 
 @doc """
 ### Utils.disassembleSolution
@@ -63,15 +65,15 @@ export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
   This is a mid level function, and does the right thing regardless of equation
   dimension.
 
-  The DG method for disassembleSolution assumes that q and q_vec refer to the 
+  The DG method for disassembleSolution assumes that q and q_vec refer to the
     same memory address, and therefore does no explicit writing/copying.
 
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
 function disassembleSolution{T}(mesh::AbstractCGMesh, sbp,
-                             eqn::AbstractSolutionData, opts, 
-                             q_arr::AbstractArray{T, 3}, 
+                             eqn::AbstractSolutionData, opts,
+                             q_arr::AbstractArray{T, 3},
                              q_vec::AbstractArray{T, 1})
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
@@ -90,10 +92,10 @@ end
 
 
 function disassembleSolution{T}(mesh::AbstractDGMesh, sbp,
-                             eqn::AbstractSolutionData, opts, 
-                             q_arr::AbstractArray{T, 3}, 
+                             eqn::AbstractSolutionData, opts,
+                             q_arr::AbstractArray{T, 3},
                              q_vec::AbstractArray{T, 1})
-                             
+
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(q_arr) != pointer(q_vec)
     for i = 1:length(q_vec)
@@ -109,7 +111,7 @@ end
 @doc """
 ### Utils.writeQ
 
-  This function writes the real part of the solution variables eqn.q to a space 
+  This function writes the real part of the solution variables eqn.q to a space
   delimited file called q.dat, controlled by the input options 'writeq', of type bool
 
   This is a high level function.
@@ -132,18 +134,18 @@ end
 @doc """
 ### Utils.assembleSolution
 
-  This function takes the 3D array of variables in arr and 
+  This function takes the 3D array of variables in arr and
   reassembles it into the vector res_vec.  Note that
-  This is a reduction operation and zeros res_vec before performing the 
+  This is a reduction operation and zeros res_vec before performing the
   operation, unless zero_resvec is set to false
 
   This is a mid level function, and does the right thing regardless of
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh}, 
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts, 
-                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
+                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
+                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec
 
@@ -165,13 +167,13 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
       end
     end
   end
-  
+
   return nothing
 end
 
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh}, 
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts, 
-                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
+                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
+                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
                          zero_resvec=true)
 
   # we assume the memory layouts of q_arr and q_vec are the same
@@ -225,9 +227,9 @@ end
 
 
 # mid level function (although it doesn't need Tdim)
-function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts, 
-                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
+                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
+                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec, using an assignment reduction
 
@@ -254,7 +256,7 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
       end
     end
   end
-  
+
   return nothing
 end
 
@@ -433,7 +435,7 @@ end
   face normal and scaled mapping jacobian.  `nrm2` is overwritten with
   the result.
 """
-function calcBCNormal(params::AbstractParamType{2}, dxidx::AbstractMatrix, 
+function calcBCNormal(params::AbstractParamType{2}, dxidx::AbstractMatrix,
                     nrm::AbstractVector, nrm2::AbstractVector)
 
   nrm2[1] = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -441,7 +443,7 @@ function calcBCNormal(params::AbstractParamType{2}, dxidx::AbstractMatrix,
   return nothing
 end
 
-function calcBCNormal(params::AbstractParamType{3}, dxidx::AbstractMatrix, 
+function calcBCNormal(params::AbstractParamType{3}, dxidx::AbstractMatrix,
                     nrm::AbstractVector, nrm2::AbstractVector)
 
   n1 = nrm[1]; n2 = nrm[2]; n3 = nrm[3]
@@ -452,6 +454,18 @@ function calcBCNormal(params::AbstractParamType{3}, dxidx::AbstractMatrix,
   return nothing
 end
 
+function calcBCNormal_revm(params::AbstractParamType{2}, dxidx::AbstractMatrix,
+                    nrm::AbstractVector, nrm2_bar::AbstractVector, dxidx_bar)
+
+  dxidx_bar[1,1] += nrm2_bar[1]*nrm[1]
+  dxidx_bar[2,1] += nrm2_bar[1]*nrm[2]
+  dxidx_bar[1,2] += nrm2_bar[2]*nrm[1]
+  dxidx_bar[2,2] += nrm2_bar[2]*nrm[2]
+
+  return nothing
+end
+
+
 
 #------------------------------------------------------------------------------
 # permutation functions
@@ -460,7 +474,7 @@ end
   Permute the rows of A according to the permvec, storing the result in B
   The permvec contains the source indices for each entry in B, ie.
   B[permvec[i]] comes from A[i].  This is consistent with the mathematical
-  definition of a permutation that pre-multiplication by a permutation 
+  definition of a permutation that pre-multiplication by a permutation
   matrix (obtained from permMatrix) is a row permutation, ie.
   B = P*A
 
@@ -502,10 +516,10 @@ end
 
 """
   Permute the columns of A according to permvec.  See applyPermRow for the
-  definition of a permvec.  Note that for column permutation the 
-  interpretation is that destination column permvec[i] comes from 
+  definition of a permvec.  Note that for column permutation the
+  interpretation is that destination column permvec[i] comes from
   source column i.  This is consistent with the notion that post-multiplying
-  by a permutation matrix (obtained from permMatrix) is a column 
+  by a permutation matrix (obtained from permMatrix) is a column
   permutation, i.e B = A*P
 
   Aliasing: no aliasing allowed
@@ -529,7 +543,7 @@ end
 
   Aliasing: no aliasing allowed
 """
-function applyPermColumnInplace(permvec::AbstractVector, 
+function applyPermColumnInplace(permvec::AbstractVector,
                             A::AbstractMatrix, B::AbstractMatrix)
 
   applyPermColumn(permvec, A, B)
@@ -592,9 +606,44 @@ function inversePerm(permvec::AbstractVector, invperm::AbstractVector)
   return nothing
 end
 
+@doc """
+###Utils.absvalue_deriv
+
+Computes the derivative of the absolute value of a variable w.r.t itself
+
+**Inputs**
+
+* `val` : The variable whose derivative needs to be computed e.r.t itself
+
+"""->
+
+function absvalue_deriv{Tval}(val::Tval)
+
+  if val > zero(Tval)
+    return one(Tval)
+  elseif val < zero(Tval)
+    return -one(Tval)
+  else
+    return zero(Tval)
+  end
+
+end # End function absvalue_deriv
+
+function max_deriv_rev{Tval}(x::Tval, y::Tval, max_val_bar::Tval)
+
+  x_bar = zero(Tval)
+  y_bar = zero(Tval)
+  
+  if x > y
+    x_bar += max_val_bar
+  else
+    y_bar += max_val_bar
+  end
+
+  return x_bar, y_bar
+end # End function max_rev
+
 # TODO: write functions to apply inverse permutation from permvec, without
 #       needing to explicetly compute the inverse permutation vector
 
 end  # end module
-
-  

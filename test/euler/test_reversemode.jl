@@ -193,6 +193,12 @@ function test_reversemode()
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 
+
+  facts("--- Testing SAT terms in Reverse Mode ---") do
+
+
+  end # End facts("--- Testing SAT terms in Reverse Mode ---")
+
   return nothing
 end # End function test_reversemode
 

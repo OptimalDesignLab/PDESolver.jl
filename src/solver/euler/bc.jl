@@ -290,7 +290,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
-  calcSAT(params, nrm2, dq, sat, u, v, H)
+  calcSAT(params, nrm2, dq, sat, [u, v], H)
 
   euler_flux = params.flux_vals1
   calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
