@@ -502,8 +502,8 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
 end  # End function calcSAT
 
 function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
-                 dq::AbstractArray{Tsol,1}, sat::AbstractArray{Tsol,1},
-                 vel::AbstractArray{Tsol, 1}, H::Tsol, sat_bar, nrm_bar, vel_bar, dq_bar)
+                 dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
+                 H::Tsol, sat_bar, nrm_bar, vel_bar, dq_bar)
 
   # nrm_bar is the output
   # Forward Sweep
@@ -518,6 +518,8 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
 
   dA = sqrt(nx*nx + ny*ny)
 
+  u = vel[1]
+  v = vel[2]
   Un = u*nx + v*ny # Normal Velocity
 
   phi = 0.5*(u*u + v*v)
@@ -583,10 +585,10 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   lambda2_bar = zero(Tsol)
   dA_bar = zero(Tsol)
   a_bar = zero(Tsol)
-  lambda1_bar += 0.5*tmp_bar/(dA*a)
+  lambda1_bar += 0.5*tmp1_bar/(dA*a)
   lambda2_bar += -0.5*tmp1_bar/(dA*a)
-  dA_bar += -0.5*(lambda1 - lambda2)*tmp_bar/(dA*dA*a)
-  a_bar += -0.5*(lambda- = lamda2)*tmp1_bar/(dA*a*a)
+  dA_bar += -0.5*(lambda1 - lambda2)*tmp1_bar/(dA*dA*a)
+  a_bar += -0.5*(lambda1 - lambda2)*tmp1_bar/(dA*a*a)
 
   # E2dq[2] = E2dq[2]*nx
   nx_bar = zero(Tsol)
@@ -758,22 +760,22 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   # lambda3 = 0.5*(v3 - lambda3)
   v3_bar = 0.5*lambda3_bar
   lambda3_bar -= 0.5*lambda3_bar
-  v1_bar, v2_bar = max_deriv_rev(absvalue(lambda3), satVl*rhoA, v3_bar)
-  rhoA_bar += sat_Vl*v2_bar
+  v1_bar, v2_bar = max_deriv_rev(absvalue(lambda3), sat_Vl*rhoA, v3_bar)
+  rhoA_bar = sat_Vl*v2_bar # no += since rhoA_bar being used for the first time
   lambda3_bar += v1_bar*absvalue_deriv(lambda3)
 
   # lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
   v3_bar = 0.5*lambda3_bar
   lambda2_bar -= 0.5*lambda2_bar
-  v1_bar, v2_bar = max_deriv_rev(absvalue(lambda2), satVl*rhoA, v3_bar)
+  v1_bar, v2_bar = max_deriv_rev(absvalue(lambda2), sat_Vn*rhoA, v3_bar)
   rhoA_bar += sat_Vl*v2_bar
   lambda2_bar += v1_bar*absvalue_deriv(lambda2)
 
   # lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
   v3_bar = 0.5*lambda1_bar
   lambda1_bar -= 0.5*lambda3_bar
-  v1_bar, v2_bar = max_deriv_rev(absvalue(lambda1), satVl*rhoA, v3_bar)
-  rhoA_bar += sat_Vl*v2_bar
+  v1_bar, v2_bar = max_deriv_rev(absvalue(lambda1), sat_Vn*rhoA, v3_bar)
+  rhoA_bar += sat_Vn*v2_bar
   lambda1_bar += v1_bar*absvalue_deriv(lambda1)
 
   # rhoA = absvalue(Un) + dA*a
