@@ -177,13 +177,12 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
   i_actual = ctx[5]
   dJdu = ctx[6]
 
-  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
-  dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation
-
   # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
   t_nextstep = t - h    # adjoint going backwards in time
 
-  jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
+  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t_nextstep)
+  jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t_nextstep)
+  dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation
 
   # Fix 20170330: the dRdu_i used below in forming rhs_vec needs to be transposed
   dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation

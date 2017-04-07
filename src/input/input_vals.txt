@@ -305,6 +305,7 @@ Note that any values associated with these options are shared with the regular
 "adjoint_straight" : calculate the unsteady adjoint by saving the state at every timestep
 "adjoint_revolve"  : calculate the unsteady adjoint, but using revolve to handle checkpointing
                      and state saving
+"adjoint_saveall"  : save every time step's adjoint to disk
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved 

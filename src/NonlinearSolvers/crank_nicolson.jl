@@ -150,7 +150,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   end
 
-  for i = 2:(t_steps + 1)
+  t_steps_end = t_steps + 1
+  for i = 2:t_steps_end
 
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
@@ -212,10 +213,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       end
     # else      # call newtonInner using cnAdjJac and cnAdjRhs
       # @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
-    else    # direct solve for psi_i
+    else    
 
-      # TODO TODO TODO
-      # adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, physics_func, jac, i_actual, h, t)
+      # direct solve for psi_i
       adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
@@ -234,11 +234,36 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       adj_nextstep = adj_temp
     end
 
-    # for adjoint_straight option: stores every time step's q to disk
-    # Note: cannot store full eqn object without extending one of the julia write methods
-    if store_u_to_disk == true
-      filename = string("qvec_for_adj-", i, ".dat")
-      writedlm(filename, eqn.q_vec)
+    t = t_nextstep        # update time step
+
+    # adj.q_vec now contains the adjoint at time step i. 
+    # Previously, adj_nextstep corresponded to time step i, and adj corresponded to time step i+1.
+
+    #------- adjoint check
+    # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)     # t has been updated, so no t_nextstep
+    # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
+    if neg_time == true
+      omega = 1.0
+      v_bc = sin(omega*t)
+      dRdA = -1.0*jac*v_bc
+      dJdA = transpose(adj.q_vec)*dRdA
+      filename = string("dJdA_check-", i, ".dat")
+      writedlm(filename, transpose(dJdA))
+    end
+
+    if neg_time == false
+      # for adjoint_straight option: stores every time step's q to disk
+      # Note: cannot store full eqn object without extending one of the julia write methods
+      if store_u_to_disk == true
+        filename = string("qvec_for_adj-", i, ".dat")
+        writedlm(filename, eqn.q_vec)
+      end
+    else
+      # save every time step's adjoint to disk
+      if opts["adjoint_saveall"]
+        filename = string("adj-", i, ".dat")
+        writedlm(filename, adj.q_vec)
+      end
     end
 
     # Note: we now need to copy the updated q over for the initial newton guess
@@ -253,8 +278,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       end
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
     end
-
-    t = t_nextstep        # update time step
 
   end   # end of t step loop
 
