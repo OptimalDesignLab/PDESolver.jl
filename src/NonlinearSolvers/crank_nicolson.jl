@@ -134,6 +134,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     i_actual = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
 
     # load checkpoint to calculate dRdu at this time step
+    println("Setting IC for reverse sweep, i_actual (forward sweep time step index): ", i_actual)
     eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
 
     jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)

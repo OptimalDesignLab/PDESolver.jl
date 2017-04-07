@@ -202,6 +202,26 @@ function call{Tmsh, Tsol}(obj::sinwave_BC, u::Tsol, params::ParamType2,
 end
 
 @doc """
+### AdvectionEquationMod.sinwave_ampl_BC
+
+  Uses the Roe solver to calculate the boundary flux using calc_sinewave to
+  get the boundary state
+"""->
+type sinwave_ampl_BC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::sinwave_ampl_BC, u::Tsol, params::ParamType2,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_sinwave_ampl(coords, params, t)
+#  println("  u_bc = ", u_bc)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
+
+  return bndryflux
+end
+
+@doc """
 ### AdvectionEquationMod.sinwavey_BC
 
   Uses the Roe solver to calculate the boundary flux using calc_sinewavey to
@@ -524,6 +544,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "x5plusy5BC" => x5plusy5BC(),
 "exp_xplusyBC" => exp_xplusyBC(),
 "sinwaveBC" => sinwave_BC(),
+"sinwaveamplBC" => sinwave_ampl_BC(),
 "sinwaveyBC" => sinwavey_BC(),
 "sinwavey_pertBC" => sinwavey_pertBC(),
 "mms1BC" => mms1BC(),

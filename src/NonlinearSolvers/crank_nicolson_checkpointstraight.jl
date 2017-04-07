@@ -16,7 +16,7 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
   eqn_dummy = deepcopy(adj)                     # allocate a dummy eqn object
 
   filename = string("qvec_for_adj-", i_actual, ".dat")
-  println("Setting IC for reverse sweep with file: ", filename)
+  println("Calculating Jac using forward sweep data from: ", filename)
   q_vec_with_complex = readdlm(filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # because readdlm gives a field to the zero-valued complex part
 
