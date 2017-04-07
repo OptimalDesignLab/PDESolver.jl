@@ -12,7 +12,7 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-
+#=
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -192,10 +192,57 @@ function test_reversemode()
     end # End context("Checking Boundary Functional Integrand")
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
-
+=#
 
   facts("--- Testing SAT terms in Reverse Mode ---") do
+    # Test on geometric edge 3 (0 based indexing) with no penetration BC
 
+    pert = complex(0, 1e-20) # Complex step perturbation
+
+    params = eqn.params
+    start_index = mesh.bndry_offsets[4]
+    end_index = mesh.bndry_offsets[5]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
+    val_bar = ones(4) # 2D. Needs to be a random vector
+
+    nfaces = length(bndry_facenums)
+    nrm = zeros(size(sbp.facenormal,1))
+    for i = 1# :nfaces
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+      for j = 1 #:mesh.numNodesPerFace
+        q = sview(eqn.q_bndry, :, j, global_facenum)
+        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+        nrm[:] = sbp.facenormal[:,bndry_i.face]
+        nrm2 = params.nrm2
+        EulerEquationMod.calcBCNormal(params, dxidx, nrm, nrm2)
+        u = q[2]/q[1]
+        v = q[3]/q[1]
+        phi = 0.5*(u*u + v*v)
+        H = params.gamma*q[4]/q[1] - params.gamma_1*phi # Total Enthalpy
+        vel_bar = zeros(mesh.dim)
+        nrm2_bar = zeros(mesh.dim)
+        dq_bar = zeros(mesh.dim)
+        H_bar = EulerEquationMod.calcSAT_revm(params, nrm2, q, [u,v], H, val_bar,
+                       nrm2_bar, vel_bar, dq_bar)
+
+        # Check against complex step
+        sat = params.sat_vals
+        for k = 1:length(nrm2)
+          nrm2[k] += pert
+          EulerEquationMod.calcSAT(params, nrm2, q, sat, [u,v], H)
+          dSat = imag(sat[:])/imag(pert)
+          complex_valbar_SAT = dot(val_bar, dSat)
+          nrm2[k] -= pert
+          error = norm(complex_valbar_SAT - nrm2_bar, 2)
+          println("nrm2_bar = $(real(nrm2_bar)), complex_valbar_SAT = $(real(complex_valbar_SAT))")
+          # @fact error --> roughly(0.0, atol=1e-10)
+        end # End for k = 1:length(nrm2)
+      end # End for j = 1:mesh.numNodesPerFace
+    end   # End for i = 1:nfaces
 
   end # End facts("--- Testing SAT terms in Reverse Mode ---")
 
