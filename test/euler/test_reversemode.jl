@@ -196,6 +196,7 @@ function test_reversemode()
 
   facts("--- Testing SAT terms in Reverse Mode ---") do
     # Test on geometric edge 3 (0 based indexing) with no penetration BC
+    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
     pert = complex(0, 1e-20) # Complex step perturbation
 
@@ -214,6 +215,7 @@ function test_reversemode()
       global_facenum = idx_range[i]
       for j = 1 #:mesh.numNodesPerFace
         q = sview(eqn.q_bndry, :, j, global_facenum)
+        println("q = $(real(q))")
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm[:] = sbp.facenormal[:,bndry_i.face]
@@ -224,7 +226,7 @@ function test_reversemode()
         phi = 0.5*(u*u + v*v)
         H = params.gamma*q[4]/q[1] - params.gamma_1*phi # Total Enthalpy
         vel_bar = zeros(mesh.dim)
-        nrm2_bar = zeros(mesh.dim)
+        nrm2_bar = zeros(Complex128, mesh.dim)
         dq_bar = zeros(mesh.dim)
         H_bar = EulerEquationMod.calcSAT_revm(params, nrm2, q, [u,v], H, val_bar,
                        nrm2_bar, vel_bar, dq_bar)
@@ -237,8 +239,8 @@ function test_reversemode()
           dSat = imag(sat[:])/imag(pert)
           complex_valbar_SAT = dot(val_bar, dSat)
           nrm2[k] -= pert
-          error = norm(complex_valbar_SAT - nrm2_bar, 2)
-          println("nrm2_bar = $(real(nrm2_bar)), complex_valbar_SAT = $(real(complex_valbar_SAT))")
+          error = norm(complex_valbar_SAT - nrm2_bar[k], 2)
+          println("nrm2_bar = $(real(nrm2_bar[k])), complex_valbar_SAT = $(real(complex_valbar_SAT))")
           # @fact error --> roughly(0.0, atol=1e-10)
         end # End for k = 1:length(nrm2)
       end # End for j = 1:mesh.numNodesPerFace

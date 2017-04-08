@@ -31,7 +31,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "res_abstol" => 1e-10,
 "res_reltol" => 1e-9,
 "step_tol" => 1e-10,
-"itermax" => 30,
+"itermax" => 30, # 30
 
 "num_functionals" => 1,
 "functional_name1" => "lift",
@@ -54,7 +54,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "write_counts" => false,
 "write_vis" => false,
 "output_freq" => 1,
-"solve" => true,
+"solve" => false,
 "do_postproc" => true,
 "exact_soln_func" => "ICIsentropicVortex"
 )
