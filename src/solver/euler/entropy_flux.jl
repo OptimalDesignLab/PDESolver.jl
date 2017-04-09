@@ -201,7 +201,7 @@ function integrateQ{Tsol, Tres, Tmsh, Tdim}( mesh::AbstractDGMesh{Tmsh},
   end
 
   vals2 = zeros(vals)
-  MPI.Allreduce(vals, vals2, MPI.SUM, eqn.comm)
+  MPI.Allreduce!(vals, vals2, MPI.SUM, eqn.comm)
 
   return vals2
 end
