@@ -228,6 +228,9 @@ function test_reversemode()
         vel_bar = zeros(mesh.dim)
         nrm2_bar = zeros(Complex128, mesh.dim)
         dq_bar = zeros(mesh.dim)
+        println("nrm2 = $(real(nrm2))")
+        println("vel = $(real([u,v]))")
+        println("H = $(real(H))")
         H_bar = EulerEquationMod.calcSAT_revm(params, nrm2, q, [u,v], H, val_bar,
                        nrm2_bar, vel_bar, dq_bar)
 

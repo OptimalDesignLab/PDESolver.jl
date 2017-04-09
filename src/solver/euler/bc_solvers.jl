@@ -449,12 +449,12 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   dq2 = dq[2]
   dq3 = dq[3]
   dq4 = dq[4]
-
+  
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
-
+  
   E1dq = zeros(Tsol,4) # params.res_vals1
   E2dq = zeros(Tsol,4) # params.res_vals2
 
@@ -559,7 +559,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   dq3 = dq[3]
   dq4 = dq[4]
 
-  sat = params.sat_vals
+  sat = zeros(Tsol, 4) # params.sat_vals
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
@@ -594,32 +594,25 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   lambda1_bar += 0.5*tmp1_bar/(dA*a)
   lambda2_bar += -0.5*tmp1_bar/(dA*a)
   dA_bar += -0.5*(lambda1 - lambda2)*tmp1_bar/(dA*dA*a)
-  a_bar += -0.5*(lambda1 - lambda2)*tmp1_bar/(dA*a*a)
 
   # E2dq[2] = E2dq[2]*nx
-  nx_bar += E2dq_bar[2]*E2dq[2]
+  nx_bar += E2dq_bar[2]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   E2dq_bar[2] += E2dq_bar[2]*nx
 
   # E2dq[4] = E2dq[2]*Un
-  Un_bar += E2dq_bar[4]*E2dq[2]
+  Un_bar += E2dq_bar[4]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   E2dq_bar[2] += E2dq_bar[4]*Un
 
   # E2dq[3] = E2dq[2]*ny
-  ny_bar += E2dq_bar[3]*E2dq[2]
+  ny_bar += E2dq_bar[3]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   E2dq_bar[2] += E2dq_bar[3]*ny
 
   # E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
   phi_bar += E2dq_bar[2]*dq1
   dq_bar[1] += E2dq_bar[2]*phi
-  u_bar -= E2dq_bar[2]*dq2
-  dq_bar[2] -= E2dq_bar[2]*u
-  v_bar -= E2dq_bar[2]*dq3
-  dq_bar[3] -= E2dq_bar[2]*v
-  dq_bar[4] += E2dq_bar[2]
 
   # sat[4] = lambda3*dq4
   lambda3_bar += sat_bar[4]*dq4
-  dq_bar[4] += sat_bar[4]*lambda3
 
   # sat[3] = lambda3*dq3
   lambda3_bar += sat_bar[3]*dq3
@@ -632,42 +625,25 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   # sat[1] = lambda3*dq1
   lambda3_bar += sat_bar[1]*dq1
   dq_bar[1] += sat_bar[1]*lambda3
-#=
-  # rhoA = absvalue(Un) + dA*a
-  dA_bar += rhoA_bar*a
-  a_bar += rhoA_bar*dA
-  Un_bar += rhoA_bar*absvalue_deriv(Un)
-=#
+  
   # lambda3 = Un
   Un_bar += lambda3_bar
 
   # lambda2 = Un - dA*a
   Un_bar += lambda2_bar
   dA_bar -= lambda2_bar*a
-  a_bar -= lambda2_bar*dA
 
   # lambda1 = Un + dA*a
   Un_bar += lambda1_bar
   dA_bar += lambda1_bar*a
-  a_bar += lambda1_bar*dA
-
-  # a = sqrt(gami*(H - phi))
-  H_bar +=  0.5*a_bar*gami/a # a_bar*gami/sqrt(gami*(H - phi))
-  phi_bar -=  0.5*a_bar*gami/a # a_bar*gami/sqrt(gami*(H - phi))
-
-  # phi = 0.5*(u*u + v*v)
-  u_bar += phi_bar*u
-  v_bar += phi_bar*v
 
   # Un = u*nx + v*ny
-  u_bar += Un_bar*nx
   nx_bar += Un_bar*u
-  v_bar += Un_bar*ny
   ny_bar += Un_bar*v
 
   # dA = sqrt(nx*nx + ny*ny)
-  nx_bar += dA_bar*nx/dA # dA_bar*2*nx/sqrt(nx*nx + ny*ny)
-  ny_bar += dA_bar*ny/dA
+  nx_bar += dA_bar*nx/sqrt(nx*nx + ny*ny) # dA_bar*2*nx/sqrt(nx*nx + ny*ny)
+  ny_bar += dA_bar*ny/sqrt(nx*nx + ny*ny)
 
   # ny = nrm[2]
   nrm_bar[2] += ny_bar
@@ -792,15 +768,15 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   a_bar += -0.5*(lambda1 - lambda2)*tmp1_bar/(dA*a*a)
 
   # E2dq[2] = E2dq[2]*nx
-  nx_bar += E2dq_bar[2]*E2dq[2]
+  nx_bar += E2dq_bar[2]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   E2dq_bar[2] += E2dq_bar[2]*nx
 
   # E2dq[4] = E2dq[2]*Un
-  Un_bar += E2dq_bar[4]*E2dq[2]
+  Un_bar += E2dq_bar[4]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   E2dq_bar[2] += E2dq_bar[4]*Un
 
   # E2dq[3] = E2dq[2]*ny
-  ny_bar += E2dq_bar[3]*E2dq[2]
+  ny_bar += E2dq_bar[3]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   E2dq_bar[2] += E2dq_bar[3]*ny
 
   # E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
