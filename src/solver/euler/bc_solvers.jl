@@ -485,9 +485,9 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   E1dq[2] = E1dq[1]*u
   E1dq[3] = E1dq[1]*v
   E1dq[4] = E1dq[1]*H
-
+=#
   #-- get E4*dq
-  E2dq[1] = 0.0=#
+  E2dq[1] = 0.0
   E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
   E2dq[3] = E2dq[2]*ny
   E2dq[4] = E2dq[2]*Un
@@ -552,8 +552,6 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   lambda2 = Un - dA*a
   lambda3 = Un
 
-  rhoA = absvalue(Un) + dA*a
-
   dq1 = dq[1]
   dq2 = dq[2]
   dq3 = dq[3]
@@ -578,78 +576,58 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   for i=1:length(sat)
     sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
   end
-  
-  # Reverse Sweep
-  # for i=1:length(sat)
-  #   sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
-  # end
-  for i = length(sat_bar):-1:1
-    E1dq_bar[i] += tmp1*sat_bar[i]
+ 
+  # start reverse sweep
+  E2dq_bar = zeros(E2dq)
+  for i = 1:length(sat)
     E2dq_bar[i] += tmp1*gami*sat_bar[i]
-    tmp1_bar += sat_bar[i]*(E1dq[i] + gami*E2dq[i])
-    sat_bar[i] += sat_bar[i]
+    tmp1_bar += gami*E2dq[i]*sat_bar[i] 
+  end
+  # tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
+  lambda1_bar = (0.5/(dA*a))*tmp1_bar
+  lambda2_bar = -(0.5/(dA*a))*tmp1_bar
+  dA_bar = -(0.5*(lambda1 - lambda2)/(dA*dA*a))*tmp1_bar
+  
+  # E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  # E2dq[3] = E2dq[2]*ny
+  # E2dq[4] = E2dq[2]*Un
+  # E2dq[2] = E2dq[2]*nx
+  nx_bar = (phi*dq1 - u*dq2 - v*dq3 + dq4)*E2dq_bar[2]
+  ny_bar = (phi*dq1 - u*dq2 - v*dq3 + dq4)*E2dq_bar[3]
+  Un_bar = (phi*dq1 - u*dq2 - v*dq3 + dq4)*E2dq_bar[4]
+  
+  # sat[1] = lambda3*dq1
+  # sat[2] = lambda3*dq2
+  # sat[3] = lambda3*dq3
+  # sat[4] = lambda3*dq4
+  lambda3_bar = dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
+
+  # rhoA = cabs(Un) + dA*a !!!! I am computing the contribution here, but
+  # rhoA is not used in this stripped down version, so rhoA_bar is zero
+  # rhoA_bar = zero(Tres)
+  dA_bar += rhoA_bar*a
+  if real(Un) >= 0.0
+    Un_bar += rhoA_bar
+  else
+    Un_bar -= rhoA_bar
   end
 
-  # tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
-  lambda1_bar += 0.5*tmp1_bar/(dA*a)
-  lambda2_bar += -0.5*tmp1_bar/(dA*a)
-  dA_bar += -0.5*(lambda1 - lambda2)*tmp1_bar/(dA*dA*a)
-
-  # E2dq[2] = E2dq[2]*nx
-  nx_bar += E2dq_bar[2]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
-  E2dq_bar[2] += E2dq_bar[2]*nx
-
-  # E2dq[4] = E2dq[2]*Un
-  Un_bar += E2dq_bar[4]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
-  E2dq_bar[2] += E2dq_bar[4]*Un
-
-  # E2dq[3] = E2dq[2]*ny
-  ny_bar += E2dq_bar[3]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
-  E2dq_bar[2] += E2dq_bar[3]*ny
-
-  # E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
-  phi_bar += E2dq_bar[2]*dq1
-  dq_bar[1] += E2dq_bar[2]*phi
-
-  # sat[4] = lambda3*dq4
-  lambda3_bar += sat_bar[4]*dq4
-
-  # sat[3] = lambda3*dq3
-  lambda3_bar += sat_bar[3]*dq3
-  dq_bar[3] += sat_bar[3]*lambda3
-
-  # sat[2] = lambda3*dq2
-  lambda3_bar += sat_bar[2]*dq2
-  dq_bar[2] += sat_bar[2]*lambda3
-
-  # sat[1] = lambda3*dq1
-  lambda3_bar += sat_bar[1]*dq1
-  dq_bar[1] += sat_bar[1]*lambda3
-  
-  # lambda3 = Un
-  Un_bar += lambda3_bar
-
-  # lambda2 = Un - dA*a
-  Un_bar += lambda2_bar
-  dA_bar -= lambda2_bar*a
-
   # lambda1 = Un + dA*a
-  Un_bar += lambda1_bar
-  dA_bar += lambda1_bar*a
-
-  # Un = u*nx + v*ny
-  nx_bar += Un_bar*u
-  ny_bar += Un_bar*v
-
-  # dA = sqrt(nx*nx + ny*ny)
-  nx_bar += dA_bar*nx/sqrt(nx*nx + ny*ny) # dA_bar*2*nx/sqrt(nx*nx + ny*ny)
-  ny_bar += dA_bar*ny/sqrt(nx*nx + ny*ny)
-
-  # ny = nrm[2]
-  nrm_bar[2] += ny_bar
+  # lambda2 = Un - dA*a
+  # lambda3 = Un
+  Un_bar += lambda1_bar + lambda2_bar + lambda3_bar
+  dA_bar += a*lambda1_bar - a*lambda2_bar
 
   # nx = nrm[1]
-  nrm_bar[1] += nx_bar
+  # ny = nrm[2]
+  # dA = sqrt(nx*nx + ny*ny)
+  # Un = u*nx + v*ny
+  nx_bar += u*Un_bar
+  ny_bar += v*Un_bar
+  nx_bar += nx*dA_bar/dA
+  ny_bar += ny*dA_bar/dA
+  nrm_bar[1] = nx_bar
+  nrm_bar[2] = ny_bar
 
   return H_bar
 end
