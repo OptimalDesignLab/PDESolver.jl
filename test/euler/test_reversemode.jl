@@ -217,7 +217,6 @@ function test_reversemode()
       complex_valbar_SAT = dot(psi, dSat)
       nrm2[k] -= pert
       error = norm(complex_valbar_SAT - nrm2_bar[k], 2)
-      println("nrm2_bar = $(real(nrm2_bar[k])), complex_valbar_SAT = $(real(complex_valbar_SAT))")
       @fact error --> roughly(0.0, atol=1e-10)
     end # End for k = 1:length(nrm2)
 #=
