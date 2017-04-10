@@ -195,7 +195,7 @@ function test_reversemode()
 =#
 
   facts("--- Testing SAT terms in Reverse Mode ---") do
-    
+
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
     nrm2 = Complex128[-0.07115741913664266,-0.005089279059529922]
     vel = Complex128[0.020036954818477136,-0.671806401840292]
@@ -218,7 +218,7 @@ function test_reversemode()
       nrm2[k] -= pert
       error = norm(complex_valbar_SAT - nrm2_bar[k], 2)
       println("nrm2_bar = $(real(nrm2_bar[k])), complex_valbar_SAT = $(real(complex_valbar_SAT))")
-      # @fact error --> roughly(0.0, atol=1e-10)
+      @fact error --> roughly(0.0, atol=1e-10)
     end # End for k = 1:length(nrm2)
 #=
 # Test on geometric edge 3 (0 based indexing) with no penetration BC

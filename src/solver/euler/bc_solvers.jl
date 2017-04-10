@@ -441,7 +441,7 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   # approach zero. This has a possibility of creating numerical difficulties.
   # As a result, the eigen values are limited by the following expressions.
 
-#  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
   lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
   lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
 
@@ -526,7 +526,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
 # rhoA = 5.0 # DEbug
   rhoA = absvalue(Un) + dA*a
 
-#  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
   lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
   lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
 
@@ -694,7 +694,6 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   rhoA_bar += sat_Vn*intVar2_bar
   L2_bar += intVar1_bar*absvalue_deriv(L2)
 
-#=
   L1 = Un + dA*a
   # lambda1 = 0.5*(max(absvalue(L1),sat_Vn *rhoA) - L1)
   # intVar1 = absvalue(L1)
@@ -705,9 +704,8 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   L1_bar = -0.5*lambda1_bar
   intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un + dA*a), sat_Vn*rhoA, intVar3_bar)
   rhoA_bar += intVar2_bar*sat_Vn
-  Un_bar += intVar1_bar*absvalue_deriv(Un + dA*a)
-  dA_bar += intVar1_bar*absvalue_deriv(Un + dA*a)
-=#
+  L1_bar += intVar1_bar*absvalue_deriv(L1)
+
   # rhoA = absvalue(Un) + dA*a
   dA_bar += rhoA_bar*a
   if real(Un) >= 0.0
@@ -719,8 +717,8 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   # lambda1 = Un + dA*a
   # lambda2 = Un - dA*a
   # lambda3 = Un
-  Un_bar += lambda1_bar + L2_bar #  + lambda3_bar
-  dA_bar += a*lambda1_bar - a*L2_bar
+  Un_bar += L1_bar + L2_bar #  + lambda3_bar
+  dA_bar += a*L1_bar - a*L2_bar
 
   # nx = nrm[1]
   # ny = nrm[2]
