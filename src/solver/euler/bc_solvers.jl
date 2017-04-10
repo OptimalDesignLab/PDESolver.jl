@@ -455,9 +455,9 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
   
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
-#=
+  E1dq = zeros(Tsol, 4)# params.res_vals1
+  E2dq = zeros(Tsol, 4) # params.res_vals2
+
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
   E1dq[2] = E1dq[1]*u
@@ -484,7 +484,7 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   E1dq[2] = E1dq[1]*u
   E1dq[3] = E1dq[1]*v
   E1dq[4] = E1dq[1]*H
-=#
+
   #-- get E4*dq
   E2dq[1] = 0.0
   E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
@@ -539,13 +539,12 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
-  
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
+
+  E1dq = zeros(Tsol, 4) # params.res_vals1
+  E2dq = zeros(Tsol, 4) # params.res_vals2
   E3dq = zeros(Tsol, 4)
   E4dq = zeros(Tsol, 4)
-
-#=  
+  
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
   E1dq[2] = E1dq[1]*u
@@ -572,7 +571,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   E3dq[2] = E3dq[1]*u
   E3dq[3] = E3dq[1]*v
   E3dq[4] = E3dq[1]*H
-=#
+
   #-- get E4*dq
   E4dq[1] = 0.0
   E4dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
@@ -610,18 +609,21 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   nx_bar = E4dq_bar[2]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   Un_bar = E4dq_bar[4]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
   ny_bar = E4dq_bar[3]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
-#=
+
   # E3dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
   # E3dq[2] = E3dq[1]*u
   # E3dq[3] = E3dq[1]*v
   # E3dq[4] = E3dq[1]*H
   E3dq_bar[1] += E3dq_bar[4]*H + E3dq_bar[3]*v + E3dq_bar[2]*u
   Un_bar += -E3dq_bar[1]*dq1
+  nx_bar += E3dq_bar[1]*dq2
+  ny_bar += E3dq_bar[1]*dq3
 
   #  for i=1:length(sat)
   #    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
   #  end
   tmp1 = 0.5*(lambda1 + lambda2) - lambda3 # For E1dq & E2dq matrices
+  tmp1_bar = zero(Tsol) # Reset tmp1_bar to 0 since the variable is being reused
   E1dq_bar = zeros(Tsol, 4)
   E2dq_bar = zeros(Tsol, 4)
   tmp3_bar = zero(Tsol)
@@ -631,7 +633,6 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
     tmp1_bar += sat_bar[i]*(tmp2*E1dq[i] + tmp3*E2dq[i])
     tmp3_bar += sat_bar[i]*tmp1*E2dq[i]
   end
-
 
   # tmp1 = 0.5*(lambda1 + lambda2) - lambda3
   # tmp2 = gami/(a*a)
@@ -660,12 +661,12 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   # E1dq[2] = E1dq[1]*u
   # E1dq[3] = E1dq[1]*v
   # E1dq[4] = E1dq[1]*H
-=#
+
   # sat[1] = lambda3*dq1
   # sat[2] = lambda3*dq2
   # sat[3] = lambda3*dq3
   # sat[4] = lambda3*dq4
-  lambda3_bar = dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
+  lambda3_bar += dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
 
   # lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
   # lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
