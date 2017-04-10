@@ -634,7 +634,7 @@ function max_deriv_rev{Tval}(x::Tval, y::Tval, max_val_bar::Tval)
   x_bar = zero(Tval)
   y_bar = zero(Tval)
   
-  if x > y
+  if real(x) > real(y)
     x_bar += max_val_bar
   else
     y_bar += max_val_bar

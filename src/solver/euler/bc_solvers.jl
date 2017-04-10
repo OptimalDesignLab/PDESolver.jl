@@ -433,6 +433,7 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   lambda2 = Un - dA*a
   lambda3 = Un
 
+#  rhoA = 5.0 # debug
   rhoA = absvalue(Un) + dA*a
 
   # Compute Eigen Values of the Flux Jacobian
@@ -440,11 +441,11 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   # points lambda3 approaches zero while near sonic lines lambda1 and lambda2
   # approach zero. This has a possibility of creating numerical difficulties.
   # As a result, the eigen values are limited by the following expressions.
-#=
-  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+
+#  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
   lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
   lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
-=#
+
   dq1 = dq[1]
   dq2 = dq[2]
   dq3 = dq[3]
@@ -523,12 +524,13 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   lambda1 = Un + dA*a
   lambda2 = Un - dA*a
   lambda3 = Un
+# rhoA = 5.0 # DEbug
   rhoA = absvalue(Un) + dA*a
-#=  
-  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  
+#  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
   lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
   lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
-=#
+
   dq1 = dq[1]
   dq2 = dq[2]
   dq3 = dq[3]
@@ -668,11 +670,47 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   # sat[4] = lambda3*dq4
   lambda3_bar += dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
 
+  rhoA_bar = zero(Tsol) 
   # lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
-  # lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  # lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  rhoA_bar = zero(Tsol)
+  # Breaking the above down. lambda3 on RHS = Un
+  # intVar1 = = absvalue(Un)
+  # intVar2 = sat_Vl*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda3 = 0.5*(intVar3 - Un)
+  intVar3_bar = 0.5*lambda3_bar
+  Un_bar -= 0.5*lambda3_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un), sat_Vl*rhoA, intVar3_bar)
+  rhoA_bar += sat_Vl*intVar2_bar
+  Un_bar += intVar1_bar*absvalue_deriv(Un)
 
+  # lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  # lambda2 on RHS = Un - dA*a 
+  # intVar1 = absvalue(Un - dA*a)
+  # intVar2 = sat_Vn*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda2 = 0.5*(intVar3 - Un + dA*a)
+  intVar3_bar = 0.5*lambda2_bar
+  Un_bar -= 0.5*lambda2_bar
+  dA_bar += lambda2_bar*0.5*a
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un - dA*a), sat_Vn*rhoA, intVar3_bar)
+  rhoA_bar += sat_Vn*intVar2_bar
+  Un_bar += intVar1_bar*absvalue_deriv(Un - dA*a)
+  dA_bar -= intVar1_bar*absvalue_deriv(Un - dA*a)
+#=
+  # lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  # lambda1 on RHS = Un + dA*a
+  # intVar1 = absvalue(Un + dA*a)
+  # intVar2 = sat_Vn*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda1 = 0.5*(intVar3 - Un - dA*a)
+  intVar3_bar = 0.5*lambda1_bar
+  Un_bar -= 0.5*lambda1_bar
+  dA_bar -= lambda1_bar*0.5*a
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un + dA*a), sat_Vn*rhoA, intVar3_bar)
+  rhoA_bar += intVar2_bar*sat_Vn
+  Un_bar += intVar1_bar*absvalue_deriv(Un + dA*a)
+  dA_bar += intVar1_bar*absvalue_deriv(Un + dA*a)  
+=#
   # rhoA = absvalue(Un) + dA*a
   dA_bar += rhoA_bar*a
   if real(Un) >= 0.0
@@ -680,12 +718,12 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   else
     Un_bar -= rhoA_bar
   end
-  
+ 
   # lambda1 = Un + dA*a
   # lambda2 = Un - dA*a
   # lambda3 = Un
-  Un_bar += lambda1_bar + lambda2_bar + lambda3_bar
-  dA_bar += a*lambda1_bar - a*lambda2_bar
+  Un_bar += lambda1_bar #+ lambda2_bar #  + lambda3_bar
+  dA_bar += a*lambda1_bar # - a*lambda2_bar
 
   # nx = nrm[1]
   # ny = nrm[2]
@@ -700,136 +738,6 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
 
   return nothing
 end
-#=
-function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
-                 dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
-                 H::Tsol, sat_bar, nrm_bar, vel_bar, dq_bar)
-
-  # Define reverse sweep variables
-  E1dq_bar = zeros(Tsol, 4)
-  E2dq_bar = zeros(Tsol, 4)
-  lambda1_bar = zero(Tsol)
-  lambda2_bar = zero(Tsol)
-  lambda3_bar = zero(Tsol)
-  dA_bar = zero(Tsol)
-  a_bar = zero(Tsol)
-  nx_bar = zero(Tsol)
-  ny_bar = zero(Tsol)
-  Un_bar = zero(Tsol)
-  phi_bar = zero(Tsol)
-  dq_bar = zeros(Tsol, 4) # For 2D
-  u_bar = zero(Tsol)
-  v_bar = zero(Tsol)
-  H_bar = zero(Tsol)
-  tmp1_bar = zero(Tsol)
-  tmp2_bar = zero(Tsol)
-  tmp3_bar = zero(Tsol)
-  rhoA_bar = zero(Tsol)
-
-  # Forward Sweep
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
-
-  u = vel[1]
-  v = vel[2]
-
-  gami = params.gamma_1
-
-  # Begin main executuion
-  nx = nrm[1]
-  ny = nrm[2]
-
-  dA = sqrt(nx*nx + ny*ny)
-
-  Un = u*nx + v*ny # Normal Velocity
-
-  phi = 0.5*(u*u + v*v)
-  a = sqrt(gami*(H - phi)) # speed of sound
-
-  lambda1 = Un + dA*a
-  lambda2 = Un - dA*a
-  lambda3 = Un
-
-  dq1 = dq[1]
-  dq2 = dq[2]
-  dq3 = dq[3]
-  dq4 = dq[4]
-
-  sat = zeros(Tsol, 4) # params.sat_vals
-  sat[1] = lambda3*dq1
-  sat[2] = lambda3*dq2
-  sat[3] = lambda3*dq3
-  sat[4] = lambda3*dq4
-
-  E1dq = zeros(Tsol,4) # params.res_vals1
-  E2dq = zeros(Tsol,4) # params.res_vals2
-
-  E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
-  E2dq[3] = E2dq[2]*ny
-  E2dq[4] = E2dq[2]*Un
-  E2dq[2] = E2dq[2]*nx
-
-  #-- add to sat
-  tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
-  for i=1:length(sat)
-    sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
-  end
- 
-  # start reverse sweep
-  E2dq_bar = zeros(E2dq)
-  for i = 1:length(sat)
-    E2dq_bar[i] += tmp1*gami*sat_bar[i]
-    tmp1_bar += gami*E2dq[i]*sat_bar[i] 
-  end
-  # tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
-  lambda1_bar = (0.5/(dA*a))*tmp1_bar
-  lambda2_bar = -(0.5/(dA*a))*tmp1_bar
-  dA_bar = -(0.5*(lambda1 - lambda2)/(dA*dA*a))*tmp1_bar
-  
-  # E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
-  # E2dq[3] = E2dq[2]*ny
-  # E2dq[4] = E2dq[2]*Un
-  # E2dq[2] = E2dq[2]*nx
-  nx_bar = (phi*dq1 - u*dq2 - v*dq3 + dq4)*E2dq_bar[2]
-  ny_bar = (phi*dq1 - u*dq2 - v*dq3 + dq4)*E2dq_bar[3]
-  Un_bar = (phi*dq1 - u*dq2 - v*dq3 + dq4)*E2dq_bar[4]
-  
-  # sat[1] = lambda3*dq1
-  # sat[2] = lambda3*dq2
-  # sat[3] = lambda3*dq3
-  # sat[4] = lambda3*dq4
-  lambda3_bar = dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
-
-  # rhoA = cabs(Un) + dA*a !!!! I am computing the contribution here, but
-  # rhoA is not used in this stripped down version, so rhoA_bar is zero
-  # rhoA_bar = zero(Tres)
-  dA_bar += rhoA_bar*a
-  if real(Un) >= 0.0
-    Un_bar += rhoA_bar
-  else
-    Un_bar -= rhoA_bar
-  end
-
-  # lambda1 = Un + dA*a
-  # lambda2 = Un - dA*a
-  # lambda3 = Un
-  Un_bar += lambda1_bar + lambda2_bar + lambda3_bar
-  dA_bar += a*lambda1_bar - a*lambda2_bar
-
-  # nx = nrm[1]
-  # ny = nrm[2]
-  # dA = sqrt(nx*nx + ny*ny)
-  # Un = u*nx + v*ny
-  nx_bar += u*Un_bar
-  ny_bar += v*Un_bar
-  nx_bar += nx*dA_bar/dA
-  ny_bar += ny*dA_bar/dA
-  nrm_bar[1] = nx_bar
-  nrm_bar[2] = ny_bar
-
-  return H_bar
-end
-=#
 #=
 function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
                  dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
