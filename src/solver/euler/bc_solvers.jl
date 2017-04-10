@@ -433,7 +433,6 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   lambda2 = Un - dA*a
   lambda3 = Un
 
-#  rhoA = 5.0 # debug
   rhoA = absvalue(Un) + dA*a
 
   # Compute Eigen Values of the Flux Jacobian
@@ -450,12 +449,12 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   dq2 = dq[2]
   dq3 = dq[3]
   dq4 = dq[4]
-  
+
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
-  
+
   E1dq = zeros(Tsol, 4)# params.res_vals1
   E2dq = zeros(Tsol, 4) # params.res_vals2
 
@@ -499,7 +498,7 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   for i=1:length(sat)
     sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
   end
-  
+
   return nothing
 end  # End function calcSAT
 
@@ -513,7 +512,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   u = vel[1]
   v = vel[2]
   gami = params.gamma_1
-  
+
   # Begin main executuion
   nx = nrm[1]
   ny = nrm[2]
@@ -526,7 +525,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   lambda3 = Un
 # rhoA = 5.0 # DEbug
   rhoA = absvalue(Un) + dA*a
-  
+
 #  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
   lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
   lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
@@ -535,7 +534,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   dq2 = dq[2]
   dq3 = dq[3]
   dq4 = dq[4]
-  
+
   sat = zeros(Tsol, 4)
   sat[1] = lambda3*dq1
   sat[2] = lambda3*dq2
@@ -546,7 +545,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   E2dq = zeros(Tsol, 4) # params.res_vals2
   E3dq = zeros(Tsol, 4)
   E4dq = zeros(Tsol, 4)
-  
+
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
   E1dq[2] = E1dq[1]*u
@@ -670,7 +669,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   # sat[4] = lambda3*dq4
   lambda3_bar += dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
 
-  rhoA_bar = zero(Tsol) 
+  rhoA_bar = zero(Tsol)
   # lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
   # Breaking the above down. lambda3 on RHS = Un
   # intVar1 = = absvalue(Un)
@@ -683,33 +682,31 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   rhoA_bar += sat_Vl*intVar2_bar
   Un_bar += intVar1_bar*absvalue_deriv(Un)
 
-  # lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  # lambda2 on RHS = Un - dA*a 
-  # intVar1 = absvalue(Un - dA*a)
+  L2 = Un - dA*a
+  # lambda2 = 0.5*(max(absvalue(L2),sat_Vn *rhoA) - L2)
+  # intVar1 = absvalue(L2)
   # intVar2 = sat_Vn*rhoA
   # intVar3 = max(intVar1, intVar2)
-  # lambda2 = 0.5*(intVar3 - Un + dA*a)
+  # lambda2 = 0.5*(intVar3 - L2)
   intVar3_bar = 0.5*lambda2_bar
-  Un_bar -= 0.5*lambda2_bar
-  dA_bar += lambda2_bar*0.5*a
-  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un - dA*a), sat_Vn*rhoA, intVar3_bar)
+  L2_bar = -0.5*lambda2_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(L2), sat_Vn*rhoA, intVar3_bar)
   rhoA_bar += sat_Vn*intVar2_bar
-  Un_bar += intVar1_bar*absvalue_deriv(Un - dA*a)
-  dA_bar -= intVar1_bar*absvalue_deriv(Un - dA*a)
+  L2_bar += intVar1_bar*absvalue_deriv(L2)
+
 #=
-  # lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  # lambda1 on RHS = Un + dA*a
-  # intVar1 = absvalue(Un + dA*a)
+  L1 = Un + dA*a
+  # lambda1 = 0.5*(max(absvalue(L1),sat_Vn *rhoA) - L1)
+  # intVar1 = absvalue(L1)
   # intVar2 = sat_Vn*rhoA
   # intVar3 = max(intVar1, intVar2)
-  # lambda1 = 0.5*(intVar3 - Un - dA*a)
+  # lambda1 = 0.5*(intVar3 - L1)
   intVar3_bar = 0.5*lambda1_bar
-  Un_bar -= 0.5*lambda1_bar
-  dA_bar -= lambda1_bar*0.5*a
+  L1_bar = -0.5*lambda1_bar
   intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un + dA*a), sat_Vn*rhoA, intVar3_bar)
   rhoA_bar += intVar2_bar*sat_Vn
   Un_bar += intVar1_bar*absvalue_deriv(Un + dA*a)
-  dA_bar += intVar1_bar*absvalue_deriv(Un + dA*a)  
+  dA_bar += intVar1_bar*absvalue_deriv(Un + dA*a)
 =#
   # rhoA = absvalue(Un) + dA*a
   dA_bar += rhoA_bar*a
@@ -718,12 +715,12 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   else
     Un_bar -= rhoA_bar
   end
- 
+
   # lambda1 = Un + dA*a
   # lambda2 = Un - dA*a
   # lambda3 = Un
-  Un_bar += lambda1_bar #+ lambda2_bar #  + lambda3_bar
-  dA_bar += a*lambda1_bar # - a*lambda2_bar
+  Un_bar += lambda1_bar + L2_bar #  + lambda3_bar
+  dA_bar += a*lambda1_bar - a*L2_bar
 
   # nx = nrm[1]
   # ny = nrm[2]
