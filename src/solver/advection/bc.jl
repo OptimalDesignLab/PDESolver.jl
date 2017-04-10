@@ -512,6 +512,40 @@ function call{Tmsh, Tsol}(obj::xplusyBC, u::Tsol, params::ParamType2,
   return bndryflux
 end
 
+
+"""
+  BC for unsteadymms
+"""
+type unsteadymmsBC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::unsteadymmsBC, u::Tsol, params::ParamType,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_unsteadymms(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
+
+  return bndryflux
+end
+
+"""
+  BC for unsteadypoly
+"""
+type unsteadypolyBC <: BCType
+end
+
+function call{Tmsh, Tsol}(obj::unsteadypolyBC, u::Tsol, params::ParamType,
+              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, t)
+
+  u_bc = calc_unsteadypoly(coords, params, t)
+  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
+
+  return bndryflux
+end
+
+
 @doc """
 ### AdvectionEquationMod.BCDict
 
@@ -539,6 +573,8 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "exp2xplus2yBC" => exp2xplus2yBC(),
 "exp_xyBC" => exp_xyBC(),
 "xplusyBC" => xplusyBC(),
+"unsteadymmsBC" => unsteadymmsBC(),
+"unsteadypolyBC" => unsteadypolyBC(),
 )
 
 
@@ -567,7 +603,7 @@ function getBCFunctors{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Abstract
                        eqn::AdvectionData{Tsol, Tdim}, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
-#  println("Entered getBCFunctors")
+  println("Entered getBCFunctors")
 
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")

@@ -216,6 +216,7 @@ function postproc(mesh, sbp, eqn, opts)
   myrank = mesh.myrank
 
   if opts["do_postproc"] && opts["solve"]
+    println("final time = ", eqn.t)
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
       exfunc = ICDict[exfname]
@@ -231,6 +232,9 @@ function postproc(mesh, sbp, eqn, opts)
         println("solution error norm = ", diff_norm)
         println("solution discrete L2 norm = ", discrete_norm)
       end
+
+      saveSolutionToMesh(mesh, real(q_diff))
+      writeVisFiles(mesh, "solution_error")
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
       exact_norm = calcNorm(eqn, q_exact)

@@ -145,22 +145,42 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
 
 end
 
-@doc """
-  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q 
-  and F is a symmetric numerical flux function.  eqn.res is updated 
-  with the result.
+"""
+  Calculate (S .*F)1 where S is the skew symmetric part of sbp.Q and F
+  is a symmetric numerical flux function.  eqn.res is updated with the result.
+  Methods are available for curvilinear and non-curvilinear meshes
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    functor: the numerical flux function F, of type FluxType
 """
 function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
                                         mesh::AbstractMesh{Tmsh}, 
                                         sbp::AbstractSBP,  
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
+  if mesh.coord_order == 1
+    calcVolumeIntegralsSplitFormLinear(mesh, sbp, eqn, opts, functor)
+  else
+    calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn, opts, functor)
+  end
 
-  #TODO:
-  #      Compute the numerical flux function more efficiently.  
-  #      in particular, computing the flux for 3 different normal vectors
-  #      at the same time could reuse a lot of the computation
-  #
+  return nothing
+end
+
+@doc """
+  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q 
+  and F is a symmetric numerical flux function.  eqn.res is updated 
+  with the result.  Linear (non-curvilinear) meshes only
+"""
+function calcVolumeIntegralsSplitFormLinear{Tmsh, Tsol, Tres, Tdim}(
+                                        mesh::AbstractMesh{Tmsh}, 
+                                        sbp::AbstractSBP,  
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                                        functor::FluxType)
 
 #  println("----- entered calcVolumeIntegralsSplitForm -----")
   dxidx = mesh.dxidx
@@ -185,6 +205,66 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
             nrm[p, d] = dxidx[d, p, j, i] 
           end
         end
+
+        # calculate the numerical flux functions in all Tdim
+        # directions at once
+        functor(params, q_j, q_k, aux_vars_j, nrm, F_d)
+
+        @simd for d=1:Tdim
+          # update residual
+          @simd for p=1:(Tdim+2)
+            res[p, j, i] -= 2*S[j, k, d]*F_d[p, d]
+            res[p, k, i] += 2*S[j, k, d]*F_d[p, d]
+          end
+
+        end  # end d loop
+      end  # end k loop
+
+
+    end  # end j loop
+  end  # end i loop
+
+  return nothing
+end
+
+@doc """
+  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q 
+  and F is a symmetric numerical flux function.  eqn.res is updated 
+  with the result.  This function is used for curvilinear meshes.
+"""
+function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
+                                        mesh::AbstractMesh{Tmsh}, 
+                                        sbp::AbstractSBP,  
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                                        functor::FluxType)
+
+#  println("----- entered calcVolumeIntegralsSplitForm -----")
+  dxidx = mesh.dxidx
+  res = eqn.res
+  q = eqn.q
+  nrm = eqn.params.nrmD
+  aux_vars = eqn.aux_vars
+  F_d = eqn.params.flux_valsD
+#  S = eqn.params.S
+  S = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  params = eqn.params
+
+  # S is calculated in x-y-z, so the normal vectors should be the unit normals
+  fill!(nrm, 0.0)
+  for d=1:Tdim
+    nrm[d, d] = 1
+  end
+  
+  for i=1:mesh.numEl
+    # get S for this element
+    dxidx_i = sview(dxidx, :, :, :, i)
+    calcSCurvilinear(sbp, dxidx_i, S)
+
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(q, :, j, i)
+      aux_vars_j = sview(aux_vars, :, j, i)
+      for k=1:(j-1)  # loop over lower triangle of S
+        q_k = sview(q, :, k, i)
 
         # calculate the numerical flux functions in all Tdim
         # directions at once
@@ -1334,7 +1414,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
   q = eqn.q_vec
-  max_speed = zero(eltype(q))
+  max_speed = zero(Float64)
   for i=1:mesh.numDofPerNode:length(q)
     q_i = sview(q, i:(i+mesh.numDofPerNode - 1))
     a = calcSpeedofSound(eqn.params, q_i)
@@ -1343,8 +1423,8 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
       u_j = q_i[j+1]/q_i[1] 
       u_nrm += u_j*u_j
     end
-    u_norm = sqrt(u_nrm)
-    speed = a + u_norm
+    u_norm = sqrt(real(u_nrm))
+    speed = real(a) + u_norm
 
     if speed > max_speed
       max_speed = speed

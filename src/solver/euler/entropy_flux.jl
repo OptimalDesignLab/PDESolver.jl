@@ -201,7 +201,7 @@ function integrateQ{Tsol, Tres, Tmsh, Tdim}( mesh::AbstractDGMesh{Tmsh},
   end
 
   vals2 = zeros(vals)
-  MPI.Allreduce(vals, vals2, MPI.SUM, eqn.comm)
+  MPI.Allreduce!(vals, vals2, MPI.SUM, eqn.comm)
 
   return vals2
 end
@@ -317,6 +317,42 @@ function calcEnstrophy{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,
 
   return 0.5*val/mesh.volume
 end
+
+
+function getVorticity{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres}, opts)
+# get an array of the vorticity at every node
+# also computes enstrophy
+
+  new_field = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  vorticity = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
+  for i=1:mesh.numEl
+    q_i = sview(eqn.q, :, :, i)
+    dxidx_i = sview(mesh.dxidx, :, :, :, i)
+    jac_i = sview(mesh.jac, :, i)
+
+    calcVorticity(eqn.params, sbp, q_i, dxidx_i, jac_i, vorticity)
+
+    # copy into new_field
+    for j=1:mesh.numNodesPerElement
+      for k=1:3
+        new_field[k, j, i] = real(vorticity[k, j])
+      end
+      vorticity_mag = real(sqrt(vorticity[1, j]^2 + vorticity[2, j]^2 + vorticity[3, j]^2))
+      new_field[4, j, i] = real(vorticity_mag)
+      new_field[5, j, i] = real(eqn.q[1, j, i]*vorticity_mag)
+
+    end
+
+  end
+
+  myrank = mesh.myrank
+  writedlm("q2.dat", new_field)
+
+  return new_field
+end
+
+
+
 
 """
   This function calculates ( 1/(2*V) )*integral(rho * v dot v dV), where

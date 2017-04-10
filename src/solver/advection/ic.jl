@@ -375,6 +375,37 @@ function ICxplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+
+function ICunsteadymms{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+                            opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      u0[dofnums_j] = calc_unsteadymms(mesh.coords[:, j, i], eqn.params, eqn.t)
+    end
+  end
+
+  return nothing
+end
+
+function ICunsteadypoly{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+                            opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      u0[dofnums_j] = calc_unsteadypoly(mesh.coords[:, j, i], eqn.params, eqn.t)
+    end
+  end
+
+  return nothing
+end
+
+
+
 @doc """
 ### AdvectionEquationMod.ICFile
 
@@ -441,4 +472,6 @@ global const ICDict = Dict{Any, Function}(
 "ICexp2xplus2y" => ICexp2xplus2y,
 "ICexp_xy" => ICexp_xy,
 "ICxplusy" => ICxplusy,
+"ICunsteadymms" => ICunsteadymms,
+"ICunsteadypoly" => ICunsteadypoly,
 )

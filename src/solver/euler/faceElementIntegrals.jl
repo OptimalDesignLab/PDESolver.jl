@@ -39,10 +39,11 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::Abstract3DArray{Tmsh},
+                             nrm_xy::AbstractMatrix{Tmsh},
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
+
 
 #  Flux_tmp = params.flux_vals1
   fluxD = params.flux_valsD
@@ -50,22 +51,11 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 #  numDofPerNode = length(Flux_tmp)
 #  nrm = params.nrm
 
-  # calculate the normal vector in x-y space
   nrmD = params.nrmD
-  nrm_xy = params.nrm_face
   fill!(nrmD, 0.0)
-#  nrm_xy = zeros(Tmsh, 3, sbpface.numnodes)
-  for dim=1:Tdim
-    nrmD[dim, dim] = 1  # calculate fluxes in x, y, z directions
-    for k=1:sbpface.numnodes
-      nrm_k = zero(Tmsh)
-      for d = 1:Tdim
-        nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, k]
-      end
-      nrm_xy[k, dim] = nrm_k
-    end
+  for d=1:Tdim
+    nrmD[d, d] = 1
   end
-
 
     # loop over the nodes of "left" element that are in the stencil of interp
   for i = 1:sbpface.stencilsize
@@ -93,7 +83,7 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
         @simd for k = 1:sbpface.numnodes
           # the computation of nrm_k could be moved outside i,j loops and saved
           # in an array of size [3, sbp.numnodes]
-          nrm_k = nrm_xy[k, dim]
+          nrm_k = nrm_xy[dim, k]
           kR = sbpface.nbrperm[k, iface.orient]
           Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
         end  # end loop k
@@ -126,7 +116,7 @@ function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::Abstract3DArray{Tmsh},
+                             dxidx_face::AbstractArray{Tmsh},
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
@@ -152,7 +142,7 @@ function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::Abstract3DArray{Tmsh},
+                             dxidx_face::AbstractArray{Tmsh},  # dxidx or nrm
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
@@ -178,37 +168,16 @@ function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::Abstract3DArray{Tmsh},
+                             dxidx_face::AbstractArray{Tmsh}, # dxidx or nrm
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-#  print("\n")
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
                      functor, resL, resR)
-#=
-  resL2 = copy(resL)
-  resR2 = copy(resR)
-  resL_initial = copy(resL)
-=#
   calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
                                 dxidx_face, resL, resR)
 
-#=
-  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                             dxidx_face, resL2, resR2)
-
-  println("LW residual = \n", resL_initial - resL)
-  println("LF residual = \n", resL_initial - resL2)
-  println("diff = \n", resL - resL2)
-  if norm(resL2 - resL) > 1e-12
-#    println("finally, resL = \n", resL, "\nresL2 = \n", resL2)
-    println("resL diff = \n", resL2 - resL)
-#    println("resL_initial - resL = \n", resL_initial - resL)
-#    println("resL_initial - resL2 = \n", resL_initial - resL2)
-    error("")
-  end
-=#
   return nothing
 end
 
@@ -229,12 +198,11 @@ end
 
   Aliasing restrictions: params.nrm2, params.A0, w_vals_stencil, w_vals2_stencil
 """
-
 function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::AbstractFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-             aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 #  println("----- entered calcLFEntropyPenaltyIntegral -----")
@@ -274,12 +242,13 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   # convert wL at the node back to qL
 #  qL_i = zeros(Tsol, numDofPerNode)
 #  qR_i = zeros(Tsol, numDofPerNode)
-  dir = params.nrm2
+#  dir = params.nrm2
   A0 = params.A0
   fastzero!(A0)
 
   @simd for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i, iface.orient]
+    dir = sview(nrm_face, :, i)
     fastzero!(wL_i)
     fastzero!(wR_i)
 #    fastzero!(qL_i)
@@ -298,14 +267,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
       end
     end
 
-    # get the normal vector (scaled)
-    for dim =1:Tdim
-      nrm_dim = zero(Tmsh)
-      for d = 1:Tdim
-        nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
-      end
-      dir[dim] = nrm_dim
-    end
 
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
@@ -377,13 +338,11 @@ end
     Y, S2, Lambda, res_vals1, res_vals2, res_vals3,  w_vals_stencil, 
     w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2
 """
-
-
 function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::AbstractFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-             aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 #  println("----- entered calcEntropyLWEntropyPenaltyIntegral -----")
@@ -455,10 +414,13 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     # get the normal vector (scaled)
 
     for dim =1:Tdim
+      #=
       nrm_dim = zero(Tmsh)
       for d = 1:Tdim
         nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
       end
+      =#
+      nrm_dim = nrm_face[dim, i]
 
       # get the eigensystem in the current direction
       if dim == 1
@@ -550,7 +512,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::AbstractFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-             aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 #  println("----- entered calcLW2EntropyPenaltyIntegral -----")
@@ -619,7 +581,7 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
 
     # get the normal vector (scaled)
-
+#=
     for dim =1:Tdim
       nrm_dim = zero(Tmsh)
       for d = 1:Tdim
@@ -628,11 +590,14 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
       nrm[dim] = nrm_dim
     end
-
+=#
+    for dim=1:Tdim
+      nrm[dim] = nrm_face[dim, i]
+    end
     # normalize direction vector
     len_fac = calcLength(params, nrm)
     for dim=1:Tdim
-      nrm[dim] /= len_fac
+      nrm[dim] = nrm[dim]/len_fac
     end
 
     # project q into n-t coordinate system
@@ -771,15 +736,16 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                       functor, resL, resR)
 
 end
+
 
 """
   Entropy conservative integral + Lax-Friedrich penalty
@@ -791,12 +757,12 @@ end
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcESLFFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+  calcESLFFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
 
 end
 
@@ -810,12 +776,12 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ELFPenaltyFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)
 
 end
 
@@ -829,12 +795,12 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLWFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+  calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
 
 end
 
@@ -848,12 +814,12 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ELWPenaltyFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+  calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)
 
 end
 
@@ -867,11 +833,11 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLW2FaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
-  calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, functor, resL, resR)
+  calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
 
 end
 
@@ -885,12 +851,12 @@ function call{Tsol, Tres, Tmsh, Tdim}(obj::ELW2PenaltyFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, dxidx_face::Abstract3DArray{Tmsh},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
 
-  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, resL, resR)
+  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)
 
 end
 

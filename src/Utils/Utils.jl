@@ -19,6 +19,7 @@ include("logging.jl")
 include("projections.jl")
 include("complexify.jl")
 include("mass_matrix.jl")
+include("curvilinear.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH
@@ -33,7 +34,7 @@ export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
 export fastzero!, fastscale!
-
+export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
@@ -46,6 +47,9 @@ export printSolution, printCoordinates, printMatrix
 # mass_matrix.jl
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D, 
        applyMassMatrixInverse
+
+# curvilinear.jl
+export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
 
 @doc """
 ### Utils.disassembleSolution
@@ -463,7 +467,7 @@ end
 """
   Permute the rows of A according to the permvec, storing the result in B
   The permvec contains the source indices for each entry in B, ie.
-  B[permvec[i]] comes from A[i].  This is consistent with the mathematical
+  B[i] comes from A[permvec[i]].  This is consistent with the mathematical
   definition of a permutation that pre-multiplication by a permutation 
   matrix (obtained from permMatrix) is a row permutation, ie.
   B = P*A
@@ -628,6 +632,94 @@ end
   return nothing
 end
 
-end  # end module
 
-  
+
+@doc """
+### Utils.verbose1
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 1.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose1(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 1)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose2
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 2.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose2(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 2)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose3
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 3.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose3(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 3)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose4
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 4.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose4(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 4)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose5
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 5.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose5(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 5)))
+      $(esc(ex))
+    end
+  end
+end
+
+
+
+
+end  # end module

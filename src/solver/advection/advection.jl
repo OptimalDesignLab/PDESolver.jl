@@ -422,6 +422,18 @@ function majorIterationCallback(itr::Integer, mesh::AbstractMesh,
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
     println(f, "finished writing vis file"); flush(f)
+
+    #=
+    # DEBUGGING: write error to file
+    q_exact = zeros(eqn.q_vec)
+    ex_func = ICDict[opts["IC_name"]]
+    ex_func(mesh, sbp, eqn, opts, q_exact)
+    q_err = real(eqn.q_vec) - q_exact
+    saveSolutionToMesh(mesh, q_err)
+    fname = string("error_", itr)
+    writeVisFiles(mesh, fname)
+    =#
+
 #    cd("../")
   end
  

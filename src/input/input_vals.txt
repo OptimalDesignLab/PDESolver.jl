@@ -267,6 +267,10 @@ Note that any values associated with these options are shared with the regular
 "write_res"  : write the residual in 3d form (res$i.dat) each iteration, (Bool), default false
 "write_qic"  : write the initial condition, assembled into 3d array form, to file qic.dat, (Bool), default false
 "write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
+"write_vorticity_vis": write Paraview files (solution_vorticity_$i.pvtu)
+                       containing the components of vorticity, the vorticity
+                       magnitude, and the enstrophy (in that order) as the
+                       solution field, (Bool), default false
 "exact_visualization" : write a subtriangulated Paraview file in addition to
                         the regular one, (Bool), default false, SBP Omega only.
                         The subtriangulated file will have "_exact" appended
@@ -291,7 +295,10 @@ Note that any values associated with these options are shared with the regular
                             (aka. implicit Euler) globalization, (Bool), default                            false
 "euler_tau": the magnitude factor of the initial pseudo-timestep for the
              Euler globalization, (FloatingPoint), default 1.0
-
+"newton_verbosity": how much printing to do in Newton's method, (Int), default 5
+                    if steady newton, 4 otherwise (ie. when Newton is used by
+                    another method in NonlinearSolvers).  When 4 or less,
+                    Newton does not call majorIterationCallback
 
 # Newton-Krylov options
 "krylov_reltol"  : relative residual tolerance for krylov solver, (Float64),
