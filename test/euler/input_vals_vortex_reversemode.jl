@@ -54,7 +54,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "write_counts" => false,
 "write_vis" => false,
 "output_freq" => 1,
-"solve" => false,
+"solve" => true,
 "do_postproc" => true,
 "exact_soln_func" => "ICIsentropicVortex"
 )

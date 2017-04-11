@@ -12,7 +12,7 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-#=
+
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -192,7 +192,6 @@ function test_reversemode()
     end # End context("Checking Boundary Functional Integrand")
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
-=#
 
   facts("--- Testing SAT terms in Reverse Mode ---") do
 

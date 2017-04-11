@@ -419,6 +419,73 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   return nothing
 end
 
+type noPenetrationBC_revm <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 1},
+              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              params::ParamType{2})
+
+  # Forward sweep
+  n1 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  n2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(n1*n1 + n2*n2))
+  nx = n1*fac
+  ny = n2*fac
+  Unrm = nx*q[2] + ny*q[3]
+
+  # Subtract the normal component of the momentum from \xi & \eta components
+  # of the momentum
+  q[2] = q[2] - nx*Unrm
+  q[3] = q[3] - ny*Unrm
+
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+  v_vals = params.v_vals
+  convertFromNaturalToWorkingVars(params, q, v_vals)
+
+  # Reverse sweep
+  nrm2_bar = zeros(Tmsh, 2)
+  q_bar = zeros(Tsol, 4)
+  calcEulerFlux_revm(params, v_vals, aux_vars, [nx2, ny2], bndryflux_bar, nrm2_bar)
+  calcEulerFlux_revq(params, v_vals, aux_vars, [nx2, ny2], bndryflux_bar, q_bar)
+
+  # TODO: reverse mode convertFromNaturalToWorkingVars(params, qg, v_vals)
+  nx2_bar = nrm2_bar[1]
+  ny2_bar = nrm2_bar[2]
+
+  # ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  dxidx_bar[1,2] += ny2_bar*nrm[1]
+  dxidx_bar[2,2] += ny2_bar*nrm[2]
+
+  # nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  dxidx_bar[1,1] += nx2_bar*nrm[1]
+  dxidx_bar[2,1] += nx2_bar*nrm[2]
+
+  ny_bar = -q_bar[3]*Unrm
+  nx_bar = -q_bar[2]*Unrm
+
+  nx_bar += Unrm_bar*q[2]
+  ny_bar += Unrm_bar*q[3]
+
+  n2_bar = ny_bar*fac
+  n1_bar = nx_bar*fac
+  fac_bar = ny_bar*n2 + nx_bar*n1
+
+  n1_bar -= fac_bar*n1*((n1*n1 + n2*n2)^(-1.5))
+  n2_bar -= fac_bar*n2*((n1*n1 + n2*n2)^(-1.5))
+
+  dxidx_bar[1,1] += n1_bar*nrm[1]
+  dxidx_bar[2,1] += n1_bar*nrm[2]
+  dxidx_bar[1,2] += n2_bar*nrm[1]
+  dxidx_bar[2,2] += n2_bar*nrm[2]
+
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.unsteadyVortexBC <: BCTypes
@@ -463,10 +530,6 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
   return nothing
 
 end # ends the function unsteadyVortex BC
-
-
-
-
 
 @doc """
 ### EulerEquationMod.Rho1E2U3BC <: BCTypes
@@ -547,6 +610,25 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
 
   calcFreeStream(x, params, qg)
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+
+  return nothing
+end
+
+type FreeStreamBC_revm <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 1},
+              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              params::ParamType{2})
+
+  # Forward sweep
+  qg = params.qg
+  calcFreeStream(x, params, qg)
+
+  # Reverse sweep
+  RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, bndryflux_bar, dxidx_bar)
 
   return nothing
 end
