@@ -203,7 +203,7 @@ function test_reversemode()
     u = q[2]/q[1]
     v = q[3]/q[1]
     vel_bar = zeros(Complex128, mesh.dim)
-    psi = ones(4)
+    psi = rand(Float64, 4) + zeros(Complex128, 4)
     dq_bar = zeros(Complex128, 4)
     nrm2_bar = zeros(Complex128, mesh.dim)
     sat = zeros(Complex128, 4)
@@ -219,62 +219,56 @@ function test_reversemode()
       error = norm(complex_valbar_SAT - nrm2_bar[k], 2)
       @fact error --> roughly(0.0, atol=1e-10)
     end # End for k = 1:length(nrm2)
-#=
-# Test on geometric edge 3 (0 based indexing) with no penetration BC
+
+  end # End facts("--- Testing SAT terms in Reverse Mode ---")
+
+  facts("--- Testing Roe Solver in Reverse Mode ---") do
+
     EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
-
-    pert = complex(0, 1e-20) # Complex step perturbation
-
     params = eqn.params
+    Tdim = mesh.dim
+    val_bar = rand(Tdim) # Random seed
+    pert = complex(0, 1e-20) # Complex step perturbation
+    complex_flux = zeros(Complex128, 4)
+    psi = rand(Float64, 4) + zeros(Complex128, 4)
+    qg = ones(Complex128, 4)
+
+    # Test on geometric edge 3 (0 based indexing) with no penetration BC
     start_index = mesh.bndry_offsets[4]
     end_index = mesh.bndry_offsets[5]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
-    val_bar = ones(4) # 2D. Needs to be a random vector
-
     nfaces = length(bndry_facenums)
-    nrm = zeros(size(sbp.facenormal,1))
-    for i = 1# :nfaces
+    phys_nrm = zeros(Complex128, Tdim)
+    nrm = zeros(Complex128, 2)
+
+    for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
-      for j = 1 #:mesh.numNodesPerFace
+      for j = 1:mesh.sbpface.numnodes
         q = sview(eqn.q_bndry, :, j, global_facenum)
-        println("q = $(real(q))")
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm[:] = sbp.facenormal[:,bndry_i.face]
-        nrm2 = params.nrm2
-        EulerEquationMod.calcBCNormal(params, dxidx, nrm, nrm2)
-        u = q[2]/q[1]
-        v = q[3]/q[1]
-        phi = 0.5*(u*u + v*v)
-        H = params.gamma*q[4]/q[1] - params.gamma_1*phi # Total Enthalpy
-        vel_bar = zeros(mesh.dim)
-        nrm2_bar = zeros(Complex128, mesh.dim)
-        dq_bar = zeros(mesh.dim)
-        println("nrm2 = $(real(nrm2))")
-        println("vel = $(real([u,v]))")
-        println("H = $(real(H))")
-# H_bar = EulerEquationMod.calcSAT_revm(params, nrm2, q, [u,v], H, val_bar,
-#                       nrm2_bar, vel_bar, dq_bar)
+        nrm[:] = sbp.facenormal[:, bndry_i.face]
+        # println("nrm = $(real(nrm))")
+        dxidx_bar = zeros(Complex128, 2,2)
+        EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, psi, dxidx_bar)
+        for k = 1:length(dxidx)
+          dxidx[k] += pert
+          EulerEquationMod.RoeSolver(params, q, qg, aux_vars, dxidx, nrm, complex_flux)
+          dRoeFlux = imag(complex_flux)/imag(pert)
+          complex_psi_dRoeFlux = dot(psi, dRoeFlux)
+          error = norm(dxidx_bar[k] - complex_psi_dRoeFlux, 2)
+          #println("dxidx_bar[$k] = $(real(dxidx_bar[k])), complex_psi_dRoeFlux = $(real(complex_psi_dRoeFlux))")
+          @fact error --> roughly(0.0, atol = 1e-12)
+          dxidx[k] -= pert
+        end # End for k = 1:Tdim
+      end
+    end
 
-        # Check against complex step
-        sat = params.sat_vals
-        for k = 1:length(nrm2)
-          nrm2[k] += pert
-          EulerEquationMod.calcSAT(params, nrm2, q, sat, [u,v], H)
-          dSat = imag(sat[:])/imag(pert)
-          complex_valbar_SAT = dot(val_bar, dSat)
-          nrm2[k] -= pert
-          error = norm(complex_valbar_SAT - nrm2_bar[k], 2)
-          println("nrm2_bar = $(real(nrm2_bar[k])), complex_valbar_SAT = $(real(complex_valbar_SAT))")
-          # @fact error --> roughly(0.0, atol=1e-10)
-        end # End for k = 1:length(nrm2)
-      end # End for j = 1:mesh.numNodesPerFace
-    end   # End for i = 1:nfaces
-    =#
-  end # End facts("--- Testing SAT terms in Reverse Mode ---")
+  end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
 
   return nothing
 end # End function test_reversemode

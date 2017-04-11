@@ -29,19 +29,20 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType,
                                      aux_vars::AbstractArray{Tres, 1},
                                      dxidx::AbstractArray{Tmsh,2},
                                      nrm::AbstractArray{Tmsh,1},
-                                     flux_bar::AbstractArray{Tres, 1})
+                                     flux_bar::AbstractArray{Tres, 1},
+                                     dxidx_bar::AbstractArray{Tmsh, 2})
 
   # Forward sweep
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
+  # println("nrm2 = $(real(nrm2))")
 
   # Reverse sweep
   nrm2_bar = zeros(params.nrm2)
   # RoeSolver(params, q, qg, aux_vars, nrm2, flux)
   RoeSolver_revm(params, q, qg, aux_vars, nrm2, flux_bar, nrm2_bar)
-  calcBCNormal_revm(params, nrm, nrm2_bar, dxidx_bar)
-
-
+  # println("nrm2_bar = $(real(nrm2_bar))")
+  calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
 
   return nothing
 end
@@ -184,7 +185,6 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
 
   H = (sqL*HL + sqR*HR)*fac
 
-
   dq = params.v_vals2 # zeros(Tsol, 4)
   dq[:] = q[:] - qg[:]
   sat = params.sat_vals
@@ -207,18 +207,15 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
   #   flux[i] = (sat_fac*sat[i] + euler_flux[i])
   # end
   euler_flux_bar = zeros(Tsol, 4)
+  sat_bar = zeros(Tsol, 4)
   for i = 4:-1:1
     euler_flux_bar[i] += flux_bar[i]
     sat_bar[i] += sat_fac*flux_bar[i]
   end
 
   # calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+  nrm2_bar = zeros(Tsol, 2)
   calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
-  calcEulerFlux_revq(params, v_vals, aux_vars, nrm2, euler_flux_bar, v_vals_bar)
-
-  # TODO: convertFromNaturalToWorkingVars(params, q, v_vals)
-  # For now,
-  q_bar[:] += v_vals_bar[:]
 
   # nrm2[2] = ny
   ny_bar = nrm2_bar[2]
@@ -226,9 +223,10 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
   nx_bar = nrm2_bar[1]
 
   #  calcSAT(params, nrm, dq, sat, [u, v], H)
-  H_bar = calcSAT_revm(params, nrm, dq, sat, [u, v], H, sat_bar, nrm_bar, vel_bar, dq_bar)
+  calcSAT_revm(params, nrm, dq, [u, v], H, sat_bar, nrm_bar)
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
 
-  # No more dependence on mesh metrics so no point reversing anything else
 
   return nothing
 end
@@ -503,8 +501,9 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
 end  # End function calcSAT
 
 function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
-                 dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
-                 H::Tsol, sat_bar, nrm_bar)
+                      dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
+                      H::Tsol, sat_bar::AbstractArray{Tsol, 1},
+                      nrm_bar::AbstractArray{Tsol,1})
 
   # Forward Sweep
   sat_Vn = convert(Tsol, 0.025)
