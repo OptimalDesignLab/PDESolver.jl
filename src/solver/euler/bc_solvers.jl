@@ -35,13 +35,10 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType,
   # Forward sweep
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
-  # println("nrm2 = $(real(nrm2))")
 
   # Reverse sweep
   nrm2_bar = zeros(params.nrm2)
-  # RoeSolver(params, q, qg, aux_vars, nrm2, flux)
   RoeSolver_revm(params, q, qg, aux_vars, nrm2, flux_bar, nrm2_bar)
-  # println("nrm2_bar = $(real(nrm2_bar))")
   calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
 
   return nothing
@@ -162,52 +159,37 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
   ny = nrm[2]
 
   # Compute the Roe Averaged states
-  # The left state of Roe are the actual solution variables
   fac = 1.0/q[1]
   uL = q[2]*fac; vL = q[3]*fac;
   phi = 0.5*(uL*uL + vL*vL)
-  HL = gamma*q[4]*fac - gami*phi # Total enthalpy, H = e + 0.5*(u^2 + v^2) + p/rho,
-                                 # where e is the internal energy per unit mass
-
-  # The right side of the Roe solver comprises the boundary conditions
+  HL = gamma*q[4]*fac - gami*phi
   fac = 1.0/qg[1]
   uR = qg[2]*fac
   vR = qg[3]*fac
   phi = 0.5*(uR*uR + vR*vR)
   HR = gamma*qg[4]*fac - gami*phi # Total Enthalpy
-
-  # Averaged states
   sqL = sqrt(q[1])
   sqR = sqrt(qg[1])
   fac = 1.0/(sqL + sqR)
   u = (sqL*uL + sqR*uR)*fac
   v = (sqL*vL + sqR*vR)*fac
-
   H = (sqL*HL + sqR*HR)*fac
-
-  dq = params.v_vals2 # zeros(Tsol, 4)
+  dq = params.v_vals2
   dq[:] = q[:] - qg[:]
-  sat = params.sat_vals
-  calcSAT(params, nrm, dq, sat, [u, v], H)
-
-  euler_flux = params.flux_vals1
-  # calculate Euler flux in wall normal directiona
-  # because edge numbering is rather arbitary, any memory access is likely to
-  # be a cache miss, so we recalculate the Euler flux
   v_vals = params.q_vals
   nrm2 = params.nrm
   nrm2[1] = nx
   nrm2[2] = ny
-
   convertFromNaturalToWorkingVars(params, q, v_vals)
-  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
 
   # Reverse Sweep
   # for i=1:4  # ArrayViews does not support flux[:] = .
   #   flux[i] = (sat_fac*sat[i] + euler_flux[i])
   # end
-  euler_flux_bar = zeros(Tsol, 4)
-  sat_bar = zeros(Tsol, 4)
+  euler_flux_bar = params.flux_vals1 # zeros(Tsol, 4)
+  sat_bar = params.sat_vals
+  fill!(euler_flux_bar, 0.0)
+  fill!(sat_bar, 0.0)
   for i = 4:-1:1
     euler_flux_bar[i] += flux_bar[i]
     sat_bar[i] += sat_fac*flux_bar[i]
@@ -226,7 +208,6 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
   calcSAT_revm(params, nrm, dq, [u, v], H, sat_bar, nrm_bar)
   nrm_bar[1] += nx_bar
   nrm_bar[2] += ny_bar
-
 
   return nothing
 end
@@ -561,9 +542,6 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   tmp1 = 0.5*(lambda1 + lambda2) - lambda3
   tmp2 = gami/(a*a)
   tmp3 = 1.0/(dA*dA)
-  for i=1:length(sat)
-    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
-  end
 
   #-- get E3*dq
   E3dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
@@ -578,12 +556,8 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   E4dq[4] = E4dq[2]*Un
   E4dq[2] = E4dq[2]*nx
 
-
   #-- add to sat
   tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
-  for i=1:length(sat)
-    sat[i] = sat[i] + tmp1*(E3dq[i] + gami*E4dq[i])
-  end
 
   # Reverse sweep
   E3dq_bar = zeros(Tsol, 4)
