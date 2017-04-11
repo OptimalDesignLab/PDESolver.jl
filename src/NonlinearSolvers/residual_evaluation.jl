@@ -130,7 +130,7 @@ function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1};
 
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
 
-  if assemble_edgeres
+  if assemble_edgeres     # TODO: what is this?
 
     for i=1:size(eqn.res_edge, 4)
       eqn.assembleSolution(mesh, sbp, eqn, opts, sview(eqn.res_edge, :, :, :, i),

@@ -117,7 +117,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
   # these jacs are for full CN or CN adj jac
-  println("===== neg_time: ", neg_time, " =====")
+  println("======================= neg_time: ", neg_time, " =======================")
   if neg_time == false
     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
   else
@@ -137,7 +137,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     println("Setting IC for reverse sweep, i_actual (forward sweep time step index): ", i_actual)
     eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
 
-    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
+    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t)
     dRdu_n = jac      # TODO: check transpose
     #----------------
 
@@ -153,7 +153,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   t_steps_end = t_steps + 1
   for i = 2:t_steps_end
 
-    @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
+    println(" +++ CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 
     #----------------------------
@@ -216,7 +216,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     else    
 
       # direct solve for psi_i
-      adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
+      (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
     end
@@ -240,15 +240,21 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # Previously, adj_nextstep corresponded to time step i, and adj corresponded to time step i+1.
 
     #------- adjoint check
-    # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)     # t has been updated, so no t_nextstep
-    # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
     if neg_time == true
+      # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)     # t has been updated, so no t_nextstep
+      # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
       omega = 1.0
       v_bc = sin(omega*t)
       dRdA = -1.0*jac*v_bc
       dJdA = transpose(adj.q_vec)*dRdA
       filename = string("dJdA_check-", i, ".dat")
       writedlm(filename, transpose(dJdA))
+      # if i == 10
+        # println("v_bc: ", v_bc)
+        # println("jac: ", jac)
+        # println("dRdA: ", dRdA)
+        # println("adj.q_vec: ", adj.q_vec)
+      # end
     end
 
     if neg_time == false

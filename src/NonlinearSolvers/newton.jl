@@ -1096,6 +1096,8 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   entry_orig = zero(eltype(eqn.q_vec))
   (m,n) = size(jac)
   # calculate jacobian
+
+  # println("in cJC: pert: ", pert)
   for j=1:m
     if j==1
       entry_orig = eqn.q_vec[j]
@@ -1105,20 +1107,61 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
       entry_orig = eqn.q_vec[j]
       eqn.q_vec[j] += pert
     end
+    # println("in cJC: j: ", j, " eqn.q_vec[j] after pert: ", eqn.q_vec[j])
+    # println("in cJC: func: ", func)
+
+    # ZERO JAC PROBLEM:
+    # checked at this point:
+    #   pert = 0.0 + 1.0e20im
+    #   func = PDESolver.evalResidual
+    #   eqn.q_vec[j] is nonzero and does have pert
 
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+
+    # ZERO JAC PROBLEM:
+    # checked at this point:
+    #   size(eqn.q): (1,3,32)
+    #   size(jac): (96,96)
+
     # evaluate residual
     func(mesh, sbp, eqn, opts, t)
 
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
+    # ZERO JAC PROBLEM:
+    # checked at this point:
+    #   norm(eqn.res_vec): nonzero - used println("in cJC: norm(eqn.res_vec): ", norm(eqn.res_vec))
+    #   norm(eqn.res): nonzero - used println("in cJC: norm(eqn.res): ", norm(reshape(eqn.res[1,:,:],3,32)))
+    #   epsilon: 1.0e-20
+
+    # sview(jac, :, j) provides the j'th column of jac
+    println(" ======== in cJC, j = ",j," ========")
+    println("   norm(eqn.q_vec): ", norm(eqn.q_vec))
+    println("   norm(eqn.res_vec): ", norm(eqn.res_vec))
+    println("   ==== before calcJacCol ====")
+    println("   typeof(jac): ", typeof(jac))
+    println("   norm(sview(jac, :, ", j,")): ", norm(sview(jac, :, j)))
     calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
+    println("   ==== after calcJacCol ====")
+    println("   typeof(jac): ", typeof(jac))
+    println("   norm(sview(jac, :, ", j,")): ", norm(sview(jac, :, j)))
+    # println(" in cJC, j = ", j, ", after calcJacCol, sview(jac, :, j): ", sview(jac, :, j))
+    # end
     
   end  # end loop over rows of jacobian
+
+  # ZERO JAC PROBLEM:
+  # checked at this point:
+  #     eqn.q is nonzero - used println("in cJC: norm(eqn.q): ", norm(reshape(eqn.q[1,:,:], 3, 32)))
+  #     typeof(jac): Array{Float64, 2}
+  println("in cJC: typeof(jac): ", typeof(jac))
+
 
 
   # undo final perturbation
   eqn.q_vec[m] = entry_orig
 #
+  println("in cJC: norm of jac: ", norm(jac))
+
 
   return nothing
 end

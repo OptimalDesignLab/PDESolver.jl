@@ -38,7 +38,7 @@ function cnAdjCalcdRdu:
 
   returns a jac
 """
-function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
+function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t)
   # Note: probably don't need to allocate another jac, but this should cause no problems aside from allocation cost
   newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
 
@@ -47,7 +47,14 @@ function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
   epsilon = opts["epsilon"]
   pert = complex(0, epsilon)
 
+  # checked: eqn_dummy is loaded properly
+  # checked: cjc args are correct
+  # checked: norm of eqn_dummy.q_vec in cJC matches it here
+
   calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
+
+  filename = string("jac_from_cnAdjCalcdRdu-i_actual-",i_actual,".dat")
+  writedlm(filename, jac)
 
   return jac
 end   # end function cnAdjCalcdRdu
@@ -66,15 +73,17 @@ function cnAdjDirect:
 function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
 # adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_actual, t_nextstep)
 
-  # TODO: verify that passing t (instead of t_nextstep) into this is ok wrt cnAdjRhs & cnAdjJac
+  # Note: t is passed in (instead of t_nextstep), but t_nextstep is calc'd & used below
 
   t_nextstep = t - h
 
   eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t_nextstep)
-  jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t_nextstep)
+  # checked: eqn_dummy is loaded properly
+  jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t_nextstep)
   dRdu_i = transpose(jac)     
 
-  # TODO: off by one error on dRdu? even though calculated at t_nextstep, am I loading q_vec at i+1 instead of i?
+  # TODO: double check that there is not an off by one error on dRdu:
+  #       even though calculated at t_nextstep, am I loading q_vec at i+1 instead of i?
 
   dJdu_i = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step i
 
@@ -87,7 +96,9 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
   nextstep_q_vec = zeros(adj.q_vec)
   nextstep_q_vec = B1\B2
 
-  return nextstep_q_vec
+  filename = string("eqn_dummyqvec_from_cnAdjDirect-i_actual-",i_actual,".dat")
+  writedlm(filename, eqn_dummy.q_vec)
 
+  return nextstep_q_vec, jac
 
 end     # end function cnAdjDirect
