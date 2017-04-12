@@ -57,10 +57,6 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
       flux_j = sview(face_flux, :, j, i)
       functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
-#      # add the negative sign
-#      for k=1:mesh.numDofPerNode
-#        flux_j[k] = -flux_j[k]
-#      end
     end
   end
 

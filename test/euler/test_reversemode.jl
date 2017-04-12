@@ -12,7 +12,7 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-
+#=
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -192,7 +192,7 @@ function test_reversemode()
     end # End context("Checking Boundary Functional Integrand")
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
-
+=#
   facts("--- Testing SAT terms in Reverse Mode ---") do
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -223,7 +223,7 @@ function test_reversemode()
 
   facts("--- Testing Roe Solver in Reverse Mode ---") do
 
-    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
     params = eqn.params
     Tdim = mesh.dim
     val_bar = rand(Tdim) # Random seed
@@ -260,7 +260,6 @@ function test_reversemode()
           dRoeFlux = imag(complex_flux)/imag(pert)
           complex_psi_dRoeFlux = dot(psi, dRoeFlux)
           error = norm(dxidx_bar[k] - complex_psi_dRoeFlux, 2)
-          #println("dxidx_bar[$k] = $(real(dxidx_bar[k])), complex_psi_dRoeFlux = $(real(complex_psi_dRoeFlux))")
           @fact error --> roughly(0.0, atol = 1e-12)
           dxidx[k] -= pert
         end # End for k = 1:Tdim
@@ -268,6 +267,31 @@ function test_reversemode()
     end
 
   end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
+
+  facts("--- Testing reverse mode for BC functors ---") do
+
+    context("Checking reverse mode for noPenetrationBC") do
+      EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+      EulerEquationMod.getBCFunctors_revm(mesh, sbp, eqn, opts)
+      functor = mesh.bndry_funcs_revm[4]
+      fill!(mesh.dxidx_bndry_bar, 0.0)
+      println(eqn.bndryflux_bar)
+
+      start_index = mesh.bndry_offsets[4]
+      end_index = mesh.bndry_offsets[5]
+      idx_range = start_index:(end_index-1)
+      bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+      bndryflux_bar = sview(eqn.bndryflux_bar, :, :, idx_range)
+      EulerEquationMod.calcBoundaryFlux_revm(mesh, sbp, eqn, functor, 
+                                      idx_range, bndry_facenums, bndryflux_bar)
+    
+    end # End context("Checking noPenetrationBC_revm")
+
+    context("Checking reversemode for FreeStreamBC") do
+
+    end # End context("Checking reversemode for FreeStreamBC")
+
+  end # Endfacts("--- Testing reverse mode for BC functors ---")
 
   return nothing
 end # End function test_reversemode

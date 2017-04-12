@@ -320,6 +320,19 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
 end # ends the function isentropicVortexBC
 =#
 
+type isentropicVortexBC_revm <: BCType_revm
+end
+
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 1},
+              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              params::ParamType{2})
+
+
+  return nothing
+end
+
 @doc """
 ### EulerEquationMod.isentropicVortexBC_physical <: BCTypes
 
@@ -419,7 +432,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   return nothing
 end
 
-type noPenetrationBC_revm <: BCType
+type noPenetrationBC_revm <: BCType_revm
 end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
@@ -513,7 +526,8 @@ type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},                aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
@@ -614,7 +628,7 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
   return nothing
 end
 
-type FreeStreamBC_revm <: BCType
+type FreeStreamBC_revm <: BCType_revm
 end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1},
@@ -797,5 +811,22 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   end
 
   return nothing
+end # ENd function getBCFunctors
 
-end
+global const BCDict_revm = Dict{ASCIIString, BCType_revm}(
+"noPenetrationBC" => noPenetrationBC_revm(),
+"FreeStreamBC" => FreeStreamBC_revm(),
+"isentropicVortexBC" => isentropicVortexBC_revm(),
+)
+
+function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+
+  for i = 1:mesh.numBC
+    key_i = string("BC", i, "_name")
+    val = opts[key_i]
+    println("BCDict_revm[val] = ", BCDict_revm[val])
+    mesh.bndry_funcs_revm[i] = BCDict_revm[val]
+  end # End for i = 1:mesh.numBC
+
+  return nothing
+end # End function getBCFunctors_revm

@@ -532,7 +532,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     if opts["need_adjoint"]
       eqn.q_bar = zeros(eqn.q)
       eqn.q_face_bar = zeros(eqn.q_face)
-      eqn.q_bndry_bar = zeros(eqn.q_bndry_bar)
+      eqn.q_bndry_bar = zeros(eqn.q_bndry)
       eqn.flux_parametric_bar = zeros(eqn.flux_parametric)
 
       eqn.aux_vars_bar = zeros(eqn.aux_vars)

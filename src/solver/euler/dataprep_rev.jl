@@ -6,6 +6,7 @@ function getEulerFlux_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   nrm = zeros(Tmsh, Tdim)
   nrm_bar = zeros(nrm)
+  fill!(mesh.dxidx_bar, 0.0)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement  # loop over nodes on current element
       q_vals = sview(eqn.q, :, j, i)
@@ -43,6 +44,7 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           interfaces::AbstractArray{Interface,1},
                           face_flux_bar::AbstractArray{Tres, 3})
 
+  fill!(mesh.dxidx_face_bar, 0.0)
   nfaces = length(interfaces)
   nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces
@@ -56,7 +58,7 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       qR = sview(eqn.q_face, :, 2, j, i)
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
       dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
-      
+
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
       nrm[:] = sbp.facenormal[:,fL]
 
@@ -78,7 +80,7 @@ function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
+    bndryflux_i = sview(eqn.bndryflux_bar, :, :, start_index:(end_index - 1))
 
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
@@ -93,9 +95,9 @@ end
 
 function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol},
-                          functor::BCType, idx_range::UnitRange,
+                          functor_bar::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1},
-                          bndryflux::AbstractArray{Tres, 3})
+                          bndryflux_bar::AbstractArray{Tres, 3})
   # calculate the boundary flux for the boundary condition evaluated by the
   # functor
 
@@ -115,34 +117,46 @@ function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
       dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
       nrm[:] = sbp.facenormal[:,bndry_i.face]
-      bndryflux_i = sview(bndryflux, :, j, i)
+      bndryflux_i = sview(bndryflux_bar, :, j, i)
 
 
-      functor(q2, aux_vars, x, dxidx, dxidx_bar, nrm, bndryflux_i, eqn.params)
+      functor_bar(q2, aux_vars, x, dxidx, dxidx_bar, nrm, bndryflux_i, eqn.params)
     end
   end
 
   return nothing
 end
 
-function dataprep_rev{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-                                     eqn::AbstractEulerData{Tsol, Tres}, opts)
+function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP,
+                          eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+                          functor_bar::FluxType,
+                          interfaces::AbstractArray{Interface,1},
+                          face_flux_bar::AbstractArray{Tres, 3})
 
-  getBCFluxes_revm(mesh, sbp, eqn, opts)
-  
-  if mesh.isDG
-    fill!(eqn.q_bndry, 0.0)
-    fill!(eqn.q_face, 0.0)
-    fill!(eqn.flux_face, 0.0)
-    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+  nfaces = length(interfaces)
+  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  for i=1:nfaces  # loop over faces
+    interface_i = interfaces[i]
+    for j = 1:mesh.numNodesPerFace
+      eL = interface_i.elementL
+      fL = interface_i.faceL
 
-    if opts["face_integral_type"] == 1
-      interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-      calcFaceFlux_revm(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+      # get components
+      qL = sview(eqn.q_face, :, 1, j, i)
+      qR = sview(eqn.q_face, :, 2, j, i)
+      dxidx = sview(mesh.dxidx_face, :, :, j, i)
+      dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
+      aux_vars = sview(eqn.aux_vars_face, :, j, i)
+      nrm[:] = sbp.facenormal[:,fL]
+
+      #flux_j = sview(face_flux_bar, :, j, i)
+      #functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
+
+      flux_j_bar = sview(face_flux_bar, :, j, i)
+      functor_bar(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j_bar, dxidx_bar)
     end
   end
-  
-  getEulerFlux_revm(mesh, sbp,  eqn, opts)
 
   return nothing
 end

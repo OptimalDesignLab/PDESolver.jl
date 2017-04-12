@@ -43,6 +43,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "geom_faces_objective" => [3],
 
 # Adjoint computation keys
+"need_adjoint" => true,
 "calc_adjoint" => false,
 "writeq" => false,
 "write_edge_vertnums" => false,
@@ -54,7 +55,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "write_counts" => false,
 "write_vis" => false,
 "output_freq" => 1,
-"solve" => true,
+"solve" => true, # This SHOULD be true, false for debugging
 "do_postproc" => true,
 "exact_soln_func" => "ICIsentropicVortex"
 )

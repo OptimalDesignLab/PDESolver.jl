@@ -1,5 +1,5 @@
-function evaldRdm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
-                     opts::Dict, t=0.0, input_array::AbstractArray{Tsol, 1})
+function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+                     opts::Dict, input_array::AbstractArray{Tsol, 1}, t=0.0)
 
   disassembleSolution(mesh, sbp, eqn, opts, eqn.res_bar, input_array)
 
@@ -7,14 +7,11 @@ function evaldRdm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-#  println("entered evalResidual")
-#  println("q1319-3 = ", eqn.q[:, 3, 1319])
-
+  # TODO: Is this needed??
   #=
   time.t_send += @elapsed if opts["parallel_type"] == 1
     println(eqn.params.f, "starting data exchange")
-
-    startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
    =#
 
@@ -25,57 +22,86 @@ function evaldRdm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
-    evalVolumeIntegrals_dRdm(mesh, sbp, eqn, opts)
+    evalVolumeIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
   if opts["use_GLS"]
     println("adding boundary integrals")
     GLS(mesh,sbp,eqn)
   end
-  
+
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-   evalBoundaryIntegrals_dRdm(mesh, sbp, eqn)
+   evalBoundaryIntegrals_revm(mesh, sbp, eqn)
    #println("boundary integral @time printed above")
   end
 
-
+#=
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
   end
-
+=#
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    evalFaceIntegrals(mesh, sbp, eqn, opts)
+    evalFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
-    evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+    evalSharedFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
-
-  time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-
+#=
+  time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
+=#
+#=
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
+=#
 
-  # Reverse sweep
+  time.t_dataprep += @elapsed dataPrep_revm(mesh, sbp, eqn, opts)
+
 
   return nothing
 end  # end evalResidual
 
-function evalVolumeIntegrals_dRdm{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function dataprep_rev{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                                     eqn::AbstractEulerData{Tsol, Tres}, opts)
+
+  getBCFluxes_revm(mesh, sbp, eqn, opts)
+
+  if mesh.isDG
+
+    if opts["face_integral_type"] == 1
+      calcFaceFlux_revm(mesh, sbp, eqn, eqn.flux_func_bar, mesh.interfaces, eqn.flux_face_bar)
+      # interpolateFace_revm(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+    end
+
+    # fill!(eqn.q_bndry, 0.0)
+    # fill!(eqn.q_face, 0.0)
+    # fill!(eqn.flux_face, 0.0)
+    # interpolateBoundary_revm(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+
+  end
+
+  getEulerFlux_revm(mesh, sbp,  eqn, opts)
+
+  return nothing
+end
+
+function evalVolumeIntegrals_revm{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+
   integral_type = opts["volume_integral_type"]
   if integral_type == 1
     if opts["Q_transpose"] == true
+      fill!(eqn.flux_parametric_bar, 0.0) # zero out for first use
       for i=1:Tdim
         # weakdifferentiate_rev!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
-
-        # Input: eqn.res_bar 
+        # Input: eqn.res_bar
         # Output: flux_parametric_bar
         weakdifferentiate_rev!(sbp, i, sview(eqn.flux_parametric_bar, :, :, :, i), eqn.res_bar, trans=true)
       end
     else
+      fill!(eqn.flux_parametric_bar, 0.0)
       for i=1:Tdim
         weakdifferentiate_rev!(sbp, i, sview(eqn.flux_parametric_bar, :, :, :, i), eqn.res_bar, SummationByParts.Subtract(), trans=false)
       end
@@ -88,13 +114,14 @@ function evalVolumeIntegrals_dRdm{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
 
-
+  return nothing
 end  # end evalVolumeIntegrals
 
-function evalBoundaryIntegrals_dRdm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function evalBoundaryIntegrals_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
 
   #TODO: remove conditional
+  fill!(eqn.bndryflux_bar, 0.0)
   if mesh.isDG
     boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar, eqn.res_bar, SummationByParts.Subtract())
   else
@@ -106,18 +133,19 @@ function evalBoundaryIntegrals_dRdm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{T
 
 end  # end evalBoundaryIntegrals
 
-function evalFaceIntegrals_dRdm{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+function evalFaceIntegrals_revm{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
   face_integral_type = opts["face_integral_type"]
+  fill!(eqn.flux_face_bar, 0.0)
   if face_integral_type == 1
-#    println("calculating regular face integrals")
+    # Output to the call below = eqn.flux_face_bar
     interiorfaceintegrate_rev!(mesh.sbpface, mesh.interfaces, eqn.flux_face_bar, eqn.res_bar, SummationByParts.Subtract())
 
   elseif face_integral_type == 2
-    
+
     error("integral_type == 2 not supported")
-    getFaceElementIntegral_rev(mesh, sbp, eqn, eqn.face_element_integral_func,  
+    getFaceElementIntegral_rev(mesh, sbp, eqn, eqn.face_element_integral_func,
                            eqn.flux_func, mesh.interfaces)
 
   else
@@ -128,15 +156,15 @@ function evalFaceIntegrals_dRdm{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
-function evalSharedFaceIntegrals_dRdm(mesh::AbstractDGMesh, sbp, eqn, opts)
+function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
 
     if opts["parallel_data"] == "face"
-      calcSharedFaceIntegrals_dRdm(mesh, sbp, eqn, opts, eqn.flux_func)
+      calcSharedFaceIntegrals_revm(mesh, sbp, eqn, opts, eqn.flux_func_bar)
     elseif opts["parallel_data"] == "element"
-      calcSharedFaceIntegrals_element_dRdm(mesh, sbp, eqn, opts, eqn.flux_func)
+      calcSharedFaceIntegrals_element_revm(mesh, sbp, eqn, opts, eqn.flux_func_bar)
     else
       throw(ErrorException("unsupported parallel data type"))
     end
@@ -152,7 +180,7 @@ function evalSharedFaceIntegrals_dRdm(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
-function calcSharedFaceIntegrals_dRdm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
+function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
                             opts, functor_revm::FluxType)
 # calculate the face flux and do the integration for the shared interfaces
@@ -219,8 +247,8 @@ end
 
 
 
-function evalSourceTerm_dRdm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, 
+function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts)
 
 
