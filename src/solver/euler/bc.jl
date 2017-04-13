@@ -225,7 +225,6 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      # nrm = sview(sbp.facenormal, :, bndry_i.face)
       nrm[:] = sbp.facenormal[:,bndry_i.face]
       bndryflux_i = sview(bndryflux, :, j, i)
 
@@ -328,6 +327,39 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{T
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 1},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
+
+  # Forward sweep
+  gamma = params.gamma
+  gami = params.gamma_1
+
+  # getting qg
+  qg = params.qg
+  calcIsentropicVortex(x, params, qg) # Get the boundary value
+
+  v_vals = params.q_vals
+  convertFromNaturalToWorkingVars(params, q, v_vals)
+
+  # Getting SAT terms
+  specific_vol = 1.0/v_vals[1]
+  u = v_vals[2]*specific_vol
+  v = v_vals[3]*specific_vol
+  phi = 0.5*(u*u + v*v)
+  H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
+
+  dq = zeros(Tsol, 4)
+  dq = v_vals - qg
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
+  sat = params.sat_vals
+  calcSAT(params, nrm2, dq, sat, [u, v], H)
+
+  euler_flux = params.flux_vals1
+  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+
+  sat_fac = 1.0 # Multiplier for SAT term
+  for i=1:4
+    bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
+  end
 
 
   return nothing
@@ -437,7 +469,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
@@ -454,8 +486,9 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
   q[2] = q[2] - nx*Unrm
   q[3] = q[3] - ny*Unrm
 
-  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  # nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  # ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
 
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
@@ -463,36 +496,38 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
   # Reverse sweep
   nrm2_bar = zeros(Tmsh, 2)
   q_bar = zeros(Tsol, 4)
-  calcEulerFlux_revm(params, v_vals, aux_vars, [nx2, ny2], bndryflux_bar, nrm2_bar)
-  calcEulerFlux_revq(params, v_vals, aux_vars, [nx2, ny2], bndryflux_bar, q_bar)
+  calcEulerFlux_revm(params, v_vals, aux_vars, [n1, n2], bndryflux_bar, nrm2_bar)
+  calcEulerFlux_revq(params, v_vals, aux_vars, [n1, n2], bndryflux_bar, q_bar)
 
   # TODO: reverse mode convertFromNaturalToWorkingVars(params, qg, v_vals)
-  nx2_bar = nrm2_bar[1]
-  ny2_bar = nrm2_bar[2]
+  n1_bar = nrm2_bar[1]
+  n2_bar = nrm2_bar[2]
 
-  # ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-  dxidx_bar[1,2] += ny2_bar*nrm[1]
-  dxidx_bar[2,2] += ny2_bar*nrm[2]
 
-  # nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  dxidx_bar[1,1] += nx2_bar*nrm[1]
-  dxidx_bar[2,1] += nx2_bar*nrm[2]
-
+  # q[2] = q[2] - nx*Unrm
+  # q[3] = q[3] - ny*Unrm
   ny_bar = -q_bar[3]*Unrm
   nx_bar = -q_bar[2]*Unrm
+  Unrm_bar = -q_bar[3]*ny -q_bar[2]*nx
 
+  # Unrm = nx*q[2] + ny*q[3]
   nx_bar += Unrm_bar*q[2]
   ny_bar += Unrm_bar*q[3]
 
-  n2_bar = ny_bar*fac
-  n1_bar = nx_bar*fac
+  # nx = n1*fac
+  # ny = n2*fac
+  n2_bar += ny_bar*fac
+  n1_bar += nx_bar*fac
   fac_bar = ny_bar*n2 + nx_bar*n1
 
+  # fac = 1.0/(sqrt(n1*n1 + n2*n2))
   n1_bar -= fac_bar*n1*((n1*n1 + n2*n2)^(-1.5))
   n2_bar -= fac_bar*n2*((n1*n1 + n2*n2)^(-1.5))
 
+  # n1 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
   dxidx_bar[1,1] += n1_bar*nrm[1]
   dxidx_bar[2,1] += n1_bar*nrm[2]
+  # n2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
   dxidx_bar[1,2] += n2_bar*nrm[1]
   dxidx_bar[2,2] += n2_bar*nrm[2]
 

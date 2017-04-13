@@ -220,7 +220,7 @@ function test_reversemode()
     end # End for k = 1:length(nrm2)
 
   end # End facts("--- Testing SAT terms in Reverse Mode ---")
-
+#=
   facts("--- Testing Roe Solver in Reverse Mode ---") do
 
     # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
@@ -267,24 +267,61 @@ function test_reversemode()
     end
 
   end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
-
+=#
   facts("--- Testing reverse mode for BC functors ---") do
 
     context("Checking reverse mode for noPenetrationBC") do
       EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
       EulerEquationMod.getBCFunctors_revm(mesh, sbp, eqn, opts)
-      functor = mesh.bndry_funcs_revm[4]
+      functor_rev = mesh.bndry_funcs_revm[4]
+      functor = mesh.bndry_funcs[4]
       fill!(mesh.dxidx_bndry_bar, 0.0)
-      println(eqn.bndryflux_bar)
+      # Populate eqn.bndryflux_bar
+      for i = 1:length(eqn.bndryflux_bar)
+        eqn.bndryflux_bar[i] = randn() + zero(Complex128) # 1.0 + 0.0im
+      end
 
       start_index = mesh.bndry_offsets[4]
       end_index = mesh.bndry_offsets[5]
       idx_range = start_index:(end_index-1)
       bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
       bndryflux_bar = sview(eqn.bndryflux_bar, :, :, idx_range)
-      EulerEquationMod.calcBoundaryFlux_revm(mesh, sbp, eqn, functor, 
+
+      EulerEquationMod.calcBoundaryFlux_revm(mesh, sbp, eqn, functor_rev,
                                       idx_range, bndry_facenums, bndryflux_bar)
-    
+
+      pert = complex(0, 1e-20) # Complex step perturbation
+      complex_dxidx_bar = zeros(mesh.dxidx_bndry_bar)
+      nfaces = length(bndry_facenums)
+      nrm = zeros(Complex128, 2)
+      dBndryfluxdm = zeros(Complex128, 4)
+      for i = 1:nfaces
+        bndry_i = bndry_facenums[i]
+        global_facenum = idx_range[i]
+        for j = 1:mesh.sbpface.numnodes
+          q = sview(eqn.q_bndry, :, j, global_facenum)
+          aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+          x = sview(mesh.coords_bndry, :, j, global_facenum)
+          dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          tmpflux = zeros(Complex128, 4)
+          bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
+          # println("bndryflux_bar_i = $bndryflux_bar_i")
+          dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
+          for k = 1:length(dxidx)
+            dxidx[k] += pert
+            functor(q, aux_vars, x, dxidx, nrm, tmpflux, eqn.params)
+            tmpflux[:] = imag(tmpflux[:])/imag(pert)
+            dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
+            error = norm(dxidx_bndry_bar[k] - dot_product, 2)
+            # println("error = $error")
+            @fact error --> roughly(0.0, atol = 1e-12)
+            # println("dot_product = $dot_product, dxidx_bndry_bar[$k] = $(real(dxidx_bndry_bar[k]))")
+            dxidx[k] -= pert
+          end # End for k = 1:Tdim
+        end
+      end
+
     end # End context("Checking noPenetrationBC_revm")
 
     context("Checking reversemode for FreeStreamBC") do

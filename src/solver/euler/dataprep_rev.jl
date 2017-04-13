@@ -95,7 +95,7 @@ end
 
 function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol},
-                          functor_bar::BCType, idx_range::UnitRange,
+                          functor_bar::BCType_revm, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1},
                           bndryflux_bar::AbstractArray{Tres, 3})
   # calculate the boundary flux for the boundary condition evaluated by the
@@ -118,7 +118,6 @@ function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
       nrm[:] = sbp.facenormal[:,bndry_i.face]
       bndryflux_i = sview(bndryflux_bar, :, j, i)
-
 
       functor_bar(q2, aux_vars, x, dxidx, dxidx_bar, nrm, bndryflux_i, eqn.params)
     end
