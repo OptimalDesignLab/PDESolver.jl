@@ -137,7 +137,7 @@ where input_file_name.jl is in your current directory.
                     1.0
 
 
-# Algorithmic Differentiatio Options
+# Algorithmic Differentiation Options
 "use_edge_res" : use the edge based residual (experimental!), (Bool), default
                  false
 

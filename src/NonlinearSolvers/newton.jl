@@ -1070,7 +1070,7 @@ end
 
 
 @doc """
-### NonlinearSolvers.calcJacComplex
+### NonlinearSolvers.calcJacobianComplex
 
   This function calculates the Jacobian (dense) using the complex step method, 
   perturbing one degree of freedom at a time.  This is very slow.  The jacobian
@@ -1096,6 +1096,23 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   entry_orig = zero(eltype(eqn.q_vec))
   (m,n) = size(jac)
   # calculate jacobian
+
+    println(" ======== in cJC ========")
+    println("   t: ", t)
+    println("   norm(eqn.q):          ", norm(reshape(eqn.q[1,:,:], 3, 32)))
+    println("   norm(eqn.q_vec):      ", norm(eqn.q_vec))
+    println("   norm(eqn.res):        ", norm(reshape(eqn.res[1,:,:],3,32)))
+    println("   norm(eqn.res_vec):    ", norm(eqn.res_vec))
+    println("   pointer(eqn.q):       ", pointer(eqn.q))
+    println("   pointer(eqn.q_vec):   ", pointer(eqn.q_vec))
+    println("   pointer(eqn.res):     ", pointer(eqn.res))
+    println("   pointer(eqn.res_vec): ", pointer(eqn.res_vec))
+    # println("   size(eqn.res): ", size(eqn.res))
+    # println("   size(reshape(eqn.res[1,:,:],3,32)): ",size(reshape(eqn.res[1,:,:],3,32)))
+    # println("   size(eqn.res_vec): ", size(eqn.res_vec))
+    # writedlm("ZZ_res.dat", real(eqn.res))
+    # writedlm("ZZ_res_reshape.dat",real(reshape(eqn.res[1,:,:],3,32)))
+    # writedlm("ZZ_res_vec.dat", real(eqn.res_vec))
 
   # println("in cJC: pert: ", pert)
   for j=1:m
@@ -1123,6 +1140,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
     #   size(eqn.q): (1,3,32)
     #   size(jac): (96,96)
 
+
     # evaluate residual
     func(mesh, sbp, eqn, opts, t)
 
@@ -1134,18 +1152,14 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
     #   epsilon: 1.0e-20
 
     # sview(jac, :, j) provides the j'th column of jac
-    println(" ======== in cJC, j = ",j," ========")
-    println("   norm(eqn.q_vec): ", norm(eqn.q_vec))
-    println("   norm(eqn.res_vec): ", norm(eqn.res_vec))
-    println("   ==== before calcJacCol ====")
-    println("   typeof(jac): ", typeof(jac))
-    println("   norm(sview(jac, :, ", j,")): ", norm(sview(jac, :, j)))
+    # println(" ======== in cJC, j = ",j," ========")
+    # println("   ==== before calcJacCol ====")
+    # println("   typeof(jac): ", typeof(jac))
+    # println("   norm(sview(jac, :, ", j,")): ", norm(sview(jac, :, j)))
     calcJacCol(sview(jac, :, j), eqn.res_vec, epsilon)
-    println("   ==== after calcJacCol ====")
-    println("   typeof(jac): ", typeof(jac))
-    println("   norm(sview(jac, :, ", j,")): ", norm(sview(jac, :, j)))
-    # println(" in cJC, j = ", j, ", after calcJacCol, sview(jac, :, j): ", sview(jac, :, j))
-    # end
+    # println("   ==== after calcJacCol ====")
+    # println("   typeof(jac): ", typeof(jac))
+    # println("   norm(sview(jac, :, ", j,")): ", norm(sview(jac, :, j)))
     
   end  # end loop over rows of jacobian
 
@@ -1153,14 +1167,14 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   # checked at this point:
   #     eqn.q is nonzero - used println("in cJC: norm(eqn.q): ", norm(reshape(eqn.q[1,:,:], 3, 32)))
   #     typeof(jac): Array{Float64, 2}
-  println("in cJC: typeof(jac): ", typeof(jac))
 
 
 
   # undo final perturbation
   eqn.q_vec[m] = entry_orig
 #
-  println("in cJC: norm of jac: ", norm(jac))
+  println("   in cJC: typeof(jac): ", typeof(jac))
+  println("   in cJC: norm of jac: ", norm(jac))
 
 
   return nothing

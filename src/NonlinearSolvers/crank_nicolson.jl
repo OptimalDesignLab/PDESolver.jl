@@ -1,7 +1,7 @@
 # crank_nicolson.jl
 # Crank-Nicolson implicit solver for PDEs
 
-export crank_nicolson, cnResidual
+export crank_nicolson, cnResidual, negativeZeroCheck
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
@@ -201,6 +201,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     else
       # need to subtract h in the reverse time usage
       t_nextstep = t - h
+      t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
     end
 
     if neg_time == false
@@ -235,6 +236,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     end
 
     t = t_nextstep        # update time step
+
 
     # adj.q_vec now contains the adjoint at time step i. 
     # Previously, adj_nextstep corresponded to time step i, and adj corresponded to time step i+1.
@@ -306,3 +308,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   return t
 
 end   # end of crank_nicolson function
+
+function negativeZeroCheck(t)
+  # prevent floating point errors from setting t to a negative number at t = 0.0
+  if abs(t) < 1e-14 && t < 0.0
+    println("Barely negative time detected, setting t = 0.0.")
+    t = 0.0
+  end
+  return t
+end

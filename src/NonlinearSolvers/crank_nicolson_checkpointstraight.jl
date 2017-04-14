@@ -15,13 +15,27 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
   # because it needs AdvectionEquationMod loaded, which needs PDESolver loaded, which can't be loaded more than once.
   eqn_dummy = deepcopy(adj)                     # allocate a dummy eqn object
 
-  filename = string("qvec_for_adj-", i_actual, ".dat")
-  println("Calculating Jac using forward sweep data from: ", filename)
-  q_vec_with_complex = readdlm(filename)
+  # println("in cnAdjLoadChkpt: pointer(adj.q_vec): ", pointer(adj.q_vec))
+  # println("in cnAdjLoadChkpt: pointer(adj.res_vec): ", pointer(adj.res_vec))
+  println("in cnAdjLoadChkpt: pointer(eqn_dummy.q_vec):   ", pointer(eqn_dummy.q_vec))
+  println("in cnAdjLoadChkpt: pointer(eqn_dummy.res_vec): ", pointer(eqn_dummy.res_vec))
+
+  qvec_filename = string("qvec_for_adj-", i_actual, ".dat")
+  println("Calculating Jac using forward sweep data from: ", qvec_filename)
+  q_vec_with_complex = readdlm(qvec_filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # because readdlm gives a field to the zero-valued complex part
+
+  vis_filename = string("solution_loadedfromdisk_iactual-", i_actual)
+  saveSolutionToMesh(mesh, real(eqn_dummy.q_vec))
+  writeVisFiles(mesh, vis_filename)
 
   # sync up eqn_dummy.q and eqn_dummy.q_vec
   disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
+
+  # TODO: is this needed here? YES. 
+  #     explain why here
+  eqn_dummy.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_dummy.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
   # use startDataExchange to sync up q/q_vec and q_face_send/recv
   if opts["parallel_type"] == 2 && mesh.npeers > 0
@@ -76,6 +90,7 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
   # Note: t is passed in (instead of t_nextstep), but t_nextstep is calc'd & used below
 
   t_nextstep = t - h
+  t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
 
   eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t_nextstep)
   # checked: eqn_dummy is loaded properly

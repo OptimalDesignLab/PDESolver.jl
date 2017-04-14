@@ -126,7 +126,7 @@ end
 function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; 
                              assemble_edgeres=true, zero_resvec=true)
 # assembles all of the residuals into res_vec
-# no aliaising concerns
+# no aliasing concerns
 
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
 

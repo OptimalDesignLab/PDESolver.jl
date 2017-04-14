@@ -31,6 +31,7 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
 
   # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
   t_nextstep = t - h
+  t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
 
   # Fixed 20170330: physicsJac needs to be calculated at time i, which corresponds to adj_nextstep in the reverse sweep
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t_nextstep)
@@ -179,6 +180,7 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 
   # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
   t_nextstep = t - h    # adjoint going backwards in time
+  t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
 
   eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t_nextstep)
   jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t_nextstep)

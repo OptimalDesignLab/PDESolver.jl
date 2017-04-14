@@ -33,10 +33,20 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   #println(f, "----- entered evalResidual -----")
   #close(f)
 
+
+  println("     in evalResidual: norm(eqn.q):       ", norm(reshape(eqn.q[1,:,:],3,32)))
+  println("     in evalResidual: norm(eqn.q_vec):   ", norm(eqn.q_vec))
+  println("     in evalResidual: pointer(eqn.q):       ", pointer(eqn.q))
+  println("     in evalResidual: pointer(eqn.q_vec):   ", pointer(eqn.q_vec))
+  println("     in evalResidual: norm(eqn.res):     ", norm(reshape(eqn.res[1,:,:],3,32)))
+  println("     in evalResidual: norm(eqn.res_vec): ", norm(eqn.res_vec))
+  println("     in evalResidual: pointer(eqn.res):     ", pointer(eqn.res))
+  println("     in evalResidual: pointer(eqn.res_vec): ", pointer(eqn.res_vec))
+
+
   eqn.t = t
 #  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
-
   @debug1 println(params.f, "== parallel_type: ", opts["parallel_type"])
 
   # start communication right away
@@ -92,6 +102,17 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   @debug1 flush(params.f)
 #  println(params.f, "----- finished evalResidual -----")
+
+  println("     end of evalResidual: norm(eqn.q):       ", norm(reshape(eqn.q[1,:,:],3,32)))
+  println("     end of evalResidual: norm(eqn.q_vec):   ", norm(eqn.q_vec))
+  println("     end of evalResidual: pointer(eqn.q):       ", pointer(eqn.q))
+  println("     end of evalResidual: pointer(eqn.q_vec):   ", pointer(eqn.q_vec))
+  println("     end of evalResidual: norm(eqn.res):       ", norm(reshape(eqn.res[1,:,:],3,32)))
+  println("     end of evalResidual: norm(eqn.res_vec):   ", norm(eqn.res_vec))
+  println("     end of evalResidual: pointer(eqn.res):       ", pointer(eqn.res))
+  println("     end of evalResidual: pointer(eqn.res_vec):   ", pointer(eqn.res_vec))
+
+
   return nothing
 end
 
