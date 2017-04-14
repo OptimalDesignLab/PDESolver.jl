@@ -700,8 +700,8 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   ny_bar += v*Un_bar
   nx_bar += nx*dA_bar/dA
   ny_bar += ny*dA_bar/dA
-  nrm_bar[1] = nx_bar
-  nrm_bar[2] = ny_bar
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
 
   return nothing
 end

@@ -291,7 +291,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   sat = params.sat_vals
   calcSAT(params, nrm2, dq, sat, [u, v], H)
 
-  euler_flux = params.flux_vals1
+  euler_flux = zeros(Tsol, 4) # params.flux_vals1
   calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
 
   sat_fac = 1.0 # Multiplier for SAT term
@@ -324,7 +324,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
@@ -335,7 +335,6 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{T
   # getting qg
   qg = params.qg
   calcIsentropicVortex(x, params, qg) # Get the boundary value
-
   v_vals = params.q_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
 
@@ -350,17 +349,32 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{T
   dq = v_vals - qg
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
-  sat = params.sat_vals
-  calcSAT(params, nrm2, dq, sat, [u, v], H)
 
-  euler_flux = params.flux_vals1
-  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+  # sat = params.sat_vals
+  # calcSAT(params, nrm2, dq, sat, [u, v], H)
+
+  # euler_flux = params.flux_vals1
+  # calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
 
   sat_fac = 1.0 # Multiplier for SAT term
-  for i=1:4
-    bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
+  # for i=1:4
+  #   bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
+  # end
+
+  # Reverse sweep
+  sat_bar = zeros(Tsol, 4)
+  euler_flux_bar = zeros(Tsol, 4)
+  for i = 1:4
+    sat_bar[i] = sat_fac*bndryflux_bar[i]
+    euler_flux_bar[i] = bndryflux_bar[i]
   end
 
+  nrm2_bar = zeros(Tsol, 2)
+  calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
+  # println("\nafter calcEulerFlux_revm, nrm2_bar = $(real(nrm2_bar))")
+  calcSAT_revm(params, nrm2, dq, [u,v], H, sat_bar, nrm2_bar)
+  # println("after calcSAT_revm, nrm2_bar = $(real(nrm2_bar))")
+  calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
 
   return nothing
 end
@@ -668,7 +682,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
