@@ -101,6 +101,9 @@ function createMeshAndOperator(opts, dofpernode)
       reorder = false
       internal = false
       shape_type = 3
+    elseif opts["operator_type"] == "SBPDiagE"
+      # nothing to do
+      shape_type = 4
     else
       op_type = opts["operator_type"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
@@ -131,7 +134,7 @@ function createMeshAndOperator(opts, dofpernode)
         sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
       elseif opts["operator_type"] == "SBPDiagE"
         sbp = getTriSBPWithDiagE(degree = order)
-        sbpface = getTriFaceSBPForDiagE(order, sbp.cub, sbp.vtx)
+        sbpface = getTriFaceForDiagE(order, sbp.cub, sbp.vtx)
       end
     
       # TODO: use sbp.vtx instead
