@@ -18,7 +18,6 @@ export printICNames, printBCNames
 
 # load paths for all the components of PDESolver
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
@@ -28,6 +27,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 
 
 # load the modules
