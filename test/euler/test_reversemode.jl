@@ -12,14 +12,14 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-#=
+
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
     q_bar = zeros(Complex128, mesh.numDofPerNode)
     q_bar_complex = zeros(Complex128, mesh.numDofPerNode)
     pert = complex(0,1e-20)
-    println("type of eqn.q = ", typeof(eqn.q))
+    # println("type of eqn.q = ", typeof(eqn.q))
     for i = 1:mesh.numEl
       for j = 1:mesh.numNodesPerElement
         q_vals = sview(eqn.q, :,j,i)
@@ -192,8 +192,8 @@ function test_reversemode()
     end # End context("Checking Boundary Functional Integrand")
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
-=#
-#=
+
+
   facts("--- Testing SAT terms in Reverse Mode ---") do
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -383,15 +383,55 @@ function test_reversemode()
     end # End context("Checking reversemode for FreeStreamBC")
 =#
   end # Endfacts("--- Testing reverse mode for BC functors ---")
-=#
+
   facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---") do
     EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     for i = 1:length(eqn.flux_face_bar)
-      eqn.flux_face_bar[:] = randn() + 0.0im
+      eqn.flux_face_bar[:] = 1.0 + 0.0im # randn() + 0.0im
     end
 
     @assert opts["face_integral_type"] == 1
-    EulerEquationMod.calcFaceFlux_revm(mesh, sbp, eqn, eqn.flux_func_bar, mesh.interfaces, eqn.flux_face_bar)
+    EulerEquationMod.calcFaceFlux_revm(mesh, sbp, eqn, eqn.flux_func_bar,
+                                       mesh.interfaces, eqn.flux_face_bar)
+
+    # Check against complex step
+    pert = complex(0, 1e-20) # Complex step perturbation
+    tmpflux = zeros(Complex128, 4)
+
+    functor = eqn.flux_func
+    nfaces = length(mesh.interfaces)
+    nrm = zeros(Complex128, size(sbp.facenormal,1))
+    for i=1:nfaces  # loop over faces
+      interface_i = mesh.interfaces[i]
+      for j = 1:mesh.numNodesPerFace
+        eL = interface_i.elementL
+        fL = interface_i.faceL
+
+        # get components
+        qL = sview(eqn.q_face, :, 1, j, i)
+        qR = sview(eqn.q_face, :, 2, j, i)
+        dxidx = sview(mesh.dxidx_face, :, :, j, i)
+        dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
+        aux_vars = sview(eqn.aux_vars_face, :, j, i)
+        nrm[:] = sbp.facenormal[:,fL]
+
+        flux_j_bar = sview(eqn.flux_face_bar, :, j, i)
+        # println("dxidx_bar = $(real(dxidx_bar))")
+        for k = 1:length(dxidx)
+          dxidx[k] += pert
+          functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, tmpflux)
+          tmpflux[:] = imag(tmpflux[:])/imag(pert)
+          dot_product = dot(real(flux_j_bar),real(tmpflux))
+          error = norm(dxidx_bar[k] - dot_product, 2)
+          @fact error --> roughly(0.0, atol = 1e-12)
+          # println("error = $error")
+          # println("dxidx_bar[$k] = $(real(dxidx_bar[k])), dot_product = $dot_product")
+          dxidx[k] -= pert
+        end # End for k = 1:length(dxidx)
+      end
+    end
+
+
   end # End facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
 
   return nothing
