@@ -193,6 +193,7 @@ function test_reversemode()
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 =#
+#=
   facts("--- Testing SAT terms in Reverse Mode ---") do
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -274,7 +275,7 @@ function test_reversemode()
     for i = 1:length(eqn.bndryflux_bar)
       eqn.bndryflux_bar[i] = 1.0 + 0.0im # randn() + zero(Complex128) # 1.0 + 0.0im
     end
-    EulerEquationMod.getBCFunctors_revm(mesh, sbp, eqn, opts)
+    EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     fill!(mesh.dxidx_bndry_bar, 0.0)
 
     context("Checking reverse mode for noPenetrationBC") do
@@ -330,7 +331,7 @@ function test_reversemode()
 
     context("Checking reverse mode for isentropicVortexBC") do
 
-      EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+      # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
       functor_rev = mesh.bndry_funcs_revm[2]
       functor = mesh.bndry_funcs[2]
 
@@ -382,6 +383,16 @@ function test_reversemode()
     end # End context("Checking reversemode for FreeStreamBC")
 =#
   end # Endfacts("--- Testing reverse mode for BC functors ---")
+=#
+  facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---") do
+    EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
+    for i = 1:length(eqn.flux_face_bar)
+      eqn.flux_face_bar[:] = randn() + 0.0im
+    end
+
+    @assert opts["face_integral_type"] == 1
+    EulerEquationMod.calcFaceFlux_revm(mesh, sbp, eqn, eqn.flux_func_bar, mesh.interfaces, eqn.flux_face_bar)
+  end # End facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
 
   return nothing
 end # End function test_reversemode

@@ -385,6 +385,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
+  flux_func_bar::FluxType_revm # Functor for the reverse mode of face flux
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
   face_element_integral_func::FaceElementIntegralType  # function for face
@@ -592,7 +593,7 @@ type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
   is_objective_fn::Bool
   geom_faces_functional::AbstractArray{Int,1}
   ndof::Int
-  bndry_force::AbstractArray{Topt,1}  
+  bndry_force::AbstractArray{Topt,1}
   lift_val::Topt
   drag_val::Topt
   dLiftdAlpha::Topt # Partial derivative of lift w.r.t. alpha

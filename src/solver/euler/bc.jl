@@ -873,7 +873,7 @@ function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData
   for i = 1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-    println("BCDict_revm[val] = ", BCDict_revm[val])
+    println("BCDict_revm[$val] = ", BCDict_revm[val])
     mesh.bndry_funcs_revm[i] = BCDict_revm[val]
   end # End for i = 1:mesh.numBC
 

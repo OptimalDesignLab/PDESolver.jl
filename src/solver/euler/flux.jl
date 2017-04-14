@@ -560,3 +560,41 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   eqn.volume_flux_func = FluxDict[name]
   return nothing
 end
+#=
+type RoeFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
+              F::AbstractVector{Tres})
+
+  RoeSolver(params, uL, uR, aux_vars, dxidx, nrm, F)
+end
+=#
+
+type RoeFlux_revm <: FluxType_revm
+end
+
+function call{Tsol, Tres, Tmsh}(obj::RoeFlux_revm, params::ParamType,
+              uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
+              dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
+              flux_bar::AbstractVector{Tres}, dxidx_bar::AbstractArray{Tmsh, 2})
+
+  RoeSolver_revm(params, uL, uR, aux_vars, dxidx, nrm, flux_bar, dxidx_bar)
+
+  return nothing
+end
+
+global const FluxDict_revm = Dict{ASCIIString, FluxType_revm}(
+"RoeFlux" => RoeFlux_revm(),
+)
+
+function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  name = opts["Flux_name"]
+  eqn.flux_func_bar = FluxDict_revm[name]
+
+  return nothing
+end # End function getFluxFunctors_revm

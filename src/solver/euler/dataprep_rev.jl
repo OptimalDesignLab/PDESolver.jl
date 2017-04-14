@@ -129,7 +129,7 @@ end
 function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP,
                           eqn::EulerData{Tsol, Tres, Tdim, :conservative},
-                          functor_bar::FluxType,
+                          functor_bar::FluxType_revm,
                           interfaces::AbstractArray{Interface,1},
                           face_flux_bar::AbstractArray{Tres, 3})
 
