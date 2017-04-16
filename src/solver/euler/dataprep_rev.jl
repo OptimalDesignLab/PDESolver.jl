@@ -41,7 +41,7 @@ function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
   for i=1:mesh.numBC
-    functor_i = mesh.bndry_funcs[i]
+    functor_i = mesh.bndry_funcs_revm[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?

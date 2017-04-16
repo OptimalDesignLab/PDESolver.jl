@@ -12,7 +12,7 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-
+#=
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -43,9 +43,10 @@ function test_reversemode()
 
   facts("--- Testing Euler Flux derivative in Reverse mode ---") do
 
+    Tdim = mesh.dim
+
     context("Checking reversemode derivative w.r.t mesh metrics") do
       # Create a random vector
-      Tdim = mesh.dim
       F_bar = rand(mesh.numDofPerNode) # For 2D
       flux = zeros(Complex128, mesh.numDofPerNode) # For complex step
       dir_bar = zeros(Float64, Tdim) # In 2D
@@ -87,7 +88,6 @@ function test_reversemode()
     context("Checking reverse mode derivative w.r.t solution q") do
 
       # Create a random vector
-      Tdim = mesh.dim
       F_bar = rand(mesh.numDofPerNode) # For 2D
       flux = zeros(Complex128, mesh.numDofPerNode) # For complex step
       nrm = zeros(Complex128, Tdim)
@@ -377,11 +377,7 @@ function test_reversemode()
       end
 
     end # End context("Checking reverse mode for isentropicVortexBC")
-#=
-    context("Checking reversemode for FreeStreamBC") do
 
-    end # End context("Checking reversemode for FreeStreamBC")
-=#
   end # Endfacts("--- Testing reverse mode for BC functors ---")
 
   facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---") do
@@ -424,15 +420,147 @@ function test_reversemode()
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(dxidx_bar[k] - dot_product, 2)
           @fact error --> roughly(0.0, atol = 1e-12)
-          # println("error = $error")
-          # println("dxidx_bar[$k] = $(real(dxidx_bar[k])), dot_product = $dot_product")
           dxidx[k] -= pert
         end # End for k = 1:length(dxidx)
       end
     end
 
-
   end # End facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
+=#
+
+  facts("--- Testing evalrevm_transposeproduct ---") do
+
+    adjoint_vec = zeros(Complex128, mesh.numDof)
+    for i = 1:mesh.numDof
+      adjoint_vec[i] = randn() + 0.0im
+    end
+
+    EulerEquationMod.init_revm(mesh, sbp, eqn, opts) # initialize reversemode functors
+    EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, adjoint_vec)
+
+    # Copy flux_bar values for testing against complex step
+    vol_flux_bar = deepcopy(eqn.flux_parametric_bar)
+    f = open("vol_flux_bar.dat", "w")
+    println(f, vol_flux_bar)
+    close(f)
+
+    bndryflux_bar_copy = deepcopy(eqn.bndryflux_bar)
+    f = open("bndryflux_bar.dat", "w")
+    println(f, bndryflux_bar_copy)
+    close(f)
+
+    flux_face_bar_copy = deepcopy(eqn.flux_face_bar)
+    f = open("flux_face_bar.dat", "w")
+    println(f, flux_face_bar_copy)
+    close(f)
+
+    pert = complex(0, 1e-20)
+    dir_bar_complex = zeros(Complex128, 2)
+    flux = zeros(Complex128, 4)
+    Tdim = 2
+    nrm = zeros(Complex128, 2)
+
+    # Check reverse mode for volume flux bar components
+    for i = 1:mesh.numEl
+      for j = 1:mesh.numNodesPerElement
+        q_vals = sview(eqn.q, :,j,i)
+        aux_vars = sview(eqn.aux_vars, :, j, i)
+        for k=1:Tdim  # loop over dimensions
+          for p=1:Tdim
+            nrm[p] = mesh.dxidx[k, p, j, i]
+          end
+          dxidx_bar = sview(mesh.dxidx_bar, k, :, j, i)
+          F_bar = sview(vol_flux_bar, :, j, i, k)
+
+          # Do the complex step in normal
+          fill!(dir_bar_complex, 0.0)
+          for p = 1:Tdim
+            nrm[p] += pert
+            fill!(flux, 0.0)
+            EulerEquationMod.calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
+            flux[:] = imag(flux[:])/imag(pert)
+            nrm[p] -= pert
+            dir_bar_complex[p] = dot(F_bar, flux)
+            error = norm(dir_bar_complex[p] - dxidx_bar[p], 2)
+            @fact error --> roughly(0.0, atol = 1e-12)
+          end # End for p = 1:Tdim
+        end # End for k=1:Tdim
+      end # End for j = 1:mesh.numNodesPerElement
+    end   # End for i = 1:mesh.numEl
+
+    # Check reverse mode for face fluxes
+    @assert opts["face_integral_type"] == 1
+    tmpflux = zeros(Complex128, 4)
+
+    functor = eqn.flux_func
+    nfaces = length(mesh.interfaces)
+    nrm = zeros(Complex128, size(sbp.facenormal,1))
+    for i=1:nfaces  # loop over faces
+      interface_i = mesh.interfaces[i]
+      for j = 1:mesh.numNodesPerFace
+        eL = interface_i.elementL
+        fL = interface_i.faceL
+
+        # get components
+        qL = sview(eqn.q_face, :, 1, j, i)
+        qR = sview(eqn.q_face, :, 2, j, i)
+        dxidx = sview(mesh.dxidx_face, :, :, j, i)
+        dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
+        aux_vars = sview(eqn.aux_vars_face, :, j, i)
+        nrm[:] = sbp.facenormal[:,fL]
+
+        flux_j_bar = sview(flux_face_bar_copy, :, j, i)
+        for k = 1:length(dxidx)
+          dxidx[k] += pert
+          functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, tmpflux)
+          tmpflux[:] = imag(tmpflux[:])/imag(pert)
+          dot_product = dot(real(flux_j_bar),real(tmpflux))
+          error = norm(dxidx_bar[k] - dot_product, 2)
+          @fact error --> roughly(0.0, atol = 1e-12)
+          dxidx[k] -= pert
+        end # End for k = 1:length(dxidx)
+      end
+    end
+
+    # Check reverse mode for boundary fluxes
+    for ctr=1:mesh.numBC
+      functor_i = mesh.bndry_funcs[ctr]
+      start_index = mesh.bndry_offsets[ctr]
+      end_index = mesh.bndry_offsets[ctr+1]
+      idx_range = start_index:end_index 
+      bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
+      bndryflux_bar = sview(bndryflux_bar_copy, :, :, start_index:(end_index - 1))
+
+      complex_dxidx_bar = zeros(mesh.dxidx_bndry_bar)
+      nfaces = length(bndry_facenums_i)
+      nrm = zeros(Complex128, 2)
+      dBndryfluxdm = zeros(Complex128, 4)
+      for i = 1:nfaces
+        bndry_i = bndry_facenums_i[i]
+        global_facenum = idx_range[i]
+        for j = 1:mesh.sbpface.numnodes
+          q = sview(eqn.q_bndry, :, j, global_facenum)
+          aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+          x = sview(mesh.coords_bndry, :, j, global_facenum)
+          dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          tmpflux = zeros(Complex128, 4)
+          bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
+          dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
+          for k = 1:length(dxidx)
+            dxidx[k] += pert
+            functor_i(q, aux_vars, x, dxidx, nrm, tmpflux, eqn.params)
+            tmpflux[:] = imag(tmpflux[:])/imag(pert)
+            dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
+            error = norm(dxidx_bndry_bar[k] - dot_product, 2)
+            @fact error --> roughly(0.0, atol = 1e-12)
+            dxidx[k] -= pert
+          end # End for k = 1:Tdim
+        end
+      end
+    end
+
+  end # End facts("--- Testing evalrevm_transposeproduct ---")
 
   return nothing
 end # End function test_reversemode
