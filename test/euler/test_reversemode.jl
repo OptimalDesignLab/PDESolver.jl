@@ -128,7 +128,7 @@ function test_reversemode()
     end # End context("Cehcking reverse mode derivative w.r.t solution q") do
 
   end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
-
+=#
 
   facts("--- Testing Boundary Functional In Reverse Mode ---") do
 
@@ -191,9 +191,15 @@ function test_reversemode()
       end   # End for i = 1:nfaces
     end # End context("Checking Boundary Functional Integrand")
 
+    context("Checking Complete boundary functional in reverse") do
+
+    EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag)
+
+    end # End context("Checking Complete boundary functional in reverse")
+
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 
-
+#=
   facts("--- Testing SAT terms in Reverse Mode ---") do
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -426,7 +432,7 @@ function test_reversemode()
     end
 
   end # End facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
-=#
+
 
   facts("--- Testing evalrevm_transposeproduct ---") do
 
@@ -561,7 +567,7 @@ function test_reversemode()
     end
 
   end # End facts("--- Testing evalrevm_transposeproduct ---")
-
+=#
   return nothing
 end # End function test_reversemode
 
