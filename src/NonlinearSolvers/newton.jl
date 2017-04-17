@@ -1097,16 +1097,6 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   (m,n) = size(jac)
   # calculate jacobian
 
-    println(" ======== in cJC ========")
-    println("   t: ", t)
-    println("   norm(eqn.q):          ", norm(reshape(eqn.q[1,:,:], 3, 32)))
-    println("   norm(eqn.q_vec):      ", norm(eqn.q_vec))
-    println("   norm(eqn.res):        ", norm(reshape(eqn.res[1,:,:],3,32)))
-    println("   norm(eqn.res_vec):    ", norm(eqn.res_vec))
-    println("   pointer(eqn.q):       ", pointer(eqn.q))
-    println("   pointer(eqn.q_vec):   ", pointer(eqn.q_vec))
-    println("   pointer(eqn.res):     ", pointer(eqn.res))
-    println("   pointer(eqn.res_vec): ", pointer(eqn.res_vec))
     # println("   size(eqn.res): ", size(eqn.res))
     # println("   size(reshape(eqn.res[1,:,:],3,32)): ",size(reshape(eqn.res[1,:,:],3,32)))
     # println("   size(eqn.res_vec): ", size(eqn.res_vec))
@@ -1140,9 +1130,22 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
     #   size(eqn.q): (1,3,32)
     #   size(jac): (96,96)
 
+    #=
+    println(" ======== in cJC, before evalResidual ========")
+    println("   t: ", t)
+    println("   norm(eqn.q):          ", norm(reshape(eqn.q[1,:,:], 3, 32)))
+    println("   norm(eqn.q_vec):      ", norm(eqn.q_vec))
+    println("   norm(eqn.res):        ", norm(reshape(eqn.res[1,:,:],3,32)))
+    println("   norm(eqn.res_vec):    ", norm(eqn.res_vec))
+    println("   pointer(eqn.q):       ", pointer(eqn.q))
+    println("   pointer(eqn.q_vec):   ", pointer(eqn.q_vec))
+    println("   pointer(eqn.res):     ", pointer(eqn.res))
+    println("   pointer(eqn.res_vec): ", pointer(eqn.res_vec))
+    =#
 
     # evaluate residual
     func(mesh, sbp, eqn, opts, t)
+
 
     assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec)
     # ZERO JAC PROBLEM:
@@ -1168,7 +1171,16 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   #     eqn.q is nonzero - used println("in cJC: norm(eqn.q): ", norm(reshape(eqn.q[1,:,:], 3, 32)))
   #     typeof(jac): Array{Float64, 2}
 
-
+  println(" ======== in cJC, after evalResidual ========")
+  println("   t: ", t)
+  println("   norm(eqn.q):          ", norm(reshape(eqn.q[1,:,:], 3, 32)))
+  println("   norm(eqn.q_vec):      ", norm(eqn.q_vec))
+  println("   norm(eqn.res):        ", norm(reshape(eqn.res[1,:,:],3,32)))
+  println("   norm(eqn.res_vec):    ", norm(eqn.res_vec))
+  println("   pointer(eqn.q):       ", pointer(eqn.q))
+  println("   pointer(eqn.q_vec):   ", pointer(eqn.q_vec))
+  println("   pointer(eqn.res):     ", pointer(eqn.res))
+  println("   pointer(eqn.res_vec): ", pointer(eqn.res_vec))
 
   # undo final perturbation
   eqn.q_vec[m] = entry_orig

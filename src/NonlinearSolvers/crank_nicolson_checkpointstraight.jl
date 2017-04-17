@@ -67,8 +67,8 @@ function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t)
 
   calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
-  filename = string("jac_from_cnAdjCalcdRdu-i_actual-",i_actual,".dat")
-  writedlm(filename, jac)
+  # filename = string("jac_from_cnAdjCalcdRdu-i_actual-",i_actual,".dat")
+  # writedlm(filename, jac)
 
   return jac
 end   # end function cnAdjCalcdRdu
@@ -111,8 +111,8 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
   nextstep_q_vec = zeros(adj.q_vec)
   nextstep_q_vec = B1\B2
 
-  filename = string("eqn_dummyqvec_from_cnAdjDirect-i_actual-",i_actual,".dat")
-  writedlm(filename, eqn_dummy.q_vec)
+  # filename = string("eqn_dummyqvec_from_cnAdjDirect-i_actual-",i_actual,".dat")
+  # writedlm(filename, eqn_dummy.q_vec)
 
   return nextstep_q_vec, jac
 
