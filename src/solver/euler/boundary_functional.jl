@@ -46,6 +46,14 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+@doc """
+EulerEquationMod.evalFunctional_revm
+
+Reverse mode of EulerEquationMod.evalFunctional, It takes in functional value
+and return `mesh.dxidx_bndry_bar`
+
+"""->
+
 function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
                         functionalData::AbstractOptimizationData;
@@ -167,6 +175,13 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+@doc """
+###EulerEquationMod.calcBndryFunctional_revm
+
+Reverse mode function That actually does the work.
+
+"""
+
 function calcBndryFunctional_lift_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
                          eqn::EulerData{Tsol, Tres, Tdim}, opts, functionalData::BoundaryForceData)
 
@@ -244,7 +259,8 @@ function calcBndryFunctional_lift_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGM
         fill!(nxny_bar, 0.0)
         calcBoundaryFunctionalIntegrand_revm(eqn.params, q2, aux_vars, phys_nrm, 
                                              node_info, functionalData, 
-                                             b_integrand_ji_bar, nxny_bar)
+                                             nxny_bar, b_integrand_ji_bar)
+        # println("nxny_bar = $(real(nxny_bar))")
         dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
         for k = 1:Tdim
           dxidx_bar[1,k] += nxny_bar[k]*nrm[1]
