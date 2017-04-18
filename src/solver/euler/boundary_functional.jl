@@ -82,7 +82,7 @@ function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   elseif functionalName == "drag"
     bndry_force_bar = zeros(Tsol, mesh.dim)
     bndry_force_bar[1] = cos(eqn.params.aoa)
-    bndry_forec_bar[2] = sin(eqn.params.aoa)
+    bndry_force_bar[2] = sin(eqn.params.aoa)
     calcBndryFunctional_revm(mesh, sbp, eqn, opts, functionalData, bndry_force_bar)
 
   else
@@ -201,20 +201,12 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
                                        opts, functionalData::BoundaryForceData,
                                        bndry_force_bar::AbstractArray{Tsol, 1})
 
-  # derivative w.r.t lift
-
-  # Forward sweep
   functional_faces = functionalData.geom_faces_functional
   phys_nrm = zeros(Tmsh, Tdim)
   aoa = eqn.params.aoa # Angle of attack
 
-  # Reverse sweep
-#bndry_force_bar = zeros(functionalData.ndof)
   lift_bar = one(Tsol)
   nxny_bar = zeros(Tmsh, functionalData.ndof)
-
-#bndry_force_bar[1] -= lift_bar*sin(aoa)
-#bndry_force_bar[2] += lift_bar*cos(aoa)
 
   # TODO: Figure out the reverse of MPI.Allreduce. Is it even necessary
   local_functional_val_bar = zeros(Tsol, functionalData.ndof)
@@ -263,12 +255,9 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         for k = 1:Tdim
-            # nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-            # ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
             phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
           end # End for k = 1:Tdim
         node_info = Int[itr,j,i]
-        # b_integrand_ji = sview(boundary_integrand,:,j,i)
         b_integrand_ji_bar = sview(boundary_integrand_bar, :, j, i)
         # calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
         #                                node_info, functionalData, b_integrand_ji)
@@ -276,7 +265,6 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         calcBoundaryFunctionalIntegrand_revm(eqn.params, q2, aux_vars, phys_nrm, 
                                              node_info, functionalData, 
                                              nxny_bar, b_integrand_ji_bar)
-        # println("nxny_bar = $(real(nxny_bar))")
         dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
         for k = 1:Tdim
           dxidx_bar[1,k] += nxny_bar[k]*nrm[1]
@@ -286,10 +274,7 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
-
-
   end # End for itr = 1:length(functional_faces) 
-
 
   return nothing
 end
