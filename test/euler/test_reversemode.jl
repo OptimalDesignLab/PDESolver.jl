@@ -191,7 +191,7 @@ function test_reversemode()
       end   # End for i = 1:nfaces
     end # End context("Checking Boundary Functional Integrand")
 
-    context("Checking Complete boundary functional in reverse") do
+    context("Checking Complete boundary functional lift in reverse") do
 
       EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag, "lift")
 
@@ -237,8 +237,55 @@ function test_reversemode()
       end # End for itr = 1:length(functional_edges)
 
 
-    end # End context("Checking Complete boundary functional in reverse")
+    end # End context("Checking Complete boundary functional lift in reverse")
 
+    context("Checking Complete boundary functional drag in reverse") do
+
+      EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag, "drag")
+
+      # Check lift values against complex step
+      pert = complex(0, 1e-20) # Complex step perturbation
+      local_functional_val = zeros(Complex128, drag.ndof) # Local processor share
+      bndry_force = drag.bndry_force
+      fill!(bndry_force, 0.0)
+      functional_edges = drag.geom_faces_functional
+      phys_nrm = zeros(Complex128, 2)
+
+      # Get bndry_offsets for the functional edge concerned
+      for itr = 1:length(functional_edges)
+        g_edge_number = functional_edges[itr] # Extract geometric edge number
+        itr2 = 0
+        for itr2 = 1:mesh.numBC
+          if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
+            break
+          end
+        end
+        start_index = mesh.bndry_offsets[itr2]
+        end_index = mesh.bndry_offsets[itr2+1]
+        idx_range = start_index:(end_index-1)
+        bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+        nfaces = length(bndry_facenums)
+        for i = 1:nfaces
+          bndry_i = bndry_facenums[i]
+          global_facenum = idx_range[i]
+          for j = 1:mesh.sbpface.numnodes
+            dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
+            dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+            # Perturb dxidx_bndry
+            for k = 1:length(dxidx)
+              dxidx[k] += pert
+              EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
+              dlift_dm = imag(drag.drag_val)/imag(pert)
+              error = norm(dxidx_bar[k] - dlift_dm, 2)
+              @fact error --> roughly(0.0, atol=1e-12)
+              dxidx[k] -= pert
+            end
+          end  # End for j = 1:mesh.sbpface.numnodes
+        end    # End for i = 1:nfaces
+      end # End for itr = 1:length(functional_edges)
+
+
+    end # End context("Checking Complete boundary functional drag in reverse")
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 
 #=
