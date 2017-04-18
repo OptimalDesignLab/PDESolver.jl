@@ -40,6 +40,7 @@ end
 function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
+  fill!(mesh.dxidx_bndry_bar, 0.0)
   for i=1:mesh.numBC
     functor_i = mesh.bndry_funcs_revm[i]
     start_index = mesh.bndry_offsets[i]

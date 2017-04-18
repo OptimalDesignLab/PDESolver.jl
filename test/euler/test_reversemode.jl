@@ -12,7 +12,7 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-#=
+
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -128,7 +128,6 @@ function test_reversemode()
     end # End context("Cehcking reverse mode derivative w.r.t solution q") do
 
   end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
-=#
 
   facts("--- Testing Boundary Functional In Reverse Mode ---") do
 
@@ -274,14 +273,11 @@ function test_reversemode()
             # Perturb dxidx_bndry
             for k = 1:length(dxidx)
               dxidx[k] += pert
-# println("dxidx[$k] before = $(dxidx[k])")
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
               ddrag_dm = imag(drag.drag_val)/imag(pert)
               error = norm(dxidx_bar[k] - ddrag_dm, 2)
-# println("dxidx_bar[k] = $(real(dxidx_bar[k])), ddrag_dm = $(real(ddrag_dm))") 
               @fact error --> roughly(0.0, atol=1e-12)
               dxidx[k] -= pert
-# println("dxidx[$k] after = $(dxidx[k])")
             end
           end  # End for j = 1:mesh.sbpface.numnodes
         end    # End for i = 1:nfaces
@@ -291,7 +287,7 @@ function test_reversemode()
     end # End context("Checking Complete boundary functional drag in reverse")
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 
-#=
+
   facts("--- Testing SAT terms in Reverse Mode ---") do
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -625,7 +621,7 @@ function test_reversemode()
       functor_i = mesh.bndry_funcs[ctr]
       start_index = mesh.bndry_offsets[ctr]
       end_index = mesh.bndry_offsets[ctr+1]
-      idx_range = start_index:end_index 
+      idx_range = start_index:end_index
       bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
       bndryflux_bar = sview(bndryflux_bar_copy, :, :, start_index:(end_index - 1))
 
@@ -659,7 +655,7 @@ function test_reversemode()
     end
 
   end # End facts("--- Testing evalrevm_transposeproduct ---")
-=#
+
   return nothing
 end # End function test_reversemode
 
