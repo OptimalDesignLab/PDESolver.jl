@@ -193,7 +193,7 @@ function test_reversemode()
 
     context("Checking Complete boundary functional in reverse") do
 
-      EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag)
+      EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag, "lift")
 
       # Check lift values against complex step
       pert = complex(0, 1e-20) # Complex step perturbation
@@ -229,9 +229,7 @@ function test_reversemode()
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
               dlift_dm = imag(drag.lift_val)/imag(pert)
               error = norm(dxidx_bar[k] - dlift_dm, 2)
-              # println("error = $(real(error))")
               @fact error --> roughly(0.0, atol=1e-12)
-              # println("dxidx_bar[$k] = $(real(dxidx_bar[k])), dlift_dm = $(real(dlift_dm))")
               dxidx[k] -= pert
             end
           end  # End for j = 1:mesh.sbpface.numnodes

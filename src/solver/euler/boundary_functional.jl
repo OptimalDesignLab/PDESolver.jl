@@ -56,8 +56,8 @@ and return `mesh.dxidx_bndry_bar`
 
 function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functionalData::AbstractOptimizationData;
-                        functional_number::Int=1)
+                        functionalData::AbstractOptimizationData,
+                        functionalName::ASCIIString)
 
 
   if opts["parallel_type"] == 1
@@ -74,7 +74,20 @@ function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
-  calcBndryFunctional_lift_revm(mesh, sbp, eqn, opts, functionalData)
+  if functionalName == "lift"
+    bndry_force_bar = zeros(Tsol, mesh.dim)
+    bndry_force_bar[1] -= sin(eqn.params.aoa)
+    bndry_force_bar[2] += cos(eqn.params.aoa)
+    calcBndryFunctional_revm(mesh, sbp, eqn, opts, functionalData, bndry_force_bar)
+  elseif functionalName == "drag"
+    bndry_force_bar = zeros(Tsol, mesh.dim)
+    bndry_force_bar[1] = cos(eqn.params.aoa)
+    bndry_forec_bar[2] = sin(eqn.params.aoa)
+    calcBndryFunctional_revm(mesh, sbp, eqn, opts, functionalData, bndry_force_bar)
+
+  else
+    error("reverse mode of functional $functionalName not defined")
+  end
 
   return nothing
 end
@@ -101,8 +114,9 @@ boundary functional type or parameters.
 
 """->
 
-function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol, Tres, Tdim}, opts, functionalData::BoundaryForceData)
+function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             opts, functionalData::BoundaryForceData)
 
   local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
   bndry_force = functionalData.bndry_force
@@ -182,8 +196,10 @@ Reverse mode function That actually does the work.
 
 """
 
-function calcBndryFunctional_lift_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::EulerData{Tsol, Tres, Tdim}, opts, functionalData::BoundaryForceData)
+function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                                       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                                       opts, functionalData::BoundaryForceData,
+                                       bndry_force_bar::AbstractArray{Tsol, 1})
 
   # derivative w.r.t lift
 
@@ -193,12 +209,12 @@ function calcBndryFunctional_lift_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGM
   aoa = eqn.params.aoa # Angle of attack
 
   # Reverse sweep
-  bndry_force_bar = zeros(functionalData.ndof)
+#bndry_force_bar = zeros(functionalData.ndof)
   lift_bar = one(Tsol)
   nxny_bar = zeros(Tmsh, functionalData.ndof)
 
-  bndry_force_bar[1] -= lift_bar*sin(aoa)
-  bndry_force_bar[2] += lift_bar*cos(aoa)
+#bndry_force_bar[1] -= lift_bar*sin(aoa)
+#bndry_force_bar[2] += lift_bar*cos(aoa)
 
   # TODO: Figure out the reverse of MPI.Allreduce. Is it even necessary
   local_functional_val_bar = zeros(Tsol, functionalData.ndof)
