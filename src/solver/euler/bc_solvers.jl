@@ -23,6 +23,28 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
   return nothing
 end
 
+@doc """
+###EulerEquationMod.RoeSolver_revm
+
+Wrapper for the reverse mode of the Roe Solver. This needs to get called during
+the reverse mode of Boundary condtitons
+
+**Inputs**
+
+* `params` : Object of ParamType
+* `q`  : Conservative variable of the fluid
+* `qg` : Conservative variable of the boundary or the adjacent element
+* `aux_vars` : Auxiliary variables
+* `dxidx` : Mapping jacobian for an SBP face node
+* `nrm`   : SBP face normal vector
+* `flux_bar` : Flux product that needs to git differentiated
+
+**Output**
+
+* `dxidx_bar` : Derivative w.r.t the mapping jacobian
+
+"""->
+
 function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType,
                                      q::AbstractArray{Tsol,1},
                                      qg::AbstractArray{Tsol, 1},
@@ -63,7 +85,8 @@ end
     flux : vector to populate with solution
 
   Aliasing restrictions:  none of the inputs can alias params.res_vals1,
-                          params.res_vals2, params.q_vals, params.flux_vals1, or                          params.sat
+                          params.res_vals2, params.q_vals, params.flux_vals1, or
+                          params.sat
 
 
 """->
@@ -140,6 +163,29 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   return nothing
 
 end # ends the function eulerRoeSAT
+
+@doc """
+###EulerEquationMod.RoeSolver_revm
+
+Reverse mode of `EulerEquationMod.RoeSolver`. This function computes the
+reverse mode of the Roe flux w.r.t the mesh metrics
+
+**Inputs**
+
+* `params` : Parameter object
+* `q`  : Conservative variable of the fluid
+* `qg` : Conservative variable of the boundary or the adjacent element
+* `aux_vars` : Auxiliary variables
+* `nrm` : Element face normal vector in the physical space
+* `flux_bar` : Flux value which needs to get differentiated
+
+**Output**
+
+* `nrm_bar` : derivaitve of the flux_bar w.r.t the mesh metrics
+
+Aliasing Restrictions: Same as the forward function
+
+"""->
 
 function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
                                      q::AbstractArray{Tsol,1},
@@ -480,6 +526,25 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
 
   return nothing
 end  # End function calcSAT
+
+@doc """
+###EulerEquationMod.calcSAT_revm
+
+Reverse mode of calcSAT
+
+**Inputs**
+* `params` : Parameter object of type ParamType
+* `nrm` : Normal to face in the physical space
+* `dq`  : Boundary condition penalty variable
+* `vel` : Velocities along X & Y directions in the physical space
+* `H`   : Total enthalpy
+* `sat_bar` : Inpute seed for sat flux whose derivative needs to be computed
+
+**Output**
+
+* `nrm_bar` : derivative of `sat_bar` w.r.t physical normal vector
+
+"""->
 
 function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
                       dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},

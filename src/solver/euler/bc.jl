@@ -319,6 +319,30 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
 end # ends the function isentropicVortexBC
 =#
 
+@doc """
+###EulerEquationMod.isentropicVortexBC_revm
+
+Reverse mode for isentropicVortexBC.
+
+**Inputs**
+
+* `obj` : Type of the Boundary condition being evaluated. Its a subtype of 
+          BCType_revm
+* `q`   : Solution variable
+* `aux_vars` : Auxiliary variables
+* `x`     : Node coordinates
+* `dxidx` : Mapping jacobian matrix for the SBP node
+* `nrm`   : sbpface normal vector
+* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
+                    mode derivative.
+* `params`        : equation object parameters
+
+**Output**
+
+* `dxidx_bar` : Derivative of bndryflux_bar w.r.t the mapping jacobian
+
+"""->
+
 type isentropicVortexBC_revm <: BCType_revm
 end
 
@@ -350,12 +374,6 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{T
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
 
-  # sat = params.sat_vals
-  # calcSAT(params, nrm2, dq, sat, [u, v], H)
-
-  # euler_flux = params.flux_vals1
-  # calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
-
   sat_fac = 1.0 # Multiplier for SAT term
   # for i=1:4
   #   bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
@@ -371,9 +389,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{T
 
   nrm2_bar = zeros(Tsol, 2)
   calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
-  # println("\nafter calcEulerFlux_revm, nrm2_bar = $(real(nrm2_bar))")
   calcSAT_revm(params, nrm2, dq, [u,v], H, sat_bar, nrm2_bar)
-  # println("after calcSAT_revm, nrm2_bar = $(real(nrm2_bar))")
   calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
 
   return nothing
@@ -464,9 +480,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
 
-  # nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  # ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
@@ -477,6 +490,26 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
 
   return nothing
 end
+
+@doc """
+###EulerEquationMod.noPenetrationBC_revm
+
+Reverse mode for noPenetrationBC.
+
+**Input**
+
+* `obj` : Type of the Boundary condition being evaluated. Its a subtype of 
+          BCType_revm
+* `q`   : Solution variable
+* `aux_vars` : Auxiliary variables
+* `x`     : Node coordinates
+* `dxidx` : Mapping jacobian matrix for the SBP node
+* `nrm`   : sbpface normal vector
+* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
+                    mode derivative.
+* `params`        : equation object parameters
+
+"""->
 
 type noPenetrationBC_revm <: BCType_revm
 end
@@ -676,6 +709,30 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
 
   return nothing
 end
+
+@doc """
+###EulerEquationMod.FreeStreamBC_revm
+
+Reverse mode for FreeStreamBC.
+
+**Inputs**
+
+* `obj` : Type of the Boundary condition being evaluated. Its a subtype of 
+          BCType_revm
+* `q`   : Solution variable
+* `aux_vars` : Auxiliary variables
+* `x`     : Node coordinates
+* `dxidx` : Mapping jacobian matrix for the SBP node
+* `nrm`   : sbpface normal vector
+* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
+                    mode derivative.
+* `params`        : equation object parameters
+
+**Output**
+
+* `dxidx_bar` : Derivative of bndryflux_bar w.r.t the mapping jacobian
+
+"""->
 
 type FreeStreamBC_revm <: BCType_revm
 end

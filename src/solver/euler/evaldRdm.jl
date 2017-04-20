@@ -32,7 +32,6 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
    evalBoundaryIntegrals_revm(mesh, sbp, eqn)
-   #println("boundary integral @time printed above")
   end
 
 #=
@@ -63,6 +62,11 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
   return nothing
 end  # end evalResidual
 
+@doc """
+
+Reverse mode of dataPrep w.r.t mesh metrics
+
+"""
 function dataPrep_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 
@@ -86,6 +90,12 @@ function dataPrep_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::Abstract
 
   return nothing
 end
+
+@doc """
+
+Reverse mode of evalVolumeIntegrals
+
+"""->
 
 function evalVolumeIntegrals_revm{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
@@ -116,6 +126,12 @@ function evalVolumeIntegrals_revm{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
 
   return nothing
 end  # end evalVolumeIntegrals
+
+@doc """
+
+Reverse mode of evalBoundaryIntegrals
+
+"""->
 
 function evalBoundaryIntegrals_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
