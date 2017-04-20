@@ -444,12 +444,12 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   # calculate normal vector in xy space
   nx = zero(Tmsh)
   ny = zero(Tmsh)
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(nx2*nx2 + ny2*ny2))
   # normalize normal vector
-  nx *= fac
-  ny *= fac
+  nx = nx2*fac
+  ny = ny2*fac
 
   # Get the normal momentum
   Unrm = nx*q[2] + ny*q[3]
@@ -464,8 +464,8 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
 
-  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  # nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  # ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
