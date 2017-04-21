@@ -222,7 +222,7 @@ function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   	  x = mesh.coords[1,j,i]
   	  y = mesh.coords[2,j,i]
           alpha_x = eqn.params.alpha_x
-          alpha_y, = eqn.params.alpha_y
+          alpha_y = eqn.params.alpha_y
 
   	  u0[dofnums_j] = calc_p1(mesh.coords[:, j, i], eqn.params, eqn.t)
   	end

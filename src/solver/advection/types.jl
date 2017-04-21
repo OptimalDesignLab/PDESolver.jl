@@ -5,6 +5,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   alpha_x::Float64
   alpha_y::Float64
   alpha_z::Float64
+  sin_amplitude::Float64
 
   f::BufferedIO{IOStream}
   time::Timings
@@ -42,6 +43,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
 #     alpha_y = 0.0
     alpha_z = 1.0
 
+    sin_amplitude = 2.0
 
     t = Timings()
     return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)

@@ -1,5 +1,5 @@
 
-export calcdJdu_CS, calcObjectiveFn, obj_zero
+export calcdJdu_CS, calcObjectiveFn, obj_zero, calcVV, calcdRdA
 
 function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
 
@@ -114,6 +114,49 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   return local_functional_val
 
+end
+
+"""
+calculates v, which is dudA, for the advection adjoint test
+"""
+function calcVV(mesh, sbp, eqn, opts, t)
+
+  x = 2*pi
+  omega = 1.0
+
+  v = sin(-x + omega*t)
+  return v
+
+end
+
+"""
+calculates dRdA for the advection adjoint test
+"""
+function calcdRdA(mesh, sbp, eqn, opts, t)
+
+  # complex step it
+  pert = complex(0, 1e-20)
+
+  eqn.params.sin_amplitude += pert
+  params.sin_amplitude += pert
+
+  eqn_temp = deepcopy(eqn)
+  eqn_temp.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+
+
+  # J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+  # J = J_arr[1]
+  # R = calcResidual
+  evalResidual(mesh, sbp, eqn_temp, opts)
+  assembleSolution(mesh, sbp, eqn_temp, opts, eqn.q_vec)
+
+  dRdA = imag(eqn_temp.res_vec)/norm(pert)
+
+  eqn.params.sin_amplitude -= pert
+  params.sin_amplitude -= pert
+
+  return dRdA
 end
 
 """

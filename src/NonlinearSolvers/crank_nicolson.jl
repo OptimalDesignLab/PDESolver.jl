@@ -169,14 +169,30 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
+    # time step update: h is passed in as argument to crank_nicolson
+    if neg_time == false
+      # need to add h in the forward time usage
+      t_nextstep = t + h
+    else
+      # need to subtract h in the reverse time usage
+      t_nextstep = t - h
+      t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
+    end
+
     #-------------
     # objective function section
     # 1. read option to indicate which obj fun
     # 2. call it, complex step it, and store it in dJdu
     if neg_time == true
       dJdu = zeros(Tsol, length(eqn.q_vec))
-      J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
       dJdu = calcdJdu_CS(mesh, sbp, adj, opts)
+
+      #J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
+      VV = calcVV(mesh, sbp, adj, opts, t_nextstep)
+      check_directmethod = dJdu*VV
+      filename = string("check_directmethod-", i, ".dat")
+      writedlm(filename, check_directmethod)
+
     end
 
     if neg_time == false
@@ -190,18 +206,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       #   The adjustment is not just (t_steps - i) because the loop starts at 2 and ends at t_steps + 1.
       i_actual = t_steps + 3 - i
       ctx_residual = (physics_func, adj, h, newton_data, i_actual, dJdu)
-    end
-
-    @debug1 println(fstdout, "in CN: before call to newtonInner")
-
-    # time step update: h is passed in as argument to crank_nicolson
-    if neg_time == false
-      # need to add h in the forward time usage
-      t_nextstep = t + h
-    else
-      # need to subtract h in the reverse time usage
-      t_nextstep = t - h
-      t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
     end
 
     if neg_time == false
@@ -220,6 +224,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
+    end
+
+    # advection adjoint check
+    if neg_time == true
+      dRdA = calcdRdA(mesh, sbp, adj, opts, t_nextstep)
+      check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
+      filename = string("check_adjointmethod-", i, ".dat")
+      writedlm(filename, check_adjointmethod)
     end
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
