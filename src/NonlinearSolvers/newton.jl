@@ -1171,6 +1171,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   #     eqn.q is nonzero - used println("in cJC: norm(eqn.q): ", norm(reshape(eqn.q[1,:,:], 3, 32)))
   #     typeof(jac): Array{Float64, 2}
 
+  #=
   println(" ======== in cJC, after evalResidual ========")
   println("   t: ", t)
   println("   norm(eqn.q):          ", norm(reshape(eqn.q[1,:,:], 3, 32)))
@@ -1181,11 +1182,12 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   println("   pointer(eqn.q_vec):   ", pointer(eqn.q_vec))
   println("   pointer(eqn.res):     ", pointer(eqn.res))
   println("   pointer(eqn.res_vec): ", pointer(eqn.res_vec))
+  =#
 
   # undo final perturbation
   eqn.q_vec[m] = entry_orig
-#
-  println("   in cJC: typeof(jac): ", typeof(jac))
+
+  # println("   in cJC: typeof(jac): ", typeof(jac))
   println("   in cJC: norm of jac: ", norm(jac))
 
 

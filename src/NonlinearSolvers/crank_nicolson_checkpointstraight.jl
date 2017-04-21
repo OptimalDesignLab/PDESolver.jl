@@ -17,8 +17,8 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
 
   # println("in cnAdjLoadChkpt: pointer(adj.q_vec): ", pointer(adj.q_vec))
   # println("in cnAdjLoadChkpt: pointer(adj.res_vec): ", pointer(adj.res_vec))
-  println("in cnAdjLoadChkpt: pointer(eqn_dummy.q_vec):   ", pointer(eqn_dummy.q_vec))
-  println("in cnAdjLoadChkpt: pointer(eqn_dummy.res_vec): ", pointer(eqn_dummy.res_vec))
+  # println("in cnAdjLoadChkpt: pointer(eqn_dummy.q_vec):   ", pointer(eqn_dummy.q_vec))
+  # println("in cnAdjLoadChkpt: pointer(eqn_dummy.res_vec): ", pointer(eqn_dummy.res_vec))
 
   qvec_filename = string("qvec_for_adj-", i_actual, ".dat")
   println("Calculating Jac using forward sweep data from: ", qvec_filename)
