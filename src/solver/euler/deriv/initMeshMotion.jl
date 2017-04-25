@@ -5,6 +5,7 @@
   ndim = 2
   order = [4,4,2]  # Order of B-splines in the 3 directions
   nControlPts = [6,6,2]
+  Tmsh = Float64 # Complex128
 
   # Create Mapping object
   ffd_map = PumiMapping{Tmsh}(ndim, order, nControlPts, mesh, full_geom=false,

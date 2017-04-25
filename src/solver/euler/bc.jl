@@ -348,7 +348,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 2},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
@@ -387,7 +387,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{T
     euler_flux_bar[i] = bndryflux_bar[i]
   end
 
-  nrm2_bar = zeros(Tsol, 2)
+  nrm2_bar = zeros(Tmsh, 2)
   calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
   calcSAT_revm(params, nrm2, dq, [u,v], H, sat_bar, nrm2_bar)
   calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)

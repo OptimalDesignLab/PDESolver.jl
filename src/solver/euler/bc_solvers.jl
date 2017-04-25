@@ -192,7 +192,8 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
                                      qg::AbstractArray{Tsol, 1},
                                      aux_vars::AbstractArray{Tres, 1},
                                      nrm::AbstractArray{Tmsh,1},
-                                     flux_bar, nrm_bar)
+                                     flux_bar::AbstractArray{Tres, 1},
+                                     nrm_bar::AbstractArray{Tmsh, 1})
 
   # Forward sweep
   tau = 1.0
@@ -549,7 +550,7 @@ Reverse mode of calcSAT
 function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
                       dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
                       H::Tsol, sat_bar::AbstractArray{Tsol, 1},
-                      nrm_bar::AbstractArray{Tsol,1})
+                      nrm_bar::AbstractArray{Tmsh,1})
 
   # Forward Sweep
   sat_Vn = convert(Tsol, 0.025)

@@ -12,7 +12,7 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-
+#=
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -520,7 +520,7 @@ function test_reversemode()
     end
 
   end # End facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
-
+=#
 
   facts("--- Testing evalrevm_transposeproduct ---") do
 
@@ -655,6 +655,7 @@ function test_reversemode()
     end
 
   end # End facts("--- Testing evalrevm_transposeproduct ---")
+
 
   return nothing
 end # End function test_reversemode

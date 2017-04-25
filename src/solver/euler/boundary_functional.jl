@@ -30,8 +30,8 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   if opts["parallel_type"] == 1
 
     startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      params.f, wait=true)
-    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
+                      eqn.params.f, wait=true)
+    @debug1 println(eqn.params.f, "-----entered if statement around startDataExchange -----")
 
   end
 
@@ -63,8 +63,8 @@ function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   if opts["parallel_type"] == 1
 
     startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      params.f, wait=true)
-    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
+                      eqn.params.f, wait=true)
+    @debug1 println(eqn.params.f, "-----entered if statement around startDataExchange -----")
 
   end
 
