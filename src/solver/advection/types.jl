@@ -5,7 +5,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   alpha_x::Float64
   alpha_y::Float64
   alpha_z::Float64
-  sin_amplitude::Float64
+  sin_amplitude::Complex128
 
   f::BufferedIO{IOStream}
   time::Timings
@@ -46,7 +46,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     sin_amplitude = 2.0
 
     t = Timings()
-    return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)
+    return new(LFalpha, alpha_x, alpha_y, alpha_z, sin_amplitude, f, t)
   end
 end
 

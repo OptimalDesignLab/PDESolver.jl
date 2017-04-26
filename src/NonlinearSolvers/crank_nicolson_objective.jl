@@ -1,4 +1,4 @@
-
+# import PDESolver.evalResidual
 export calcdJdu_CS, calcObjectiveFn, obj_zero, calcVV, calcdRdA
 
 function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
@@ -6,7 +6,7 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
   # complex step it
   pert = complex(0, 1e-20)
 
-  integrand_deriv = zeros(Tsol, length(eqn.q_vec))
+  dJdu = zeros(Tsol, length(eqn.q_vec))
 
   for i = 1:length(eqn.q_vec)
     eqn.q_vec[i] += pert
@@ -17,11 +17,11 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     # println("=== in dJdu_CS: typeof(J): ", typeof(J))
     # println("=== in dJdu_CS: typeof(integrand_deriv): ", typeof(integrand_deriv))
     # println("=== in dJdu_CS: typeof(pert): ", typeof(pert))
-    integrand_deriv[i] = imag(J)/norm(pert)
+    dJdu[i] = imag(J)/norm(pert)
     eqn.q_vec[i] -= pert
   end
 
-  return integrand_deriv
+  return dJdu
 
 end
 
@@ -34,7 +34,7 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # TODO: get functional edges in a non BS way
-  functional_edges = 3
+  functional_edges = 1
   nDof = 1
 
   local_functional_val = zeros(Tsol, nDof)
@@ -138,23 +138,24 @@ function calcdRdA(mesh, sbp, eqn, opts, t)
   pert = complex(0, 1e-20)
 
   eqn.params.sin_amplitude += pert
-  params.sin_amplitude += pert
+  # params.sin_amplitude += pert
 
   eqn_temp = deepcopy(eqn)
-  eqn_temp.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  eqn_temp.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
 
   # J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
   # J = J_arr[1]
   # R = calcResidual
   evalResidual(mesh, sbp, eqn_temp, opts)
-  assembleSolution(mesh, sbp, eqn_temp, opts, eqn.q_vec)
+  assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
   dRdA = imag(eqn_temp.res_vec)/norm(pert)
+  println("dRdA: ", dRdA)
 
   eqn.params.sin_amplitude -= pert
-  params.sin_amplitude -= pert
+  # params.sin_amplitude -= pert
 
   return dRdA
 end

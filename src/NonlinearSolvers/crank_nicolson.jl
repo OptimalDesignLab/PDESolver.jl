@@ -187,9 +187,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       dJdu = zeros(Tsol, length(eqn.q_vec))
       dJdu = calcdJdu_CS(mesh, sbp, adj, opts)
 
+      println("       checking direct method: size(dJdu): ", size(dJdu))
+
       #J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
-      VV = calcVV(mesh, sbp, adj, opts, t_nextstep)
-      check_directmethod = dJdu*VV
+      VV = calcVV(mesh, sbp, adj, opts, t_nextstep)     # scalar only because our x-value of interest is unchanging
+      VV_vec = ones(dJdu)*VV      # need v as vector of all v's for all x's, easiest way
+      println("       checking direct method: VV: ", VV)
+      println("       checking direct method: size(VV): ", size(VV_vec))
+      check_directmethod = transpose(dJdu)*VV_vec
       filename = string("check_directmethod-", i, ".dat")
       writedlm(filename, check_directmethod)
 
@@ -277,6 +282,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       if store_u_to_disk == true
         filename = string("qvec_for_adj-", i, ".dat")
         writedlm(filename, eqn.q_vec)
+        vis_filename = string("solution_storedtodisk_i-", i)
+        saveSolutionToMesh(mesh, real(eqn.q_vec))
+        writeVisFiles(mesh, vis_filename)
       end
     else
       # save every time step's adjoint to disk
