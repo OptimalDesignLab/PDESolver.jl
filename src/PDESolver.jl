@@ -20,6 +20,7 @@ export printICNames, printBCNames
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
 
 # add physics modules to load path (but don't load them, because that would
@@ -41,6 +42,7 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 using Input
+using Debug
 
 include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement

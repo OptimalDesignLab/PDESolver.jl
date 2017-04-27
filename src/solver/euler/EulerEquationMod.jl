@@ -15,6 +15,7 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 using Input  # input file processing
+using Debug
 
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
@@ -197,6 +198,9 @@ include("GLS2.jl")
 include("boundary_functional.jl")
 include("adjoint.jl")
 include("source.jl")
+include("viscous_flux.jl")
+include("viscous_funcs.jl")
+include("exactSolution.jl")
 include("entropy_flux.jl")
 include("eigensystem.jl")
 include("check_options.jl")

@@ -116,7 +116,12 @@ end
 
     Aliasing restrictions: none
 """->
-function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray)
+function interpolateBoundary(mesh::AbstractDGMesh, 
+                             sbp, 
+                             eqn, 
+                             opts, 
+                             q::Abstract3DArray, 
+                             q_bndry::Abstract3DArray)
 
   # interpolate solutions
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -188,7 +193,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
       bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
@@ -229,7 +234,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
       #println("eqn.bndryflux = ", eqn.bndryflux)
       bndryflux_i = sview(bndryflux, :, j, i)
 
@@ -321,7 +326,14 @@ type noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},  aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, 
+                                q::AbstractArray{Tsol,1},  
+                                aux_vars::AbstractArray{Tres, 1},  
+                                x::AbstractArray{Tmsh,1}, 
+                                dxidx::AbstractArray{Tmsh,2}, 
+                                nrm::AbstractArray{Tmsh,1}, 
+                                bndryflux::AbstractArray{Tres, 1}, 
+                                params::ParamType{2})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -361,11 +373,106 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1}, 
   # params says we are using entropy variables
   calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
 
-return nothing
+  return nothing
+end
 
+type nonslipBC <: BCType
+end
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::nonslipBC, 
+                                q::AbstractArray{Tsol,1},  
+                                aux_vars::AbstractArray{Tres, 1},  
+                                x::AbstractArray{Tmsh,1}, 
+                                dxidx::AbstractArray{Tmsh,2}, 
+                                nrm::AbstractArray{Tmsh,1}, 
+                                bndryflux::AbstractArray{Tres, 1}, 
+                                params::ParamType{2})
+
+	nx = zero(Tmsh)
+	ny = zero(Tmsh)
+	tngt = Array(Tmsh, 2)  # tangent vector
+	nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+	ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+	fac = 1.0/(sqrt(nx*nx + ny*ny))
+	# normalize normal vector
+	nx *= fac  
+	ny *= fac
+
+	Unrm = nx*q[2] + ny*q[3]
+
+	nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+	ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+	qg = params.qg
+	dim = 2
+	qg[1] = q[1]
+	qg[2:dim+1] = 0.0
+	qg[dim+2] = q[4]
+	# rhoV2 = (q[2]*q[2] + q[3]*q[3])/q[1]
+	# qg[2:dim+1] = 0.0
+	# qg[dim+2] = q[4] - 0.5*rhoV2
+
+	v_vals = params.v_vals
+	convertFromNaturalToWorkingVars(params, qg, v_vals)
+	# this is a problem: q is in conservative variables even if
+	# params says we are using entropy variables
+	calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+
+	return nothing
 
 end
 
+
+#
+# This BC should be equivalent to subsonic outflow since the pressure at outlet is
+# freestream pressure
+#
+type zeroPressGradientBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::zeroPressGradientBC, 
+                                q::AbstractArray{Tsol,1},  
+                                aux_vars::AbstractArray{Tres, 1},  
+                                x::AbstractArray{Tmsh,1}, 
+                                dxidx::AbstractArray{Tmsh,2}, 
+                                nrm::AbstractArray{Tmsh,1}, 
+                                bndryflux::AbstractArray{Tres, 1}, 
+                                params::ParamType{2})
+
+
+	nx = zero(Tmsh)
+	ny = zero(Tmsh)
+	tngt = Array(Tmsh, 2)  # tangent vector
+	nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+	ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+	fac = 1.0/(sqrt(nx*nx + ny*ny))
+	# normalize normal vector
+	nx *= fac  
+	ny *= fac
+
+	Unrm = nx*q[2] + ny*q[3]
+
+	nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+	ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+
+	gamma = params.gamma
+	gamma_1 = params.gamma_1
+	qg = params.qg
+	dim = 2
+	qg[1:dim+1] = q[1:dim+1]
+	rhoV2 = (q[2]*q[2] + q[3]*q[3]) / q[1]
+	pinf = 1./gamma
+	qg[dim+2] = pinf/gamma_1 + 0.5*rhoV2
+
+	v_vals = params.v_vals
+	convertFromNaturalToWorkingVars(params, qg, v_vals)
+	# this is a problem: q is in conservative variables even if
+	# params says we are using entropy variables
+	calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+
+	return nothing
+end
 
 @doc """
 ### EulerEquationMod.unsteadyVortexBC <: BCTypes
@@ -381,9 +488,14 @@ type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},                aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, 
+                                q::AbstractArray{Tsol,1},                
+                                aux_vars::AbstractArray{Tres, 1},  
+                                x::AbstractArray{Tmsh,1}, 
+                                dxidx::AbstractArray{Tmsh,2}, 
+                                nrm::AbstractArray{Tmsh,1}, 
+                                bndryflux::AbstractArray{Tres, 1}, 
+                                params::ParamType{2})
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -539,7 +651,9 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "allOnesBC" => allOnesBC(),
 "unsteadyVortexBC" => unsteadyVortexBC(),
 "ExpBC" => ExpBC(),
+"nonslipBC" => nonslipBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
+"zeroPressGradientBC" => zeroPressGradientBC(),
 )
 
 @doc """

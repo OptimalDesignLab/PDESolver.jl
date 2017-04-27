@@ -160,6 +160,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   =#
   time::Timings
 
+	isViscous::Bool
+
   function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
     
@@ -288,6 +290,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     end
 
 
+		isViscous = opts["isViscous"]
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
@@ -306,7 +309,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
                S,
-               time)
+               time,
+               isViscous)
 
     end   # end of ParamType function
 
@@ -418,6 +422,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use
                                                        # volume data
+	area_sum::Array{Tmsh, 1}			# the wet area of each element
+	# vecflux_face::Array{Tres, 4}    # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+	vecflux_faceL::Array{Tres, 4}    # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+	vecflux_faceR::Array{Tres, 4}    # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+	vecflux_bndry::Array{Tres, 4}   # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 # minorIterationCallback::Function # called before every residual evaluation
 
   file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
@@ -551,6 +560,26 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       end
     end
    
+		if opts["isViscous"]
+
+			numfacenodes = mesh.numNodesPerFace
+			numfaces = mesh.numInterfaces
+			numBndFaces = mesh.numBoundaryFaces
+			numvars  = mesh.numDofPerNode
+			# eqn.vecflux_face = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+			eqn.vecflux_faceL = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+			eqn.vecflux_faceR = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+			eqn.vecflux_bndry = zeros(Tsol, Tdim, numvars, numfacenodes, numBndFaces)
+			eqn.area_sum = zeros(Tmsh, mesh.numEl)
+			calcWetArea(mesh, sbp, eqn)
+		else
+			# eqn.vecflux_face  = Array(Tsol, 0, 0, 0, 0)
+			eqn.vecflux_faceL = Array(Tsol, 0, 0, 0, 0)
+			eqn.vecflux_faceR = Array(Tsol, 0, 0, 0, 0)
+			eqn.vecflux_bndry = Array(Tsol, 0, 0, 0, 0)
+			eqn.area_sum = Array(Tsol, 0)
+		end
+
     if eqn.params.use_edgestab
       eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
       calcEdgeStabAlpha(mesh, sbp, eqn)
@@ -651,3 +680,80 @@ function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
   return nothing
 end
 
+@doc """
+### EulerEquationMod.calcWetArea
+
+This function calculates the wet area of each element. A weight of 2 is given to
+faces with Dirichlet boundary conditions.
+
+Arguments:
+mesh: AbstractMesh
+sbp: SBP operator
+eqn: an implementation of EulerData. Does not have to be fully initialized.
+"""->
+# used by EulerData Constructor
+function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+											 sbp::AbstractSBP,
+											 eqn::EulerData{Tsol, Tres, Tdim})
+	nfaces = length(mesh.interfaces)
+	nrm = zeros(Tmsh, mesh.numNodesPerFace, Tdim)
+	area = zeros(Tmsh, mesh.numNodesPerFace)
+	face_area::Tmsh
+	face_area = 0.0
+	sbpface = mesh.sbpface
+
+	#
+	# Compute the wet area of each element
+	# 
+	for f = 1:nfaces
+		face = mesh.interfaces[f]
+		eL = face.elementL
+		eR = face.elementR
+		fL = face.faceL
+		fR = face.faceR
+		#
+		# Compute the size of face
+		face_area = 0.0
+		for n=1:mesh.numNodesPerFace
+
+			dxidx = sview(mesh.dxidx_face, :, :, n, f)
+			# norm vector in reference element
+			# nrm_xi = sview(sbp.facenormal, :, fL)
+      nrm_xi = sview(sbpface.normal, :, fL)
+			nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+			nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+
+			area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
+			face_area += sbpface.wface[n]*area[n]
+		end
+		eqn.area_sum[eL] += face_area
+		eqn.area_sum[eR] += face_area
+	end	
+
+	for bc = 1:mesh.numBC
+		indx0 = mesh.bndry_offsets[bc]
+		indx1 = mesh.bndry_offsets[bc+1] - 1
+
+		for f = indx0:indx1
+			face = mesh.bndryfaces[f].face
+			elem = mesh.bndryfaces[f].element
+			#
+			# Compute the size of face
+			face_area = 0.0
+			for n=1:mesh.numNodesPerFace
+
+				dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
+				# norm vector in reference element
+				# nrm_xi = sview(sbp.facenormal, :, face)
+				nrm_xi = sview(sbpface.normal, :, face)
+				nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+				nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+
+				area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
+				face_area += sbpface.wface[n]*area[n]
+			end
+			eqn.area_sum[elem] += 2.0*face_area
+		end
+	end
+	return nothing
+end

@@ -230,8 +230,6 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-
-
 function ICFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                       operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
                       u0::AbstractVector{Tsol})
@@ -270,6 +268,64 @@ return nothing
 end  # end function
 
 
+@doc """
+### EulerEquationMod.ICFreeStream
+
+  Sets all components of the solution to the free stream condition according
+  to the angle of attack and and Mach number.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs: 
+    u0: vector to populate with the solution
+
+  Aliasing restrictions: none.
+
+"""->
+function ICPerturbedFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                                                 operator::AbstractSBP{Tsbp}, 
+                                                 eqn::EulerData{Tsol}, 
+                                                 opts, 
+                                                 u0::AbstractVector{Tsol})
+  # populate u0 with initial values
+  # this is a template for all other initial conditions
+
+numEl = mesh.numEl
+nnodes = mesh.numNodesPerElement
+dofpernode = mesh.numDofPerNode
+sol = zeros(Tsol, 4)
+for i=1:numEl
+  for j=1:nnodes
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+ 
+      # get dof numbers for each variable
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
+
+      x = coords_j[1]
+      y = coords_j[2]
+
+      calcFreeStream(coords_j, eqn.params, sol)
+
+      for k=1:dofpernode
+        u0[dofnums_j[k]] = sol[k]
+        srand(i+j+k)
+        u0[dofnums_j[k]] *= 1 + rand()*0.01
+      end
+
+  end
+end
+
+return nothing
+
+end  # end function
 
 
 # what is this? how is it different than ICIsentropic Vortex?
@@ -720,6 +776,7 @@ global const ICDict = Dict{Any, Function}(
 "ICRho1E2" => ICRho1E2,
 "ICRho1E2U3" => ICRho1E2U3,
 "ICFreeStream" => ICFreeStream,
+"ICPerturbedFreeStream" => ICPerturbedFreeStream,
 "ICVortex" => ICVortex,
 #"ICLinear" => ICLinear,
 "ICsmoothHeavisideder" => ICsmoothHeavisideder,

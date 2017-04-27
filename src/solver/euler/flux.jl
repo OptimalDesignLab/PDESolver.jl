@@ -58,7 +58,7 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       qR = sview(eqn.q_face, :, 2, j, i)
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm = sview(mesh.sbpface.normal, :, fL)
 
 #      # debugging
       x = sview(mesh.coords_interface, :, j, i)
@@ -262,7 +262,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
         qR = sview(qR_arr, :, k, j)
         dxidx = sview(dxidx_arr, :, :, k, j)
         aux_vars = sview(aux_vars_arr, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
+        nrm = sview(mesh.sbpface.normal, :, fL)
         flux_j = sview(flux_arr, :, k, j)
         functor(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
       end
@@ -364,7 +364,7 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
         qR_k = sview(q_faceR, :, k)
         aux_vars = sview(aux_vars_arr, :, k, j)
         dxidx = sview(dxidx_arr, :, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
+        nrm = sview(mesh.sbpface.normal, :, fL)
         flux_k = sview(flux_arr, :, k, j)
 
         aux_vars[1] = calcPressure(params, qL_k)
