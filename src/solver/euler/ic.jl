@@ -26,7 +26,7 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                                            u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
-  sigma = 0.5
+  sigma = 0.1
   pi = 3.14159265358979323846264338
   gamma = 1.4
   gamma_1 = gamma - 1.0

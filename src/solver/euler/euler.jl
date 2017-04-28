@@ -108,7 +108,7 @@ import PDESolver.evalResidual
 =#
 # this function is what the timestepper calls
 # high level function
-@debug function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
+function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
                      opts::Dict, t=0.0)
 
 #  println("----- entered evalResidual -----")
@@ -321,7 +321,7 @@ end
   This is a high level function
 """
 # high level function
-@debug function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
