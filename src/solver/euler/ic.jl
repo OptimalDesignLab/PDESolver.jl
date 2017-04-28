@@ -2,6 +2,96 @@
 # List of functions:
 
 @doc """
+### EulerEquationMod.ICTrigonometric
+
+  Sets all components of the solution to the free stream condition according
+  to the angle of attack and and Mach number.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs: 
+    u0: vector to populate with the solution
+
+  Aliasing restrictions: none.
+
+"""->
+function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                                           operator::AbstractSBP{Tsbp}, 
+                                           eqn::EulerData{Tsol}, 
+                                           opts, 
+                                           u0::AbstractVector{Tsol})
+  # populate u0 with initial values
+  # this is a template for all other initial conditions
+  sigma = 0.5
+  pi = 3.14159265358979323846264338
+  gamma = 1.4
+  gamma_1 = gamma - 1.0
+  aoa = eqn.params.aoa
+  rhoInf = 1.0
+  uInf = eqn.params.Ma*cos(aoa)
+  vInf = eqn.params.Ma*sin(aoa)
+  TInf = 1.0
+
+  numEl = mesh.numEl
+  nnodes = mesh.numNodesPerElement
+  dofpernode = mesh.numDofPerNode
+  sol = zeros(Tsol, 4)
+  for i=1:numEl
+    for j=1:nnodes
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+
+      # get dof numbers for each variable
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
+
+      x = coords_j[1]
+      y = coords_j[2]
+
+      calcFreeStream(coords_j, eqn.params, sol)
+
+      x2 = 2*x*pi
+      y2 = 2*y*pi
+      x4 = 4*x*pi
+      y4 = 4*y*pi
+      sx2 = sin(x2)
+      sy2 = sin(y2)
+      sx4 = sin(x4)
+      sy4 = sin(y4)
+      cx2 = cos(x2)
+      cx4 = cos(x4)
+      cy2 = cos(y2)
+      cy4 = cos(y4)
+      #
+      # Exact solution in form of primitive variables
+      #
+      rho = 0.25 * sx2 * sy2
+      u   = 0.25 * sx4 * sy4
+      v   = 0.25 * (cx4  + 1.0) * (cy4 + 1.0)
+      T   = 0.25 * (1.0 - cx4) * (1.0 - cy4)
+      rho = (sigma*rho + 1.0)*rhoInf 
+      u   = (sigma*u + 1.0)*uInf
+      v   = (sigma*v + 1.0)*vInf
+      T   = (sigma*T + 1.0)*TInf
+
+      u0[dofnums_j[1]] = rho
+      u0[dofnums_j[2]] = rho*u
+      u0[dofnums_j[3]] = rho*v
+      u0[dofnums_j[4]] = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
+      u0[dofnums_j[4]]  = u0[dofnums_j[4]] * rho
+    end
+  end
+
+return nothing
+
+end  # end function
+@doc """
 ### EulerEquationMod.ICZero
 
   Sets all components of the solution to zero
@@ -777,6 +867,7 @@ global const ICDict = Dict{Any, Function}(
 "ICRho1E2U3" => ICRho1E2U3,
 "ICFreeStream" => ICFreeStream,
 "ICPerturbedFreeStream" => ICPerturbedFreeStream,
+"ICTrigonometric" => ICTrigonometric,
 "ICVortex" => ICVortex,
 #"ICLinear" => ICLinear,
 "ICsmoothHeavisideder" => ICsmoothHeavisideder,

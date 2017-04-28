@@ -22,8 +22,12 @@ Calculates the adjoint vector for a single functional
 """->
 
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-	                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts,
-	                functor, functional_number, adjoint_vec::Array{Tsol, 1})
+                                             sbp::AbstractSBP, 
+                                             eqn::EulerData{Tsol, Tres, Tdim}, 
+                                             opts,
+                                             functor, 
+                                             functional_number, 
+                                             adjoint_vec::Array{Tsol, 1})
 
   # Get information corresponding to functional_number
   key = string("geom_edges_functional", functional_number)

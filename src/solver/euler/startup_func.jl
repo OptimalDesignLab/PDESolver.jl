@@ -251,9 +251,24 @@ function postproc(mesh, sbp, eqn, opts)
   Tmsh = eltype(mesh.dxidx)
   myrank = mesh.myrank
 
+  if haskey(opts, "Functional") && haskey(opts, "exactFunctional")
+    exact_func = opts["exactFunctional"]
+    func_name = opts["Functional"]
+    functional = VolumeFunctionalDict[func_name]
+    func_val = Array(Tsol, mesh.numDofPerNode)
+    functional(mesh, sbp, eqn, opts, func_val)
+    func_error = real(func_val[1]) - exact_func
+    func_error = abs(func_error)
+    fname = "functional.dat"
+    f = open(fname, "w")
+    println(f, func_error)
+    println("functional error = ", func_error)
+  end
+
   if opts["do_postproc"] && opts["solve"]
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
+      println("calculating error...")
       exfunc = ICDict[exfname]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
