@@ -129,7 +129,6 @@ import PDESolver.evalResidual
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
   end
 
-  println(real(eqn.res))
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
@@ -137,8 +136,6 @@ import PDESolver.evalResidual
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
    evalBoundaryIntegrals(mesh, sbp, eqn)
   end
-
-  println(real(eqn.res))
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
@@ -159,16 +156,11 @@ import PDESolver.evalResidual
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
-  println(real(eqn.res))
-
 	if eqn.params.isViscous == true
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
 	end
 
-  println(real(eqn.res))
-
-  @bp
   return nothing
 end  # end evalResidual
 

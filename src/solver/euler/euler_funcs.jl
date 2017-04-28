@@ -326,8 +326,8 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 
 
  # temporaryly change from calcPressure to getPressure
-  # press = calcPressure(params, q)
- press = getPressure(aux_vars)
+  press = calcPressure(params, q)
+ # press = getPressure(aux_vars)
 #  press = @getPressure(aux_vars)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
   F[1] = q[1]*U
