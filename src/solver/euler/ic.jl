@@ -407,7 +407,7 @@ for i=1:numEl
       for k=1:dofpernode
         u0[dofnums_j[k]] = sol[k]
         srand(i+j+k)
-        u0[dofnums_j[k]] *= 1 + rand()*0.01
+        u0[dofnums_j[k]] *= 1.0 + rand()*0.01
       end
 
   end

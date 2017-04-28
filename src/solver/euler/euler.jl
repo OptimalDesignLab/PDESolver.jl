@@ -129,6 +129,7 @@ import PDESolver.evalResidual
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
   end
 
+  println(real(eqn.res))
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
