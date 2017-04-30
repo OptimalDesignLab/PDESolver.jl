@@ -326,7 +326,7 @@ Reverse mode for isentropicVortexBC.
 
 **Inputs**
 
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of 
+* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
           BCType_revm
 * `q`   : Solution variable
 * `aux_vars` : Auxiliary variables
@@ -498,7 +498,7 @@ Reverse mode for noPenetrationBC.
 
 **Input**
 
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of 
+* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
           BCType_revm
 * `q`   : Solution variable
 * `aux_vars` : Auxiliary variables
@@ -717,7 +717,7 @@ Reverse mode for FreeStreamBC.
 
 **Inputs**
 
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of 
+* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
           BCType_revm
 * `q`   : Solution variable
 * `aux_vars` : Auxiliary variables
@@ -739,7 +739,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tres, 2},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
