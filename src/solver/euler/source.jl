@@ -52,7 +52,7 @@ function call(obj::SRCPolynomial,
 					 coords::AbstractVector, 
 					 params::ParamType{2}, 
 					 t)
-	sigma = 0.1
+	sigma = 0.01
 	gamma = params.gamma
 	gamma_1 = params.gamma_1
 	aoa = params.aoa
@@ -165,7 +165,6 @@ function call(obj::SRCPolynomial,
 	return nothing
 end
 
-
 type SRCLaminar <: SRCType
 end
 function call(obj::SRCLaminar, 
@@ -173,7 +172,7 @@ function call(obj::SRCLaminar,
 			  coords::AbstractVector, 
 			  params::ParamType{2}, 
 			  t)
-	sigma = 0.1
+	sigma = 0.01
 	pi = 3.14159265358979323846264338
 	gamma = 1.4
 	gamma_1 = gamma - 1.0

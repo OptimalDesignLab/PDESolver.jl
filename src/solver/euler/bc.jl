@@ -342,12 +342,13 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC,
   nx = zero(Tmsh)
   ny = zero(Tmsh)
   tngt = Array(Tmsh, 2)  # tangent vector
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
+
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(nx2*nx2 + ny2*ny2))
   # normalize normal vector
-  nx *= fac  
-  ny *= fac
+  nx = nx2 * fac 
+  ny = ny2 * fac 
 
   Unrm = nx*q[2] + ny*q[3]
 
@@ -364,8 +365,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC,
 
   # call Roe solver
   #RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
 
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
@@ -391,12 +390,12 @@ function call{Tmsh, Tsol, Tres}(obj::nonslipBC,
 	nx = zero(Tmsh)
 	ny = zero(Tmsh)
 	tngt = Array(Tmsh, 2)  # tangent vector
-	nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-	ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-	fac = 1.0/(sqrt(nx*nx + ny*ny))
-	# normalize normal vector
-	nx *= fac  
-	ny *= fac
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(nx2*nx2 + ny2*ny2))
+  # normalize normal vector
+  nx = nx2 * fac 
+  ny = ny2 * fac 
 
 	Unrm = nx*q[2] + ny*q[3]
 
@@ -405,9 +404,12 @@ function call{Tmsh, Tsol, Tres}(obj::nonslipBC,
 
 	qg = params.qg
 	dim = 2
+  # adiabatic wall
 	qg[1] = q[1]
 	qg[2:dim+1] = 0.0
 	qg[dim+2] = q[4]
+  # isothermal wall
+	# qg[1] = q[1]
 	# rhoV2 = (q[2]*q[2] + q[3]*q[3])/q[1]
 	# qg[2:dim+1] = 0.0
 	# qg[dim+2] = q[4] - 0.5*rhoV2
@@ -673,7 +675,7 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-    println("BCDict[val] = ", BCDict[val])
+    println("BC = ", i, ", BCDict[val] = ", BCDict[val])
     mesh.bndry_funcs[i] = BCDict[val]
   end
 

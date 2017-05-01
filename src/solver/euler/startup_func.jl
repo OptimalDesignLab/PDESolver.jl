@@ -1,47 +1,47 @@
 # Description: startup function for solving an equation
 
 """
-  This function invokes the solver for the Euler equations, using the
-  specified input file
+This function invokes the solver for the Euler equations, using the
+specified input file
 
-  Inputs:
-    input_file: a string containing the path to an input file, or just a file
-                name.  If it is just a file name, it is taken to be in the
-                users pwd.
+Inputs:
+input_file: a string containing the path to an input file, or just a file
+name.  If it is just a file name, it is taken to be in the
+users pwd.
 
-  Outputs:
-    mesh: an AbstractMesh object
-    sbp: the SBP operator used in solving the equation
-    eqn: the AbstractSolutionData object used to solve the equation
-    opts: the options dictonary
+Outputs:
+mesh: an AbstractMesh object
+sbp: the SBP operator used in solving the equation
+eqn: the AbstractSolutionData object used to solve the equation
+opts: the options dictonary
 
 """
 function run_euler(input_file::AbstractString)
 
   mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
   solve_euler(mesh, sbp, eqn, opts, pmesh)
-  
+
   return mesh, sbp, eqn, opts
 end
 
 
 """
-  This function creates and initializes the mesh, sbp, eqn, and opts objects
+This function creates and initializes the mesh, sbp, eqn, and opts objects
 
-  Inputs:
-    file_name: input file name
+Inputs:
+file_name: input file name
 
-  Outputs:
-    mesh: an AbstractMesh.  The concrete type is determined by the options
-          dictionary
-    sbp: an AbstractSBP.  The concrete type is determined by the options
-         dictionary
-    eqn: an EulerData object
-    opts: the options dictionary
-    pmesh: mesh used for preconditioning, can be same object as mesh
+Outputs:
+mesh: an AbstractMesh.  The concrete type is determined by the options
+dictionary
+sbp: an AbstractSBP.  The concrete type is determined by the options
+dictionary
+eqn: an EulerData object
+opts: the options dictionary
+pmesh: mesh used for preconditioning, can be same object as mesh
 """
 function createObjects(input_file::AbstractString)
-  
+
   if !MPI.Initialized()
     MPI.Init()
   end
@@ -61,6 +61,14 @@ function createObjects(input_file::AbstractString)
   var_type = opts["variable_type"]
   eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 
+  for elem = 1:mesh.numEl
+    for n = 1:mesh.numNodesPerElement
+      if mesh.jac[n, elem] <= 0.0
+        error("Error: negative jacobian")
+      end
+    end
+  end
+
   # initialize physics module and populate any fields in mesh and eqn that
   # depend on the physics module
   init(mesh, sbp, eqn, opts, pmesh)
@@ -69,22 +77,22 @@ function createObjects(input_file::AbstractString)
 end
 
 """
-  Given fully initialized mesh, sbp, eqn, opts, this function solves
-  the Euler equations.  The 4 object should be obtained from createObjects().
-  
+Given fully initialized mesh, sbp, eqn, opts, this function solves
+the Euler equations.  The 4 object should be obtained from createObjects().
 
-  Specifically, it applies an initial condition and invokes a nonlinear
-  solver according to the options dictionary.
 
-  Inputs:
-    mesh: an AbstractMesh
-    sbp: an AbstractSBP
-    eqn: an AbstractEulerData
-    opts: the options dictionary.  This must be the options dictionary returned
-          by createObjects().  Changing values in the options dictionary after
-          calling createObjects() results in undefined behavior.
-    pmesh: mesh used for preconditioning, can be same object as mesh.
-           default value of mesh
+Specifically, it applies an initial condition and invokes a nonlinear
+solver according to the options dictionary.
+
+Inputs:
+mesh: an AbstractMesh
+sbp: an AbstractSBP
+eqn: an AbstractEulerData
+opts: the options dictionary.  This must be the options dictionary returned
+by createObjects().  Changing values in the options dictionary after
+calling createObjects() results in undefined behavior.
+pmesh: mesh used for preconditioning, can be same object as mesh.
+default value of mesh
 
 """
 function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmesh=mesh)
@@ -115,7 +123,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     Relfunc = ICDict[Relfunc_name]
     @mpi_master println("Relfunc = ", Relfunc)
     Relfunc(mesh, sbp, eqn, opts, q_vec)
-   
+
     if var_type == :entropy
       @mpi_master println("converting to entropy variables")
       for i=1:mesh.numDofPerNode:mesh.numDof
@@ -123,17 +131,17 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
         convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
       end
     end
-  #  println("eqn.q_vec = ", eqn.q_vec)
+    #  println("eqn.q_vec = ", eqn.q_vec)
     tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
     res_real = real(eqn.res_vec)
-  #  println("res_real = \n", res_real)
-  #  println("eqn.res_vec = ", eqn.res_vec)
-  #  println("res_real = ", res_real)
+    #  println("res_real = \n", res_real)
+    #  println("eqn.res_vec = ", eqn.res_vec)
+    #  println("res_real = ", res_real)
     opts["res_reltol0"] = tmp
     println("res_reltol0 = ", tmp)
-    
-  #  writedlm("relfunc_res.dat", eqn.res)
-  #  writedlm("relfunc_resvec.dat", res_real)
+
+    #  writedlm("relfunc_res.dat", eqn.res)
+    #  writedlm("relfunc_resvec.dat", res_real)
     saveSolutionToMesh(mesh, res_real)
     writeVisFiles(mesh, "solution_relfunc")
   end
@@ -154,8 +162,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
 
   if opts["calc_error"]
     @mpi_master println("\ncalculating error of file ", 
-                       opts["calc_error_infname"], 
-                      " compared to initial condition")
+                        opts["calc_error_infname"], 
+                        " compared to initial condition")
 
     # read in this processors portion of the solution
     vals = readdlm(get_parallel_fname(opts["calc_error_infname"], myrank))
@@ -231,15 +239,15 @@ end  # end function
 #runtest(1)
 
 """
-  This function does post processing, if requested by the input options.
-  Typical post processing includes calculation of errors, norms of important
-  quantities, writing of files. etc.
+This function does post processing, if requested by the input options.
+Typical post processing includes calculation of errors, norms of important
+quantities, writing of files. etc.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
+Inputs:
+mesh
+sbp
+eqn
+opts
 """
 function postproc(mesh, sbp, eqn, opts)
 
@@ -265,20 +273,20 @@ function postproc(mesh, sbp, eqn, opts)
     println("functional error = ", func_error)
   end
 
-  if opts["do_postproc"] && opts["solve"]
+  if haskey(opts, "exact_soln_func") && opts["solve"]
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
       println("calculating error...")
       exfunc = ICDict[exfname]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
-#    if var_type == :entropy
-#      println("converting to entropy variables")
-#      for i=1:mesh.numDofPerNode:mesh.numDof
-#        q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
-#        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
-#      end
-#    end
+      #    if var_type == :entropy
+      #      println("converting to entropy variables")
+      #      for i=1:mesh.numDofPerNode:mesh.numDof
+      #        q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
+      #        convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
+      #      end
+      #    end
 
       myrank = mesh.myrank
       q_diff = eqn.q_vec - q_exact
@@ -287,8 +295,8 @@ function postproc(mesh, sbp, eqn, opts)
 
 
       diff_norm = calcNorm(eqn, q_diff)
-#      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
-#      diff_norm = sqrt(diff_norm)
+      #      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
+      #      diff_norm = sqrt(diff_norm)
 
 
       @mpi_master println("solution error norm = ", diff_norm)
@@ -303,83 +311,86 @@ function postproc(mesh, sbp, eqn, opts)
         close(f)
       end
 
-      #---- Calculate functional on a boundary  -----#
-      if opts["calc_functional"]
-        
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        if mesh.isDG
-          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        end
-
-        # Calculate functional over edges
-        num_functionals = opts["num_functionals"]
-        for j = 1:num_functionals
-          # Geometric edge at which the functional needs to be integrated
-          key_j = string("geom_edges_functional", j)
-          functional_edges = opts[key_j]
-          functional_name = getFunctionalName(opts, j)
-
-          functional_val = zero(Tsol)
-          functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
-                           functional_name, functional_edges)
-
-          println("\nNumerical functional value on geometric edges ", 
-                  functional_edges, " = ", functional_val)
-
-          analytical_functional_val = opts["analytical_functional_val"]
-          println("analytical_functional_val = ", analytical_functional_val)
-
-          absolute_functional_error = norm((functional_val - 
-                                           analytical_functional_val), 2)
-          relative_functional_error = absolute_functional_error/
-                                      norm(analytical_functional_val, 2)
-
-          mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-
-          # write functional error to file
-          outname = string(opts["functional_error_outfname"], j, ".dat")
-          println("printed relative functional error = ", 
-                  relative_functional_error, " to file ", outname, '\n')
-          f = open(outname, "w")
-          println(f, relative_functional_error, " ", mesh_metric)
-          close(f)
-        end  # End for i = 1:num_functionals
-      end    # End if opts["calc_functional"]
+    end
+  end
+  #---- Calculate functional on a boundary  -----#
 
 
-      #----- Calculate Adjoint Vector For A Functional -----#
-      if opts["calc_adjoint"]
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        if mesh.isDG
-          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        end
+  #----- Calculate Adjoint Vector For A Functional -----#
+  if opts["calc_adjoint"]
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    if mesh.isDG
+      boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+    end
 
-        # TODO: Presently adjoint computation only for 1 functional. Figure out
-        # API based on future use.
-        j = 1
-        key = string("geom_edges_functional", j)
-        functional_edges = opts[key]
-        functional_number = j
-        functional_name = getFunctionalName(opts, j)
-        
-        adjoint_vec = zeros(Tsol, mesh.numDof)
-        calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
+    # TODO: Presently adjoint computation only for 1 functional. Figure out
+    # API based on future use.
+    j = 1
+    key = string("geom_edges_functional", j)
+    functional_edges = opts[key]
+    functional_number = j
+    functional_name = getFunctionalName(opts, j)
 
-
-        # Write adjoint vector to file and mesh
-        file_object = open("adjoint_vector.dat", "w")
-        for iter = 1:length(adjoint_vec)
-          println(file_object, real(adjoint_vec[iter]))
-        end
-        close(file_object)
-        saveSolutionToMesh(mesh, real(adjoint_vec))
-        writeVisFiles(mesh, "adjoint_field")
-
-      end  # End if opts["calc_adjoint"]
+    adjoint_vec = zeros(Tsol, mesh.numDof)
+    calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
 
 
-    end  # end if haskey(ICname)
-  end  # end if do_postproc
+    # Write adjoint vector to file and mesh
+    file_object = open("adjoint_vector.dat", "w")
+    for iter = 1:length(adjoint_vec)
+      println(file_object, real(adjoint_vec[iter]))
+    end
+    close(file_object)
+    saveSolutionToMesh(mesh, real(adjoint_vec))
+    writeVisFiles(mesh, "adjoint_field")
+
+  end  # End if opts["calc_adjoint"]
+
+
+
+  if opts["calc_functional"]
+
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    if mesh.isDG
+      boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+    end
+
+    # Calculate functional over edges
+    num_functionals = opts["num_functionals"]
+    for j = 1:num_functionals
+      # Geometric edge at which the functional needs to be integrated
+      key_j = string("geom_edges_functional", j)
+      functional_edges = opts[key_j]
+      functional_name = getFunctionalName(opts, j)
+      println(functional_name)
+
+      functional_val = zero(Tsol)
+      # functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
+      # functional_name, functional_edges)
+      functional_val = calcBndryFunctional_adjoint_consistent(mesh, sbp, eqn, opts, functional_name, functional_edges)
+
+      println("\nNumerical functional value on geometric edges ", 
+              functional_edges, " = ", functional_val)
+
+      if haskey(opts, "analytical_functional_val")
+        analytical_functional_val = opts["analytical_functional_val"]
+        println("analytical_functional_val = ", analytical_functional_val)
+
+        absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
+        relative_functional_error = absolute_functional_error/ norm(analytical_functional_val, 2)
+
+        mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
+
+        # write functional error to file
+        outname = string(opts["functional_error_outfname"], j, ".dat")
+        println("printed relative functional error = ", 
+                relative_functional_error, " to file ", outname, '\n')
+        f = open(outname, "w")
+        println(f, relative_functional_error, " ", mesh_metric)
+        close(f)
+      end
+    end  # End for i = 1:num_functionals
+  end    # End if opts["calc_functional"]
 
   return nothing
 end

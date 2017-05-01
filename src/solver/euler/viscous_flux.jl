@@ -362,7 +362,9 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
   sat_scalar = zeros(Tsol, mesh.numNodesPerFace)
 
   Gt = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
+  Gt_bnd = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
   Fv_face = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  Fv_bnd = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
   vecflux = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   nrm     = Array(Tmsh, Tdim, mesh.numNodesPerFace)
@@ -445,8 +447,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       q_face = sview(eqn.q_bndry, :, :, f)
       bnd_functor(q_face, nrm0, eqn.params, q_bnd)
 
-      # calcDiffusionTensor(q_bnd, Gt)
-      # calcDiffusionTensor(q_face, Gt)
+      # diffusion matrix used in penalty term should be computed from q_face rather than q_bnd
       calcGt_functor(q_bnd, Gt)
 
       q_elem = sview(eqn.q, :, :, elem)
@@ -458,7 +459,10 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
       end
 
+      # Li Wang's approach
       calcFvis(Gt, dqdx_face, Fv_face)
+      # Hartman's approach
+      # calcFvis(q_bnd, dqdx_face, Fv_face)
 
       # First compute penalty
       if sat_type ==  "SAT-SIPG"
@@ -517,7 +521,8 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
           penalty[4,4,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,4,1,1,n] 
                             + nrm0[2,n]*nrm0[2,n] * Gt[4,4,2,2,n] )
 
-          # in order to enhance the stablity, we try this factor on penalty terms
+          # in order to enhance the stablity, we try this relaxation factor 
+          # on penalty terms
           factor = opts["Cip"]
           for iDof = 2 : 4
             for jDof = 1 : 4
@@ -784,20 +789,20 @@ function evalBoundaryIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh
     indx0 = mesh.bndry_offsets[bc]
     indx1 = mesh.bndry_offsets[bc+1] - 1
 
-    bnd_functor::AbstractBoundaryValueType
-    key_i = string("BC", bc, "_name")
-    val = opts[key_i]
-    if "FreeStreamBC" ==  val
-      bnd_functor = Farfield()
-    elseif "nonslipBC" ==  val
-      bnd_functor = AdiabaticWall()
-    elseif "noPenetrationBC" ==  val
-      continue
-    elseif "zeroPressGradientBC" ==  val
-      bnd_functor = Farfield()
-    else
-      error("iBC = ", bc, ", Only 'FreeStreamBC' and 'nonslipBC' available")
-    end
+    # bnd_functor::AbstractBoundaryValueType
+    # key_i = string("BC", bc, "_name")
+    # val = opts[key_i]
+    # if "FreeStreamBC" ==  val
+      # bnd_functor = Farfield()
+    # elseif "nonslipBC" ==  val
+      # bnd_functor = AdiabaticWall()
+    # elseif "noPenetrationBC" ==  val
+      # continue
+    # elseif "zeroPressGradientBC" ==  val
+      # bnd_functor = Farfield()
+    # else
+      # error("iBC = ", bc, ", Only 'FreeStreamBC' and 'nonslipBC' available")
+    # end
 
     for f = indx0:indx1
       bndry = mesh.bndryfaces[f]
