@@ -313,7 +313,6 @@ function postproc(mesh, sbp, eqn, opts)
 
     end
   end
-  #---- Calculate functional on a boundary  -----#
 
 
   #----- Calculate Adjoint Vector For A Functional -----#
@@ -336,11 +335,11 @@ function postproc(mesh, sbp, eqn, opts)
 
 
     # Write adjoint vector to file and mesh
-    file_object = open("adjoint_vector.dat", "w")
-    for iter = 1:length(adjoint_vec)
-      println(file_object, real(adjoint_vec[iter]))
-    end
-    close(file_object)
+    # file_object = open("adjoint_vector.dat", "w")
+    # for iter = 1:length(adjoint_vec)
+      # println(file_object, real(adjoint_vec[iter]))
+    # end
+    # close(file_object)
     saveSolutionToMesh(mesh, real(adjoint_vec))
     writeVisFiles(mesh, "adjoint_field")
 
@@ -348,6 +347,7 @@ function postproc(mesh, sbp, eqn, opts)
 
 
 
+  # Calculate functionals on a boundary
   if opts["calc_functional"]
 
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
