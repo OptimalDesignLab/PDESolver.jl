@@ -317,6 +317,7 @@ function postproc(mesh, sbp, eqn, opts)
 
   #----- Calculate Adjoint Vector For A Functional -----#
   if opts["calc_adjoint"]
+    println("\nAjoint solving...\n")
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     if mesh.isDG
       boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -333,13 +334,7 @@ function postproc(mesh, sbp, eqn, opts)
     adjoint_vec = zeros(Tsol, mesh.numDof)
     calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
 
-
     # Write adjoint vector to file and mesh
-    # file_object = open("adjoint_vector.dat", "w")
-    # for iter = 1:length(adjoint_vec)
-      # println(file_object, real(adjoint_vec[iter]))
-    # end
-    # close(file_object)
     saveSolutionToMesh(mesh, real(adjoint_vec))
     writeVisFiles(mesh, "adjoint_field")
 

@@ -39,22 +39,21 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
 
   # calculate the derivative of the function w.r.t q_vec
-  func_deriv = zeros(Tsol, mesh.numDof)
+  func_deriv = zeros(Float64, mesh.numDof)
   
   # 3D array into which dJ_dq gets interpolated
-  dJ_dq = zeros(eqn.q) 
+  dJ_dq = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl) 
   
 
   # Calculate functional_deric_arr = dJ/dq 
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functor, 
-                                         functional_edges, dJ_dq)  
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functor, functional_edges, dJ_dq)  
 
   # Assemble func_deriv
   assembleArray(mesh, sbp, eqn, opts, dJ_dq, func_deriv)
 
   # Solve for adjoint vector
 
-  newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opt)
+  newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
   jac_type = opts["jac_type"]
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
   m = mesh.numDof
@@ -75,8 +74,13 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   func = evalResidual
   res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-  calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, res_dummy, 
-                     pert, jac, 0.0)
+  if haskey(opts, "epsilon")
+    pert = complex(0, opts["epsilon"])
+  else
+    pert = complex(0, 1.0e-12)
+  end
+  NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, func, 
+                                      res_dummy, pert, jac, 0.0)
   
   # solve the linear system
   lambda = zeros(Tjac, m)  # newton update
@@ -163,7 +167,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
           functor(mesh, sbp,eqn, opts, face_gid, integrand)
           face_integral = zeros(Tsol, 1)
           integratefunctional!(mesh.sbpface, faces, faces_integrand, face_integral)
-          dJ_dq[dof, j, elem] = imag(face_integral)/norm(pert)
+          dJ_dq[dof, j, elem] = imag(face_integral[1])/imag(pert)
           # undo perturbation
           q_elem[dof, j] -= pert
           q_face = q_face_bak[:]
