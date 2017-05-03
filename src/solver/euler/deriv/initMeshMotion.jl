@@ -13,6 +13,7 @@
 
   # Create knot vector
   calcKnot(ffd_map)
+  println("\nlength controlPoint = $(length(ffd_map.cp_xyz))")
 
   # Create Bounding box
   offset = [0., 0., 0.5] # No offset in the X & Y direction
@@ -27,22 +28,26 @@
 MPI.Barrier(mesh.comm)
 
 # Step 2: Prep MeshWarping
-volNodes, surfaceVtx, wallCoords, nwall_faces, param, mpiVar = initPumiWarp(mesh, geom_faces)
+volNodes, wallCoords, nwall_faces, param, mpiVar = initPumiWarp(mesh, geom_faces)
+
 # Populate entries of param
-param.aExp = 2.
-param.bExp = 2.
-param.LdefFact = 1
+param.aExp = 2.0
+param.bExp = 2.0
+param.LdefFact = 1.0
 param.alpha = 0.2
 param.symmTol = 1e-4
 param.errTol = 1e-4
-param.cornerAngle = 30.
+param.cornerAngle = 30.0
 param.zeroCornerRotations = false
-param.useRotations = false
+param.useRotations = true
 param.evalMode = 5
+param.bucket_size = convert(Int32,8)
 
 symmetryPlanes = zeros(Float64,3,2)
 flatWarpSurfPts = reshape(wallCoords, 3*size(wallCoords,2))
-faceSizes = mesh.dim*ones(Int32,sum(nwall_faces))
+faceSizes = 4*ones(Int32,sum(nwall_faces)) # An extruded 2D edge for a linear 
+                                           # discretization will result in a
+                                           # "element face" with 4 vertiecs.
 
 initializeParameters(param, mpiVar, symmetryPlanes)
 initializeWarping(param, volNodes, wallCoords, faceSizes, mesh.comm)

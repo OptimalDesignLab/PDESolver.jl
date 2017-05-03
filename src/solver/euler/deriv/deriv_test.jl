@@ -5,13 +5,12 @@
 
 resize!(ARGS, 1)
 ARGS[1] = "../input_vals_vortex.jl"
-#ARGS[1] = "../input_vals_airfoil.jl"
+# ARGS[1] = "../input_vals_airfoil.jl"
 
 push!(LOAD_PATH, joinpath(Pkg.dir("FFD.jl"), "src"))
 
 using FreeFormDeformation
 using MeshMovement
-# using ODLCommonTools
 using PdePumiInterface
 import ODLCommonTools.sview
 
@@ -20,8 +19,6 @@ import ODLCommonTools.sview
 include("../startup.jl")
 objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
-println("objective.lift_val = $(objective.lift_val)")
-orig_val = copy(real(objective.lift_val))
 adjoint_vec = zeros(Complex128, mesh.numDof)
 EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
@@ -31,20 +28,13 @@ PdePumiInterface.writeVisFiles(mesh, "adjoint_field")
 
 # Initialize FFD and MeshWarping
 geom_faces = opts["BC4"]
+# geom_faces = opts["BC2"]
 include("initMeshMotion.jl")
+gc()
 
 # Get the partial derivative of the functional w.r.t aoa
 dJdAlpha = objective.dLiftdAlpha
 println("dJdAlpha = $(real(dJdAlpha))")
-#=
-# Check dJdALpha against the complex step method
-eqn.params.aoa += opts["epsilon"]*im
-println("aoa = $(eqn.params.aoa)")
-EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, objective)
-dJdAlpha_comp = imag(objective.lift_val)/opts["epsilon"]
-println("dJdAlpha = $dJdAlpha, dJdAlpha_comp = $dJdAlpha_comp")
-println("dJdAlpha error = ", norm(dJdAlpha - dJdAlpha_comp,2))
-=#
 
 # Get the partial derivative of the residual vector w.r.t aoa
 eqn.params.aoa = opts["aoa"]
@@ -82,15 +72,59 @@ close(f)
 println("dRdAlpha error norm = ", norm(dRdAlpha_FD - dRdAlpha, 2))
 =#
 
-
 # Reverse mode
 EulerEquationMod.init_revm(mesh, sbp, eqn, opts) # initialize reversemode functors
 EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, adjoint_vec)
 
-
 # Checking interpolation and entities from PumiInterface
 interpolateMapping_rev(mesh)
 getVertCoords_rev(mesh, sbp)
+
+# Xv_bar = MeshMovement.supplyXv_bar(mesh)
+# Xv_bar = rand(Float64, 3, 2*mesh.numVert)
+
+dpsiTRdXs = zeros(Float64, 2*3*sum(nwall_faces))
+calcdXvdXsProd(mesh, dpsiTRdXs)
+
+f = open("dpsiTRdXs.dat", "w")
+for i = 1:length(dpsiTRdXs)
+  println(f, dpsiTRdXs[i])
+end
+close(f)
+
+evaldXdControlPointProduct(ffd_map, mesh, dpsiTRdXs)
+println("ffd_map.work = \n")
+for i = 1:size(ffd_map.work, 4)
+  for j = 1:size(ffd_map.work, 3)
+    println(ffd_map.work[1:3,:,j,i])
+  end
+end
+
+# Warp The mesh
+warpMesh(param, volNodes, wallCoords)
+
+# Redistribute it to mesh.coords
+for i = 1:mesh.numEl
+  for j = 1:mesh.numNodesPerElement
+    local_vertnum = mesh.element_vertnums[j,i]
+    mesh.vert_coords[2,j,i] = volNodes[2,local_vertnum]
+    mesh.vert_coords[1,j,i] = volNodes[1,local_vertnum]
+  end
+end
+for i = 1:mesh.numEl
+  update_coords(mesh, i, mesh.vert_coords[:,:,i])
+end  # End
+
+
+
+PumiInterface.writeVtkFiles("warped_mesh", mesh.m_ptr)
+gc()
+
+
+
+
+
+
 
 #=
 dLdx_adjoint = dJdAlpha + dot(adjoint_vec, dRdAlpha)
