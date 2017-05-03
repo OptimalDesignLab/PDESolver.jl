@@ -238,24 +238,16 @@ function ICFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
+
 numEl = mesh.numEl
 nnodes = mesh.numNodesPerElement
 dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, 4)
+sol = zeros(Tsol, dofpernode)
 for i=1:numEl
   for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
  
-      # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
-
-      x = coords_j[1]
-      y = coords_j[2]
-
       calcFreeStream(coords_j, eqn.params, sol)
 
       for k=1:dofpernode

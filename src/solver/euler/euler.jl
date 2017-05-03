@@ -330,17 +330,19 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
   if opts["write_integralq"]
     integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
-    @mpi_master f = eqn.file_dict[opts["write_integralq_fname"]]
-#    f = open(opts["write_integralq_fname"], "a+")
-    print(f, itr, " ", eqn.params.t)
-    for i=1:length(integralq_vals)
-      print(f, " ", integralq_vals[i])
-    end
-    print(f, "\n")
-#    close(f)
+    @mpi_master begin
+      f = eqn.file_dict[opts["write_integralq_fname"]]
+  #    f = open(opts["write_integralq_fname"], "a+")
+      print(f, itr, " ", eqn.params.t)
+      for i=1:length(integralq_vals)
+        print(f, " ", integralq_vals[i])
+      end
+      print(f, "\n")
+  #    close(f)
 
-    if (itr % output_freq) == 0
-      flush(f)
+      if (itr % output_freq) == 0
+        flush(f)
+      end
     end
   end  # end if write_integralq
 
@@ -595,6 +597,31 @@ end  # end evalVolumeIntegrals
 # mid level function
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
+
+  #=
+  if mesh.myrank == 1
+    f = open("bdnrylog.dat", "a")
+    elnum = 1
+    println(f, "\nelement $elnum coords = \n", mesh.coords[:, :, elnum])
+    println(f, "\nelement $elnum q = \n", eqn.q[:, :, elnum])
+    # find boundary
+    idx = 0
+    for i=1:length(mesh.bndryfaces)
+      if mesh.bndryfaces[i].element == elnum
+        idx = i
+      end
+    end
+    bndry = mesh.bndryfaces[idx]
+    println(f, "bndryface = ", bndry)
+
+    println(f, "element $elnum boundary q = \n", eqn.q_bndry[:, :, idx])
+    println(f, "element $elnum boundary flux = \n", eqn.bndryflux[:, :, idx])
+    println(f, "element $elnum boundary coords = \n", mesh.coords_bndry[:, :, idx])
+    println(f, "element $elnum boundary dxidx = \n", mesh.dxidx_bndry[:, :, idx])
+    println(f, "element $elnum boundary facenormal = \n", sbp.facenormal[:, bndry.face])
+    close(f)
+  end
+  =#
 
   #TODO: remove conditional
   if mesh.isDG

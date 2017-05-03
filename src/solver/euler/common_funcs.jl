@@ -198,6 +198,24 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   return nothing
 end
 
+function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+                        params::ParamType{3}, sol::AbstractArray{Tsol, 1})
+# calculate the free stream conditions using the fields of params
+
+  
+  rho = sol[1] = params.rho_free
+  E = sol[5] = params.E_free
+
+  Ma = params.Ma
+
+  sol[2] = rho*Ma*cos(params.aoa)
+  sol[3] = 0.0
+  sol[4] = -rho*Ma*sin(params.aoa)
+
+  return nothing
+end
+
+
 
 @doc """
 ### EulerEquationMod.calcUnsteadyVortex
