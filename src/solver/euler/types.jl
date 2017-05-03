@@ -36,7 +36,7 @@
 
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
-  f::IOStream
+  f::BufferedIO
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
@@ -60,6 +60,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
+  flux_valsD::Array{Tres, 2}  # numDofPerNode x Tdim for flux vals 3 directions
 
   sat_vals::Array{Tres, 1}  # reusable storage for SAT term
 
@@ -79,9 +80,28 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   nrm::Array{Tmsh, 1}  # a normal vector
   nrm2::Array{Tmsh, 1}
   nrm3::Array{Tmsh, 1}
+  nrmD::Array{Tmsh, 2}  # Tdim x Tdim array for Tdim normal vectors 
+                        # (one per column)
+  nrm_face::Array{Tmsh, 2}  # sbpface.numnodes x Tdim array for normal vectors 
+                            # of all face nodes on an element  
+  nrm_face2::Array{Tmsh, 2}  # like nrm_face, but transposed
+
+  dxidx_element::Array{Tmsh, 3}  # Tdim x Tdim x numNodesPerElement array for
+                                 # dxidx of an entire element
+  velocities::Array{Tsol, 2}  # Tdim x numNodesPerElement array of velocities
+                              # at each node of an element
+  velocity_deriv::Array{Tsol, 3}  # Tdim x numNodesPerElement x Tdim for
+                                  # derivative of velocities.  First two
+                                  # dimensions are same as velocities array,
+                                  # 3rd dimensions is direction of 
+                                  # differentiation
+  velocity_deriv_xy::Array{Tres, 3} # Tdim x Tdim x numNodesPerElement array 
+                                    # for velocity derivatives in x-y-z
+                                    # first dim is velocity direction, second
+                                    # dim is derivative direction, 3rd is node
+
 
   h::Float64 # temporary: mesh size metric
-
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
   gamma::Float64 # ratio of specific heats
@@ -122,6 +142,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   A::Array{Tres, 2}
   B::Array{Tres, 3}
   iperm::Array{Int, 1}
+
+  S::Array{Float64, 3}  # SBP S matrix
   #=
   # timings
   t_volume::Float64  # time for volume integrals
@@ -144,7 +166,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     t = 0.0
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
-    f = open("log_$myrank.dat", "w")
+    if DB_LEVEL >= 1
+      f = BufferedIO("log_$myrank.dat", "w")
+    else
+      f = BufferedIO(DevNull)
+    end
     q_vals = Array(Tsol, Tdim + 2)
     q_vals2 = Array(Tsol, Tdim + 2)
     q_vals3 = Array(Tsol, Tdim + 2)
@@ -162,6 +188,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     flux_vals1 = Array(Tres, Tdim + 2)
     flux_vals2 = Array(Tres, Tdim + 2)
+    flux_valsD = Array(Tres, Tdim + 2, Tdim)
 
     sat_vals = Array(Tres, Tdim + 2)
 
@@ -180,6 +207,15 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     nrm = zeros(Tmsh, Tdim)
     nrm2 = zeros(nrm)
     nrm3 = zeros(nrm)
+    nrmD = zeros(Tmsh, Tdim, Tdim)
+    nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
+    nrm_face2 = zeros(Tmsh, Tdim, mesh.sbpface.numnodes)
+
+    dxidx_element = Array(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
+    velocities = Array(Tsol, Tdim, mesh.numNodesPerElement)
+    velocity_deriv = Array(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
+    velocity_deriv_xy = Array(Tres, Tdim, Tdim, mesh.numNodesPerElement) 
+
 
     h = maximum(mesh.jac)
 
@@ -245,15 +281,23 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     B = zeros(Tres, numNodesPerElement, numNodesPerElement, 2)
     iperm = zeros(Int, size(sbpface.perm, 1))
 
+    stencil_size = size(sbp.Q, 1)
+    S = Array(Float64, stencil_size, stencil_size, Tdim)
+    for i=1:Tdim
+      S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
+    end
+
 
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1,
-               res_vals2, res_vals3, sat_vals, flux_vals1,
-               flux_vals2, A0, A0inv, A1, A2, S2, A_mats, Rmat1, Rmat2, P,
-               nrm, nrm2, nrm3, h, cv, R,
-               gamma, gamma_1, Ma, Re, aoa,
+               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
+               res_vals2, res_vals3,  flux_vals1, 
+               flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
+               A_mats, Rmat1, Rmat2, P,
+               nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
+               velocity_deriv, velocity_deriv_xy,
+               h, cv, R, gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
@@ -261,6 +305,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
+               S,
                time)
 
     end   # end of ParamType function
@@ -392,6 +437,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                                                        # integrals that use
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
+
+  file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
 
   # inner constructor
   function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
@@ -574,6 +621,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
+   eqn.file_dict = openLoggingFiles(mesh, opts)
 
     return eqn
 
@@ -613,4 +661,87 @@ type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
 
     return functional
   end
+end
+
+"""
+  This function opens all used for logging data.  In particular, every data
+  file that has data appended to it in majorIterationCallback should be
+  opened here.  Most files are of type BufferedIO, so they must be flushed
+  periodically.
+
+  This function requires each output to have two keys: "write_outname"
+  and "write_outname_fname", where the first has a boolean value that
+  controls whether or not to write the output, and the second is the
+  file name (including extension) to write.
+
+  This function contains a list of all possible log files.  Every new 
+  log file must be added to the list
+
+  Inputs:
+    mesh: an AbstractMesh (needed for MPI Communicator)
+    opts: options dictionary
+
+  Outputs:
+    file_dict: dictionary mapping names of files to the file object
+               ie. opts["write_entropy_fname"] => f
+
+  Exceptions: this function will throw an exception if any two file names
+              are the same
+"""
+function openLoggingFiles(mesh, opts)
+
+  # comm rank
+  myrank = mesh.myrank
+
+  # output dictionary
+  file_dict = Dict{AbstractString, IO}()
+
+  # map output file names to the key name that specified them
+  used_names = Dict{AbstractString, AbstractString}()
+
+
+  # use the fact that the key names are formulaic
+  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy"]
+  @mpi_master for name in names  # only open files on the master process
+    keyname = string("write_", name)
+    if opts[keyname]  # if this file is being written
+      fname_key = string("write_", name, "_fname")
+      fname = opts[fname_key]
+
+      if fname_key in keys(used_names)
+        other_keyname = used_names[fname]
+        throw(ErrorException("data file name $fname used for key $keyname is already used for key $other_keyname"))
+      end
+
+      used_names[fname] = keyname  # record this fname as used
+
+      f = BufferedIO(opts[fname_key], "a")  # append to files (safe default)
+
+      file_dict[fname] = f
+
+    end  # end if
+  end  # end 
+
+  return file_dict
+end
+
+"""
+  This function performs all cleanup activities before the run_physics()
+  function returns.  The mesh, sbp, eqn, opts are returned by run_physics()
+  so there is not much cleanup that needs to be done, mostly closing files.
+
+  Inputs/Outputs:
+    mesh: an AbstractMesh object
+    sbp: an SBP operator
+    eqn: the EulerData object
+    opts: the options dictionary
+
+"""
+function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+
+  for f in values(eqn.file_dict)
+    close(f)
+  end
+
+  return nothing
 end

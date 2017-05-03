@@ -97,7 +97,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
-if !haskey(arg_dict, "delta_t") && arg_dict["run_type"] == 1
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -143,14 +143,14 @@ else
 end
 
 # parallel options
-if arg_dict["run_type"] == 1
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
   get!(arg_dict, "parallel_type", 1)
 else
   get!(arg_dict, "parallel_type", 2)
 end
 
-if arg_dict["run_type"] == 1
-  if arg_dict["face_integral_type"] == 2  # entropy stable
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
+  if arg_dict["face_integral_type"] == 2  # entropy stable 
     get!(arg_dict, "parallel_data", "element")
   else
     get!(arg_dict, "parallel_data", "face")
@@ -200,11 +200,34 @@ get!(arg_dict, "addVolumeIntegrals", true)
 get!(arg_dict, "addBoundaryIntegrals", true)
 get!(arg_dict, "addFaceIntegrals", true)
 get!(arg_dict, "addStabilization", true)
+
+# logging options
+
+# entropy
 get!(arg_dict, "write_entropy", false)
 get!(arg_dict, "write_entropy_freq", 1)
 get!(arg_dict, "write_entropy_fname", "entropy.dat")
+
+# integral q
 get!(arg_dict, "write_integralq", false)
 get!(arg_dict, "write_integralq_fname", "integralq.dat")
+
+# enstrophy
+get!(arg_dict, "write_enstrophy", false)
+get!(arg_dict, "write_enstrophy_fname", "enstrophy.dat")
+get!(arg_dict, "write_enstrophy_freq", 1)
+
+# kinetic energy
+get!(arg_dict, "write_kinetic_energy", false)
+get!(arg_dict, "write_kinetic_energy_fname", "kinetic_energy.dat")
+get!(arg_dict, "write_kinetic_energy_freq", 1)
+
+# kinetic energy dt
+get!(arg_dict, "write_kinetic_energydt", false)
+get!(arg_dict, "write_kinetic_energydt_fname", "kinetic_energydt.dat")
+get!(arg_dict, "write_kinetic_energydt_freq", 1)
+
+
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
 
@@ -246,6 +269,7 @@ get!(arg_dict, "print_cond", false)
 get!(arg_dict, "write_sol", false)
 get!(arg_dict, "write_qic", false)
 get!(arg_dict, "write_vis", false)
+get!(arg_dict, "write_vorticity_vis", false)
 get!(arg_dict, "exact_visualization", false)
 get!(arg_dict, "write_res", false)
 get!(arg_dict, "output_freq", 1)
@@ -261,6 +285,12 @@ get!(arg_dict, "write_eigs", false)
 get!(arg_dict, "write_eigdecomp", false)
 get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
+
+if arg_dict["run_type"] == 5  # steady newton
+  get!(arg_dict, "newton_verbosity", 5)
+else
+  get!(arg_dict, "newton_verbosity", 4)
+end
   # figure out Newtons method type
 run_type = arg_dict["run_type"]
 
@@ -332,7 +362,7 @@ if myrank == 0
 end
 # do some sanity checks here
 
-if commsize > 1 && arg_dict["jac_type"] != 3 && arg_dict["run_type"] != 1
+if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
   throw(ErrorException("Invalid jacobian type for parallel run"))
 end
 

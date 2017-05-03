@@ -132,6 +132,11 @@ Empirically, this has been shown to produce better images than
 sub-triangulating each element and doing an exact projection onto the finer
 mesh.
 
+# Version History
+v0.1: the old master version (DG supported, I think)
+v0.2: the work branch after the test system/frontend rewrite
+v0.3: curvilinear entropy stable works (requires PumiInterface v0.3, SBP tag ticon_broken)
+
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 [![Documentation Status](https://readthedocs.org/projects/pdesolverjl/badge/?version=latest)](https://readthedocs.org/projects/pdesolverjl/?badge=latest)
 [![codecov](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl)

@@ -102,9 +102,6 @@ end
 function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmesh=mesh)
 
   myrank = mesh.myrank
-  delta_t = opts["delta_t"]
-  t_max = opts["t_max"]
-  flag = opts["run_type"]
 
   fill!(eqn.res, 0.0)
   fill!(eqn.res_vec, 0.0)
@@ -219,6 +216,7 @@ function postproc(mesh, sbp, eqn, opts)
   myrank = mesh.myrank
 
   if opts["do_postproc"] && opts["solve"]
+    println("final time = ", eqn.t)
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
       exfunc = ICDict[exfname]
@@ -234,6 +232,9 @@ function postproc(mesh, sbp, eqn, opts)
         println("solution error norm = ", diff_norm)
         println("solution discrete L2 norm = ", discrete_norm)
       end
+
+      saveSolutionToMesh(mesh, real(q_diff))
+      writeVisFiles(mesh, "solution_error")
 
       sol_norm = calcNorm(eqn, eqn.q_vec)
       exact_norm = calcNorm(eqn, q_exact)

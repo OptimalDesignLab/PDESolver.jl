@@ -15,6 +15,9 @@ using SummationByParts
 
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
+include("lserk.jl")
+  export lserk54
+
 include("crank_nicolson.jl")
 include("newton.jl")
 include("globalization.jl")

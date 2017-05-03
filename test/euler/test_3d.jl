@@ -205,7 +205,7 @@ end  # end function
 add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_FLUX])
 
 """
-  Test some auxiliary calculation functinos in 3D
+  Test some auxiliary calculation functions in 3D
 """
 function test_3d_misc(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
@@ -231,7 +231,190 @@ function test_3d_misc(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_misc(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_MISC])
+
+
+function test_3d_secondary_quantities()
+
+  fname = "input_vals_3d.jl"
+  opts = read_input(fname)
+
+  for p=1:4
+    opts["order"] = p
+    fname = "input_vals_3d_p$p"
+    make_input(opts, fname)
+    mesh, sbp, eqn, opts = run_euler(fname*".jl")
+
+    coords = mesh.coords[:, :, 1]
+    dxidx = mesh.dxidx[:, :, :, 1]
+    jac = mesh.jac[:, 1]
+    q = zeros(mesh.numDofPerNode, mesh.numNodesPerElement)
+    vorticity = zeros(3, mesh.numNodesPerElement)
+
+    ufunc = (x, y, z) -> 2*x^p + y^p + z^p + 1
+    vfunc = (x, y, z) -> x^p + 2*y^p + z^p + 1
+    wfunc = (x, y, z) -> x^p + y^p + 2*z^p + 1
+
+    dudx = (x, y, z) -> 2*p*x^(p-1)
+    dudy = (x, y, z) -> 1*p*y^(p-1)
+    dudz = (x, y, z) -> 1*p*z^(p-1)
+
+    dvdx = (x, y, z) -> 1*p*x^(p-1)
+    dvdy = (x, y, z) -> 2*p*y^(p-1)
+    dvdz = (x, y, z) -> 1*p*z^(p-1)
+
+    dwdx = (x, y, z) -> 1*p*x^(p-1)
+    dwdy = (x, y, z) -> 1*p*y^(p-1)
+    dwdz = (x, y, z) -> 2*p*z^(p-1)
+
+    for itr=0:1
+      # populate q
+      for i=1:mesh.numNodesPerElement
+        x = coords[1, i] + itr
+        y = coords[2, i] + itr
+        z = coords[3, i] + itr
+
+        q[1, i] = 1
+        q[2, i] = ufunc(x, y, z)
+        q[3, i] = vfunc(x, y, z)
+        q[4, i] = wfunc(x, y, z)
+        q[5, i] = 10
+      end
+      EulerEquationMod.calcVorticity(eqn.params, sbp, q, dxidx, jac, vorticity)
+
+      for i=1:mesh.numNodesPerElement
+        x = coords[1, i] + itr
+        y = coords[2, i] + itr
+        z = coords[3, i] + itr
+
+        vortx = dwdy(x, y, z) - dvdz(x, y, z)
+        vorty = -dwdx(x, y, z) + dudz(x, y, z)
+        vortz = dvdx(x, y, z) - dudy(x, y, z)
+
+        @fact vortx --> roughly(vorticity[1, i], atol=1e-12)
+        @fact vorty --> roughly(vorticity[2, i], atol=1e-12)
+        @fact vortz --> roughly(vorticity[3, i], atol=1e-12)
+      end
+    end  # end loop itr
+  end  # end loop over p
+
+  # the enstrophy integral is O(2p + 1), so for integration to be exact, make
+  # solution 2*p - 1
+  for pprime = 3:4
+    p = pprime - 2
+#    p = 1
+    opts["order"] = pprime
+    fname = "input_vals_3d_p$p"
+    make_input(opts, fname)
+    mesh, sbp, eqn, opts = run_euler(fname*".jl")
+
+    ufunc = (x, y, z) -> 2*x^p + y^p + z^p + 1
+    vfunc = (x, y, z) -> x^p + 2*y^p + z^p + 1
+    wfunc = (x, y, z) -> x^p + y^p + 2*z^p + 1
+
+    q = eqn.q
+    for el = 1:mesh.numEl
+      for i=1:mesh.numNodesPerElement
+        x = mesh.coords[1, i, el]
+        y = mesh.coords[2, i, el]
+        z = mesh.coords[3, i, el]
+
+        q[1, i, el] = 1
+        q[2, i, el] = ufunc(x, y, z)
+        q[3, i, el] = vfunc(x, y, z)
+        q[4, i, el] = wfunc(x, y, z)
+        q[5, i, el] = 10
+      end
+    end
+
+    # ----- test enstrophy ------
+    enstrophy_exact = (24*3^p - (24*p^2)/(2*p - 1) - 12*3^(2*p) + (8*3^(2*p)*p^2)/(2*p - 1) - 12)/(2*mesh.volume)
+
+
+    enstrophy_numerical = EulerEquationMod.calcEnstrophy(mesh, sbp, eqn, opts, q)
+
+    @fact enstrophy_exact --> roughly(enstrophy_numerical, atol=1e-12)
+
+    #----- test Kinetic Energy -----
+    q_vec = reshape(q, mesh.numDof)
+
+    if p == 1
+      ke_exact = 1992
+    elseif p== 2
+      ke_exact = 132712/15
+    end
+
+    ke_exact /= 2*mesh.volume
+
+    ke_numerical = EulerEquationMod.calcKineticEnergy(mesh, sbp, eqn, opts, q_vec)
+
+    @fact ke_exact --> roughly(ke_numerical, atol=1e-12)
+
+
+    # ----- test kinetic energy dissipation rate ------
+    t = 0.5
+    ufunc = (x, y, z) -> 2*x^p + y^p + z^p + 1 + t^p
+    vfunc = (x, y, z) -> x^p + 2*y^p + z^p + 1 + t^p
+    wfunc = (x, y, z) -> x^p + y^p + 2*z^p + 1 + t^p
+    rhofunc = (x, y, z) -> t^p
+
+    dudt = (x, y, z) -> p*t^(p-1)
+    dvdt = (x, y, z) -> p*t^(p-1)
+    dwdt = (x, y, z) -> p*t^(p-1)
+    drhodt = (x, y, z) -> p*t^(p-1)
+
+    q = eqn.q
+    res = zeros(q)
+    for el = 1:mesh.numEl
+      for i=1:mesh.numNodesPerElement
+        x = mesh.coords[1, i, el]
+        y = mesh.coords[2, i, el]
+        z = mesh.coords[3, i, el]
+
+        rho = rhofunc(x, y, z)
+        q[1, i, el] = rho
+        q[2, i, el] = rho*ufunc(x, y, z)
+        q[3, i, el] = rho*vfunc(x, y, z)
+        q[4, i, el] = rho*wfunc(x, y, z)
+        q[5, i, el] = 10
+
+        res[1, i, el] = drhodt(x, y, z)
+        res[2, i, el] = rhofunc(x,  y, z)*dudt(x, y, z) + ufunc(x, y, z)*drhodt(x, y, z)
+        res[3, i, el] = rhofunc(x,  y, z)*dvdt(x, y, z) + vfunc(x, y, z)*drhodt(x, y, z)
+
+        res[4, i, el] = rhofunc(x,  y, z)*dwdt(x, y, z) + wfunc(x, y, z)*drhodt(x, y, z)
+
+        res[5, i, el] = 0
+
+      end
+    end
+
+    q_vec = reshape(q, mesh.numDof)
+    res_vec = reshape(res, mesh.numDof)
+
+    if p == 1
+      dkedt_exact = 24*t + 216
+    else
+      dkedt_exact = 16*t*(3*t^2 + 55)
+    end
+    dkedt_exact *= rhofunc(1, 1, 1)/mesh.volume
+
+    dkedt_numerical = EulerEquationMod.calcKineticEnergydt(mesh, sbp, eqn, opts, q_vec, res_vec)
+
+    @fact dkedt_exact --> roughly(dkedt_numerical, atol=1e-12)
+
+
+  end  # end loop over p
+
+
+
+  return nothing
+
+end 
+
+add_func1!(EulerTests, test_3d_secondary_quantities, [TAG_MISC])
+
+
 
 """
   Test calculation of A0

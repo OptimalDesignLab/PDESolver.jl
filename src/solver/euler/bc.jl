@@ -79,7 +79,7 @@ function writeBoundary(mesh, sbp, eqn, opts)
   for i=1:mesh.numBoundaryFaces
     el = mesh.bndryfaces[i].element
     face = mesh.bndryfaces[i].face
-    for j=1:sbp.numfacenodes
+    for j=1:sbp.numfacenodes  # TODO: should be mesh.numNodesPerFace?
       jb = sbp.facenodes[j, face]
       println(f, "el ", el, ", node_index ", jb, ", flux = ",
                real(eqn.bndryflux[:, j, i]))
@@ -228,6 +228,11 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       nrm[:] = sbp.facenormal[:,bndry_i.face]
       bndryflux_i = sview(bndryflux, :, j, i)
 
+      # DEBUGGING: use analytical solution (avoid interpolation inexactness)
+#      calcPeriodicMMS(x, eqn.params, q2)
+#      println("after overwriting q with analytical solution, q_nodes = \n", q2)
+
+#      println("coords = ", x)
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
     end
   end
@@ -429,7 +434,8 @@ end # end function isentropicVortexBC_physical
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state where the fluid velocity is projected into the wall.
-
+ 
+  Works in 2D, untested in 3D.
 
   This is a low level functor
 
@@ -487,6 +493,59 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
 
 
   calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+
+  return nothing
+end
+
+
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType{3})
+# a clever optimizing compiler will clean this up
+# there might be a way to do this with fewer flops using the tangent vector
+
+
+  # calculate normal vector in xy space
+  nx = zero(Tmsh)
+  ny = zero(Tmsh)
+  nz = zero(Tmsh)
+  tngt = Array(Tmsh, 2)  # tangent vector
+  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
+  # normalize normal vector
+  nx *= fac  
+  ny *= fac
+  nz *= fac
+
+  # this is momentum, not velocity?
+  Unrm = nx*q[2] + ny*q[3] + ny*q[4]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+
+  #qg = copy(q)
+
+  # calculate normal velocity
+  qg[2] -= nx*Unrm
+  qg[3] -= ny*Unrm
+  qg[4] -= nz*Unrm
+
+  # call Roe solver
+  #RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+
+  v_vals = params.v_vals
+  convertFromNaturalToWorkingVars(params, qg, v_vals)
+  # this is a problem: q is in conservative variables even if
+  # params says we are using entropy variables
+  calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux)
 
   return nothing
 end
@@ -680,6 +739,8 @@ end
   This functor uses the Roe solver to calculate the flux for a boundary
   state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
 
+  Works in 2D and 3D
+
   This is a low level functor
 
 **Arguments**
@@ -699,8 +760,8 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
 
@@ -741,7 +802,7 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1}
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
-              params::ParamType{2})
+              params::ParamType)
 
   # Forward sweep
   qg = params.qg
@@ -870,7 +931,8 @@ function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
 
   qg = params.qg
   calcPeriodicMMS(coords, params, qg)
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  use_efix = 0
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux, use_efix)
 
   # println("bndryflux = ", bndryflux)
   return nothing

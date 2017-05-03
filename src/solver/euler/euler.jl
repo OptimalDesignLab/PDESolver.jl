@@ -109,6 +109,8 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
+#  println("----- entered evalResidual -----")
+
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
@@ -116,15 +118,13 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #  println("entered evalResidual")
 #  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
-    println(eqn.params.f, "starting data exchange")
-
     startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
     #  println(" startDataExchange @time printed above")
   end
 
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-  #println("dataPrep @time printed above")
+#  println("dataPrep @time printed above")
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
@@ -145,7 +145,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   =#
 
   if opts["use_GLS"]
-    println("adding boundary integrals")
     GLS(mesh,sbp,eqn)
   end
 
@@ -160,7 +159,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
    #println("boundary integral @time printed above")
   end
 
-
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
 #    println("stabilizing @time printed above")
@@ -168,17 +166,16 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-    #println("face integral @time printed above")
-#    println("after face integrals res = \n", eqn.res)
+#    println("face integral @time printed above")
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("evalSharedFaceIntegrals @time printed above")
+    #println("evalSharedFaceIntegrals @time printed above")
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-#  println("source integral @time printed above")
+  #println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -242,31 +239,40 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 #  println("Performing major Iteration Callback")
 
   myrank = mesh.myrank
+  output_freq = opts["output_freq"]::Int
+
 #  println("eqn.q = \n", eqn.q)
   # undo multiplication by inverse mass matrix
   res_vec_orig = eqn.M.*copy(eqn.res_vec)
   res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
-    if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
-      vals = real(eqn.q_vec)  # remove unneded imaginary part
+  if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
+    vals = real(eqn.q_vec)  # remove unneded imaginary part
 
-#      println("writing vtk, q1319-3 = ", eqn.q[:, 3, 1319])
-#      dofs = mesh.dofs[:, 3, 1319]
-#      println("writing vtk, q_vec1319-3 = ", vals[dofs])
-      saveSolutionToMesh(mesh, vals)
-      fname = string("solution_", itr)
+    saveSolutionToMesh(mesh, vals)
+    fname = string("solution_", itr)
+    writeVisFiles(mesh, fname)
+
+    if opts["write_vorticity_vis"]
+      # write vorticity field
+      new_field = vec(getVorticity(mesh, sbp, eqn, opts))
+      saveSolutionToMesh(mesh, new_field)
+      fname = string("solution_vorticity_", itr)
       writeVisFiles(mesh, fname)
-#=
-      # DEBUGGING: write error to file
-      q_exact = zeros(eqn.q_vec)
-      ex_func = ICDict[opts["IC_name"]]
-      ex_func(mesh, sbp, eqn, opts, q_exact)
-      q_err = real(eqn.q_vec) - q_exact
-      saveSolutionToMesh(mesh, q_err)
-      fname = string("error_", itr)
-      writeVisFiles(mesh, fname)
-=#
     end
+
+
+#=
+    # DEBUGGING: write error to file
+    q_exact = zeros(eqn.q_vec)
+    ex_func = ICDict[opts["IC_name"]]
+    ex_func(mesh, sbp, eqn, opts, q_exact)
+    q_err = real(eqn.q_vec) - q_exact
+    saveSolutionToMesh(mesh, q_err)
+    fname = string("error_", itr)
+    writeVisFiles(mesh, fname)
+=#
+  end
 
     # add an option on control this or something.  Large blocks of commented
     # out code are bad
@@ -310,35 +316,93 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     #--------------------------------------------------------------------------
   end
 =#
-  if opts["write_entropy"] && (itr % opts["write_entropy_freq"] == 0)
-    # calculate the entropy norm
-    val = calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec)
+  if opts["write_entropy"]
+    @mpi_master f = eqn.file_dict[opts["write_entropy_fname"]]
 
-    # compute w^T * res_vec
-    val2 = contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig)
+    if(itr % opts["write_entropy_freq"] == 0)
+      # calculate the entropy norm
+      val = real(calcEntropyIntegral(mesh, sbp, eqn, opts, eqn.q_vec))
 
-    # DEBUGGING: compute the potential flux from q
-    #            directly, to verify the boundary terms are the problem
-#    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
-#    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+      # compute w^T * res_vec
+      val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
 
-    @mpi_master begin
-      f = open(opts["write_entropy_fname"], "a+")
-      println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
-      close(f)
+      # DEBUGGING: compute the potential flux from q
+      #            directly, to verify the boundary terms are the problem
+  #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+  #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+
+      @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
+      #DEBUGGING: flish every time
+      @mpi_master flush(f)
     end
-  end
+
+    @mpi_master if (itr % output_freq) == 0
+      flush(f)
+    end
+  end  # end if write_entropy
 
   if opts["write_integralq"]
     integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
-    f = open(opts["write_integralq_fname"], "a+")
-    print(f, itr, " ", eqn.params.t)
-    for i=1:length(integralq_vals)
-      print(f, " ", integralq_vals[i])
+    @mpi_master begin
+      f = eqn.file_dict[opts["write_integralq_fname"]]
+  #    f = open(opts["write_integralq_fname"], "a+")
+      print(f, itr, " ", eqn.params.t)
+      for i=1:length(integralq_vals)
+        print(f, " ", integralq_vals[i])
+      end
+      print(f, "\n")
+  #    close(f)
+
+      if (itr % output_freq) == 0
+        flush(f)
+      end
     end
-    print(f, "\n")
-    close(f)
+  end  # end if write_integralq
+
+  if opts["write_enstrophy"]
+    @mpi_master f = eqn.file_dict[opts["write_enstrophy_fname"]]
+
+    if (itr % opts["write_enstrophy_freq"]) == 0
+      enstrophy = real(calcEnstrophy(mesh, sbp, eqn, opts, eqn.q))
+      @mpi_master println(f, itr, " ", eqn.params.t, " ", enstrophy)
+    end
+
+    @mpi_master if (itr % opts["output_freq"]) == 0
+      flush(f)
+    end
   end
+
+  if opts["write_kinetic_energy"]
+    @mpi_master f = eqn.file_dict[opts["write_kinetic_energy_fname"]]
+
+    if (itr % opts["write_kinetic_energy_freq"]) == 0
+      kinetic_energy = real(calcKineticEnergy(mesh, sbp, eqn, opts, eqn.q_vec))
+      @mpi_master println(f, itr, " ", eqn.params.t, " ", kinetic_energy)
+    end
+
+    @mpi_master if (itr % opts["output_freq"]) == 0
+      flush(f)
+    end
+  end
+ 
+  if opts["write_kinetic_energydt"]
+    @mpi_master f = eqn.file_dict[opts["write_kinetic_energydt_fname"]]
+
+    if (itr % opts["write_kinetic_energydt_freq"]) == 0
+      kinetic_energydt = real(calcKineticEnergydt(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec))
+      @mpi_master println(f, itr, " ", eqn.params.t, " ", kinetic_energydt)
+    end
+
+    @mpi_master if (itr % opts["output_freq"]) == 0
+      flush(f)
+    end
+  end
+
+  #=
+  #DEBUGGING: write q_vec to file
+  fname = get_parallel_fname("qvec_$itr.dat", mesh.myrank)
+  writedlm(fname, eqn.q_vec)
+  =#
 
   return nothing
 
@@ -512,6 +576,7 @@ end
 # mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+
   integral_type = opts["volume_integral_type"]
   if integral_type == 1
     if opts["Q_transpose"] == true
@@ -529,8 +594,7 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
 
-
-  # artificialViscosity(mesh, sbp, eqn)
+  # artificialViscosity(mesh, sbp, eqn) 
 
 end  # end evalVolumeIntegrals
 
@@ -546,6 +610,31 @@ end  # end evalVolumeIntegrals
 # mid level function
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
+
+  #=
+  if mesh.myrank == 1
+    f = open("bdnrylog.dat", "a")
+    elnum = 1
+    println(f, "\nelement $elnum coords = \n", mesh.coords[:, :, elnum])
+    println(f, "\nelement $elnum q = \n", eqn.q[:, :, elnum])
+    # find boundary
+    idx = 0
+    for i=1:length(mesh.bndryfaces)
+      if mesh.bndryfaces[i].element == elnum
+        idx = i
+      end
+    end
+    bndry = mesh.bndryfaces[idx]
+    println(f, "bndryface = ", bndry)
+
+    println(f, "element $elnum boundary q = \n", eqn.q_bndry[:, :, idx])
+    println(f, "element $elnum boundary flux = \n", eqn.bndryflux[:, :, idx])
+    println(f, "element $elnum boundary coords = \n", mesh.coords_bndry[:, :, idx])
+    println(f, "element $elnum boundary dxidx = \n", mesh.dxidx_bndry[:, :, idx])
+    println(f, "element $elnum boundary facenormal = \n", sbp.facenormal[:, bndry.face])
+    close(f)
+  end
+  =#
 
   #TODO: remove conditional
   if mesh.isDG
@@ -641,9 +730,8 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
-
-    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,
-                           eqn.flux_func, mesh.interfaces)
+    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+                           eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))

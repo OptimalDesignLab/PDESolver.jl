@@ -634,7 +634,7 @@ It stores the names of all possible functional options that can be computed.
 Whenever a new functional is created, it should be added to FunctionalDict.
 
 """->
-global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
+global const FunctionalDict = Dict{ASCIIString, FunctionalType}(
 "drag" => drag(),
 "lift" => lift(),
 "targetCp" => targetCp(),

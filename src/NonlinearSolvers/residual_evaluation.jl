@@ -58,9 +58,8 @@ function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0
   func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
 
   rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
-  time.t_allreduce += @elapsed rhs_norm_global = MPI.Allreduce(rhs_0_norm*rhs_0_norm, MPI.SUM, mesh.comm)
 
-  return sqrt(rhs_norm_global)
+  return rhs_0_norm
 
 end
 

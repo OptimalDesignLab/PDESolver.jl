@@ -219,6 +219,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
+  cleanup(mesh, sbp, eqn, opts)
+
   MPI.Barrier(mesh.comm)
   if opts["finalize_mpi"]
     MPI.Finalize()
@@ -275,6 +277,7 @@ function postproc(mesh, sbp, eqn, opts)
 
 
       @mpi_master println("solution error norm = ", diff_norm)
+      # TODO: make this mesh.min_el_size?
       h_avg = calcMeshH(mesh, sbp, eqn, opts)
 
       # print to file

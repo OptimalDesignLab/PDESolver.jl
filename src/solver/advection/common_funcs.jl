@@ -472,3 +472,74 @@ function calc_xplusy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
   z = coords[3]
   return x + y + z
 end
+
+
+"""
+  u = exp(x + y + z + t) in 3d (z = 0 in 2d)
+"""
+function calc_unsteadymms{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+  x = coords[1]
+  y = coords[2]
+
+  return exp(x + y + t)
+end
+
+function calc_unsteadymms{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+  x = coords[1]
+  y = coords[2]
+  z = coords[3]
+
+  return exp(x + y + z + t)
+end
+
+
+function calc_unsteadymmsdx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType, t)
+
+  calc_unsteadymms(coords, params, t)
+end
+
+function calc_unsteadymmsdy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType, t)
+
+  calc_unsteadymms(coords, params, t)
+end
+
+function calc_unsteadymmsdz{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType3, t)
+
+  calc_unsteadymms(coords, params, t)
+end
+
+
+function calc_unsteadymmsdt{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType, t)
+
+  calc_unsteadymms(coords, params, t)
+end
+
+function calc_unsteadypoly{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+  x = coords[1]
+  y = coords[2]
+
+  return x + 1 + y + t 
+end
+
+function calc_unsteadypolydx{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+  x = coords[1]
+  y = coords[2]
+
+  return 1
+end
+
+function calc_unsteadypolydy{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+  x = coords[1]
+  y = coords[2]
+
+  return 1
+end
+
+function calc_unsteadypolydt{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+  x = coords[1]
+  y = coords[2]
+
+  return 1
+end
+
+

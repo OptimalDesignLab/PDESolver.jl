@@ -9,16 +9,17 @@
 
 """
 function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
-                                     q::AbstractArray{Tsol,1},
-                                     qg::AbstractArray{Tsol, 1},
-                                     aux_vars::AbstractArray{Tres, 1},
-                                     dxidx::AbstractArray{Tmsh,2},
-                                     nrm::AbstractArray{Tmsh,1},
-                                     flux::AbstractArray{Tres, 1})
-
+                                     q::AbstractArray{Tsol,1}, 
+                                     qg::AbstractArray{Tsol, 1}, 
+                                     aux_vars::AbstractArray{Tres, 1}, 
+                                     dxidx::AbstractArray{Tmsh,2}, 
+                                     nrm::AbstractArray{Tmsh,1}, 
+                                     flux::AbstractArray{Tres, 1},
+                                     use_efix::Int=1)
+                                     
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
-  RoeSolver(params, q, qg, aux_vars, nrm2, flux)
+  RoeSolver(params, q, qg, aux_vars, nrm2, flux, use_efix)
 
   return nothing
 end
@@ -52,7 +53,8 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType,
                                      dxidx::AbstractArray{Tmsh,2},
                                      nrm::AbstractArray{Tmsh,1},
                                      flux_bar::AbstractArray{Tres, 1},
-                                     dxidx_bar::AbstractArray{Tmsh, 2})
+                                     dxidx_bar::AbstractArray{Tmsh, 2},
+                                     use_efix::Int=1)
 
   # Forward sweep
   nrm2 = params.nrm2
@@ -80,6 +82,7 @@ end
   dxidx : dxidx matrix at the node
   nrm : sbp face normal vector
   params : ParamType
+  use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)
 
   Outputs:
     flux : vector to populate with solution
@@ -91,11 +94,12 @@ end
 
 """->
 function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
-                                     q::AbstractArray{Tsol,1},
-                                     qg::AbstractArray{Tsol, 1},
-                                     aux_vars::AbstractArray{Tres, 1},
-                                     nrm::AbstractArray{Tmsh,1},
-                                     flux::AbstractArray{Tres, 1})
+                                     q::AbstractArray{Tsol,1}, 
+                                     qg::AbstractArray{Tsol, 1}, 
+                                     aux_vars::AbstractArray{Tres, 1}, 
+                                     nrm::AbstractArray{Tmsh,1}, 
+                                     flux::AbstractArray{Tres, 1}, 
+                                     use_efix::Int=1)
 
   # SAT terms are used for ensuring consistency with the physical problem. Its
   # similar to upwinding which adds dissipation to the problem. SATs on the
@@ -135,14 +139,13 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   fac = d1_0/(sqL + sqR)
   u = (sqL*uL + sqR*uR)*fac
   v = (sqL*vL + sqR*vR)*fac
-
   H = (sqL*HL + sqR*HR)*fac
 
 
   dq = params.v_vals2 # zeros(Tsol, 4)
   dq[:] = q[:] - qg[:]
   sat = params.sat_vals
-  calcSAT(params, nrm, dq, sat, [u, v], H)
+  calcSAT(params, nrm, dq, sat, [u, v], H, use_efix)
 
   euler_flux = params.flux_vals1
   # calculate Euler flux in wall normal directiona
@@ -193,7 +196,8 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
                                      aux_vars::AbstractArray{Tres, 1},
                                      nrm::AbstractArray{Tmsh,1},
                                      flux_bar::AbstractArray{Tres, 1},
-                                     nrm_bar::AbstractArray{Tmsh, 1})
+                                     nrm_bar::AbstractArray{Tmsh, 1},
+                                     use_efix::Int=1)
 
   # Forward sweep
   tau = 1.0
@@ -264,18 +268,18 @@ end
   The main Roe solver.  Populates `flux` with the computed flux.
 """
 function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
-                                     q::AbstractArray{Tsol,1},
-                                     qg::AbstractArray{Tsol, 1},
-                                     aux_vars::AbstractArray{Tres, 1},
-                                     nrm::AbstractArray{Tmsh,1},
-                                     flux::AbstractArray{Tres, 1})
-
+                                     q::AbstractArray{Tsol,1}, 
+                                     qg::AbstractArray{Tsol, 1}, 
+                                     aux_vars::AbstractArray{Tres, 1}, 
+                                     nrm::AbstractArray{Tmsh,1}, 
+                                     flux::AbstractArray{Tres, 1}, 
+                                     use_efix::Int=1)
+                                     
 
   # SAT terms are used for ensuring consistency with the physical problem. Its
   # similar to upwinding which adds dissipation to the problem. SATs on the
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
-
   E1dq = params.res_vals1
   E2dq = params.res_vals2
 
@@ -327,12 +331,12 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   lambda2 = Un - dA*a
   lambda3 = Un
   rhoA = absvalue(Un) + dA*a
-
-  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
-
-  dq1 = q[1] - qg[1]
+  
+  lambda1 = use_efix*d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1) + (1-use_efix)*lambda1
+  lambda2 = use_efix*d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2) + (1-use_efix)*lambda2
+  lambda3 = use_efix*d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3) + (1-use_efix)*lambda3
+  
+  dq1 = q[1] - qg[1] 
   dq2 = q[2] - qg[2]
   dq3 = q[3] - qg[3]
   dq4 = q[4] - qg[4]
@@ -392,20 +396,25 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
     sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
   end
 
-  euler_flux = params.flux_vals1
-
 
   # calculate Euler flux in wall normal directiona
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
+  euler_flux = params.flux_vals1
   v_vals = params.q_vals
 
   convertFromNaturalToWorkingVars(params, q, v_vals)
   calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
-    flux[i] = (sat_fac*sat[i] + euler_flux[i])
-    # when weak differentiate has transpose = true
+    flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
+  end
+
+  if use_efix == 0
+#    println("q = \n", q)
+#    println("qg = \n", qg)
+#    println("lambda1,2,3 = ", lambda1, ", ", lambda2, ", ", lambda3)
+    calcEulerFlux(params, 0.5*(q + qg), aux_vars, nrm, flux)
   end
 
   return nothing
@@ -432,7 +441,7 @@ flux
 
 function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
                  dq::AbstractArray{Tsol,1}, sat::AbstractArray{Tsol,1},
-                 vel::AbstractArray{Tsol, 1}, H::Tsol)
+                 vel::AbstractArray{Tsol, 1}, H::Tsol, use_efix::Int=1)
 
 
   # SAT parameters
@@ -467,9 +476,9 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   # approach zero. This has a possibility of creating numerical difficulties.
   # As a result, the eigen values are limited by the following expressions.
 
-  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+  lambda1 = use_efix*d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1) + (1-use_efix)*lambda1
+  lambda2 = use_efix*d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2) + (1-use_efix)*lambda2
+  lambda3 = use_efix*d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3) + (1-use_efix)*lambda3
 
   dq1 = dq[1]
   dq2 = dq[2]
@@ -550,7 +559,7 @@ Reverse mode of calcSAT
 function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
                       dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
                       H::Tsol, sat_bar::AbstractArray{Tsol, 1},
-                      nrm_bar::AbstractArray{Tmsh,1})
+                      nrm_bar::AbstractArray{Tmsh,1}, use_efix::Int=1)
 
   # Forward Sweep
   sat_Vn = convert(Tsol, 0.025)
@@ -790,7 +799,7 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
                       params::ParamType{2, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tsol, 1},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1})
 # calculate the split form numerical flux function corresponding to the standard DG flux
 
   pL = calcPressure(params, qL); pR = calcPressure(params, qR)
@@ -820,11 +829,66 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
   return nothing
 end
 
+"""
+  This function computes the split form flux corresponding to the standard
+  flux in Tdim directions at once for a given state.  This is more efficient
+  Than calling the single direction method Tdim times.  Methods are available
+  for 2 and 3 dimensions.
+
+  Inputs:
+    params: ParamType
+    qL: left state vector
+    qR: right state vector
+    aux_vars: auxiliary variable vector for qL
+    dir: a Tdim x Tdim matrix with each column containing a normal vector
+
+  Inputs/Outputs:
+    F: a numDofPerNode x Tdim matrix where each column will be populated with
+       the flux in the direction specified by the corresponding column of nrm
+
+  Aliasing restrictions: none
+"""
+function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
+                      params::ParamType{2, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tsol, 1},
+                      dir::AbstractArray{Tmsh, 2},  F::AbstractArray{Tres,2})
+# calculate the split form numerical flux function corresponding to the standard DG flux
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  rho_avg = 0.5*(qL[1] + qR[1])
+  rhou_avg = 0.5*(qL[2] + qR[2])
+  rhov_avg = 0.5*(qL[3] + qR[3])
+  p_avg = 0.5*(pL + pR)
+  rhoLinv = 1/qL[1]; rhoRinv = 1/qR[1]
+
+
+  for i=1:2
+    F[1, i] = dir[1, i]*(rhou_avg) + dir[2, i]*rhov_avg
+
+    tmp1 = 0.5*(qL[2]*qL[2]*rhoLinv + qR[2]*qR[2]*rhoRinv)
+    tmp2 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
+    F[2, i] = dir[1, i]*(tmp1 + p_avg) + dir[2, i]*tmp2
+
+    tmp1 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
+    tmp2 = 0.5*(qL[3]*qL[3]*rhoLinv + qR[3]*qR[3]*rhoRinv)
+    F[3, i] = dir[1, i]*tmp1 + dir[2, i]*(tmp2 + p_avg)
+
+
+    tmp1 = 0.5*( (qL[4] + pL)*qL[2]*rhoLinv + (qR[4] + pR)*qR[2]*rhoRinv)
+    tmp2 = 0.5*( (qL[4] + pL)*qL[3]*rhoLinv + (qR[4] + pR)*qR[3]*rhoRinv)
+    F[4, i] = dir[1, i]*tmp1 + dir[2, i]*tmp2
+  end
+
+  return nothing
+end
+
+
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
                       params::ParamType{3, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres, 1},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1})
 # calculate the split form numerical flux function corresponding to the standard DG flux
 #TODO: pre-calculate 1/qL[1], 1/qR[1]
 
@@ -861,6 +925,51 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
 
   return nothing
 end
+
+function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
+                      params::ParamType{3, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres, 1},
+                      dir::AbstractArray{Tmsh, 2},  F::AbstractArray{Tres,2})
+# calculate the split form numerical flux function corresponding to the standard DG flux
+#TODO: pre-calculate 1/qL[1], 1/qR[1]
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  rho_avg = 0.5*(qL[1] + qR[1])
+  rhou_avg = 0.5*(qL[2] + qR[2])
+  rhov_avg = 0.5*(qL[3] + qR[3])
+  rhow_avg = 0.5*(qL[4] + qR[4])
+  p_avg = 0.5*(pL + pR)
+  rhoLinv = 1/qL[1]; rhoRinv = 1/qR[1]
+
+  for i=1:3
+    F[1, i] = dir[1, i]*(rhou_avg) + dir[2, i]*rhov_avg + dir[3, i]*rhow_avg
+
+    tmp1 = 0.5*(qL[2]*qL[2]*rhoLinv + qR[2]*qR[2]*rhoRinv)
+    tmp2 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
+    tmp3 = 0.5*(qL[2]*qL[4]*rhoLinv + qR[2]*qR[4]*rhoRinv)
+    F[2, i] = dir[1, i]*(tmp1 + p_avg) + dir[2, i]*tmp2 + dir[3, i]*tmp3
+
+    tmp1 = 0.5*(qL[2]*qL[3]*rhoLinv + qR[2]*qR[3]*rhoRinv)
+    tmp2 = 0.5*(qL[3]*qL[3]*rhoLinv + qR[3]*qR[3]*rhoRinv)
+    tmp3 = 0.5*(qL[4]*qL[3]*rhoLinv + qR[4]*qR[3]*rhoRinv)
+    F[3, i] = dir[1, i]*tmp1 + dir[2, i]*(tmp2 + p_avg) + dir[3, i]*tmp3
+
+    tmp1 = 0.5*(qL[2]*qL[4]*rhoLinv + qR[2]*qR[4]*rhoRinv)
+    tmp2 = 0.5*(qL[3]*qL[4]*rhoLinv + qR[3]*qR[4]*rhoRinv)
+    tmp3 = 0.5*(qL[4]*qL[4]*rhoLinv + qR[4]*qR[4]*rhoRinv)
+    F[4, i] = dir[1, i]*tmp1 + dir[2, i]*tmp2 + dir[3, i]*(tmp3 + p_avg)
+
+
+    tmp1 = 0.5*( (qL[5] + pL)*qL[2]*rhoLinv + (qR[5] + pR)*qR[2]*rhoRinv)
+    tmp2 = 0.5*( (qL[5] + pL)*qL[3]*rhoLinv + (qR[5] + pR)*qR[3]*rhoRinv)
+    tmp3 = 0.5*( (qL[5] + pL)*qL[4]*rhoLinv + (qR[5] + pR)*qR[4]*rhoRinv)
+    F[5, i] = dir[1, i]*tmp1 + dir[2, i]*tmp2 + dir[3, i]*tmp3
+  end
+
+  return nothing
+end
+
 
 
 
@@ -955,11 +1064,27 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType,
 end
 
 
-# IR flux
-function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
+"""
+  This function calculates the Ismail-Roe numerical flux at a node in a
+  specified direction
+
+  Inputs:
+    params: ParamType
+    qL: left state vector
+    qR: right state vector
+    aux_vars: auxiliary variable vector for qL
+    dir: a direction vector of length Tdim
+
+  Inputs/Outputs:
+    F: a numDofPerNode x Tdim matrix where each column will be populated with
+       the flux in the direction specified by the corresponding column of nrm
+
+  Aliasing Restrictions: none
+"""    
+function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -991,10 +1116,67 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
   return nothing
 end
 
-function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
+
+"""
+  This function computes the Ismail-Roe
+  flux in Tdim directions at once for a given state.  This is more efficient
+  Than calling the single direction method Tdim times.  Methods are available
+  for 2 and 3 dimensions.
+
+  Inputs:
+    params: ParamType
+    qL: left state vector
+    qR: right state vector
+    aux_vars: auxiliary variable vector for qL
+    dir: a Tdim x Tdim matrix with each column containing a normal vector
+
+  Inputs/Outputs:
+    F: a numDofPerNode x Tdim matrix where each column will be populated with
+       the flux in the direction specified by the corresponding column of nrm
+
+  Aliasing restrictions: none
+"""
+function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh, 2},  F::AbstractArray{Tres,2})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z4L, z4R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  p1_hat = (z4L + z4R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z4L, z4R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+
+  for i=1:2
+    mv_n = rho_hat*(dir[1, i]*u_hat + dir[2, i]*v_hat)  # normal momentum
+    F[1, i] = mv_n
+    F[2, i] = mv_n*u_hat + dir[1, i]*p1_hat
+    F[3, i] = mv_n*v_hat + dir[2, i]*p1_hat
+    F[4, i] = mv_n*h_hat
+  end
+  #=
+  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat
+  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat
+  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat)
+  F[4] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat
+  =#
+  return nothing
+end
+
+
+function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -1024,6 +1206,44 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
 
   return nothing
 end
+
+
+# multi-dimension version
+function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative}, 
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh, 2},  F::AbstractArray{Tres,2})
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = z1L*qL[4]/qL[1]; z4R = z1R*qR[4]/qR[1]
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z5L, z5R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  w_hat = (z4L + z4R)/(z1L + z1R)
+  p1_hat = (z5L + z5R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z5L, z5R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+  @simd for i=1:3
+    mv_n = rho_hat*(dir[1,i]*u_hat + dir[2, i]*v_hat + dir[3,i]*w_hat)
+    F[1, i] = mv_n
+    F[2, i] = mv_n*u_hat + dir[1, i]*p1_hat
+    F[3, i] = mv_n*v_hat + dir[2, i]*p1_hat
+    F[4, i] = mv_n*w_hat + dir[3, i]*p1_hat
+    F[5, i] = mv_n*h_hat
+  end
+
+  return nothing
+end
+
+
 
 # stabilized IR flux
 """

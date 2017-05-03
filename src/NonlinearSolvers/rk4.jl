@@ -56,14 +56,16 @@ rk4
    res_vec.
 
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
-   should be eqn.q_vec and eqn.res_vec.
+   should be eqn.q_vec and eqn.res_vec.  For physics modules, pre_func should
+   take the values from q_vec and put them in q, and post_func should take
+   the values in res and put them in res_vec.  Thus pre_func and post_func
+   provide the link between the way the rk4 represents the data and the 
+   way the physics modules represent the data.
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
-#function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
-#function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -76,7 +78,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   # unpack options
   output_freq = opts["output_freq"]::Int
-  write_vis = opts["write_vis"]::Bool
   use_itermax = opts["use_itermax"]::Bool
   if use_itermax
     itermax = opts["itermax"]
@@ -94,7 +95,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     _f1 = open("convergence.dat", "a+")
     f1 = BufferedIO(_f1)
   end
-
 
   x_old = copy(q_vec)
   k1 = zeros(x_old)
@@ -115,23 +115,24 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     @mpi_master if i % output_freq == 0
        println(fstdout, "\ntimestep ",i)
-       if i % 5*output_freq == 0
+       if i % output_freq == 0
          flush(fstdout)
        end
     end
 
+    # stage 1
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f( ctx..., opts, treal)
     sol_norm = post_func(ctx..., opts)
-    
+
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
     for j=1:m
       k1[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
-   
+    # logging
     @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
     end
@@ -144,7 +145,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # check stopping conditions
     if (sol_norm < res_tol)
       if myrank == 0
-        println(fstdout, "breaking due to res_tol")
+        println(fstdout, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
         flush(fstdout)
       end
@@ -218,6 +219,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     close(f1)
   end
 
+  # should this be treal?
   return t
 
 end
@@ -336,3 +338,11 @@ function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
 end
 
 
+#DEBUGGING
+
+function globalNorm(vec)
+
+  local_norm = norm(vec)
+  global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, MPI.COMM_WORLD)
+  return sqrt(global_norm)
+end

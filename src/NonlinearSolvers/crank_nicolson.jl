@@ -62,6 +62,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     println(fstdout, "\nEntered Crank-Nicolson")
     println(fstdout, "res_tol = ", res_tol)
   end
+  flush(fstdout)
 
   output_freq = opts["output_freq"]::Int
   write_vis = opts["write_vis"]::Bool
@@ -75,7 +76,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
   end
 
-  if myrank == 0
+  @mpi_master if myrank == 0
     _f1 = open("convergence.dat", "a+")
     f1 = BufferedIO(_f1)
   end
@@ -100,6 +101,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
+    @mpi_master println("\ni = ", i, ", t = ", t)
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 
@@ -113,18 +115,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: output freq
 
-    # NOTE:
-    # majorIterationCallback: called before every step of Newton's method
-    # majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)
-
-#     if use_itermax && i > itermax
-#       if myrank == 0
-#         println(fstdout, "breaking due to itermax")
-#         close(f1)
-#         flush(fstdout)
-#       end
-#       break
-#     end
 
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
@@ -132,16 +122,53 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # NOTE: eqn_nextstep changed to eqn 20161013
     ctx_residual = (f, eqn, h, newton_data)
 
-    println(fstdout, "in CN: before call to newtonInner")
-
+    #TODO: unused variable?
     t_nextstep = t + h
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
     if opts["cleansheet_CN_newton"]
       cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
     else
-      @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+      newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, 
+                  jac, rhs_vec, ctx_residual, t, itermax=30, step_tol=opts["step_tol"], 
+                  res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"],                   res_reltol0=opts["res_reltol0"])
     end
+
+    # do the callback using the current eqn object at time t
+    eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, STDOUT)
+
+    # need to assemble solution into res_vec?
+    res_norm = calcNorm(eqn, eqn.res_vec)
+    # logging
+    @mpi_master if i % 1 == 0
+      println(f1, i, " ", res_norm)
+    end
+    
+    @mpi_master if i % output_freq == 0
+      println(fstdout, "flushing convergence.dat to disk")
+      flush(f1)
+    end
+
+    # check stopping conditions
+    if (res_norm < res_tol)
+      if myrank == 0
+        println(fstdout, "breaking due to res_tol, res norm = $res_norm")
+        close(f1)
+        flush(fstdout)
+      end
+      break
+    end
+
+
+    if use_itermax && i > itermax
+      if myrank == 0
+        println(fstdout, "breaking due to itermax")
+        close(f1)
+        flush(fstdout)
+      end
+      break
+    end
+
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -157,13 +184,13 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
     t = t_nextstep
+    flush(fstdout)
 
   end   # end of t step loop
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copy!(dest, src)
   copy!(eqn, eqn_nextstep)
-  writedlm("solution_final_inCN.dat", real(eqn.q_vec))
 
 
   if jac_type == 3

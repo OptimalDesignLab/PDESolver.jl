@@ -19,6 +19,7 @@ include("logging.jl")
 include("projections.jl")
 include("complexify.jl")
 include("mass_matrix.jl")
+include("curvilinear.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH
@@ -28,10 +29,12 @@ export exchangeElementData
 export @mpi_master, @time_all, print_time_all
 export Timings, write_timings
 export sharedFaceLogging
-export calcBCNormal, calcBCNormal_revm
+export calcBCNormal, calcBCNormal_revm, max_deriv_rev
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
+export fastzero!, fastscale!
+export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
@@ -45,7 +48,9 @@ export printSolution, printCoordinates, printMatrix
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
        applyMassMatrixInverse
 
-export max_deriv_rev
+# curvilinear.jl
+export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
+
 
 @doc """
 ### Utils.disassembleSolution
@@ -232,6 +237,8 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                          arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec, using an assignment reduction
+# the length of res_vec is mesh.numDof/mesh.numDofPerNode, only the last
+# dof on the node is placed into res_vec
 
 #  println("in assembleSolution")
 
@@ -473,8 +480,13 @@ end
 """
   Permute the rows of A according to the permvec, storing the result in B
   The permvec contains the source indices for each entry in B, ie.
+<<<<<<< HEAD
   B[permvec[i]] comes from A[i].  This is consistent with the mathematical
   definition of a permutation that pre-multiplication by a permutation
+=======
+  B[i] comes from A[permvec[i]].  This is consistent with the mathematical
+  definition of a permutation that pre-multiplication by a permutation 
+>>>>>>> 3d_wing
   matrix (obtained from permMatrix) is a row permutation, ie.
   B = P*A
 
@@ -646,4 +658,126 @@ end # End function max_rev
 # TODO: write functions to apply inverse permutation from permvec, without
 #       needing to explicetly compute the inverse permutation vector
 
+<<<<<<< HEAD
+=======
+"""
+  This function zeros out an array, and should be faster than fill! (branch
+  free)
+
+  Inputs/Outputs:
+    x: an array
+"""
+@inline function fastzero!(x::AbstractArray)
+
+  @inbounds @simd for i=1:length(x)
+    x[i] = 0
+  end
+
+  return nothing
+end
+
+"""
+  This function scales an array by a constant, and should be faster than scale!
+  because it is branch free
+"""
+@inline function fastscale!(x::AbstractArray, c::Number)
+
+  @inbounds @simd for i=1:length(x)
+    x[i] *= c
+  end
+
+  return nothing
+end
+
+
+
+@doc """
+### Utils.verbose1
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 1.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose1(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 1)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose2
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 2.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose2(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 2)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose3
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 3.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose3(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 3)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose4
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 4.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose4(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 4)))
+      $(esc(ex))
+    end
+  end
+end
+
+@doc """
+### Utils.verbose5
+
+  This macro introduces an if statement that causes the expression to be 
+  executed only if the variable verbose is greater than or equal to 5.  
+  verbose must exist in the scope of the caller
+
+"""->
+macro verbose5(ex)
+  return quote
+#    println("myrank = ", esc(myrank))
+    if $(esc(:(verbose >= 5)))
+      $(esc(ex))
+    end
+  end
+end
+
+
+
+
+>>>>>>> 3d_wing
 end  # end module

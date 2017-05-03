@@ -24,5 +24,8 @@ if !tag_defs
   global const TAG_UTILS = "tag_utils"
   global const TAG_INPUT = "tag_input"
   global const TAG_REVERSEMODE = "tag_reversemode"
+  global const TAG_MISC = "tag_misc"
+  global const TAG_CURVILINEAR = "tag_curvilinear"
+
 end
 

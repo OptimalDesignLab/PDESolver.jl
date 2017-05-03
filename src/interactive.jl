@@ -34,4 +34,20 @@ function printBCNames(mod::Module, f::IO=STDOUT)
 end
 
 
+"""
+  Prints the name of all currently registered physics modules and the module
+  name itself
+"""
+function printPhysicsModules(f::IO=STDOUT)
+
+  n = length(keys(PhysicsModDict))
+  println(f, "Currently registered physics modules: ", n)
+  for (name, val) in PhysicsModDict
+    mod = val[1]
+    println(f, "  ", name, " => ", mod)
+  end
+
+  return nothing
+end
+
 

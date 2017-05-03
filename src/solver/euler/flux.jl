@@ -40,21 +40,18 @@ function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           face_flux::AbstractArray{Tres, 3})
 
   nfaces = length(interfaces)
-  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  # nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces
     interface_i = interfaces[i]
     for j = 1:mesh.numNodesPerFace
       eL = interface_i.elementL
       fL = interface_i.faceL
-
       # get components
       qL = sview(eqn.q_face, :, 1, j, i)
       qR = sview(eqn.q_face, :, 2, j, i)
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-      # nrm = sview(sbp.facenormal, :, fL)
-      nrm[:] = sbp.facenormal[:,fL]
-
+      nrm = sview(sbp.facenormal, :, fL)
       flux_j = sview(face_flux, :, j, i)
       functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
     end
@@ -73,10 +70,14 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
+                           sbpface::AbstractFace,
                            interfaces::AbstractArray{Interface, 1})
 
-#  println("----- entered getECFaceIntegral -----")
+  params = eqn.params
+#  sbpface = mesh.sbpface
   nfaces = length(interfaces)
+#  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+#  resR2 = zeros(resL2)
   for i=1:nfaces
     iface = interfaces[i]
     elL = iface.elementL
@@ -84,12 +85,23 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     qL = sview(eqn.q, :, :, elL)
     qR = sview(eqn.q, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
-    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+#    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+    nrm_face = sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    face_integral_functor(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars,
-                       dxidx_face, flux_functor, resL, resR)
+#    copy!(resL2, resL)
+#    copy!(resR2, resR)
+
+#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
+#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
+
+#    @assert norm(resL2 - resL) < 1e-12
+#    @assert norm(resR2 - resR) < 1e-12
+
+
+    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
+                       nrm_face, flux_functor, resL, resR)
   end
 
   return nothing
@@ -138,7 +150,8 @@ function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
     bndries_remote = mesh.bndries_remote[idx]
 #    qL_arr = eqn.q_face_send[i]
     qR_arr = eqn.q_face_recv[idx]
-    dxidx_face_arr = mesh.dxidx_sharedface[idx]
+#    dxidx_face_arr = mesh.dxidx_sharedface[idx]
+    nrm_face_arr = mesh.nrm_sharedface[idx]
 #    aux_vars_arr = eqn.aux_vars_sharedface[idx]
 #    flux_arr = eqn.flux_sharedface[idx]
 
@@ -152,11 +165,12 @@ function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
       qL = sview(q, :, :, elL)
       qR = sview(qR_arr, :, :, elR)
       aux_vars = sview(eqn.aux_vars, :, :, elL)
-      dxidx_face = sview(dxidx_face_arr, :, :, :, j)
+#      dxidx_face = sview(dxidx_face_arr, :, :, :, j)
+      nrm_face = sview(nrm_face_arr, :, :, j)
       resL = sview(eqn.res, :, :, elL)
 
       face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
-                         dxidx_face, flux_functor, resL, resR)
+                         nrm_face, flux_functor, resL, resR)
     end  # end loop j
 
   end  # end loop over peers
@@ -446,8 +460,8 @@ function call{Tsol, Tres}(obj::StandardFlux, params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector,
-              F::AbstractVector{Tres})
+              nrm::AbstractArray, 
+              F::AbstractArray{Tres})
 
   calcEulerFlux_standard(params, uL, uR, aux_vars, nrm, F)
   return nothing
@@ -493,9 +507,10 @@ function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector,
-              F::AbstractVector{Tres})
+              nrm::AbstractArray, 
+              F::AbstractArray{Tres})
 
+  # this will dispatch to either the sinlge director or multi-dimension method
   calcEulerFlux_IR(params, uL, uR, aux_vars, nrm, F)
   return nothing
 end
@@ -531,6 +546,15 @@ end
 
   This dictonary maps the names of the fluxes (ASCIIStrings) to the
   functor object itself.  All flux functors should be added to the dictionary.
+
+  All fluxes have one method that calculates the flux in a particular direction
+  at a node.  Some fluxes have an additional method that computes the flux
+  in several directions at a node in a single function call, which can be
+  more efficient.  See calcEulerFlux_standard for an example.
+
+  In general, these functors call similarly-named function in bc_solvers.jl.
+  It is recommened to look at the documentation for those functions.
+
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "RoeFlux" => RoeFlux(),
