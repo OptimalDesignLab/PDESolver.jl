@@ -220,11 +220,58 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::Abstr
 
 end
 
+"""
+  This function contains the algorithm for Newton's method.  The function newton()
+  is one front end for newtonInner() for solving steady problems.
+  newtonInner() is meant to be incorporated into other functions as one part of 
+  more complicated algorithms.
+
+  For reference, Newton's method solves the problem f(q) = 0 using
+    df/dq delta q = -f(q)
+
+
+  Inputs:
+    newton_data: NewtonData object, typically obtained from setupNewton
+    mesh: a mesh object
+    sbp: an SBP operator
+    eqn: a solution data object
+    opts: options dictionary
+    rhs_func: function to evaluate f(q)
+    jac_func: function to compute the Jacobian df/dq
+    rhs_vec: vector to store f(q) in
+    ctx_residual: extra arguments required by rhs_func
+
+  See the second method of calcResidual for an explanation of rhs_func
+  and ctx_residual.  For solving a physics, rhs_func should be physicsRhs
+  and ctx_residual should be (evalResidual,)
+
+  jac_func must have the signature:
+
+    jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t).
+
+  For solving a physics, jac_func should be physicsJac.  See that function for 
+  documentation of what a jac_func needs to do.  physicsJac is also useful
+  as a building block for writing your own jac_func.
+
+  Note that ctx_residual is shared by rhs_func and jac_func (TODO: stop that).
+
+
+  #TODO: supply default values for rhs_func, jac_func, ctx_residual
+         corresponding to solving a steady problem with a regular physics
+
+  On entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec will
+  contain the solution to f(q) = 0.
+
+  Aliasing restrictions: None.  In particular, rhs_vec *can* alias eqn.res_vec, and this
+                         leads so some efficiency because it avoids needlessly copying
+                         data.
+
+"""
 function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                      opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual=(), t=0.0;
                      itermax=10, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0 )
 
-  # 4 = when newtonInner is used as an inner method for time marching or something
+  # verbose 4 = when newtonInner is used as an inner method for time marching or something
 
 
   # this function drives the non-linear residual to some specified tolerance
@@ -658,17 +705,28 @@ end               # end of function newton()
 @doc """
 ###NonlinearSolver.physicsJac
   
-  Jacobian (of the physics) calculation, separate from the Newton function
+  Calculates Jacobian (of the physics), separate from the Newton function
 
-  ctx_residual: func must be the first element. func is the residual evaluation function, i.e. evalEuler
-  t:            simulation time
+  Inputs:
+    newton_data: a NewtonData object (TODO: see if this can be removed?)
+    mesh: an AbstractMesh
+    sbp: an SBP operator
+    eqn: an AbstractSolutionData
+    opts: options dictonary
+    jac: the Jacobian, can be an Array, SparseMatrixCSC, or PetscMat
+    ctx_residual: func must be the first element. func is the residual evaluation 
+                  function, typically evalResidual.
+                  It must have the signature func(mesh, sbp, eqn, opts, t)
+    t:            simulation time
 
-  For solving steady problems, this function can be used directly by newtonInner 
+  
+    For solving steady problems, this function can be used directly by newtonInner 
     for the Jac calculation.
 
   For solving unsteady problems, this function can be used as a building block 
     for the calculation of the time-marching Jac.
 
+  TODO: stop using ctx_residual an take the function as an argument directly?
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
