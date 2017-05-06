@@ -658,8 +658,6 @@ end # End function max_rev
 # TODO: write functions to apply inverse permutation from permvec, without
 #       needing to explicetly compute the inverse permutation vector
 
-<<<<<<< HEAD
-=======
 """
   This function zeros out an array, and should be faster than fill! (branch
   free)
@@ -776,8 +774,4 @@ macro verbose5(ex)
   end
 end
 
-
-
-
->>>>>>> 3d_wing
 end  # end module

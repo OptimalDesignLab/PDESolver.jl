@@ -591,11 +591,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
   # of the momentum
   q[2] = q[2] - nx*Unrm
   q[3] = q[3] - ny*Unrm
-
-  # nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  # ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-
+  
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
 
@@ -639,7 +635,49 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
 
   return nothing
 end
+#=
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              params::ParamType{3})
 
+  # Forward Sweep
+  nx = zero(Tmsh)
+  ny = zero(Tmsh)
+  nz = zero(Tmsh)
+  tngt = Array(Tmsh, 2)  # tangent vector
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
+  nx = nx2*fac  
+  ny = ny2*fac
+  nz = nz2*fac
+
+  # this is momentum, not velocity?
+  Unrm = nx*q[2] + ny*q[3] + ny*q[4]
+
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+
+  # calculate normal velocity
+  qg[2] -= nx*Unrm
+  qg[3] -= ny*Unrm
+  qg[4] -= nz*Unrm
+
+  v_vals = params.v_vals
+  convertFromNaturalToWorkingVars(params, qg, v_vals)
+  calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux)
+
+  
+  # Reverse sweep
+
+  return nothing
+end
+=#
 
 @doc """
 ### EulerEquationMod.unsteadyVortexBC <: BCTypes

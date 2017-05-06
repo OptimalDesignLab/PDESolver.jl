@@ -82,13 +82,13 @@ function test_adjoint()
       adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
       AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
-      fname = "./adjoint_vec.dat"
-      adjoint_vec = readdlm(fname)
+      # fname = "./adjoint_vec.dat"
+      # adjoint_vec = readdlm(fname)
       for i = 1:length(adjoint_vec)
         @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)
       end
 
-      rm("./adjoint_vec.dat")
+      # rm("./adjoint_vec.dat")
 
     end # End context("Checking Adjoint Computation on DG mesh") 
 

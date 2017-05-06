@@ -494,6 +494,50 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
 
 end
 
+function calcEulerFlux_revm{Tmsh,Tsol,Tres}(q::AbstractArray{Tsol,1},
+                            dir::AbstractArray{Tmsh,1},
+                            dir_bar::AbstractArray{Tmsh,1},
+  F_bar::AbstractArray{Tres,1})
+  press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
+  U_bar = zero(Tres)
+  # F[5] = (q[5] + press)*U
+  U_bar += (q[5] + press)*F_bar[5]
+  #F[4] = q[4]*U + dir[3]*press
+  U_bar += q[4]*F_bar[4]
+  dir_bar[3] += press*F_bar[4]
+  # F[3] = q[3]*U + dir[2]*press
+  U_bar += q[3]*F_bar[3]
+  dir_bar[2] += press*F_bar[3]
+  # F[2] = q[2]*U + dir[1]*press
+  U_bar += q[2]*F_bar[2]
+  dir_bar[1] += press*F_bar[2]
+  # F[1] = q[1]*U
+  U_bar += q[1]*F_bar[1]
+  # U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  dir_bar[1] += q[2]*U_bar/q[1]
+  dir_bar[2] += q[3]*U_bar/q[1]
+  dir_bar[3] += q[4]*U_bar/q[1]
+end
+
+function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{3, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1}, F_bar, dir_bar)
+
+  # Forward sweep
+  press = calcPressure(params, q)
+  U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  F[1] = q[1]*U
+  F[2] = q[2]*U + dir[1]*press
+  F[3] = q[3]*U + dir[2]*press
+  F[4] = q[4]*U + dir[3]*press
+  F[5] = (q[5] + press)*U
+
+  # Reverse sweep
+
+
+  return nothing
+end
+
 
 function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :entropy},
                        q::AbstractArray{Tsol,1},

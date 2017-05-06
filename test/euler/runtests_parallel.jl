@@ -24,6 +24,9 @@ include("../tags.jl")
 global const EulerTests = TestList()
 # define global const tags here
 
+# NOTE: For adding parallel tests to TICON, Write them in a separate file and
+# include them below `global const EulerTests = TestList()`.
+
 """
   Run the parallel tests and compare against serial results run as part of
   the serial tests
