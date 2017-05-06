@@ -386,7 +386,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   E2dq[1] = d0_0
   E2dq[2] = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
   E2dq[3] = E2dq[2]*ny
-  E1dq[4] = E2dq[2]*nz
+  E2dq[4] = E2dq[2]*nz
   E2dq[5] = E2dq[2]*Un
   E2dq[2] = E2dq[2]*nx
 
