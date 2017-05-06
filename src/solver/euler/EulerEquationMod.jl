@@ -206,6 +206,7 @@ include("startup_func.jl")  # function for invoking the solver
 include("./deriv/differentiateByMetrics.jl")
 include("dataprep_rev.jl")
 include("evaldRdm.jl")
+include("homotopy.jl")
 
 global const PhysicsName = "Euler"
 register_physics(PhysicsName, EulerEquationMod, run_euler)
