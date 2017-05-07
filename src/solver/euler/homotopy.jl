@@ -1,6 +1,18 @@
 # file for homotopy functions
 # TODO: add mechanism for selecting which homotopy function to use
 
+import PDESolver.evalHomotopy
+
+"""
+  This function calls the appropriate homotopy function for the Euler module.
+"""
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
+
+  calcHomotopyDiss(mesh, sbp, eqn, opts, res)
+
+  return nothing
+end
+
 
 """
   Calculate a first order accurate dissipation to use as a homotopy function
@@ -25,6 +37,12 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
   @assert mesh.commsize == 1  # this doesn't work in parallel yet
 
+  # some checks for when parallelism is enabled
+  @assert opts["parallel_data"] == "element"
+  for i=1:mesh.npeers
+    @assert mesh.recv_waited[i]
+  end
+
   #----------------------------------------------------------------------------
   # volume dissipation
 
@@ -43,7 +61,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
         # get vector in xi direction defind by dim
         for k=1:mesh.dim
-          nrm[i] = mesh.dxidx[dim, k, j, i]
+          nrm[k] = mesh.dxidx[dim, k, j, i]
         end
 
         # get maximum eigenvalue
@@ -121,7 +139,10 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
       # calculate boundary state
       coords = sview(mesh.coords_bndry, :, j, i)
-      calcFreeStream(coords, eqn.params, qg)
+      #TODO: reset to FreeStream BC for airfoil
+#      calcRho1Energy2U3(coords, eqn.params, qg)
+      calcIsentropicVortex(coords, eqn.params, qg)
+#      calcFreeStream(coords, eqn.params, qg)
 
       # calculate face normal
       nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)

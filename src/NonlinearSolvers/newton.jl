@@ -259,8 +259,9 @@ end
   #TODO: supply default values for rhs_func, jac_func, ctx_residual
          corresponding to solving a steady problem with a regular physics
 
-  On entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec will
-  contain the solution to f(q) = 0.
+  On entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec
+  will contain the solution to f(q) = 0.  eqn.q will also be consistent with
+  eqn.q_vec, as will eqn.q_face_send and eqn.q_face_recv.
 
   Aliasing restrictions: None.  In particular, rhs_vec *can* alias eqn.res_vec, and this
                          leads so some efficiency because it avoids needlessly copying
@@ -311,6 +312,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   use_jac_precond = opts["use_jac_precond"]::Bool
   verbose = opts["newton_verbosity"]::Int
 
+  @assert opts["parallel_type"] == 2
 
   @verbose5 @mpi_master println(fstdout, "\nEntered Newtons Method")
   @verbose5 @mpi_master begin
@@ -435,7 +437,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
 
-    @mpi_master println(fstdout, "===== newton iteration: $i")
+    @verbose5 @mpi_master println(fstdout, "===== newton iteration: $i")
 
     # Calculate Jacobian here
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
@@ -533,30 +535,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
     # calculate Newton step
     flush(fstdout)
-    if jac_type == 1 || jac_type == 2  # julia jacobian
-      tmp, t_solve, t_gc, alloc = @time_all begin
-        jac_f = factorize(jac)
-        # Note: reason for the colon: this is attempting to 
-        #       access the existing delta_q_vec so excessive copies aren't required
-        delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
-      end
+    step_norm = matrixSolve(newton_data, eqn, mesh, opts, jac, delta_q_vec, res_0, fstdout, verbose=verbose)
+    if jac_type == 1 || jac_type == 2
       fill!(jac, 0.0)
-#    @time solveMUMPS!(jac, res_0, delta_q_vec)
-    elseif jac_type == 3 || jac_type == 4  # petsc jacobian
-      # contents of ctx: (jacp, x, b, ksp)
-      tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, 
-                                                       res_0, delta_q_vec, mesh.dof_offset)
     end
-
-    eqn.params.time.t_solve += t_solve
-    @verbose5 @mpi_master print(fstdout, "matrix solve: ")
-    @verbose5 @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
-    step_norm = norm(delta_q_vec)
-    #TODO: make this a regular reduce?
-    step_norm = sqrt(MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm))
-    @verbose5 @mpi_master println(fstdout, "step_norm = ", step_norm)
-    flush(fstdout)
-
+    
     # perform Newton update
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
@@ -1629,3 +1612,57 @@ function calcJacCol{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
   return nothing
 
 end
+
+
+"""
+  This function performs a matrix solve x = inv(A)*b.  A can be a dense
+  matrix, a SparseMatrixCSC, or a PetscMatrix.
+
+  This function should be used anywhere a matrix solve is needed that
+  should work with any type of matrix
+
+  Inputs:
+    newton_data: a NewtonData object
+    eqn: an AbstractSolutionData object (only eqn.params is really needed)
+    jac: should be the matrix corresponding to the newton_data object
+    b: the right hand side vector
+    
+  Inputs/Outputs:
+    x: the output vector
+
+  Aliasing restrictions: x and b cannot alias
+"""
+function matrixSolve(newton_data::NewtonData, eqn::AbstractSolutionData, 
+                     mesh::AbstractDGMesh, opts,
+                     jac::AbstractMatrix, x::AbstractVector, b::AbstractVector,                      fstdout::IO;
+                     verbose=5)
+
+  jac_type = typeof(jac)
+  myrank = mesh.myrank
+  tmp, t_solve, t_gc, alloc = @time_all if jac_type <: Array || jac_type <: SparseMatrixCSC
+      jac_f = factorize(jac)
+      tmp2 = jac_f\b
+
+      copy!(x, tmp2)
+
+  elseif  jac_type <: PetscMat
+    petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, b, x, 
+               mesh.dof_offset)
+
+  else
+    throw(ErrorException("Unsupported jac_type $jac_type"))
+  end
+
+  eqn.params.time.t_solve += t_solve
+
+  @verbose5 @mpi_master print(fstdout, "matrix solve: ")
+  @verbose5 @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
+  step_norm = norm(x)
+  step_norm = sqrt(MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm))
+  @verbose5 @mpi_master println(fstdout, "step_norm = ", step_norm)
+  flush(fstdout)
+
+  return step_norm
+end
+
+

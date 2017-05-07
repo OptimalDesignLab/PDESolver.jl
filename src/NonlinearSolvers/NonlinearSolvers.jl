@@ -21,6 +21,10 @@ include("lserk.jl")
 include("crank_nicolson.jl")
 include("newton.jl")
 include("globalization.jl")
+include("predictor_corrector.jl")
 #include("newton_fd_old.jl")
+
+# predictor_corrector.jl
+export predictorCorrectorHomotopy
 
 end

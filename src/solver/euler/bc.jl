@@ -521,7 +521,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   nz *= fac
 
   # this is momentum, not velocity?
-  Unrm = nx*q[2] + ny*q[3] + ny*q[4]
+  Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
   qg = params.qg
   for i=1:length(q)
