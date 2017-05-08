@@ -507,18 +507,15 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
 
 
   # calculate normal vector in xy space
-  nx = zero(Tmsh)
-  ny = zero(Tmsh)
-  nz = zero(Tmsh)
-  tngt = Array(Tmsh, 2)  # tangent vector
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
-  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
-  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
+  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  fac = 1.0/(sqrt(nx2*nx2 + ny2*ny2 + nz2*nz2))
+
   # normalize normal vector
-  nx *= fac
-  ny *= fac
-  nz *= fac
+  nx = nx2*fac
+  ny = ny2*fac
+  nz = nz2*fac
 
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
@@ -528,18 +525,10 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
     qg[i] = q[i]
   end
 
-  #qg = copy(q)
-
   # calculate normal velocity
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
   qg[4] -= nz*Unrm
-
-  # call Roe solver
-  #RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
-  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
-  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
 
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
