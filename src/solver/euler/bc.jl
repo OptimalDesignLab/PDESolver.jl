@@ -1009,6 +1009,26 @@ function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
   return nothing
 end # end function call
 
+type ExpBC_revm <: BCType_revm
+end
+
+function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              params::ParamType)
+
+  # Forward Sweep
+  qg = params.qg
+  calcExp(x, params, qg)
+  # RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+
+  # Reverse Sweep
+  RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, bndryflux_bar, dxidx_bar)
+
+  return nothing
+end
+
 type PeriodicMMSBC <: BCType
 end
 
@@ -1074,6 +1094,7 @@ end # ENd function getBCFunctors
 global const BCDict_revm = Dict{ASCIIString, BCType_revm}(
 "noPenetrationBC" => noPenetrationBC_revm(),
 "FreeStreamBC" => FreeStreamBC_revm(),
+"ExpBC" => ExpBC_revm(),
 "isentropicVortexBC" => isentropicVortexBC_revm(),
 )
 

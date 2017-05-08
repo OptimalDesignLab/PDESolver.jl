@@ -512,7 +512,8 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{3},
   end
 
   # calcEulerFlux(q, nrm, euler_flux)
-  calcEulerFlux_revm(q, nrm, nrm_bar, euler_flux_bar)
+  # calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
+  calcEulerFlux_revm(params, q, aux_vars, nrm, euler_flux_bar, nrm_bar)
 
   #-- get E3*dq
   E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4

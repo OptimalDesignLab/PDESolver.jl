@@ -381,10 +381,6 @@ function calcEulerFlux_revm{Tmsh,Tsol,Tres}(params::ParamType{3, :conservative},
                             F_bar::AbstractArray{Tres,1},
                             dir_bar::AbstractArray{Tmsh,1})
 
-println("type of dir_bar = ", typeof(dir_bar))
-println("Tmsh = $Tmsh")
-                             #
-
   # press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
   press = calcPressure(params, q)
 
