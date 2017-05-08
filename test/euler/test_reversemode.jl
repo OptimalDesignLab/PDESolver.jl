@@ -8,11 +8,11 @@ module
 """->
 
 function test_reversemode()
-#=
+
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-
+#=
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -128,7 +128,7 @@ function test_reversemode()
     end # End context("Cehcking reverse mode derivative w.r.t solution q") do
 
   end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
-
+=#
   facts("--- Testing Boundary Functional In Reverse Mode ---") do
 
     # Create functional object
@@ -287,7 +287,7 @@ function test_reversemode()
     end # End context("Checking Complete boundary functional drag in reverse")
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 
-
+#=
   facts("--- Testing SAT terms in Reverse Mode ---") do
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -655,7 +655,7 @@ function test_reversemode()
 
   end # End facts("--- Testing evalrevm_transposeproduct ---")
 =#
-
+#=
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_3d_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
@@ -776,7 +776,7 @@ function test_reversemode()
     end # End context("Cehcking reverse mode derivative w.r.t solution q") do
 
   end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
-
+=#
 
   return nothing
 end # End function test_reversemode

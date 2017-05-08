@@ -154,11 +154,15 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
         x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm = sview(sbp.facenormal, :, bndry_i.face)
+        fill!(phys_nrm, 0.0)
         for k = 1:Tdim
             # nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
             # ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-            phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
-          end # End for k = 1:Tdim
+          for l = 1:Tdim 
+            # phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
+            phys_nrm[k] += dxidx[l,k]*nrm[l]
+          end 
+        end # End for k = 1:Tdim
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
         calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
@@ -255,8 +259,10 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm = sview(sbp.facenormal, :, bndry_i.face)
         for k = 1:Tdim
-            phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
-          end # End for k = 1:Tdim
+          for l = 1:Tdim 
+            phys_nrm[k] += dxidx[l,k]*nrm[l]
+          end 
+        end # End for k = 1:Tdim
         node_info = Int[itr,j,i]
         b_integrand_ji_bar = sview(boundary_integrand_bar, :, j, i)
         # calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
@@ -267,8 +273,11 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
                                              nxny_bar, b_integrand_ji_bar)
         dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
         for k = 1:Tdim
-          dxidx_bar[1,k] += nxny_bar[k]*nrm[1]
-          dxidx_bar[2,k] += nxny_bar[k]*nrm[2]
+          # dxidx_bar[1,k] += nxny_bar[k]*nrm[1]
+          # dxidx_bar[2,k] += nxny_bar[k]*nrm[2]
+          for l = 1:Tdim
+            dxidx_bar[l,k] += nxny_bar[k]*nrm[l]
+          end
         end # End for k = 1:Tdim
 
       end  # End for j = 1:mesh.sbpface.numnodes
