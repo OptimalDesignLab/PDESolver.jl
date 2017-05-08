@@ -12,7 +12,8 @@ function test_reversemode()
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
-#=
+
+
   facts("--- Testing Pressure derivative in reverse mode ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -49,7 +50,7 @@ function test_reversemode()
       # Create a random vector
       F_bar = rand(mesh.numDofPerNode) # For 2D
       flux = zeros(Complex128, mesh.numDofPerNode) # For complex step
-      dir_bar = zeros(Float64, Tdim) # In 2D
+      dir_bar = zeros(Complex128, Tdim) # In 2D
       dir_bar_complex = zeros(Complex128, Tdim)
       nrm = zeros(Complex128, Tdim)
       pert = complex(0, 1e-20)
@@ -65,7 +66,7 @@ function test_reversemode()
             end
             fill!(dir_bar,0.0)
             EulerEquationMod.calcEulerFlux_revm(eqn.params, q_vals, aux_vars,
-                               nrm, F_bar, dir_bar)
+                                                nrm, F_bar, dir_bar)
 
             # Do the complex step in normal
             fill!(dir_bar_complex, 0.0)
@@ -88,10 +89,10 @@ function test_reversemode()
     context("Checking reverse mode derivative w.r.t solution q") do
 
       # Create a random vector
-      F_bar = rand(mesh.numDofPerNode) # For 2D
+      F_bar = rand(mesh.numDofPerNode) + zeros(Complex128, mesh.numDofPerNode) # For 2D
       flux = zeros(Complex128, mesh.numDofPerNode) # For complex step
       nrm = zeros(Complex128, Tdim)
-      q_bar = zeros(mesh.numDofPerNode)
+      q_bar = zeros(Complex128, mesh.numDofPerNode)
       q_bar_complex = zeros(Complex128, mesh.numDofPerNode)
       pert = complex(0, 1e-20)
 
@@ -108,7 +109,7 @@ function test_reversemode()
             # Reverse mode w.r.t q
             fill!(q_bar, 0.0)
             EulerEquationMod.calcEulerFlux_revq(eqn.params, q_vals, aux_vars,
-                                                nrm, F_bar, q_bar)
+                                                real(nrm), F_bar, q_bar)
 
             # Do complex step in q
             for p = 1:mesh.numDofPerNode
@@ -128,7 +129,7 @@ function test_reversemode()
     end # End context("Cehcking reverse mode derivative w.r.t solution q") do
 
   end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
-=#
+
   facts("--- Testing Boundary Functional In Reverse Mode ---") do
 
     # Create functional object
@@ -139,9 +140,9 @@ function test_reversemode()
 
       # Uses conservative variables
       Tdim = mesh.dim
-      val_bar = rand(Tdim) # Random seed
-      nxny_bar = zeros(Float64, 2)
-      nxny_bar_complex = zeros(Complex128, 2)
+      val_bar = rand(Tdim) +  zeros(Complex128, Tdim)# Random seed
+      nxny_bar = zeros(Complex128, Tdim)
+      nxny_bar_complex = zeros(Complex128, Tdim)
       pert = complex(0, 1e-20) # Complex step perturbation
 
       # Test on geometric edge 3 (0 based indexing) with no penetration BC
@@ -200,7 +201,7 @@ function test_reversemode()
       bndry_force = drag.bndry_force
       fill!(bndry_force, 0.0)
       functional_edges = drag.geom_faces_functional
-      phys_nrm = zeros(Complex128, 2)
+      phys_nrm = zeros(Complex128, mesh.dim)
 
       # Get bndry_offsets for the functional edge concerned
       for itr = 1:length(functional_edges)
@@ -285,9 +286,10 @@ function test_reversemode()
 
 
     end # End context("Checking Complete boundary functional drag in reverse")
+  
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
 
-#=
+
   facts("--- Testing SAT terms in Reverse Mode ---") do
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -654,13 +656,13 @@ function test_reversemode()
     end
 
   end # End facts("--- Testing evalrevm_transposeproduct ---")
-=#
-#=
+
+
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_3d_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
   # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
-  
+
   facts("--- Testing Pressure derivative in reverse mode in 3D ---") do
 
     press_bar = complex(rand(Float64),0)
@@ -688,7 +690,7 @@ function test_reversemode()
     end   # End for i = 1:mesh.numEl
 
   end # facts("--- Testing Pressure derivative in reverse mode ---")
-  
+
   facts("--- Testing 3D Euler Flux derivative in Reverse mode ---") do
 
     Tdim = mesh.dim
@@ -703,8 +705,8 @@ function test_reversemode()
       pert = complex(0, 1e-20)
 
       ctr = 0
-      for i = 1:mesh.numEl
-        for j = 1:mesh.numNodesPerElement
+      for i = 1# :mesh.numEl
+        for j = 1# :mesh.numNodesPerElement
           q_vals = sview(eqn.q, :,j,i)
           aux_vars = sview(eqn.aux_vars, :, j, i)
           for k=1:Tdim  # loop over dimensions
@@ -713,7 +715,7 @@ function test_reversemode()
             end
             fill!(dir_bar,0.0)
             EulerEquationMod.calcEulerFlux_revm(eqn.params, q_vals, aux_vars,
-                               nrm, F_bar, dir_bar)
+                               real(nrm), F_bar, dir_bar)
 
             # Do the complex step in normal
             fill!(dir_bar_complex, 0.0)
@@ -736,16 +738,16 @@ function test_reversemode()
     context("Checking reverse mode derivative w.r.t solution q") do
 
       # Create a random vector
-      F_bar = rand(mesh.numDofPerNode) # For 2D
+      F_bar = rand(mesh.numDofPerNode) + zeros(Complex128, mesh.numDofPerNode)
       flux = zeros(Complex128, mesh.numDofPerNode) # For complex step
       nrm = zeros(Complex128, Tdim)
-      q_bar = zeros(mesh.numDofPerNode)
+      q_bar = zeros(Complex128, mesh.numDofPerNode)
       q_bar_complex = zeros(Complex128, mesh.numDofPerNode)
       pert = complex(0, 1e-20)
 
       ctr = 0
-      for i = 1:mesh.numEl
-        for j = 1:mesh.numNodesPerElement
+      for i = 1# :mesh.numEl
+        for j = 1# :mesh.numNodesPerElement
           fill!(q_bar, 0.0)
           q_vals = sview(eqn.q, :,j,i)
           aux_vars = sview(eqn.aux_vars, :, j, i)
@@ -756,7 +758,7 @@ function test_reversemode()
             # Reverse mode w.r.t q
             fill!(q_bar, 0.0)
             EulerEquationMod.calcEulerFlux_revq(eqn.params, q_vals, aux_vars,
-                                                nrm, F_bar, q_bar)
+                                                real(nrm), F_bar, q_bar)
 
             # Do complex step in q
             for p = 1:mesh.numDofPerNode
@@ -773,10 +775,56 @@ function test_reversemode()
         end     # End for j = 1:mesh.numNodesPerElement
       end       # End for i = 1:mesh.numEl
 
-    end # End context("Cehcking reverse mode derivative w.r.t solution q") do
+    end # End context("Checking reverse mode derivative w.r.t solution q") do
 
   end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
-=#
+
+  facts("--- Testing Roe Solver in Reverse Mode ---") do
+
+    # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    params = eqn.params
+    Tdim = mesh.dim
+    val_bar = rand(Tdim) # Random seed
+    pert = complex(0, 1e-20) # Complex step perturbation
+    complex_flux = zeros(Complex128, mesh.numDofPerNode)
+    psi = rand(Float64, mesh.numDofPerNode) + zeros(Complex128, mesh.numDofPerNode)
+    qg = ones(Complex128, mesh.numDofPerNode)
+
+    # Test on geometric edge 3 (0 based indexing) with no penetration BC
+    start_index = mesh.bndry_offsets[2]
+    end_index = mesh.bndry_offsets[3]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
+    nfaces = length(bndry_facenums)
+    phys_nrm = zeros(Complex128, Tdim)
+    nrm = zeros(Complex128, Tdim)
+
+    for i = 1:nfaces
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+      for j = 1:mesh.sbpface.numnodes
+        q = sview(eqn.q_bndry, :, j, global_facenum)
+        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = sview(mesh.coords_bndry, :, j, global_facenum)
+        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+        nrm[:] = sbp.facenormal[:, bndry_i.face]
+        dxidx_bar = zeros(Complex128, Tdim, Tdim)
+        EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, psi, dxidx_bar)
+        for k = 1:length(dxidx)
+          dxidx[k] += pert
+          EulerEquationMod.RoeSolver(params, q, qg, aux_vars, dxidx, nrm, complex_flux)
+          dRoeFlux = imag(complex_flux)/imag(pert)
+          complex_psi_dRoeFlux = dot(psi, dRoeFlux)
+          error = norm(dxidx_bar[k] - complex_psi_dRoeFlux, 2)
+          @fact error --> roughly(0.0, atol = 1e-12)
+          dxidx[k] -= pert
+        end # End for k = 1:Tdim
+      end
+    end
+
+  end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
+
 
   return nothing
 end # End function test_reversemode

@@ -185,10 +185,17 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Compute lift, drag and their corresponding derivatives w.r.t alpha
   aoa = eqn.params.aoa # Angle of attack
-  functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
-  functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
-  functionalData.dLiftdAlpha = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
-  functionalData.dDragdAlpha = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+  if mesh.dim == 2 # 2D Flow
+    functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+    functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
+    functionalData.dLiftdAlpha = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
+    functionalData.dDragdAlpha = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+  else # 3D Flow
+    functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
+    functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[3]*sin(aoa)
+    functionalData.dLiftdAlpha = -bndry_force[1]*cos(aoa) - bndry_force[3]*sin(aoa)
+    functionalData.dDragdAlpha = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
+  end
 
   return nothing
 end
@@ -258,6 +265,7 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
         nrm = sview(sbp.facenormal, :, bndry_i.face)
+        fill!(phys_nrm, 0.0)
         for k = 1:Tdim
           for l = 1:Tdim 
             phys_nrm[k] += dxidx[l,k]*nrm[l]
@@ -357,7 +365,8 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
                                          nrm::AbstractArray{Tmsh},
                                          node_info::AbstractArray{Int},
                                          objective::BoundaryForceData,
-                                         nrm_bar, val_bar)
+                                         nrm_bar::AbstractArray{Tmsh,1},
+                                         val_bar::AbstractArray{Tres, 1})
 
   #---- Forward sweep
   fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))

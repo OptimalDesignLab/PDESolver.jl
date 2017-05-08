@@ -345,9 +345,11 @@ Compute the derivative of the euler flux in reverse mode w.r.t to unit vector
 flux direction.
 
 """->
-function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{2, :conservative},
+function calcEulerFlux_revm{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                             q::AbstractArray{Tsol,1}, aux_vars,
-                            dir::AbstractArray{Tmsh,1}, F_bar, dir_bar)
+                            dir::AbstractArray{Tmsh,1},
+                            F_bar::AbstractArray{Tres,1},
+                            dir_bar::AbstractArray{Tmsh,1})
 
   # Compute the reverse mode
   # Differentiate euler flux product with F_bar in reverse mode w.r.t dir to get
@@ -376,11 +378,12 @@ end
 function calcEulerFlux_revm{Tmsh,Tsol,Tres}(params::ParamType{3, :conservative},
                             q::AbstractArray{Tsol,1}, aux_vars,
                             dir::AbstractArray{Tmsh,1},
-                            F_bar::AbstractArray{Tres,1}, dir_bar)
+                            F_bar::AbstractArray{Tres,1},
+                            dir_bar::AbstractArray{Tmsh,1})
 
-# println("type of dir_bar = ", typeof(dir_bar))
-# println("Tmsh = $Tmsh")
-                             # dir_bar::AbstractArray{Tmsh,1})
+println("type of dir_bar = ", typeof(dir_bar))
+println("Tmsh = $Tmsh")
+                             #
 
   # press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
   press = calcPressure(params, q)
@@ -414,9 +417,10 @@ Compute the derivative of the Euler flux in reverse mode w.r.t q
 
 """->
 
-function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{2, :conservative},
+function calcEulerFlux_revq{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                             q::AbstractArray{Tsol,1}, aux_vars,
-                            dir::AbstractArray{Tmsh,1}, F_bar, q_bar)
+                            dir::AbstractArray{Tmsh,1}, F_bar::AbstractArray{Tres,1},
+                            q_bar::AbstractArray{Tsol,1})
 
   press = calcPressure(params, q)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
@@ -455,8 +459,9 @@ end
 
 function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{3, :conservative},
                             q::AbstractArray{Tsol,1}, aux_vars,
-                            dir::AbstractArray{Tmsh,1}, F_bar, q_bar) # F_bar::AbstractArray{Tsol,1},
-                            # q_bar::AbstractArray{Tsol,1})
+                            dir::AbstractArray{Tmsh,1},
+                            F_bar::AbstractArray{Tsol,1},
+                            q_bar::AbstractArray{Tsol,1})
 
   #  Forward Sweep
   press = calcPressure(params, q)
