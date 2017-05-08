@@ -271,7 +271,7 @@ end  # end type declaration
 @doc """
 ### EulerEquationMod.EulerData_
 
-  This type is an implimentation of the abstract EulerData.  It is
+  This type is an implementation of the abstract EulerData.  It is
   paramterized by the residual datatype Tres and the mesh datatype Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.

@@ -233,8 +233,11 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     # advection adjoint check
     if neg_time == true
-      dRdA = calcdRdA(mesh, sbp, adj, opts, t_nextstep)
-      check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
+      dRdA_CS = calcdRdA_CS(mesh, sbp, adj, opts, t_nextstep)
+      dRdA_FD = calcdRdA_FD(mesh, sbp, adj, opts, t_nextstep)
+
+      println(" {}{}{}{} norm(dRdA_FD - dRdA_CS): ", norm(dRdA_FD - dRdA_CS)/length(dRdA_FD))
+      check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA_CS
       filename = string("check_adjointmethod-", i, ".dat")
       writedlm(filename, check_adjointmethod)
     end

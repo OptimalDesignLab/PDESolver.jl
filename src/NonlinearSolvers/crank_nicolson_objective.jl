@@ -1,5 +1,5 @@
 # import PDESolver.evalResidual
-export calcdJdu_CS, calcObjectiveFn, obj_zero, calcVV, calcdRdA
+export calcdJdu_CS, calcObjectiveFn, obj_zero, calcVV, calcdRdA_CS
 
 function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
 
@@ -121,7 +121,8 @@ calculates v, which is dudA, for the advection adjoint test
 """
 function calcVV(mesh, sbp, eqn, opts, t)
 
-  x = 2*pi
+  # x = 2*pi
+  x = 2.0       # make sure the mesh being run is u_adj_x0-2_y0-2_4x4_tri0.smb
   omega = 1.0
 
   v = sin(-x + omega*t)
@@ -130,11 +131,13 @@ function calcVV(mesh, sbp, eqn, opts, t)
 end
 
 """
-calculates dRdA for the advection adjoint test
+calculates dRdA for the advection adjoint test, using complex step
 """
-function calcdRdA(mesh, sbp, eqn, opts, t)
+function calcdRdA_CS(mesh, sbp, eqn, opts, t)
 
-  # complex step it
+  println(" calculating dRdA using CS")
+
+  # complex step perturbation
   pert = complex(0, 1e-20)
 
   eqn.params.sin_amplitude += pert
@@ -152,7 +155,48 @@ function calcdRdA(mesh, sbp, eqn, opts, t)
   assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
   dRdA = imag(eqn_temp.res_vec)/norm(pert)
-  println("dRdA: ", dRdA)
+  # println("dRdA: ", dRdA)
+
+  eqn.params.sin_amplitude -= pert
+  # params.sin_amplitude -= pert
+
+  return dRdA
+end
+
+"""
+calculates dRdA for the advection adjoint test, using finite difference
+"""
+function calcdRdA_FD(mesh, sbp, eqn, opts, t)
+
+  println(" calculating dRdA using FD")
+
+  # finite difference perturbation
+  pert = 1e-6
+
+  eqn.params.sin_amplitude += pert
+  # params.sin_amplitude += pert
+
+  eqn_temp = deepcopy(eqn)
+  eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+
+  # J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+  # J = J_arr[1]
+  # R = calcResidual
+  evalResidual(mesh, sbp, eqn_temp, opts)
+  assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
+
+  # this is required! without it, eqn.res_vec apparently has stale data.
+  #   without this => difference between CS & FD is ~1e10
+  evalResidual(mesh, sbp, eqn, opts)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+  # Ready to finish FD approx.
+  #   f(x+h) is eqn_temp.res_vec
+  #   f(x) is eqn.res_vec
+
+  dRdA = (eqn_temp.res_vec - eqn.res_vec)/norm(pert)
+  #println("dRdA: ", dRdA)
 
   eqn.params.sin_amplitude -= pert
   # params.sin_amplitude -= pert

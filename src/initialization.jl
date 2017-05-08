@@ -225,6 +225,9 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                        eqn::AbstractSolutionData, opts::Dict, 
                        pmesh::AbstractMesh=mesh)
   flag = opts["run_type"]::Int
+
+  initialization_print(mesh, sbp, eqn, opts, pmesh)
+
   if opts["solve"]
     
     solve_time = @elapsed if flag == 1 # normal run
@@ -383,3 +386,20 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+
+function initialization_print(mesh, sbp, eqn, opts, pmesh)
+
+  println("====================================")
+  println("           Initialization           ")
+  println("====================================")
+  println(" mesh.numBC: ", mesh.numBC)
+  for i = 1:length(mesh.bndry_funcs)
+    println(" mesh.bndry_funcs[", i, "]: ", mesh.bndry_funcs[i])
+  end
+  println("====================================")
+  println("        End of initialization       ")
+  println("====================================")
+  println(" ")
+
+end
+
