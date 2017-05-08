@@ -374,13 +374,16 @@ function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{2, :conservative},
 end
 
 function calcEulerFlux_revm{Tmsh,Tsol,Tres}(params::ParamType{3, :conservative},
-                            q::AbstractArray{Tsol,1}, aux_vars
+                            q::AbstractArray{Tsol,1}, aux_vars,
                             dir::AbstractArray{Tmsh,1},
-                            F_bar::AbstractArray{Tres,1},
-                            dir_bar::AbstractArray{Tmsh,1})
+                            F_bar::AbstractArray{Tres,1}, dir_bar)
+
+# println("type of dir_bar = ", typeof(dir_bar))
+# println("Tmsh = $Tmsh")
+                             # dir_bar::AbstractArray{Tmsh,1})
 
   # press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
-  calcPressure(params, q)
+  press = calcPressure(params, q)
 
   U_bar = zero(Tres)
   # F[5] = (q[5] + press)*U
@@ -452,8 +455,8 @@ end
 
 function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{3, :conservative},
                             q::AbstractArray{Tsol,1}, aux_vars,
-                            dir::AbstractArray{Tmsh,1}, F_bar::AbstractArray{Tsol,1},
-                            q_bar::AbstractArray{Tsol,1})
+                            dir::AbstractArray{Tmsh,1}, F_bar, q_bar) # F_bar::AbstractArray{Tsol,1},
+                            # q_bar::AbstractArray{Tsol,1})
 
   #  Forward Sweep
   press = calcPressure(params, q)
@@ -463,7 +466,7 @@ function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{3, :conservative},
   # F[5] = (q[5] + press)*U
   U_bar = F_bar[5]*(q[5] + press)
   press_bar = F_bar[5]*U
-  q_bar[5] += F_bar*[5]*U
+  q_bar[5] += F_bar[5]*U
 
   # F[4] = q[4]*U + dir[3]*press
   q_bar[4] += F_bar[4]*U
