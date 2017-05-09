@@ -123,8 +123,14 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     if abs(lambda - lambda_min) <= eps()
       @mpi_master println("tightening homotopy tolerance")
       homotopy_tol = res_reltol
-      newton_data.reltol = res_reltol*1e-2  # smaller than newton tolerance
-      newton_data.abstol = res_abstol*1e-2  # smaller than newton tolerance
+      newton_data.reltol = res_reltol*1e-3  # smaller than newton tolerance
+      newton_data.abstol = res_abstol*1e-3  # smaller than newton tolerance
+
+      @mpi_master begin
+        println("setting homotopy tolerance to ", homotopy_tol)
+        println("ksp reltol = ", newton_data.reltol)
+        println("ksp abstol = ", newton_data.abstol)
+      end
 
       #TODO: tighten krylov tolerances as well
     end
