@@ -214,6 +214,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::Abstr
   newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual, t,
                 itermax=itermax, step_tol=step_tol, res_abstol=res_abstol, res_reltol=res_reltol, res_reltol0=res_reltol0)
 
+  #TODO; create a general destructor for newtonInnter, the complement of 
+  #      setupNewton
   if jac_type == 3
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
@@ -367,6 +369,16 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   @verbose5 @mpi_master println(fstdout, "evaluating residual at initial condition"); flush(fstdout)
   res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, rhs_func, rhs_vec, ctx_residual, t)
   @verbose5 @mpi_master println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
+
+  saveSolutionToMesh(mesh, eqn.q_vec)
+  writeVisFiles(mesh, "newton_0")
+  #=
+  elnums_extract = [2469, 2467, 2187, 2186]
+  for i in elnums_extract
+    println("q[:, :, $i] = \n", real(eqn.q[:, :, i]))
+    println("res[:, :, $i] = \n", real(eqn.res[:, :, i]))
+  end
+  =#
 
   @verbose5 eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, fstdout)
 
@@ -544,7 +556,18 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
-    
+   
+    saveSolutionToMesh(mesh, eqn.q_vec)
+    writeVisFiles(mesh, "newton_$i")
+    #=
+    for i in elnums_extract
+      println("q[:, :, $i] = \n", real(eqn.q[:, :, i]))
+      println("res[:, :, $i] = \n", real(eqn.res[:, :, i]))
+      println("mesh.coords[:, :, $i] = \n", mesh.coords[:, :, i])
+    end
+    =#
+
+
     @verbose5 eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
 
 
@@ -567,7 +590,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     end
 
 
-    @verbose5 @mpi_master begin
+    @verbose4 @mpi_master begin
       println(fstdout, "residual norm = ", res_0_norm)
       println(fstdout, "relative residual ", res_0_norm/res_reltol_0)
     end

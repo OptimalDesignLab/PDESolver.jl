@@ -50,8 +50,10 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
                                           homotopyPhysics)
   
 
+  time = eqn.params.time
   lambda = 1.0  # homotopy parameter
   eqn.params.homotopy_lambda = lambda
+  myrank = mesh.myrank
 
   # some parameters
   lambda_min = 0.0
@@ -70,10 +72,10 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   tan_norm_1 = 0.0  # previous tangent vector norm
   res_norm = 0.0  # norm of residual (not homotopy)
   res_norm_0 = 0.0  # residual norm of initial guess
-  h = 0.01  # step size
+  h = 0.05  # step size
 
   # log file
-  fconv = BufferedIO("convergence.dat", "a+")
+  @mpi_master fconv = BufferedIO("convergence.dat", "a+")
 
   # needed arrays
   q_vec0 = zeros(eqn.q_vec)
@@ -94,18 +96,20 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   res_norm_0 = res_norm
 
   # print to log file
-  println(fconv, 0, " ", res_norm)
-  flush(fconv)
+  @mpi_master println(fconv, 0, " ", res_norm, " ", 0.0)
+  @mpi_master flush(fconv)
 
   eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, STDOUT)
 
   while res_norm > res_norm_0*res_reltol && res_norm > res_abstol && iter < itermax  # predictor loop
 
-    println("\npredictor iteration ", iter, ", lambda = ", lambda)
-    println("res_norm = ", res_norm)
-    println("res_norm_0 = ", res_norm_0)
-    println("res_norm/res_norm_0 = ", res_norm/res_norm_0)
-    println("res_norm = ", res_norm)
+    @mpi_master begin
+      println("\npredictor iteration ", iter, ", lambda = ", lambda)
+      println("res_norm = ", res_norm)
+      println("res_norm_0 = ", res_norm_0)
+      println("res_norm/res_norm_0 = ", res_norm/res_norm_0)
+      println("res_norm = ", res_norm)
+    end
 
     # calculate homotopy residual
     homotopy_norm = calcResidual(mesh, sbp, eqn, opts, homotopyPhysics)
@@ -117,24 +121,25 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     # homotopy problem (= the physics problem because lambda is zero)
     # tightly
     if abs(lambda - lambda_min) <= eps()
-      println("tightening homotopy tolerance")
+      @mpi_master println("tightening homotopy tolerance")
       homotopy_tol = res_reltol
+      newton_data.reltol = res_reltol*1e-2  # smaller than newton tolerance
+      newton_data.abstol = res_abstol*1e-2  # smaller than newton tolerance
+
+      #TODO: tighten krylov tolerances as well
     end
 
     # do corrector steps
-    # TODO: pass tolerances to newtonInnter
     newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, 
                 rhs_vec, ctx_residual, res_reltol=homotopy_tol, 
                 res_abstol=res_abstol, itermax=30)
 
     # compute delta_q
     for i=1:length(eqn.q)
-      delta_q[i] = eqn.q[i] - q_vec0[i]
+      delta_q[i] = eqn.q_vec[i] - q_vec0[i]
     end
+    delta = calcEuclidianNorm(mesh.comm, delta_q)
 
-    println("delta_q norm = ", norm(delta_q))
-
-    delta = real(norm(delta_q))
     if iter == 2
       delta_max = delta
     end
@@ -148,25 +153,34 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       end
 
       # calculate tangent vector dH/dq * t = dH/dLambda
+      @mpi_master println("solving for tangent vector")
       jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
 
       matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
+
       # normalize tangent vector
-      tan_norm = sqrt(dot(tan_vec, tan_vec) + 1)  # + 1 ?
+      #TODO: parallelize this
+      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
+      tan_norm = sqrt(tan_norm*tan_norm + 1)
+      @mpi_master println("tan norm = ", tan_norm)
+#      tan_norm = sqrt(dot(tan_vec, tan_vec) + 1)  # + 1 ?
       scale!(tan_vec, 1/tan_norm)
 
       psi = psi_max
       if iter > 1
-        tan_term = dot(tan_vec_1, tan_vec) 
+        tan_term = dot(tan_vec_1, tan_vec)
+        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
         tan_norm_term = (1/tan_norm)*(1/tan_norm_1) 
-        println("tan_term = ", tan_term)
-        println("tan_norm_term = ", tan_norm_term)
-        println("acos argument = ", tan_term + tan_norm_term)
+        @mpi_master begin
+          println("tan_term = ", tan_term)
+          println("tan_norm_term = ", tan_norm_term)
+          println("acos argument = ", tan_term + tan_norm_term)
+        end
         arg = tan_term + tan_norm_term
         arg = clamp(arg, -1.0, 1.0)
         psi = acos( arg )
       end
-      
+
       # save the tangent vector
       copy!(tan_vec_1, tan_vec)
       tan_norm_1 = tan_norm
@@ -175,7 +189,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       fac = max(psi/psi_max, delta/delta_max)
       h /= fac
 
-      println("iteration ", iter, ", psi = ", psi, ", delta/delta_max = ", delta/delta_max, ", step size = ", h)
+      @mpi_master println("iteration ", iter, ", psi = ", psi, ", delta/delta_max = ", delta/delta_max, ", step size = ", h)
 
       # take predictor step
       scale!(tan_vec, h)
@@ -190,13 +204,13 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end  # end if lambda too large
 
     # calculate physics residual at new state q
-    println("old res_norm = ", res_norm)
+    @mpi_master println("old res_norm = ", res_norm)
     res_norm = real(calcResidual(mesh, sbp, eqn, opts, evalPhysicsResidual))
-    println("new_res_norm = ", res_norm)
+    @mpi_master println("new_res_norm = ", res_norm)
 
     # print to log file
-    println(fconv, iter, " ", res_norm, " ", h )
-    flush(fconv)
+    @mpi_master println(fconv, iter, " ", res_norm, " ", h )
+    @mpi_master flush(fconv)
 
     eqn.majorIterationCallback(iter, mesh, sbp, eqn, opts, STDOUT)
 
@@ -206,15 +220,20 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   print("\n")
 
   # inform user of final status
-  if iter >= itermax
+  @mpi_master if iter >= itermax
     println(STDERR, "Warning: predictor-corrector did not converge in $iter iterations")
   
   elseif res_norm <= res_abstol
-    println("predictor=corrector converged with absolute residual norm $res_norm")
+    println("predictor-corrector converged with absolute residual norm $res_norm")
   elseif res_norm/res_norm_0 <= res_reltol
     tmp = res_norm/res_norm_0
-    println("predictor=corrector converged with relative residual norm $tmp")
+    println("predictor-corrector converged with relative residual norm $tmp")
   end
+
+  if opts["jac_type"] == 3
+    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
+  end
+
 
   return nothing
 end
@@ -245,9 +264,14 @@ function homotopyPhysics(mesh, sbp, eqn, opts, t)
 
   global evalPhysicsResidual
 
+#  println("\nevaluating homotopy physics")
+#  println("physics: ", evalPhysicsResidual)
+#  println("homotopy: ", evalHomotopyResidual)
   lambda = eqn.params.homotopy_lambda
   res_homotopy = zeros(eqn.res)
+  fill!(eqn.res, 0.0)
 
+#  println("lambda: ", lambda)
 
   # calculate physics residual
   evalPhysicsResidual(mesh, sbp, eqn, opts, t)
@@ -262,6 +286,7 @@ function homotopyPhysics(mesh, sbp, eqn, opts, t)
     eqn.res[i] =  lambda_c*eqn.res[i] + lambda*res_homotopy[i]
   end
 
+#  println("homotopy physics exiting with residual norm ", norm(vec(eqn.res)))
   return nothing
 end
 

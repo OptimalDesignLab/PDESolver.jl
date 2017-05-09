@@ -22,7 +22,7 @@ include("mass_matrix.jl")
 include("curvilinear.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
-export calcNorm, calcMeshH
+export calcNorm, calcMeshH, calcEuclidianNorm
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export startDataExchange
 export exchangeElementData
@@ -297,6 +297,7 @@ function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; stron
 
   val = zero(real(res_vec[1]))
 
+  #TODO: make this better for complex number: conj(z)Hz
   if !strongres
     for i=1:length(res_vec)
       val += real(res_vec[i])*eqn.M[i]*real(res_vec[i])   # res^T M res
@@ -314,6 +315,36 @@ function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; stron
   val = sqrt(val)
   return val
 end     # end of calcNorm function
+
+
+"""
+  This function computes the Euclidian norm of a vector where each MPI
+  process owns part of the vector
+
+  Inputs:
+    comm: an MPI communicator
+    vec: the local part of the vector
+
+  Outputs:
+    val: the Euclidian norm of the entire vector
+
+  Note that unlike calcNorm, the time spent in the Allreduce is not logged
+  for this function.
+
+"""
+function calcEuclidianNorm{T}(comm::MPI.Comm, vec::AbstractVector{T})
+
+  Tnorm = real(T)
+  val = zero(Tnorm)
+  for i=1:length(vec)
+    val += conj(vec[i])*vec[i]
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, comm)
+
+  return sqrt(val)
+end
+
 
 
 @doc """

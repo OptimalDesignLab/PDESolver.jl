@@ -338,7 +338,6 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   KSPSetTolerances(ksp, newton_data.reltol, newton_data.abstol,
                    newton_data.dtol, PetscInt(newton_data.itermax))
 
-  println("works till here")
   KSPSetUp(ksp)
 
   # DEBUGGING output

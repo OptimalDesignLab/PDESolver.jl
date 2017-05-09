@@ -45,7 +45,7 @@ function createMeshAndOperator(opts, dofpernode)
     Tsbp = Float64
     Tsol = Dual{Float64}
     Tres = Dual{Float64}
-  elseif flag == 5 || flag == 40
+  elseif flag == 5 || flag == 40 || flag == 41
     if jac_method == 1 # use Newton method using finite difference  (former flag 4)
       # println("========== utils/initialization: flag 5, jac_method 1")
       Tmsh = Float64
@@ -307,7 +307,15 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
       predictorCorrectorHomotopy(evalResidual, evalHomotopy, mesh, sbp, eqn, opts, pmesh=pmesh)
 
-     else
+    elseif flag == 41  # special mode: use regular Newton to solve homotopy
+
+     @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
+                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
+                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+
+
+
+    else
        throw(ErrorException("No flag specified: no solve will take place"))
 
     end       # end of if/elseif blocks checking flag

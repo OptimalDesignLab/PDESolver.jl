@@ -35,13 +35,15 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
                           eqn::EulerData{Tsol, Tres}, opts, 
                           res::Abstract3DArray{Tres})
 
-  @assert mesh.commsize == 1  # this doesn't work in parallel yet
+#  println("\nentered calcHomotopyDiss")
 
   # some checks for when parallelism is enabled
   @assert opts["parallel_data"] == "element"
   for i=1:mesh.npeers
     @assert mesh.recv_waited[i]
   end
+
+  fill!(res, 0.0)
 
   #----------------------------------------------------------------------------
   # volume dissipation
@@ -97,13 +99,16 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     qR = sview(eqn.q, :, :, iface_i.elementR)
     resL = sview(res, :, :, iface_i.elementL)
     resR = sview(res, :, :, iface_i.elementR)
-    
+#    fill!(q_faceL, 0.0)
+#    fill!(q_faceR, 0.0)
+
     interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
 
     # calculate numerical flux at each face node
     for j=1:mesh.numNodesPerFace
       qL_j = sview(q_faceL, :, j)
       qR_j = sview(q_faceR, :, j)
+#      fill!(nrm2, 0.0)
 
       # get the face normal
       dxidx_j = sview(mesh.dxidx_face, :, :, j, i)
@@ -113,55 +118,121 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
       lambda_max = getLambdaMaxSimple(eqn.params, qL_j, qR_j, nrm2)
 
       for k=1:mesh.numDofPerNode
-        flux[k, j] = lambda_max*(qL_j[k] - qR_j[k])
+        flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
       end
     end  # end loop j
 
     # integrate over the face
     interiorFaceIntegrate!(mesh.sbpface, iface_i, flux, resL, resR)
   end  # end loop i
-
+#=
+# the boundary term makes the predictor-corrector algorithm converge slower
   #----------------------------------------------------------------------------
   # boundary dissipation
   # use q_faceL, nrm2, flux  from interface dissipation
   qg = eqn.params.qg  # boundary state
-  func = FreeStreamBC()  # construct the functor
   for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
     qL = sview(eqn.q, :, :, bndry_i.element)
     resL = sview(res, :, :, bndry_i.element)
+    fill!(q_faceL, 0.0)
 
     boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL, q_faceL)
 
+#    q_faceL = sview(eqn.q_bndry, :, :, i)
     for j=1:mesh.numNodesPerFace
+      fill!(nrm2, 0.0)
       q_j = sview(q_faceL, :, j)
       dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
 
       # calculate boundary state
       coords = sview(mesh.coords_bndry, :, j, i)
-      #TODO: reset to FreeStream BC for airfoil
-#      calcRho1Energy2U3(coords, eqn.params, qg)
-      calcIsentropicVortex(coords, eqn.params, qg)
-#      calcFreeStream(coords, eqn.params, qg)
+      calcFreeStream(coords, eqn.params, qg)
 
       # calculate face normal
       nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)
       calcBCNormal(eqn.params, dxidx_j, nrm_xi, nrm2)
 
-
       # calculate lambda_max
       lambda_max = getLambdaMaxSimple(eqn.params, q_j, qg, nrm2)
 
       # calculate dissipation
-      for k=1:mesh.numNodesPerElement
-        flux[k, j] = lambda_max*(q_j[k] - qg[k])
+      for k=1:mesh.numDofPerNode
+        flux[k, j] = 0.5*lambda_max*(q_j[k] - qg[k])
       end
+
     end  # end loop j
 
+    
     # integrate over the face
     boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux, resL)
   end  # end loop i
+=#
+  
+  #----------------------------------------------------------------------------
+  
+  # shared face integrals
+  # use q_faceL, q_faceR, flux from above
+  workarr = zeros(q_faceR)
+  for peer=1:mesh.npeers
+    # get data for this peer
+    bndries_local = mesh.bndries_local[peer]
+    bndries_remote = mesh.bndries_remote[peer]
+    interfaces_peer = mesh.shared_interfaces[peer]
 
+    qR_peer = eqn.q_face_recv[peer]
+    dxidx_peer = mesh.dxidx_sharedface[peer]
+    start_elnum = mesh.shared_element_offsets[peer]
+
+    for i=1:length(bndries_local)
+      bndry_i = bndries_local[i]
+      bndryR_i = bndries_remote[i]
+      iface_i = interfaces_peer[i]
+      qL_i = sview(eqn.q, :, :, bndry_i.element)
+      qR_i = sview(qR_peer, :, :, iface_i.elementR - start_elnum + 1)
+      resL = sview(res, :, :, bndry_i.element)
+
+      # interpolate to face
+#      interiorFaceInterpolate!(mesh.sbpface, iface_i, qL_i, qR_i, q_faceL, q_faceR)
+      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL_i, q_faceL)
+      boundaryFaceInterpolate!(mesh.sbpface, bndryR_i.face, qR_i, q_faceR)
+
+      # permute elementR
+      permvec = sview(mesh.sbpface.nbrperm, :, iface_i.orient)
+      SummationByParts.permuteface!(permvec, workarr, q_faceR)
+
+      # compute flux at every face node
+      for j=1:mesh.numNodesPerFace
+        qL_j = sview(q_faceL, :, j)
+        qR_j = sview(q_faceR, :, j)
+
+        # calculate normal vector
+        dxidx_j = sview(dxidx_peer, :, :, j, i)
+        nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)
+        calcBCNormal(eqn.params, dxidx_j, nrm_xi, nrm2)
+
+        # get max wave speed
+        lambda_max = getLambdaMaxSimple(eqn.params, qL_j, qR_j, nrm2)
+
+        # calculate flux
+        for k=1:mesh.numDofPerNode
+          flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
+        end
+      end  # end loop j
+
+      # integrate over the face
+      boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux, resL)
+    end  # end loop i
+  end  # end loop peer
+  
+
+
+  # negate for consistency with the physics module
+  for i=1:length(res)
+    res[i] = -res[i]
+  end
+
+#  println("homotopy residual norm = ", norm(vec(res)))
 
   return nothing
 end

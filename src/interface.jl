@@ -39,3 +39,12 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
   return nothing
 end
 
+#TODO: debugging
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
+
+  evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
+
+  return nothing
+end
+
+
