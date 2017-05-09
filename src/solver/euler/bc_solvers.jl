@@ -247,7 +247,7 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
   end
 
   # calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
-  nrm2_bar = zeros(Tsol, 2)
+  nrm2_bar = zeros(Tmsh, 2)
   calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
 
   # nrm2[2] = ny

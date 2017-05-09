@@ -139,7 +139,7 @@ function evalBoundaryIntegrals_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{T
   #TODO: remove conditional
   fill!(eqn.bndryflux_bar, 0.0)
   if mesh.isDG
-    boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar, 
+    boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar,
                            eqn.res_bar, SummationByParts.Subtract())
   else
     boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar,
@@ -280,3 +280,66 @@ function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end  # end function
+
+function evalLagrangianDerivative{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts, objective::AbstractOptimizationData,
+                                  adjoint_vec::AbstractArray{Tsol,1},
+                                  dpsiTRdXs::AbstractArray{Tmsh, 1},
+                                  ffd_map::AbstractMappingType)
+
+  # Create & populate the design vector
+  dv = zeros(Tmsh, length(ffd_map.cp_xyz)+1)
+  dv[1] = eqn.params.aoa
+  for i = 1:length(ffd_map.cp_xyz)
+    dv[i+1] = ffd_map.cp_xyz[i]
+  end
+
+  # Get the partial derivative of the functional w.r.t aoa
+  dJdAlpha = objective.dLiftdAlpha
+
+  # Get the partial derivative of the residual vector w.r.t aoa
+  eqn.params.aoa = opts["aoa"]
+  eqn.params.aoa += opts["epsilon"]*im # Imaginary perturbation
+  fill!(eqn.res_vec, 0.0)
+  fill!(eqn.res, 0.0)
+  res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
+  dRdAlpha = imag(eqn.res_vec)/opts["epsilon"]
+  eqn.params.aoa -= opts["epsilon"]*im
+
+  # Get derivative of ψTR w.r.t design variable control points
+  EulerEquationMod.init_revm(mesh, sbp, eqn, opts) # initialize reversemode functors
+  EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, adjoint_vec)
+  # Add contribution of boundary functional to dxidx_bndry_bar
+  EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, objective, "lift")
+
+  # Checking interpolation and entities from PumiInterface
+  interpolateMapping_rev(mesh)
+  getVertCoords_rev(mesh, sbp)
+  # Pass it to MeshMovement subroutine
+  calcdXvdXsProd(mesh, dpsiTRdXs)
+  f = open("dpsiTRdXs.dat", "w")
+  for i = 1:length(dpsiTRdXs)
+    println(f, dpsiTRdXs[i])
+  end
+  close(f)
+
+  # pass dψTRdXs into FFD
+  evaldXdControlPointProduct(ffd_map, mesh, dpsiTRdXs)
+
+  # Create partial lagrangian derivative ∂L/∂x
+  dLdx = zeros(length(dv))
+  dLdx[1] = dJdAlpha + dot(adjoint_vec, dRdAlpha)
+  itr = 2
+  for i = 1:size(ffd_map.work, 4)
+    for j = 1:size(ffd_map.work, 3)
+      for k = 1:size(ffd_map.work, 2)
+        for l = 1:mesh.dim
+          dLdx[itr] = ffd_map.cp_xyz[l,k,j,i]
+        end
+      end
+    end
+  end
+
+  return nothing
+end # End function evalLagrangianDerivative

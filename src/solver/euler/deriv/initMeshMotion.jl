@@ -3,8 +3,8 @@
 # Step 1: FFD Initialize
   #   Free Form deformation parameters
   ndim = 2
-  order = [4,4,2]  # Order of B-splines in the 3 directions
-  nControlPts = [6,6,2]
+  order = [2,2,2]  # Order of B-splines in the 3 directions
+  nControlPts = [2,2,2]
   Tmsh = Float64 # Complex128
 
   # Create Mapping object
@@ -45,7 +45,7 @@ param.bucket_size = convert(Int32,8)
 
 symmetryPlanes = zeros(Float64,3,2)
 flatWarpSurfPts = reshape(wallCoords, 3*size(wallCoords,2))
-faceSizes = 4*ones(Int32,sum(nwall_faces)) # An extruded 2D edge for a linear 
+faceSizes = 4*ones(Int32,sum(nwall_faces)) # An extruded 2D edge for a linear
                                            # discretization will result in a
                                            # "element face" with 4 vertiecs.
 

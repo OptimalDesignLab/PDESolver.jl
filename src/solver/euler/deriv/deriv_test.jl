@@ -14,7 +14,6 @@ using MeshMovement
 using PdePumiInterface
 import ODLCommonTools.sview
 
-
 # Get the adjoint vector
 include("../startup.jl")
 objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
@@ -30,27 +29,11 @@ PdePumiInterface.writeVisFiles(mesh, "adjoint_field")
 geom_faces = opts["BC4"]
 # geom_faces = opts["BC2"]
 include("initMeshMotion.jl")
-gc()
 
-# Get the partial derivative of the functional w.r.t aoa
-dJdAlpha = objective.dLiftdAlpha
-println("dJdAlpha = $(real(dJdAlpha))")
+dpsiTRdXs = zeros(Float64, 2*3*sum(nwall_faces))
+EulerEquationMod.evalLagrangianDerivative(mesh, sbp, eqn, opts, objective,
+                                          adjoint_vec, dpsiTRdXs, ffd_map)
 
-# Get the partial derivative of the residual vector w.r.t aoa
-eqn.params.aoa = opts["aoa"]
-eqn.params.aoa += opts["epsilon"]*im # Imaginary perturbation
-fill!(eqn.res_vec, 0.0)
-fill!(eqn.res, 0.0)
-res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
-dRdAlpha = imag(eqn.res_vec)/opts["epsilon"]
-eqn.params.aoa -= opts["epsilon"]*im
-#=
-f = open("dRdAlpha.dat", "w")
-for i = 1:length(eqn.res_vec)
-  println(f, dRdAlpha[i])
-end
-close(f)
-=#
 #=
 # Verify against finite difference
 eqn.params.aoa = opts["aoa"]
@@ -72,33 +55,13 @@ close(f)
 println("dRdAlpha error norm = ", norm(dRdAlpha_FD - dRdAlpha, 2))
 =#
 
-# Reverse mode
-EulerEquationMod.init_revm(mesh, sbp, eqn, opts) # initialize reversemode functors
-EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, adjoint_vec)
 
-# Checking interpolation and entities from PumiInterface
-interpolateMapping_rev(mesh)
-getVertCoords_rev(mesh, sbp)
 
-# Xv_bar = MeshMovement.supplyXv_bar(mesh)
-# Xv_bar = rand(Float64, 3, 2*mesh.numVert)
 
-dpsiTRdXs = zeros(Float64, 2*3*sum(nwall_faces))
-calcdXvdXsProd(mesh, dpsiTRdXs)
 
-f = open("dpsiTRdXs.dat", "w")
-for i = 1:length(dpsiTRdXs)
-  println(f, dpsiTRdXs[i])
-end
-close(f)
 
-evaldXdControlPointProduct(ffd_map, mesh, dpsiTRdXs)
-println("ffd_map.work = \n")
-for i = 1:size(ffd_map.work, 4)
-  for j = 1:size(ffd_map.work, 3)
-    println(ffd_map.work[1:3,:,j,i])
-  end
-end
+
+
 
 # Warp The mesh
 warpMesh(param, volNodes, wallCoords)
