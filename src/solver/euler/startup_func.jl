@@ -36,13 +36,25 @@ function run_euler(input_file::AbstractString)
   opts["Tdim"] = Tdim
   dofpernode = Tdim + 2
 
+  # createMeshAndOperator: from src/initialization.jl
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
   myrank = mesh.myrank
   # TODO: input argument for dofpernode
 
-  # create euler equation
   var_type = opts["variable_type"]
+
+  # populate staticParams dict inside opts for access by getStaticParams
+  staticParams = Dict()
+  staticParams["Tsol"] = Tsol
+  staticParams["Tres"] = Tres
+  staticParams["Tmsh"] = Tmsh
+  staticParams["Tdim"] = Tdim
+  staticParams["var_type"] = var_type
+  opts["staticParams"] = Dict()
+  opts["staticParams"] = staticParams
+
+  # create euler equation
   eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 
   # initialize physics module and populate any fields in mesh and eqn that
