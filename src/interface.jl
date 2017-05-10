@@ -31,3 +31,11 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 
   return nothing
 end
+
+function init(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, pmesh=mesh)
+
+  throw(ErrorException("Generic fallback init() reached: did you forget to extend init() with a new method for your AbstractSolutionData?"))
+
+  return nothing
+
+end
