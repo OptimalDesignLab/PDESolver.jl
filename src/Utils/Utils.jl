@@ -503,6 +503,26 @@ function calcBCNormal_revm(params::AbstractParamType{2}, dxidx::AbstractMatrix,
   return nothing
 end
 
+function calcBCNormal_revm(params::AbstractParamType{3}, dxidx::AbstractMatrix, nrm::AbstractVector, nrm2_bar::AbstractVector, dxidx_bar)
+
+  n1 = nrm[1]; n2 = nrm[2]; n3 = nrm[3]
+  dxidx_bar[1,1] += nrm2_bar[1]*n1
+  dxidx_bar[2,1] += nrm2_bar[1]*n2
+  dxidx_bar[3,1] += nrm2_bar[1]*n3
+
+  dxidx_bar[1,2] += nrm2_bar[2]*n1
+  dxidx_bar[2,2] += nrm2_bar[2]*n2
+  dxidx_bar[3,2] += nrm2_bar[2]*n3
+
+  dxidx_bar[1,3] += nrm2_bar[3]*n1
+  dxidx_bar[2,3] += nrm2_bar[3]*n2
+  dxidx_bar[3,3] += nrm2_bar[3]*n3
+
+  return nothing
+end
+
+
+
 
 
 #------------------------------------------------------------------------------
@@ -511,13 +531,8 @@ end
 """
   Permute the rows of A according to the permvec, storing the result in B
   The permvec contains the source indices for each entry in B, ie.
-<<<<<<< HEAD
-  B[permvec[i]] comes from A[i].  This is consistent with the mathematical
-  definition of a permutation that pre-multiplication by a permutation
-=======
   B[i] comes from A[permvec[i]].  This is consistent with the mathematical
   definition of a permutation that pre-multiplication by a permutation 
->>>>>>> 3d_wing
   matrix (obtained from permMatrix) is a row permutation, ie.
   B = P*A
 
