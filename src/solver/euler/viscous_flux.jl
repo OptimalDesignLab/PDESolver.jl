@@ -449,7 +449,6 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
 
       # diffusion matrix used in penalty term should be computed from q_face rather than q_bnd
       calcGt_functor(q_bnd, Gt)
-
       q_elem = sview(eqn.q, :, :, elem)
       calcGradient(mesh, sbp, elem, q_elem, dqdx_elem)
 
@@ -459,10 +458,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
       end
 
-      # Li Wang's approach
       calcFvis(Gt, dqdx_face, Fv_face)
-      # Hartman's approach
-      # calcFvis(q_bnd, dqdx_face, Fv_face)
 
       # First compute penalty
       if sat_type ==  "SAT-SIPG"
@@ -556,9 +552,9 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       for n = 1 : mesh.numNodesPerFace
         for iDof = 1 : mesh.numDofPerNode
           vecflux[1,iDof,n] = ( (Gt[iDof,1,1,1,n] + Gt[iDof,2,1,1,n] + Gt[iDof,3,1,1,n]+ Gt[iDof,4,1,1,n])*nrm[1,n] 
-                            + (Gt[iDof,1,1,2,n] + Gt[iDof,2,1,2,n] + Gt[iDof,3,1,2,n]+ Gt[iDof,4,1,2,n])*nrm[2,n] )
+                            +   (Gt[iDof,1,1,2,n] + Gt[iDof,2,1,2,n] + Gt[iDof,3,1,2,n]+ Gt[iDof,4,1,2,n])*nrm[2,n] )
           vecflux[2,iDof,n] = ( (Gt[iDof,1,2,1,n] + Gt[iDof,2,2,1,n] + Gt[iDof,3,2,1,n]+ Gt[iDof,4,2,1,n])*nrm[1,n] 
-                            + (Gt[iDof,1,2,2,n] + Gt[iDof,2,2,2,n] + Gt[iDof,3,2,2,n]+ Gt[iDof,4,2,2,n])*nrm[2,n] )
+                            +   (Gt[iDof,1,2,2,n] + Gt[iDof,2,2,2,n] + Gt[iDof,3,2,2,n]+ Gt[iDof,4,2,2,n])*nrm[2,n] )
           vecflux[1,iDof,n] *=  dq[iDof,n]
           vecflux[2,iDof,n] *=  dq[iDof,n]
         end

@@ -362,7 +362,7 @@ function postproc(mesh, sbp, eqn, opts)
       functional_val = zero(Tsol)
       # functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
       # functional_name, functional_edges)
-      functional_val = calcBndryFunctional_adjoint_consistent(mesh, sbp, eqn, opts, functional_name, functional_edges)
+      functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, functional_name, functional_edges)
 
       println("\nNumerical functional value on geometric edges ", 
               functional_edges, " = ", functional_val)

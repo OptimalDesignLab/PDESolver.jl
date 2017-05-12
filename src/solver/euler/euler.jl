@@ -108,11 +108,8 @@ import PDESolver.evalResidual
 =#
 # this function is what the timestepper calls
 # high level function
-function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
+@debug function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
                      opts::Dict, t=0.0)
-
-#  println("----- entered evalResidual -----")
-
   gc()
   time = eqn.params.time
   eqn.params.t = t  # record t to params
@@ -161,6 +158,23 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
 	end
 
+  #
+  # DEBUG :  discription
+  #
+  # eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  # saveSolutionToMesh(mesh, abs(real(eqn.res_vec)))
+  # writeVisFiles(mesh, "residual")
+  # for el = 1 : mesh.numEl
+    # if norm(eqn.res[:,:,el]) > 1.e-6
+      # println("elem = ", el)
+      # println(mesh.coords[:,:,el])
+      # println(real(eqn.res[:,:,el]))
+    # end
+  # end
+  # @bp
+  #
+  # END DEBUG
+  #
   return nothing
 end  # end evalResidual
 
