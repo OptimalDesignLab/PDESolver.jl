@@ -1681,3 +1681,169 @@ end
 
 fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
 =#
+
+function calcMomentContribution!{Tsbp,Tmsh,Tsol,Tres
+  }(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
+    dforce::AbstractArray{Tsol,3}, xyz_about::AbstractArray{Tmsh,1})
+  @assert( sbpface.numnodes == size(xsbp,2) == size(dforce,2) )
+  @assert( size(xsbp,3) == size(dforce,3) )
+  @assert( size(xsbp,1) == size(dforce,1) == size(xyz_about,1)
+           == size(moment,1) )
+  rvec = zeros(Tmsh,3)
+  dM = zeros(Tres,3)
+  moment = zeros(Tres, length(xyz_about))
+  for f = 1:size(nrm,3)
+    for i = 1:sbpface.numnodes
+      for di = 1:3
+        rvec[di] = xsbp[di,i,f] - xyz_about[di]
+      end
+      crossProd(rvec, view(dforce,:,i,f), dM)
+      for di = 1:3
+        moment[di] += dM[di]*sbpface.wface[i]
+      end
+    end
+  end
+end
+
+function calMomentContribution!{Tmsh, Tres}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData{Tsol, Tres},  bndry_nums::Array{Int, 1}, xyz_about::AbstractArray{Tmsh, 1})
+
+  moment = zeros(Tres, mesh.dim)
+  for i=1:length(bndry_nums)
+    start_idx = mesh.bndry_offsets[ bndry_nums[i] ]
+    end_idx = mesh.bndry_offsets[ bndry_nums[i+1] - 1 ]
+    face_range = start_idx:end_idx
+    bndry_faces = sview(mesh.bndryfaces, face_range)
+    coords = sview(mesh.coords_bndry, face_range)
+    
+    # compute dforce
+    nrm = computeNormal(mesh, sbp, bndry_faces)
+    dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
+
+    # compute moment
+    moment += calcMomentContribution(mesh.sbpface, coords, dforce, xyz_about)
+
+  end
+
+  return moment
+end
+
+
+function calcMomentContribution_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh, eqn::AbstractSolutionData, bndyrfaces::AbstractArray{Boundary, 1}, xyz_about::AbstractArray{Tmsh, 1}, moment_bar::AbstractArray{Tres, 1})
+
+  nfaces = length(bndryfaces)
+  moment = zeros(Tres, mesh.dim)
+  for i=1:length(bndry_nums)
+    start_idx = mesh.bndry_offsets[ bndry_nums[i] ]
+    end_idx = mesh.bndry_offsets[ bndry_nums[i+1] - 1 ]
+    face_range = start_idx:end_idx
+    bndry_faces = sview(mesh.bndryfaces, face_range)
+    coords = sview(mesh.coords_bndry, face_range)
+    coords_bar = zeros(coords)
+    
+    # compute dforce
+    nrm = computeNormal(mesh, sbp, bndry_faces)
+    nrm_bar = zeros(nrm)
+    dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
+    dforce_bar = zeros(dforce)
+
+    #--------------------------------------------------------------------------
+    # start reverse sweep
+    calcMomentContribution(mesh.sbpface, coords, coords_bar, dforce, dforce_bar, xyz_about, moment_bar)
+
+    computeDForce_revm!(mesh, eqn, bndryfaces, nrm_bar, dforce_bar)
+
+    computeNormal_revm!(mesh, sbp, bndryfaces, nrm_bar)
+  end
+
+  return nothing
+end
+
+
+function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh, eqn::AbstractSolutionData{Tsol, Tres}, bndryfaces::AbstractArray{Boundary, 1}, nrm::Abstract3DArray{Tmsh})
+
+  nfaces = length(bndryfaces)
+  dforce = zeros(Tres, mesh.dim, mesh.numNodesPerFace, mesh.numEl)
+  for i=1:nfaces
+    for j=1:mesh.numNodesPerFace
+      q_j = sview(eqn.q_bndry, :, j, i)  # q_bndry must already have been populated
+      p = calcPressure(eqn.params, q_j)
+      for k=1:mesh.dim
+        dforce[k, j, i] = p*nrm[k, j, i]
+      end
+    end
+  end
+
+  return dforce
+end
+
+function computeDForce_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData{Tsol, Tres}, bndryfaces::AbstractArray{Boundary, 1}, nrm_bar::Abstract3DArray, dforce_bar::Abstract3DArray)
+
+   nfaces = length(bndryfaces)
+   for i=1:mesh.nfaces
+    for j=1:mesh.numNodesPerFace
+      q_j = sview(eqn.q_bndry, :, j, i)
+      p = calcPressure(eqn.params, q_j)
+      for k=1:mesh.dim
+        nrm_bar[k, j, i] = dforce_bar[k, j, i]*p
+      end
+    end
+  end
+
+  return nothing
+end
+
+@doc """
+### calcMomentContribution_rev!
+
+This is the reverse differentiated version of calcMomentContribution!.  See docs
+of calcMomentContribution! for further details of the primal method.  This
+function is differentiated with respect to the primal version's `xsbp` and
+`dforce` variables.
+
+**Inputs**
+
+* `sbpface`: an SBP face operator type
+* `xsbp`: SBP-face nodes in physical space; [coord, sbp node, face]
+* `dforce`: scaled force at the sbpface nodes; [coord, sbp node, face]
+* `xyz_about`: point about which the moment is taken
+* `moment_bar`: left multiplies d(moment)/d(xsbp) and d(moment)/d(dforce)
+
+**InOuts**
+
+* `xsbp_bar`: result of vector Jacobian product; [coord, sbp node, face]
+* `dforce_bar`: result of vector Jacobian product; [coord, sbp node, face]
+
+"""->
+function calcMomentContribution_rev!{Tsbp,Tmsh,Tsol,Tres
+  }(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
+    xsbp_bar::AbstractArray{Tmsh,3}, dforce::AbstractArray{Tsol,3},
+    dforce_bar::AbstractArray{Tsol,3}, xyz_about::AbractArray{Tmsh,1},
+    moment_bar::AbstractArray{Tres,1})
+  @assert( sbpface.numnodes == size(xsbp,2) == size(xsbp_bar,2)
+           == size(dforce,2) == size(dforce_bar,2) )
+  @assert( size(xsbp,3) == size(xsbp,3) == size(dforce,3) == size(dforce_bar,3) )
+  @assert( size(xsbp,1) == size(xsbp_bar,1) == size(dforce,1)
+           == size(dforce_bar,1) == size(xyz_about,1) == size(moment,1) )
+  rvec = zeros(Tmsh,3)
+  rvec_bar = zeros(Tres,3)
+  dM_bar = zeros(Tres,3)
+  for f = 1:size(nrm,3)
+    for i = 1:sbpface.numnodes
+      for di = 1:3
+        rvec[di] = xsbp[di,i,f] - xyz_about[di]
+      end
+      # start reverse sweep
+      for di = 1:3
+        # moment[di] += dM[di]*sbpface.wface[i]
+        dM_bar[di] += moment_bar[di]*sbpface.wface[i]
+      end
+      # crossProd(rvec, view(dforce,:,i,f), dM)
+      crossProduct_rev(rvec, rvec_bar, view(dforce,:,i,f),
+                       view(dforce_bar,:,i,f), dM_bar)
+      for di = 1:3
+        # rvec[di] = xsbp[di,i,f] - xyz_about[di]
+        xsbp_bar[di,i,f] += rvec_bar[di]
+      end
+    end
+  end
+end

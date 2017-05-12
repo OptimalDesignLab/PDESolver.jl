@@ -20,6 +20,7 @@ include("projections.jl")
 include("complexify.jl")
 include("mass_matrix.jl")
 include("curvilinear.jl")
+include("area.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH, calcEuclidianNorm
@@ -51,6 +52,8 @@ export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
 # curvilinear.jl
 export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
 
+# area.jl
+export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaContribution!, calcProjectedAreaContribution_rev!, crossProd, crossProd_rev
 
 @doc """
 ### Utils.disassembleSolution
