@@ -13,7 +13,6 @@
 
   # Create knot vector
   calcKnot(ffd_map)
-  println("\nlength controlPoint = $(length(ffd_map.cp_xyz))")
 
   # Create Bounding box
   offset = [0., 0., 0.5] # No offset in the X & Y direction

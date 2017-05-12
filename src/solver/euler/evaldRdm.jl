@@ -284,16 +284,11 @@ end  # end function
 function evalLagrangianDerivative{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                                   sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                                   opts, objective::AbstractOptimizationData,
+                                  dv::AbstractArray{Tmsh,1},
                                   adjoint_vec::AbstractArray{Tsol,1},
                                   dpsiTRdXs::AbstractArray{Tmsh, 1},
                                   ffd_map::AbstractMappingType)
 
-  # Create & populate the design vector
-  dv = zeros(Tmsh, length(ffd_map.cp_xyz)+1)
-  dv[1] = eqn.params.aoa
-  for i = 1:length(ffd_map.cp_xyz)
-    dv[i+1] = ffd_map.cp_xyz[i]
-  end
 
   # Get the partial derivative of the functional w.r.t aoa
   dJdAlpha = objective.dLiftdAlpha
@@ -309,21 +304,23 @@ function evalLagrangianDerivative{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
   # Get derivative of ψTR w.r.t design variable control points
   EulerEquationMod.init_revm(mesh, sbp, eqn, opts) # initialize reversemode functors
-  EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, adjoint_vec)
+  # EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, adjoint_vec)
   # Add contribution of boundary functional to dxidx_bndry_bar
   EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, objective, "lift")
 
   # Checking interpolation and entities from PumiInterface
   interpolateMapping_rev(mesh)
   getVertCoords_rev(mesh, sbp)
+  
   # Pass it to MeshMovement subroutine
-  calcdXvdXsProd(mesh, dpsiTRdXs)
+  # calcdXvdXsProd(mesh, dpsiTRdXs)
+  #=
   f = open("dpsiTRdXs.dat", "w")
   for i = 1:length(dpsiTRdXs)
     println(f, dpsiTRdXs[i])
   end
   close(f)
-
+  =#
   # pass dψTRdXs into FFD
   evaldXdControlPointProduct(ffd_map, mesh, dpsiTRdXs)
 
@@ -334,12 +331,87 @@ function evalLagrangianDerivative{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   for i = 1:size(ffd_map.work, 4)
     for j = 1:size(ffd_map.work, 3)
       for k = 1:size(ffd_map.work, 2)
-        for l = 1:mesh.dim
-          dLdx[itr] = ffd_map.cp_xyz[l,k,j,i]
+        for l = 1:3 # mesh.dim
+          dLdx[itr] = ffd_map.work[l,k,j,i]
+          itr += 1
         end
       end
     end
   end
 
-  return nothing
+  return dLdx
 end # End function evalLagrangianDerivative
+
+@doc """
+###EulerEquationMod.calcLagrangian
+
+given design variables that are the control points and angle of attack, compute
+the lagrangian
+
+"""->
+function computeLagrangian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts, objective::AbstractOptimizationData,
+                                  dv::AbstractArray{Tmsh, 1},
+                                  adjoint_vec::AbstractArray{Tsol,1},
+                                  ffd_map::AbstractMappingType, warp_param::warpParam)
+
+  eqn.params.aoa = dv[1]
+  for i = 1:length(ffd_map.cp_xyz)
+    ffd_map.cp_xyz[i] = dv[i+1]
+  end
+
+  # Using the above control points, get the new surface points
+  evalSurface(ffd_map, mesh)
+
+  # Use the updated surface nodes to compute the volume nodes
+  volNodes = MeshMovement.getVolNodes(mesh)
+  nwall_faces, wallCoords = MeshMovement.getWallCoords(mesh, ffd_map.geom_faces)
+  warpMesh(warp_param, volNodes, wallCoords)
+  updatePumiMesh(mesh, sbp, volNodes)
+
+  # Solve the physics for the updated problem
+  # TODO : figure out pmesh
+  pmesh = mesh # For now
+  solve_euler(mesh, sbp, eqn, opts, pmesh)
+
+  # Evaluate the functional
+  evalFunctional(mesh, sbp, eqn, opts, objective)
+
+  # Evaluate the adjoint
+  # calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+
+  # Finally compute the lagrangian
+  lagrangian = objective.lift_val #+ dot(ad)
+
+  return lagrangian
+end
+
+@doc """
+###EulerEquationMod.updatePumiMesh
+
+Given the volume nodes in the MeshMovement `volNodes` data structure, update the
+Pumi mesh object
+
+"""->
+
+function updatePumiMesh{Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+                              volNodes::AbstractArray{Tmsh, 2})
+
+  for i = 1:mesh.numEl
+    for j = 1:size(mesh.vert_coords,2)
+      # Get the vertex numbering on the portion of mesh owned by the processor
+      local_vertnum = mesh.element_vertnums[j,i]
+      for k = 1:mesh.dim
+        mesh.vert_coords[k,j,i] = volNodes[k,local_vertnum]
+      end
+    end
+  end
+
+  for i = 1:mesh.numEl
+    update_coords(mesh, i, mesh.vert_coords[:,:,i])
+  end
+  commit_coords(mesh, sbp)
+
+  return nothing
+end

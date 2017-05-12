@@ -30,9 +30,46 @@ geom_faces = opts["BC4"]
 # geom_faces = opts["BC2"]
 include("initMeshMotion.jl")
 
+# Create & populate the design vector
+dv = zeros(Tmsh, length(ffd_map.cp_xyz)+1)
+dv[1] = eqn.params.aoa
+for i = 1:length(ffd_map.cp_xyz)
+  dv[i+1] = ffd_map.cp_xyz[i]
+end
+# println("dv[1] = $(dv[1])")
+# for i = 2:length(dv)
+#   println("dv[$i] = $(dv[i]), ffd_map.cp_xyz[$(i-1)] = $(ffd_map.cp_xyz[i-1])")
+# end
+
 dpsiTRdXs = zeros(Float64, 2*3*sum(nwall_faces))
-EulerEquationMod.evalLagrangianDerivative(mesh, sbp, eqn, opts, objective,
-                                          adjoint_vec, dpsiTRdXs, ffd_map)
+dLdx = EulerEquationMod.evalLagrangianDerivative(mesh, sbp, eqn, opts, objective,
+                                          dv, adjoint_vec, dpsiTRdXs, ffd_map)
+for i = 1:length(dLdx)
+  println("dLdx[$i]" , dLdx[i])
+end
+# println(eqn.res_vec)
+
+# Check against finite difference
+orig_lagrangian = EulerEquationMod.computeLagrangian(mesh, sbp, eqn, opts, objective,
+                                  dv, adjoint_vec, ffd_map, param)
+dLdx_fd = zeros(dLdx)
+pert = 1e-6
+for i = 1:length(dLdx)
+  dv[i] += pert
+  pert_lagrangian = EulerEquationMod.computeLagrangian(mesh, sbp, eqn, opts, objective,
+                                    dv, adjoint_vec, ffd_map, param)
+  dLdx_fd[i] = (pert_lagrangian - orig_lagrangian)/pert
+  dv[i] -= pert
+end
+
+for i = 1:length(dLdx)
+  error = norm(dLdx[i] - dLdx_fd[i], 2)
+  if error > 1e-6
+    println("dLdx[$i] = $(dLdx[i]), dLdx_fd[$i] = $(dLdx_fd[i]), error = $error")
+    # println("error = $error")
+  end
+end
+
 
 #=
 # Verify against finite difference
@@ -63,8 +100,8 @@ println("dRdAlpha error norm = ", norm(dRdAlpha_FD - dRdAlpha, 2))
 
 
 
-# Warp The mesh
-warpMesh(param, volNodes, wallCoords)
+# Release FORTRAN memory
+releaseMemory()
 
 # Redistribute it to mesh.coords
 for i = 1:mesh.numEl

@@ -68,6 +68,14 @@ function createObjects(input_file::AbstractString)
   return mesh, sbp, eqn, opts, pmesh
 end
 
+@doc """
+Gets the type parameters for mesh and equation objects
+"""->
+
+function getTypeParameters{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres})
+  return Tmsh, Tsol, Tres
+end
+
 """
   Given fully initialized mesh, sbp, eqn, opts, this function solves
   the Euler equations.  The 4 object should be obtained from createObjects().
