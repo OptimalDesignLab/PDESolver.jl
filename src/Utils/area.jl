@@ -264,6 +264,11 @@ function calcProjectedAreaContribution_rev!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsb
   for f = 1:size(nrm,3)
     for i = 1:sbpface.numnodes
       # projarea += 0.5*sbpface.wface[i]*abs(nrm[di,i,f])
+      #  v1 = nrm[di,i,f]
+      #  v2 = abs(v1)
+      #  v3 = 0.5*sbpface.wface[i]
+      #  v4 = v2*v3
+
       nrm_bar[di,i,f] += (projarea_bar*0.5*sbpface.wface[i]*
                           absvalue_deriv(nrm[di,i,f]))
     end
