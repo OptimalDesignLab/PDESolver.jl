@@ -20,9 +20,10 @@ include("projections.jl")
 include("complexify.jl")
 include("mass_matrix.jl")
 include("curvilinear.jl")
+include("area.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
-export calcNorm, calcMeshH
+export calcNorm, calcMeshH, calcEuclidianNorm
 export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 export startDataExchange
 export exchangeElementData
@@ -51,6 +52,8 @@ export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
 # curvilinear.jl
 export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
 
+# area.jl
+export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaContribution!, calcProjectedAreaContribution_rev!, crossProd, crossProd_rev
 
 @doc """
 ### Utils.disassembleSolution
@@ -297,6 +300,7 @@ function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; stron
 
   val = zero(real(res_vec[1]))
 
+  #TODO: make this better for complex number: conj(z)Hz
   if !strongres
     for i=1:length(res_vec)
       val += real(res_vec[i])*eqn.M[i]*real(res_vec[i])   # res^T M res
@@ -314,6 +318,36 @@ function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; stron
   val = sqrt(val)
   return val
 end     # end of calcNorm function
+
+
+"""
+  This function computes the Euclidian norm of a vector where each MPI
+  process owns part of the vector
+
+  Inputs:
+    comm: an MPI communicator
+    vec: the local part of the vector
+
+  Outputs:
+    val: the Euclidian norm of the entire vector
+
+  Note that unlike calcNorm, the time spent in the Allreduce is not logged
+  for this function.
+
+"""
+function calcEuclidianNorm{T}(comm::MPI.Comm, vec::AbstractVector{T})
+
+  Tnorm = real(T)
+  val = zero(Tnorm)
+  for i=1:length(vec)
+    val += conj(vec[i])*vec[i]
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, comm)
+
+  return sqrt(val)
+end
+
 
 
 @doc """
@@ -490,21 +524,14 @@ function calcBCNormal_revm(params::AbstractParamType{3}, dxidx::AbstractMatrix,
   return nothing
 end
 
-
-
 #------------------------------------------------------------------------------
 # permutation functions
 #------------------------------------------------------------------------------
 """
   Permute the rows of A according to the permvec, storing the result in B
   The permvec contains the source indices for each entry in B, ie.
-<<<<<<< HEAD
-  B[permvec[i]] comes from A[i].  This is consistent with the mathematical
-  definition of a permutation that pre-multiplication by a permutation
-=======
   B[i] comes from A[permvec[i]].  This is consistent with the mathematical
   definition of a permutation that pre-multiplication by a permutation 
->>>>>>> 3d_wing
   matrix (obtained from permMatrix) is a row permutation, ie.
   B = P*A
 

@@ -31,3 +31,20 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 
   return nothing
 end
+
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, res::Abstract3DArray, t = 0.0)
+
+  throw(ErrorException("Generic fallback evalHomotopy reached: did you forget to extend evalResidual with a new method for your AbstractSolutionData?"))
+
+  return nothing
+end
+
+#TODO: debugging
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
+
+  evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
+
+  return nothing
+end
+
+

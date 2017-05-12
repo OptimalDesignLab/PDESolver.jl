@@ -7,18 +7,38 @@ import Utils.disassembleSolution
 @doc """
 ### NonlinearSolvers.calcResidual
 
-  This function takes the eqn object with the solution varaibles stored in
+    This function takes the eqn object with the solution variables stored in
     q_vec, scatters them into q, evaluates the residual, and then gathers the 
     residual values into res_vec.
 
-    Effectively, this is a wrapper around the physics module residual evaluation
-      function (which performs eqn.q -> eqn.res) that performs eqn.q_vec ->
-      eqn.res_vec.
+    This function has 2 methods to support 2 different use cases.
+    The first use case is to wrap the evalResidual function defined by each
+    physics module.  evalResidual performs eqn.q -> eqn.res.  calcResidual
+    performs eqn.q_vec -> eqn.res_vec.  This is accomplished by the method:
 
-    The norm of the strong residual (using the SBP norm) is calculated and returned
-    (even though the weak form residual is stores in eq.res_vec).
+    calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)
 
-    Inputs:
+    with Inputs: 
+      mesh: an AbstractMesh object
+      sbp: an SBP operator
+      eqn: an AbstractSolutionData object
+      opts: options dictonary
+      func_physics: the function that evaluates the residual of the physics,
+                    typically evalResidual
+
+
+    Recall that calcResidual evaluates func_physics as the state eqn.q_vec
+    (not eqn.q), and stores the residual in eqn.res_vec
+
+    The second method of calcResidual is a bit more involved.  Its purpose
+    is calculate the residual vector for functions which are not necessarily
+    a physics function, but internally call a physics function.  This is useful,
+    for example, for implicit time marching methods.  This method has the
+    signature:
+
+    calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, tx_residual, t=0.0)
+
+    with Inputs:
       mesh:   an AbstractMesh object
       sbp:    an SBP operator
       eqn:    an AbstractSolutionData object
@@ -32,43 +52,31 @@ import Utils.disassembleSolution
       rhs_norm_global:  norm of residual
       
 
-    To solve steady problems:
-      func_rhs should be physicsRhs
-      ctx_residual should be (func, ...) where func is the physics function such as evalEuler
+    For this method, func_rhs is the function that computes the residuali vector
+    from eqn.q (not eqn.q_vec).  It has the signature
 
-    To solve unsteady problems:
-      func_rhs should be some function that typically uses physicsRhs as a building block for the time-marching residual
-      ctx_residual should be whatever is required by func_rhs
+    func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
+    
+    rhs_vec is used to store the residual.  rhs_vec can be the same as 
+    eqn.res_vec if func_rhs supports this.
+    ctx_residual is a way to pass any additional arguments needed by func_rhs.
+    It is a black box as far as calcResidual is concerned.
+
+    The norm of the strong residual (using the SBP norm) is calculated and returned
+    (even though the weak form residual is stores in eq.res_vec).
+
+
+    As a brief example, the first method of calcResidual is actually implemented using
+    the second method.  In this case:
+      func_rhs should be physicsRhs
+      ctx_residual should be (func,) where func is the physics function such as evalEuler
 
     Note about eqn.q & eqn.q_vec consistency:
       Within this function, when func_rhs is called, eqn.q and eqn.q_vec are consistent.
-      At exit from func_rhs, rhs_vec will have the residual in it.
+      At exit from func_rhs, rhs_vec will have the residual in it.  The contents of
+      eqn.res and eqn.res_vec are undefind.
 
     Aliasing restrictions: none
-"""->
-function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0.0)
-# calculate the residual and its norm
-
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
-  time = eqn.params.time
-  time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
-  end
-
-  func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
-
-  rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
-
-  return rhs_0_norm
-
-end
-
-@doc """
-### NonlinearSolvers.calcResidual
-
-  This method of the function is used for calculating the residual of the physics.
-  It is done using the state stored in eqn.q_vec .
-
 """->
 function calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)
 
@@ -82,12 +90,39 @@ function calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)
 
 end
 
+"""
+  The second method of calcResidual.  See documentation of the first method.
+"""
+function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0.0)
+# calculate the residual and its norm
+
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+  time = eqn.params.time
+  time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
+    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+  end
+
+  func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
+
+  # TODO: have func_rhs compute res (the 3D array), and call assembleResidual here?
+  #       It is much more symmetric to have func_rhs compute eqn.q -> eqn.res
+  #       rather than eqn.q -> eqn.res_vec
+  rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
+
+  return rhs_0_norm
+
+end
+
+
+
 @doc """
 ###NonlinearSolver.physicsRhs
-  
-  RHS (of the physics) calculation, separate from the Newton function
 
-  ctx_residual: func must be the first element. func is the residual evaluation function, i.e. evalEuler
+  This is a stub function used by the first method of calcResidual to make
+  evaluating the physics residual look like evaluating some arbitrary rhs_func.
+
+  ctx_residual: func must be the first element. func is the residual evaluation
+                function, i.e. evalEuler
   t:            simulation time
 
 """->
