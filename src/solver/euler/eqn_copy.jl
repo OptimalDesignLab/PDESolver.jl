@@ -1,5 +1,5 @@
 # ??: EulerData_ or EulerData?
-function copy(eqn::EulerData_, mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
+function eqn_deepcopy(eqn::EulerData_, mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
 
   # 1: call constructor on eqn_copy
 

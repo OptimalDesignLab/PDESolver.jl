@@ -57,6 +57,14 @@ function run_euler(input_file::AbstractString)
   # create euler equation
   eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 
+  println("==================================")
+  println("   run_euler start                ")
+  println("==================================")
+  println("  typeof mesh: ", typeof(mesh))
+  println("  typeof sbp: ", typeof(sbp))
+  println("  typeof opts: ", typeof(opts))
+  println("  typeof eqn: ", typeof(eqn))
+
   # initialize physics module and populate any fields in mesh and eqn that
   # depend on the physics module
   init(mesh, sbp, eqn, opts, pmesh)

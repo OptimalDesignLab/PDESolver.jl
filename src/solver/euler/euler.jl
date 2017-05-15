@@ -77,6 +77,7 @@ type parameters as the EulerEquation object, so it can be used for dispatch.
 # Tsol = equation, res_vec, q_vec data type
 
 import PDESolver.evalResidual
+import PDESolver.init
 
 @doc """
 ### EulerEquationMod.evalResidual
@@ -198,7 +199,7 @@ end  # end evalResidual
 """
 # high level functions
 function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
+              eqn::AbstractEulerData{Tsol, Tres}, opts::Dict, pmesh=mesh)
 
 #  println("\nInitializing Euler module")
 
