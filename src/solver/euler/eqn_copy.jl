@@ -16,30 +16,6 @@ function eqn_deepcopy(eqn::EulerData_, mesh::AbstractMesh, sbp::AbstractSBP, opt
 
 end
 
-"""
-  TODO Document this
-"""
-function getStaticParams(opts; return_type="dict")
-
-  if return_type == "dict"
-    staticParams = Dict()
-    staticParams = opts["staticParams"]
-
-    return staticParams
-  elseif return_type == "tuple"
-
-    Tsol = opts["staticParams"]["Tsol"]
-    Tres = opts["staticParams"]["Tres"]
-    Tmsh = opts["staticParams"]["Tmsh"]
-    Tdim = opts["staticParams"]["Tdim"]
-    var_type = opts["staticParams"]["var_type"]
-
-    staticParamTuple = (Tsol, Tres, Tmsh, Tdim, var_type)
-
-    return staticParamTuple
-  end
-
-end
 
 
 #=

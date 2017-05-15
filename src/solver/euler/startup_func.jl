@@ -44,16 +44,6 @@ function run_euler(input_file::AbstractString)
 
   var_type = opts["variable_type"]
 
-  # populate staticParams dict inside opts for access by getStaticParams
-  staticParams = Dict()
-  staticParams["Tsol"] = Tsol
-  staticParams["Tres"] = Tres
-  staticParams["Tmsh"] = Tmsh
-  staticParams["Tdim"] = Tdim
-  staticParams["var_type"] = var_type
-  opts["staticParams"] = Dict()
-  opts["staticParams"] = staticParams
-
   # create euler equation
   eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 
