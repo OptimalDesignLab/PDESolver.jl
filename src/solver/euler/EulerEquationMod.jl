@@ -200,8 +200,8 @@ include("source.jl")
 include("entropy_flux.jl")
 include("eigensystem.jl")
 include("check_options.jl")
-include("startup_func.jl")  # function for invoking the solver
 include("eqn_copy.jl")
+include("startup_func.jl")  # function for invoking the solver
 
 global const PhysicsName = "Euler"
 register_physics(PhysicsName, EulerEquationMod, run_euler)

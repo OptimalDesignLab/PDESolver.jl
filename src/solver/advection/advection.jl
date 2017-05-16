@@ -1,5 +1,6 @@
 # advection.jl
 import PDESolver.evalResidual
+import PDESolver.init
 
 @doc """
 ### AdvectionEquationMod.evalResidual
@@ -381,7 +382,7 @@ end
   Aliasing restrictions: none
 """->
 function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-              eqn::AbstractAdvectionData{Tsol, Tres}, opts)
+              eqn::AbstractAdvectionData{Tsol, Tres}, opts::Dict)
 
   println("Entering Advection Module")
   getBCFunctors(mesh, sbp, eqn, opts)

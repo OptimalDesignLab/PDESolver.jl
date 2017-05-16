@@ -1,6 +1,7 @@
 # functions to make simpleODE work
 
 import PDESolver.evalResidual
+import PDESolver.init
 
 @doc """
 ### SimpleODEMod.evalResidual
@@ -126,7 +127,7 @@ end
   Aliasing restrictions: none
 """->
 function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-              eqn::SimpleODEData{Tsol, Tres}, opts)
+              eqn::SimpleODEData{Tsol, Tres}, opts::Dict)
 
   println("Entering Simple ODE Module")
   return nothing
