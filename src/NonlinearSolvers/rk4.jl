@@ -3,9 +3,6 @@
 
 export rk4
 
-global const REVOLVELIB = "librevolvewrap"
-global const REVOLVEINFO = 3
-
 # base RK4 method:
 # dxdt = f(t,x)
 
@@ -21,10 +18,8 @@ global const REVOLVEINFO = 3
 
 @doc """
 rk4
-
   This function does 4th order Runge Kutta time stepping, using a function of
   the form du/dt = f(u, t)
-
   Arguments:
     * f  : function evaluation, must have signature (ctx..., opts, t)
     * h  : time step size
@@ -44,29 +39,25 @@ rk4
            passed to the functions.
     * opts : options dictionary
     * timing: a Timing object, a new one will be created if not provided
-
     Keyword Arguments:
     * majorIterationCallback: a callback function called after the first
                               stage, useful to do output or logging
     * res_tol : keyword arg, residual topping tolerance
     * real_time : do actual time marching, not pseudo-time marching
-
    The eqn.q_vec should hold the whichever variables (conservative or
    entropy) that the simulation should use.
-
    The idea behind pre_func, post func, and ctx is that they abstract what kind
    of system rk4 is timestepping.  rk4 only needs to know about q_vec and
    res_vec.
-
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
    should be eqn.q_vec and eqn.res_vec.
-
-  For searching: RK4_1
 """->
-function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
+#function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts; res_tol = -1.0, real_time=false) 
+#function rk4(f, h, x_new, x_ic, t_max, extra_args)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -93,7 +84,8 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
 
   (m,) = size(q_vec)
 
-  if myrank == 0 _f1 = open("convergence.dat", "a+")
+  if myrank == 0
+    _f1 = open("convergence.dat", "a+")
     f1 = BufferedIO(_f1)
   end
 
@@ -111,16 +103,15 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
   #-----------------------------------------------------
   ### Main timestepping loop ###
   # beginning of RK4 time stepping loop
-
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
 #     q_vec_old_DEBUG = deepcopy(q_vec)
 
     @mpi_master if i % output_freq == 0
-      println(fstdout, "\ntimestep ",i)
-      if i % 5*output_freq == 0
-        flush(fstdout)
-      end
+       println(fstdout, "\ntimestep ",i)
+       if i % 5*output_freq == 0
+         flush(fstdout)
+       end
     end
 
     pre_func(ctx..., opts)
@@ -134,7 +125,7 @@ function rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::Abstr
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
-  
+   
     @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
     end
@@ -229,12 +220,9 @@ end
 # it uses the pde_pre_func and pde_post_func below
 @doc """
 ### NonlinearSolvers.rk4
-
   This method of rk4 takes in the ctx, but not the pre_func and post_func, 
   using pde_pre_func and pde_post_func instead.
-
   All argument names are the same as for the main rk4 method
-
   Inputs:
     f: 
     h
@@ -246,249 +234,23 @@ end
     majorIterationCallback
     res_tol
     real_time
-
-    For searching: RK4_2
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-    rk4(f, h, t_max, q_vec, res_vec, pde_pre_func, pde_post_func, ctx, opts; 
+    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
+        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
         majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
 end
 
 @doc """
 ### NonlinearSolvers.rk4
-
-  This method of rk4 is the 'original' rk4, before revolve/adjoint implementation. 
-  It passes in only t_max, and sets t_start to equal 0. This preserves readability 
-  and reverse compatibility with non-revolve/adjoint rk4 calls.
-
-  For searching: RK4_3
-"""->
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-             q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-             post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-             res_tol = -1.0, real_time=false)
-             
-  t_start = 0.0
-  t_end = t_max
-  rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, timing;
-      majorIterationCallback=majorIterationCallback, res_tol = -1.0, real_time=false)
-
-
-end
-
-@doc """
-### NonlinearSolvers.rk4_revolve
-
-  This function is the implementation of rk4 that includes the revolve 
-  adjoint checkpointing algorithm.
-
-  It is required to have the RevolveCheckpointing julia package installed,
-  and the shell script within sourced to update LD_LIBRARY_PATH.
-
-  rk4_revolve is called by the rk4 function signature (search for RK4_5), which
-  checks the options dictionary for ["revolve"] and either calls this function
-  or a standard rk4 function.
-
-  For searching: RK4_4
-"""->
-function rk4_revolve(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-             q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-             post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-             res_tol = -1.0, real_time=false)
-
-  # TODO: RevolveCheckpointing loaded check
-
-  revolve_type = 1
-  steps = round(Integer, t_max/h)
-  snaps = 10
-  snaps_in_ram = 4
-  info = 3
-
-  RevolveClassPtr = ccall((:revolve_init, REVOLVELIB), Ptr{Void}, (Cint, Cint, Cint, Cint, Cint), 
-                          revolve_type, steps, snaps, snaps_in_ram, info)
-  
-  t = 0.0
-
-  println(" entering rk4_revolve do-while")
-  whilestop = false
-
-  while (whilestop == false)
-
-    whatodo = ccall((:revolve, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-    # whatodo enum:
-    #   1:  ACTION::takeshot
-    #   2:  ACTION::advance
-    #   3:  ACTION::firsturn
-    #   4:  ACTION::youturn
-    #   5:  ACTION::restore
-    #   98: ACTION::terminate
-    #   99: ACTION::error
-
-    # Revolve function outputs/relevant variables
-    #   r_getcheck: index of checkpoint
-    #   TODO r_getcapo & r_getoldcapo comments
-
-    if (whatodo == 1)   # takeshot
-      r_getcheck = ccall((:getcheck, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      ### store(F, F_Check, t, r_getcheck)
-      # store function should store all state vars (i.e. q_vec) & t
-      revolve_store(q_vec, t, r_getcheck)
-      if (REVOLVEINFO > 1) 
-        println(" takeshot at ", r_getcapo, " in CP ", r_getcheck)
-      end
-    elseif (whatodo == 2)   # advance
-      r_getoldcapo = ccall((:getoldcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      for j = r_getoldcapo:(r_getcapo-1)    # cpp: j=r->getoldcapo();j<r->getcapo();j++
-        #### advance(F, F_H, t, h)
-        # advance is intended to perform one time integration step
-        t_start = t
-        t_end = t+h
-        rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, timing;
-            majorIterationCallback=majorIterationCallback, res_tol = -1.0, real_time=false)
-        t = t+h
-      end
-      if (REVOLVEINFO > 1) 
-        println(" advance to ", r_getcapo)
-      end
-    elseif (whatodo == 3)   # firsturn
-      ### advance(F_final, F_H, t, h)
-      t_start = t
-      t_end = t+h
-      rk4(f, h, t_start, t_end, q_vec, res_vec, pre_func, post_func, ctx, opts, timing;
-          majorIterationCallback=majorIterationCallback, res_tol = -1.0, real_time=false)
-
-      t = 1.0 - h
-      ### t[1] = 1.0 - h        # caution, must assign to t[1], not t, or else t changes to Float64 type
-      ### adjoint(L_H, F_H, L, t, h)
-      revolve_adjoint(q_vec, t, h)
-      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      if (REVOLVEINFO > 1) 
-        println(" firsturn at ", r_getcapo)
-      end
-    elseif (whatodo == 4)   # youturn
-      ### adjoint(L_H, F, L, t, h)
-      revolve_adjoint(q_vec, t, h)
-      t = t - h
-      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      if (REVOLVEINFO > 1) 
-        println(" youturn at ", r_getcapo)
-      end
-    elseif (whatodo == 5)   # restore
-      r_getcheck = ccall((:getcheck, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      ### restore(F, F_Check, t, r_getcheck)
-      (q_vec, t) = revolve_restore(r_getcheck)
-      r_getcapo = ccall((:getcapo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      if (REVOLVEINFO > 1) 
-        println(" restore at ", r_getcapo, " in CP ", r_getcheck)
-      end
-    elseif (whatodo == 99)  # error
-      r_getinfo = ccall((:getinfo, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-      if (r_getinfo == 10)
-        println(" number of checkpoints stored exceeds checkup,")
-        println(" increase constant 'checkup' and recompile")
-        error()
-      elseif (r_getinfo == 11)
-        r_getcheck = ccall((:getcheck, REVOLVELIB), Cint, (Ptr{Void},), RevolveClassPtr)
-        println(" number of checkpoints stored = ", r_getcheck+1, " exceeds snaps = ", snaps)
-        println(" ensure 'snaps' > 0 and increase initial 'fine'")
-        error()
-      elseif (r_getinfo == 12)
-        println(" error occurs in numforw")
-        error()
-      elseif (r_getinfo == 13)
-        println(" enhancement of 'fine', 'snaps' checkpoints stored, increase 'snaps'")
-        error()
-      elseif (r_getinfo == 14)
-        println(" number of snaps exceeds snapsup, increase constant 'snapsup' and recompile")
-        error()
-      elseif (r_getinfo == 15)
-        println(" number of reps exceeds repsup, increase constant 'repsup' and recompile")
-        error()
-      end   # end of r_getinfo checking if-block
-
-    end   # end of whatodo checking if-block
-
-    if ((whatodo == 98) || (whatodo == 99))   # 98: terminate, 99: error
-      whilestop = true
-    end
-  end   # end of do-while
-
-
-  # this is here just as an example of function signature
-#   rk4(f::Function, h::AbstractFloat, t_start::AbstractFloat, t_end::AbstractFloat,
-#       q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-#       post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
-#       res_tol = -1.0, real_time=false)
-
-end
-
-# TODO put these in RevolveCheckpointing
-# TODO comment
-function revolve_store(q_vec, t, ix)
-
-  filename = string("revolve_chkpt_", ix, ".dat")
-  # TODO file existence check, fail if already exists
-  data = vcat(q_vec, t)
-  writedlm(filename, data)
-    
-  # TODO disassemble/assemble?
-end
-
-# distant TODO: ram storage
-
-# TODO comment
-function revolve_restore(ix)
-
-  filename = string("revolve_chkpt_", ix, ".dat")
-  data = readdlm(filename)
-  q_vec = data[1:end-1]
-  t = data[end]
-
-  return (q_vec, t)
-
-  # TODO disassemble/assemble?
-end
-
-# TODO
-function revolve_adjoint(eqn, t, ix)
-
-  # need objective
-
-  # need dRdy
-  # since linear, inverse of dRdy is transpose of dRdy
-
-  # TODO: need mesh, sbp, opts, calcResidual
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, calcResidual)
-
-  tmp, t_jac, t_gc, alloc = calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, func, pert, jac, t)
-
-
-  adj = transpose(jac)
-
-
-  # what is the jacobian produced by newton
-
-
-
-end
-
-@doc """
-### NonlinearSolvers.rk4
-
-
   This is the original (non-general) interface for rk4.
-  It is called by call_nlsolver within startup_func.
-
   The argument names are the same as for the main rk4 method, unless noted
   otherwise
-
   Inputs:
     f
     h
@@ -497,39 +259,26 @@ end
     sbp: sbp object
     eqn: equation object
     opts
-
   Keyword Arguments:
     res_tol
     real_time
-
   eqn.q_vec for q_vec, eqn.res_vec for res_vec, pde_pre_func and pde_post func
   for the pre and post functions, eqn.majorIterationCallback for the 
   majorIterationCallback, and (mesh, sbp, eqn) as the ctx
-
-  For searching: RK4_5
 """->
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts;
-             res_tol=-1.0, real_time=false)
+function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  if opts["revolve"] == true
-    rk4_revolve(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
-                (mesh, sbp, eqn), opts, eqn.params.time;
-                majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
-  else
-    rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
-        (mesh, sbp, eqn), opts, eqn.params.time;
-        majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
-  end
+  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
+      (mesh, sbp, eqn), opts, eqn.params.time;
+      majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
 
 end
 
 @doc """
 ### NonlinearSolvers.pde_pre_func
-
   The pre-function for solving partial differential equations with a physics
   module.  The only operation it performs is disassembling eqn.q_vec into
   eqn.q
-
   Inputs:
     mesh
     sbp
@@ -544,18 +293,15 @@ end
 
 @doc """
 ### NonlinearSolvers.pde_post_func
-
   The post-function for solving partial differential equations with a physics
   module.  This function multiplies by A0inv, assembles eqn.res into
   eqn.res_vec, multiplies by the inverse mass matrix, and calculates
   the SBP approximation to the integral L2 norm
-
   Inputs:
     mesh
     sbp
     eqn
     opts
-
 """->
 function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
@@ -569,5 +315,3 @@ function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
 
   return nothing
 end
-
-
