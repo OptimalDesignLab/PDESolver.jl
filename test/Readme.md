@@ -71,7 +71,7 @@ Note that the serial tests must  be run before the parallel tests.
 
 ## Adding Tests
 Each physics module maintains a `TestSet` object which contains a list of
-tests and their associated tags.  TestSet.jl provides an API for adding
+tests and their associated tags.  TestSystem.jl provides an API for adding
 tests to the list.
 
 All tests must be enclosed in functions.  These functions must fit into
@@ -83,7 +83,7 @@ one of three catagories:
      modifying an existing input file
 
 These catagories correspond to `add_funcs1!`, `add_funcs2!`, and `add_funcs3!`
-in TestSet.jl.
+in TestSystem.jl.
 
 The function `run_testlist` runs a test list.  See the documentation of
 these functions for details on how to use them.
