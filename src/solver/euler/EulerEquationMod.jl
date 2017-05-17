@@ -207,6 +207,8 @@ include("./deriv/differentiateByMetrics.jl")
 include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")
+include("viscous_flux.jl")
+include("viscous_funcs.jl")
 
 global const PhysicsName = "Euler"
 register_physics(PhysicsName, EulerEquationMod, run_euler)

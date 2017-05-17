@@ -78,35 +78,36 @@ type parameters as the EulerEquation object, so it can be used for dispatch.
 
 import PDESolver.evalResidual
 
-@doc """
-### EulerEquationMod.evalResidual
+# @doc """
+# ### EulerEquationMod.evalResidual
 
-  This function drives the evaluation of the EulerEquations.
-  It is agnostic to the dimension of the equation. and the types the arguments
-  are paramaterized on.
+  # This function drives the evaluation of the EulerEquations.
+  # It is agnostic to the dimension of the equation. and the types the arguments
+  # are paramaterized on.
 
-  The function calls only high level functions, all of which take the same
-  four arguments.  Mid level function also take the same arguments.
+  # The function calls only high level functions, all of which take the same
+  # four arguments.  Mid level function also take the same arguments.
 
-  The input/output variables are eqn.q and eqn.res, respectively.
-  eqn.q_vec and eqn.res_vec exist for reusable storage *outside* the residual
-  evaluation.  They should never be used inside the residual evaluation.
+  # The input/output variables are eqn.q and eqn.res, respectively.
+  # eqn.q_vec and eqn.res_vec exist for reusable storage *outside* the residual
+  # evaluation.  They should never be used inside the residual evaluation.
 
-  The function disassembleSolution takes q_vec and puts it into eqn.q
-  The function assembleSolution takes eqn.res and puts it into res_vec
+  # The function disassembleSolution takes q_vec and puts it into eqn.q
+  # The function assembleSolution takes eqn.res and puts it into res_vec
 
-  Arguments:
-    * mesh  : a mesh object
-    * sbp   : SBP operator object
-    * eqn   : an EulerData object
-    * opts  : options dictionary
+  # Arguments:
+    # * mesh  : a mesh object
+    # * sbp   : SBP operator object
+    # * eqn   : an EulerData object
+    # * opts  : options dictionary
 
-  The optional time argument is used for unsteady equations
+  # The optional time argument is used for unsteady equations
 
-"""->
+# """->
 # this function is what the timestepper calls
 # high level function
-function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+using Debug
+@debug function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
 #  println("----- entered evalResidual -----")
@@ -182,6 +183,13 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
+	if eqn.params.isViscous == true
+    evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
+    evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
+	end
+
+  # println(real(eqn.res))
+  # @bp
   return nothing
 end  # end evalResidual
 
@@ -475,6 +483,17 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   getBCFluxes(mesh, sbp, eqn, opts)
 #   println("  getBCFluxes @time printed above")
 
+	if eqn.params.isViscous == true
+		# fill!(eqn.vecflux_face, 0.0)
+		fill!(eqn.vecflux_faceL, 0.0)
+		fill!(eqn.vecflux_faceR, 0.0)
+
+		calcViscousFlux_interior(mesh, sbp, eqn, opts)
+
+		fill!(eqn.vecflux_bndry, 0.0)
+		calcViscousFlux_boundary(mesh, sbp, eqn, opts)	
+	end
+
   # is this needed for anything besides edge stabilization?
   if eqn.params.use_edgestab
     stabscale(mesh, sbp, eqn)
@@ -592,6 +611,10 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
+  end
+
+	if eqn.params.isViscous == true
+    weakdifferentiate2!(mesh, sbp, eqn, eqn.res)
   end
 
   # artificialViscosity(mesh, sbp, eqn) 

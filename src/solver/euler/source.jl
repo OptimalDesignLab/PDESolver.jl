@@ -45,6 +45,553 @@ end
 
 
 
+type SRCPolynomial <: SRCType
+end
+function call(obj::SRCPolynomial, 
+              src::AbstractVector,
+              coords::AbstractVector, 
+              params::ParamType{2}, 
+              t)
+  sigma = 0.01
+	gamma = params.gamma
+	gamma_1 = params.gamma_1
+	aoa = params.aoa
+	rhoInf = 1.0
+	uInf = params.Ma*cos(aoa)
+	vInf = params.Ma*sin(aoa)
+	TInf = 1.0
+	x = coords[1]
+	y = coords[2]
+
+	rho = (x-x*x)*(y-y*y) 
+	u   = (x-x*x)*(y-y*y)
+	v   = (x-x*x)*(y-y*y)
+	T   = (x-x*x)*(y-y*y)
+	rho_x = (1.0 - 2.0*x) * (y - y*y) 
+	u_x   = (1.0 - 2.0*x) * (y - y*y)
+	v_x   = (1.0 - 2.0*x) * (y - y*y)
+	T_x   = (1.0 - 2.0*x) * (y - y*y)
+	rho_y = (x - x*x) * (1.0 - 2.0*y)
+	u_y   = (x - x*x) * (1.0 - 2.0*y)
+	v_y   = (x - x*x) * (1.0 - 2.0*y)
+	T_y   = (x - x*x) * (1.0 - 2.0*y)
+
+	rho = (sigma*rho + 1.0)*rhoInf 
+	u   = (sigma*u + 1.0)*uInf
+	v   = (sigma*v + 1.0)*vInf
+	T   = (sigma*T + 1.0)*TInf
+	rho_x = rho_x*rhoInf*sigma
+	rho_y = rho_y*rhoInf*sigma
+	u_x = u_x*uInf*sigma
+	u_y = u_y*uInf*sigma
+	v_x = v_x*vInf*sigma
+	v_y = v_y*vInf*sigma
+	T_x = T_x*TInf*sigma
+	T_y = T_y*TInf*sigma
+
+	p   = rho*T/gamma
+	E   = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
+
+	p_x   = 1.0/gamma*(rho_x*T + rho*T_x)
+	p_y   = 1.0/gamma*(rho_y*T + rho*T_y)
+	E_x   = T_x/(gamma*gamma_1) + (u*u_x + v*v_x)	
+	E_y   = T_y/(gamma*gamma_1) + (u*u_y + v*v_y)
+	src[:] = 0.0
+  #
+  # contribution from inviscid terms
+  #
+  src[1]  = rho_x*u + rho*u_x + rho_y*v + rho*v_y 
+  src[2]  = rho_x*u*u + 2*rho*u*u_x + p_x
+  src[2] += rho_y*u*v + rho*u_y*v + rho*u*v_y
+  src[3]  = rho_x*u*v + rho*u_x*v + rho*u*v_x
+  src[3] += rho_y*v*v + 2*rho*v*v_y + p_y
+  src[4]  = rho_x*E*u + rho*E_x*u + rho*E*u_x + p_x*u + p*u_x
+  src[4] += rho_y*E*v + rho*E_y*v + rho*E*v_y + p_y*v + p*v_y
+
+	if !params.isViscous 
+		return nothing
+	end
+	#
+	# contribution from viscous terms
+	#
+	u_xx = -2.0 * (y - y*y)
+	v_xx = -2.0 * (y - y*y) 
+	T_xx = -2.0 * (y - y*y) 
+	u_yy = -2.0 * (x - x*x)
+	v_yy = -2.0 * (x - x*x)
+	T_yy = -2.0 * (x - x*x)
+	u_xy = (1.0 - 2.0*x) * (1.0 - 2.0*y) 
+	v_xy = (1.0 - 2.0*x) * (1.0 - 2.0*y)
+
+	u_xx *= sigma*uInf
+	u_xy *= sigma*uInf
+	u_yy *= sigma*uInf
+
+	v_xx *= sigma*vInf
+	v_xy *= sigma*vInf
+	v_yy *= sigma*vInf
+
+	T_xx *= sigma*TInf
+	T_yy *= sigma*TInf
+
+	muK = Array(typeof(coords[1]), 2)
+	getMuK(T, muK)
+	rmu = muK[1]
+	rK = muK[2]
+	txx = rmu * (4./3.*u_x - 2.0/3.0*v_y)
+	txy = rmu * (u_y + v_x) 
+	tyx = rmu * (u_y + v_x) 
+	tyy = rmu * (4./3.*v_y - 2.0/3.0*u_x)
+
+
+	txx_x = rmu*(4./3.*u_xx - 2.0/3.0*v_xy)
+	txx_y = rmu*(4./3.*u_xy - 2.0/3.0*v_yy)
+	txy_x = rmu*(u_xy + v_xx)
+	txy_y = rmu*(u_yy + v_xy)
+	tyx_x = txy_x
+	tyx_y = txy_y
+	tyy_x = rmu*(4./3.*v_xy - 2.0/3.0*u_xx)
+	tyy_y = rmu*(4./3.*v_yy - 2.0/3.0*u_xy)
+	
+	Pr = 0.72
+	c1 = params.Ma/params.Re
+	c2 = c1/(Pr*gamma_1)
+	src[2] -= c1*(txx_x + txy_y)
+	src[3] -= c1*(tyx_x + tyy_y)
+	src[4] -= c1*(txx_x*u + txx*u_x + txy_x*v + txy*v_x) 
+	src[4] -= c1*(txy_y*u + txy*u_y + tyy_y*v + tyy*v_y) 
+	src[4] -= c2*rK*(T_xx + T_yy)
+
+	return nothing
+end
+
+#######################
+#  ___________
+# |           |
+# |    ---    |
+# |   |   |   |
+# |    ---    |
+# |           |
+#  -----------
+#
+#######################
+# inner block = nonslip wall
+# outer block = freestream
+type SRCDoubleSquareC0 <: SRCType
+end
+function call(obj::SRCDoubleSquareC0, 
+              src::AbstractVector,
+              coords::AbstractVector, 
+              params::ParamType{2}, 
+              t)
+  pi = 3.14159265358979323846264338
+	gamma = 1.4
+	gamma_1 = gamma - 1.0
+	aoa = params.aoa
+	rhoInf = 1.0
+	uInf = params.Ma*cos(aoa)
+	vInf = params.Ma*sin(aoa)
+	TInf = 1.0
+	x = coords[1]
+	y = coords[2]
+	#
+	# Exact solution in form of primitive variables
+  #
+  si = [0.5, 1.5]
+  a = [-2.375, 16.875, -45.0, 55.0, -30.0, 6.0]
+  gx    = 0.0
+  gy    = 0.0
+  gx_x  = 0.0
+  gy_y  = 0.0
+  gx_xx = 0.0
+  gy_yy = 0.0
+
+  if x >= si[1] && x < si[2]
+    gx = sin(0.5*pi*x - 0.25*pi)
+    gx_x = 0.5*pi * cos(0.5*pi*x - 0.25*pi)
+    gx_xx = -0.25*pi*  sin(0.5*pi*x - 0.25*pi)
+  elseif x >= si[2] 
+    gx = 1.0
+  elseif x <= -si[1] && x > -si[2]
+    gx = sin(-0.5*pi*x - 0.5*pi)
+    gx_x = -0.5*pi * cos(-0.5*pi*x - 0.25*pi)
+    gx_xx = -0.25*pi*pi * sin(-0.5*pi*x - 0.25*pi)
+  elseif x <= -si[2]
+    gx = 1.0
+  end  
+
+  if y >= si[1] && y < si[2]
+    gy = sin(0.5*pi*y - 0.25*pi)
+    gy_y = 0.5*pi * cos(0.5*pi*y - 0.25*pi)
+    gy_yy = -0.25*pi*  sin(0.5*pi*y - 0.25*pi)
+  elseif y >= si[2] 
+    gy = 1.0
+  elseif y <= -si[1] && y > -si[2]
+    gy = sin(-0.5*pi*y - 0.5*pi)
+    gy_y = -0.5*pi * cos(-0.5*pi*y - 0.25*pi)
+    gy_yy = -0.25*pi*pi * sin(-0.5*pi*y - 0.25*pi)
+  elseif y <= -si[2]
+    gy = 1.0
+  end  
+  rho = rhoInf
+  u   = uInf * (gx + gy - gx*gy) 
+  v   = vInf * (gx + gy - gx*gy) 
+  T   = TInf
+
+  #
+  # contribution from inviscid terms
+  #
+  rho_x = 0.0
+  rho_y = 0.0
+  u_x = uInf * (gx_x - gx_x * gy) 
+  u_y = uInf * (gy_y - gx * gy_y) 
+  v_x = vInf * (gx_x - gx_x * gy) 
+  v_y = vInf * (gy_y - gx * gy_y) 
+  T_x = 0.0 
+	T_y = 0.0 
+
+  p   = rho*T/gamma
+	E   = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
+
+	p_x   = 1.0/gamma*(rho_x*T + rho*T_x)
+	p_y   = 1.0/gamma*(rho_y*T + rho*T_y)
+	E_x   = T_x/(gamma*gamma_1) + (u*u_x + v*v_x)	
+	E_y   = T_y/(gamma*gamma_1) + (u*u_y + v*v_y)
+
+	src[:] = 0.0
+  src[1]  = rho_x*u + rho*u_x + rho_y*v + rho*v_y
+  src[2]  = rho_x*u*u + 2*rho*u*u_x +  p_x
+  src[2] += rho_y*u*v + rho*u_y*v + rho*u*v_y
+  src[3]  = rho_x*u*v + rho*u_x*v + rho*u*v_x
+  src[3] += rho_y*v*v + 2*rho*v*v_y + p_y
+  src[4]  = rho_x*E*u + rho*E_x*u + rho*E*u_x + p_x*u + p*u_x
+  src[4] += rho_y*E*v + rho*E_y*v + rho*E*v_y + p_y*v + p*v_y
+
+  # println(real(src))
+
+	if !params.isViscous 
+    return nothing
+	end
+	
+	#
+	# contribution from viscous terms
+	#
+	muK = Array(typeof(coords[1]), 2)
+	getMuK(T, muK)
+	rmu = muK[1]
+	rK  = muK[2]
+  u_xx = uInf * (gx_xx - gx_xx * gy) 
+  u_xy = uInf * (-gx_x * gy_y) 
+  u_yy = uInf * (gy_yy - gx * gy_yy)
+  u_yx = u_xy
+  v_xx = vInf * (gx_xx - gx_xx * gy) 
+  v_xy = vInf * (-gx_x * gy_y) 
+  v_yy = vInf * (gy_yy - gx * gy_yy)
+  v_yx = v_xy
+  T_xx = 0.0
+  T_yy = 0.0
+  
+	txx = rmu * (4./3.*u_x - 2.0/3.0*v_y)
+	txy = rmu * (u_y + v_x) 
+	tyx = rmu * (u_y + v_x) 
+	tyy = rmu * (4./3.*v_y - 2.0/3.0*u_x)
+
+	txx_x = rmu*(4./3.*u_xx - 2.0/3.0*v_xy)
+	txx_y = rmu*(4./3.*u_xy - 2.0/3.0*v_yy)
+	txy_x = rmu*(u_xy + v_xx)
+	txy_y = rmu*(u_yy + v_xy)
+	tyx_x = txy_x
+	tyx_y = txy_y
+	tyy_x = rmu*(4./3.*v_xy - 2.0/3.0*u_xx)
+	tyy_y = rmu*(4./3.*v_yy - 2.0/3.0*u_xy)
+
+	Pr = 0.72
+	c1 = params.Ma/params.Re
+	c2 = c1/(Pr*gamma_1)
+	src[2] -= c1*(txx_x + txy_y)
+	src[3] -= c1*(tyx_x + tyy_y)
+	src[4] -= c1*(txx_x*u + txx*u_x + txy_x*v + txy*v_x) 
+	src[4] -= c1*(tyx_y*u + tyx*u_y + tyy_y*v + tyy*v_y) 
+	src[4] -= c2*rK*(T_xx + T_yy)
+	
+	return nothing
+end
+
+type SRCDoubleSquare <: SRCType
+end
+function call(obj::SRCDoubleSquare, 
+              src::AbstractVector,
+              coords::AbstractVector, 
+              params::ParamType{2}, 
+              t)
+	gamma = 1.4
+	gamma_1 = gamma - 1.0
+	aoa = params.aoa
+	rhoInf = 1.0
+	uInf = params.Ma*cos(aoa)
+	vInf = params.Ma*sin(aoa)
+	TInf = 1.0
+	x = coords[1]
+	y = coords[2]
+	#
+	# Exact solution in form of primitive variables
+  #
+  si = [0.5, 1.5]
+  a = [-2.375, 16.875, -45.0, 55.0, -30.0, 6.0]
+  gx    = 0.0
+  gy    = 0.0
+  gx_x  = 0.0
+  gy_y  = 0.0
+  gx_xx = 0.0
+  gy_yy = 0.0
+
+  if x >= si[1] && x < si[2]
+    gx = a[1] + a[2]*x + a[3]*x*x + a[4]*x^3 + a[5]*x^4 + a[6]*x^5
+    gx_x = a[2] + 2*a[3]*x + 3*a[4]*x*x + 4*a[5]*x*x*x + 5*a[6]*x^4
+    gx_xx = 2*a[3] + 6*a[4]*x + 12*a[5]*x*x + 20*a[6]*x*x*x 
+  elseif x >= si[2] 
+    gx = 1.0
+  elseif x <= -si[1] && x > -si[2]
+    gx = a[1] - a[2]*x + a[3]*x*x - a[4]*x^3 + a[5]*x^4 - a[6]*x^5
+    gx_x = -a[2] + 2*a[3]*x - 3*a[4]*x*x + 4*a[5]*x*x*x - 5*a[6]*x^4
+    gx_xx = 2*a[3] - 6*a[4]*x + 12*a[5]*x*x - 20*a[6]*x*x*x 
+  elseif x <= -si[2]
+    gx = 1.0
+  end  
+  if y >= si[1] && y < si[2]
+    gy = a[1] + a[2]*y + a[3]*y*y + a[4]*y^3 + a[5]*y^4 + a[6]*y^5
+    gy_y = a[2] + 2*a[3]*y + 3*a[4]*y*y + 4*a[5]*y*y*y + 5*a[6]*y^4
+    gy_yy = 2*a[3] + 6*a[4]*y + 12*a[5]*y*y + 20*a[6]*y*y*y 
+  elseif y >= si[2] 
+    gy = 1.0
+  elseif y <= -si[1] && y > -si[2]
+    gy = a[1] - a[2]*y + a[3]*y*y - a[4]*y^3 + a[5]*y^4 - a[6]*y^5
+    gy_y = -a[2] + 2*a[3]*y - 3*a[4]*y*y + 4*a[5]*y*y*y - 5*a[6]*y^4
+    gy_yy = 2*a[3] - 6*a[4]*y + 12*a[5]*y*y - 20*a[6]*y*y*y 
+  elseif y <= -si[2]
+    gy = 1.0
+  end  
+
+  rho = rhoInf
+  u   = uInf * (gx + gy - gx*gy) 
+  v   = vInf * (gx + gy - gx*gy) 
+  T   = TInf
+
+  #
+  # contribution from inviscid terms
+  #
+  rho_x = 0.0
+  rho_y = 0.0
+  u_x = uInf * (gx_x - gx_x * gy) 
+  u_y = uInf * (gy_y - gx * gy_y) 
+  v_x = vInf * (gx_x - gx_x * gy) 
+  v_y = vInf * (gy_y - gx * gy_y) 
+  T_x = 0.0 
+	T_y = 0.0 
+
+  p   = rho*T/gamma
+	E   = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
+
+	p_x   = 1.0/gamma*(rho_x*T + rho*T_x)
+	p_y   = 1.0/gamma*(rho_y*T + rho*T_y)
+	E_x   = T_x/(gamma*gamma_1) + (u*u_x + v*v_x)	
+	E_y   = T_y/(gamma*gamma_1) + (u*u_y + v*v_y)
+
+	src[:] = 0.0
+  src[1]  = rho_x*u + rho*u_x + rho_y*v + rho*v_y
+  src[2]  = rho_x*u*u + 2*rho*u*u_x +  p_x
+  src[2] += rho_y*u*v + rho*u_y*v + rho*u*v_y
+  src[3]  = rho_x*u*v + rho*u_x*v + rho*u*v_x
+  src[3] += rho_y*v*v + 2*rho*v*v_y + p_y
+  src[4]  = rho_x*E*u + rho*E_x*u + rho*E*u_x + p_x*u + p*u_x
+  src[4] += rho_y*E*v + rho*E_y*v + rho*E*v_y + p_y*v + p*v_y
+
+  # println(real(src))
+
+	if !params.isViscous 
+    return nothing
+	end
+	
+	#
+	# contribution from viscous terms
+	#
+	muK = Array(typeof(coords[1]), 2)
+	getMuK(T, muK)
+	rmu = muK[1]
+	rK  = muK[2]
+  u_xx = uInf * (gx_xx - gx_xx * gy) 
+  u_xy = uInf * (-gx_x * gy_y) 
+  u_yy = uInf * (gy_yy - gx * gy_yy)
+  u_yx = u_xy
+  v_xx = vInf * (gx_xx - gx_xx * gy) 
+  v_xy = vInf * (-gx_x * gy_y) 
+  v_yy = vInf * (gy_yy - gx * gy_yy)
+  v_yx = v_xy
+  T_xx = 0.0
+  T_yy = 0.0
+  
+	txx = rmu * (4./3.*u_x - 2.0/3.0*v_y)
+	txy = rmu * (u_y + v_x) 
+	tyx = rmu * (u_y + v_x) 
+	tyy = rmu * (4./3.*v_y - 2.0/3.0*u_x)
+
+	txx_x = rmu*(4./3.*u_xx - 2.0/3.0*v_xy)
+	txx_y = rmu*(4./3.*u_xy - 2.0/3.0*v_yy)
+	txy_x = rmu*(u_xy + v_xx)
+	txy_y = rmu*(u_yy + v_xy)
+	tyx_x = txy_x
+	tyx_y = txy_y
+	tyy_x = rmu*(4./3.*v_xy - 2.0/3.0*u_xx)
+	tyy_y = rmu*(4./3.*v_yy - 2.0/3.0*u_xy)
+
+	Pr = 0.72
+	c1 = params.Ma/params.Re
+	c2 = c1/(Pr*gamma_1)
+	src[2] -= c1*(txx_x + txy_y)
+	src[3] -= c1*(tyx_x + tyy_y)
+	src[4] -= c1*(txx_x*u + txx*u_x + txy_x*v + txy*v_x) 
+	src[4] -= c1*(tyx_y*u + tyx*u_y + tyy_y*v + tyy*v_y) 
+	src[4] -= c2*rK*(T_xx + T_yy)
+	
+	return nothing
+end
+
+type SRCLaminar <: SRCType
+end
+function call(obj::SRCLaminar, 
+              src::AbstractVector,
+              coords::AbstractVector, 
+              params::ParamType{2}, 
+              t)
+  sigma = 0.01
+  pi = 3.14159265358979323846264338
+	gamma = 1.4
+	gamma_1 = gamma - 1.0
+	aoa = params.aoa
+	rhoInf = 1.0
+	uInf = params.Ma*cos(aoa)
+	vInf = params.Ma*sin(aoa)
+	TInf = 1.0
+	x = coords[1]*pi
+	y = coords[2]*pi
+	x2 = 2*x
+	y2 = 2*y 
+	x4 = 4*x
+	y4 = 4*y
+	sx  = sin(x)
+	sy  = sin(y)
+	cx  = cos(x)
+	cy  = cos(y)
+	sx2 = sin(x2)
+	sy2 = sin(y2)
+	cx2 = cos(x2)
+	cy2 = cos(y2)
+	sx4 = sin(x4)
+	sy4 = sin(y4)
+	cx4 = cos(x4)
+	cy4 = cos(y4)
+	#
+	# Exact solution in form of primitive variables
+	#
+	rho = 0.25 * sx2 * sy2
+	u   = 0.25 * sx4 * sy4
+	v   = 0.25 * (cx4  + 1.0) * (cy4 + 1.0)
+	T   = 0.25 * (1.0 - cx4) * (1.0 - cy4)
+	rho_x = 0.5*pi * cx2 * sy2
+	rho_y = 0.5*pi * sx2 * cy2
+	u_x = pi* cx4 * sy4
+	u_y = pi* sx4 * cy4
+	v_x = -pi* sx4 * (cy4 + 1.0)
+	v_y = -pi* (cx4  + 1) * sy4
+	T_x = pi* sx4 * (1.0 - cy4)
+	T_y = pi* (1.0 - cx4) * sy4
+
+	rho = (sigma*rho + 1.0)*rhoInf 
+	u   = (sigma*u + 1.0)*uInf
+	v   = (sigma*v + 1.0)*vInf
+	T   = (sigma*T + 1.0)*TInf
+	rho_x = rho_x*rhoInf*sigma
+	rho_y = rho_y*rhoInf*sigma
+	u_x = u_x*uInf*sigma
+	u_y = u_y*uInf*sigma
+	v_x = v_x*vInf*sigma
+	v_y = v_y*vInf*sigma
+	T_x = T_x*TInf*sigma
+	T_y = T_y*TInf*sigma
+
+	p   = rho*T/gamma
+	E   = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
+
+	p_x   = 1.0/gamma*(rho_x*T + rho*T_x)
+	p_y   = 1.0/gamma*(rho_y*T + rho*T_y)
+	E_x   = T_x/(gamma*gamma_1) + (u*u_x + v*v_x)	
+	E_y   = T_y/(gamma*gamma_1) + (u*u_y + v*v_y)
+
+	src[:] = 0.0
+  #
+  # contribution from inviscid terms
+  #
+  src[1]  = rho_x*u + rho*u_x + rho_y*v + rho*v_y
+  src[2]  = rho_x*u*u + 2*rho*u*u_x +  p_x
+  src[2] += rho_y*u*v + rho*u_y*v + rho*u*v_y
+  src[3]  = rho_x*u*v + rho*u_x*v + rho*u*v_x
+  src[3] += rho_y*v*v + 2*rho*v*v_y + p_y
+  src[4]  = rho_x*E*u + rho*E_x*u + rho*E*u_x + p_x*u + p*u_x
+  src[4] += rho_y*E*v + rho*E_y*v + rho*E*v_y + p_y*v + p*v_y
+
+	if !params.isViscous 
+		return nothing
+	end
+	
+	#
+	# contribution from viscous terms
+	#
+	muK = Array(typeof(coords[1]), 2)
+	getMuK(T, muK)
+	rmu = muK[1]
+	rK  = muK[2]
+	u_xx = -4*pi*pi * sx4 * sy4
+	u_xy =  4*pi*pi * cx4 * cy4
+	u_yy = -4*pi*pi * sx4 * sy4
+	v_xx = -4*pi*pi * cx4 * (cy4 + 1.0)
+	v_xy =  4*pi*pi * sx4 * sy4
+	v_yy = -4*pi*pi * (cx4 + 1) * cy4
+	T_xx =  4*pi*pi * cx4 * (1.0 - cy4)
+	T_yy =  4*pi*pi * (1.0 - cx4) * cy4
+	u_xx = u_xx * uInf * sigma
+	u_xy = u_xy * uInf * sigma
+	u_yy = u_yy * uInf * sigma
+	v_xx = v_xx * vInf * sigma
+	v_xy = v_xy * vInf * sigma
+	v_yy = v_yy * vInf * sigma
+	T_xx = T_xx * TInf * sigma
+	T_yy = T_yy * TInf * sigma
+
+	txx = rmu * (4./3.*u_x - 2.0/3.0*v_y)
+	txy = rmu * (u_y + v_x) 
+	tyx = rmu * (u_y + v_x) 
+	tyy = rmu * (4./3.*v_y - 2.0/3.0*u_x)
+
+	txx_x = rmu*(4./3.*u_xx - 2.0/3.0*v_xy)
+	txx_y = rmu*(4./3.*u_xy - 2.0/3.0*v_yy)
+	txy_x = rmu*(u_xy + v_xx)
+	txy_y = rmu*(u_yy + v_xy)
+	tyx_x = txy_x
+	tyx_y = txy_y
+	tyy_x = rmu*(4./3.*v_xy - 2.0/3.0*u_xx)
+	tyy_y = rmu*(4./3.*v_yy - 2.0/3.0*u_xy)
+
+	Pr = 0.72
+	c1 = params.Ma/params.Re
+	c2 = c1/(Pr*gamma_1)
+	src[2] -= c1*(txx_x + txy_y)
+	src[3] -= c1*(tyx_x + tyy_y)
+	src[4] -= c1*(txx_x*u + txx*u_x + txy_x*v + txy*v_x) 
+	src[4] -= c1*(tyx_y*u + tyx*u_y + tyy_y*v + tyy*v_y) 
+	src[4] -= c2*rK*(T_xx + T_yy)
+	
+	return nothing
+end
 
 
 type SRC0 <: SRCType  # dummy source functor, it should nevery actually be called
@@ -265,6 +812,10 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
+"SRCLaminar" => SRCLaminar(),
+"SRCDoubleSquare" => SRCDoubleSquare(),
+"SRCDoubleSquareC0" => SRCDoubleSquareC0(),
+"SRCPolynomial" => SRCPolynomial(),
 )
 
 
