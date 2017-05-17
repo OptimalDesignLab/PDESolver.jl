@@ -5,7 +5,7 @@
 # This test suite is intended to test the advection physics module's 
 #   implementation of eqn_deepcopy
 
-# 3 tests:
+# 5 tests:
 #   1. ensure eqn_copy matches eqn
 #   2. ensure eqn_copy pointers do not equal eqn's
 #   3. ensure that changes to eqn do not affect eqn_copy
@@ -114,7 +114,6 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
   rand!(eqn.q)
   rand!(eqn.res)
 
-
   facts("--- Testing eqn_deepcopy, eqn change phase ---") do
 
     @fact (eqn_copy.q_face[1] == eqn.q_face[1]) --> false
@@ -132,8 +131,17 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
   end
 
+  rand!(eqn_copy.q)
+  rand!(eqn_copy.res)
 
-end
+  facts("--- Testing eqn_deepcopy, eqn_copy change phase ---") do
+
+    @fact (eqn_copy.q[1] == eqn_copy.q_vec[1]) --> true
+    @fact (eqn_copy.res[1] == eqn_copy.res_vec[1]) --> true
+
+  end
+
+end   # end of function test_eqn_copy
 
 add_func2!(AdvectionTests, test_eqn_copy, test_eqn_copy_inputfile)
 
