@@ -57,7 +57,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
   # some parameters
   lambda_min = 0.0
-  itermax = 100
+  itermax = opts["itermax"]
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
 
