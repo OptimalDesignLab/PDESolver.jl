@@ -111,7 +111,6 @@ using Debug
                      opts::Dict, t=0.0)
 
 #  println("----- entered evalResidual -----")
-
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
@@ -127,13 +126,10 @@ using Debug
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
 #  println("dataPrep @time printed above")
 
-
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #    println("volume integral @time printed above")
   end
-  println("residual after volume integral")
-  println(real(eqn.res))
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
   #----------------------------------------------------------------------------
@@ -160,8 +156,6 @@ using Debug
    evalBoundaryIntegrals(mesh, sbp, eqn)
    #println("boundary integral @time printed above")
   end
-  println("residual after boundary integral")
-  println(real(eqn.res))
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
@@ -172,8 +166,6 @@ using Debug
     evalFaceIntegrals(mesh, sbp, eqn, opts)
 #    println("face integral @time printed above")
   end
-  println("residual after face integral")
-  println(real(eqn.res))
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
@@ -193,8 +185,6 @@ using Debug
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
 	end
 
-  println(real(eqn.res))
-  @bp
   return nothing
 end  # end evalResidual
 

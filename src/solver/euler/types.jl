@@ -231,6 +231,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     Re = opts[ "Re"]
     aoa = opts[ "aoa"]
     E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
+    println(E_free)
     rho_free = 1.0
 
     edgestab_gamma = opts["edgestab_gamma"]

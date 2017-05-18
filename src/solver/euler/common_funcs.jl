@@ -193,7 +193,7 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   Ma = params.Ma
 
   sol[2] = rho*Ma*cos(params.aoa)
-  sol[3] = -rho*Ma*sin(params.aoa)
+  sol[3] = rho*Ma*sin(params.aoa)
 
   return nothing
 end
@@ -210,7 +210,7 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
 
   sol[2] = rho*Ma*cos(params.aoa)
   sol[3] = 0.0
-  sol[4] = -rho*Ma*sin(params.aoa)
+  sol[4] = rho*Ma*sin(params.aoa)
 
   return nothing
 end
