@@ -340,7 +340,7 @@ function calcEuclidianNorm{T}(comm::MPI.Comm, vec::AbstractVector{T})
   Tnorm = real(T)
   val = zero(Tnorm)
   for i=1:length(vec)
-    val += conj(vec[i])*vec[i]
+    val += real(conj(vec[i])*vec[i])
   end
 
   val = MPI.Allreduce(val, MPI.SUM, comm)

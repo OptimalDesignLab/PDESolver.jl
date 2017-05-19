@@ -145,7 +145,6 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   S::Array{Float64, 3}  # SBP S matrix
 
-  homotopy_lambda::Float64
   #=
   # timings
   t_volume::Float64  # time for volume integrals
@@ -290,8 +289,6 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     end
 
 
-    homotopy_lambda = 0.0
-
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
                Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
@@ -308,8 +305,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
-               S, homotopy_lambda,
-               time)
+               S, time)
 
     end   # end of ParamType function
 

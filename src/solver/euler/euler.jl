@@ -578,7 +578,7 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
   integral_type = opts["volume_integral_type"]
-  if integral_type == 1
+  if integral_type == 1  # regular volume integrals
     if opts["Q_transpose"] == true
       for i=1:Tdim
         weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
@@ -588,7 +588,7 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
       end
     end  # end if
-  elseif integral_type == 2
+  elseif integral_type == 2  # entropy stable formulation
     calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))

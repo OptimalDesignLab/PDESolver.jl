@@ -32,7 +32,7 @@
   populated with the flux. params is eqn.params.
 
 """->
-function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
+function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP,
                           eqn::EulerData{Tsol, Tres, Tdim, :conservative},
                           functor::FluxType,
