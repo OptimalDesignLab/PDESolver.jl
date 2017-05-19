@@ -27,6 +27,7 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("simpleODE.jl")
 include("common_funcs.jl")
 include("ic.jl")
+include("eqn_copy.jl")
 include("startup_func.jl")
 
 global const PhysicsName = "SimpleODE"

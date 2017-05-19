@@ -1,112 +1,107 @@
-# ??: EulerData_ or EulerData?
-function eqn_deepcopy(eqn::EulerData_, mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
+export eqn_deepcopy
+
+# One reason for doing this is this case:
+#   a = rand(2,2)
+#   b = a
+#   a[3] = 8
+#   b[3] == 8
+#   this is because 'a[3] =' is actually setindex!
+"""
+  EulerEquationMod.eqn_deepcopy
+
+  This function performs a proper deepcopy (unlike julia's builtin deepcopy) 
+    on an Euler equation object.
+  It preserves reference topology (i.e. q & q_vec pointing to same array in DG schemes).
+
+    Inputs:
+      eqn
+      mesh
+      sbp
+      opts
+
+    Outputs:
+      eqn_copy
+
+"""
+# TODO: check q/q_vec, res/res_vec
+# TODO: tests
+#  1. ensure copy matches
+#  2. ensure changes to eqn don't affect eqn_copy
+#  3. ensure changes to eqn_copy.q change eqn_copy.q_vec, same for res
+
+function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim}, mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, opts::Dict)
+
+	# over 100 fields, so it is necessary to write a better approach for copying than explicitly copying every named field
 
   # 1: call constructor on eqn_copy
+	var_type = opts["variable_type"]
 
   eqn_copy = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 
-  # should be zero'ed out
-
   # 2: copy over fields
-  eqn_copy.f = copy(eqn.f)                            # f::IOStream
-  eqn_copy.t = copy(eqn.t)                            # t::Float64
-  eqn_copy.order = copy(eqn.order)                    # order::Int
 
+	for fdnm in fieldnames(eqn)		# loop over first level fieldnames in eqn
 
+		fdnm_type = typeof(getfield(eqn, fdnm))		# get the super type of the current field
+
+		# handle params
+		if issubtype(fdnm_type, AbstractParamType) 			# if this first level fieldname is of type ParamType; ex: eqn.params
+			
+			# loop over eqn.params, eqn.params_conservative, or eqn.params_entropy
+      println(" is a subtype of AbstractParamType, fdnm: ", fdnm)
+
+      for fdnm_lvl2 in fieldnames(getfield(eqn, fdnm))      # loop over 2nd level fieldnames
+        if issubtype(fdnm_type, Array)							# if the 2nd level fieldname is of type Array; ex: eqn.params.q_vals
+
+          # this does not work: setfield!(getfield(eqn_copy, a), b , getfield(getfield(eqn, a),b))
+          #   must use copy, or else changing eqn's value changes eqn_copy
+          setfield!(getfield(eqn_copy, fdnm), fdnm_lvl2, copy(getfield(getfield(eqn, fdnm), fdnm_lvl2)))
+
+          # Note: this is assuming that there are no Arrays of Arrays inside an eqn.params (or params_entropy, etc)
+
+        else            # if the 2nd level fieldname is not of type Array; ex: eqn.params.gamma
+
+          # because copy is not defined for all non-array types, such as functions
+          println("fdnm: ", fdnm)
+          println("fdnm_lvl2: ", fdnm_lvl2)
+          setfield!(getfield(eqn_copy, fdnm), fdnm_lvl2, getfield(getfield(eqn, fdnm), fdnm_lvl2))
+
+        end
+
+      end
+			
+		# handle arrays
+		elseif issubtype(fdnm_type, Array)				# if this first level fieldname is of type Array; ex: eqn.q or eqn.q_face_send
+
+			# handle array of arrays
+			if issubtype(eltype(fdnm_type), Array)				# if this is an Array of Arrays; ex: eqn.q_face_send
+
+        # first copy the outer array
+        setfield!(eqn_copy, fdnm, copy(getfield(eqn, fdnm)))      # copy is required here, as the innermost object is an array
+
+        # then loop over array and copy all elements, which are each an array
+        for i = 1:length(getfield(eqn, fdnm))
+
+          # use getindex/setindex! ?
+          setindex!(getfield(eqn_copy, fdnm), getindex(getfield(eqn, fdnm), i), i)
+
+        end   # end of loop over elements (each an array) of the 1st level field, which is of type array
+
+      else      # if this a simple Array; ex: eqn.q
+
+        setfield!(eqn_copy, fdnm, copy(getfield(eqn, fdnm)))      # copy is required here, as the innermost object is an array
+
+			end
+
+    else        # handle non-arrays
+
+      setfield!(eqn_copy, fdnm, getfield(eqn, fdnm))      # copy is not defined for many of these non-array types: use assignment
+
+    end
+
+  end     # end of loop over first level fieldnames
+
+			
+  return eqn_copy
 
 end
-
-
-
-#=
-# list of fields
-  f::IOStream
-  t::Float64  # current time value
-  order::Int  # accuracy of elements (p=1,2,3...)
-
-  #TODO: consider making these vectors views of a matrix, to guarantee
-  #      spatial locality
-  q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
-  q_vals2::Array{Tsol, 1}
-  q_vals3::Array{Tsol, 1}
-  qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
-  v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
-  v_vals2::Array{Tsol, 1}
-  Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
-
-  # numDofPerNode x stencilsize arrays for entropy variables
-  w_vals_stencil::Array{Tsol, 2}
-  w_vals2_stencil::Array{Tsol, 2}
-
-  res_vals1::Array{Tres, 1}  # reusable residual type storage
-  res_vals2::Array{Tres, 1}  # reusable residual type storage
-  res_vals3::Array{Tres, 1}  
-
-  flux_vals1::Array{Tres, 1}  # reusable storage for flux values
-  flux_vals2::Array{Tres, 1}  # reusable storage for flux values
-
-  sat_vals::Array{Tres, 1}  # reusable storage for SAT term
-
-  A0::Array{Tsol, 2}  # reusable storage for the A0 matrix
-  A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
-  A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
-  A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
-  S2::Array{Tsol, 1}  # diagonal matrix of eigenvector scaling
-
-  A_mats::Array{Tsol, 3}  # reusable storage for flux jacobians
-
-  Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
-  Rmat2::Array{Tres, 2}
-
-  P::Array{Tmsh, 2}  # projection matrix
-
-  nrm::Array{Tmsh, 1}  # a normal vector
-  nrm2::Array{Tmsh, 1}
-  nrm3::Array{Tmsh, 1}
-
-  h::Float64 # temporary: mesh size metric
-
-  cv::Float64  # specific heat constant
-  R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
-  gamma::Float64 # ratio of specific heats
-  gamma_1::Float64 # = gamma - 1
-
-  Ma::Float64  # free stream Mach number
-  Re::Float64  # free stream Reynolds number
-  aoa::Float64  # angle of attack
-  rho_free::Float64  # free stream density
-  E_free::Float64 # free stream energy (4th conservative variable)
-
-  edgestab_gamma::Float64  # edge stabilization parameter
-  # debugging options
-  writeflux::Bool  # write Euler flux
-  writeboundary::Bool  # write boundary data
-  writeq::Bool # write solution variables
-  use_edgestab::Bool  # use edge stabilization
-  use_filter::Bool  # use filtering
-  use_res_filter::Bool # use residual filtering
-
-  filter_mat::Array{Float64, 2}  # matrix that performs filtering operation
-                                 # includes transformations to/from modal representation
-
-  use_dissipation::Bool  # use artificial dissipation
-  dissipation_const::Float64  # constant used for dissipation filter matrix
-
-  tau_type::Int  # type of tau to use for GLS stabilization
-
-  vortex_x0::Float64  # vortex center x coordinate at t=0
-  vortex_strength::Float64  # strength of the vortex
-
-  krylov_itr::Int  # Krylov iteration number for iterative solve
-  krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
-
-  Rprime::Array{Float64, 2}  # numfaceNodes x numNodesPerElement interpolation matrix
-                             # this should live in sbpface instead
-  # temporary storage for calcECFaceIntegrals
-  A::Array{Tres, 2}
-  B::Array{Tres, 3}
-  iperm::Array{Int, 1}
-
-  time::Timings
-
-=#
