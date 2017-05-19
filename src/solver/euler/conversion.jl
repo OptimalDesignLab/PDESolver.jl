@@ -368,8 +368,8 @@ function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-	q_view = sview(q_arr, :, j, i)  # reuse memory
-	convertToConservative(eqn.params, q_view, q_view)
+  q_view = sview(q_arr, :, j, i)  # reuse memory
+  convertToConservative(eqn.params, q_view, q_view)
     end
   end
 
@@ -517,8 +517,8 @@ function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-	q_view = sview(q_arr, :, j, i)  # reuse memory
-	convertToEntropy(eqn.params, q_view, q_view)
+  q_view = sview(q_arr, :, j, i)  # reuse memory
+  convertToEntropy(eqn.params, q_view, q_view)
     end
   end
 

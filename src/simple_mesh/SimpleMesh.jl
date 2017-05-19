@@ -39,52 +39,52 @@ simpleMesh is a mesh type which generates a rectangular mesh in 2D with triangul
 
 type simpleMesh{T <: FloatingPoint}
 
-	lengthx::FloatingPoint
-	lengthy::FloatingPoint
-	nedx::Int
-	nedy::Int
-	nnpe::Int
-	order::Int
-	numNodes::Int
-	numVert::Int
-	numEdge::Int
-	numEl::Int
-	numDof::Int
-	numDofPerNode::Int
-	numNodesPerElement::Int
-	numBoundaryEdges::Int
-	dofs::Array{Int}
-	vtxCoord::Array{T}
-	elemEdgeLengthx::FloatingPoint
-	elemEdgeLengthy::FloatingPoint
-	bndryfaces::Array{Boundary}
-	interfaces::Array{Interface}
+  lengthx::FloatingPoint
+  lengthy::FloatingPoint
+  nedx::Int
+  nedy::Int
+  nnpe::Int
+  order::Int
+  numNodes::Int
+  numVert::Int
+  numEdge::Int
+  numEl::Int
+  numDof::Int
+  numDofPerNode::Int
+  numNodesPerElement::Int
+  numBoundaryEdges::Int
+  dofs::Array{Int}
+  vtxCoord::Array{T}
+  elemEdgeLengthx::FloatingPoint
+  elemEdgeLengthy::FloatingPoint
+  bndryfaces::Array{Boundary}
+  interfaces::Array{Interface}
 
-	# dofs::Array{Int,3} # Store dof numbers of solution array for speedy assembly
+  # dofs::Array{Int,3} # Store dof numbers of solution array for speedy assembly
 
-	# numBC::Int  # number of boundary conditions
-	
+  # numBC::Int  # number of boundary conditions
+  
 
   function simpleMesh(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode)
-	order = nnpe-1 # Calculate the mesh order
+  order = nnpe-1 # Calculate the mesh order
 
-	# calculating the members of the type using functions
+  # calculating the members of the type using functions
     (dofs,numNodes,numEl,numNodesPerElement) = createMesh(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode)
 
-	numVert = (nedx+1)*(nedy+1)
-	numDof = numNodes * numDofPerNode
-	numBoundaryEdges = 2*(nedx+nedy)
+  numVert = (nedx+1)*(nedy+1)
+  numDof = numNodes * numDofPerNode
+  numBoundaryEdges = 2*(nedx+nedy)
 
-	(vtxCoord, elemEdgeLengthx, elemEdgeLengthy) = vtxLocation(lengthx, lengthy, nedx, nedy, numEl)
+  (vtxCoord, elemEdgeLengthx, elemEdgeLengthy) = vtxLocation(lengthx, lengthy, nedx, nedy, numEl)
         
     (bndryfaces, numEdge) = boundaryEdges(nedx, nedy, numEl)
     interfaces = interiorEdgeinfo(nedx,nedy,numEl)
-	
+  
 
 
-	new(lengthx,lengthy,nedx,nedy,nnpe,order,numNodes,numVert,numEdge,numEl,
-		numDof,numDofPerNode,numNodesPerElement,numBoundaryEdges,dofs,vtxCoord,
-		elemEdgeLengthx,elemEdgeLengthy,bndryfaces,interfaces)
+  new(lengthx,lengthy,nedx,nedy,nnpe,order,numNodes,numVert,numEdge,numEl,
+    numDof,numDofPerNode,numNodesPerElement,numBoundaryEdges,dofs,vtxCoord,
+    elemEdgeLengthx,elemEdgeLengthy,bndryfaces,interfaces)
 
   end # Ends the function simpleMesh
 end # Ends the type simpleMesh

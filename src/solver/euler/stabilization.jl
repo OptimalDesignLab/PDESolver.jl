@@ -218,13 +218,13 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::AbstractSBP,
           tmpL[field] = dirL[di]*EDn[field,i]/sbp.w[iL]
           tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
         end
-	elementL = face.elementL
-	elementR = face.elementR
+  elementL = face.elementL
+  elementR = face.elementR
         for j = 1:sbp.numnodes
           for field = 1:size(u,1)
-	    tmp2 =  sbp.Q[iL,j,di]*tmpL[field]
+      tmp2 =  sbp.Q[iL,j,di]*tmpL[field]
             res[field,j,face.elementL] += sbp.Q[iL,j,di]*tmpL[field]
-	    tmp2 = sbp.Q[iR,j,di]*tmpR[field]
+      tmp2 = sbp.Q[iR,j,di]*tmpR[field]
             res[field,j,face.elementR] += sbp.Q[iR,j,di]*tmpR[field]
           end
         end
@@ -355,27 +355,27 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn,
           tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
         end
 
-#	println("tmpL = ", tmpL)
-#	println("tmpR = ", tmpR)
-	elementL = face.elementL
-	elementR = face.elementR
-	faceL = face.faceL
-	faceR = face.faceR
+#  println("tmpL = ", tmpL)
+#  println("tmpR = ", tmpR)
+  elementL = face.elementL
+  elementR = face.elementR
+  faceL = face.faceL
+  faceR = face.faceR
         for j = 1:sbp.numnodes
           for field = 1:size(u,1)
-	    # this is elementR affecting elementL
+      # this is elementR affecting elementL
             tmp2 = sbp.Q[iL,j,di]*tmpL[field]
 #            println("res_edge[$field, $j, $elementL, $faceL] += ", tmp2)
 
             res_edge[field,j,face.elementL, face.faceL] += sbp.Q[iL,j,di]*tmpL[field]
-	    # this is elementR affecting itself
+      # this is elementR affecting itself
             tmp2 = sbp.Q[iR,j,di]*tmpR[field]
 #            println("res[$field, $j, $elementR] += ", tmp2)
 
 
             res[field,j,face.elementR] += sbp.Q[iR,j,di]*tmpR[field]
-	  end  # end loop over fields
-	end  # end loop j=1:sbp.numnodes
+    end  # end loop over fields
+  end  # end loop j=1:sbp.numnodes
       end  # end loop over directions di
     end  # end loop over i = 1:sbp.numfacenodes
   end  # end loop over interfaces
@@ -453,13 +453,13 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn,
           tmpR[field] = dirR[di]*EDn[field,i]/sbp.w[iR]
         end
 
-	elementL = face.elementL
-	elementR = face.elementR
-	faceL = face.faceL
-	faceR = face.faceR
+  elementL = face.elementL
+  elementR = face.elementR
+  faceL = face.faceL
+  faceR = face.faceR
         for j = 1:sbp.numnodes
           for field = 1:size(u,1)
-	    # this is elementL affecting itself
+      # this is elementL affecting itself
             tmp2 = sbp.Q[iL,j,di]*tmpL[field]
 
 #            println("res[$field, $j, $elementL] += ", tmp2)
@@ -467,10 +467,10 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn,
             res[field,j,face.elementL] += sbp.Q[iL,j,di]*tmpL[field]
             tmp2 = sbp.Q[iR,j,di]*tmpR[field]
 #            println("res_edge[$field, $j, $elementR, $faceR] += ", tmp2)
-	    # this is elementL affecting elementR
+      # this is elementL affecting elementR
             res_edge[field,j,face.elementR, face.faceR] += sbp.Q[iR,j,di]*tmpR[field]
-	  end  # end loop over fields
-	end  # end loop j=1:sbp.numnodes
+    end  # end loop over fields
+  end  # end loop j=1:sbp.numnodes
       end  # end loop over directions di
     end  # end loop over i = 1:sbp.numfacenodes
   end  # end loop over interfaces

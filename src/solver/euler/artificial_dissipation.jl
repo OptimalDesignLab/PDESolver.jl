@@ -41,7 +41,7 @@ function applyDissipation{Tmsh, Tsol, T}(mesh::AbstractMesh{Tmsh},
     # update eqn.res, remembering to transpose q_filt
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
-	eqn.res[k, j, i] -= q_filt[j, k]
+  eqn.res[k, j, i] -= q_filt[j, k]
       end
     end
 
@@ -101,7 +101,7 @@ function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 #=    
     for col = 1:sbp.numnodes
       for row = 1:sbp.numnodes
-	filt_i[row, col] = filt[row, col]/mesh.jac[row, i]
+  filt_i[row, col] = filt[row, col]/mesh.jac[row, i]
       end
     end
 =#

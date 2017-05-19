@@ -370,8 +370,8 @@ vals = arg_dict[key_i]
       println("arg_dict[key_k] = ", arg_dict[key_k])
       index = findfirst(arg_dict[key_k], val_j)
       if index != 0
-	println("Error: cannot apply more than one boundary condition to a model entity")
-	println("  Model entity ", val_j, " from BC", i, " is repeated at index ", index, " of BC", k)
+        println("Error: cannot apply more than one boundary condition to a model entity")
+        println("  Model entity ", val_j, " from BC", i, " is repeated at index ", index, " of BC", k)
       end
     end
   end

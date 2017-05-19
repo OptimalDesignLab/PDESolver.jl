@@ -45,7 +45,7 @@ function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     # copy values back into eqn.q, remembering to transpose q_filt
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
-	arr[k, j, i] = q_filt[j, k]
+        arr[k, j, i] = q_filt[j, k]
       end
     end
 

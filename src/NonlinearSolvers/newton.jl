@@ -599,7 +599,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       step_fac *= 1.2
 
       if step_fac > 1.0
-	step_fac = 1.0
+  step_fac = 1.0
       end
     end
 
@@ -1242,10 +1242,10 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
-	# apply perturbation to q
+        # apply perturbation to q
         if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
-  	  # evaluate residual
+          # evaluate residual
           time.t_func += @elapsed func(mesh, sbp, eqn, opts, t)
         end
 
@@ -1253,7 +1253,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
           PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
         end
 
-	# assemble res into jac
+        # assemble res into jac
         if color <= mesh.numColors
           time.t_insert += @elapsed for k=1:mesh.numEl  # loop over elements in residual
             el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
