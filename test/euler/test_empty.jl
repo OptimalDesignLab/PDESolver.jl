@@ -12,5 +12,5 @@ function test_empty()
 end
 
 #test_empty()
-add_func1!(EulerTests, test_empty)
+add_func1!(EulerTests, test_empty, [TAG_SHORTTEST])
 

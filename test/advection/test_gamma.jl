@@ -38,7 +38,7 @@ function test_gamma_sbp(mesh, sbp, eqn, opts)
 end
 
 #test_gamma_sbp(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_gamma_sbp, test_gamma_inputfile)
+add_func2!(AdvectionTests, test_gamma_sbp, test_gamma_inputfile, [TAG_SHORTTEST])
 
 """
   Test boundary conditions.  This is not a test function, but is used
@@ -113,7 +113,7 @@ function test_gamma_bcsolver(mesh, sbp, eqn, opts)
 end
 
 #test_gamma_bcsolver(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_gamma_bcsolver, test_gamma_inputfile, [TAG_BC, TAG_FLUX])
+add_func2!(AdvectionTests, test_gamma_bcsolver, test_gamma_inputfile, [TAG_BC, TAG_FLUX, TAG_SHORTTEST])
 
 """
   Test boundary flux calculation in all 3 directions
@@ -152,7 +152,7 @@ function test_gamma_bcflux(mesh, sbp, eqn, opts)
 end
 
 #test_gamma_bcflux(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_gamma_bcflux, test_gamma_inputfile, [TAG_BC])
+add_func2!(AdvectionTests, test_gamma_bcflux, test_gamma_inputfile, [TAG_BC, TAG_SHORTTEST])
 
 """
   Test face flux calculation
@@ -189,4 +189,4 @@ function test_gamma_faceflux(mesh, sbp, eqn, opts)
 end
 
 #test_gamma_faceflux(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_gamma_faceflux, test_gamma_inputfile, [TAG_BC])
+add_func2!(AdvectionTests, test_gamma_faceflux, test_gamma_inputfile, [TAG_BC, TAG_SHORTTEST])

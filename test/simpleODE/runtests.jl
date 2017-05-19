@@ -49,7 +49,7 @@ function test_eq4()
   return nothing
 end
 
-add_func1!(SimpleODETests, test_eq4)
+add_func1!(SimpleODETests, test_eq4, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests

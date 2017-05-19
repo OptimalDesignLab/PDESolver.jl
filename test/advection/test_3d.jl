@@ -37,7 +37,7 @@ function test_3d_sbp(mesh, sbp, eqn, opts)
 end
 
 #test_3d_sbp(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_sbp, test_3d_inputfile)
+add_func2!(AdvectionTests, test_3d_sbp, test_3d_inputfile, [TAG_SHORTTEST])
 
 """
   Test boundary flux.
@@ -111,7 +111,7 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
 end
 
 #test_3d_bcsolver(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_bcsolver, test_3d_inputfile, [TAG_BC, TAG_FLUX])
+add_func2!(AdvectionTests, test_3d_bcsolver, test_3d_inputfile, [TAG_BC, TAG_FLUX, TAG_SHORTTEST])
 
 """
   Test boundary flux calcuation in all 3 directions.
@@ -152,7 +152,7 @@ function test_3d_boundaryflux(mesh, sbp, eqn, opts)
 end
 
 #test_3d_boundaryflux(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_boundaryflux, test_3d_inputfile, [TAG_BC])
+add_func2!(AdvectionTests, test_3d_boundaryflux, test_3d_inputfile, [TAG_BC, TAG_SHORTTEST])
 
 """
   Test calculation of face flux.
@@ -189,4 +189,4 @@ function test_3d_faceflux(mesh, sbp, eqn, opts)
 end
 
 #test_3d_faceflux(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_faceflux, test_3d_inputfile, [TAG_FLUX])
+add_func2!(AdvectionTests, test_3d_faceflux, test_3d_inputfile, [TAG_FLUX, TAG_SHORTTEST])

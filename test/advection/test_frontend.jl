@@ -44,4 +44,4 @@ function test_frontend()
     
 end
 
-add_func1!(AdvectionTests, test_frontend, [TAG_FRONTEND])
+add_func1!(AdvectionTests, test_frontend, [TAG_FRONTEND, TAG_SHORTTEST])

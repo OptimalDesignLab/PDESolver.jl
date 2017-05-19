@@ -64,4 +64,4 @@ function test_rk4()
 end
 
 #test_rk4()
-add_func1!(EulerTests, test_rk4, [TAG_NLSOLVERS])
+add_func1!(EulerTests, test_rk4, [TAG_NLSOLVERS, TAG_SHORTTEST])

@@ -26,4 +26,4 @@ function test_complexify()
 end
 
 #test_complexify()
-add_func1!(EulerTests, test_complexify, [TAG_COMPLEX])
+add_func1!(EulerTests, test_complexify, [TAG_COMPLEX, TAG_SHORTTEST])

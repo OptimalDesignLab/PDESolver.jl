@@ -35,4 +35,4 @@ function test_energy_serial()
 end
 
 #test_energy_serial()
-add_func1!(AdvectionTests, test_energy_serial)
+add_func1!(AdvectionTests, test_energy_serial, [TAG_SHORTTEST])

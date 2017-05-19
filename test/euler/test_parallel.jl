@@ -29,4 +29,4 @@ function test_parallel()
 end
 
 #test_parallel()
-add_func1!(EulerTests, test_parallel)
+add_func1!(EulerTests, test_parallel, [TAG_SHORTTEST])

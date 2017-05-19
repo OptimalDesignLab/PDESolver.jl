@@ -64,15 +64,20 @@ All the tests (serial + parallel) can be run with
   ./runtests_fast.sh TAG1 TAG2 ...
 ```
 
-If no tags are specified, all tests are run.
+For all scripts except `runtests_fast.sh`, if no tags are specified, all tests
+are run.
+If any tags are specified, only functions matching those tags are run.
+For `runtest_fast.sh` only the tests with `TAG_SHORTTEST` are run by default.
+If any tags are specified, only tests matching the tags (and not `TAG_SHORTTEST`
+are run).
 The list of currently defined tags can be found in `./tags.jl`
 Note that the serial tests must  be run before the parallel tests.
-
+All test must have one of `LengthTags` associated with them.
 
 ## Adding Tests
 Each physics module maintains a `TestSet` object which contains a list of
-tests and their associated tags.  TestSet.jl provides an API for adding
-tests to the list.
+tests and their associated tags.  See the previous paragraph for a note about
+the required tags.  TestSet.jl provides an API for adding tests to the list.
 
 All tests must be enclosed in functions.  These functions must fit into
 one of three catagories:

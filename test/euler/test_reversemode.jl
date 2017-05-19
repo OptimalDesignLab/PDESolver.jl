@@ -660,4 +660,4 @@ function test_reversemode()
   return nothing
 end # End function test_reversemode
 
-add_func1!(EulerTests, test_reversemode, [TAG_REVERSEMODE])
+add_func1!(EulerTests, test_reversemode, [TAG_REVERSEMODE, TAG_SHORTTEST])

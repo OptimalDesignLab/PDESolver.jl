@@ -65,4 +65,4 @@ function test_homotopy(mesh, sbp, eqn, opts)
   return nothing
 end
 
-add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY])
+add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST])

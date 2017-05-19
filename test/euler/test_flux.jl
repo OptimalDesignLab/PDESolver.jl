@@ -233,7 +233,7 @@ function test_flux_2d()
 end  # end function
 
 #test_flux_2d()
-add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILINEAR])
+add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILINEAR, TAG_SHORTTEST])
 
 """
   Test calculation of numerical flux functions in 3D
@@ -316,4 +316,4 @@ end
 
 
 #test_flux_3d()
-add_func1!(EulerTests, test_flux_3d, [TAG_VOLUMEINTEGRALS, TAG_FLUX])
+add_func1!(EulerTests, test_flux_3d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_SHORTTEST])

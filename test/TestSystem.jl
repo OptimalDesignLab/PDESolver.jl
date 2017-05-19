@@ -5,6 +5,8 @@ module TestSystem
 using Input
 
 global const TAG_DEFAULT = "default_tag"  # tag that every function must have
+include("tags.jl")
+
 global const EmptyDict = Dict{Any, Any}()
 
 export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist
@@ -79,6 +81,8 @@ end  # end type definition
 """
 function add_func1!(testlist::TestList, func::Function, tags::Array{ASCIIString}=ASCIIString[])
 
+  check_tags(func, tags)
+
   # function
   push!(testlist.funcs, func)
 
@@ -120,6 +124,8 @@ end
 """
 function add_func2!(testlist::TestList, func::Function, input_name::ASCIIString,
                     tags::Array{ASCIIString}=ASCIIString[])
+
+  check_tags(func, tags)
 
   # function
   push!(testlist.funcs, func)
@@ -163,6 +169,8 @@ end
 function add_func3!(testlist::TestList, func::Function, input_name::ASCIIString,
                     mod_dict::Dict, tags::Array{ASCIIString}=ASCIIString[])
 
+  check_tags(func, tags)
+
   # function
   push!(testlist.funcs, func)
 
@@ -185,6 +193,30 @@ function add_func3!(testlist::TestList, func::Function, input_name::ASCIIString,
     push!(testlist.tag_list, tags[i])
   end
 
+end
+
+"""
+  This function checks that all necessary tags are present and throws
+  an exception is they are not.
+
+  Currently this only verifies that one of LengthTags is present
+
+  Inputs:
+    func: the function (only needed to produce error message)
+    tags: the tags for this function
+
+  Outputs: none
+"""
+function check_tags(func::Function, tags::Array{ASCIIString})
+
+  n = length(intersect(tags, LengthTags))
+  if n > 1
+    throw(ErrorException("function $func has $n > 1 LengthTags"))
+  elseif n < 1
+    throw(ErrorException("function $func has $n < 1 LengthTags"))
+  end
+
+  return nothing
 end
 
 """
@@ -219,6 +251,8 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
   sbp = 0
   eqn = 0
   opts = 0
+
+  ftiming = open("timing.dat", "w")
   for i=1:ntests
     func_i = testlist.funcs[i]
     func_tags_i = testlist.func_tags[i]
@@ -232,7 +266,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
         println("running function ", func_i)
         println("function type = ", functype_i)
         # run this test
-        if functype_i == 1  # function with no arguments
+        t_test = @elapsed if functype_i == 1  # function with no arguments
           func_i()
         elseif functype_i == 2  # function with all 4 arguments
           if ARGS[1] != input_name_i
@@ -263,6 +297,8 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
           throw(ErrorException("unsupported function type"))
         end
 
+        println(ftiming, func_i, ": ", t_test, " second")
+
         continue  # don't run this test more than once even if it matches
                   # multiple tags
 
@@ -270,6 +306,8 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
     end  # end loop over tags
 
   end  # end loop over test functions
+
+  close(ftiming)
 
   return nothing
 end

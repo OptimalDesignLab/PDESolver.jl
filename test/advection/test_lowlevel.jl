@@ -64,7 +64,7 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_mesh(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_lowlevel_mesh, test_lowlevel_inputfile)
+add_func2!(AdvectionTests, test_lowlevel_mesh, test_lowlevel_inputfile, [TAG_SHORTTEST])
 
 """
   Test some basic functionality: dissassmble solution, mass matrix, etc.
@@ -118,7 +118,7 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_core(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_lowlevel_core, test_lowlevel_inputfile)
+add_func2!(AdvectionTests, test_lowlevel_core, test_lowlevel_inputfile, [TAG_SHORTTEST])
 
 """
   Test things from common_funcs.jl
@@ -143,7 +143,7 @@ function test_lowlevel_common(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_common(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_lowlevel_common, test_lowlevel_inputfile)
+add_func2!(AdvectionTests, test_lowlevel_common, test_lowlevel_inputfile, [TAG_SHORTTEST])
 
 """
   Test Roe solver used for boundary conditions and some hand calculated
@@ -237,7 +237,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_bc(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_lowlevel_bc, test_lowlevel_inputfile, [TAG_BC])
+add_func2!(AdvectionTests, test_lowlevel_bc, test_lowlevel_inputfile, [TAG_BC, TAG_SHORTTEST])
 
 """
   Test computing volume integrals over entire mesh
@@ -445,7 +445,7 @@ function test_lowlevel_volumeintegrals()
 end
 
 #test_lowlevel_volumeintegrals()
-add_func1!(AdvectionTests, test_lowlevel_volumeintegrals, [TAG_VOLUMEINTEGRALS])
+add_func1!(AdvectionTests, test_lowlevel_volumeintegrals, [TAG_VOLUMEINTEGRALS, TAG_SHORTTEST])
   #=
   context("--- Testing evalInteriorFlux ---") do
     

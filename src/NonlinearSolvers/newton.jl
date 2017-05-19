@@ -370,15 +370,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, rhs_func, rhs_vec, ctx_residual, t)
   @verbose5 @mpi_master println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
 
-  saveSolutionToMesh(mesh, eqn.q_vec)
-  writeVisFiles(mesh, "newton_0")
-  #=
-  elnums_extract = [2469, 2467, 2187, 2186]
-  for i in elnums_extract
-    println("q[:, :, $i] = \n", real(eqn.q[:, :, i]))
-    println("res[:, :, $i] = \n", real(eqn.res[:, :, i]))
-  end
-  =#
+#  saveSolutionToMesh(mesh, eqn.q_vec)
+#  writeVisFiles(mesh, "newton_0")
 
   @verbose5 eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, fstdout)
 
@@ -557,16 +550,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
    
-    saveSolutionToMesh(mesh, eqn.q_vec)
-    writeVisFiles(mesh, "newton_$i")
-    #=
-    for i in elnums_extract
-      println("q[:, :, $i] = \n", real(eqn.q[:, :, i]))
-      println("res[:, :, $i] = \n", real(eqn.res[:, :, i]))
-      println("mesh.coords[:, :, $i] = \n", mesh.coords[:, :, i])
-    end
-    =#
-
+#    saveSolutionToMesh(mesh, eqn.q_vec)
+#    writeVisFiles(mesh, "newton_$i")
 
     @verbose5 eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
 

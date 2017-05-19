@@ -80,7 +80,7 @@ function runtests_parallel()
 end
 
 #runtests_parallel()
-add_func1!(AdvectionTests, runtests_parallel)
+add_func1!(AdvectionTests, runtests_parallel, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests

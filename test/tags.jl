@@ -28,5 +28,10 @@ if !tag_defs
   global const TAG_CURVILINEAR = "tag_curvilinear"
   global const TAG_HOMOTOPY = "tag_homotopy"
 
+  # types of tests
+  global const TAG_SHORTTEST = "tag_shorttest"
+  global const TAG_LONGTEST = "tag_longest"
+  global const LengthTags = Set([TAG_SHORTTEST, TAG_LONGTEST])
+
 end
 

@@ -56,7 +56,7 @@ function test_3d_conversion(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_conversion(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 
 function test_3d_eigensystem(mesh, sbp, eqn, opts)
@@ -153,7 +153,7 @@ function test_3d_eigensystem(mesh, sbp, eqn, opts)
 end
 
 
-add_func2!(EulerTests, test_3d_eigensystem,  test_3d_inputfile, [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_3d_eigensystem,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 
 """
@@ -202,7 +202,7 @@ function test_3d_flux(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_flux(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_FLUX])
+add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_FLUX, TAG_SHORTTEST])
 
 """
   Test some auxiliary calculation functions in 3D
@@ -231,7 +231,7 @@ function test_3d_misc(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_misc(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_MISC])
+add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_MISC, TAG_SHORTTEST])
 
 
 function test_3d_secondary_quantities()
@@ -412,7 +412,7 @@ function test_3d_secondary_quantities()
 
 end 
 
-add_func1!(EulerTests, test_3d_secondary_quantities, [TAG_MISC])
+add_func1!(EulerTests, test_3d_secondary_quantities, [TAG_MISC, TAG_SHORTTEST])
 
 
 
@@ -478,7 +478,7 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_matrices(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile)
+add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST])
 
 """
   Test Roe solver in 3D
@@ -620,5 +620,5 @@ function test_3d_functional(mesh, sbp, eqn, opts)
   return nothing
 end
 
-add_func2!(EulerTests, test_3d_bc,  test_3d_inputfile, [TAG_BC])
-add_func2!(EulerTests, test_3d_functional,  test_3d_inputfile, [TAG_REVERSEMODE])
+add_func2!(EulerTests, test_3d_bc,  test_3d_inputfile, [TAG_BC, TAG_SHORTTEST])
+add_func2!(EulerTests, test_3d_functional,  test_3d_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])

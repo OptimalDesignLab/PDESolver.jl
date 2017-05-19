@@ -36,7 +36,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
 end
 
 #test_dg_flux(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_FLUX])
+add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_FLUX, TAG_SHORTTEST])
 
 """
   Test boundary conditions for DG.
@@ -100,4 +100,4 @@ function test_dg_bc(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_dg_bc(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_BC])
+add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_BC, TAG_SHORTTEST])

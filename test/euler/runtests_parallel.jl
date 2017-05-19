@@ -62,7 +62,7 @@ function test_parallel2()
 end
 
 #test_parallel2()
-add_func1!(EulerTests, test_parallel2)
+add_func1!(EulerTests, test_parallel2, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests

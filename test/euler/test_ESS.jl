@@ -974,4 +974,4 @@ function test_ESS()
 end  # end function
 
 #test_ESS()
-add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS])
+add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST])

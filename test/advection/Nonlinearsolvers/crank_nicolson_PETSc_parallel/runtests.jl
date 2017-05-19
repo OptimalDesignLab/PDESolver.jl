@@ -46,4 +46,4 @@ function test_CN_parallel()
   return nothing
 end
 
-add_func1!(AdvectionTests, test_CN_parallel)
+add_func1!(AdvectionTests, test_CN_parallel, [TAG_SHORTTEST])
