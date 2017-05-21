@@ -146,7 +146,7 @@ i
       for k=1:mesh.dim
         for p=1:mesh.dim
           if abs(nrm[k, j, i]) > 1e-8  # abs is not differentiable at 0
-            diffnorm += jac[1, idx] - mesh.dxidx_bndry_bar[p, k, j, i]
+            diffnorm += abs(jac[1, idx] - mesh.dxidx_bndry_bar[p, k, j, i])
             cnt += 1
           end
           idx += 1
