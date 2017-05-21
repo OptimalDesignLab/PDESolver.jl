@@ -10,7 +10,7 @@ function installPDESolver()
   # [pkg_name, git url, commit identified]
   std_pkgs = [
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "broken_ticon";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork3";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
               "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "d68859248ddeed79abe9005a5c75caa35f10885e"
               ]
