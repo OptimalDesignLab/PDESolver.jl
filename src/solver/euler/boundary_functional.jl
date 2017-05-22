@@ -1,7 +1,7 @@
 # Calculate the analytical force on the inner boundary of the isentropic vortex
 #=
 function calc_analytical_forces{Tmsh}(mesh::AbstractMesh{Tmsh}, params::ParamType{2},
-	                                    coords::AbstractArray{Tmsh})
+                                      coords::AbstractArray{Tmsh})
 
   q = zeros(mesh.numDofPerNode)
   calcIsentropicVortex(coords, params, q)  # Get analytical q ath the coordinates
