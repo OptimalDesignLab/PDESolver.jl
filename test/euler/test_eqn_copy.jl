@@ -13,6 +13,10 @@
 
 # TODO? CG tests
 
+# Note about params/params_conservative/params_entropy:
+#   Tests are done below for params and params_entropy, and not params_conservative,
+#   since there shouldn't be a case where params_conservative works and params_entropy doesn't
+
 global const test_eqn_copy_inputfile = "input_vals_channel_dg.jl"
 
 function test_eqn_copy(mesh, sbp, eqn, opts)
@@ -203,68 +207,103 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
   end   # end of facts check on values of eqn_copy matching eqn
 
-    #=
+  facts("--- Testing eqn_deepcopy, copy phase, pointers of arrays ---") do
+
     # 1st level fields of type Array
-    q  Array{Float64,3}  false
-    q_face  Array{Float64,4}  false
-    q_bndry  Array{Float64,3}  false
-    q_vec  Array{Float64,1}  false
-    aux_vars  Array{Float64,3}  false
-    aux_vars_face  Array{Float64,3}  false
-    aux_vars_sharedface  Array{Array{Float64,3},1}  false
-    aux_vars_bndry  Array{Float64,3}  false
-    flux_parametric  Array{Float64,4}  false
-    q_face_send  Array{Array{Float64,3},1}  false
-    q_face_recv  Array{Array{Float64,3},1}  false
-    flux_face  Array{Float64,3}  false
-    flux_sharedface  Array{Array{Float64,3},1}  false
-    res  Array{Float64,3}  false
-    res_vec  Array{Float64,1}  false
-    Axi  Array{Float64,4}  false
-    Aeta  Array{Float64,4}  false
-    res_edge  Array{Float64,4}  false
-    edgestab_alpha  Array{Float64,4}  false
-    bndryflux  Array{Float64,3}  false
-    stabscale  Array{Float64,2}  false
-    dissipation_mat  Array{Float64,3}  false
-    Minv3D  Array{Float64,3}  false
-    Minv  Array{Float64,1}  false
-    M  Array{Float64,1}  false
+    @fact (pointer(eqn_copy.q) == pointer(eqn.q)) --> false
+    @fact (pointer(eqn_copy.q_face) == pointer(eqn.q_face)) --> false
+    @fact (pointer(eqn_copy.q_bndry) == pointer(eqn.q_bndry)) --> false
+    @fact (pointer(eqn_copy.q_vec) == pointer(eqn.q_vec)) --> false
+    @fact (pointer(eqn_copy.aux_vars) == pointer(eqn.aux_vars)) --> false
+    @fact (pointer(eqn_copy.aux_vars_face) == pointer(eqn.aux_vars_face)) --> false
+    @fact (pointer(eqn_copy.aux_vars_sharedface) == pointer(eqn.aux_vars_sharedface)) --> false
+    @fact (pointer(eqn_copy.aux_vars_bndry) == pointer(eqn.aux_vars_bndry)) --> false
+    @fact (pointer(eqn_copy.flux_parametric) == pointer(eqn.flux_parametric)) --> false
+    @fact (pointer(eqn_copy.q_face_send) == pointer(eqn.q_face_send)) --> false
+    @fact (pointer(eqn_copy.q_face_recv) == pointer(eqn.q_face_recv)) --> false
+    @fact (pointer(eqn_copy.flux_face) == pointer(eqn.flux_face)) --> false
+    @fact (pointer(eqn_copy.flux_sharedface) == pointer(eqn.flux_sharedface)) --> false
+    @fact (pointer(eqn_copy.res) == pointer(eqn.res)) --> false
+    @fact (pointer(eqn_copy.res_vec) == pointer(eqn.res_vec)) --> false
+    @fact (pointer(eqn_copy.Axi) == pointer(eqn.Axi)) --> false
+    @fact (pointer(eqn_copy.Aeta) == pointer(eqn.Aeta)) --> false
+    @fact (pointer(eqn_copy.res_edge) == pointer(eqn.res_edge)) --> false
+    @fact (pointer(eqn_copy.edgestab_alpha) == pointer(eqn.edgestab_alpha)) --> false
+    @fact (pointer(eqn_copy.bndryflux) == pointer(eqn.bndryflux)) --> false
+    @fact (pointer(eqn_copy.stabscale) == pointer(eqn.stabscale)) --> false
+    @fact (pointer(eqn_copy.dissipation_mat) == pointer(eqn.dissipation_mat)) --> false
+    @fact (pointer(eqn_copy.Minv3D) == pointer(eqn.Minv3D)) --> false
+    @fact (pointer(eqn_copy.Minv) == pointer(eqn.Minv)) --> false
+    @fact (pointer(eqn_copy.M) == pointer(eqn.M)) --> false
 
     # 2nd level fields of type Array (just going to check params)
-    q_vals  Array{Float64,1}  false
-    q_vals2  Array{Float64,1}  false
-    q_vals3  Array{Float64,1}  false
-    qg  Array{Float64,1}  false
-    v_vals  Array{Float64,1}  false
-    v_vals2  Array{Float64,1}  false
-    Lambda  Array{Float64,1}  false
-    w_vals_stencil  Array{Float64,2}  false
-    w_vals2_stencil  Array{Float64,2}  false
-    res_vals1  Array{Float64,1}  false
-    res_vals2  Array{Float64,1}  false
-    res_vals3  Array{Float64,1}  false
-    flux_vals1  Array{Float64,1}  false
-    flux_vals2  Array{Float64,1}  false
-    sat_vals  Array{Float64,1}  false
-    A0  Array{Float64,2}  false
-    A0inv  Array{Float64,2}  false
-    A1  Array{Float64,2}  false
-    A2  Array{Float64,2}  false
-    S2  Array{Float64,1}  false
-    A_mats  Array{Float64,3}  false
-    Rmat1  Array{Float64,2}  false
-    Rmat2  Array{Float64,2}  false
-    P  Array{Float64,2}  false
-    nrm  Array{Float64,1}  false
-    nrm2  Array{Float64,1}  false
-    nrm3  Array{Float64,1}  false
-    filter_mat  Array{Float64,2}  false
-    Rprime  Array{Float64,2}  false
-    A  Array{Float64,2}  false
-    B  Array{Float64,3}  false
-    iperm  Array{Int64,1}  false
-    =#
+    @fact (pointer(eqn_copy.params.q_vals) == pointer(eqn.params.q_vals)) --> false
+    @fact (pointer(eqn_copy.params.q_vals2) == pointer(eqn.params.q_vals2)) --> false
+    @fact (pointer(eqn_copy.params.q_vals3) == pointer(eqn.params.q_vals3)) --> false
+    @fact (pointer(eqn_copy.params.qg) == pointer(eqn.params.qg)) --> false
+    @fact (pointer(eqn_copy.params.v_vals) == pointer(eqn.params.v_vals)) --> false
+    @fact (pointer(eqn_copy.params.v_vals2) == pointer(eqn.params.v_vals2)) --> false
+    @fact (pointer(eqn_copy.params.Lambda) == pointer(eqn.params.Lambda)) --> false
+    @fact (pointer(eqn_copy.params.w_vals_stencil) == pointer(eqn.params.w_vals_stencil)) --> false
+    @fact (pointer(eqn_copy.params.w_vals2_stencil) == pointer(eqn.params.w_vals2_stencil)) --> false
+    @fact (pointer(eqn_copy.params.res_vals1) == pointer(eqn.params.res_vals1)) --> false
+    @fact (pointer(eqn_copy.params.res_vals2) == pointer(eqn.params.res_vals2)) --> false
+    @fact (pointer(eqn_copy.params.res_vals3) == pointer(eqn.params.res_vals3)) --> false
+    @fact (pointer(eqn_copy.params.flux_vals1) == pointer(eqn.params.flux_vals1)) --> false
+    @fact (pointer(eqn_copy.params.flux_vals2) == pointer(eqn.params.flux_vals2)) --> false
+    @fact (pointer(eqn_copy.params.sat_vals) == pointer(eqn.params.sat_vals)) --> false
+    @fact (pointer(eqn_copy.params.A0) == pointer(eqn.params.A0)) --> false
+    @fact (pointer(eqn_copy.params.A0inv) == pointer(eqn.params.A0inv)) --> false
+    @fact (pointer(eqn_copy.params.A1) == pointer(eqn.params.A1)) --> false
+    @fact (pointer(eqn_copy.params.A2) == pointer(eqn.params.A2)) --> false
+    @fact (pointer(eqn_copy.params.S2) == pointer(eqn.params.S2)) --> false
+    @fact (pointer(eqn_copy.params.A_mats) == pointer(eqn.params.A_mats)) --> false
+    @fact (pointer(eqn_copy.params.Rmat1) == pointer(eqn.params.Rmat1)) --> false
+    @fact (pointer(eqn_copy.params.Rmat2) == pointer(eqn.params.Rmat2)) --> false
+    @fact (pointer(eqn_copy.params.P) == pointer(eqn.params.P)) --> false
+    @fact (pointer(eqn_copy.params.nrm) == pointer(eqn.params.nrm)) --> false
+    @fact (pointer(eqn_copy.params.nrm2) == pointer(eqn.params.nrm2)) --> false
+    @fact (pointer(eqn_copy.params.nrm3) == pointer(eqn.params.nrm3)) --> false
+    @fact (pointer(eqn_copy.params.filter_mat) == pointer(eqn.params.filter_mat)) --> false
+    @fact (pointer(eqn_copy.params.Rprime) == pointer(eqn.params.Rprime)) --> false
+    @fact (pointer(eqn_copy.params.A) == pointer(eqn.params.A)) --> false
+    @fact (pointer(eqn_copy.params.B) == pointer(eqn.params.B)) --> false
+    @fact (pointer(eqn_copy.params.iperm) == pointer(eqn.params.iperm)) --> false
+
+    @fact (pointer(eqn_copy.params_entropy.q_vals) == pointer(eqn.params_entropy.q_vals)) --> false
+    @fact (pointer(eqn_copy.params_entropy.q_vals2) == pointer(eqn.params_entropy.q_vals2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.q_vals3) == pointer(eqn.params_entropy.q_vals3)) --> false
+    @fact (pointer(eqn_copy.params_entropy.qg) == pointer(eqn.params_entropy.qg)) --> false
+    @fact (pointer(eqn_copy.params_entropy.v_vals) == pointer(eqn.params_entropy.v_vals)) --> false
+    @fact (pointer(eqn_copy.params_entropy.v_vals2) == pointer(eqn.params_entropy.v_vals2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.Lambda) == pointer(eqn.params_entropy.Lambda)) --> false
+    @fact (pointer(eqn_copy.params_entropy.w_vals_stencil) == pointer(eqn.params_entropy.w_vals_stencil)) --> false
+    @fact (pointer(eqn_copy.params_entropy.w_vals2_stencil) == pointer(eqn.params_entropy.w_vals2_stencil)) --> false
+    @fact (pointer(eqn_copy.params_entropy.res_vals1) == pointer(eqn.params_entropy.res_vals1)) --> false
+    @fact (pointer(eqn_copy.params_entropy.res_vals2) == pointer(eqn.params_entropy.res_vals2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.res_vals3) == pointer(eqn.params_entropy.res_vals3)) --> false
+    @fact (pointer(eqn_copy.params_entropy.flux_vals1) == pointer(eqn.params_entropy.flux_vals1)) --> false
+    @fact (pointer(eqn_copy.params_entropy.flux_vals2) == pointer(eqn.params_entropy.flux_vals2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.sat_vals) == pointer(eqn.params_entropy.sat_vals)) --> false
+    @fact (pointer(eqn_copy.params_entropy.A0) == pointer(eqn.params_entropy.A0)) --> false
+    @fact (pointer(eqn_copy.params_entropy.A0inv) == pointer(eqn.params_entropy.A0inv)) --> false
+    @fact (pointer(eqn_copy.params_entropy.A1) == pointer(eqn.params_entropy.A1)) --> false
+    @fact (pointer(eqn_copy.params_entropy.A2) == pointer(eqn.params_entropy.A2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.S2) == pointer(eqn.params_entropy.S2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.A_mats) == pointer(eqn.params_entropy.A_mats)) --> false
+    @fact (pointer(eqn_copy.params_entropy.Rmat1) == pointer(eqn.params_entropy.Rmat1)) --> false
+    @fact (pointer(eqn_copy.params_entropy.Rmat2) == pointer(eqn.params_entropy.Rmat2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.P) == pointer(eqn.params_entropy.P)) --> false
+    @fact (pointer(eqn_copy.params_entropy.nrm) == pointer(eqn.params_entropy.nrm)) --> false
+    @fact (pointer(eqn_copy.params_entropy.nrm2) == pointer(eqn.params_entropy.nrm2)) --> false
+    @fact (pointer(eqn_copy.params_entropy.nrm3) == pointer(eqn.params_entropy.nrm3)) --> false
+    @fact (pointer(eqn_copy.params_entropy.filter_mat) == pointer(eqn.params_entropy.filter_mat)) --> false
+    @fact (pointer(eqn_copy.params_entropy.Rprime) == pointer(eqn.params_entropy.Rprime)) --> false
+    @fact (pointer(eqn_copy.params_entropy.A) == pointer(eqn.params_entropy.A)) --> false
+    @fact (pointer(eqn_copy.params_entropy.B) == pointer(eqn.params_entropy.B)) --> false
+    @fact (pointer(eqn_copy.params_entropy.iperm) == pointer(eqn.params_entropy.iperm)) --> false
+
+  end   # end of facts checking pointers of arrays
 
 
 end   # end of function test_eqn_copy

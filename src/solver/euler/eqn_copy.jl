@@ -53,8 +53,11 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim},
 
       for fdnm_lvl2 in fieldnames(getfield(eqn, fdnm))      # loop over 2nd level fieldnames
 
+        # get the super type of the current 2nd level field
+        fdnm_lvl2_type = typeof(getfield(getfield(eqn, fdnm), fdnm_lvl2))
+
         # if the 2nd level fieldname is of type Array; ex: eqn.params.q_vals
-        if issubtype(fdnm_type, Array)
+        if issubtype(fdnm_lvl2_type, AbstractArray)
 
           # this does not work: setfield!(getfield(eqn_copy, a), b , getfield(getfield(eqn, a),b))
           #   must use copy, or else changing eqn's value changes eqn_copy
@@ -78,11 +81,11 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim},
       
     # -------- handle arrays
     # if this first level fieldname is of type Array; ex: eqn.q or eqn.q_face_send
-    elseif issubtype(fdnm_type, Array)
+    elseif issubtype(fdnm_type, AbstractArray)
 
       # -------- handle array of arrays
       # if this is an Array of Arrays; ex: eqn.q_face_send
-      if issubtype(eltype(fdnm_type), Array)        
+      if issubtype(eltype(fdnm_type), AbstractArray)        
 
         # first copy the outer array
         # copy is required here, as the innermost object is an array
