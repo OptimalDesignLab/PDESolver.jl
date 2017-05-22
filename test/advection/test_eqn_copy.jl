@@ -25,6 +25,8 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
     @fact mesh.isDG --> true
     @fact (pointer(eqn.q) == pointer(eqn.q_vec)) --> true
     @fact (pointer(eqn.res) == pointer(eqn.res_vec)) --> true
+    @fact (pointer(eqn_copy.q) == pointer(eqn_copy.q_vec)) --> true
+    @fact (pointer(eqn_copy.res) == pointer(eqn_copy.res_vec)) --> true
 
   end
 

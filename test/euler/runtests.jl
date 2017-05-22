@@ -51,6 +51,7 @@ include("test_rk4.jl")
 include(joinpath("./convergence/runtests.jl"))
 include("Utils.jl")
 include("test_parallel.jl")
+include("test_eqn_copy.jl")
 
 #------------------------------------------------------------------------------
 # run tests
