@@ -71,7 +71,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_dg_flux(mesh, sbp, eqn, opts)
-add_func3!(EulerTests, test_dg_flux, test_dg_inputfile, test_dg_moddict, [TAG_FLUX])
+add_func3!(EulerTests, test_dg_flux, test_dg_inputfile, test_dg_moddict, [TAG_FLUX, TAG_SHORTTEST])
 
 """
   This function tests DG boundary integrals, including interpolation to
@@ -120,7 +120,7 @@ function test_dg_boundary(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_dg_boundary(mesh, sbp, eqn, opts)
-add_func3!(EulerTests, test_dg_boundary, test_dg_inputfile, test_dg_moddict, [TAG_BC])
+add_func3!(EulerTests, test_dg_boundary, test_dg_inputfile, test_dg_moddict, [TAG_BC, TAG_SHORTTEST])
 
 """
   This functions tests that a uniform flow gives zero residual
@@ -144,4 +144,4 @@ function test_dg_uniform(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_dg_uniform(mesh, sbp, eqn, opts)
-add_func3!(EulerTests, test_dg_uniform, test_dg_inputfile, test_dg_moddict)
+add_func3!(EulerTests, test_dg_uniform, test_dg_inputfile, test_dg_moddict, [TAG_SHORTTEST])

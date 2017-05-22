@@ -316,15 +316,18 @@ Note that any values associated with these options are shared with the regular
 "do_postproc" : do postprocessing of any kind, (Bool), default false
 "exact_soln_func" : one of the IC functions used to compute the exact solution,
                     (ASCIIString), default "nothing"
+
 # functional computation options
 "calc_functional" : calculate functional on geometric boundary edge(s)
 "num_functionals" : number of functionals that need to be calculated
+"functional_error" : Boolean option for input dictionary to specify whether to compare against 
+                     analytical functional value and write the error.
 "functional_error_outfname" : name of file which stores the error in functional at a 
                          geometric boundary, (ASCIIString), default functional_error, while
                          writing the file a numerical suffix and .dat extension is added
 "analytical_functional_val" : The analytical functional value of the functional over
                               the specified geometric edges.
-"geom_edges_functionali" : Array of geometric edges (2D) where functional is being calculated
+"geom_faces_functionali" : Array of geometric edges (2D)/faces (3D) where functional is being calculated
 "functional_namei" : Name of the ith functional that needs to be computed over specified
                      geometric edges(2D)/faces(3D), (ASCIIString)
 
@@ -334,6 +337,13 @@ Note that any values associated with these options are shared with the regular
                  timing_breakdown.dat, and the name of each time to 
                  timing_breakdown_names.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
+
+# Optimization Dictionary Options
+"objective_function" : name of the objective function being evalueated. There is an implicit assumption
+                       a boundary functional has already been specified and that the objective functiom
+                       acts on the same faces as the boundary functional.
+"geom_faces_objective": Geometric faces on which an objective is being computed. Similar to
+                        geom_edges_functional$i 
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved 

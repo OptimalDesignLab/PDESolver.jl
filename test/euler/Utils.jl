@@ -54,7 +54,7 @@ function test_utils_io()
 end
 
 #test_utils_io()
-add_func1!(EulerTests, test_utils_io, [TAG_UTILS])
+add_func1!(EulerTests, test_utils_io, [TAG_UTILS, TAG_SHORTTEST])
 
 """
   Test Timings type
@@ -103,7 +103,7 @@ function test_utils_timing()
 end
 
 #test_utils_timing()
-add_func1!(EulerTests, test_utils_timing, [TAG_UTILS])
+add_func1!(EulerTests, test_utils_timing, [TAG_UTILS, TAG_SHORTTEST])
 
 """
   Test various functions: calcNorm, calcMeshH etc.
@@ -157,7 +157,7 @@ function test_utils_misc()
 end
 
 #test_utils_misc()
-add_func1!(EulerTests, test_utils_misc, [TAG_UTILS])
+add_func1!(EulerTests, test_utils_misc, [TAG_UTILS, TAG_SHORTTEST])
 
 """
   Test permutation matrices, vectors, functions
@@ -223,7 +223,7 @@ function test_utils_perm()
 end
 
 #test_utils_perm()
-add_func1!(EulerTests, test_utils_perm, [TAG_UTILS])
+add_func1!(EulerTests, test_utils_perm, [TAG_UTILS, TAG_SHORTTEST])
 
 function test_utils_projection()
   facts("----- testing Projection -----") do
@@ -322,4 +322,4 @@ function test_utils_projection()
   return nothing
 end
 
-add_func1!(EulerTests, test_utils_projection, [TAG_UTILS])
+add_func1!(EulerTests, test_utils_projection, [TAG_UTILS, TAG_SHORTTEST])

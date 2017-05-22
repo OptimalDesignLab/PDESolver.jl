@@ -115,18 +115,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: output freq
 
-    # NOTE:
-    # majorIterationCallback: called before every step of Newton's method
-    # majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)
-
-#     if use_itermax && i > itermax
-#       if myrank == 0
-#         println(fstdout, "breaking due to itermax")
-#         close(f1)
-#         flush(fstdout)
-#       end
-#       break
-#     end
 
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
@@ -148,6 +136,38 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # do the callback using the current eqn object at time t
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, STDOUT)
+
+    # need to assemble solution into res_vec?
+    res_norm = calcNorm(eqn, eqn.res_vec)
+    # logging
+    @mpi_master if i % 1 == 0
+      println(f1, i, " ", res_norm)
+    end
+    
+    @mpi_master if i % output_freq == 0
+      println(fstdout, "flushing convergence.dat to disk")
+      flush(f1)
+    end
+
+    # check stopping conditions
+    if (res_norm < res_tol)
+      if myrank == 0
+        println(fstdout, "breaking due to res_tol, res norm = $res_norm")
+        close(f1)
+        flush(fstdout)
+      end
+      break
+    end
+
+
+    if use_itermax && i > itermax
+      if myrank == 0
+        println(fstdout, "breaking due to itermax")
+        close(f1)
+        flush(fstdout)
+      end
+      break
+    end
 
 
     # This allows the solution to be updated from _nextstep without a deepcopy.

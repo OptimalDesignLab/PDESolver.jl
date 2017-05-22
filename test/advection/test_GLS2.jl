@@ -120,7 +120,7 @@ function test_GLS2_term()
 end  # end function
 
 #test_GLS2_term()
-add_func1!(AdvectionTests, test_GLS2_term)
+add_func1!(AdvectionTests, test_GLS2_term, [TAG_SHORTTEST])
 
 """
   Finite difference and complex step test for GLS term
@@ -220,4 +220,4 @@ function test_GLS2_jac()
 end  # end function
 
 #test_GLS2_jac()
-add_func1!(AdvectionTests, test_GLS2_jac)
+add_func1!(AdvectionTests, test_GLS2_jac, [TAG_SHORTTEST])

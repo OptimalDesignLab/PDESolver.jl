@@ -409,6 +409,10 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_test2, resR_test2)
 
+      @fact norm(vec(resL_code - resL_test2)) --> roughly(0.0, atol=1e-12*length(resL_code))
+      @fact norm(vec(resR_code - resR_test2)) --> roughly(0.0, atol=1e-12*length(resR_code))
+
+      #=
       for j=1:size(resL_code, 1)
         for k=1:size(resR_code, 2)
 
@@ -416,6 +420,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
           @fact resR_code[j, k] --> roughly(resR_test2[j, k], atol=1e-12)
         end
       end
+      =#
 
     end
   end  # end loop over interfaces
@@ -606,12 +611,17 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, resL2, resR2)
 
+      @fact norm(vec(resL - resL2)) --> roughly(0.0, atol=1e-12)
+      @fact norm(vec(resR - resR2)) --> roughly(0.0, atol=1e-12)
+ 
+      #=
       for j=1:size(resL, 1)
         for k=1:size(resL, 2)
           @fact abs(resL[j, k] - resL2[j, k]) --> roughly(0.0, atol=1e-12)
           @fact abs(resR[j, k] - resR2[j, k]) --> roughly(0.0, atol=1e-12)
         end
       end
+      =#
 
     end
 
@@ -622,12 +632,17 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     @fact resL_sum --> roughly(-resR_sum, atol=1e-13)
 
     if zero_penalty
+      @fact norm(vec(resL)) --> roughly(0.0, atol=1e-13)
+      @fact norm(vec(resR)) --> roughly(0.0, atol=1e-13)
+ 
+      #=
       for j=1:mesh.numNodesPerElement
         for p=1:mesh.numDofPerNode
           @fact resL[p, j] --> roughly(0.0, atol=1e-13)
           @fact resR[p, j] --> roughly(0.0, atol=1e-13)
         end
       end
+      =#
     end
 #=
     # verify equality with Lax-Friedrich
@@ -850,6 +865,8 @@ end
 
 function factRes0(mesh, sbp, eqn, opts)
 
+  @fact norm(vec(eqn.res)) --> roughly(0.0, atol=1e-13)
+  #=
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
@@ -857,6 +874,7 @@ function factRes0(mesh, sbp, eqn, opts)
       end
     end
   end
+  =#
 
   return nothing
 end
@@ -974,4 +992,4 @@ function test_ESS()
 end  # end function
 
 #test_ESS()
-add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS])
+add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST])

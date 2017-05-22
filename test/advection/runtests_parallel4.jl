@@ -45,7 +45,7 @@ function runtests_parallel4()
 end
 
 #runtests_parallel4()
-add_func1!(AdvectionTests, runtests_parallel4)
+add_func1!(AdvectionTests, runtests_parallel4, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests

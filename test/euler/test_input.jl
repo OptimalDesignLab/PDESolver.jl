@@ -21,4 +21,4 @@ function test_input()
 end
 
 #test_input()
-add_func1!(EulerTests, test_input, [TAG_INPUT])
+add_func1!(EulerTests, test_input, [TAG_INPUT, TAG_SHORTTEST])

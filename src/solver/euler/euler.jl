@@ -4,40 +4,40 @@
 # The code is organized into 3 levels of functions.  High level functions
 # only call mid level functions, passing the Mesh, Equation, and SBP objects
 # to them.  At this point, there shouldn't be any need for more high level
-# functions.  High level functions should use AbstractMesh and 
-# AbstractEulerData as the types of the mesh and equation objects, to signify 
+# functions.  High level functions should use AbstractMesh and
+# AbstractEulerData as the types of the mesh and equation objects, to signify
 # that they are implementation independent.
 #
 # The mid level functions either call SBP functions or have loops over
 # the arrays stored in the Equation, calling low level functions
 # to calculate quantities at each node.  Use the ArrayViews package to pass
-# portions of a larger array to the low level functions.  These functions 
+# portions of a larger array to the low level functions.  These functions
 # should use AbstractMesh and EulerData as the types of the mesh and equation
-# objects, to signify they are independent of the mesh implementation but 
+# objects, to signify they are independent of the mesh implementation but
 # do interact with the fields of the equation object.
 #
 # Low level functions calculate quantities for a single node.  Although
 # these functions will likely take in an ArrayView, their argument
-# types should be AbstractArrays{T, N}, specifying T according to 
+# types should be AbstractArrays{T, N}, specifying T according to
 # what type the original array is (from either the Equation or Mesh object)
 # They should also take the eqn.params object as an argument, which has
 # all of the static parameters as the the equation object, so it can be
 # used to dispatch to the correct method based on the static paremters.
 
 
-# For high and mid level functions, the proper order for arguments 
+# For high and mid level functions, the proper order for arguments
 # is (mesh, sbp, eqn, opts).
-# For low level functions, the order of arguments should be:  eqn.params first, 
+# For low level functions, the order of arguments should be:  eqn.params first,
 # then all input (read-only) arguments, then any output arguments.
 
-# Rules: 
+# Rules:
 # 1. function that take a composite type with abstract fields *cannot* use those
 # fields directly (they can pass those fields to other functions however
 # This leads directly to a two level structure for the code: high level function
 # that take in composite types and low level function that take in arrays and
 # perform calculations on them
 
-# the reason for this is that the compiler does not compile new version of the 
+# the reason for this is that the compiler does not compile new version of the
 # function based
 # on the types of the fields of a composite type. Passing the fields of the typ
 # e to other functions fixes this problem because the fields are now arguments,
@@ -46,14 +46,14 @@
 # 2.  Arrays should not be returned from functions.  The caller should allocate
 # and array and pass it into the function
 
-# this allows reusing the same array during a loop (rather than 
+# this allows reusing the same array during a loop (rather than
 # allocating a new array)
 
 @doc """
 ### EulerEquationMod General Description
 This module is organized into 3 levels of functions: high, middle, and low.
 
-The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, and opts (options dictionary), They do not know the types their 
+The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, and opts (options dictionary), They do not know the types their
 arguments are paramaterized on. There is only one method for each high level function.  All they do is call mid level functions.
 
 Mid level functions take the same arguments as high level functions but know
@@ -63,11 +63,11 @@ typically pass pieces of the large arrays stored in the eqn and mesh objects
 to low level functions that actually do computation.
 
 Low level functions usually take in vectors of whatever values they need, do
-a computation, and store the result in an argument vector.  These function 
-are usually passed an ArrayView, so writing to the argument vector writes 
-directly to the large array stored in the eqn object.  Thus there is no 
+a computation, and store the result in an argument vector.  These function
+are usually passed an ArrayView, so writing to the argument vector writes
+directly to the large array stored in the eqn object.  Thus there is no
 loss of efficiency by using low level functions.
-The Params type is also passed to low level function, which has all the 
+The Params type is also passed to low level function, which has all the
 type parameters as the EulerEquation object, so it can be used for dispatch.
 """
 
@@ -106,7 +106,7 @@ import PDESolver.evalResidual
 """->
 # this function is what the timestepper calls
 # high level function
-function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
+function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
 #  println("----- entered evalResidual -----")
@@ -121,7 +121,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
     #  println(" startDataExchange @time printed above")
   end
- 
+
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
 #  println("dataPrep @time printed above")
@@ -147,7 +147,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
-  
+
   #=
   bndryfluxPhysical = -1*bndryfluxPhysical
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
@@ -192,11 +192,11 @@ end  # end evalResidual
 
   This function performs any operations that need to be performed before
   the first residual evaluation.
-  Any operations that need to be performed at the beginning of *each* 
+  Any operations that need to be performed at the beginning of *each*
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
 
 #  println("\nInitializing Euler module")
@@ -212,15 +212,28 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
 
+  return nothing
+end
 
+function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
+
+  # Get functors for the boundary conditions
+  getBCFunctors_revm(mesh, sbp, eqn, opts)
+  getBCFunctors_revm(pmesh, sbp, eqn, opts)
+
+  if mesh.isDG
+    # For element interface flux
+    getFluxFunctors_revm(mesh, sbp, eqn, opts)
+  end
 
   return nothing
 end
 
 
-function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer, 
-                               mesh::AbstractMesh{Tmsh}, 
-                               sbp::AbstractSBP, 
+function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
+                               mesh::AbstractMesh{Tmsh},
+                               sbp::AbstractSBP,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO)
 
 #  println("Performing major Iteration Callback")
@@ -287,7 +300,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     ErrDensityVec = vRho_calc - vRho_act
     # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
     # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
-    # println("DensityErrorNormL1 = ", ErrDensity1) 
+    # println("DensityErrorNormL1 = ", ErrDensity1)
     ErrDensity2 = 0.0
     k = 1
     for counter1 = 1:length(ErrDensityVec)
@@ -330,17 +343,19 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
   if opts["write_integralq"]
     integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
-    @mpi_master f = eqn.file_dict[opts["write_integralq_fname"]]
-#    f = open(opts["write_integralq_fname"], "a+")
-    print(f, itr, " ", eqn.params.t)
-    for i=1:length(integralq_vals)
-      print(f, " ", integralq_vals[i])
-    end
-    print(f, "\n")
-#    close(f)
+    @mpi_master begin
+      f = eqn.file_dict[opts["write_integralq_fname"]]
+  #    f = open(opts["write_integralq_fname"], "a+")
+      print(f, itr, " ", eqn.params.t)
+      for i=1:length(integralq_vals)
+        print(f, " ", integralq_vals[i])
+      end
+      print(f, "\n")
+  #    close(f)
 
-    if (itr % output_freq) == 0
-      flush(f)
+      if (itr % output_freq) == 0
+        flush(f)
+      end
     end
   end  # end if write_integralq
 
@@ -396,7 +411,7 @@ end
 @doc """
 ### EulerEquationMod.dataPrep
 
-  This function calculates all the quantities that are stored over the entire 
+  This function calculates all the quantities that are stored over the entire
   mesh, and performs a few sanity check such as ensuring density and pressure
   are positive.
 
@@ -423,10 +438,10 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   # zero out res
   fill!(eqn.res, 0.0)
   fill!(eqn.res_edge, 0.0)
- 
+
   getAuxVars(mesh, eqn)
 #  println("  getAuxVars @time printed above")
-  
+
   if opts["check_density"]
     checkDensity(eqn)
 #    println("  checkDensity @time printed above")
@@ -459,9 +474,9 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   fill!(eqn.bndryflux, 0.0)
   getBCFluxes(mesh, sbp, eqn, opts)
 #   println("  getBCFluxes @time printed above")
- 
+
   # is this needed for anything besides edge stabilization?
-  if eqn.params.use_edgestab 
+  if eqn.params.use_edgestab
     stabscale(mesh, sbp, eqn)
   end
 #  println("  stabscale @time printed above")
@@ -482,7 +497,7 @@ end # end function dataPrep
 ### EulerEquationMod.checkDensity
 
   This function checks that the density is positive. If not, an error is thrown.
-  Because density is stored in the eqn.q array, performing this check takes 
+  Because density is stored in the eqn.q array, performing this check takes
   very little time.
 
   Arguments:
@@ -515,7 +530,7 @@ end
 ### EulerEquationMod.checkPressure
 
   This function checks that pressure is positive.  If not, an error is thrown.
-  Because pressure is stored in the auxiliary variables array, this check 
+  Because pressure is stored in the auxiliary variables array, this check
   takes very little time.
 
   Arguments:
@@ -559,11 +574,11 @@ end
   This is a mid level function.
 """
 # mid level function
-function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
   integral_type = opts["volume_integral_type"]
-  if integral_type == 1
+  if integral_type == 1  # regular volume integrals
     if opts["Q_transpose"] == true
       for i=1:Tdim
         weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
@@ -573,7 +588,7 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
         weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
       end
     end  # end if
-  elseif integral_type == 2
+  elseif integral_type == 2  # entropy stable formulation
     calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
@@ -585,7 +600,7 @@ end  # end evalVolumeIntegrals
 
 
 @doc """
-  This function evaluates the boundary integrals in the Euler equations by 
+  This function evaluates the boundary integrals in the Euler equations by
   calling the appropriate SBP function on eqn.bndryflux, which must be populated
   before calling this function.  eqn.res is updated with the result
 
@@ -593,8 +608,33 @@ end  # end evalVolumeIntegrals
 
 """->
 # mid level function
-function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
+
+  #=
+  if mesh.myrank == 1
+    f = open("bdnrylog.dat", "a")
+    elnum = 1
+    println(f, "\nelement $elnum coords = \n", mesh.coords[:, :, elnum])
+    println(f, "\nelement $elnum q = \n", eqn.q[:, :, elnum])
+    # find boundary
+    idx = 0
+    for i=1:length(mesh.bndryfaces)
+      if mesh.bndryfaces[i].element == elnum
+        idx = i
+      end
+    end
+    bndry = mesh.bndryfaces[idx]
+    println(f, "bndryface = ", bndry)
+
+    println(f, "element $elnum boundary q = \n", eqn.q_bndry[:, :, idx])
+    println(f, "element $elnum boundary flux = \n", eqn.bndryflux[:, :, idx])
+    println(f, "element $elnum boundary coords = \n", mesh.coords_bndry[:, :, idx])
+    println(f, "element $elnum boundary dxidx = \n", mesh.dxidx_bndry[:, :, idx])
+    println(f, "element $elnum boundary facenormal = \n", sbp.facenormal[:, bndry.face])
+    close(f)
+  end
+  =#
 
   #TODO: remove conditional
   if mesh.isDG
@@ -614,13 +654,13 @@ end  # end evalBoundaryIntegrals
 ### EulerEquationMod.addStabilization
 
   This function add whatever form of stabilization opts specifies by calling
-  the appropriate function.  Some arrays may need to be populated before 
+  the appropriate function.  Some arrays may need to be populated before
   calling this function, depending on the type of stabilization used.
 
   This is a mid level function
 """->
 # mid level function
-function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, 
+function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
 #  println("==== start of addStabilization ====")
@@ -629,11 +669,11 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
   if eqn.params.use_edgestab
 #    println("applying edge stabilization")
     if opts["use_edge_res"]
-      edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords, 
-                     mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale, 
+      edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords,
+                     mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale,
                      eqn.res, eqn.res_edge)
     else
-      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx, 
+      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx,
                      mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
     end
   end
@@ -680,7 +720,7 @@ end
     none
 
 """->
-function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
   face_integral_type = opts["face_integral_type"]
@@ -690,7 +730,6 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
-   
     getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
                            eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
@@ -702,7 +741,7 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 
 end
-                            
+
 #=
 @doc """
 ### EulerEquationMod.sendParallelData
@@ -785,7 +824,7 @@ end
 
 """->
 function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, 
+                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts)
 
 
@@ -801,7 +840,7 @@ end  # end function
 @doc """
 ### EulerEquationMod.applyMassMatrixInverse3D
 
-  This function applies the 3D inverse mass matrix to an array. 
+  This function applies the 3D inverse mass matrix to an array.
     The array passed in should always be eqn.res
 
   Inputs:
@@ -824,4 +863,3 @@ function applyMassMatrixInverse3D(mesh, sbp, eqn, opts, arr)
 
   return arr
 end
-

@@ -5,14 +5,14 @@
 #------------------------------------------------------------------------------
 # function to calculate the Euler flux over the entire mesh
 #------------------------------------------------------------------------------
-@doc """ 
+@doc """
 ### EulerEquationMod.getEulerFlux
 
   This function calculates the Euler flux across the entire mesh by passing
   pieces of the eqn.q, eqn.aux_vars, eqn.f_xi and eqn.params to a low level
-  function.  The flux is calculated in the xi and eta directions, 
-  scaled (mulitiplied) by the mapping jacobian (so that when performing the 
-  integral we don't have to explictly divide by the jacobian, it just cancels 
+  function.  The flux is calculated in the xi and eta directions,
+  scaled (mulitiplied) by the mapping jacobian (so that when performing the
+  integral we don't have to explictly divide by the jacobian, it just cancels
   out with the jacobian factor introduced here.
 
   Calls writeFlux to do any requested output.
@@ -20,8 +20,8 @@
   This is a mid level function
 """->
 # mid level function
-function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                        sbp::AbstractSBP,  
+function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                                        sbp::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts)
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
 
@@ -34,7 +34,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       # q_vals twice, even though writing to the flux vector is slower
       # it might be worth copying the normal vector rather than
       # doing an view
-      
+
       for k=1:Tdim  # loop over dimensions
         for p=1:Tdim
           nrm[p] = mesh.dxidx[k, p, j, i]
@@ -44,7 +44,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #        nrm[2] = mesh.dxidx[k, 2, j, i]
         flux = sview(eqn.flux_parametric, :, j, i, k)
 
-	# this will dispatch to the proper calcEulerFlux
+      	# this will dispatch to the proper calcEulerFlux
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
       end
 
@@ -61,7 +61,7 @@ end
 @doc """
 ### EulerEquationMod.writeFlux
 
-  This function writes the real part of Euler flux to a file named Fxi.dat, 
+  This function writes the real part of Euler flux to a file named Fxi.dat,
   space delimited, controlled by the input options 'writeflux', of type Bool.
 
   This is a high level function.
@@ -71,7 +71,7 @@ function writeFlux(mesh, sbp, eqn, opts)
    if !eqn.params.writeflux
      return nothing
    end
- 
+
    fname = "Fxi.dat"
    rmfile(fname)
    writedlm(fname, real(eqn.flux_parametric))
@@ -100,7 +100,7 @@ function getEulerFlux2{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 # flux_parametric is populated with the flux in xi direction (same shape as q)
 # F_eta is populated with flux in eta direction
 
-# once the Julia developers fix slice notation and speed up subarrays, we won't have to 
+# once the Julia developers fix slice notation and speed up subarrays, we won't have to
 # vectorize like this (can calculate flux one node at a time inside a dedicated function
 
 q = eqn.q
@@ -115,7 +115,7 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
       # get direction vector components (xi direction)
       nx = dxidx[1, 1, j, i]
       ny = dxidx[1, 2, j, i]
-      # calculate pressure 
+      # calculate pressure
       press = (eqn.params.gamma-1)*(q[4, j, i] - 0.5*(q[2, j, i]^2 + q[3, j, i]^2)/q[1, j, i])
 
       # calculate flux in xi direction
@@ -140,7 +140,7 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
   end
 
 
- 
+
   return nothing
 
 end
@@ -306,15 +306,15 @@ end
    Inputs/Outputs:
    F  : vector to populate with the flux
 
-   The Tdim paramater of params determine whether this method or the 3D 
+   The Tdim paramater of params determine whether this method or the 3D
    version is called.
 
    This is a low level function
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
-                      q::AbstractArray{Tsol,1}, 
-                      aux_vars::AbstractArray{Tres, 1}, 
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
+                      q::AbstractArray{Tsol,1},
+                      aux_vars::AbstractArray{Tres, 1},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
@@ -333,9 +333,90 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
   F[2] = q[2]*U + dir[1]*press
   F[3] = q[3]*U + dir[2]*press
   F[4] = (q[4] + press)*U
- 
+
   return nothing
 
+end
+
+@doc """
+###EulerEquationMod.calcEulerFlux_revm
+
+Compute the derivative of the euler flux in reverse mode w.r.t to unit vector
+flux direction.
+
+"""->
+function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{2, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1}, F_bar, dir_bar)
+
+  # Compute the reverse mode
+  # Differentiate euler flux product with F_bar in reverse mode w.r.t dir to get
+  # q_bar
+
+  press = calcPressure(params, q)
+  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+
+  # intermediate function that is only used in computing F so has to be reverse
+  # diffed only in F_bar
+
+  # dir_bar has dependence on both F and U
+  # Reverse mode using F_bar
+  dir_bar[1] += F_bar[2]*press
+  dir_bar[2] += F_bar[3]*press
+  U_bar = 0.0
+  U_bar += F_bar[1]*q[1] + F_bar[2]*q[2] + F_bar[3]*q[3] + F_bar[4]*(q[4] + press)
+
+  # Reverse mode using U_bar
+  dir_bar[1] += U_bar*q[2]/q[1]
+  dir_bar[2] += U_bar*q[3]/q[1]
+
+  return nothing
+end
+
+@doc """
+###EulerEquationMod.calcEulerFlux_revq
+
+Compute the derivative of the Euler flux in reverse mode w.r.t q
+
+"""->
+
+function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{2, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1}, F_bar, q_bar)
+
+  press = calcPressure(params, q)
+  U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+
+  U_bar = zero(Tsol)     # Initialize
+  press_bar = zero(Tsol) #
+  # Reverse diff F[4] = (q[4] + press)*U
+  q_bar[4] += F_bar[4]*U
+  U_bar += F_bar[4]*(q[4] + press)
+  press_bar += F_bar[4]*U
+
+  # Reverse diff F[3] = q[3]*U + dir[2]*press
+  q_bar[3] += F_bar[3]*U
+  U_bar += F_bar[3]*q[3]
+  press_bar += F_bar[3]*dir[2]
+
+  # Reverse diff F[2] =  q[2]*U + dir[1]*press
+  q_bar[2] += F_bar[2]*U
+  U_bar += F_bar[2]*q[2]
+  press_bar += F_bar[2]*dir[1]
+
+  # Reverse diff  F[1] = q[1]*U
+  q_bar[1] += F_bar[1]*U
+  U_bar += F_bar[1]*q[1]
+
+  # Reverse diff U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
+  q_bar[2] += U_bar*dir[1]/q[1]
+  q_bar[3] += U_bar*dir[2]/q[1]
+  q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
+
+  # Reverse diff press = calcPressure(params, q)
+  calcPressure_revq(params, q, press_bar, q_bar)
+
+  return nothing
 end
 
 
@@ -351,14 +432,14 @@ end
 
     Inputs/Outputs:
     F  : vector to populate with the flux
- 
-    This is a low level function.  The static parameters of 
+
+    This is a low level function.  The static parameters of
     the ParameterType are used to dispatch to the right method for any
     combination of variable type or equation dimension.
 """->
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy}, 
-                       q::AbstractArray{Tsol,1}, 
-                       aux_vars::AbstractArray{Tres, 1}, 
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :entropy},
+                       q::AbstractArray{Tsol,1},
+                       aux_vars::AbstractArray{Tres, 1},
                        dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 
   gamma = params.gamma
@@ -386,10 +467,10 @@ end
   This is the 3D method.  All arguments are same as the 2D version.
 """->
 # low level function
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative}, 
-                       q::AbstractArray{Tsol,1}, 
-                       aux_vars::AbstractArray{Tres, 1}, 
-                       dir::AbstractArray{Tmsh},  
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
+                       q::AbstractArray{Tsol,1},
+                       aux_vars::AbstractArray{Tres, 1},
+                       dir::AbstractArray{Tmsh},
                        F::AbstractArray{Tsol,1})
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
@@ -408,15 +489,59 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
   F[3] = q[3]*U + dir[2]*press
   F[4] = q[4]*U + dir[3]*press
   F[5] = (q[5] + press)*U
- 
+
   return nothing
 
 end
 
+function calcEulerFlux_revm{Tmsh,Tsol,Tres}(q::AbstractArray{Tsol,1},
+                            dir::AbstractArray{Tmsh,1},
+                            dir_bar::AbstractArray{Tmsh,1},
+  F_bar::AbstractArray{Tres,1})
+  press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
+  U_bar = zero(Tres)
+  # F[5] = (q[5] + press)*U
+  U_bar += (q[5] + press)*F_bar[5]
+  #F[4] = q[4]*U + dir[3]*press
+  U_bar += q[4]*F_bar[4]
+  dir_bar[3] += press*F_bar[4]
+  # F[3] = q[3]*U + dir[2]*press
+  U_bar += q[3]*F_bar[3]
+  dir_bar[2] += press*F_bar[3]
+  # F[2] = q[2]*U + dir[1]*press
+  U_bar += q[2]*F_bar[2]
+  dir_bar[1] += press*F_bar[2]
+  # F[1] = q[1]*U
+  U_bar += q[1]*F_bar[1]
+  # U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  dir_bar[1] += q[2]*U_bar/q[1]
+  dir_bar[2] += q[3]*U_bar/q[1]
+  dir_bar[3] += q[4]*U_bar/q[1]
+end
 
-function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :entropy}, 
-                       q::AbstractArray{Tsol,1}, 
-                       aux_vars::AbstractArray{Tres, 1}, 
+function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{3, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1}, F_bar, dir_bar)
+
+  # Forward sweep
+  press = calcPressure(params, q)
+  U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  F[1] = q[1]*U
+  F[2] = q[2]*U + dir[1]*press
+  F[3] = q[3]*U + dir[2]*press
+  F[4] = q[4]*U + dir[3]*press
+  F[5] = (q[5] + press)*U
+
+  # Reverse sweep
+
+
+  return nothing
+end
+
+
+function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :entropy},
+                       q::AbstractArray{Tsol,1},
+                       aux_vars::AbstractArray{Tres, 1},
                        dir::AbstractArray{Tmsh},  F::AbstractArray{Tsol,1})
 
   gamma = params.gamma
@@ -456,7 +581,7 @@ end
 #------------------------------------------------------------------------------
 
 # mid level function
-function getAuxVars{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function getAuxVars{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                       eqn::EulerData{Tsol, Tres, Tdim})
 # calculate all auxiliary variables
 
@@ -485,7 +610,7 @@ end
     q  : vector of conservative variables
 
 
-  The parameter of params determines whether the 2D or 3D, conservative 
+  The parameter of params determines whether the 2D or 3D, conservative
   or entropy method is dispatched.
 
   This is a low level function.
@@ -493,13 +618,13 @@ end
   Aliasing restrictions: none
 """->
 # low level function
-function calcPressure{Tsol}(params::ParamType{2, :conservative}, 
+function calcPressure{Tsol}(params::ParamType{2, :conservative},
                             q::AbstractArray{Tsol,1} )
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
   return  (params.gamma_1)*(q[4] - 0.5*(q[2]*q[2] + q[3]*q[3])/q[1])
-  
+
 end
 
 
@@ -515,16 +640,44 @@ end
 
   Aliasing restrictions: none
 """->
-function calcPressure{Tsol}(params::ParamType{2, :entropy}, 
+function calcPressure{Tsol}(params::ParamType{2, :entropy},
                             q::AbstractArray{Tsol,1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
-  
+
   k1 = 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]  # a constant from Hughes' paper
   s = gamma - q[1] + k1    # entropy
   rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
   return gamma_1*rho_int
+end
+
+@doc """
+###EulerEquationMod.calcPressure_revq
+
+Compute the gradient of pressure w.r.t q in the reverse mode
+
+**Arguments**
+
+* `params` : Parameter object
+* `q` : Forward sweep solution variable
+* `press_bar` : Reverse pressure gradient
+* `q_bar` : Reverse mode solution gradient
+`
+"""->
+
+function calcPressure_revq{Tsol}(params::ParamType{2, :conservative},
+                           q::AbstractArray{Tsol,1}, press_bar, 
+                           q_bar)
+
+  gamma_1 = params.gamma_1
+  q1_inv = 1.0/q[1]
+  q_bar[4] += press_bar*gamma_1
+  q_bar[3] -= gamma_1*press_bar*q[3]*q1_inv
+  q_bar[2] -= gamma_1*press_bar*q[2]*q1_inv
+  q_bar[1] += 0.5*gamma_1*press_bar*(q[2]*q[2] + q[3]*q[3])*q1_inv*q1_inv
+
+  return nothing
 end
 
 
@@ -534,20 +687,20 @@ end
   3D method.  See 2D method documentation
 """->
 # low level function
-function calcPressure{Tsol}(params::ParamType{3, :conservative}, 
+function calcPressure{Tsol}(params::ParamType{3, :conservative},
                             q::AbstractArray{Tsol,1} )
   # calculate pressure for a node
   # q is a vector of length 5 of the conservative variables
   return  (params.gamma_1)*(q[5] - 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[1])
-  
+
 end
 
-function calcPressure{Tsol}(params::ParamType{3, :entropy}, 
+function calcPressure{Tsol}(params::ParamType{3, :entropy},
                             q::AbstractArray{Tsol,1})
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
-  
+
   k1 = 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/q[5]  # a constant from Hughes' paper
   s = gamma - q[1] + k1    # entropy
   rho_int = exp(-s/gamma_1)*(gamma_1/((-q[5])^gamma))^(1/gamma_1)
@@ -573,7 +726,7 @@ end
   Aliasing restrictions: none
 """->
 
-function calcSpeedofSound{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, 
+function calcSpeedofSound{Tdim, Tsol}(params::ParamType{Tdim, :conservative},
                                 q::AbstractArray{Tsol, 1})
 # calculates teh speed of sond at a node
   pressure = calcPressure(params, q)
@@ -583,7 +736,7 @@ end
 
 
 
-function calcSpeedofSound{Tsol}(params::ParamType{2, :entropy}, 
+function calcSpeedofSound{Tsol}(params::ParamType{2, :entropy},
                                 q::AbstractArray{Tsol, 1})
 # calculate speed of sound using the same formula as conservative variables,
 # just rewriting all variables in entropy variables
@@ -604,7 +757,7 @@ function calcSpeedofSound{Tsol}(params::ParamType{2, :entropy},
   return sqrt((params.gamma*pressure)/rho)
 end
 
-function calcSpeedofSound{Tsol}(params::ParamType{3, :entropy}, 
+function calcSpeedofSound{Tsol}(params::ParamType{3, :entropy},
                                 q::AbstractArray{Tsol, 1})
 # calculate speed of sound using the same formula as conservative variables,
 # just rewriting all variables in entropy variables
@@ -630,7 +783,7 @@ end
 @doc """
 ### EulerEquationMod.calcEntropy
 
-  This function calculates the entropy at a node and returns it.  Method are 
+  This function calculates the entropy at a node and returns it.  Method are
   available for conservative and entropy variables, 2D or 3D
 
   Inputs:
@@ -644,7 +797,7 @@ end
   Aliasing Restrictions: none
 
 """->
-function calcEntropy{Tsol}(params::ParamType{2, :conservative}, 
+function calcEntropy{Tsol}(params::ParamType{2, :conservative},
                            q::AbstractArray{Tsol,1} )
 
   gamma = params.gamma
@@ -654,7 +807,7 @@ function calcEntropy{Tsol}(params::ParamType{2, :conservative},
   return log(gamma_1*rho_int/(q[1]^gamma))
 end
 
-function calcEntropy{Tsol}(params::ParamType{2, :entropy}, 
+function calcEntropy{Tsol}(params::ParamType{2, :entropy},
                            q::AbstractArray{Tsol,1})
 
   gamma = params.gamma
@@ -663,7 +816,7 @@ function calcEntropy{Tsol}(params::ParamType{2, :entropy},
   return gamma - q[1] + 0.5*(q[2]*q[2] + q[3]*q[3])/q[4]
 end
 
-function calcEntropy{Tsol}(params::ParamType{3, :conservative}, 
+function calcEntropy{Tsol}(params::ParamType{3, :conservative},
                            q::AbstractArray{Tsol,1} )
 
   gamma = params.gamma
@@ -673,7 +826,7 @@ function calcEntropy{Tsol}(params::ParamType{3, :conservative},
   return log(gamma_1*rho_int/(q[1]^gamma))
 end
 
-function calcEntropy{Tsol}(params::ParamType{3, :entropy}, 
+function calcEntropy{Tsol}(params::ParamType{3, :entropy},
                            q::AbstractArray{Tsol,1})
 
   gamma = params.gamma
@@ -683,7 +836,7 @@ function calcEntropy{Tsol}(params::ParamType{3, :entropy},
 end
 
 """
-  This function calculates the entropy function U used to define the IR 
+  This function calculates the entropy function U used to define the IR
   variablesat a node and returns it.   It does not return the physical entropy
   s.  This function is agnostic to the dimension of the equation.
 
@@ -696,7 +849,7 @@ end
 
   Aliasing restrictions: none.
 """
-function calcEntropyIR{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, 
+function calcEntropyIR{Tdim, Tsol}(params::ParamType{Tdim, :conservative},
                            q::AbstractArray{Tsol,1} )
 # this calculate the entropy functiion U associated with the IR variables,
 # not the physical entropy s
@@ -803,7 +956,7 @@ end
 @doc """
 ### EulerEquationMod.calcA0
 
-  This function calculates the A0 (ie. dq/dv, where q are the conservative 
+  This function calculates the A0 (ie. dq/dv, where q are the conservative
   and v are the entropy variables) for a node, and stores it A0
 
   The formation of A0 is given in Hughes
@@ -930,8 +1083,8 @@ end
 # EulerEquationMod.calcA0Inv
 
   Calculates inv(A0), where A0 = dq/dv, where q are the conservative variables
-  at a node and v are the entropy varaibles at a node, using the entropy 
-  variables.  
+  at a node and v are the entropy varaibles at a node, using the entropy
+  variables.
 
   Inputs:
     params : ParamType{Tdim, :entropy}
@@ -943,7 +1096,7 @@ end
   Aliasing restrictions: none
 """->
 function calcA0Inv{Tsol}(params::ParamType{2, :entropy},
-                   q::AbstractArray{Tsol,1},  
+                   q::AbstractArray{Tsol,1},
                    A0inv::AbstractArray{Tsol, 2})
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -981,7 +1134,7 @@ function calcA0Inv{Tsol}(params::ParamType{2, :entropy},
 end
 
 function calcA0Inv{Tsol}(params::ParamType{3, :entropy},
-                   q::AbstractArray{Tsol,1},  
+                   q::AbstractArray{Tsol,1},
                    A0inv::AbstractArray{Tsol, 2})
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -1036,8 +1189,8 @@ end
 @doc """
 ### EulerEquationMod.calcA0
 
-  This function calculates the A0 (ie. dq/dq, where q are the conservative 
-  variables at a node), and stores it A0.  This function is provided for 
+  This function calculates the A0 (ie. dq/dq, where q are the conservative
+  variables at a node), and stores it A0.  This function is provided for
   compatability purposes
 
 
@@ -1068,7 +1221,7 @@ end
 # EulerEquationMod.calcA0Inv
 
   Calculates inv(A0), where A0 = dq/dq, where q are the conservative variables
-  at a node.  This function is provided for compatability purposes  
+  at a node.  This function is provided for compatability purposes
 
   Inputs:
     params : ParamType{2, :entropy}
@@ -1080,7 +1233,7 @@ end
   Aliasing restrictions: none
 """->
 function calcA0Inv{Tdim, Tsol}(params::ParamType{Tdim, :conservative},
-                   q::AbstractArray{Tsol,1},  
+                   q::AbstractArray{Tsol,1},
                    A0inv::AbstractArray{Tsol, 2})
 
   for i=1:length(q)
@@ -1094,8 +1247,8 @@ end
 @doc """
 ### EulerEquationMod.matVecA0inv
 
-  This function takes a 3D array and multiplies it in place by the inv(A0) 
-  matrix (calculated at each node), inplace, (where A0 =dq/dv, where q are the 
+  This function takes a 3D array and multiplies it in place by the inv(A0)
+  matrix (calculated at each node), inplace, (where A0 =dq/dv, where q are the
   conservative variables and v are some other variables), inplace.
   Methods are available for conservative and entropy variables.
 
@@ -1108,13 +1261,13 @@ end
     opts
 
   Inputs/Outputs:
-    res_arr: the array to multiply 
+    res_arr: the array to multiply
 
   Aliasing restrictions: none
 """->
-function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                     sbp::AbstractSBP, 
-                     eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractSBP,
+                     eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts,
                      res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
@@ -1141,9 +1294,9 @@ function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 # no-op, because for conservative variables this is A0inv is the identity matrix
-function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                     sbp::AbstractSBP, 
-                     eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
+function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractSBP,
+                     eqn::EulerData{Tsol, Tres, Tdim, :conservative},
                      opts, res_arr::AbstractArray{Tsol, 3})
 
   return nothing
@@ -1156,7 +1309,7 @@ end
   A0inv.  See its documention.
 
 """->
-function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
+function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                   sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim, :entropy},
                   opts, res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
@@ -1198,8 +1351,8 @@ end
 @doc """
 ### EulerEquationMod.calcA1
 
-  This function calculates the A1 (ie. dF1/dq, where F1 is the first column of 
-  the Euler flux) for a node, aka the flux 
+  This function calculates the A1 (ie. dF1/dq, where F1 is the first column of
+  the Euler flux) for a node, aka the flux
   Jacobian of the Euler flux in the x direction.  Methods are available for
   both conservative and entropy variables.
 
@@ -1215,11 +1368,11 @@ end
 
 """->
 
-function calcA1{Tsol}(params::ParamType{2, :conservative}, 
+function calcA1{Tsol}(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1}, A1::AbstractArray{Tsol, 2})
   gamma_1 = params.gamma_1
   gamma = params.gamma
-  u = q[2]/q[1] # Get velocity in the x-direction 
+  u = q[2]/q[1] # Get velocity in the x-direction
   v = q[3]/q[1] # Get velocity in the x-direction
 
   intvar = gamma_1*(u*u + v*v)/2
@@ -1248,7 +1401,7 @@ function calcA1{Tsol}(params::ParamType{2, :conservative},
 end
 
 
-function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
+function calcA1{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
                       A1::AbstractArray{Tsol, 2})
 
 
@@ -1304,7 +1457,7 @@ end
 ### EulerEquationMod.calcA2
 
   This function calculates A2 (ie. dF2/dq, where F2 is the second column of the
-  Euler flux, aka the flux jacobian in the y direction. 
+  Euler flux, aka the flux jacobian in the y direction.
   Methods are available for both conservative and entropy variables.
 
   The formation of A2 is given in Hughes
@@ -1317,11 +1470,11 @@ end
 
 
 """->
-function calcA2{Tsol}(params::ParamType{2, :conservative}, 
+function calcA2{Tsol}(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1}, A2::AbstractArray{Tsol, 2})
   gamma_1 = params.gamma_1
   gamma = params.gamma
-  u = q[2]/q[1] # Get velocity in the x-direction 
+  u = q[2]/q[1] # Get velocity in the x-direction
   v = q[3]/q[1] # Get velocity in the x-direction
 
   intvar = gamma_1*(u*u + v*v)/2
@@ -1348,7 +1501,7 @@ function calcA2{Tsol}(params::ParamType{2, :conservative},
   return nothing
 end
 
-function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1}, 
+function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
                       A2::AbstractArray{Tsol, 2})
 
 
@@ -1399,6 +1552,42 @@ function calcA2{Tsol}(params::ParamType{2, :entropy}, q::AbstractArray{Tsol,1},
     return nothing
 end
 
+@doc """
+
+"""->
+
+function calcSteadyFluxJacobian(params, A, q, nrm)
+
+  u = q[2]/q[1]
+  v = q[3]/q[1]
+
+  a1 = params.gamma*q[4]/q[1]
+  theta = nrm[1]*u + nrm[2]*v
+  phi_2 = 0.5*params.gamma_1*(u*u + v*v)
+
+  A[1,1] = 0.0
+  A[2,1] = -u*theta + nrm[1]*phi_2
+  A[3,1] = -v*theta + nrm[2]*phi_2
+  A[4,1] = theta*(phi_2-a1)
+
+  A[1,2] = nrm[1]
+  A[2,2] = theta - (params.gamma - 2)*nrm[1]*u
+  A[3,2] = nrm[1]*v - params.gamma_1*nrm[2]*u
+  A[4,2] = nrm[1]*a1 - params.gamma_1*u*theta
+
+  A[1,3] = nrm[2]
+  A[2,3] = nrm[2]*u - params.gamma_1*nrm[1]*v
+  A[3,3] = theta - (params.gamma - 2)*nrm[2]*v
+  A[4,3] = nrm[2]*a1 - params.gamma_1*v*theta
+
+  A[1,4] = 0.0
+  A[2,4] = params.gamma_1*nrm[1]
+  A[3,4] = params.gamma_1*nrm[2]
+  A[4,4] = params.gamma*theta
+
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.calcMaxWaveSpeed
@@ -1409,7 +1598,7 @@ end
 
   This is a mid level function
 """->
-function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp, 
+function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
                           eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
@@ -1420,7 +1609,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
     a = calcSpeedofSound(eqn.params, q_i)
     u_nrm = zero(Tsol)
     for j=1:Tdim
-      u_j = q_i[j+1]/q_i[1] 
+      u_j = q_i[j+1]/q_i[1]
       u_nrm += u_j*u_j
     end
     u_norm = sqrt(real(u_nrm))
@@ -1436,14 +1625,14 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
 end  # end function
 
 
-function calcMaxWaveSpeed{Tsol, Tres}(mesh, sbp, 
+function calcMaxWaveSpeed{Tsol, Tres}(mesh, sbp,
                           eqn::EulerData{Tsol, Tres, 2, :entropy}, opts)
 # calculate the maximum wave speed (ie. characteristic speed) on the mesh
 # uses solution vector q, not array
   q = eqn.q_vec
   gamma = eqn.params.gamma
   gamma_1 = eqn.params.gamma_1
- 
+
   max_speed = zero(eltype(q))
   for i=1:mesh.numDofPerNode:length(q)
     q_i = sview(q, i:(i+mesh.numDofPerNode - 1))
@@ -1492,4 +1681,197 @@ end
 
 fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
 =#
+
+function calcMomentContribution!{Tsbp,Tmsh,Tres
+  }(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
+    dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1})
+  @assert( sbpface.numnodes == size(xsbp,2) == size(dforce,2) )
+  @assert( size(xsbp,3) == size(dforce,3) )
+  @assert( size(xsbp,1) == size(dforce,1) == size(xyz_about,1) )
+  rvec = zeros(Tmsh,3)
+  dM = zeros(Tres,3)
+  moment = zeros(Tres, length(xyz_about))
+  for f = 1:size(dforce,3)
+    for i = 1:sbpface.numnodes
+      for di = 1:3
+        rvec[di] = xsbp[di,i,f] - xyz_about[di]
+      end
+      crossProd(rvec, view(dforce,:,i,f), dM)
+      for di = 1:3
+        moment[di] += dM[di]*sbpface.wface[i]
+      end
+    end
+  end
+
+  return moment
+end
+
+function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData{Tsol, Tres},  bndry_nums::Array{Int, 1}, xyz_about::AbstractArray{Tmsh, 1})
+
+  moment = zeros(Tres, mesh.dim)
+  for i=1:length(bndry_nums)
+    start_idx = mesh.bndry_offsets[ bndry_nums[i] ]
+    end_idx = mesh.bndry_offsets[ bndry_nums[i] + 1 ] - 1
+    face_range = start_idx:end_idx
+    bndry_faces = sview(mesh.bndryfaces, face_range)
+    coords = sview(mesh.coords_bndry, :, :, face_range)
+    
+    # compute dforce
+    nrm = Utils.computeNormal(mesh, eqn, bndry_faces)
+    dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
+
+    # compute moment
+    moment += calcMomentContribution!(mesh.sbpface, coords, dforce, xyz_about)
+
+  end
+
+  return moment
+end
+
+function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}, xyz_about::AbstractArray{Tmsh, 1}, moment_bar::AbstractArray{Tres, 1})
+
+  nfaces = length(mesh.bndryfaces)
+  moment = zeros(Tres, mesh.dim)
+  for i=1:length(bndry_nums)
+    start_idx = mesh.bndry_offsets[ bndry_nums[i] ]
+    end_idx = mesh.bndry_offsets[ bndry_nums[i] + 1 ] - 1
+    face_range = start_idx:end_idx
+    bndry_faces = sview(mesh.bndryfaces, face_range)
+    coords = sview(mesh.coords_bndry, :, :, face_range)
+    coords_bar = zeros(coords)
+    
+    # compute dforce
+    nrm = Utils.computeNormal(mesh, eqn, bndry_faces)
+    nrm_bar = zeros(nrm)
+    dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
+    dforce_bar = zeros(dforce)
+
+    #--------------------------------------------------------------------------
+    # start reverse sweep
+    calcMomentContribution_rev!(mesh.sbpface, coords, coords_bar, dforce, dforce_bar, xyz_about, moment_bar)
+
+    computeDForce_revm!(mesh, eqn, bndry_faces, nrm_bar, dforce_bar)
+
+    Utils.computeNormal_rev(mesh, eqn, bndry_faces, nrm_bar)
+  end
+
+  return nothing
+end
+
+
+function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh, eqn::AbstractSolutionData{Tsol, Tres}, bndryfaces::AbstractArray{Boundary, 1}, nrm::Abstract3DArray{Tmsh})
+
+  nfaces = length(bndryfaces)
+  dforce = zeros(Tres, mesh.dim, mesh.numNodesPerFace, nfaces)
+  for i=1:nfaces
+    for j=1:mesh.numNodesPerFace
+      q_j = sview(eqn.q_bndry, :, j, i)  # q_bndry must already have been populated
+      p = calcPressure(eqn.params, q_j)
+      for k=1:mesh.dim
+        dforce[k, j, i] = p*nrm[k, j, i]
+      end
+    end
+  end
+
+  return dforce
+end
+
+function computeDForce_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData{Tsol, Tres}, bndryfaces::AbstractArray{Boundary, 1}, nrm_bar::Abstract3DArray, dforce_bar::Abstract3DArray)
+
+   nfaces = length(bndryfaces)
+   for i=1:nfaces
+    for j=1:mesh.numNodesPerFace
+      q_j = sview(eqn.q_bndry, :, j, i)
+      p = calcPressure(eqn.params, q_j)
+      for k=1:mesh.dim
+        nrm_bar[k, j, i] = dforce_bar[k, j, i]*p
+      end
+    end
+  end
+
+  return nothing
+end
+
+@doc """
+### calcMomentContribution_rev!
+
+This is the reverse differentiated version of calcMomentContribution!.  See docs
+of calcMomentContribution! for further details of the primal method.  This
+function is differentiated with respect to the primal version's `xsbp` and
+`dforce` variables.
+
+**Inputs**
+
+* `sbpface`: an SBP face operator type
+* `xsbp`: SBP-face nodes in physical space; [coord, sbp node, face]
+* `dforce`: scaled force at the sbpface nodes; [coord, sbp node, face]
+* `xyz_about`: point about which the moment is taken
+* `moment_bar`: left multiplies d(moment)/d(xsbp) and d(moment)/d(dforce)
+
+**InOuts**
+
+* `xsbp_bar`: result of vector Jacobian product; [coord, sbp node, face]
+* `dforce_bar`: result of vector Jacobian product; [coord, sbp node, face]
+
+"""->
+function calcMomentContribution_rev!{Tsbp,Tmsh,Tsol,Tres
+  }(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
+    xsbp_bar::AbstractArray{Tmsh,3}, dforce::AbstractArray{Tsol,3},
+    dforce_bar::AbstractArray{Tsol,3}, xyz_about::AbstractArray{Tmsh,1},
+    moment_bar::AbstractArray{Tres,1})
+  @assert( sbpface.numnodes == size(xsbp,2) == size(xsbp_bar,2)
+           == size(dforce,2) == size(dforce_bar,2) )
+  @assert( size(xsbp,3) == size(xsbp,3) == size(dforce,3) == size(dforce_bar,3) )
+  @assert( size(xsbp,1) == size(xsbp_bar,1) == size(dforce,1)
+           == size(dforce_bar,1) == size(xyz_about,1) )
+  rvec = zeros(Tmsh,3)
+  rvec_bar = zeros(Tres,3)
+  dM_bar = zeros(Tres,3)
+  for f = 1:size(dforce,3)
+    for i = 1:sbpface.numnodes
+      for di = 1:3
+        rvec[di] = xsbp[di,i,f] - xyz_about[di]
+        rvec_bar[di] = 0
+        dM_bar[di] = 0  # ???
+      end
+      # start reverse sweep
+      for di = 1:3
+        # moment[di] += dM[di]*sbpface.wface[i]
+        dM_bar[di] += moment_bar[di]*sbpface.wface[i]
+      end
+      # crossProd(rvec, view(dforce,:,i,f), dM)
+      crossProd_rev(rvec, rvec_bar, view(dforce,:,i,f),
+                       view(dforce_bar,:,i,f), dM_bar)
+      for di = 1:3
+        # rvec[di] = xsbp[di,i,f] - xyz_about[di]
+        xsbp_bar[di,i,f] += rvec_bar[di]
+      end
+    end
+  end
+end
+
+function calcMomentContribution!{Tsbp,Tmsh,Tres
+  }(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
+    dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1})
+  @assert( sbpface.numnodes == size(xsbp,2) == size(dforce,2) )
+  @assert( size(xsbp,3) == size(dforce,3) )
+  @assert( size(xsbp,1) == size(dforce,1) == size(xyz_about,1) )
+  rvec = zeros(Tmsh,3)
+  dM = zeros(Tres,3)
+  moment = zeros(Tres, length(xyz_about))
+  for f = 1:size(dforce,3)
+    for i = 1:sbpface.numnodes
+      for di = 1:3
+        rvec[di] = xsbp[di,i,f] - xyz_about[di]
+      end
+      crossProd(rvec, view(dforce,:,i,f), dM)
+      for di = 1:3
+        moment[di] += dM[di]*sbpface.wface[i]
+      end
+    end
+  end
+
+  return moment
+end
+
 

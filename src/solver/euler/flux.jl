@@ -5,7 +5,7 @@
 
   This function calculates the DG flux between a specified set of faces,
   using the solution data at the faces stored in eqn.q_face.
-  Note that the flux is negated because the face integrals have a 
+  Note that the flux is negated because the face integrals have a
   negative sign in the weak form.
 
   Conservative variables only!
@@ -29,52 +29,31 @@
   elements, aux_vars are the auxiliary variables for the node,
   dxidx is the scaled mapping jacobian for elementL, and nrm is the face
   normal in reference space. flux_j is the array of length numDofPerNode to be
-  populated with the flux. params is eqn.params. 
+  populated with the flux. params is eqn.params.
 
 """->
-function calcFaceFlux{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh}, 
-                          sbp::AbstractSBP, 
-                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
-                          functor::FluxType, 
-                          interfaces::AbstractArray{Interface,1}, 
+function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP,
+                          eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+                          functor::FluxType,
+                          interfaces::AbstractArray{Interface,1},
                           face_flux::AbstractArray{Tres, 3})
-#  println("----- entered calcFaceFlux -----")
-#  q_exact = zeros(Tsol, mesh.numDofPerNode)  # DEBUGGING
+
   nfaces = length(interfaces)
+  nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces
-#    println("calculating face flux for interface ", i)
     interface_i = interfaces[i]
-#    println("elementL ", interface_i.elementL, ", faceL ", interface_i.faceL)
-#    println("elementR ", interface_i.elementR, ", faceR ", interface_i.faceR)
-#    println("qL = \n", eqn.q[:, :, interface_i.elementL])
-#    println("qR = \n", eqn.q[:, :, interface_i.elementR])
     for j = 1:mesh.numNodesPerFace
-#      println("node ", j)
       eL = interface_i.elementL
       fL = interface_i.faceL
-
       # get components
       qL = sview(eqn.q_face, :, 1, j, i)
       qR = sview(eqn.q_face, :, 2, j, i)
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-      nrm = sview(sbp.facenormal, :, fL)
-
-#      # debugging
-      x = sview(mesh.coords_interface, :, j, i)
-#      println("coords = \n", x)
-#      calcPeriodicMMS(x, eqn.params, q_exact)
-#      println("q_exact = \n", q_exact)
-
-#      println("qfaceL = \n", qL)
-#      println("qfaceR = \n", qR)
-
+      nrm[:] = sbp.facenormal[:, fL]
       flux_j = sview(face_flux, :, j, i)
       functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
-#      # add the negative sign
-#      for k=1:mesh.numDofPerNode
-#        flux_j[k] = -flux_j[k]
-#      end
     end
   end
 
@@ -133,11 +112,11 @@ end
   uses data from all volume nodes.  See FaceElementIntegralType for details on
   the integral performed.
 """
-function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}( 
+function getSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
-                            opts, 
-                            face_integral_functor::FaceElementIntegralType, 
+                            opts,
+                            face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType)
 
   if opts["parallel_data"] != "element"
@@ -296,9 +275,9 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
     qL_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
     qR_face_arr = Array(Array{Tsol, 3}, mesh.npeers)
     for i=1:mesh.npeers
-      qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+      qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
                                    mesh.peer_face_counts[i])
-      qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+      qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
                                    mesh.peer_face_counts[i])
     end
   end
@@ -386,7 +365,7 @@ end
 @doc """
 ### EulerEquationMod.interpolateFace
 
-  This function interpolates the solution values from the internal nodes 
+  This function interpolates the solution values from the internal nodes
   to the face flux points of the elements
 
   Inputs:
@@ -405,7 +384,7 @@ end
 
     eqn.aux_vars_face is also populated
 """->
-function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts, 
+function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts,
                          q::Abstract3DArray, q_face::AbstractArray{Tsol, 4})
 
   # interpolate solution
@@ -419,7 +398,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts,
     end
   end
 
-  if opts["parallel_data"] == 1  
+  if opts["parallel_data"] == 1
     for peer=1:mesh.npeers
       q_vals_p = eqn.q_face_send[peer]
       aux_vars = eqn.aux_vars_sharedface[peer]
@@ -445,20 +424,20 @@ end
 type RoeFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   RoeSolver(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
-function call{Tsol, Tres}(obj::RoeFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres}(obj::RoeFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector, 
+              nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   RoeSolver(params, uL, uR, aux_vars, nrm, F)
@@ -468,18 +447,18 @@ end
 type StandardFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::StandardFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+function call{Tsol, Tres, Tmsh}(obj::StandardFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   calcEulerFlux_standard(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
-function call{Tsol, Tres}(obj::StandardFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres}(obj::StandardFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractArray, 
               F::AbstractArray{Tres})
@@ -492,20 +471,20 @@ end
 type DucrosFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::DucrosFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+function call{Tsol, Tres, Tmsh}(obj::DucrosFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   calcEulerFlux_Ducros(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
-function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector, 
+              nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   calcEulerFlux_Ducros(params, uL, uR, aux_vars, nrm, F)
@@ -515,18 +494,18 @@ end
 type IRFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::IRFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+function call{Tsol, Tres, Tmsh}(obj::IRFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   calcEulerFlux_IR(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
-function call{Tsol, Tres}(obj::IRFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractArray, 
               F::AbstractArray{Tres})
@@ -539,20 +518,20 @@ end
 type IRSLFFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::IRSLFFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector, 
+function call{Tsol, Tres, Tmsh}(obj::IRSLFFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   calcEulerFlux_IRSLF(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
-function call{Tsol, Tres}(obj::IRSLFFlux, params::ParamType, 
-              uL::AbstractArray{Tsol,1}, 
-              uR::AbstractArray{Tsol,1}, 
+function call{Tsol, Tres}(obj::IRSLFFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector, 
+              nrm::AbstractVector,
               F::AbstractVector{Tres})
 
   calcEulerFlux_IRSLF(params, uL, uR, aux_vars, nrm, F)
@@ -605,3 +584,28 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   eqn.volume_flux_func = FluxDict[name]
   return nothing
 end
+
+type RoeFlux_revm <: FluxType_revm
+end
+
+function call{Tsol, Tres, Tmsh}(obj::RoeFlux_revm, params::ParamType,
+              uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
+              dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
+              flux_bar::AbstractVector{Tres}, dxidx_bar::AbstractArray{Tmsh, 2})
+
+  RoeSolver_revm(params, uL, uR, aux_vars, dxidx, nrm, flux_bar, dxidx_bar)
+
+  return nothing
+end
+
+global const FluxDict_revm = Dict{ASCIIString, FluxType_revm}(
+"RoeFlux" => RoeFlux_revm(),
+)
+
+function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  name = opts["Flux_name"]
+  eqn.flux_func_bar = FluxDict_revm[name]
+
+  return nothing
+end # End function getFluxFunctors_revm

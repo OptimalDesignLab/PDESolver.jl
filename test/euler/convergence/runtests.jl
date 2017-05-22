@@ -96,4 +96,4 @@ function run_convergence_tests()
 end
 
 #run_convergence_tests()
-add_func1!(EulerTests, run_convergence_tests, [TAG_CONVERGENCE, TAG_NLSOLVERS])
+add_func1!(EulerTests, run_convergence_tests, [TAG_CONVERGENCE, TAG_NLSOLVERS, TAG_SHORTTEST])

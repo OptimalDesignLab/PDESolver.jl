@@ -128,7 +128,7 @@ function test_parallel_mpi()
 end
 
 #test_parallel_mpi()
-add_func1!(AdvectionTests, test_parallel_mpi)
+add_func1!(AdvectionTests, test_parallel_mpi, [TAG_SHORTTEST])
 
 function test_parallel_serialpart()
   ARGS[1] = "input_vals_parallel.jl"
@@ -192,4 +192,4 @@ function test_parallel_serialpart()
 end
 
 #test_parallel_serialpart()
-add_func1!(AdvectionTests, test_parallel_serialpart)
+add_func1!(AdvectionTests, test_parallel_serialpart, [TAG_SHORTTEST])

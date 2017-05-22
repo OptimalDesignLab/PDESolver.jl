@@ -45,6 +45,7 @@ include("test_GLS3.jl")
 include("test_3d.jl")
 
 include("test_adjoint.jl")
+include("test_reversemode.jl")
 include("test_flux.jl")
 include("test_ESS.jl")
 include("test_curvilinear.jl")
@@ -52,6 +53,7 @@ include("test_rk4.jl")
 include(joinpath("./convergence/runtests.jl"))
 include("Utils.jl")
 include("test_parallel.jl")
+include("test_homotopy.jl")
 
 #------------------------------------------------------------------------------
 # run tests
@@ -86,4 +88,3 @@ if MPI.Initialized() && TestFinalizeMPI
 end
 
 FactCheck.exitstatus()
-

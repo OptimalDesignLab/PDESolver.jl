@@ -128,4 +128,4 @@ function test_CN()
 
 end
 
-add_func1!(AdvectionTests, test_CN)
+add_func1!(AdvectionTests, test_CN, [TAG_SHORTTEST])

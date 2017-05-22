@@ -37,4 +37,4 @@ function test_ESS_parallel()
 end
 
 #test_ESS_parallel()
-add_func1!(EulerTests, test_ESS_parallel)
+add_func1!(EulerTests, test_ESS_parallel, [TAG_SHORTTEST])

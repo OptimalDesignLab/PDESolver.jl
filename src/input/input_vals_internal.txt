@@ -1,6 +1,7 @@
 # input_vals_internal.txt
 # this file documents keys that are used by Ticon internally but are not 
 # intended to be set by users
+"need_adjoint": whether or not the adjoint will be used.  Currently Euler only
 
 "parallel_type": how often to exchange parallel data, (Int) 1 = every residual
                  evaluation, 2 = every jacobian evaluation

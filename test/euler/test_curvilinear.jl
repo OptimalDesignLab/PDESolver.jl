@@ -133,4 +133,4 @@ end
 
 
 infile = "input_vals_curve.jl"
-add_func2!(EulerTests, test_curvilinear, infile, [TAG_CURVILINEAR, TAG_ESS])
+add_func2!(EulerTests, test_curvilinear, infile, [TAG_CURVILINEAR, TAG_ESS, TAG_SHORTTEST])

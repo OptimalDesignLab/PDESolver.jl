@@ -296,11 +296,11 @@ end
 
 
 #run_dof()
-op_type = 3
-p = 4
-numel = 18
+op_type = 4
+p = 3
+numel = 40
 numdof = 64^3
-findMeshSizeEl(numel, op_type, p)
-#findMeshSize(numdof, op_type, p)
+#findMeshSizeEl(numel, op_type, p)
+findMeshSize(numdof, op_type, p)
 
 
