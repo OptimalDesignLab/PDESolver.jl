@@ -305,6 +305,42 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
   end   # end of facts checking pointers of arrays
 
+  rand!(eqn.q_face)
+  rand!(eqn.flux_parametric)
+  rand!(eqn.flux_face)
+  rand!(eqn.q)
+  rand!(eqn.res)
+  rand!(eqn.M)
+  rand!(eqn.Minv)
+  rand!(eqn.Minv3D)
+  rand!(eqn.bndryflux)
+  rand!(eqn.q_bndry)
+
+  facts("--- Testing eqn_deepcopy, eqn change phase ---") do
+
+    @fact (eqn_copy.q_face[1] == eqn.q_face[1]) --> false
+    @fact (eqn_copy.flux_parametric[1] == eqn.flux_parametric[1]) --> false
+    @fact (eqn_copy.flux_face[1] == eqn.flux_face[1]) --> false
+    @fact (eqn_copy.q[1] == eqn.q[1]) --> false
+    @fact (eqn_copy.res[1] == eqn.res[1]) --> false
+    @fact (eqn_copy.M[1] == eqn.M[1]) --> false
+    @fact (eqn_copy.Minv[1] == eqn.Minv[1]) --> false
+    @fact (eqn_copy.Minv3D[1] == eqn.Minv3D[1]) --> false
+    @fact (eqn_copy.bndryflux[1] == eqn.bndryflux[1]) --> false
+    @fact (eqn_copy.q_bndry[1] == eqn.q_bndry[1]) --> false
+
+  end
+
+  rand!(eqn_copy.q)
+  rand!(eqn_copy.res)
+
+  facts("--- Testing eqn_deepcopy, eqn_copy change phase ---") do
+
+    @fact (eqn_copy.q[1] == eqn_copy.q_vec[1]) --> true
+    @fact (eqn_copy.res[1] == eqn_copy.res_vec[1]) --> true
+
+  end
+
 
 end   # end of function test_eqn_copy
 
