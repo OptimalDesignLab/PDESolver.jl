@@ -57,12 +57,11 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #   throw(ErrorException("Crank-Nicolson is in development. Exiting."))
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-  fstdout = BufferedIO(STDOUT)
   if myrank == 0
-    println(fstdout, "\nEntered Crank-Nicolson")
-    println(fstdout, "res_tol = ", res_tol)
+    println(BSTDOUT, "\nEntered Crank-Nicolson")
+    println(BSTDOUT, "res_tol = ", res_tol)
   end
-  flush(fstdout)
+  flush(BSTDOUT)
 
   output_freq = opts["output_freq"]::Int
   write_vis = opts["write_vis"]::Bool
@@ -145,16 +144,16 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     
     @mpi_master if i % output_freq == 0
-      println(fstdout, "flushing convergence.dat to disk")
+      println(BSTDOUT, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
     if (res_norm < res_tol)
       if myrank == 0
-        println(fstdout, "breaking due to res_tol, res norm = $res_norm")
+        println(BSTDOUT, "breaking due to res_tol, res norm = $res_norm")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
@@ -162,9 +161,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     if use_itermax && i > itermax
       if myrank == 0
-        println(fstdout, "breaking due to itermax")
+        println(BSTDOUT, "breaking due to itermax")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
@@ -184,7 +183,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
     t = t_nextstep
-    flush(fstdout)
+    flush(BSTDOUT)
 
   end   # end of t step loop
 

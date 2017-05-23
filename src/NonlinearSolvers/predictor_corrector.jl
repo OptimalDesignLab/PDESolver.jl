@@ -159,12 +159,12 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   while res_norm > res_norm_0*res_reltol && res_norm > res_abstol && iter < itermax  # predictor loop
 
     @mpi_master begin
-      println("\npredictor iteration ", iter, ", lambda = ", lambda)
-      println("res_norm = ", res_norm)
-      println("res_norm_0 = ", res_norm_0)
-      println("res_norm/res_norm_0 = ", res_norm/res_norm_0)
-      println("res_norm = ", res_norm)
-      println("h = ", h)
+      println(BSTDOUT, "\npredictor iteration ", iter, ", lambda = ", lambda)
+      println(BSTDOUT, "res_norm = ", res_norm)
+      println(BSTDOUT, "res_norm_0 = ", res_norm_0)
+      println(BSTDOUT, "res_norm/res_norm_0 = ", res_norm/res_norm_0)
+      println(BSTDOUT, "res_norm = ", res_norm)
+      println(BSTDOUT, "h = ", h)
     end
 
     # calculate homotopy residual
@@ -177,15 +177,15 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     # homotopy problem (= the physics problem because lambda is zero)
     # tightly
     if abs(lambda - lambda_min) <= eps()
-      @mpi_master println("tightening homotopy tolerance")
+      @mpi_master println(BSTDOUT, "tightening homotopy tolerance")
       homotopy_tol = res_reltol
       newton_data.reltol = res_reltol*1e-3  # smaller than newton tolerance
       newton_data.abstol = res_abstol*1e-3  # smaller than newton tolerance
 
       @mpi_master begin
-        println("setting homotopy tolerance to ", homotopy_tol)
-        println("ksp reltol = ", newton_data.reltol)
-        println("ksp abstol = ", newton_data.abstol)
+        println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
+        println(BSTDOUT, "ksp reltol = ", newton_data.reltol)
+        println(BSTDOUT, "ksp abstol = ", newton_data.abstol)
       end
     end
 
@@ -212,7 +212,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       end
 
       # calculate tangent vector dH/dq * t = dH/dLambda
-      @mpi_master println("solving for tangent vector")
+      @mpi_master println(BSTDOUT, "solving for tangent vector")
       jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
 
       matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
@@ -220,7 +220,6 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       # normalize tangent vector
       tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
       tan_norm = sqrt(tan_norm*tan_norm + 1)
-      @mpi_master println("tan norm = ", tan_norm)
 #      tan_norm = sqrt(dot(tan_vec, tan_vec) + 1)  # + 1 ?
       scale!(tan_vec, 1/tan_norm)
 
@@ -241,8 +240,6 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       # calculate step size
       fac = max(psi/psi_max, delta/delta_max)
       h /= fac
-
-#      @mpi_master println("iteration ", iter, ", psi = ", psi, ", delta/delta_max = ", delta/delta_max, ", step size = ", h)
 
       # take predictor step
       scale!(tan_vec, h)
@@ -265,23 +262,25 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     iter += 1
   end  # end while loop
 
-  print("\n")
+  print(BSTDOUT, "\n")
 
   # inform user of final status
   @mpi_master if iter >= itermax
-    println(STDERR, "Warning: predictor-corrector did not converge in $iter iterations")
+    println(BSTDERR, "Warning: predictor-corrector did not converge in $iter iterations")
   
   elseif res_norm <= res_abstol
-    println("predictor-corrector converged with absolute residual norm $res_norm")
+    println(BSTDOUT, "predictor-corrector converged with absolute residual norm $res_norm")
   elseif res_norm/res_norm_0 <= res_reltol
     tmp = res_norm/res_norm_0
-    println("predictor-corrector converged with relative residual norm $tmp")
+    println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
 
   if opts["jac_type"] == 3
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
 
+  flush(BSTDOUT)
+  flush(BSTDERR)
 
   return nothing
 end

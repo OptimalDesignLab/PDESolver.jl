@@ -61,13 +61,12 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   println("c_coeffs = \n", c_coeffs)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-  fstdout = BufferedIO(STDOUT)
 #  MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0
-    println(fstdout, "\nEntered lserk54")
-    println(fstdout, "res_tol = ", res_tol)
+    println(BSTDOUT, "\nEntered lserk54")
+    println(BSTDOUT, "res_tol = ", res_tol)
   end
-#  flush(fstdout)
+#  flush(BSTDOUT)
 #  MPI.Barrier(MPI.COMM_WORLD)
 # res_tol is alternative stopping criteria
 
@@ -82,8 +81,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/delta_t)
-  println(fstdout, "t_steps: ",t_steps)
-  println(fstdout, "delta_t = ", delta_t)
+  println(BSTDOUT, "t_steps: ",t_steps)
+  println(BSTDOUT, "delta_t = ", delta_t)
 
   (m,) = size(q_vec)
 
@@ -97,15 +96,15 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     f1 = BufferedIO(_f1)
   end
 
-  flush(fstdout)
+  flush(BSTDOUT)
   #-----------------------------------------------------
   # Main timestepping loop
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
     @mpi_master if i % output_freq == 0
-       println(fstdout, "\ntimestep ",i)
+       println(BSTDOUT, "\ntimestep ",i)
        if i % output_freq == 0
-         flush(fstdout)
+         flush(BSTDOUT)
        end
     end
 
@@ -120,7 +119,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
  
     #--------------------------------------------------------------------------
     # callback and logging
-    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
+    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
 
     # logging
     @mpi_master if i % 1 == 0
@@ -128,25 +127,25 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
     
     @mpi_master if i % output_freq == 0
-      println(fstdout, "flushing convergence.dat to disk")
+      println(BSTDOUT, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
     if (sol_norm < res_tol)
       if myrank == 0
-        println(fstdout, "breaking due to res_tol, res norm = $sol_norm")
+        println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
 
     if use_itermax && i > itermax
       if myrank == 0
-        println(fstdout, "breaking due to itermax")
+        println(BSTDOUT, "breaking due to itermax")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end

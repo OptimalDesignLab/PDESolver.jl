@@ -68,10 +68,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              res_tol = -1.0, real_time=false)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-  fstdout = BufferedIO(STDOUT)
   if myrank == 0
-    println(fstdout, "\nEntered rk4")
-    println(fstdout, "res_tol = ", res_tol)
+    println(BSTDOUT, "\nEntered rk4")
+    println(BSTDOUT, "res_tol = ", res_tol)
   end
 # res_tol is alternative stopping criteria
 
@@ -86,8 +85,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/h)
-  println(fstdout, "t_steps: ",t_steps)
-  println(fstdout, "delta_t = ", h)
+  println(BSTDOUT, "t_steps: ",t_steps)
+  println(BSTDOUT, "delta_t = ", h)
 
   (m,) = size(q_vec)
 
@@ -105,7 +104,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # Note: q_vec_old_DEBUG is a tool for showing the change in q between timesteps for comparison with CN (for ex)
 #   q_vec_old_DEBUG = zeros(q_vec)
 
-  flush(fstdout)
+  flush(BSTDOUT)
   #-----------------------------------------------------
   ### Main timestepping loop ###
   # beginning of RK4 time stepping loop
@@ -114,9 +113,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #     q_vec_old_DEBUG = deepcopy(q_vec)
 
     @mpi_master if i % output_freq == 0
-       println(fstdout, "\ntimestep ",i)
+       println(BSTDOUT, "\ntimestep ",i)
        if i % output_freq == 0
-         flush(fstdout)
+         flush(BSTDOUT)
        end
     end
 
@@ -126,7 +125,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     timing.t_func += @elapsed f( ctx..., opts, treal)
     sol_norm = post_func(ctx..., opts)
 
-    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
+    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
     for j=1:m
       k1[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k1[j]
@@ -138,25 +137,25 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     
     @mpi_master if i % output_freq == 0
-      println(fstdout, "flushing convergence.dat to disk")
+      println(BSTDOUT, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
     if (sol_norm < res_tol)
       if myrank == 0
-        println(fstdout, "breaking due to res_tol, res norm = $sol_norm")
+        println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
 
     if use_itermax && i > itermax
       if myrank == 0
-        println(fstdout, "breaking due to itermax")
+        println(BSTDOUT, "breaking due to itermax")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end

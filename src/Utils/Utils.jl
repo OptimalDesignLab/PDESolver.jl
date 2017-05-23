@@ -55,6 +55,8 @@ export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
 # area.jl
 export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaContribution!, calcProjectedAreaContribution_rev!, crossProd, crossProd_rev
 
+# io.jl
+export BufferedIO, BSTDOUT, BSTDERR
 @doc """
 ### Utils.disassembleSolution
 

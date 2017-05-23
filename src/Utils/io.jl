@@ -1,6 +1,5 @@
 # io.jl: functions to do IO more effiently
 
-export BufferedIO
 
 @doc """
 ### Utils.BufferedIO
@@ -12,7 +11,7 @@ export BufferedIO
 type BufferedIO{T <: IO}  <: IO
   fstream::T
   fbuf::IOBuffer
-
+  isopen::Bool
 end
 
 @doc """
@@ -74,6 +73,22 @@ function flush(io::BufferedIO)
 end
 
 function close(io::BufferedIO)
-  flush(io)
-  close(io.fstream)
+  if BufferedIO.isopen
+    flush(io)
+    close(io.fstream)
+  end
 end
+
+
+#------------------------------------------------------------------------------
+# create some useful streams
+
+"""
+  Buffered version of STDOUT.  This should *always* be used instead of STDOUT
+"""
+global const BSTDOUT = BufferedIO(STDOUT)
+
+"""
+  Buffered version of STDERR.  This should *always* be used instead of STDERR
+"""
+global const BSTDERR = BufferedIO(STDERR)
