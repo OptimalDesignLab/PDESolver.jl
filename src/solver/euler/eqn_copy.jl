@@ -24,15 +24,13 @@ import PDESolver.eqn_deepcopy
       eqn_copy
 
 """
-# TODO: check q/q_vec, res/res_vec
-# TODO: tests
-#  1. ensure copy matches
-#  2. ensure changes to eqn don't affect eqn_copy
-#  3. ensure changes to eqn_copy.q change eqn_copy.q_vec, same for res
 
 function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim}, mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, opts::Dict)
 
-  # over 100 fields, so it is necessary to write a better approach for copying than explicitly copying every named field
+  # The eqn object has over 100 fields, so it is necessary to write a better approach for 
+  #   copying than explicitly copying every named field
+  # This is the second write of eqn_deepcopy; the first version explicitly copied each field. 
+  #   Was done for SimpleODE and Advection before Euler made it obvious that that was intractable.
 
   # 1: call constructor on eqn_copy
   var_type = opts["variable_type"]
@@ -48,7 +46,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim},
     # ------- handle params
     # if this first level fieldname is of type ParamType; ex: eqn.params
     if issubtype(fdnm_type, AbstractParamType)
-      
+
       # loop over eqn.params, eqn.params_conservative, or eqn.params_entropy
       println(" is a subtype of AbstractParamType, fdnm: ", fdnm)
 
@@ -79,7 +77,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim},
         end
 
       end
-      
+
     # -------- handle arrays
     # if this first level fieldname is of type Array; ex: eqn.q or eqn.q_face_send
     elseif issubtype(fdnm_type, AbstractArray)
@@ -126,7 +124,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim},
 
   end     # end of loop over first level fieldnames
 
-      
+
   return eqn_copy
 
 end

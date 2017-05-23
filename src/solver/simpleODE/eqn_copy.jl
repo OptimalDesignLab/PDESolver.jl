@@ -46,7 +46,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::SimpleODEData_{Tsol, Tres, Td
     # ------- handle params
     # if this first level fieldname is of type ParamType; ex: eqn.params
     if issubtype(fdnm_type, AbstractParamType)
-      
+
       # loop over eqn.params, eqn.params_conservative, or eqn.params_entropy
       println(" is a subtype of AbstractParamType, fdnm: ", fdnm)
 
@@ -77,7 +77,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::SimpleODEData_{Tsol, Tres, Td
         end
 
       end
-      
+
     # -------- handle arrays
     # if this first level fieldname is of type Array; ex: eqn.q or eqn.q_face_send
     elseif issubtype(fdnm_type, AbstractArray)
@@ -124,7 +124,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::SimpleODEData_{Tsol, Tres, Td
 
   end     # end of loop over first level fieldnames
 
-      
+
   return eqn_copy
 
 end
