@@ -143,9 +143,9 @@ function calcdRdA_CS(mesh, sbp, eqn, opts, t)
   eqn.params.sin_amplitude += pert
   # params.sin_amplitude += pert
 
-  eqn_temp = deepcopy(eqn)
-  eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
+  # eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  # eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
 
   # J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
@@ -176,9 +176,9 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, t)
   eqn.params.sin_amplitude += pert
   # params.sin_amplitude += pert
 
-  eqn_temp = deepcopy(eqn)
-  eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
+  # eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  # eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
   # J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
   # J = J_arr[1]

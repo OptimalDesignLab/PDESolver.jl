@@ -181,28 +181,6 @@ function createMeshAndOperator(opts, dofpernode)
 end
 
 """
-  This function stores the current running physics module into the opts dictionary.
-"""
-function optsPhysicsName(opts)
-
-  calling_file = @__FILE__
-
-  if contains(calling_file, "advection/startup.jl")
-    opts["physics"] = "advection"
-  elseif contains(calling_file, "euler/startup.jl")
-    opts["physics"] = "euler"
-  elseif contains(calling_file, "simpleODE/startup.jl")
-    opts["physics"] = "simpleODE"
-  else
-    println("Could not store physics name in opts dictionary.")
-  end
-
-  return nothing
-
-end
-
-
-"""
   This function takes in the 4 principle object, fully initialized, and calls
   a nonlinear solver on them, according to the options in the dictionary.
   The evalResidual function is passed to the nonlinear solver

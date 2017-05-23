@@ -13,7 +13,7 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
   # Note: can't just call this:
   #   eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
   # because it needs AdvectionEquationMod loaded, which needs PDESolver loaded, which can't be loaded more than once.
-  eqn_dummy = deepcopy(adj)                     # allocate a dummy eqn object
+  eqn_dummy = eqn_deepcopy(adj, mesh, sbp, opts)                     # allocate a dummy eqn object
 
   # println("in cnAdjLoadChkpt: pointer(adj.q_vec): ", pointer(adj.q_vec))
   # println("in cnAdjLoadChkpt: pointer(adj.res_vec): ", pointer(adj.res_vec))

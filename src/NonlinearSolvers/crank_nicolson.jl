@@ -95,21 +95,21 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   if neg_time == false
     # make a copy of the eqn object for storage of t_(n+1) information
-    eqn_nextstep = deepcopy(eqn)
+    eqn_nextstep = eqn_deepcopy(eqn, mesh, sbp, opts)
     # TODO: copyForMultistage does not give correct values.
     #     deepcopy works for now, but uses more memory than copyForMultistage, if it worked
     # eqn_nextstep = copyForMultistage(eqn)
-    eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-    eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    # eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    # eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   else
     # Initialize adjoint pde eqn objects
-    adj = deepcopy(eqn)
-    adj.q = reshape(adj.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-    adj.res = reshape(adj.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    adj = eqn_deepcopy(eqn, mesh, sbp, opts)
+    # adj.q = reshape(adj.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    # adj.res = reshape(adj.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
-    adj_nextstep = deepcopy(eqn)
-    adj_nextstep.q = reshape(adj_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-    adj_nextstep.res = reshape(adj_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    adj_nextstep = eqn_deepcopy(eqn, mesh, sbp, opts)
+    # adj_nextstep.q = reshape(adj_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    # adj_nextstep.res = reshape(adj_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   end
 
   @debug1 println("============ In CN ============")

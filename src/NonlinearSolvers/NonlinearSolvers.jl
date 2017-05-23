@@ -24,4 +24,6 @@ include("newton.jl")
 include("globalization.jl")
 #include("newton_fd_old.jl")
 
+println(opts["physics"])
+
 end
