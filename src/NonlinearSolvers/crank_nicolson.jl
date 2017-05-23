@@ -200,6 +200,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   @debug1 println("============= end of CN: t = $t ===============")
   return t
 
+  flush(BSTDOUT)
+
 end   # end of crank_nicolson function
 
 @doc """

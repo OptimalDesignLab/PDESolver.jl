@@ -218,6 +218,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     close(f1)
   end
 
+  flush(BSTDOUT)
+
   # should this be treal?
   return t
 

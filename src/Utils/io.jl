@@ -11,7 +11,6 @@
 type BufferedIO{T <: IO}  <: IO
   fstream::T
   fbuf::IOBuffer
-  isopen::Bool
 end
 
 @doc """
@@ -73,7 +72,7 @@ function flush(io::BufferedIO)
 end
 
 function close(io::BufferedIO)
-  if BufferedIO.isopen
+  if isopen(io.fstream)
     flush(io)
     close(io.fstream)
   end

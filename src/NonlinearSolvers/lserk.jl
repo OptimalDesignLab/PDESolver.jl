@@ -189,6 +189,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     close(f1)
   end
 
+  flush(BSTDOUT)
 
   return t
 end  # end lserk54
