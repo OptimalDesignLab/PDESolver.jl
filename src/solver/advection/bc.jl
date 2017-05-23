@@ -30,7 +30,7 @@
   where all arguments (except params and nrm) are vectors of values at a node.
 
   params is the ParamType associated with the the EulerEquation object
-  nrm = sbp.facenormal[:, current_node]
+  nrm = mesh.sbpface.normal[:, current_node]
 
   This is a mid level function.
 """->
@@ -57,7 +57,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       alpha_y = eqn.params.alpha_y
       coords = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
       bndryflux[1, j, i] = -functor(q, eqn.params, coords, dxidx, nrm, t)
     end
   end
@@ -90,7 +90,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       alpha_y = eqn.params.alpha_y
       coords = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
       bndryflux[1, j, i] = -functor(q, eqn.params, coords, dxidx, nrm, t)
     end
   end

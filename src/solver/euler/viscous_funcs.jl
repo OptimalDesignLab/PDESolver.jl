@@ -996,7 +996,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
       rhoV2 = q_in[1, n] * v2
       q_bnd[dim+2, n] = pInf/gamma_1 + 0.5*rhoV2
     end    
-
+    
     # q_bnd[:,n] = qInf[:]
   end
 

@@ -103,7 +103,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
         q = eqn.q[1,k,bndry_i.element]
         x = sview(mesh.coords, :, k, bndry_i.element)
         dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
+        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
@@ -168,7 +168,7 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
         q = eqn.q_bndry[ 1, j, global_facenum]
         coords = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
+        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         boundary_integrand[1,j,i] = calcBoundaryFunctionalIntegrand(eqn.params, nx, ny, q,

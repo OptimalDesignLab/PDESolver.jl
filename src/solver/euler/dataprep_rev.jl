@@ -70,7 +70,7 @@ function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
-  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  nrm = zeros(Tmsh, size(mesh.sbpface.normal,1))
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
@@ -83,7 +83,7 @@ function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
       dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
-      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      nrm[:] = mesh.sbpface.normal[:,bndry_i.face]
       bndryflux_i = sview(bndryflux_bar, :, j, i)
 
       functor_bar(q2, aux_vars, x, dxidx, dxidx_bar, nrm, bndryflux_i, eqn.params)
@@ -102,7 +102,7 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
   fill!(mesh.dxidx_face_bar, 0.0)
   nfaces = length(interfaces)
-  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  nrm = zeros(Tmsh, size(mesh.sbpface.normal,1))
   for i=1:nfaces  # loop over faces
     interface_i = interfaces[i]
     for j = 1:mesh.numNodesPerFace
@@ -115,7 +115,7 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
       dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-      nrm[:] = sbp.facenormal[:,fL]
+      nrm[:] = mesh.sbpface.normal[:,fL]
 
       #flux_j = sview(flux_face_bar, :, j, i)
       #functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)

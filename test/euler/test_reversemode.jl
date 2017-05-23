@@ -163,7 +163,7 @@ function test_reversemode()
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm = sview(sbp.facenormal, :, bndry_i.face)
+          nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
           for k = 1:Tdim
             phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
           end # End for k = 1:Tdim
@@ -345,7 +345,7 @@ function test_reversemode()
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm[:] = sbp.facenormal[:, bndry_i.face]
+        nrm[:] = mesh.sbpface.normal[:, bndry_i.face]
         # println("nrm = $(real(nrm))")
         dxidx_bar = zeros(Complex128, 2,2)
         EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, psi, dxidx_bar)
@@ -402,7 +402,7 @@ function test_reversemode()
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          nrm[:] = mesh.sbpface.normal[:, bndry_i.face]
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
           # println("bndryflux_bar_i = $bndryflux_bar_i")
@@ -451,7 +451,7 @@ function test_reversemode()
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          nrm[:] = mesh.sbpface.normal[:, bndry_i.face]
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
           # println("bndryflux_bar_i = $bndryflux_bar_i")
@@ -490,7 +490,7 @@ function test_reversemode()
 
     functor = eqn.flux_func
     nfaces = length(mesh.interfaces)
-    nrm = zeros(Complex128, size(sbp.facenormal,1))
+    nrm = zeros(Complex128, size(mesh.sbpface.normal,1))
     for i=1:nfaces  # loop over faces
       interface_i = mesh.interfaces[i]
       for j = 1:mesh.numNodesPerFace
@@ -503,7 +503,7 @@ function test_reversemode()
         dxidx = sview(mesh.dxidx_face, :, :, j, i)
         dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
         aux_vars = sview(eqn.aux_vars_face, :, j, i)
-        nrm[:] = sbp.facenormal[:,fL]
+        nrm[:] = mesh.sbpface.normal[:,fL]
 
         flux_j_bar = sview(eqn.flux_face_bar, :, j, i)
         # println("dxidx_bar = $(real(dxidx_bar))")
@@ -588,7 +588,7 @@ function test_reversemode()
 
     functor = eqn.flux_func
     nfaces = length(mesh.interfaces)
-    nrm = zeros(Complex128, size(sbp.facenormal,1))
+    nrm = zeros(Complex128, size(mesh.sbpface.normal,1))
     for i=1:nfaces  # loop over faces
       interface_i = mesh.interfaces[i]
       for j = 1:mesh.numNodesPerFace
@@ -601,7 +601,7 @@ function test_reversemode()
         dxidx = sview(mesh.dxidx_face, :, :, j, i)
         dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
         aux_vars = sview(eqn.aux_vars_face, :, j, i)
-        nrm[:] = sbp.facenormal[:,fL]
+        nrm[:] = mesh.sbpface.normal[:,fL]
 
         flux_j_bar = sview(flux_face_bar_copy, :, j, i)
         for k = 1:length(dxidx)
@@ -637,7 +637,7 @@ function test_reversemode()
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          nrm[:] = mesh.sbpface.normal[:, bndry_i.face]
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
           dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)

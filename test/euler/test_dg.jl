@@ -23,7 +23,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
         dxidx = mesh.dxidx_face[:, :, j, i]
         eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
         aux_vars = eqn.aux_vars_face[:, j, i]
-        nrm = sbp.facenormal[:, iface.faceL]
+        nrm = mesh.sbpface.normal[:, iface.faceL]
 
 
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -53,7 +53,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
       for j=1:mesh.sbpface.numnodes
         dxidx = mesh.dxidx_face[:, :, j, i]
         aux_vars = eqn.aux_vars_face[:, j, i]
-        nrm = sbp.facenormal[:, iface.faceL]
+        nrm = mesh.sbpface.normal[:, iface.faceL]
 
 
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -102,7 +102,7 @@ function test_dg_boundary(mesh, sbp, eqn, opts)
         dxidx = mesh.dxidx_bndry[:, :, j, i]
         eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q_bndry[:, j, i])
         aux_vars = eqn.aux_vars_bndry[:, j, i]
-        nrm = sbp.facenormal[:, bndry_i.face]
+        nrm = mesh.sbpface.normal[:, bndry_i.face]
 
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]

@@ -100,11 +100,11 @@ Computes the force in the X-direction in an ADJOINT CONSISTENT way
 """->
 
 function calcForceCoef_inviscid{Tsol, Tmsh}(mesh::AbstractDGMesh{Tmsh},
-                                         sbp::AbstractSBP,
-                                         eqn::EulerData{Tsol},
-                                         opts,
-                                         bndry_indx,
-                                         force::AbstractArray{Tsol, 2})
+                                            sbp::AbstractSBP,
+                                            eqn::EulerData{Tsol},
+                                            opts,
+                                            bndry_indx,
+                                            force::AbstractArray{Tsol, 2})
   # since the inviscid boundary flux is computed as
   # F_b = F(u_gamma), we should use the same boundary flux
   # in computation of functional
@@ -228,8 +228,10 @@ function calcForceCoef_viscous{Tsol, Tmsh}(mesh::AbstractDGMesh{Tmsh},
     boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
   end
 
+  # compute boundary value
   bndry_val_functor = AdiabaticWall()
   bndry_val_functor(q_face, nrm1, eqn.params, q_bnd)
+  # using boundary value to compute diffusion tensor and viscousl flux
   calcDiffusionTensor_adiabaticWall(q_bnd, Gt)
   calcFvis(Gt, dqdx_face, Fvis)
   

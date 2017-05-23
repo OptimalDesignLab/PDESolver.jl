@@ -117,6 +117,9 @@ function createMeshAndOperator(opts, dofpernode)
       reorder = false
       internal = false
       shape_type = 3
+    elseif opts["operator_type"] == "SBPDiagE"
+      # nothing to do
+      shape_type = 4
     else
       op_type = opts["operator_type"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
@@ -137,21 +140,36 @@ function createMeshAndOperator(opts, dofpernode)
     println("\nConstructing SBP Operator")
     # create DG SBP operator with internal nodes only
     if dim == 2
-      sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+      # sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+      if opts["operator_type"] == "SBPOmega"
+        sbp = getTriSBPOmega(degree = order)
+        sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
+      elseif opts["operator_type"] == "SBPGamma"
+        sbp = getTriSBPGamma(degree = order)
+        sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
+      elseif opts["operator_type"] == "SBPDiagE"
+        sbp = getTriSBPWithDiagE(degree = order)
+        sbpface = getTriFaceForDiagE(order, sbp.cub, sbp.vtx)
+      end
+    
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
 #      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
-      sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
-    else
-      sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+    else 
+      # sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+      if opts["operator_type"] == "SBPOmega"
+        sbp = getTetSBPOmega(degree = order)
+      elseif opts["operator_type"] == "SBPGamma"
+        sbp = getTetSBPGamma(degree = order)
+      elseif opts["operator_type"] == "SBPDiagE"
+        throw(ArgumentError("SBPDiagE not available for 3D"))
+      end
       ref_verts = sbp.vtx
 #      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
       topo = ElementTopology{3}(face_verts)
       sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
     end
-
-    # create mesh with 4 dof per node
 
     println("constructing DG mesh")
     if dim == 2

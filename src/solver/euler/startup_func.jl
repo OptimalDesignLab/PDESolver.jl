@@ -272,6 +272,7 @@ function postproc(mesh, sbp, eqn, opts)
       exfunc = ICDict[exfname]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
+
       #    if var_type == :entropy
       #      println("converting to entropy variables")
       #      for i=1:mesh.numDofPerNode:mesh.numDof
@@ -281,16 +282,32 @@ function postproc(mesh, sbp, eqn, opts)
       #    end
 
       myrank = mesh.myrank
-      q_diff = eqn.q_vec - q_exact
-      saveSolutionToMesh(mesh, abs(real(q_diff)))
+      # q_diff = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+      # q_diff_vec = reshape(q_diff, mesh.numDof) 
+      q_diff_vec = eqn.q_vec - q_exact
+      # eqn.disassembleSolution(mesh, sbp, eqn, opts, q_diff, q_diff_vec)
+      saveSolutionToMesh(mesh, abs(real(q_diff_vec)))
       writeVisFiles(mesh, "solution_error")
 
-
-      diff_norm = calcNorm(eqn, q_diff)
+      diff_norm = calcNorm(eqn, q_diff_vec)
       #      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
       #      diff_norm = sqrt(diff_norm)
+      q_error = zeros(Float64, mesh.numDofPerNode)
+      for el = 1 : mesh.numEl
+        for n = 1 : mesh.numNodesPerElement
+          for dof = 1 : mesh.numDofPerNode
+            dofnum = mesh.dofs[dof, n, el]
+            q_error_j = real(q_diff_vec[dofnum])
 
+            q_error[dof] += q_error_j  * q_error_j* sbp.w[n]/mesh.jac[n, el]
+          end
+        end
+      end
       @mpi_master println("solution error norm = ", diff_norm)
+      for dof = 1 : mesh.numDofPerNode
+        q_error[dof] = sqrt(q_error[dof])
+        @mpi_master println("solt_error[", dof, "] = ", q_error[dof])
+      end
       # TODO: make this mesh.min_el_size?
       h_avg = calcMeshH(mesh, sbp, eqn, opts)
 

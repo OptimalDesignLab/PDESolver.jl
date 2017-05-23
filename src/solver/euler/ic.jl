@@ -20,6 +20,62 @@ Aliasing restrictions: none.
 
 """->
 
+function ICTrigWall{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                                      operator::AbstractSBP{Tsbp}, 
+                                      eqn::EulerData{Tsol}, 
+                                      opts, 
+                                      u0::AbstractVector{Tsol})
+  # populate u0 with initial values
+  # this is a template for all other initial conditions
+  sigma = 0.01
+  pi = 3.14159265358979323846264338
+  gamma = 1.4
+  gamma_1 = gamma - 1.0
+  aoa = eqn.params.aoa
+  rhoInf = 1.0
+  uInf = eqn.params.Ma*cos(aoa)
+  vInf = eqn.params.Ma*sin(aoa)
+  TInf = 1.0
+
+  numEl = mesh.numEl
+  nnodes = mesh.numNodesPerElement
+  dofpernode = mesh.numDofPerNode
+  sol = zeros(Tsol, 4)
+
+  for i=1:numEl
+    for j=1:nnodes
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+
+      # get dof numbers for each variable
+      dofnum_rho = dofnums_j[1]
+      dofnum_rhou = dofnums_j[2]
+      dofnum_rhov = dofnums_j[3]
+      dofnum_e = dofnums_j[4]
+
+      x = coords_j[1]
+      y = coords_j[2]
+
+      calcFreeStream(coords_j, eqn.params, sol)
+      E = sol[4]/sol[1]
+      V2 = (sol[2]*sol[2] + sol[3]*sol[3]) / (sol[1]*sol[1])
+
+      rho = rhoInf * ( 1.0 + sigma*exp(x)*exp(y) )
+      u   = uInf * (sin(2*pi*x) * sin(2*pi*y)) 
+      v   = vInf * (sin(2*pi*x) * sin(2*pi*y)) 
+      T   = TInf 
+
+      u0[dofnums_j[1]] = rho
+      u0[dofnums_j[2]] = rho*u
+      u0[dofnums_j[3]] = rho*v
+      u0[dofnums_j[4]] = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
+      u0[dofnums_j[4]] *= rho
+    end
+  end
+
+  return nothing
+
+end  # end function
 
 function ICDoubleSquareC0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                                           operator::AbstractSBP{Tsbp}, 
@@ -1040,6 +1096,7 @@ global const ICDict = Dict{Any, Function}(
   "ICFreeStream" => ICFreeStream,
   "ICPerturbedFreeStream" => ICPerturbedFreeStream,
   "ICTrigonometric" => ICTrigonometric,
+  "ICTrigWall" => ICTrigWall,
   "ICDoubleSquare" => ICDoubleSquare,
   "ICDoubleSquareC0" => ICDoubleSquareC0,
   "ICVortex" => ICVortex,

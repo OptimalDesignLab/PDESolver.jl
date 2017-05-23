@@ -151,7 +151,7 @@ function calcdBndryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   # functor
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
-  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  nrm = zeros(Tmsh, size(mesh.sbpface.normal,1))
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
@@ -164,8 +164,8 @@ function calcdBndryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      # nrm = sview(sbp.facenormal, :, bndry_i.face)
-      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      # nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
+      nrm[:] = mesh.sbpface.normal[:,bndry_i.face]
       dbndryflux_i = sview(dbndryflux, :, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, dbndryflux_i, eqn.params)
@@ -276,7 +276,7 @@ function complex_calcBoundaryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tms
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
   dxidx = zeros(Complex{Float64}, mesh.dim, mesh.dim)
-  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  nrm = zeros(Tmsh, size(mesh.sbpface.normal,1))
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
@@ -290,7 +290,7 @@ function complex_calcBoundaryFluxdm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tms
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx[:,:] = mesh.dxidx_bndry[:, :, j, global_facenum]
       dxidx[1,1] += pert
-      nrm[:] = sbp.facenormal[:, bndry_i.face]
+      nrm[:] = mesh.sbpface.normal[:, bndry_i.face]
       bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)

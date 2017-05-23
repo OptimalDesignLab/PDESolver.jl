@@ -62,7 +62,7 @@ function calc_dResdAlpha(mesh, sbp, eqn, opts, bndryflux_deriv)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
+        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
         bndryflux_deriv_i = sview(bndryflux_deriv,:,j,i)
         FreeStreamBC_dAlpha(q2, aux_vars, x, dxidx, nrm, bndryflux_deriv_i, eqn.params)
 

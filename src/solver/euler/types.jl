@@ -162,6 +162,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   =#
   time::Timings
   isViscous::Bool
+  penalty_relaxation::Float64
 
   function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
@@ -299,6 +300,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
       isViscous = opts["isViscous"]
     else
       isViscous = false
+    end
+    if haskey(opts, "Cip")
+      penalty_relaxation = opts["Cip"]
+      penalty_relaxation = 1.0
     end
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
                Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
@@ -820,7 +825,7 @@ function calcElemFurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 			dxidx = sview(mesh.dxidx_face, :, :, n, f)
 			# norm vector in reference element
-			# nrm_xi = sview(sbp.facenormal, :, fL)
+			# nrm_xi = sview(mesh.sbpface.normal, :, fL)
       nrm_xi = sview(sbpface.normal, :, fL)
 			nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
 			nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
@@ -846,7 +851,7 @@ function calcElemFurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 				dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
 				# norm vector in reference element
-				# nrm_xi = sview(sbp.facenormal, :, face)
+				# nrm_xi = sview(mesh.sbpface.normal, :, face)
 				nrm_xi = sview(sbpface.normal, :, face)
 				nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
 				nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]

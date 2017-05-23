@@ -20,8 +20,7 @@
 # *  None
 
 # """->
-using Debug
-@debug function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                                              sbp::AbstractSBP, 
                                              eqn::EulerData{Tsol, Tres, Tdim}, 
                                              opts,
@@ -37,38 +36,12 @@ using Debug
     start_index = mesh.bndry_offsets[g_edge_number]
     end_index = mesh.bndry_offsets[g_edge_number+1]
     idx_range = start_index:(end_index-1)
-    println("number of edges = ", length(idx_range))
   end
   
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
 
-
-  # Calculate functional_deric_arr = dJ/dq 
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functional_edges, dCl_dq, dCd_dq)
-
-  # Assemble func_deriv
-
-  #
-  # DEBUG :  not sure assembleArray is working
-  #
-  # for el = 1 : mesh.numEl
-    # for n = 1 : mesh.numNodesPerElement
-      # for dof = 1 : mesh.numDofPerNode
-        # idx = mesh.numDofPerNode*mesh.numNodesPerElement*(el - 1)
-        # idx += mesh.numDofPerNode*(n-1)
-        # idx += dof
-        # # println(abs(dJ_dq[dof, n, el] - func_deriv[idx]))
-        # func_deriv[idx] = dJ_dq[dof, n, el]
-      # end
-    # end
-  # end
-  #
-  # END DEBUG
-  #
-
-  # Solve for adjoint vector
   newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
   jac_type = opts["jac_type"]
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
@@ -106,11 +79,12 @@ using Debug
   # 3D array into which dJ_dq gets interpolated
   dCl_dq = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl) 
   dCd_dq = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl) 
+  # Calculate functional_deric_arr = dJ/dq 
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functional_edges, dCl_dq, dCd_dq)
   
   # solve the linear system
   lambda = zeros(Tjac, m)  # newton update
   if jac_type == 2
-    @bp
     my_transposeJac(jac)
     jac_f = factorize(jac)
 
@@ -166,8 +140,8 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   # in order to use integratefunctional!, constract array with only one element
   faces = Array(Boundary, 1)
 
-  q_face = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  qf_bak = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  # q_face = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  # qf_bak = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   # Populate integrand
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
@@ -196,11 +170,16 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
           # perturbation
           q_elem[dof, j] += pert
           # q_face = slice(eqn.q_bndry[:, :, face_id])
-          q_face = eqn.q_bndry[:, :, face_id]
-          qf_bak[:,:] = q_face[:,:]
+          # q_face = eqn.q_bndry[:, :, face_id]
+          # qf_bak[:,:] = q_face[:,:]
 
+          # boundaryinterpolate(mesh.sbpface, bndry_i, q_elem, q_face)
+          # eqn.q_bndry[:,:,face_id] = q_face[:,:]
+
+          q_face = sview(eqn.q_bndry, :, :, face_id)
+          qf_bak = q_face[:,:]
           boundaryinterpolate(mesh.sbpface, bndry_i, q_elem, q_face)
-          eqn.q_bndry[:,:,face_id] = q_face[:,:]
+          # println(eqn.q_bndry[:,:,face_id])
 
           integrand = slice(faces_integrand, :, :, 1)
 

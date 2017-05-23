@@ -185,6 +185,10 @@ using Debug
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
 	end
 
+  # eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec) 
+  # saveSolutionToMesh(mesh, sview(abs(real(eqn.res_vec))))
+  # writeVisFiles(mesh,"residual")
+  # @bp
   return nothing
 end  # end evalResidual
 
@@ -649,7 +653,7 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     println(f, "element $elnum boundary flux = \n", eqn.bndryflux[:, :, idx])
     println(f, "element $elnum boundary coords = \n", mesh.coords_bndry[:, :, idx])
     println(f, "element $elnum boundary dxidx = \n", mesh.dxidx_bndry[:, :, idx])
-    println(f, "element $elnum boundary facenormal = \n", sbp.facenormal[:, bndry.face])
+    println(f, "element $elnum boundary facenormal = \n", mesh.sbpface.normal[:, bndry.face])
     close(f)
   end
   =#

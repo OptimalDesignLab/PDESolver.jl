@@ -249,7 +249,7 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
         qR = sview(qR_arr, :, k, j)
         dxidx = sview(dxidx_arr, :, :, k, j)
         aux_vars = sview(aux_vars_arr, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
+        nrm = sview(mesh.sbpface.normal, :, fL)
         flux_j = sview(flux_arr_bar, :, k, j)
         functor_revm(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
       end

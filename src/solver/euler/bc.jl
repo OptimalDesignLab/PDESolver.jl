@@ -157,7 +157,7 @@ end
   where all arguments (except params and nrm) are vectors of values at a node.
 
   params is the ParamType associated with the the EulerEquation object
-  nrm = sbp.facenormal[:, current_node]
+  nrm = mesh.sbpface.normal[:, current_node]
 
   This is a mid level function.
 """->
@@ -188,7 +188,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
       bndryflux_i = sview(bndryflux, :, j, i)
 
       functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
@@ -212,7 +212,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
-  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  nrm = zeros(Tmsh, size(mesh.sbpface.normal,1))
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
@@ -225,7 +225,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
       dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      nrm[:] = mesh.sbpface.normal[:,bndry_i.face]
       bndryflux_i = sview(bndryflux, :, j, i)
 
       # DEBUGGING: use analytical solution (avoid interpolation inexactness)
