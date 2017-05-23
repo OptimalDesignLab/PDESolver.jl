@@ -24,6 +24,8 @@ include("newton.jl")
 include("globalization.jl")
 #include("newton_fd_old.jl")
 
-println(opts["physics"])
+
+# Need to load physics module? for eqn_deepcopy
+# note: opts not defined here
 
 end

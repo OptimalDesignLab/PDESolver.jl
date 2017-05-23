@@ -90,9 +90,6 @@ function createMeshAndOperator(opts, dofpernode)
   opts["Tsbp"] = Tsbp
   opts["Tmsh"] = Tmsh
 
-  #
-  optsPhysicsName(opts)
-
   # figure out reorder, internal args for SBP, shape_type for Pumi
   # should shape_type live here or be encapsulated in Pumi?
   if opts["use_DG"]
