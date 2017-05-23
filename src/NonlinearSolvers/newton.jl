@@ -202,7 +202,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::Abstr
 
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
 
-  # physicsRhs and physicsJac are defined in newton.jl
+  # physicsRhs and physicsJac are defined in residual_evaluation.jl
   # They evaluate the basic Jac & RHS of only the physics function, such as evalEuler
   rhs_func = physicsRhs
   jac_func = physicsJac

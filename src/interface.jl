@@ -39,3 +39,11 @@ function init(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, o
   return nothing
 
 end
+
+function eqn_deepcopy(eqn::AbstractSolutionData, mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
+
+  throw(ErrorException("Generic fallback eqn_deepcopy() reached: eqn_deepcopy() needs to be extended with a new method for each physics module."))
+
+  return nothing
+
+end

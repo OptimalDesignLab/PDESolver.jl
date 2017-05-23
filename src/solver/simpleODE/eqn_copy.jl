@@ -8,10 +8,10 @@ import PDESolver.eqn_deepcopy
 #   b[3] == 8
 #   this is because 'a[3] =' is actually setindex!
 """
-  EulerEquationMod.eqn_deepcopy
+  SimpleODEEquationMod.eqn_deepcopy
 
   This function performs a proper deepcopy (unlike julia's builtin deepcopy) 
-    on an Euler equation object.
+    on a SimpleODE equation object.
   It preserves reference topology (i.e. q & q_vec pointing to same array in DG schemes).
 
     Inputs:
@@ -30,14 +30,12 @@ import PDESolver.eqn_deepcopy
 #  2. ensure changes to eqn don't affect eqn_copy
 #  3. ensure changes to eqn_copy.q change eqn_copy.q_vec, same for res
 
-function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim}, mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, opts::Dict)
+function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::SimpleODEData_{Tsol, Tres, Tdim}, mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, opts::Dict)
 
   # over 100 fields, so it is necessary to write a better approach for copying than explicitly copying every named field
 
   # 1: call constructor on eqn_copy
-  var_type = opts["variable_type"]
-
-  eqn_copy = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
+  eqn_copy = SimpleODEData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
   # 2: copy over fields
 
