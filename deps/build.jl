@@ -12,7 +12,7 @@ function installPDESolver()
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork3";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
-              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "d68859248ddeed79abe9005a5c75caa35f10885e"
+              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
               ]
 
 
