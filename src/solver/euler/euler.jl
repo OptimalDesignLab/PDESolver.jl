@@ -242,9 +242,12 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   output_freq = opts["output_freq"]::Int
 
 #  println("eqn.q = \n", eqn.q)
-  # undo multiplication by inverse mass matrix
-  res_vec_orig = eqn.M.*copy(eqn.res_vec)
-  res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+
+  if mesh.isDG
+    # undo multiplication by inverse mass matrix
+    res_vec_orig = eqn.M.*copy(eqn.res_vec)
+    res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  end
 
   if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
     vals = real(eqn.q_vec)  # remove unneded imaginary part
