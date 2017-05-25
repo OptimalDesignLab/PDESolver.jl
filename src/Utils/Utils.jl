@@ -13,6 +13,7 @@ using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
 
 include("output.jl")
+include("parallel_type.jl"
 include("parallel.jl")
 include("io.jl")
 include("logging.jl")
@@ -24,11 +25,10 @@ include("area.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH, calcEuclidianNorm
-export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
-export startDataExchange
-export exchangeElementData
-export @mpi_master, @time_all, print_time_all
-export Timings, write_timings
+#export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
+#export startDataExchange
+#export exchangeElementData
+export  Timings, write_timings
 export sharedFaceLogging
 export calcBCNormal, calcBCNormal_revm, max_deriv_rev
 export applyPermRow, applyPermRowInplace, applyPermColumn
@@ -57,6 +57,14 @@ export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaCo
 
 # io.jl
 export BufferedIO, BSTDOUT, BSTDERR
+
+# parallel_types.jl
+export SharedFaceData, getSharedFaceData
+
+# parallel.jl
+export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master, 
+       @time_all, print_time_all, 
+
 @doc """
 ### Utils.disassembleSolution
 

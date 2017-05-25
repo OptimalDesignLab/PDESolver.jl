@@ -83,9 +83,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   q_vec::Array{Tres,1}     # initial condition in vector form
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
                           # the boundaries with boundary conditions
-  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
+  shared_data::Array{SharedFaceData, 1}  # MPI data, including send and receive
+                                         # buffers
+#  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
-  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
+#  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
   flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
@@ -152,6 +154,8 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
     end
 
+    eqn.shared_data = getSharedData(mesh, sbp, opts)
+#=
     # send and receive buffers
     #TODO: rename buffers to not include face
     eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
@@ -177,7 +181,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
                                       dim3_recv[i])
     end
-
+=#
     return eqn
   end # ends the constructor AdvectionData_
 

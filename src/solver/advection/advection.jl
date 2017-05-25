@@ -42,7 +42,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # start communication right away
   params.time.t_send += @elapsed if opts["parallel_type"] == 1
 
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, 
+    startSolutionExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, 
                       params.f, wait=true)
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
     #  println("send parallel data @time printed above")
