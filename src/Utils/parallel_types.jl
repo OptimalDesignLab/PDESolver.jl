@@ -79,7 +79,7 @@ end
     q_recv: the receive buffer
 
 """
-function SharedFaceData(mesh::AbstractMesh, peeridx::Int,  
+function SharedFaceData{T}(mesh::AbstractMesh, peeridx::Int,  
                         q_send::Array{T, 3}, q_recv::Array{T, 3})
 # create a SharedFaceData for a given peer
 
@@ -109,11 +109,17 @@ end
 import Base.copy
 """
   Copy function for SharedFaceData.  Note that this does *not* retain the
-  send_waited/send_req/send_status (and similarly for the recceive) state
+  send_req/send_status (and similarly for the recceive) state
   of the original object.  Instead, they are initialized the same as the
   constructor.
+
+  This function may only be called after receiving is complete,
+  otherwise an exception is thrown.
 """
 function copy{T}(data::SharedFaceData{T})
+
+
+  @assert data.recv_waited 
 
   peernum = data.peernum
   peeridx = data.peeridx
@@ -142,6 +148,35 @@ function copy{T}(data::SharedFaceData{T})
                            bndries_local, bndries_remote, interfaces)
 end
 
+import Base.copy!
+"""
+  In-place copy for SharedFaceData.  This copies the buffers, but does not
+  retain the state of the Request and Status fields.  Instead they are
+  initialized the same as the constructor.
+
+  This function may only be called after receiving is complete,
+  otherwise an exception is thrown.
+"""
+function copy!{T}(dest::SharedFaceData{T}, src::SharedFaceData{T})
+
+  # if a communication is in progress, copying would leave the buffers in
+  # an undefind state
+  @assert src.recv_waited
+
+  # we assume all the bookkeeping fields don't need to be copy
+  copy!(dest.q_send, src.q_send)
+  dest.send_waited = true
+  dest.send_req = MPI.REQUEST_NULL
+  dest.send_status = MPI.Wait!(dest.send_req)
+  
+  copy!(dest.q_recv, src.q_recv)
+  dest.recv_waited = true
+  dest.recv_req = MPI.REQUEST_NULL
+  dest.recv_status = MPI.Wait!(dest.recv_req)
+
+  return nothing
+end
+
 """
   This function returns a vector of SharedFaceData objects, one for each
   peer processes the current process shares mesh edge (2D) or face (3D) with.
@@ -150,6 +185,7 @@ end
   objects.
 
   Inputs:
+    Tsol: element type of the arrays
     mesh: an AbstractMesh object
     sbp: an SBP operator
     opts: the options dictonary
@@ -158,14 +194,14 @@ end
     data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
               mesh.peer_parts[i]
 """
-function getSharedFaceData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+function getSharedFaceData{Tsol}( ::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts)
 # return the vector of SharedFaceData used by the equation object constructor
 
   @assert mesh.isDG
 
   data_vec = Array(SharedFaceData{Tsol}, mesh.npeers)
   if opts["parallel_data"] == "face"
-    dim2 = numfacenodes
+    dim2 =  mesh.numNodesPerFace
     dim3_send = mesh.peer_face_counts
     dim3_recv = mesh.peer_face_counts
   elseif opts["parallel_data"] == "element"
@@ -257,7 +293,7 @@ end
   This function is like MPI.Waitall, operating on the sends of a vector of 
   SharedFaceData objects
 """
-function waitAllSends(shared_data::Vector{SharedFaceData{T}})
+function waitAllSends{T}(shared_data::Vector{SharedFaceData{T}})
 
   # MPI.Requests are (currently) mutable, and therefore have reference semantics
   npeers = length(shared_data)
@@ -284,7 +320,7 @@ end
   This function is like MPI.Waitall, operating on the recvs of a vector of 
   SharedFaceData objects
 """
-function waitAllRecieves(shared_data::Vector{SharedFaceData{T}})
+function waitAllReceives{T}(shared_data::Vector{SharedFaceData{T}})
 
   # MPI.Requests are (currently) mutable, and therefore have reference semantics
   npeers = length(shared_data)
@@ -315,7 +351,7 @@ _waitall_reqs = Array(MPI.Request, 50)
   Only the index of the Request that was waited on is returned, 
   the Status and recv_waited fields of hte SharedFaceData are updated internally
 """
-function waitAnyRecieve{T}(shared_data::Vector{SharedFaceData{T}})
+function waitAnyReceive{T}(shared_data::Vector{SharedFaceData{T}})
 
   npeers = length(shared_data)
   resize!(_waitall_reqs, npeers)

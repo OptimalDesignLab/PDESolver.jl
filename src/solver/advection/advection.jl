@@ -27,8 +27,6 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-  @debug1 println(params.f, "-----entered evalResidual -----")
-  @debug1 printbacktrace(params.f)
   #f = open("pfout_$myrank.dat", "a+")
   #println(f, "----- entered evalResidual -----")
   #close(f)
@@ -37,14 +35,9 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
   eqn.res = fill!(eqn.res, 0.0)  # Zero eqn.res for next function evaluation
 
-  @debug1 println(params.f, "== parallel_type: ", opts["parallel_type"])
-
   # start communication right away
   params.time.t_send += @elapsed if opts["parallel_type"] == 1
-
-    startSolutionExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, 
-                      params.f, wait=true)
-    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
+    startSolutionExchange(mesh, sbp, eqn, opts)
     #  println("send parallel data @time printed above")
   end
 
@@ -350,10 +343,12 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   if opts["parallel_data"] == "face"
 #    println(eqn.params.f, "doing face integrals using face data")
-    calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data,
+                       calcSharedFaceIntegrals)
   elseif opts["parallel_data"] == "element"
 #    println(eqn.params.f, "doing face integrals using element data")
-    calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data,
+                       calcSharedFaceIntegrals_element)
   else
     throw(ErrorException("unsupported parallel_data setting"))
   end
@@ -386,7 +381,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
-  initMPIStructures(mesh, opts)
+#  initMPIStructures(mesh, opts)
   return nothing
 end
 

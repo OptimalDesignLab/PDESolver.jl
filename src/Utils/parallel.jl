@@ -31,6 +31,8 @@ end
   This function is a thin wrapper around exchangeData().  It is used for the
   common case of sending and receiving the solution variables to other processes.
   It uses eqn.shared_data to do the parallel communication.
+  eqn.shared_data *must* be passed into the corresponding finishDataExchange
+  call.
 
   Inputs:
     mesh: an AbstractMesh
@@ -42,7 +44,7 @@ end
     tag: MPI tag to use for communication, defaults to TAG_DEFAULT
     wait: wait for sends and receives to finish before exiting
 """
-function startSolutionExchange{T}(mesh::AbstractMesh, sbp::AbstractSBP,
+function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractSBP,
                                   eqn::AbstractSolutionData, opts;
                                   tag=TAG_DEFAULT, wait=false)
 
@@ -263,7 +265,7 @@ function finishExchangeData{T}(mesh, sbp, eqn, opts,
   
   for i=1:npeers
     if val == 0  # request have not been waited on previously
-      eqn.params.t_wait += @elapsed idx = waitAnyReceive(shared_data)
+      eqn.params.time.t_wait += @elapsed idx = waitAnyReceive(shared_data)
     else
       idx = i
     end
@@ -275,7 +277,7 @@ function finishExchangeData{T}(mesh, sbp, eqn, opts,
   return nothing
 end
 
-
+# deprecated
 @doc """
 ### Utils.exchangeFaceData
   
@@ -333,6 +335,7 @@ function exchangeFaceData{T, N}(mesh::AbstractMesh, opts,
   return nothing
 end
 
+# deprecated
 @doc """
 ### Utils.exchangeElementData
 
@@ -434,21 +437,18 @@ end
   elements is checked agains the expected sender and the buffer size
 
   Inputs:
-    mesh: an AbstractMesh
-    opts: options dictonary
-    buff: the buffer
-    peer: the expected sender
-    stat: the Status object
+    data: a SharedFaceData
 """->
-function verifyCommunication{T}(mesh::AbstractMesh, opts, buff::Array{T}, peer::Integer, stat::MPI.Status)
+function verifyReceiveCommunication{T}(data::SharedFaceData{T})
 # verify a communication occured correctly by checking the fields of the 
 # Status object
 # if the Status came from a send, then peer should be comm_rank ?
-  sender = MPI.Get_source(stat)
-  @assert sender == peer
 
-  ndata = MPI.Get_count(stat, T)
-  @assert ndata == length(buff)
+  sender = MPI.Get_source(data.recv_status)
+  @assert sender == data.peernum
+
+  ndata = MPI.Get_count(data.recv_status, T)
+  @assert ndata == length(data.q_recv)
 
   return nothing
 end
@@ -545,11 +545,11 @@ function getSendDataElement(mesh::AbstractMesh, sbp::AbstractSBP,
   # copy data into send buffer
   idx = data.peeridx
   local_els = mesh.local_element_lists[idx]
-  send_buff = data_i.q_send
+  send_buff = data.q_send
   for j=1:length(local_els)
     el_j = local_els[j]
-    for k=1:size(q, 2)
-      for p=1:size(q, 1)
+    for k=1:size(eqn.q, 2)
+      for p=1:size(eqn.q, 1)
         send_buff[p, k, j] = eqn.q[p, k, el_j]
       end
     end

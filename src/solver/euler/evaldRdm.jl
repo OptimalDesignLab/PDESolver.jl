@@ -11,6 +11,7 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
   #=
   time.t_send += @elapsed if opts["parallel_type"] == 1
     println(eqn.params.f, "starting data exchange")
+    #TODO: update this to use new parallel primatives
     startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
    =#

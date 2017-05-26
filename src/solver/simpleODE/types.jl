@@ -56,9 +56,7 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
   q_vec::Array{Tres,1}     # initial condition in vector form
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
                           # the boundaries with boundary conditions
-  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
-                                         # to other processes
-  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
+  shared_data::Array{SharedFaceData{Tsol}, 1}
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
   Minv3D::Array{Float64, 3}    # inverse mass matrix for application to res, not res_vec
@@ -82,6 +80,8 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
     println("  Tdim = ", Tdim)
     println("  Tmsh = ", Tmsh)
     numfacenodes = mesh.numNodesPerFace
+
+    @assert mesh.commsize == 1
 
     eqn = new()  # incomplete initialization
     eqn.comm = mesh.comm
@@ -123,30 +123,8 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
     end
 
     # send and receive buffers
-    #TODO: rename buffers to not include face
-    eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
-    eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
-    if mesh.isDG
-      if opts["parallel_type"] == 1
-        dim2 = numfacenodes
-        dim3_send = mesh.peer_face_counts
-        dim3_recv = mesh.peer_face_counts
-      elseif opts["parallel_type"] == 2
-        dim2 = mesh.numNodesPerElement
-        dim3_send = mesh.local_element_counts
-        dim3_recv = mesh.remote_element_counts
-      else
-        ptype = opts["parallel_type"]
-        throw(ErrorException("Unsupported parallel type requested: $ptype"))
-      end
-    end
-        
-    for i=1:mesh.npeers
-      eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
-                                       dim3_send[i])
-      eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
-                                      dim3_recv[i])
-    end
+    # TODO: update this for parallel
+    eqn.shared_data = Array(SharedFaceData{Tsol}, 0)
 
     return eqn
   end # ends the constructer SimpleODEData_

@@ -36,11 +36,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   end
 
   if opts["parallel_type"] == 1
-
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      params.f, wait=true)
-    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
-
+    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
   # Calculate the Jacobian of the residual

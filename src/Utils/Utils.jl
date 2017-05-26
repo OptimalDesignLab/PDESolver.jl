@@ -13,7 +13,7 @@ using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
 
 include("output.jl")
-include("parallel_type.jl"
+include("parallel_types.jl")
 include("parallel.jl")
 include("io.jl")
 include("logging.jl")
@@ -63,7 +63,7 @@ export SharedFaceData, getSharedFaceData
 
 # parallel.jl
 export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master, 
-       @time_all, print_time_all, 
+       @time_all, print_time_all, verifyReceiveCommunication
 
 @doc """
 ### Utils.disassembleSolution
