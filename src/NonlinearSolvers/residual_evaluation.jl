@@ -73,7 +73,6 @@ end
 """->
 function calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)
 
-  # TODO: this equals... deepcopy?
   rhs_vec = eqn.res_vec
   ctx_residual = (func_physics, )
 

@@ -189,6 +189,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
       println("       checking direct method: size(dJdu): ", size(dJdu))
 
+      # TODO: comment what VV is
       #J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
       VV = calcVV(mesh, sbp, adj, opts, t_nextstep)     # scalar only because our x-value of interest is unchanging
       VV_vec = ones(dJdu)*VV      # need v as vector of all v's for all x's, easiest way
@@ -237,6 +238,11 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       dRdA_FD = calcdRdA_FD(mesh, sbp, adj, opts, t_nextstep)
 
       println(" {}{}{}{} norm(dRdA_FD - dRdA_CS): ", norm(dRdA_FD - dRdA_CS)/length(dRdA_FD))
+      println(" {}{}{}{} vecnorm(dRdA_FD - dRdA_CS): ", vecnorm(dRdA_FD - dRdA_CS))
+      println(" {}{}{}{} vecnorm(dRdA_FD): ", vecnorm(dRdA_FD))
+      println(" {}{}{}{} vecnorm(dRdA_CS): ", vecnorm(dRdA_CS))
+      # println(" {}{}{}{} dRdA_FD: ", dRdA_FD)
+      # println(" {}{}{}{} dRdA_CS: ", dRdA_CS)
       check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA_CS
       filename = string("check_adjointmethod-", i, ".dat")
       writedlm(filename, check_adjointmethod)
@@ -335,7 +341,7 @@ end   # end of crank_nicolson function
 function negativeZeroCheck(t)
   # prevent floating point errors from setting t to a negative number at t = 0.0
   if abs(t) < 1e-14 && t < 0.0
-    println("Barely negative time detected, setting t = 0.0.")
+    println("Barely negative time detected (-1e-14 < t < 0.0) , setting t = 0.0.")
     t = 0.0
   end
   return t

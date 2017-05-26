@@ -34,6 +34,7 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # TODO: get functional edges in a non BS way
+  # 1 corresponds to right side of square domain.... TODO: check
   functional_edges = 1
   nDof = 1
 
@@ -123,9 +124,12 @@ function calcVV(mesh, sbp, eqn, opts, t)
 
   # x = 2*pi
   x = 2.0       # make sure the mesh being run is u_adj_x0-2_y0-2_4x4_tri0.smb
-  omega = 1.0
+  # omega = 1.0
 
-  v = sin(-x + omega*t)
+  omega = eqn.params.omega
+  A = eqn.params.sin_amplitude
+
+  v = A*sin(-x + omega*t)
   return v
 
 end
@@ -140,25 +144,21 @@ function calcdRdA_CS(mesh, sbp, eqn, opts, t)
   # complex step perturbation
   pert = complex(0, 1e-20)
 
-  eqn.params.sin_amplitude += pert
-  # params.sin_amplitude += pert
+  # println(" <<< dRdA_CS: eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
 
   eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
-  # eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  # eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp.params.sin_amplitude += pert
+  # eqn_temp.params.omega += pert
+  # println(" <<< dRdA_CS: eqn_temp.params.sin_amplitude: ", eqn_temp.params.sin_amplitude)
 
-
-  # J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
-  # J = J_arr[1]
-  # R = calcResidual
   evalResidual(mesh, sbp, eqn_temp, opts)
   assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
   dRdA = imag(eqn_temp.res_vec)/norm(pert)
   # println("dRdA: ", dRdA)
 
-  eqn.params.sin_amplitude -= pert
-  # params.sin_amplitude -= pert
+  eqn_temp.params.sin_amplitude -= pert
+  # eqn_temp.params.omega -= pert
 
   return dRdA
 end
@@ -173,23 +173,29 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, t)
   # finite difference perturbation
   pert = 1e-6
 
-  eqn.params.sin_amplitude += pert
-  # params.sin_amplitude += pert
+  # println(" <<< dRdA_FD: eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
 
   eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
-  # eqn_temp.q = reshape(eqn_temp.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  # eqn_temp.res = reshape(eqn_temp.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_temp.params.sin_amplitude += pert
+  # eqn_temp.params.omega += pert
+  # println(" <<< dRdA_FD: eqn_temp.params.sin_amplitude: ", eqn_temp.params.sin_amplitude)
 
-  # J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
-  # J = J_arr[1]
-  # R = calcResidual
+  println(" <<< dRdA_FD: using forward difference")
+
   evalResidual(mesh, sbp, eqn_temp, opts)
   assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
+  eqn_temp.params.sin_amplitude -= pert
+  # eqn_temp.params.omega -= pert
+
   # this is required! without it, eqn.res_vec apparently has stale data.
   #   without this => difference between CS & FD is ~1e10
+  #   TODO: why is this required
   evalResidual(mesh, sbp, eqn, opts)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+  println(" <<< dRdA_FD: norm(eqn_temp.res_vec): ", norm(eqn_temp.res_vec))
+  println(" <<< dRdA_FD: norm(eqn.res_vec): ", norm(eqn.res_vec))
 
   # Ready to finish FD approx.
   #   f(x+h) is eqn_temp.res_vec
@@ -198,8 +204,27 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, t)
   dRdA = (eqn_temp.res_vec - eqn.res_vec)/norm(pert)
   #println("dRdA: ", dRdA)
 
-  eqn.params.sin_amplitude -= pert
-  # params.sin_amplitude -= pert
+  #=
+  #----------------
+  # central difference
+  eqn_temp_fwd = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_temp_fwd.params.sin_amplitude += pert
+
+  eqn_temp_bck = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_temp_bck.params.sin_amplitude -= pert
+
+  println(" <<< dRdA_FD: using central difference")
+
+  evalResidual(mesh, sbp, eqn_temp_fwd, opts)
+  assembleSolution(mesh, sbp, eqn_temp_fwd, opts, eqn_temp_fwd.res, eqn_temp_fwd.res_vec)
+  evalResidual(mesh, sbp, eqn_temp_bck, opts)
+  assembleSolution(mesh, sbp, eqn_temp_bck, opts, eqn_temp_bck.res, eqn_temp_bck.res_vec)
+
+  eqn_temp_fwd.params.sin_amplitude -= pert
+  eqn_temp_bck.params.sin_amplitude += pert
+
+  dRdA = (eqn_temp_fwd.res_vec - eqn_temp_bck.res_vec)/(2*norm(pert))
+  =#
 
   return dRdA
 end

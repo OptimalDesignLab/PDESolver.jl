@@ -6,6 +6,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   alpha_y::Float64
   alpha_z::Float64
   sin_amplitude::Complex128
+  omega::Complex128
 
   f::BufferedIO{IOStream}
   time::Timings
@@ -44,9 +45,10 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     alpha_z = 1.0
 
     sin_amplitude = 2.0
+    omega = 1.0
 
     t = Timings()
-    return new(LFalpha, alpha_x, alpha_y, alpha_z, sin_amplitude, f, t)
+    return new(LFalpha, alpha_x, alpha_y, alpha_z, sin_amplitude, omega, f, t)
   end
 end
 
@@ -58,7 +60,7 @@ typealias ParamTypes Union{ParamType2, ParamType3}
 ### AdvectionEquationMod.AdvectionData_
 
   This type is an implementation of the abstract AdvectionData.  It is
-  paramterized by the residual type Tres and the mesh type Tmsh
+  parameterized by the residual type Tres and the mesh type Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 

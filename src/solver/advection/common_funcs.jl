@@ -52,11 +52,13 @@ function calc_sinwave_ampl{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2
   x = coords[1]
   y = coords[2]
 
-  omega = 1.0
+  # omega = 1.0
   # A = 2.0
+  omega = params.omega
   A = params.sin_amplitude
 
-  # println(" in calc_sinwave_ampl, A = ", A)
+  println(" in calc_sinwave_ampl, A = ", A)
+  # println(" in calc_sinwave_ampl, omega = ", omega)
 
   return A*sin(-x + omega*t)
 #  return sin( (-x + -y)/2 + t)
