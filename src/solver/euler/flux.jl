@@ -238,8 +238,6 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   dxidx_arr = mesh.dxidx_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
 
-  # permute the received nodes to be in the elementR orientation
-  permuteinterface!(mesh.sbpface, interfaces, qR_arr)
   for j=1:length(interfaces)
     interface_i = interfaces[j]
     for k=1:mesh.numNodesPerFace
@@ -339,12 +337,15 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     qL = sview(q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
     qR = sview(qR_arr, :, :, el_r)
-    boundaryFaceInterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
-    boundaryFaceInterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
+    #TODO:  use singel element version of interiorFaceInterpolate and 
+    #       get rid of permuteface! call below
+    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
+#    boundaryFaceInterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
+#    boundaryFaceInterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
 
     # permute elementR
-    permvec = sview(mesh.sbpface.nbrperm, :, iface_j.orient)
-    SummationByParts.permuteface!(permvec, workarr, q_faceR)
+#    permvec = sview(mesh.sbpface.nbrperm, :, iface_j.orient)
+#    SummationByParts.permuteface!(permvec, workarr, q_faceR)
 
     @debug1 qL_face_arr[:, :, j] = q_faceL
     @debug1 qR_face_arr[:, :, j] = q_faceR
