@@ -4,12 +4,7 @@
 
 jj=julia
 
-jflags=$@  # take flags as command line arguments
-if [ $# == 0]; then
-  tags="tag_shorttest"
-else
-  tags=$@
-fi
+tags=$@
 
 start_dir=`pwd`
 

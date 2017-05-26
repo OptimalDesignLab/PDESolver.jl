@@ -184,6 +184,14 @@ end
   although it can be used to create additional vectors of SharedFaceData
   objects.
 
+  if opts["parallel_data"] == "face", then the send and receive buffers
+  are numDofPerNode x numNodesPerFace x number of shared faces.
+
+  if opts["parallel_data"] == "element", the send and receive buffers are
+    numDofPerNode x numNodesPerElement x number of elements that share the
+    faces.  Note that the number of elements that share the faces can be
+    different for the send and receive buffers.
+
   Inputs:
     Tsol: element type of the arrays
     mesh: an AbstractMesh object
