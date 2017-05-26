@@ -384,11 +384,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # [ndof per node by nnodes per element by num element by num dimensions]
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   flux_parametric_bar::Array{Tsol, 4}  # adjoint part
-  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
-                                         # to other processes
-  q_face_send_bar::Array{Array{Tsol, 3}, 1}  # adjoint part
-  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
-  q_face_recv_bar::Array{Array{Tsol, 3}, 1}  # adjoint part
+  shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI send and receive buffers
+  shared_data_bar::Array{SharedFaceData{Tsol}, 1} # adjoint part
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   flux_face_bar::Array{Tres, 3}  # adjoint part
@@ -469,7 +466,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     elseif vars_orig == :entropy
       eqn.params = eqn.params_entropy
     else
-      println(STDERR, "Warning: variable_type not recognized")
+      println(BSTDERR, "Warning: variable_type not recognized")
     end
     eqn.disassembleSolution = disassembleSolution
     eqn.assembleSolution = assembleSolution
@@ -538,34 +535,18 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                           mesh.numBoundaryFaces)
 
     # send and receive buffers
-    #TODO: rename buffers to not include face
-    eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
-    eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
     eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     if mesh.isDG
-      if opts["parallel_data"] == "face"
-        dim2 = numfacenodes
-        dim3_send = mesh.peer_face_counts
-        dim3_recv = mesh.peer_face_counts
-      elseif opts["parallel_data"] == "element"
-        dim2 = mesh.numNodesPerElement
-        dim3_send = mesh.local_element_counts
-        dim3_recv = mesh.remote_element_counts
-      else
-        ptype = opts["parallel_type"]
-        throw(ErrorException("Unsupported parallel type requested: $ptype"))
-      end
       for i=1:mesh.npeers
-        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2,
-                                         dim3_send[i])
-        eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
-                                        dim3_recv[i])
         eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes,
                                        mesh.peer_face_counts[i])
         eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+    else
+      eqn.shared_data = Array(SharedFaceData, 0)
     end
 
     if eqn.params.use_edgestab
@@ -586,16 +567,18 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
-      eqn.q_face_send_bar = Array(Array{Tsol, 3}, mesh.npeers)
-      eqn.q_face_recv_bar = Array(Array{Tsol, 3}, mesh.npeers)
       eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
       eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
 
-      for i=1:mesh.npeers
-        eqn.q_face_send_bar[i] = zeros(eqn.q_face_send[i])
-        eqn.q_face_recv_bar[i] = zeros(eqn.q_face_recv[i])
-        eqn.flux_shareface_bar[i] = zeros(eqn.flux_sharedface[i])
-        eqn.aux_vars_sharedface_bar[i] = zeros(eqn.aux_vars_sharedface[i])
+      if mesh.isDG
+        for i=1:mesh.npeers
+          eqn.flux_shareface_bar[i] = zeros(eqn.flux_sharedface[i])
+          eqn.aux_vars_sharedface_bar[i] = zeros(eqn.aux_vars_sharedface[i])
+        end
+
+      eqn.shared_data_bar = getSharedFaceData(Tsol, mesh, sbp, opts)
+      else
+        eqn.shared_data_bar = Array(SharedFaceData, 0)
       end
 
       eqn.flux_face_bar = zeros(eqn.flux_face)
@@ -611,8 +594,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
 
-      eqn.q_face_send_bar = Array(Array{Tsol, 3}, 0)
-      eqn.q_face_recv_bar = Array(Array{Tsol, 3}, 0)
+      eqn.shared_data_bar = Array(SharedFaceData, 0)
       eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, 0)
       eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, 0)
 

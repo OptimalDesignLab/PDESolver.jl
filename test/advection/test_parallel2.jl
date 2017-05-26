@@ -19,60 +19,69 @@ function test_parallel2_comm()
     return i
   end
 
+  function populate_buffer(mesh, sbp, eqn, opts, data_i)
+
+    return nothing
+  end
+
   facts("----- Testing Parallel Communication -----") do
     peer_up = wrap(myrank+1, commsize)
     peer_down = wrap(myrank-1, commsize)
 
     mesh.npeers = 2
     mesh.peer_parts = [peer_down, peer_up]
+    #=
     mesh.send_reqs = Array(MPI.Request, mesh.npeers)
     mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
     mesh.recv_waited= Array(Bool, mesh.npeers)
     mesh.send_waited = Array(Bool, mesh.npeers)
 
     initMPIStructures(mesh, opts)
+    =#
 
-    send_data = Array(Array{Float64, 1}, mesh.npeers)
-    recv_data = Array(Array{Float64, 1}, mesh.npeers)
+    shared_data = getSharedFaceData(Float64, mesh, sbp, opts)
+
+#    send_data = Array(Array{Float64, 1}, mesh.npeers)
+#    recv_data = Array(Array{Float64, 1}, mesh.npeers)
     for i=1:mesh.npeers
-      send_data[i] = Float64[myrank + i, myrank + i + 1]
-      recv_data[i] = Array(Float64, mesh.npeers)
+      shared_data[i].q_send = reshape(Float64[myrank + i, myrank + i + 1], 2, 1, 1)
+      shared_data[i].q_recv = reshape(Array(Float64, mesh.npeers), 2, 1, 1)
     end
 
-    exchangeFaceData(mesh, opts, send_data, recv_data, wait=true)
+    exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer, wait=true)
 
     # peer down: the sent to its peer up
-    data = recv_data[1]
-    @fact data[1] --> peer_down + 2
-    @fact data[2] --> peer_down + 3
+    data = shared_data[1]
+    @fact data.q_recv[1] --> peer_down + 2
+    @fact data.q_recv[2] --> peer_down + 3
 
     # peer up: sent to its peer down
-    data = recv_data[2]
-    @fact data[1] --> peer_up + 1
-    @fact data[2] --> peer_up + 2
+    data = shared_data[2]
+    @fact data.q_recv[1] --> peer_up + 1
+    @fact data.q_recv[2] --> peer_up + 2
 
 
     # test exchangeElementData
-    send_buffs = Array(Array{Float64, 3}, mesh.npeers)
-    recv_buffs = Array(Array{Float64, 3}, mesh.npeers)
   #  fill!(eqn.q, 42)
     for i=1:mesh.npeers
       mesh.local_element_lists[i] = [i]
-      send_buffs[i] = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
-      recv_buffs[i] = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
+      data_i = shared_data[i]
+      data_i.q_send = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
+      data_i.q_recv = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
       
       eqn.q[:,:, i] = i + myrank
     end
     fill!(mesh.recv_waited, true)
     fill!(mesh.send_waited, true)
 
-    exchangeElementData(mesh, opts, eqn.q, send_buffs, recv_buffs, wait=true)
 
-    data = recv_buffs[1]
+    exchangeData(mesh, sbp, eqn, opts, shared_data, Utils.getSendDataElement, wait=true)
+
+    data = shared_data[1].q_recv
     for j in data
       @fact j --> peer_down + 2
     end
-    data = recv_buffs[2]
+    data = shared_data[2].q_recv
     for j in data
       @fact j --> peer_up + 1
     end
@@ -83,7 +92,7 @@ function test_parallel2_comm()
   return nothing
 end
 
-add_func1!(AdvectionTests, test_parallel2_comm, [TAG_SHORTTEST])
+add_func1!(AdvectionTests, test_parallel2_comm, [TAG_SHORTTEST, TAG_TMP])
 
 #=
 function test_adjoint_parallel()

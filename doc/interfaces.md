@@ -68,8 +68,7 @@ The required fields of an `AbstractSolutionData are`:
 ```
   q::AbstractArray{Tsol, 3}
   q_vec::AbstractArray{Tsol, 1}
-  q_face_send::AbstractArray{AbstractArray{Tsol, 3}, 1}
-  q_face_recv::AbstractArray{AbstractArray{Tsol, 3}, 1}
+  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}
   res::AbstractArray{Tres, 3}
   res_vec::AbstractArray{Tres, 1}
   M::AbstractArray{Float64, 1}
@@ -98,13 +97,12 @@ Note that for Continuous Galerkin type discretization (as opposed to
 Discontinuous Galerkin discretizations), there is not a corresponding "gather"
 operation (ie. `q` -> `q_vec`).
 
-`q_face_send`: send buffers for sending q variables to other processes.  There
-are `npeer` arrays, and the dimensions of the arrays depend on the parallel mode.
-If parallelizing `rk4`, the arrays are `numDofPerNode` x `numNodesPerFace` x `numSharedFaces`.
-If parallelizing Newtons method, the arrays are `numDofPerNode` x `numNodesPerElement x `numSharedElements`.
-
-`q_face_recv`: receive buffers for receiving `q` values from other processes.
-Same shape as `q_face_send`.
+`shared_data` is a vector of length `npeers`.  Each element contains the data
+              needed send and receive the `q` variables to/from other
+              the corresponding MPI rank listed in `mesh.peer_parts`.
+              The precise contents of `SharedFaceData` is documented in the 
+              `Utils` module, however they do include the send and receive 
+              buffers.
 
 `res`: similar to `q`, except that the residual evaluation function populates
        it with the residual values.  
@@ -156,6 +154,8 @@ The purpose of this type is to store any variables that need to be quickly acces
 The only required fields are:
 * `t::Float64`: hold the current time value
 * `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
+*  time::Timings: an object to record how long different parts of the code take,
+                  defined in the Utils module.
 
 ##AbstractMesh
 ODLCommonTools defines:
@@ -197,14 +197,6 @@ the mesh variable in the future.
   myrank::Int
   commsize::Int
   peer_parts::Array{Int, 1}
-
-  # Send/Receive Infrastructure
-  send_waited::Array{Bool, 1}
-  send_reqs::Array{MPI.Request, 1}
-  send_stats::Array{MPI.Status, 1}
-  recv_waited::Array{Bool, 1}
-  recv_reqs::Array{MPI.Request, 1}
-  recv_stats::Array{MPI.Status, 1}
 
   # Discretization type
   isDG::Bool
@@ -301,19 +293,6 @@ the mesh variable in the future.
 `commsize`: number of MPI processes on this communicator
 `peer_parts`: array of MPI proccess ranks for each process that has elements that
               share a face with the current process
-
-####Send/Receive Infrastructure
-`send_waited`: array of bools (length `npeers`) that indicate if MPI_Wait has
-               already been called on on each MPI send Request
-`send_reqs`: array of MPI Requests for send operations
-`send_stats`: array of MPI Status objects for send operations
-`recv_waited`: same purpose as `send_waited`, for receives
-`recv_reqs`: same purpose as `send_reqs`, for receives
-`recv_stats`: same purpose as `recv_stats`, for receives
-
-Note that some MPI implementations do not allow calling MPI_Wait on a Request
-more than once.  The `send_waited` and `receive_waited` arrays provide a way
-to guard against this.
 
 ####Discretization Type
 `isDG`: true if mesh is a DG type discretization

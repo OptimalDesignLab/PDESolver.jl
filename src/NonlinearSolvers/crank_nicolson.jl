@@ -100,7 +100,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   for i = 2:(t_steps + 1)
 
-    @mpi_master println("\ni = ", i, ", t = ", t)
+    @mpi_master println(BSTDOUT, "\ni = ", i, ", t = ", t)
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 
@@ -311,8 +311,9 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
+  # TODO: can parallel_type != 2 and have CN work?
   if opts["parallel_type"] == 2 && mesh.npeers > 0
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    startSolutionExchange(mesh, sbp, eqn, opts)
   end
   physics_func(mesh, sbp, eqn, opts, t)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)

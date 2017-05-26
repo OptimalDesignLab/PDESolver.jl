@@ -118,8 +118,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #  println("entered evalResidual")
 #  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
-    startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
-    #  println(" startDataExchange @time printed above")
+    startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
 
@@ -201,7 +200,6 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 #  println("\nInitializing Euler module")
 
-  initMPIStructures(mesh, opts)
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
   getBCFunctors(pmesh, sbp, eqn, opts)
@@ -790,16 +788,19 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
   if face_integral_type == 1
 
     if opts["parallel_data"] == "face"
-      calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals)
     elseif opts["parallel_data"] == "element"
-      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_element)
+#      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
     else
       throw(ErrorException("unsupported parallel data type"))
     end
 
   elseif face_integral_type == 2
 
-    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts, eqn.face_element_integral_func,  eqn.flux_func)
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element)
+#    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts, eqn.face_element_integral_func,  eqn.flux_func)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end

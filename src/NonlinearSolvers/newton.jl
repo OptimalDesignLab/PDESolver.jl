@@ -263,7 +263,7 @@ end
 
   On entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec
   will contain the solution to f(q) = 0.  eqn.q will also be consistent with
-  eqn.q_vec, as will eqn.q_face_send and eqn.q_face_recv.
+  eqn.q_vec, as will the send and receive buffers in eqn.shared_data
 
   Aliasing restrictions: None.  In particular, rhs_vec *can* alias eqn.res_vec, and this
                          leads so some efficiency because it avoids needlessly copying
@@ -1185,7 +1185,9 @@ end
   This function calculate the Jacobian sparsely (only the entries 
     within the sparsity bounds), using either finite differences or algorithmic 
     differentiation.  The jacobian is calculated about the point stored in 
-    eqn.q (not eqn.q_vec).
+    eqn.q (not eqn.q_vec).  A mesh coloring approach is used to compute the
+    jacobian.  Both eqn.q and the MPI send and receive buffers are perturbed
+    during this process.
 
   Inputs:
     newton_data:  NewtonData object
@@ -1230,7 +1232,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 
       	# apply perturbation to q
         if color <= mesh.numColors
-          applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
+          applyPerturbation(mesh, eqn.q, eqn.shared_data, color, pert, i, j, f)
       	  # evaluate residual
           time.t_func += @elapsed func(mesh, sbp, eqn, opts, t)
         end
@@ -1273,7 +1275,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 
         # undo perturbation
         if color <= mesh.numColors
-          applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, -pert, i, j)
+          applyPerturbation(mesh, eqn.q, eqn.shared_data, color, -pert, i, j)
         end
       end  # end loop i
     end  # end loop j
@@ -1303,11 +1305,17 @@ end  # end function
 
   Inputs/Outputs:
     arr: element based (3D) array of values to perturb
-    arr_shared: array of 3D arrays for ghost elements to be perturbed
+    shared_data: array of SharedFaceData for ghost elements to be perturbed
+                 The receive buffers are perturbed according to the masks
+                 in mesh.shared_element_colormasks, the send buffers are
+                 perturbed consistently with arr.
 
   Aliasing restrictions: none
 """->
-function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray, arr_shared::Array{Array{T, 3}, 1},  color::Integer, pert, i, j, f=STDOUT; perturb_shared=true)
+function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray,
+                           shared_data::Array{SharedFaceData{T}, 1},  
+                           color::Integer, pert, i, j, f=STDOUT; 
+                           perturb_shared=true)
   # applys perturbation pert to array arr according to a mask
   # color is the color currently being perturbed, used to select the mask
   # i, j specify the dof, node number within arr
@@ -1325,10 +1333,20 @@ function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray, arr_shar
 
   if perturb_shared
     for peer=1:mesh.npeers
+      # perturb receive buffer
       mask_i = mesh.shared_element_colormasks[peer][color]
-      arr_i = arr_shared[peer]
+      recv_arr_i = shared_data[peer].q_recv
       for k=1:length(mask_i)
-        arr_i[i, j, k] += pert*mask_i[k]
+        recv_arr_i[i, j, k] += pert*mask_i[k]
+      end
+
+      # perturb the send buffer, using the mask for eqn.q
+      send_arr_i = shared_data[peer].q_send
+      bndries_local = shared_data[peer].bndries_local
+
+      for k=1:length(bndries_local)
+        bndry_k = bndries_local[k]
+        send_arr_i[i, j, k] = pert*mask[bndry_k.element]
       end
     end
   end
