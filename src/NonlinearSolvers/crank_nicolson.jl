@@ -234,8 +234,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     # advection adjoint check
     if neg_time == true
-      dRdA_CS = calcdRdA_CS(mesh, sbp, adj, opts, t_nextstep)
-      dRdA_FD = calcdRdA_FD(mesh, sbp, adj, opts, t_nextstep)
+      dRdA_CS = calcdRdA_CS(mesh, sbp, adj_nextstep, opts, t_nextstep)
+      dRdA_FD = calcdRdA_FD(mesh, sbp, adj_nextstep, opts, t_nextstep)
 
       println(" {}{}{}{} norm(dRdA_FD - dRdA_CS): ", norm(dRdA_FD - dRdA_CS)/length(dRdA_FD))
       println(" {}{}{}{} vecnorm(dRdA_FD - dRdA_CS): ", vecnorm(dRdA_FD - dRdA_CS))
