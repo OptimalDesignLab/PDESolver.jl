@@ -40,7 +40,8 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           face_flux::AbstractArray{Tres, 3})
 
   nfaces = length(interfaces)
-  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  params = eqn.params
+#  nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces
     interface_i = interfaces[i]
     for j = 1:mesh.numNodesPerFace
@@ -51,9 +52,10 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       qR = sview(eqn.q_face, :, 2, j, i)
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-      nrm[:] = sbp.facenormal[:, fL]
+#      nrm[:] = sbp.facenormal[:, fL]
+      nrm = sview(sbp.facenormal, :, fL)
       flux_j = sview(face_flux, :, j, i)
-      functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
+      functor(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
     end
   end
 

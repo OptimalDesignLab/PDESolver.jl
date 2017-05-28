@@ -109,7 +109,7 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
-#  println("----- entered evalResidual -----")
+#  println("\n----- entered evalResidual -----")
 
   time = eqn.params.time
   eqn.params.t = t  # record t to params
@@ -155,7 +155,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
    evalBoundaryIntegrals(mesh, sbp, eqn)
-   #println("boundary integral @time printed above")
+#   println("boundary integral @time printed above")
   end
 
   time.t_stab += @elapsed if opts["addStabilization"]
@@ -170,11 +170,11 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-    #println("evalSharedFaceIntegrals @time printed above")
+#    println("evalSharedFaceIntegrals @time printed above")
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-  #println("source integral @time printed above")
+#  println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -240,12 +240,6 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   output_freq = opts["output_freq"]::Int
 
 #  println("eqn.q = \n", eqn.q)
-
-  if mesh.isDG
-    # undo multiplication by inverse mass matrix
-    res_vec_orig = eqn.M.*copy(eqn.res_vec)
-    res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  end
 
   if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
     vals = real(eqn.q_vec)  # remove unneded imaginary part
@@ -318,6 +312,13 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   end
 =#
   if opts["write_entropy"]
+    if mesh.isDG
+      # undo multiplication by inverse mass matrix
+      res_vec_orig = eqn.M.*copy(eqn.res_vec)
+      res_orig = reshape(res_vec_orig, mesh.numDofPerNode, 
+                         mesh.numNodesPerElement, mesh.numEl)
+    end
+
     @mpi_master f = eqn.file_dict[opts["write_entropy_fname"]]
 
     if(itr % opts["write_entropy_freq"] == 0)
@@ -465,10 +466,13 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     fill!(eqn.q_face, 0.0)
     fill!(eqn.flux_face, 0.0)
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+#    println("  interpolateBoundary @time printed above")
 
     if opts["face_integral_type"] == 1
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+#      println("  interpolateFace @time printed above")
       calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+#      println("  calcFaceFlux @time printed above")
     end
   end
 #  println("  DG dataPrep @time printed above")
@@ -482,7 +486,6 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 #  println("  stabscale @time printed above")
 
-#  println("finished dataPrep()")
   return nothing
 end # end function dataPrep
 

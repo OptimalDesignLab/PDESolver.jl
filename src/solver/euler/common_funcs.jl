@@ -284,15 +284,7 @@ end
 function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                             params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 
-  function f(coords, params)
-    t = params.t
-    x = coords[1]
-    y = coords[2]
-    x0 = params.vortex_x0
-    return 1 - ( (  (x-x0) - t)^2 + y*y)
-  end
-
-  fval = f(coords, params)
+  fval = vortex_f(coords, params)
   t = params.t
   epsilon = params.vortex_strength
   Ma = params.Ma
@@ -327,6 +319,14 @@ function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   sol[4] = E
 
   return nothing
+end
+
+function vortex_f(coords, params)
+  t = params.t
+  x = coords[1]
+  y = coords[2]
+  x0 = params.vortex_x0
+  return 1 - ( (  (x-x0) - t)^2 + y*y)
 end
 
 
