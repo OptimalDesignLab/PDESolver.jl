@@ -143,9 +143,11 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
 
 
   dq = params.v_vals2 # zeros(Tsol, 4)
-  dq[:] = q[:] - qg[:]
+  for i=1:length(dq)
+    dq[i] = q[i] - qg[i]
+  end
   sat = params.sat_vals
-  calcSAT(params, nrm, dq, sat, [u, v], H, use_efix)
+  calcSAT(params, nrm, dq, sat, u, v, H, use_efix)
 
   euler_flux = params.flux_vals1
   # calculate Euler flux in wall normal directiona
@@ -441,7 +443,7 @@ flux
 
 function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
                  dq::AbstractArray{Tsol,1}, sat::AbstractArray{Tsol,1},
-                 vel::AbstractArray{Tsol, 1}, H::Tsol, use_efix::Int=1)
+                 u::Tsol, v::Tsol, H::Tsol, use_efix::Int=1)
 
 
   # SAT parameters
@@ -449,8 +451,8 @@ function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   sat_Vl = convert(Tsol, 0.025)
   tau = 1.0
 
-  u = vel[1]
-  v = vel[2]
+#  u = vel[1]
+#  v = vel[2]
 
   gami = params.gamma_1
 
