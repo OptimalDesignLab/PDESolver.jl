@@ -971,6 +971,23 @@ function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
   return nothing
 end # end function call
 
+type ChannelMMSBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+# use the exact solution as the boundary condition for the ChannelMMS
+# solutions
+
+  qg = params.qg
+  calcChannelMMS(coords, params, qg)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+
+  return nothing
+end # end function call
+
 
 
 # every time a new boundary condition is created,
@@ -988,6 +1005,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "unsteadyVortexBC" => unsteadyVortexBC(),
 "ExpBC" => ExpBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
+"ChannelMMSBC" => ChannelMMSBC(),
 )
 
 @doc """
