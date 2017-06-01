@@ -125,7 +125,13 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim)
+
+    if opts["precompute_volume_flux"]
+      eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim)
+    else
+      eqn.flux_parametric = zeros(Tsol, 0, 0, 0)
+    end
+
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
     if mesh.isDG
@@ -135,7 +141,13 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_vec = zeros(Tres, mesh.numDof)
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
-    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+
+    if opts["precompute_boundary_flux"]
+      eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+    else
+      eqn.bndryflux = zeros(Tsol, 0, 0, 0)
+    end
+
     eqn.multiplyA0inv = matVecA0inv
 
     if mesh.isDG

@@ -125,7 +125,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
 #  println("dataPrep @time printed above")
 
-
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #    println("volume integral @time printed above")
@@ -157,6 +156,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
    evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 #   println("boundary integral @time printed above")
   end
+
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
@@ -462,24 +462,24 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 #  println("  getEulerFlux @time printed above")
 
+  if opts["precompute_q_face"]
+    interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+  end
+
 
   if mesh.isDG
-    fill!(eqn.q_bndry, 0.0)
-    fill!(eqn.q_face, 0.0)
-    fill!(eqn.flux_face, 0.0)
-    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
-#    println("  interpolateBoundary @time printed above")
-
     if opts["face_integral_type"] == 1
       if opts["precompute_face_flux"]
-        # TODO: make separate option for precomputing q_face
-        interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
 #      println("  interpolateFace @time printed above")
 
         calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
 #      println("  calcFaceFlux @time printed above")
       end
     end
+  end
+
+  if opts["precompute_q_bndry"]
+    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
   end
 
   if opts["precompute_boundary_flux"]

@@ -238,6 +238,15 @@ get!(arg_dict, "precompute_volume_flux", true)
 get!(arg_dict, "precompute_face_flux", true)
 get!(arg_dict, "precompute_boundary_flux", true)
 
+if !arg_dict["use_DG"]
+  get!(arg_dict, "precompute_q_face", false)
+  get!(arg_dict, "precompute_q_bndry", false)
+end
+
+# if not already specified, set to true just in case
+get!(arg_dict, "precompute_q_face", true)
+get!(arg_dict, "precompute_q_bndry", true)
+
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)

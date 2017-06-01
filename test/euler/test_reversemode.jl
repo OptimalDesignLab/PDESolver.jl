@@ -306,7 +306,7 @@ function test_reversemode()
             nrm2_bar)
     for k = 1:length(nrm2)
       nrm2[k] += pert
-      EulerEquationMod.calcSAT(eqn.params, nrm2, q, sat, [u,v], H)
+      EulerEquationMod.calcSAT(eqn.params, nrm2, q, sat, u, v, H)
       dSat = imag(sat[:])/imag(pert)
       complex_valbar_SAT = dot(psi, dSat)
       nrm2[k] -= pert
@@ -335,7 +335,7 @@ function test_reversemode()
 
     nfaces = length(bndry_facenums)
     phys_nrm = zeros(Complex128, Tdim)
-    nrm = zeros(Complex128, Tdim)
+#    nrm = zeros(, Tdim)
 
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
@@ -345,7 +345,8 @@ function test_reversemode()
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
         dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm[:] = sbp.facenormal[:, bndry_i.face]
+#        nrm[:] = sbp.facenormal[:, bndry_i.face]
+        nrm = sview(sbp.facenormal, :, bndry_i.face)
         # println("nrm = $(real(nrm))")
         dxidx_bar = zeros(Complex128, 2,2)
         EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, psi, dxidx_bar)
@@ -392,7 +393,7 @@ function test_reversemode()
       pert = complex(0, 1e-20) # Complex step perturbation
       complex_dxidx_bar = zeros(mesh.dxidx_bndry_bar)
       nfaces = length(bndry_facenums)
-      nrm = zeros(Complex128, 2)
+#      nrm = zeros(Complex128, 2)
       dBndryfluxdm = zeros(Complex128, 4)
       for i = 1:nfaces
         bndry_i = bndry_facenums[i]
@@ -402,7 +403,8 @@ function test_reversemode()
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm[:] = sbp.facenormal[:, bndry_i.face]
+#          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          nrm = sview(sbp.facenormal, :, bndry_i.face)
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
           # println("bndryflux_bar_i = $bndryflux_bar_i")
@@ -441,7 +443,7 @@ function test_reversemode()
       pert = complex(0, 1e-20) # Complex step perturbation
       complex_dxidx_bar = zeros(mesh.dxidx_bndry_bar)
       nfaces = length(bndry_facenums)
-      nrm = zeros(Complex128, 2)
+#      nrm = zeros(Complex128, 2)
       dBndryfluxdm = zeros(Complex128, 4)
       for i = 1:nfaces
         bndry_i = bndry_facenums[i]
@@ -451,7 +453,8 @@ function test_reversemode()
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm[:] = sbp.facenormal[:, bndry_i.face]
+#          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          nrm = sview(sbp.facenormal, :, bndry_i.face)
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
           # println("bndryflux_bar_i = $bndryflux_bar_i")
@@ -490,7 +493,7 @@ function test_reversemode()
 
     functor = eqn.flux_func
     nfaces = length(mesh.interfaces)
-    nrm = zeros(Complex128, size(sbp.facenormal,1))
+#    nrm = zeros(Complex128, size(sbp.facenormal,1))
     for i=1:nfaces  # loop over faces
       interface_i = mesh.interfaces[i]
       for j = 1:mesh.numNodesPerFace
@@ -503,7 +506,8 @@ function test_reversemode()
         dxidx = sview(mesh.dxidx_face, :, :, j, i)
         dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
         aux_vars = sview(eqn.aux_vars_face, :, j, i)
-        nrm[:] = sbp.facenormal[:,fL]
+        nrm = sview(sbp.facenormal, :, fL)
+#        nrm[:] = sbp.facenormal[:,fL]
 
         flux_j_bar = sview(eqn.flux_face_bar, :, j, i)
         # println("dxidx_bar = $(real(dxidx_bar))")
@@ -588,7 +592,7 @@ function test_reversemode()
 
     functor = eqn.flux_func
     nfaces = length(mesh.interfaces)
-    nrm = zeros(Complex128, size(sbp.facenormal,1))
+#    nrm = zeros(Complex128, size(sbp.facenormal,1))
     for i=1:nfaces  # loop over faces
       interface_i = mesh.interfaces[i]
       for j = 1:mesh.numNodesPerFace
@@ -601,7 +605,8 @@ function test_reversemode()
         dxidx = sview(mesh.dxidx_face, :, :, j, i)
         dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
         aux_vars = sview(eqn.aux_vars_face, :, j, i)
-        nrm[:] = sbp.facenormal[:,fL]
+ #       nrm[:] = sbp.facenormal[:,fL]
+        nrm = sview(sbp.facenormal, :, fL)
 
         flux_j_bar = sview(flux_face_bar_copy, :, j, i)
         for k = 1:length(dxidx)
@@ -627,7 +632,7 @@ function test_reversemode()
 
       complex_dxidx_bar = zeros(mesh.dxidx_bndry_bar)
       nfaces = length(bndry_facenums_i)
-      nrm = zeros(Complex128, 2)
+#      nrm = zeros(Complex128, 2)
       dBndryfluxdm = zeros(Complex128, 4)
       for i = 1:nfaces
         bndry_i = bndry_facenums_i[i]
@@ -637,7 +642,8 @@ function test_reversemode()
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm[:] = sbp.facenormal[:, bndry_i.face]
+ #         nrm[:] = sbp.facenormal[:, bndry_i.face]
+          nrm = sview(sbp.facenormal, :, bndry_i.face)
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
           dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)

@@ -523,23 +523,35 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
 
-    eqn.edgestab_alpha = zeros(Tmsh,Tdim,Tdim,sbp.numnodes, mesh.numEl)
-    if mesh.isDG
+    if opts["precompute_q_bndry"]
+      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
+                                mesh.numBoundaryFaces)
+    else
+      eqn.q_bndry = zeros(Tsol, 0, 0, 0)
+    end
+
+   
+    if opts["precompute_q_face"]
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
-      if opts["precompute_face_flux"]
+    else
+      eqn.q_face = zeros(Tsol, 0, 0, 0, 0)
+    end
+
+    #TODO: why are there 2 if mesh.isDG blocks?
+    if mesh.isDG
+     if opts["precompute_face_flux"]
         eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, 
                                     mesh.numInterfaces)
       else
         eqn.flux_face = zeros(Tres, 0, 0, 0)
       end
-      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
-                                mesh.numBoundaryFaces)
+
+
       eqn.aux_vars_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
       eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryFaces)
     else
       eqn.q_face = Array(Tres, 0, 0, 0, 0)
       eqn.flux_face = Array(Tres, 0, 0, 0)
-      eqn.q_bndry = Array(Tsol, 0, 0, 0)
       eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
@@ -575,6 +587,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
     if eqn.params.use_edgestab
       eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
+      eqn.edgestab_alpha = zeros(Tmsh,Tdim,Tdim,sbp.numnodes, mesh.numEl)
       calcEdgeStabAlpha(mesh, sbp, eqn)
     else
       eqn.stabscale = Array(Tres, 0, 0)
