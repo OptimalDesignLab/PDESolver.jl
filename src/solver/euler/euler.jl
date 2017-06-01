@@ -154,7 +154,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   #----------------------------------------------------------------------------
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-   evalBoundaryIntegrals(mesh, sbp, eqn)
+   evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 #   println("boundary integral @time printed above")
   end
 
@@ -629,36 +629,19 @@ end  # end evalVolumeIntegrals
 """->
 # mid level function
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
-
-  #=
-  if mesh.myrank == 1
-    f = open("bdnrylog.dat", "a")
-    elnum = 1
-    println(f, "\nelement $elnum coords = \n", mesh.coords[:, :, elnum])
-    println(f, "\nelement $elnum q = \n", eqn.q[:, :, elnum])
-    # find boundary
-    idx = 0
-    for i=1:length(mesh.bndryfaces)
-      if mesh.bndryfaces[i].element == elnum
-        idx = i
-      end
-    end
-    bndry = mesh.bndryfaces[idx]
-    println(f, "bndryface = ", bndry)
-
-    println(f, "element $elnum boundary q = \n", eqn.q_bndry[:, :, idx])
-    println(f, "element $elnum boundary flux = \n", eqn.bndryflux[:, :, idx])
-    println(f, "element $elnum boundary coords = \n", mesh.coords_bndry[:, :, idx])
-    println(f, "element $elnum boundary dxidx = \n", mesh.dxidx_bndry[:, :, idx])
-    println(f, "element $elnum boundary facenormal = \n", sbp.facenormal[:, bndry.face])
-    close(f)
-  end
-  =#
+                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
   #TODO: remove conditional
   if mesh.isDG
-    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
+    if opts["precompute_boundary_flux"]
+      boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
+    # else do nothing
+  else
+    # when precompute_boundary_flux == false, this fuunction does the
+    # integration too, updating res
+    getBCFluxes(mesh, sbp, eqn, opts)
+  end
+
   else
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
   end

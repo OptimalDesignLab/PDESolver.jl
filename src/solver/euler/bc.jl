@@ -24,11 +24,16 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
 
-    # call the function that calculates the flux for this boundary condition
-    # passing the functor into another function avoid type instability
-    calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
+    if opts["precompute_boundary_flux"]
+      bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
+
+      # call the function that calculates the flux for this boundary condition
+      # passing the functor into another function avoid type instability
+      calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
+    else
+      calcBoundaryFlux_nopre(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i)
+    end
   end
 
   writeBoundary(mesh, sbp, eqn, opts)
@@ -235,6 +240,49 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+
+"""
+  Like calcBoundaryFlux, but performs the integration and updates res rather
+  than storing the flux.
+"""
+function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                          functor::BCType, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1})
+  # calculate the boundary flux for the boundary condition evaluated by the
+  # functor
+
+  nfaces = length(bndry_facenums)
+  q2 = zeros(Tsol, mesh.numDofPerNode)
+  params = eqn.params
+  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+    for j = 1:mesh.numNodesPerFace
+
+      # get components
+      q = sview(eqn.q_bndry, :, j, global_facenum)
+      # convert to conservative variables if needed
+      convertToConservative(eqn.params, q, q2)
+      aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+      x = sview(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
+#      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      bndryflux_i = sview(flux_face, :, j)
+
+      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, params)
+    end
+
+    res_i = sview(eqn.res, :, :, bndry_i.element)
+    boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux_face, res_i,
+                           SummationByParts.Subtract())
+  end
+
+  return nothing
+end
+
 
 
 @doc """
