@@ -61,8 +61,36 @@ function test_parallel2()
   return nothing
 end
 
+function test_parallel_nopre()
+
+  facts("----- Testing parallel nopre -----") do
+    start_dir = pwd()
+    cd("./rk4/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    opts["precompute_face_flux"] = false
+    fill!(eqn.res, 0.0)
+
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
+    
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    cd(start_dir)
+
+  end  # end facts block
+
+  return nothing
+end
+
+
 #test_parallel2()
 add_func1!(EulerTests, test_parallel2, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_parallel_nopre, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests
