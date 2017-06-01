@@ -456,8 +456,10 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # calculate fluxes
-#  getEulerFlux(eqn, eqn.q, mesh.dxidx, sview(flux_parametric, :, :, :, 1), sview(flux_parametric, :, :, :, 2))
-  getEulerFlux(mesh, sbp,  eqn, opts)
+
+  if opts["precompute_volume_flux"]
+    getEulerFlux(mesh, sbp,  eqn, opts)
+  end
 #  println("  getEulerFlux @time printed above")
 
 
@@ -469,16 +471,22 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #    println("  interpolateBoundary @time printed above")
 
     if opts["face_integral_type"] == 1
-      interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+      if opts["precompute_face_flux"]
+        # TODO: make separate option for precomputing q_face
+        interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
 #      println("  interpolateFace @time printed above")
-      calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+
+        calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
 #      println("  calcFaceFlux @time printed above")
+      end
     end
   end
-#  println("  DG dataPrep @time printed above")
-  fill!(eqn.bndryflux, 0.0)
-  getBCFluxes(mesh, sbp, eqn, opts)
-#   println("  getBCFluxes @time printed above")
+
+  if opts["precompute_boundary_flux"]
+    fill!(eqn.bndryflux, 0.0)
+    getBCFluxes(mesh, sbp, eqn, opts)
+#     println("  getBCFluxes @time printed above")
+  end
 
   # is this needed for anything besides edge stabilization?
   if eqn.params.use_edgestab
@@ -583,15 +591,23 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   integral_type = opts["volume_integral_type"]
   if integral_type == 1  # regular volume integrals
-    if opts["Q_transpose"] == true
-      for i=1:Tdim
-        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
-      end
-    else
-      for i=1:Tdim
-        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
-      end
-    end  # end if
+
+    if opts["precompute_volume_flux"]
+
+      if opts["Q_transpose"] == true
+        for i=1:Tdim
+          weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+        end
+      else
+        for i=1:Tdim
+          weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
+        end
+      end  # end if Q_transpose
+
+    else  # not precomputing the volume flux
+      calcVolumeIntegrals_nopre(mesh, sbp, eqn, opts)
+    end  # end if precompute_volume _flux
+
   elseif integral_type == 2  # entropy stable formulation
     calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
   else
@@ -730,7 +746,12 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
 #    println("calculating regular face integrals")
-    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res, SummationByParts.Subtract())
+    if opts["precompute_face_flux"]
+      interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, 
+                             eqn.res, SummationByParts.Subtract())
+    else
+      calcFaceIntegral_nopre(mesh, sbp, eqn, opts, eqn.flux_func, mesh.interfaces)
+    end
 
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")

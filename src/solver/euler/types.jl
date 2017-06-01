@@ -498,8 +498,14 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                     mesh.numEl)
     eqn.Aeta = zeros(eqn.Axi)
     eqn.aux_vars = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes,
-                                mesh.numEl, Tdim)
+
+    if opts["precompute_volume_flux"]
+      eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes,
+                                  mesh.numEl, Tdim)
+    else
+      eqn.flux_parametric = zeros(Tsol, 0, 0, 0, 0)
+    end
+
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
     if opts["use_edge_res"]
@@ -520,8 +526,14 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     eqn.edgestab_alpha = zeros(Tmsh,Tdim,Tdim,sbp.numnodes, mesh.numEl)
     if mesh.isDG
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
-      eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, mesh.numInterfaces)
-      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, mesh.numBoundaryFaces)
+      if opts["precompute_face_flux"]
+        eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, 
+                                    mesh.numInterfaces)
+      else
+        eqn.flux_face = zeros(Tres, 0, 0, 0)
+      end
+      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
+                                mesh.numBoundaryFaces)
       eqn.aux_vars_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
       eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryFaces)
     else
@@ -531,16 +543,28 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
-    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes,
-                          mesh.numBoundaryFaces)
+
+    if opts["precompute_boundary_flux"]
+      eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes,
+                            mesh.numBoundaryFaces)
+    else
+      eqn.bndryflux = zeros(Tsol, 0, 0, 0)
+    end
 
     # send and receive buffers
-    eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+    if opts["precompute_face_flux"]
+      eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+    else
+      eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+    end
+
     eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     if mesh.isDG
       for i=1:mesh.npeers
-        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes,
-                                       mesh.peer_face_counts[i])
+        if opts["precompute_face_flux"]
+          eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes,
+                                         mesh.peer_face_counts[i])
+        end
         eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end

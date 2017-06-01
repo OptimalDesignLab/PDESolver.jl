@@ -261,7 +261,7 @@ end
 """->
 type isentropicVortexBC <: BCType
 end
-
+#=
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
@@ -302,8 +302,8 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
 
   return nothing
 end
+=#
 
-#=
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               q::AbstractArray{Tsol,1},
@@ -318,7 +318,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   return nothing
 
 end # ends the function isentropicVortexBC
-=#
+
 
 @doc """
 ###EulerEquationMod.isentropicVortexBC_revm
