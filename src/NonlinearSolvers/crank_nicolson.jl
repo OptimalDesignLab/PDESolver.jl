@@ -202,7 +202,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
       println("       checking direct method: size(dJdu): ", size(dJdu))
 
-      # TODO: comment what VV is
+      # VV is the algebraic v, which is dudA, calculated for the advection adjoint test
+
       #J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
       VV = calcVV(mesh, sbp, adj, opts, t_nextstep)     # scalar only because our x-value of interest is unchanging
       VV_vec = ones(dJdu)*VV      # need v as vector of all v's for all x's, easiest way
@@ -224,6 +225,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       #     loop's time step, the index i does not correspond to the same i of the forward sweep.
       #   The adjustment is not just (t_steps - i) because the loop starts at 2 and ends at t_steps + 1.
       i_actual = t_steps + 3 - i
+      println(" time step variables-  i: ", i, "  i_actual: ", i_actual, "  t_steps: ", t_steps)
       ctx_residual = (physics_func, adj, h, newton_data, i_actual, dJdu)
     end
 
@@ -249,12 +251,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     if neg_time == true
       dRdA_CS = calcdRdA_CS(mesh, sbp, adj_nextstep, opts, t_nextstep)
       dRdA_FD = calcdRdA_FD(mesh, sbp, adj_nextstep, opts, t_nextstep)
-
+      dRdA = dRdA_CS
       # println(" {}{}{}{} norm(dRdA_FD - dRdA_CS): ", norm(dRdA_FD - dRdA_CS)/length(dRdA_FD))
       # println(" {}{}{}{} vecnorm(dRdA_FD - dRdA_CS): ", vecnorm(dRdA_FD - dRdA_CS))
       # println(" {}{}{}{} vecnorm(dRdA_FD): ", vecnorm(dRdA_FD))
       # println(" {}{}{}{} vecnorm(dRdA_CS): ", vecnorm(dRdA_CS))
-      check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA_CS
+      check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
       filename = string("check_adjointmethod-", i, ".dat")
       writedlm(filename, check_adjointmethod)
     end
@@ -345,6 +347,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   end
 
   @debug1 println("============= end of CN: t = $t ===============")
+
+  println(" eqn.params.omega: ", eqn.params.omega)
+  println(" eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
   return t
 
 end   # end of crank_nicolson function

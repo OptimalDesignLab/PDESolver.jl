@@ -98,7 +98,7 @@ function ICexp_xplusy{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICexp_xplusy (2d)
 
 function ICexp_xplusy{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol, Tres, 3}, 
@@ -115,8 +115,21 @@ function ICexp_xplusy{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICexp_xplusy (3d)
 
+function ICsinwave_ampl{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+                    opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      u0[dofnums_j] = calc_sinwave_ampl(mesh.coords[:, j, i], eqn.params, eqn.t)
+    end
+  end
+
+  return nothing
+end # end function ICsinwave_ampl
 
 
 function ICsinwave{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
@@ -131,7 +144,7 @@ function ICsinwave{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICsinwave
 
 
 function ICsinwavey{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
@@ -146,7 +159,7 @@ function ICsinwavey{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICsinwavey
 
 
 function ICsinwavey_pert{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
@@ -161,7 +174,7 @@ function ICsinwavey_pert{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICsinwavey_pert
 
 
 function ICsinwavexy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
@@ -180,7 +193,7 @@ function ICsinwavexy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end
+end   # end function ICsinwavexy
 
 
 function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
@@ -195,7 +208,7 @@ function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICmms1
 
 function ICx4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
@@ -209,7 +222,7 @@ function ICx4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICx4
 
 
 function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
@@ -229,7 +242,7 @@ function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICp1
 
 function ICp2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
@@ -243,7 +256,7 @@ function ICp2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICp2
 
 function ICp3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
@@ -257,7 +270,7 @@ function ICp3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICp3
 
 function ICp4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
@@ -271,7 +284,7 @@ function ICp4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICp4
 
 
 function ICp5{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
@@ -286,7 +299,7 @@ function ICp5{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end # end function exp_xplusy
+end # end function ICp5
 
 function ICexp5xplus4yplus2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                             sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
@@ -300,7 +313,7 @@ function ICexp5xplus4yplus2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end
+end # end function ICexp5xplus4yplus2
 
 function ICexp5xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                             sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
@@ -315,7 +328,7 @@ function ICexp5xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end
+end # end function ICexp5xplusy
 
 function ICexp3xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                             sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
@@ -330,7 +343,7 @@ function ICexp3xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end
+end   # end function ICexp3xplusy
 
 function ICexp2xplus2y{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                             sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
@@ -345,7 +358,7 @@ function ICexp2xplus2y{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end
+end   # end function ICexp2xplus2y
 
 function ICexp_xy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                             sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
@@ -359,7 +372,7 @@ function ICexp_xy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end
+end   # end function ICexp_xy
 
 function ICxplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                             sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
@@ -373,7 +386,7 @@ function ICxplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   return nothing
-end
+end   # end function ICexp_xy
 
 @doc """
 ### AdvectionEquationMod.ICFile
@@ -427,6 +440,7 @@ global const ICDict = Dict{Any, Function}(
 "ICsinwavey" => ICsinwavey,
 "ICsinwavey_pert" => ICsinwavey_pert,
 "ICsinwavexy" => ICsinwavexy,
+"ICsinwave_ampl" => ICsinwave_ampl,
 "ICFile" => ICFile,
 "ICmms1" => ICmms1,
 "ICx4" => ICx4,
