@@ -743,7 +743,7 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
   facts("--- Testing evalBoundaryIntegrals ---") do
     fill!(eqn.res, 0.0)
 
-    EulerEquationMod.evalBoundaryIntegrals( mesh, sbp, eqn)
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
     el1_res = [0.35355 0 -0.35355;
                0.124998 -0.750001 -0.874999;
