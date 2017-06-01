@@ -11,4 +11,3 @@ done
 
 # names with wildcards
 find . -name 'solution_*' -type d -exec rm -r '{}' \;
-find . -name 'newton_*' -type d -exec rm -r '{}' \;
