@@ -84,14 +84,17 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     f1 = BufferedIO(_f1)
   end
  
+  # calculate t_steps, the number of time steps that CN will take
+  t_steps = floor(Int, t_max/h)   # this allows t_max to be any value above the final time step
+  time_of_final_step = (t_steps - 1)*h
+
+  println("=========== t_steps: ", t_steps, " =========")
+
   if neg_time == false    # negative time is for unsteady adjoint
     t = 0.0     # start time at 0.0
   else    
-    t = t_max   # start time at t_max
+    t = time_of_final_step
   end
-
-  # calculate t_steps, the number of time steps that CN will take
-  t_steps = round(Int, t_max/h)
 
   if neg_time == false
     # make a copy of the eqn object for storage of t_(n+1) information
@@ -117,7 +120,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
   # these jacs are for full CN or CN adj jac
-  println("======================= neg_time: ", neg_time, " =======================")
+  println("================== neg_time: ", neg_time, " .... t = ", t, " .... t_max = ", t_max, "  ===================")
   if neg_time == false
     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
   else

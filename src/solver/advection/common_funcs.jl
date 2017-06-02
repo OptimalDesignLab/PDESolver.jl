@@ -38,7 +38,7 @@ function calc_sinwave{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
   x = coords[1]
   y = coords[2]
 
-  return sin(-1.0*x + t)
+  return sin(-x + t)
 #  return sin( (-x + -y)/2 + t)
 end
 

@@ -37,6 +37,17 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
   eqn_dummy.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_dummy.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
+  #=
+  # make eqn object consistent
+  evalResidual(mesh, sbp, eqn_dummy, opts)
+  assembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.res, eqn_dummy.res_vec)
+
+  # TODO: fix ordering & repetition of these
+  eqn_dummy.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_dummy.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  =#
+  # looks like the above commented section doesn't make a difference
+
   # use startDataExchange to sync up q/q_vec and q_face_send/recv
   if opts["parallel_type"] == 2 && mesh.npeers > 0
     startDataExchange(mesh, opts, eqn_dummy.q, eqn_dummy.q_face_send, eqn_dummy.q_face_recv, eqn_dummy.params.f)
