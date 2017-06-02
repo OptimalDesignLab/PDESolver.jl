@@ -85,8 +85,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   end
  
   # calculate t_steps, the number of time steps that CN will take
-  t_steps = floor(Int, t_max/h)   # this allows t_max to be any value above the final time step
-  time_of_final_step = (t_steps - 1)*h
+  t_steps = floor(Int, t_max/h)   # this allows t_max to be any value up to h greater the final time step
+  time_of_final_step = (t_steps-1)*h
 
   println("=========== t_steps: ", t_steps, " =========")
 
@@ -134,7 +134,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # this section:
     #   1) reads the checkpointed q_vec at the last time step of the forward sweep (n'th time step)
     #   2) uses calcJacobianComplex to calculate dRdu at time step n
-    i_actual = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
+    i_actual = t_steps + 2  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
 
     # load checkpoint to calculate dRdu at this time step
     println("Setting IC for reverse sweep, i_actual (forward sweep time step index): ", i_actual)
@@ -156,10 +156,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     I = eye(length(eqn_dummy.q_vec))
     B = (I - (h/2) * (dRdu_n))
     psi = transpose(B)\(-dJdu)
-    adj.q_vec = psi
+    adj.q_vec = copy(psi)
+    disassembleSolution(mesh, sbp, adj, opts, adj.q, adj.q_vec)
 
   end
 
+  # TODO: should be t_steps + 2, issue #92. Should be fixed for RK4 also.
   t_steps_end = t_steps + 1
   for i = 2:t_steps_end
 
@@ -227,7 +229,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       #   At a given time step in the adjoint solve, although the index i corresponds to this
       #     loop's time step, the index i does not correspond to the same i of the forward sweep.
       #   The adjustment is not just (t_steps - i) because the loop starts at 2 and ends at t_steps + 1.
-      i_actual = t_steps + 3 - i
+      i_actual = (t_steps + 1) - (i - 2)
+      # TODO: eventual fix, issue #92, t_steps + 2. needs to be done in RK4 also
       println(" time step variables-  i: ", i, "  i_actual: ", i_actual, "  t_steps: ", t_steps)
       ctx_residual = (physics_func, adj, h, newton_data, i_actual, dJdu)
     end
@@ -351,8 +354,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   @debug1 println("============= end of CN: t = $t ===============")
 
-  println(" eqn.params.omega: ", eqn.params.omega)
-  println(" eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
   return t
 
 end   # end of crank_nicolson function
