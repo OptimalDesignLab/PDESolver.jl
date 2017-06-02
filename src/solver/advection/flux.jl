@@ -62,6 +62,50 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 end
 
 """
+  Compute the face integrals without using eqn.q_face or eqn.flux_face.
+  The integral is computed directly and res is updated
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+    flux_func: the flux functor that computes the face flux at a node
+"""
+function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
+                                 mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                                 eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+                                 flux_func::FluxType)
+
+  q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  for i=1:mesh.numInterfaces
+    iface_i = mesh.interfaces[i]
+    qL = sview(eqn.q, :, :, iface_i.elementL)
+    qR = sview(eqn.q, :, :, iface_i.elementR)
+
+    # interpolate to face
+    interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
+
+    for j=1:mesh.numNodesPerFace
+      dxidx_j = sview(mesh.dxidx_face, :, :, j, i)
+      nrm = sview(sbp.facenormal, :, iface_i.faceL)
+
+      flux_face[1, j] = -flux_func(q_faceL[j], q_faceR[j], dxidx_j, nrm, eqn.params)
+    end
+
+    resL = sview(eqn.res, :, :, iface_i.elementL)
+    resR = sview(eqn.res, :, :, iface_i.elementR)
+    interiorFaceIntegrate!(mesh.sbpface, iface_i, flux_face, resL, resR)
+  end
+
+  return nothing
+end
+
+
+"""
   Thin wrapper around calcSharedFaceIntegrals_inner.  This function is passed
   to finishDataExchange, and internally calls calcSharedFaceIntegrals_inner.
   See finishDataExchange for details on the interface and 
@@ -71,7 +115,12 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData)
 
-  calcSharedFaceIntegrals_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
+  if opts["precompute_face_flux"]
+    calcSharedFaceIntegrals_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
+  else
+    calcSharedFaceIntegrals_inner_nopre(mesh, sbp, eqn, opts, data,
+                                        eqn.flux_func)
+  end
 
   return nothing
 end
@@ -113,11 +162,6 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   dxidx_arr = mesh.dxidx_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
 
-  # permute the received nodes to be in the elementR orientation
-  # TODO: move this into finishExchangeData, to avoid possible double
-  # permutation of the data
-#  permuteinterface!(mesh.sbpface, interfaces, qR_arr)
-
   for j=1:length(interfaces)
     interface_i = interfaces[j]
     for k=1:mesh.numNodesPerFace
@@ -144,6 +188,58 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 end
 
 """
+  Like calcSharedFaceIntegrals_inner_nopre, but it computes the integral one
+  face at a time rather than computing all the flux, storing it in
+  eqn.flux_sharedface and then doing the integral
+
+  See calcSharedFaceIntegrals_inner() for a description of the arguments
+"""
+function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            opts, data::SharedFaceData, functor::FluxType)
+# calculate the face flux and do the integration for the shared interfaces
+
+  if opts["parallel_data"] != "face"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
+  end
+
+  params = eqn.params
+  idx = data.peeridx
+
+    # calculate the flux
+  interfaces = data.interfaces
+  bndries_local = data.bndries_local
+  qL_arr = data.q_send
+  qR_arr = data.q_recv
+  dxidx_arr = mesh.dxidx_sharedface[idx]
+#  flux_arr = eqn.flux_sharedface[idx]
+  flux_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  for j=1:length(interfaces)
+    interface_i = interfaces[j]
+    for k=1:mesh.numNodesPerFace
+      eL = interface_i.elementL
+      fL = interface_i.faceL
+
+      qL = qL_arr[1, k, j]
+      qR = qR_arr[1, k, j]
+      dxidx = sview(dxidx_arr, :, :, k, j)
+      nrm = sview(sbp.facenormal, :, fL)
+      flux_face[1, k] = -functor(qL, qR, dxidx, nrm, eqn.params)
+    end
+
+    res_i = sview(eqn.res, :, :, interface_i.elementL)
+    boundaryFaceIntegrate!(mesh.sbpface, interface_i.faceL, flux_face, res_i)
+  end
+  
+  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data,  qL_arr, qr_arr)
+
+  return nothing
+end
+
+
+"""
   Thin wrapper around calcSharedFaceIntegrals_inner.  This function is passed
   to finishDataExchange, and internally calls calcSharedFaceIntegrals_inner.
   See finishDataExchange for details on the interface and 
@@ -153,7 +249,11 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData)
 
-  calcSharedFaceIntegrals_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
+  if opts["precompute_face_flux"]
+    calcSharedFaceIntegrals_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
+  else
+    calcSharedFaceIntegrals_element_inner_nopre(mesh, sbp, eqn, opts, data, eqn.flux_func)
+  end
 
   return nothing
 end
@@ -214,12 +314,6 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
 
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
-
-    # permute elementR
-#    permvec = sview(mesh.sbpface.nbrperm, :, iface_j.orient)
-#    SummationByParts.permuteface!(permvec, workarr, q_faceR)
 
     @debug1 qL_face_arr[:, :, j] = q_faceL
     @debug1 qR_face_arr[:, :, j] = q_faceR
@@ -239,6 +333,89 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
   # evaluate integral
   boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)
+
+  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
+
+  return nothing
+end
+
+# element parallel version
+"""
+  Like calcSharedFaceIntegarl_element_inner, but computes the integral one
+  face at a time instead of computing the entire flux and then integrating.
+
+  See calcSharedFaceIntegrals_element_inner for the meaning of the arguments
+"""
+function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}( 
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres},
+                            opts, data::SharedFaceData, functor::FluxType)
+
+  @debug1 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
+  @debug1 flush(eqn.params.f)
+
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use getSharedFaceIntegrals_elemenet without parallel element data"))
+  end
+
+  # TODO: make these fields of params
+  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  workarr = zeros(q_faceR)
+  q = eqn.q
+  params = eqn.params
+
+
+  idx = data.peeridx
+  interfaces = data.interfaces
+  bndries_local = data.bndries_local
+  bndries_remote = data.bndries_remote
+#    qL_arr = data.q_send
+  qR_arr = data.q_recv
+  dxidx_arr = mesh.dxidx_sharedface[idx]
+#  flux_arr = eqn.flux_sharedface[idx]
+  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+  @debug1 begin
+    qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+                                 mesh.peer_face_counts[i])
+    qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+                                 mesh.peer_face_counts[i])
+    flush(params.f)
+  end
+
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    bndryL_j = bndries_local[j]
+    bndryR_j = bndries_remote[j]
+    fL = bndryL_j.face
+
+    # interpolate to face
+    qL = sview(q, :, :, iface_j.elementL)
+    el_r = iface_j.elementR - start_elnum + 1
+    qR = sview(qR_arr, :, :, el_r)
+
+
+    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
+
+    @debug1 qL_face_arr[:, :, j] = q_faceL
+    @debug1 qR_face_arr[:, :, j] = q_faceR
+
+    # calculate flux
+    for k=1:mesh.numNodesPerFace
+      qL_k = q_faceL[k]
+      qR_k = q_faceR[k]
+      dxidx = sview(dxidx_arr, :, :, k, j)
+      nrm = sview(sbp.facenormal, :, fL)
+
+      flux_face[1, k] = -functor(qL_k, qR_k, dxidx, nrm, eqn.params)
+    end
+
+    res_j = sview(eqn.res, :, :, bndryL_j.element)
+    boundaryFaceIntegrate!(mesh.sbpface, bndryL_j.face, flux_face, res_j)
+  end  # end loop over interfaces
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 

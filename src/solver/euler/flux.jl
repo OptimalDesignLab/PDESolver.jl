@@ -490,9 +490,9 @@ end
   updates eqn.res rather than computing the flux only and storing it in
   eqn.flux_sharedface
 """
-function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol}(
+function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType)
 
   q = eqn.q
@@ -563,8 +563,8 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol}(
      end
 
      # do the integration
-     res_j = sview(eqn.res, :, bndryL_j.element)
-     boundaryFaceIntegrate!(mesh,sbp.face, fL, flux_face, res_j)
+     res_j = sview(eqn.res, :, :, bndryL_j.element)
+     boundaryFaceIntegrate!(mesh.sbpface, fL, flux_face, res_j, SummationByParts.Subtract())
    end  # end loop over interfaces
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)

@@ -98,6 +98,47 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+"""
+  This function computes the boundary integrals (and should probably be renamed)
+  without using eqn.q_bndry of eqn.bndryflux.  eqn.res is updated with
+  the results.
+
+  See calcBoundaryFlux for the meaning of the arguments
+"""
+function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
+                          sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+                          functor::BCType, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1}, 
+                          bndryflux::AbstractArray{Tres, 3})
+
+  t = eqn.t
+  nfaces = length(bndry_facenums)
+  q_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+
+    # interpolate to face
+    q_el = sview(eqn.q, :, :, bndry_i.element)
+    boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, q_el, q_face)
+
+    for j = 1:mesh.numNodesPerFace
+      # get components
+      q = q_face[ 1, j]
+      coords = sview(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      flux_face[1, j] = -functor(q, eqn.params, coords, dxidx, nrm, t)
+    end
+
+    res_i = sview(eqn.res, :, :, bndry_i.element)
+    boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux_face, res_i)
+  end
+
+  return nothing
+end
 
 
 @doc """

@@ -65,11 +65,31 @@ function test_parallel_nopre()
 
   facts("----- Testing parallel nopre -----") do
     start_dir = pwd()
+
+    # test rk4
     cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
 
     mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    opts["precompute_face_flux"] = false
+    fill!(eqn.res, 0.0)
+
+    EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
+    
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    cd(start_dir)
+
+    # test_newton
+    cd("./newton/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+
+    fill!(eqn.res, 0.0)
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     res_orig = copy(eqn.res)
 

@@ -82,6 +82,50 @@ end
 #runtests_parallel()
 add_func1!(AdvectionTests, runtests_parallel, [TAG_SHORTTEST])
 
+function test_precompute()
+  facts("----- testing non-precompute functions -----") do
+    start_dir = pwd()
+
+    # test rk4
+    cd ("./rk4/parallel")
+    ARGS[1] = "input_vals_parallel_runp.jl"
+    #TODO: set opts["solve"] = false before doing this
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+
+    fill!(eqn.res, 0.0)
+    evalResidual(mesh, sbp, eqn, opts)
+
+    res_orig = copy(eqn.res)
+
+    opts["precompute_face_flux"] = false
+    evalResidual(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    # test newton
+    cd(start_dir)
+    cd("./newton/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+
+    fill!(eqn.res, 0.0)
+    evalResidual(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    opts["precompute_face_flux"] = false
+    evalResidual(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    cd(start_dir)
+  end
+
+
+  return nothing
+end
+
+add_func1!(AdvectionTests, test_precompute, [TAG_SHORTTEST, TAG_TMP])
+
 #------------------------------------------------------------------------------
 # run tests
 facts("----- Running Advection 2 processor tests -----") do
