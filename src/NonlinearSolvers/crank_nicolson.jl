@@ -86,6 +86,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
  
   # calculate t_steps, the number of time steps that CN will take
   t_steps = floor(Int, t_max/h)   # this allows t_max to be any value up to h greater the final time step
+  # TODO: should be t_steps*h, issue #92. Should be fixed for RK4 also.
   time_of_final_step = (t_steps-1)*h
 
   println("=========== t_steps: ", t_steps, " =========")
