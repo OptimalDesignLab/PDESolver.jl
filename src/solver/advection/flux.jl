@@ -214,7 +214,7 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
   qR_arr = data.q_recv
   dxidx_arr = mesh.dxidx_sharedface[idx]
 #  flux_arr = eqn.flux_sharedface[idx]
-  flux_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  flux_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   for j=1:length(interfaces)
     interface_i = interfaces[j]
@@ -230,6 +230,8 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
     end
 
     res_i = sview(eqn.res, :, :, interface_i.elementL)
+#    println("size(flux_face) = ", size(flux_face))
+#    println("size(mesh.sbpface.interp) = ", size(mesh.sbpface.interp))
     boundaryFaceIntegrate!(mesh.sbpface, interface_i.faceL, flux_face, res_i)
   end
   
