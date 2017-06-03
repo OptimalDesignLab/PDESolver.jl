@@ -462,24 +462,17 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 #  println("  getEulerFlux @time printed above")
 
-  if opts["precompute_q_face"]
-    interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-  end
-
 
   if mesh.isDG
-    if opts["face_integral_type"] == 1
-      if opts["precompute_face_flux"]
-#      println("  interpolateFace @time printed above")
-
-        calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
-#      println("  calcFaceFlux @time printed above")
-      end
+    if opts["precompute_q_face"]
+      interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
     end
-  end
-
-  if opts["precompute_q_bndry"]
-    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    if opts["precompute_face_flux"]
+      calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+    end
+    if opts["precompute_q_bndry"]
+      interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    end
   end
 
   if opts["precompute_boundary_flux"]

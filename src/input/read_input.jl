@@ -234,8 +234,15 @@ get!(arg_dict, "check_pressure", true)
 
 # DG Flux options
 get!(arg_dict, "LFalpha", 0.0)
+
+
 get!(arg_dict, "precompute_volume_flux", true)
-get!(arg_dict, "precompute_face_flux", true)
+if arg_dict["volume_integral_type"] != 2
+  get!(arg_dict, "precompute_face_flux", true)
+else
+  get!(arg_dict, "precompute_face_flux", false)
+  get!(arg_dict, "precompute_q_face", false)
+end
 get!(arg_dict, "precompute_boundary_flux", true)
 
 if !arg_dict["use_DG"]
