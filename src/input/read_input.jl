@@ -239,8 +239,8 @@ get!(arg_dict, "precompute_face_flux", true)
 get!(arg_dict, "precompute_boundary_flux", true)
 
 if !arg_dict["use_DG"]
-  get!(arg_dict, "precompute_q_face", false)
-  get!(arg_dict, "precompute_q_bndry", false)
+  get!(arg_dict, "precompute_q_face", true)
+  get!(arg_dict, "precompute_q_bndry", true)
 end
 
 # if not already specified, set to true just in case

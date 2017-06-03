@@ -275,7 +275,7 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
 
-  if mesh.isDG && opts["precompute_boundary_flux"]
+  if opts["precompute_boundary_flux"]
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   end
 
