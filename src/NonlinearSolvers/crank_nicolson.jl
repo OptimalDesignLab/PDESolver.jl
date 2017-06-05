@@ -149,10 +149,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
     dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
     dJdu = dJdu_CS
-    println(" {}{}{}{} norm(dJdu_FD - dJdu_CS): ", norm(dJdu_FD - dJdu_CS)/length(dJdu_FD))
-    println(" {}{}{}{} vecnorm(dJdu_FD - dJdu_CS): ", vecnorm(dJdu_FD - dJdu_CS))
-    println(" {}{}{}{} vecnorm(dJdu_FD): ", vecnorm(dJdu_FD))
-    println(" {}{}{}{} vecnorm(dJdu_CS): ", vecnorm(dJdu_CS))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
     I = eye(length(eqn_dummy.q_vec))
@@ -202,10 +198,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
       dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
       dJdu = dJdu_CS
-      println(" {}{}{}{} norm(dJdu_FD - dJdu_CS): ", norm(dJdu_FD - dJdu_CS)/length(dJdu_FD))
-      println(" {}{}{}{} vecnorm(dJdu_FD - dJdu_CS): ", vecnorm(dJdu_FD - dJdu_CS))
-      println(" {}{}{}{} vecnorm(dJdu_FD): ", vecnorm(dJdu_FD))
-      println(" {}{}{}{} vecnorm(dJdu_CS): ", vecnorm(dJdu_CS))
 
       println("       checking direct method: size(dJdu): ", size(dJdu))
 
@@ -260,10 +252,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       dRdA_CS = calcdRdA_CS(mesh, sbp, adj_nextstep, opts, t_nextstep)
       dRdA_FD = calcdRdA_FD(mesh, sbp, adj_nextstep, opts, t_nextstep)
       dRdA = dRdA_CS
-      # println(" {}{}{}{} norm(dRdA_FD - dRdA_CS): ", norm(dRdA_FD - dRdA_CS)/length(dRdA_FD))
-      # println(" {}{}{}{} vecnorm(dRdA_FD - dRdA_CS): ", vecnorm(dRdA_FD - dRdA_CS))
-      # println(" {}{}{}{} vecnorm(dRdA_FD): ", vecnorm(dRdA_FD))
-      # println(" {}{}{}{} vecnorm(dRdA_CS): ", vecnorm(dRdA_CS))
       check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
       filename = string("check_adjointmethod-", i, ".dat")
       writedlm(filename, check_adjointmethod)
