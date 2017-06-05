@@ -135,13 +135,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # this section:
     #   1) reads the checkpointed q_vec at the last time step of the forward sweep (n'th time step)
     #   2) uses calcJacobianComplex to calculate dRdu at time step n
-    i_actual = t_steps + 2  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
+    i_fwd = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
+    # TODO: should be t_steps + 2, issue #92. Should be fixed for RK4 also.
 
     # load checkpoint to calculate dRdu at this time step
-    println("Setting IC for reverse sweep, i_actual (forward sweep time step index): ", i_actual)
-    eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
+    println("Setting IC for reverse sweep, i_fwd (forward sweep time step index): ", i_fwd)
+    eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)
 
-    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t)
+    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
     dRdu_n = jac      # TODO: check transpose
     #----------------
 
@@ -230,10 +231,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       #   At a given time step in the adjoint solve, although the index i corresponds to this
       #     loop's time step, the index i does not correspond to the same i of the forward sweep.
       #   The adjustment is not just (t_steps - i) because the loop starts at 2 and ends at t_steps + 1.
-      i_actual = (t_steps + 1) - (i - 2)
+      i_fwd = (t_steps + 1) - (i - 2)
       # TODO: eventual fix, issue #92, t_steps + 2. needs to be done in RK4 also
-      println(" time step variables-  i: ", i, "  i_actual: ", i_actual, "  t_steps: ", t_steps)
-      ctx_residual = (physics_func, adj, h, newton_data, i_actual, dJdu)
+      println(" time step variables-  i: ", i, "  i_fwd: ", i_fwd, "  t_steps: ", t_steps)
+      ctx_residual = (physics_func, adj, h, newton_data, i_fwd, dJdu)
     end
 
     if neg_time == false
@@ -249,7 +250,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     else    
 
       # direct solve for psi_i
-      (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
+      (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
     end
@@ -289,7 +290,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     #------- adjoint check
     if neg_time == true
-      # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)     # t has been updated, so no t_nextstep
+      # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)     # t has been updated, so no t_nextstep
       # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
       omega = 1.0
       v_bc = sin(omega*t)
