@@ -328,7 +328,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   end   # end of t step loop
 
   # depending on how many timesteps we do, this may or may not be necessary
-  #   usage: copy!(dest, src)
+  #   usage: copy!(dest, src)   
+  # this copy! is defined in ODLCommonTools
   if neg_time == false
     copy!(eqn, eqn_nextstep)      # copying eqn_nextstep to eqn
     writedlm("solution_final_inCN.dat", real(eqn.q_vec))
@@ -336,6 +337,21 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     copy!(adj, adj_nextstep)      # copying adj_nextstep to eqn
     writedlm("adjoint_final_inCN.dat", real(adj.q_vec))
   end
+
+  print_qvec_coords(mesh, sbp, eqn, opts)
+  # include("/users/ashlea/ticon_utils/coords_of_qvec.jl")
+  #=
+  # For debugging: store integer set to mesh and save, just to visualize ordering of q_vec
+  for i = 1:length(eqn.q_vec)
+    eqn.q_vec[i] = convert(Float64, i)
+  end
+  filename = string("qvec_integers.dat")
+  writedlm(filename, eqn.q_vec)
+  vis_filename = string("qvec_integers")
+  saveSolutionToMesh(mesh, real(eqn.q_vec))
+  writeVisFiles(mesh, vis_filename)
+  # End debugging integer ordering output
+  =#
 
   if jac_type == 3      # if jac is a Petsc matrix, it needs to be freed when we're done using it
     # contents of ctx_newton: (jacp, x, b, ksp)

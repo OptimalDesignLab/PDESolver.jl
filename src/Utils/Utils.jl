@@ -39,7 +39,7 @@ export getProjectionMatrix, projectToXY, projectToNT, calcLength
 export absvalue
 
 # output.jl
-export printSolution, printCoordinates, printMatrix
+export printSolution, printCoordinates, printMatrix, print_qvec_coords
 
 # mass_matrix.jl
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D, 

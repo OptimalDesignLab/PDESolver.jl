@@ -141,3 +141,36 @@ return nothing
 
 end
 
+# coords_of_qvec
+#
+# This will print out a table of all dof's, with the below columns. Useful for debugging.
+#
+# Assumes you have eqn and mesh properly initialized.
+
+function print_qvec_coords(mesh, sbp, eqn, opts)
+
+  println("x-coord    y-coord    elnum    nodenum  dofnum   val")
+
+  for dof_ix = 1:mesh.numDof
+    # st:  subscript_tuple 
+    st = ind2sub((mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl), dof_ix)
+
+    dofnum = st[1]      # dof number in this node
+    nodenum = st[2]     # node number in this element
+    elnum = st[3]       # element number
+
+    if getindex(eqn.q, dofnum, nodenum, elnum) != eqn.q_vec[dof_ix]
+      error("problem with ind2sub")
+    end
+
+    coords_this_dof = getindex(mesh.coords, :, nodenum, elnum)
+
+    x_coord = coords_this_dof[1]
+    y_coord = coords_this_dof[2]
+    val_this_dof = eqn.q_vec[dof_ix]
+
+    @printf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
+
+  end
+
+end   # end function print_qvec_coords
