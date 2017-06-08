@@ -116,7 +116,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # adj_nextstep.res = reshape(adj_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   end
 
-  @debug1 println("============ In CN ============")
+  println("============ Starting CN ============")
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
@@ -191,6 +191,17 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         writedlm(filename, adj.q_vec)
       end
     end
+
+    if neg_time == false
+      println(" -------------- eqn.q_vec start of this CN iter. t = $t, i = $i --------------")
+      print_qvec_coords(mesh, sbp, eqn, opts)
+      println(" -------------- Now using eqn.q_vec to compute eqn_nextstep.q_vec --------------")
+    else
+      println(" -------------- adj.q_vec start of this CN iter. t = $t, i = $i --------------")
+      print_qvec_coords(mesh, sbp, adj, opts)
+      println(" -------------- Now using adj.q_vec to compute adj_nextstep.q_vec --------------")
+    end
+    println(" ")
 
     #----------------------------
     # zero out Jac
@@ -338,14 +349,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
     end
 
-    if neg_time == false
-      println(" -------------- eqn.q_vec end of this CN iter. t = $t, i = $i --------------")
-      print_qvec_coords(mesh, sbp, eqn, opts)
-    else
-      println(" -------------- adj.q_vec end of this CN iter. t = $t, i = $i --------------")
-      print_qvec_coords(mesh, sbp, adj, opts)
-    end
-    println(" ")
 
     t = t_nextstep        # update time step
 

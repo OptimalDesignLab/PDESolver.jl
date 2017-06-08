@@ -15,10 +15,6 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   #   eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
   # because it needs AdvectionEquationMod loaded, which needs PDESolver loaded, which can't be loaded more than once.
   eqn_dummy = eqn_deepcopy(adj, mesh, sbp, opts)                     # allocate a dummy eqn object
-  check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
-
-  println(" -------------- eqn_dummy.q_vec loaded. i_fwd: ", i_fwd, " --------------")
-  print_qvec_coords(mesh, sbp, eqn_dummy, opts)
 
   # println("in cnAdjLoadChkpt: pointer(adj.q_vec): ", pointer(adj.q_vec))
   # println("in cnAdjLoadChkpt: pointer(adj.res_vec): ", pointer(adj.res_vec))
@@ -29,19 +25,24 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   println("Calculating Jac using forward sweep data from: ", qvec_filename)
   q_vec_with_complex = readdlm(qvec_filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # because readdlm gives a field to the zero-valued complex part
+  disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
+
+  check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
+  println(" -------------- eqn_dummy.q_vec loaded. i_fwd: ", i_fwd, " --------------")
+  print_qvec_coords(mesh, sbp, eqn_dummy, opts)
+
 
   vis_filename = string("solution_loadedfromdisk_ifwd-", i_fwd)
   saveSolutionToMesh(mesh, real(eqn_dummy.q_vec))
   writeVisFiles(mesh, vis_filename)
 
   # sync up eqn_dummy.q and eqn_dummy.q_vec
-  disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
 
   # TODO: is this needed here? YES. 
   #     explain why here
   # TODO new: I don't think so now that eqn_deepcopy is properly implemented
-  eqn_dummy.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  eqn_dummy.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  # eqn_dummy.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  # eqn_dummy.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
   #=
   # make eqn object consistent
@@ -109,11 +110,12 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
   t_nextstep = t - h
   t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
 
-  # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t_nextstep)
+  # Load checkpoint at time t, aka i+1
   eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   # checked: eqn_dummy is loaded properly
+  # Use time t's eqn.q_vec and t_nextstep, aka i, to compute the jac (dRdu) at t_nextstep aka i
   jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t_nextstep)
-  dRdu_i = transpose(jac)     
+  dRdu_i = transpose(jac)       # see derivation for transpose justification
 
   # TODO: double check that there is not an off by one error on dRdu:
   #       even though calculated at t_nextstep, am I loading q_vec at i+1 instead of i?
