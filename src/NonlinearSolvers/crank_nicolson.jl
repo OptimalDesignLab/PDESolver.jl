@@ -135,8 +135,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # this section:
     #   1) reads the checkpointed q_vec at the last time step of the forward sweep (n'th time step)
     #   2) uses calcJacobianComplex to calculate dRdu at time step n
-    i_fwd = t_steps + 2  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
-    # TODO: should be t_steps + 2, issue #92. Should be fixed for RK4 also.
+    i_fwd = t_steps + 2  # index of the last time step's checkpoint. 
+                         #  It was saved after the end of the time stepping loop during the forward sweep
 
     # load checkpoint to calculate dRdu at this time step
     println("Setting IC for reverse sweep, i_fwd (forward sweep time step index): ", i_fwd)
