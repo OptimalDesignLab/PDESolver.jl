@@ -168,6 +168,29 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     println(" -------------- start of this CN iter. t = $t, i = $i, neg_time = ", neg_time, " --------------")
     @debug1 flush(eqn.params.f)
 
+    # new: writing checkpoint data at start of time step
+    if neg_time == false
+      # for adjoint_straight option: stores every time step's q to disk
+      # Note: cannot store full eqn object without extending one of the julia write methods
+      if store_u_to_disk == true
+        filename = string("qvec_for_adj-", i, ".dat")
+        writedlm(filename, eqn.q_vec)
+        vis_filename = string("solution_storedtodisk_i-", i)
+        saveSolutionToMesh(mesh, real(eqn.q_vec))
+        writeVisFiles(mesh, vis_filename)
+
+        time_filename = string("t-",i,".dat")
+        writedlm(time_filename, t)              # make sure that this time value, whether t or t_nextstep,
+                                                #   correctly corresponds to the q_vec stored just above
+      end
+    else
+      # save every time step's adjoint to disk
+      if opts["adjoint_saveall"]
+        filename = string("adj-", i, ".dat")
+        writedlm(filename, adj.q_vec)
+      end
+    end
+
     #----------------------------
     # zero out Jac
     #   this works for both PETSc and Julia matrices.
@@ -301,27 +324,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # end
     end
 
-    if neg_time == false
-      # for adjoint_straight option: stores every time step's q to disk
-      # Note: cannot store full eqn object without extending one of the julia write methods
-      if store_u_to_disk == true
-        filename = string("qvec_for_adj-", i, ".dat")
-        writedlm(filename, eqn.q_vec)
-        vis_filename = string("solution_storedtodisk_i-", i)
-        saveSolutionToMesh(mesh, real(eqn.q_vec))
-        writeVisFiles(mesh, vis_filename)
-
-        time_filename = string("t-",i,".dat")
-        writedlm(time_filename, t_nextstep)
-      end
-    else
-      # save every time step's adjoint to disk
-      if opts["adjoint_saveall"]
-        filename = string("adj-", i, ".dat")
-        writedlm(filename, adj.q_vec)
-      end
-    end
-
     # Note: we now need to copy the updated q over for the initial newton guess
     if neg_time == false
       for dof_ix = 1:mesh.numDof
@@ -348,6 +350,32 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
 
   end   # end of t step loop
+
+  # TODO: should I be checkpointing the final time step too?
+  #=
+  # new: writing checkpoint data at start of time step
+  if neg_time == false
+    # for adjoint_straight option: stores every time step's q to disk
+    # Note: cannot store full eqn object without extending one of the julia write methods
+    if store_u_to_disk == true
+      filename = string("qvec_for_adj-", i, ".dat")
+      writedlm(filename, eqn.q_vec)
+      vis_filename = string("solution_storedtodisk_i-", i)
+      saveSolutionToMesh(mesh, real(eqn.q_vec))
+      writeVisFiles(mesh, vis_filename)
+
+      time_filename = string("t-",i,".dat")
+      writedlm(time_filename, t)              # make sure that this time value, whether t or t_nextstep,
+                                              #   correctly corresponds to the q_vec stored just above
+    end
+  else
+    # save every time step's adjoint to disk
+    if opts["adjoint_saveall"]
+      filename = string("adj-", i, ".dat")
+      writedlm(filename, adj.q_vec)
+    end
+  end
+  =#
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copy!(dest, src)   
