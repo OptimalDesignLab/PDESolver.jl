@@ -7,25 +7,30 @@ function cnAdjLoadChkpt:
 
   returns eqn object, which has only the necessary correct fields for the unsteady adjoint
 """
-function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
+# function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)
+function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
 
   # initialize dummy eqn object for jacobian calculation use
   # Note: can't just call this:
   #   eqn_dummy = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
   # because it needs AdvectionEquationMod loaded, which needs PDESolver loaded, which can't be loaded more than once.
   eqn_dummy = eqn_deepcopy(adj, mesh, sbp, opts)                     # allocate a dummy eqn object
+  check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
+
+  println(" -------------- eqn_dummy.q_vec loaded. i_fwd: ", i_fwd, " --------------")
+  print_qvec_coords(mesh, sbp, eqn_dummy, opts)
 
   # println("in cnAdjLoadChkpt: pointer(adj.q_vec): ", pointer(adj.q_vec))
   # println("in cnAdjLoadChkpt: pointer(adj.res_vec): ", pointer(adj.res_vec))
   # println("in cnAdjLoadChkpt: pointer(eqn_dummy.q_vec):   ", pointer(eqn_dummy.q_vec))
   # println("in cnAdjLoadChkpt: pointer(eqn_dummy.res_vec): ", pointer(eqn_dummy.res_vec))
 
-  qvec_filename = string("qvec_for_adj-", i_actual, ".dat")
+  qvec_filename = string("qvec_for_adj-", i_fwd, ".dat")
   println("Calculating Jac using forward sweep data from: ", qvec_filename)
   q_vec_with_complex = readdlm(qvec_filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # because readdlm gives a field to the zero-valued complex part
 
-  vis_filename = string("solution_loadedfromdisk_iactual-", i_actual)
+  vis_filename = string("solution_loadedfromdisk_ifwd-", i_fwd)
   saveSolutionToMesh(mesh, real(eqn_dummy.q_vec))
   writeVisFiles(mesh, vis_filename)
 
@@ -34,6 +39,7 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t)
 
   # TODO: is this needed here? YES. 
   #     explain why here
+  # TODO new: I don't think so now that eqn_deepcopy is properly implemented
   eqn_dummy.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_dummy.res = reshape(eqn_dummy.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
@@ -63,7 +69,7 @@ function cnAdjCalcdRdu:
 
   returns a jac
 """
-function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t)
+function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
   # Note: probably don't need to allocate another jac, but this should cause no problems aside from allocation cost
   newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
 
@@ -78,7 +84,7 @@ function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t)
 
   calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
-  # filename = string("jac_from_cnAdjCalcdRdu-i_actual-",i_actual,".dat")
+  # filename = string("jac_from_cnAdjCalcdRdu-i_fwd-",i_fwd,".dat")
   # writedlm(filename, jac)
 
   return jac
@@ -95,17 +101,18 @@ function cnAdjDirect:
 
   returns psi_i
 """
-function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
-# adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_actual, t_nextstep)
+function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
+# adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_fwd, t_nextstep)
 
   # Note: t is passed in (instead of t_nextstep), but t_nextstep is calc'd & used below
 
   t_nextstep = t - h
   t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
 
-  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t_nextstep)
+  # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t_nextstep)
+  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   # checked: eqn_dummy is loaded properly
-  jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_actual, t_nextstep)
+  jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t_nextstep)
   dRdu_i = transpose(jac)     
 
   # TODO: double check that there is not an off by one error on dRdu:
@@ -122,7 +129,7 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_actual, h, t)
   nextstep_q_vec = zeros(adj.q_vec)
   nextstep_q_vec = B1\B2
 
-  # filename = string("eqn_dummyqvec_from_cnAdjDirect-i_actual-",i_actual,".dat")
+  # filename = string("eqn_dummyqvec_from_cnAdjDirect-i_fwd-",i_fwd,".dat")
   # writedlm(filename, eqn_dummy.q_vec)
 
   return nextstep_q_vec, jac

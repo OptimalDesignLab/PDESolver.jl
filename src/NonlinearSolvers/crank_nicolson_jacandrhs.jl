@@ -17,7 +17,7 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   adj = ctx[2]
   h = ctx[3]
   newton_data = ctx[4]
-  i_actual = ctx[5]
+  i_fwd = ctx[5]
 
   # Forming the CN Adjoint Jacobian:
   #   call physicsJac with eqn_nextstep & t_nextstep
@@ -175,14 +175,14 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
   adj = ctx[2]
   h = ctx[3]
   newton_data = ctx[4]
-  i_actual = ctx[5]
+  i_fwd = ctx[5]
   dJdu = ctx[6]
 
   # TODO: need to double check that t_nextstep is used here, not t. I believe it should be t_nextstep
   t_nextstep = t - h    # adjoint going backwards in time
   t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
 
-  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_actual, t_nextstep)
+  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t_nextstep)
   jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t_nextstep)
   dRdu_i = transpose(jac)    # dRdu_i: we don't need dRdu_(i-1), see derivation
 
