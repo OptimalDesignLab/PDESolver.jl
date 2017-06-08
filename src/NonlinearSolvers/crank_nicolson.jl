@@ -135,7 +135,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # this section:
     #   1) reads the checkpointed q_vec at the last time step of the forward sweep (n'th time step)
     #   2) uses calcJacobianComplex to calculate dRdu at time step n
-    i_fwd = t_steps + 1  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
+    i_fwd = t_steps + 2  # index during forward sweep of the n'th q_vec. +1 instead of +3-i because the loop adds 2
     # TODO: should be t_steps + 2, issue #92. Should be fixed for RK4 also.
 
     # load checkpoint to calculate dRdu at this time step
@@ -169,7 +169,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     println(" -------------- start of this CN iter. t = $t, i = $i, neg_time = ", neg_time, " --------------")
     @debug1 flush(eqn.params.f)
 
-    # new: writing checkpoint data at start of time step
+    # Write checkpoint data at start of time step
     if neg_time == false
       # for adjoint_straight option: stores every time step's q to disk
       # Note: cannot store full eqn object without extending one of the julia write methods
@@ -354,8 +354,42 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
 
   end   # end of t step loop
+  i = i+1
+  # Checkpoint final time step
+  if neg_time == false
+    # for adjoint_straight option: stores every time step's q to disk
+    # Note: cannot store full eqn object without extending one of the julia write methods
+    if store_u_to_disk == true
+      filename = string("qvec_for_adj-", i, ".dat")
+      writedlm(filename, eqn.q_vec)
+      vis_filename = string("solution_storedtodisk_i-", i)
+      saveSolutionToMesh(mesh, real(eqn.q_vec))
+      writeVisFiles(mesh, vis_filename)
 
-  # TODO: should I be checkpointing the final time step too?
+      time_filename = string("t-",i,".dat")
+      writedlm(time_filename, t)              # make sure that this time value, whether t or t_nextstep,
+                                              #   correctly corresponds to the q_vec stored just above
+    end
+  else
+    # save every time step's adjoint to disk
+    if opts["adjoint_saveall"]
+      filename = string("adj-", i, ".dat")
+      writedlm(filename, adj.q_vec)
+    end
+  end
+
+  if neg_time == false
+    println(" -------------- eqn.q_vec of last time step. after CN loop. t = $t, i = $i --------------")
+    print_qvec_coords(mesh, sbp, eqn, opts)
+    println(" -------------- End of CN --------------")
+  else
+    println(" -------------- adj.q_vec of last time step. after CN loop. t = $t, i = $i --------------")
+    print_qvec_coords(mesh, sbp, adj, opts)
+    println(" -------------- End of CN --------------")
+  end
+  println(" ")
+
+
   #=
   # new: writing checkpoint data at start of time step
   if neg_time == false
