@@ -161,13 +161,15 @@ calculates v, which is dudA, for the advection adjoint test
 function calcVV(mesh, sbp, eqn, opts, t)
 
   # x = 2*pi
-  x = 2.0       # make sure the mesh being run is u_adj_x0-2_y0-2_4x4_tri0.smb
+  x = 2.0       # make sure the mesh being run is u_adj_x0-2_y0-2_4x4_tri0.smb, or suitable mesh with domain 0-2, 0-2
   # omega = 1.0
 
   omega = eqn.params.omega
   A = eqn.params.sin_amplitude
 
-  v = A*sin(-x + omega*t)
+  # v is dudA. since u = A*sin(-x + omega*t), dudA = sin(-x + omega*t)
+  # TODO: is using 2.0 ok here? or need to get the x values of each dof of eqn.q_vec
+  v = sin(-x + omega*t)
   return v
 
 end

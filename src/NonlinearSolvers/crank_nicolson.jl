@@ -141,6 +141,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # load checkpoint to calculate dRdu at this time step
     println("Setting IC for reverse sweep, i_fwd (forward sweep time step index): ", i_fwd)
     eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)
+    check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
 
     jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
     dRdu_n = jac      # TODO: check transpose
@@ -163,7 +164,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   t_steps_end = t_steps + 1
   for i = 2:t_steps_end
 
-    println(" +++ CN: at the top of time-stepping loop, t = $t, i = $i")
+    println(" ")
+    println(" -------------- start of this CN iter. t = $t, i = $i, neg_time = ", neg_time, " --------------")
     @debug1 flush(eqn.params.f)
 
     #----------------------------
@@ -204,7 +206,11 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # VV is the algebraic v, which is dudA, calculated for the advection adjoint test
 
       #J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
+
+      # TODO: figure out if calcVV is to be called with t or t_nextstep. I think it's t_nextstep
       VV = calcVV(mesh, sbp, adj, opts, t_nextstep)     # scalar only because our x-value of interest is unchanging
+      # VV = calcVV(mesh, sbp, adj, opts, t)     # scalar only because our x-value of interest is unchanging
+
       VV_vec = ones(dJdu)*VV      # need v as vector of all v's for all x's, easiest way
       println("       checking direct method: VV: ", VV)
       println("       checking direct method: size(VV): ", size(VV_vec))
@@ -242,6 +248,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     else    
 
       # direct solve for psi_i
+      # note: this needs to be called with t, not t_nextstep. 
+      #   within cnAdjDirect, t_nextstep is calculated and used throughout.
       (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
@@ -270,13 +278,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       adj_nextstep = adj_temp
     end
 
-    t = t_nextstep        # update time step
-
 
     # adj.q_vec now contains the adjoint at time step i. 
     # Previously, adj_nextstep corresponded to time step i, and adj corresponded to time step i+1.
 
     #------- adjoint check
+    # TODO this is wrong, what is this
     if neg_time == true
       # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)     # t has been updated, so no t_nextstep
       # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
@@ -303,6 +310,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         vis_filename = string("solution_storedtodisk_i-", i)
         saveSolutionToMesh(mesh, real(eqn.q_vec))
         writeVisFiles(mesh, vis_filename)
+
+        time_filename = string("t-",i,".dat")
+        writedlm(time_filename, t_nextstep)
       end
     else
       # save every time step's adjoint to disk
@@ -314,16 +324,28 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     # Note: we now need to copy the updated q over for the initial newton guess
     if neg_time == false
-      for i = 1:mesh.numDof
-        eqn_nextstep.q_vec[i] = eqn.q_vec[i]
+      for dof_ix = 1:mesh.numDof
+        eqn_nextstep.q_vec[dof_ix] = eqn.q_vec[dof_ix]
       end
       disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
     else
-      for i = 1:mesh.numDof
-        adj_nextstep.q_vec[i] = adj.q_vec[i]
+      for dof_ix = 1:mesh.numDof
+        adj_nextstep.q_vec[dof_ix] = adj.q_vec[dof_ix]
       end
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
     end
+
+    if neg_time == false
+      println(" -------------- eqn.q_vec end of this CN iter. t = $t, i = $i --------------")
+      print_qvec_coords(mesh, sbp, eqn, opts)
+    else
+      println(" -------------- adj.q_vec end of this CN iter. t = $t, i = $i --------------")
+      print_qvec_coords(mesh, sbp, adj, opts)
+    end
+    println(" ")
+
+    t = t_nextstep        # update time step
+
 
   end   # end of t step loop
 
@@ -338,8 +360,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     writedlm("adjoint_final_inCN.dat", real(adj.q_vec))
   end
 
-  print_qvec_coords(mesh, sbp, eqn, opts)
-  # include("/users/ashlea/ticon_utils/coords_of_qvec.jl")
   #=
   # For debugging: store integer set to mesh and save, just to visualize ordering of q_vec
   for i = 1:length(eqn.q_vec)
@@ -350,6 +370,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   vis_filename = string("qvec_integers")
   saveSolutionToMesh(mesh, real(eqn.q_vec))
   writeVisFiles(mesh, vis_filename)
+  print_qvec_coords(mesh, sbp, eqn, opts)
   # End debugging integer ordering output
   =#
 
@@ -371,4 +392,14 @@ function negativeZeroCheck(t)
     t = 0.0
   end
   return t
+end
+
+function check_q_qvec_consistency(mesh, sbp, eqn, opts)
+
+  if eqn.q != reshape(eqn.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+    error("q & q_vec consistency error")
+  end
+
+  return nothing
+
 end
