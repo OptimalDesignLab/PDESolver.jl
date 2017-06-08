@@ -160,16 +160,27 @@ calculates v, which is dudA, for the advection adjoint test
 """
 function calcVV(mesh, sbp, eqn, opts, t)
 
-  # x = 2*pi
-  x = 2.0       # make sure the mesh being run is u_adj_x0-2_y0-2_4x4_tri0.smb, or suitable mesh with domain 0-2, 0-2
-  # omega = 1.0
+  v = zeros(eqn.q_vec)
 
-  omega = eqn.params.omega
-  A = eqn.params.sin_amplitude
+  for dof_ix = 1:mesh.numDof
+    # st: subscript_tuple
+    st = ind2sub((mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl), dof_ix)
+    dofnum = st[1]    # dof number in this node
+    nodenum = st[2]   # node number in this element
+    elnum = st[3]     # element number
 
-  # v is dudA. since u = A*sin(-x + omega*t), dudA = sin(-x + omega*t)
-  # TODO: is using 2.0 ok here? or need to get the x values of each dof of eqn.q_vec
-  v = sin(-x + omega*t)
+    coords_this_dof = getindex(mesh.coords, :, nodenum, elnum)
+
+    x = coords_this_dof[1]
+
+    omega = eqn.params.omega
+    A = eqn.params.sin_amplitude
+
+    # v is dudA. since u = A*sin(-x + omega*t), dudA = sin(-x + omega*t)
+    v[dof_ix] = sin(-x + omega*t)
+
+  end
+
   return v
 
 end

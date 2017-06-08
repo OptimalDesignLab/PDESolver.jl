@@ -240,16 +240,13 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
       # VV is the algebraic v, which is dudA, calculated for the advection adjoint test
 
-      #J = calcObjectiveFn(mesh, sbp, adj, opts; isDeriv=false)
-
-      # TODO: figure out if calcVV is to be called with t or t_nextstep. I think it's t_nextstep
+      # TODO: figure out if calcVV is to be called with t or t_nextstep. I think it's t_nextstep. 
+      #       It is for sure t_nextstep when dJdu is called during the direct solve.
       VV = calcVV(mesh, sbp, adj, opts, t_nextstep)     # scalar only because our x-value of interest is unchanging
-      # VV = calcVV(mesh, sbp, adj, opts, t)     # scalar only because our x-value of interest is unchanging
 
-      VV_vec = ones(dJdu)*VV      # need v as vector of all v's for all x's, easiest way
       println("       checking direct method: VV: ", VV)
-      println("       checking direct method: size(VV): ", size(VV_vec))
-      check_directmethod = transpose(dJdu)*VV_vec
+      println("       checking direct method: size(VV): ", size(VV))
+      check_directmethod = transpose(dJdu)*VV
       filename = string("check_directmethod-", i, ".dat")
       writedlm(filename, check_directmethod)
 
