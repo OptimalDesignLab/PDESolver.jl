@@ -72,7 +72,8 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # TODO: get functional edges in a non BS way
-  # 1 corresponds to right side of square domain.... TODO: check
+  # 1 corresponds to right side of square domain
+  #   Numbering is CCW, with 0 on bottom
   functional_edges = 1
   nDof = 1
 
