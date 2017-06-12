@@ -78,11 +78,13 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     nrm = [1., 1, 1]  # arbirary normal vector
+    nrm2 = zeros(nrm)
     alphas_xy = [eqn.params.alpha_x, eqn.params.alpha_y, eqn.params.alpha_z]
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         u = eqn.q[1, j, i]
         dxidx = sview(mesh.dxidx, :, :, j, i)
+        calcBCNormal(eqn.params, dxidx, nrm, nrm2)
 
         # calculate the flux directly
         alphas_parametric = dxidx*alphas_xy
@@ -90,7 +92,7 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
         net_flux = sum(flux_parametric.*nrm)
 
         # calculate boundary flux
-        bndryflux_calc = AdvectionEquationMod.RoeSolver(u, u, eqn.params, nrm, dxidx)
+        bndryflux_calc = AdvectionEquationMod.RoeSolver(u, u, eqn.params, nrm2)
         # calculate flux from evalVolumeIntegrals
         bndryflux_weak = zero(eltype(eqn.flux_parametric))
         for d=1:3

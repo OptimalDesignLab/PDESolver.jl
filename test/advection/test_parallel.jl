@@ -66,9 +66,9 @@ function test_parallel_mpi()
     data_i.recv_req = MPI.Irecv!(ar, mesh.myrank, 1, mesh.comm)
     data_i.q_send = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
     data_i.q_recv = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
-    mesh.dxidx_sharedface = Array(Array{Float64, 4}, 1)
-    mesh.dxidx_sharedface[1] = zeros(2,2, mesh.numNodesPerFace, 2)
-    dxidx_arr = mesh.dxidx_sharedface[1]
+    mesh.nrm_sharedface = Array(Array{Float64, 3}, 1)
+    mesh.nrm_sharedface[1] = zeros(2, mesh.numNodesPerFace, 2)
+    nrm_arr = mesh.nrm_sharedface[1]
 
     interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
     for i=1:mesh.peer_face_counts[1]
