@@ -1,8 +1,8 @@
 type twoxBC <: BCType
 end
-function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, dxidx, nrm, t)
+function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, nrm, t)
   u_bc = 2*coords[1]
-  bndryflux = AdvectionEquationMod.RoeSolver(u, u_bc, params, nrm, dxidx)
+  bndryflux = AdvectionEquationMod.RoeSolver(u, u_bc, params, nrm)
   return bndryflux
 end
 
@@ -159,22 +159,28 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     eqn.params.alpha_y = 0.5
     dxidx = [1. 0; 0 1]
     nrm = [1., 0]
+    nrm2 = zeros(nrm)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
 
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
 
     @fact val --> roughly(u*eqn.params.alpha_x, atol=1e-14)
 
     nrm = [-1.0, 0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(-u_bc*eqn.params.alpha_x, atol=1e-14)
 
 
     nrm = [0, 1.0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(u*eqn.params.alpha_y, atol=1e-14)
 
     nrm = [0, -1.0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(-u_bc*eqn.params.alpha_y, atol=1e-14)
 
     # now test rotation using dxidx
@@ -197,19 +203,21 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     # to be in the xi-eta coordinate system
     # this is still an outflow for nrm = [1, 0]
     nrm = [1., 0]  # flow is in the xi direction
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     angle_diff = theta + flow_direction
     alpha_eff = alpha_mag*cos(angle_diff)  # effective alpha in the wall normal
                                            # direction
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
     # now check eta direction
     nrm = [0, 1.]
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = u*alpha_eff
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
@@ -221,15 +229,17 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     val_exp = alpha_eff*u_bc
 
     dxidx = get_rotation_matrix( theta)
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(val_exp, atol=1e-14)
 
     # check eta direction
     nrm = [0, 1]
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     angle_diff = theta + flow_direction
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(val_exp, atol=1e-14)
   end  # end facts block
 

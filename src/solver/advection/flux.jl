@@ -34,14 +34,9 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           interfaces::AbstractArray{Interface,1}, 
                           face_flux::AbstractArray{Tres, 3})
  
-  @debug1 println(eqn.params.f, "entered calcFaceFlux")
-  @debug1 flush(eqn.params.f)
-
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
     interface_i = interfaces[i]
-    @debug1 println(eqn.params.f, "i: $i  interface_i.elementL: ", interface_i.elementL, "  elementR: ", interface_i.elementR)
-    @debug1 flush(eqn.params.f)
     for j = 1:mesh.numNodesPerFace
       eL = interface_i.elementL
       fL = interface_i.faceL
@@ -49,12 +44,11 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # get components
       qL = eqn.q_face[1, 1, j, i]
       qR = eqn.q_face[1, 2, j, i]
-      dxidx = sview(mesh.dxidx_face, :, :, j, i)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm_scaled = sview(mesh.nrm_face, :, j, i)
+#      dxidx = sview(mesh.dxidx_face, :, :, j, i)
+#      nrm = sview(sbp.facenormal, :, fL)
 
-      face_flux[1, j, i] = -functor(qL, qR, dxidx, nrm, eqn.params)
-      @debug1 println(eqn.params.f, "  j: $j  face_flux[1, j, i]: ", face_flux[1, j, i], "  qL: $qL  qR: $qR")
-      @debug1 flush(eqn.params.f)
+      face_flux[1, j, i] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
   end
 
@@ -110,13 +104,9 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   bndries_local = data.bndries_local
   qL_arr = data.q_send
   qR_arr = data.q_recv
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
+#  dxidx_arr = mesh.dxidx_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
-
-  # permute the received nodes to be in the elementR orientation
-  # TODO: move this into finishExchangeData, to avoid possible double
-  # permutation of the data
-#  permuteinterface!(mesh.sbpface, interfaces, qR_arr)
 
   for j=1:length(interfaces)
     interface_i = interfaces[j]
@@ -126,10 +116,10 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
-      dxidx = sview(dxidx_arr, :, :, k, j)
-      nrm = sview(sbp.facenormal, :, fL)
-      flux_arr[1,k,j] = -functor(qL, qR, dxidx, nrm, 
-                                  eqn.params)
+#      dxidx = sview(dxidx_arr, :, :, k, j)
+#      nrm = sview(sbp.facenormal, :, fL)
+      nrm_scaled = sview(nrm_arr, :, k, j)
+      flux_arr[1,k,j] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
   end
   # end flux calculation
@@ -188,7 +178,8 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   bndries_remote = data.bndries_remote
 #    qL_arr = data.q_send
   qR_arr = data.q_recv
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+#  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
 
   start_elnum = mesh.shared_element_offsets[idx]
@@ -212,15 +203,8 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     el_r = iface_j.elementR - start_elnum + 1
     qR = sview(qR_arr, :, :, el_r)
 
-
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
-
-    # permute elementR
-#    permvec = sview(mesh.sbpface.nbrperm, :, iface_j.orient)
-#    SummationByParts.permuteface!(permvec, workarr, q_faceR)
-
+    
     @debug1 qL_face_arr[:, :, j] = q_faceL
     @debug1 qR_face_arr[:, :, j] = q_faceR
 
@@ -228,11 +212,11 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     for k=1:mesh.numNodesPerFace
       qL_k = q_faceL[k]
       qR_k = q_faceR[k]
-      dxidx = sview(dxidx_arr, :, :, k, j)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm_scaled = sview(nrm_arr, :, k, j)
+#      dxidx = sview(dxidx_arr, :, :, k, j)
+#      nrm = sview(sbp.facenormal, :, fL)
 
-      flux_tmp = -functor(qL_k, qR_k, dxidx, nrm, 
-                                   eqn.params)
+      flux_tmp = -functor(qL_k, qR_k, nrm_scaled, eqn.params)
       flux_arr[1,k,j] = flux_tmp
     end
   end  # end loop over interfaces
@@ -255,10 +239,7 @@ end
   Inputs:
     uL: the left state
     uR: the right state
-    alpha_x: the advection velocity in the x direction
-    alpha_y: the advection velocity in the y direction
-    dxidx: the scaled mapping jacobian for elementL
-    nrm: the face normal vector for elementL in parametric space
+    nrm: the scaled normal vector for elementL in x-y space
 
   Outputs:
     the flux
@@ -267,31 +248,33 @@ type avgFlux <: FluxType
 end
 
 function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
-              dxidx::AbstractArray{Tmsh,2}, 
               nrm::AbstractArray{Tmsh,1}, params::ParamType2)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
+  #=
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
-
+  =#
+  alpha_n = alpha_x*nrm[1] + alpha_y*nrm[2]
   u = alpha_n*(uL + uR)*0.5
   return u
 end
 
 function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
-              dxidx::AbstractArray{Tmsh,2}, 
               nrm::AbstractArray{Tmsh,1}, params::ParamType3)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
   alpha_z = params.alpha_z
+  #=
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y + dxidx[1,3]*alpha_z
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y + dxidx[2,3]*alpha_z
   alpha_psi = dxidx[3,1]*alpha_x + dxidx[3,2]*alpha_y + dxidx[3,3]*alpha_z
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2] + alpha_psi*nrm[3]
-
+  =#
+  alpha_n = alpha_x*nrm[1] + alpha_y*nrm[2] + alpha_z*nrm[3]
   u = alpha_n*(uL + uR)*0.5
   return u
 end
@@ -309,10 +292,7 @@ end
   Inputs:
     uL: the left state
     uR: the right state
-    alpha_x: the advection velocity in the x direction
-    alpha_y: the advection velocity in the y direction
-    dxidx: the scaled mapping jacobian for elementL
-    nrm: the face normal vector for elementL in parametric space
+    nrm_scaled: the scaled normal vector for elementL in x-y space
 
   Outputs:
     the flux
@@ -321,31 +301,34 @@ type LFFlux <: FluxType
 end
 
 function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
-              dxidx::AbstractArray{Tmsh,2}, 
-              nrm::AbstractArray{Tmsh,1}, params::ParamType2)
+              nrm_scaled::AbstractArray{Tmsh,1}, params::ParamType2)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
+  #=
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
+  =#
+  alpha_n = alpha_x*nrm_scaled[1] + alpha_y*nrm_scaled[2]
   alpha_LF = params.LFalpha
   u = alpha_n*(uL + uR)*0.5 + absvalue(alpha_n)*(1 - alpha_LF)*0.5*(uL - uR)
   return u
 end
 
 function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
-              dxidx::AbstractArray{Tmsh,2}, 
               nrm::AbstractArray{Tmsh,1}, params::ParamType3)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
   alpha_z = params.alpha_z
+  #=
   alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y + dxidx[1,3]*alpha_z
   alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y + dxidx[2,3]*alpha_z
   alpha_psi = dxidx[3,1]*alpha_x + dxidx[3,2]*alpha_y + dxidx[3,3]*alpha_z
-
   alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2] + alpha_psi*nrm[3]
+  =#
+  alpha_n = alpha_x*nrm[1] + alpha_y*nrm[2] + alpha_z*nrm[3]
   alpha_LF = params.LFalpha
   u = alpha_n*(uL + uR)*0.5 + absvalue(alpha_n)*(1 - alpha_LF)*0.5*(uL - uR)
   return u
