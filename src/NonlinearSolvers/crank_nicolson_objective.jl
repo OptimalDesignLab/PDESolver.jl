@@ -120,7 +120,6 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
         # replaces calcBoundaryFunctionalIntegrand
         # integrand = zeros(Tsol, ndof, mesh.sbpface.numnodes, nfaces)    # dims?
         # integrand[1, j, i] = q.^2
-        # TODO: figure out why [1]'s are required
         if isDeriv == false                 # calculates J = int(u^2)
           integrand[1, j, i] = q[1]*q[1]
         else                                # calculates dJdu = deriv(int(u^2)) = 2*u
