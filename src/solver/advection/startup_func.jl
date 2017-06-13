@@ -181,9 +181,6 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
 
 
   MPI.Barrier( mesh.comm)
-  # evalResidual(mesh, sbp, eqn, opts, t)
-
-  println("before calling nlsolver, eqn.q = \n", eqn.q)
 
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)

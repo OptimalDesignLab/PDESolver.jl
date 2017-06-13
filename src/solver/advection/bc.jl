@@ -94,7 +94,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       coords = sview(mesh.coords_bndry, :, j, global_facenum)
 #      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
 #      nrm = sview(sbp.facenormal, :, bndry_i.face)
-      nrm_scaled = sview(mesh.nrm_bndry, :, j, i)
+      nrm_scaled = sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux[1, j, i] = -functor(q, eqn.params, coords, nrm_scaled, t)
     end
   end

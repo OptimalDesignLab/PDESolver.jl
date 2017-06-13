@@ -38,8 +38,6 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
-  println("eqn.q = \n", eqn.q)
-  println("eqn.q_bndry = \n", eqn.q_bndry)
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
   return nothing
@@ -179,7 +177,6 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
       end
     end
 
-    println("boundary_integrand = \n", boundary_integrand)
     val_per_geom_edge = zeros(Tsol, 1)
     integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range],
                          boundary_integrand, val_per_geom_edge)

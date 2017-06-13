@@ -39,7 +39,6 @@ function test_adjoint()
     ARGS[1] = "input_vals_functional_DG.jl"
     mesh, sbp, eqn, opts, pmesh = AdvectionEquationMod.createObjects(ARGS[1])
 
-    println("after creating object, eqn.q = \n", eqn.q)
     @assert mesh.isDG == true
     @assert opts["jac_method"] == 2
     @assert opts["run_type"] == 5
@@ -68,7 +67,6 @@ function test_adjoint()
     end # End context("Checking Objective Functional Object Creation")
 
     AdvectionEquationMod.solve_advection(mesh, sbp, eqn, opts, pmesh)
-    println("running evalFunctional")
     AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
     context("Checking Functional Computation") do
