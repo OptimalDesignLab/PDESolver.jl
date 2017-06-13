@@ -74,7 +74,7 @@ function test_parallel_mpi()
     for i=1:mesh.peer_face_counts[1]
       iface = mesh.interfaces[i]
       for k=1:mesh.numNodesPerFace
-        dxidx_arr[:, :, k, i] = mesh.dxidx[:, :, 1, iface.elementL]
+        nrm_arr[:, k, i] = mesh.nrm_face[ :, k, i]
         for j=1:mesh.numDofPerNode
           data_i.q_send[j, k, i] = eqn.q_face[j, 1, k, i]
           data_i.q_recv[j, k, i] = eqn.q_face[j, 2, k, i]
