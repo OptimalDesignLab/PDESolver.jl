@@ -41,7 +41,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     #  println("send parallel data @time printed above")
   end
 
-  params.time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn)
+  params.time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #  println("evalVolumeIntegrals @time printed above")
 
 #  params.time.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
@@ -55,7 +55,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #  println("evalSRCTerm @time printed above")
 
 #  params.time.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
-  params.time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn)
+  params.time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 #  println("evalBoundaryIntegrals @time printed above")
 
 #  params.time.t_barriers[5] += @elapsed MPI.Barrier(mesh.comm) 
@@ -107,13 +107,70 @@ integrals) this only works for triangular meshes, where are elements are same
 """->
 function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            sbp::AbstractSBP,
-                                           eqn::AdvectionData{Tsol, Tres, Tdim})
+                                           eqn::AdvectionData{Tsol, Tres, Tdim},
+                                           opts)
 
-  # storing flux_parametric in eqn, rather than re-allocating it every time
+  if opts["precompute_volume_flux"]
+    calcAdvectionFlux(mesh, sbp, eqn, opts)
+    for i=1:Tdim
+      # multiplies flux_parametric by the SBP Q matrix (transposed), stores result in res
+      # i is parametric direction
+      weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+    end
+  else  # don't precompute flux
+
+    alphas_xy = zeros(Float64, Tdim)  # advection coefficients in the xy 
+                                      #directions
+    alphas_xy[1] = eqn.params.alpha_x
+    alphas_xy[2] = eqn.params.alpha_y
+    if Tdim == 3
+      alphas_xy[3] = eqn.params.alpha_z
+    end
+
+    flux_el = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+    flux_tmp = zeros(Tres, Tdim)
+
+    for i =1:mesh.numEl
+      for j=1:mesh.numNodesPerElement
+        dxidx_j = sview(mesh.dxidx, :, :, j, i)
+        calcAdvectionFlux(eqn.params, eqn.q[1, j, i], alphas_xy, dxidx_j, flux_tmp)
+
+        for k=1:Tdim
+          flux_el[1, j, k] = flux_tmp[k]
+        end
+
+      end  # end loop j
+
+      # do integration
+      res_i = sview(eqn.res, :, :, i)
+      for k=1:Tdim
+        weakDifferentiateElement!(sbp, k, sview(flux_el, :, :, k), res_i, 
+                                  SummationByParts.Add(), true)
+      end
+    end  # end loop i
+
+  end  # end if precompute_face_flux
+
+  return nothing
+end
+
+"""
+  Populates eqn.flux_parametric.  Repeatedly calls the other method of this
+  function.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+"""
+function calcAdvectionFlux{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, 
+                           eqn::AdvectionData{Tsol, Tres, Tdim}, opts)
+
   flux_parametric = eqn.flux_parametric
 
   alphas_xy = zeros(Float64, Tdim)      # advection coefficients in the xy directions
-  alphas_param = zeros(Tmsh, Tdim)      # advection coefficients in the parametric directions
+#  alphas_param = zeros(Tmsh, Tdim)      # advection coefficients in the parametric directions
   dxidx = mesh.dxidx                    # metric term
   q = eqn.q
   alphas_xy[1] = eqn.params.alpha_x
@@ -121,26 +178,51 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   if Tdim == 3
     alphas_xy[3] = eqn.params.alpha_z
   end
+
+  flux_tmp = zeros(Tres, Tdim)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      q_val = q[1, j, i]
-      for k=1:Tdim  # loop over parametric dimensions
-        alpha_k = zero(Tmsh)
-        for p=1:Tdim  # sum up alpha in the current parametric dimension
-          alpha_k += dxidx[k, p, j, i]*alphas_xy[p]
-        end
-        # the first index is the 'equation number'; advection has only one equation so it's always 1
-        # for a vector PDE, there would be more
-        flux_parametric[1,j,i,k] = alpha_k*q_val
+      dxidx_j = sview(mesh.dxidx, :, :, j, i)
+      calcAdvectionFlux(eqn.params, q[1, j, i], alphas_xy, dxidx_j, flux_tmp)
+
+      for k=1:Tdim
+        flux_parametric[1, j, i, k] = flux_tmp[k]
       end
     end
   end
 
-  # for each dimension, grabbing everything in the mesh and applying weakdifferentiate!
-  for i=1:Tdim
-    # multiplies flux_parametric by the SBP Q matrix (transposed), stores result in res
-    # i is parametric direction
-    weakdifferentiate!(sbp, i, sview(flux_parametric, :, :, :, i), eqn.res, trans=true)
+  return nothing
+end
+
+"""
+  Calculates the advection flux in the parametric directions at a node.
+
+  Inputs:
+    params: a ParamType object
+    q: the solution value at the node
+    alphas_xy: the advection velocities in the x-y directions, vector of length
+               Tdim
+    dxidx: scaled mapping jacobian at the node, Tdim x Tdim matrix
+
+  Inputs/Outputs:
+    flux: vector of length Tdim to populate with the flux in the parametric
+          directions
+"""
+function calcAdvectionFlux{Tsol, Tmsh, Tres, Tdim}(
+                           params::ParamType{Tsol, Tres, Tdim}, q::Tsol,
+                           alphas_xy::AbstractVector,
+                           dxidx::AbstractMatrix{Tmsh},
+                           flux::AbstractVector{Tres})
+
+  for k=1:Tdim  # loop over parametric dimensions
+    alpha_k = zero(Tmsh)
+    for p=1:Tdim  # sum up alpha in the current parametric dimension
+      alpha_k += dxidx[k, p]*alphas_xy[p]
+    end
+    # the first index is the 'equation number'; advection has only one 
+    # equation so it's always 1
+    # for a vector PDE, there would be more
+    flux[k] = alpha_k*q
   end
 
   return nothing
@@ -164,11 +246,11 @@ Evaluate boundary integrals for advection equation
 
 """->
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim})
+                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts)
 
 #  println("----- Entered evalBoundaryIntegrals -----")
 
-  if mesh.isDG
+  if mesh.isDG && opts["precompute_q_bndry"]
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 #  println("    boundaryinterpolate @time printed above")
@@ -183,18 +265,20 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
  
     # call the function that calculates the flux for this boundary condition
     # passing the functor into another function avoid type instability
-   calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
+    if opts["precompute_boundary_flux"]
+      calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
+   else
+     # this does the integration
+     calcBoundaryFlux_nopre(mesh, sbp, eqn, functor_i, idx_range_i, bndry_facenums_i, bndryflux_i)
+   end
 #   println("    calcBoundaryflux @time printed above")
   end
 
-  if mesh.isDG
-    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
-  else
+
+  if opts["precompute_boundary_flux"]
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   end
-#  println("    boundaryintegrate! @time printed above")
 
-#  println("----- Finished evalBoundaryIntegrals -----")
   return nothing
 end # end function evalBoundaryIntegrals
 
@@ -217,34 +301,43 @@ function evalFaceIntegrals(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::Advectio
                       opts)
 
 #  println("----- Entered evalFaceIntegrals -----")
-  # interpolate solution to faces
-  interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
-#  println("    interiorface interpolate @time printed above")
+  if opts["precompute_face_flux"]
+    # interpolate solution to faces
+    if opts["precompute_q_face"]
+      interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
+    end
+  #  println("    interiorface interpolate @time printed above")
 
-  myrank = mesh.myrank
-  if opts["writeqface"]
-    writedlm("qface_$myrank.dat", eqn.q_face)
-  end
+    myrank = mesh.myrank
+    if opts["writeqface"]
+      writedlm("qface_$myrank.dat", eqn.q_face)
+    end
 
-  # calculate face fluxes
-  calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
-#  println("    calcFaceFlux @time printed above")
+    # calculate face fluxes
+    calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+  #  println("    calcFaceFlux @time printed above")
 
-  if opts["write_fluxface"]
-    writedlm("fluxface_$myrank.dat", eqn.flux_face)
-  end
+    if opts["write_fluxface"]
+      writedlm("fluxface_$myrank.dat", eqn.flux_face)
+    end
 
-  # integrate and interpolate back to solution points
-  if mesh.isDG
-    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+    # integrate and interpolate back to solution points
+    if mesh.isDG
+      interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res)
+    else
+      error("cannot evalFaceIntegrals for non DG mesh")
+    end
   else
-    error("cannot evalFaceIntegrals for non DG mesh")
-  end
-#  println("    interiorfaceintegrate @time printed above")
+    if mesh.isDG
+      calcFaceIntegrals_nopre(mesh, sbp, eqn, opts, eqn.flux_func)
+    else
+      error("cannot evalFaceIntegrals for non DG mesh")
+    end
+  end  # end if precompute_face_flux
 
-#  println("----- Finished evalFaceIntegrals -----")
   return nothing
 end
+
 
 @doc """
 ### AdvectionEquationMod.evalSRCTerm

@@ -44,7 +44,7 @@ known_keys = evalfile(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))
 arg_dict["fname"] = fname
 
 # new (201612) options checking function
-checkForIllegalOptions(arg_dict)
+checkForIllegalOptions_pre(arg_dict)
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -235,6 +235,25 @@ get!(arg_dict, "check_pressure", true)
 # DG Flux options
 get!(arg_dict, "LFalpha", 0.0)
 
+
+get!(arg_dict, "precompute_volume_flux", true)
+if arg_dict["volume_integral_type"] != 2
+  get!(arg_dict, "precompute_face_flux", true)
+else
+  get!(arg_dict, "precompute_face_flux", false)
+  get!(arg_dict, "precompute_q_face", false)
+end
+get!(arg_dict, "precompute_boundary_flux", true)
+
+if !arg_dict["use_DG"]
+  get!(arg_dict, "precompute_q_face", true)
+  get!(arg_dict, "precompute_q_bndry", true)
+end
+
+# if not already specified, set to true just in case
+get!(arg_dict, "precompute_q_face", true)
+get!(arg_dict, "precompute_q_bndry", true)
+
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
@@ -338,6 +357,9 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 # Adjoint computation options
 get!(arg_dict, "calc_adjoint", false)
 
+
+checkForIllegalOptions_post(arg_dict)
+
 # write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 commsize = MPI.Comm_size(MPI.COMM_WORLD)
@@ -361,10 +383,6 @@ if myrank == 0
   close(f)
 end
 # do some sanity checks here
-
-if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
-  throw(ErrorException("Invalid jacobian type for parallel run"))
-end
 
 
 
@@ -465,7 +483,10 @@ function update_path(path)
   return path
 end
 
-function checkForIllegalOptions(arg_dict)
+"""
+  Check the user supplied options for errors before supplying default values
+"""
+function checkForIllegalOptions_pre(arg_dict)
 
   # Ensure that jac-method is not specified 
   if haskey(arg_dict, "jac_method")
@@ -482,6 +503,37 @@ function checkForIllegalOptions(arg_dict)
     end
   end
 
+
   return nothing
 
 end
+
+
+"""
+  Check the user supplied options for errors after supplying default options.
+"""
+function checkForIllegalOptions_post(arg_dict)
+  
+  myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+  commsize = MPI.Comm_size(MPI.COMM_WORLD)
+
+  if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
+  error("Invalid jacobian type for parallel run")
+end
+
+
+  if !arg_dict["use_DG"]
+    keys = ["precompute_volume_flux", "precompute_face_flux", "precompute_boundary_flux"]
+    for key in keys
+      !arg_dict[key] && error("$key not supported for CG")
+    end
+  end
+
+  if !arg_dict["precompute_volume_flux"] && !arg_dict["Q_transpose"]
+    error("cannot combine non-transposed Q and not precomputing the volume flux")
+  end
+
+  return nothing
+end
+
+

@@ -1,1 +1,2 @@
 update copy constructor for equation to handle eqn.shared_data
+decide whether or not to precompute fluxes by default

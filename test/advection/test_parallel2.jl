@@ -92,7 +92,7 @@ function test_parallel2_comm()
   return nothing
 end
 
-add_func1!(AdvectionTests, test_parallel2_comm, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(AdvectionTests, test_parallel2_comm, [TAG_SHORTTEST])
 
 #=
 function test_adjoint_parallel()

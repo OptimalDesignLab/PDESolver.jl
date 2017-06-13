@@ -13,7 +13,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
                                      qg::AbstractArray{Tsol, 1}, 
                                      aux_vars::AbstractArray{Tres, 1}, 
                                      dxidx::AbstractArray{Tmsh,2}, 
-                                     nrm::AbstractArray{Tmsh,1}, 
+                                     nrm::AbstractArray{Float64,1}, 
                                      flux::AbstractArray{Tres, 1},
                                      use_efix::Int=1)
                                      
@@ -51,7 +51,7 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType,
                                      qg::AbstractArray{Tsol, 1},
                                      aux_vars::AbstractArray{Tres, 1},
                                      dxidx::AbstractArray{Tmsh,2},
-                                     nrm::AbstractArray{Tmsh,1},
+                                     nrm::AbstractArray{Float64,1},
                                      flux_bar::AbstractArray{Tres, 1},
                                      dxidx_bar::AbstractArray{Tmsh, 2},
                                      use_efix::Int=1)

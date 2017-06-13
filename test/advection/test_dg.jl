@@ -83,7 +83,7 @@ function test_dg_bc(mesh, sbp, eqn, opts)
     fill!(eqn.q_bndry, 0.0)
     AdvectionEquationMod.ICp1(mesh, sbp, eqn, opts, eqn.q_vec)
     mesh.bndry_funcs[1] = AdvectionEquationMod.BCDict["p1BC"]
-    AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
     for i=1:mesh.numBoundaryFaces
       for j=1:mesh.sbpface.numnodes
@@ -101,3 +101,40 @@ end  # end function
 
 #test_dg_bc(mesh, sbp, eqn, opts)
 add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_BC, TAG_SHORTTEST])
+
+function test_precompute()
+  mesh, sbp, eqn, opts = run_solver(test_dg_inputfile)
+
+  facts("----- Testing non-precompute functions -----") do
+    icfunc = AdvectionEquationMod.ICDict["ICexp_xplusy"]
+    icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+
+    res_orig = copy(eqn.res)
+
+    # test volume integrals
+    fill!(eqn.res, 0.0)
+    opts["precompute_volume_integrals"] = false
+    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+
+    @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
+
+    # test face integrals
+    fill!(eqn.res, 0.0)
+    opts["precompute_face_integrals"] = false
+    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+
+    @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
+
+    # test boundary integrals
+    fill!(eqn.res, 0.0)
+    opts["precompute_boundary_integrals"] = false
+    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+
+    @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
+  end
+
+  return nothing
+end
+
+add_func1!(AdvectionTests, test_precompute, [TAG_SHORTTEST, TAG_TMP])

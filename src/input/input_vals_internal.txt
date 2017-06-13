@@ -40,4 +40,9 @@
 "Tmsh" : datatype of mesh variables, (DataType), set during initialization,
          until differentiation wrt the mesh variables is supported, this should
          always be Float64
-         
+
+"precompute_q_face": whether or not to use eqn.q_face, (Bool), determined from
+                     "precompute_face_flux" and other things
+
+"precompute_q_bndry": whether or not to use eqn.q_bndyr, (Bool), determined from
+                      "precompute_bndry_flux" and other things

@@ -24,11 +24,16 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
 
-    # call the function that calculates the flux for this boundary condition
-    # passing the functor into another function avoid type instability
-    calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
+    if opts["precompute_boundary_flux"]
+      bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
+
+      # call the function that calculates the flux for this boundary condition
+      # passing the functor into another function avoid type instability
+      calcBoundaryFlux(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
+    else
+      calcBoundaryFlux_nopre(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i)
+    end
   end
 
   writeBoundary(mesh, sbp, eqn, opts)
@@ -236,6 +241,49 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+"""
+  Like calcBoundaryFlux, but performs the integration and updates res rather
+  than storing the flux.
+"""
+function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                          functor::BCType, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1})
+  # calculate the boundary flux for the boundary condition evaluated by the
+  # functor
+
+  nfaces = length(bndry_facenums)
+  q2 = zeros(Tsol, mesh.numDofPerNode)
+  params = eqn.params
+  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+    for j = 1:mesh.numNodesPerFace
+
+      # get components
+      q = sview(eqn.q_bndry, :, j, global_facenum)
+      # convert to conservative variables if needed
+      convertToConservative(eqn.params, q, q2)
+      aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+      x = sview(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm = sview(sbp.facenormal, :, bndry_i.face)
+#      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      bndryflux_i = sview(flux_face, :, j)
+
+      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, params)
+    end
+
+    res_i = sview(eqn.res, :, :, bndry_i.element)
+    boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux_face, res_i,
+                           SummationByParts.Subtract())
+  end
+
+  return nothing
+end
+
+
 
 @doc """
 ### EulerEquationMod.isentropicVortexBC <: BCTypes
@@ -265,7 +313,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   gamma = params.gamma
@@ -290,7 +338,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
-  calcSAT(params, nrm2, dq, sat, [u, v], H)
+  calcSAT(params, nrm2, dq, sat, u, v, H)
 
   euler_flux = zeros(Tsol, 4) # params.flux_vals1
   calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
@@ -350,7 +398,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
-              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              nrm::AbstractArray{Float64,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
   # Forward sweep
@@ -412,7 +460,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -453,7 +501,7 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
@@ -496,7 +544,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{3})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
@@ -572,7 +620,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
-              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              nrm::AbstractArray{Float64,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
   # Forward sweep
@@ -703,7 +751,7 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
 
@@ -747,7 +795,7 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2},
-              nrm::AbstractArray{Tmsh,1}, bndryflux::AbstractArray{Tres, 1},
+              nrm::AbstractArray{Float64,1}, bndryflux::AbstractArray{Tres, 1},
               params::ParamType{2})
 
 
@@ -793,7 +841,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
@@ -834,7 +882,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
-              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              nrm::AbstractArray{Float64,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType)
 
   # Forward sweep
@@ -872,7 +920,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = params.qg
@@ -898,7 +946,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = zeros(Tsol, 4)
@@ -924,7 +972,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allZerosBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = zeros(Tsol, 4)
@@ -941,7 +989,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
@@ -957,7 +1005,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 # use the exact solution as the boundary condition for the PeriodicMMS
 # solutions
@@ -976,7 +1024,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 # use the exact solution as the boundary condition for the ChannelMMS
 # solutions

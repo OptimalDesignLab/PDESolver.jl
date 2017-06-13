@@ -44,10 +44,10 @@ add_func2!(AdvectionTests, test_gamma_sbp, test_gamma_inputfile, [TAG_SHORTTEST]
   Test boundary conditions.  This is not a test function, but is used
   by test functions.
 """
-function test_bc(flux_exp, mesh, sbp, eqn)
+function test_bc(flux_exp, mesh, sbp, eqn, opts)
 # test summing boundary condition
  fill!(eqn.bndryflux, 0.0)
- AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
+ AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
  flux_in = zero(eltype(eqn.bndryflux))
  flux_out = zero(flux_in)
@@ -78,7 +78,7 @@ function test_gamma_bcsolver(mesh, sbp, eqn, opts)
     q1 = eqn.q
     eqn.q = q2
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     nrm = [1., 1, 1]  # arbirary normal vector
     alphas_xy = [eqn.params.alpha_x, eqn.params.alpha_y, eqn.params.alpha_z]
     for i=1:mesh.numEl
@@ -131,21 +131,21 @@ function test_gamma_bcflux(mesh, sbp, eqn, opts)
      opts["numBC"] = 1
      AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
-     test_bc(8.0, mesh, sbp, eqn)
+     test_bc(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 0.0
 
-     test_bc(8.0, mesh, sbp, eqn)
+     test_bc(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 0.0
      eqn.params.alpha_z = 1.0
 
-     test_bc(8.0, mesh, sbp, eqn)
+     test_bc(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 1.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 1.0
-     test_bc(3*8.0, mesh, sbp, eqn)
+     test_bc(3*8.0, mesh, sbp, eqn, opts)
    end  # end facts block
 
   return nothing

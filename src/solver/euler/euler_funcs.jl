@@ -146,6 +146,61 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
 end
 
 """
+  Calculates the volume integrals for the weak form, computing the Euler flux
+  as needed, rather than using eqn.flux_parametric
+
+  Inputs:
+    mesh
+    sbp
+    eqn: eqn.res is updated with the result
+    opts
+"""
+function calcVolumeIntegrals_nopre{Tmsh, Tsol, Tres, Tdim}(
+                                   mesh::AbstractMesh{Tmsh},
+                                   sbp::AbstractSBP,
+                                   eqn::EulerData{Tsol, Tres, Tdim},
+                                   opts)
+
+
+  # flux in the parametric directions for a given element
+  flux_el = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+
+  nrm = eqn.params.nrm  # vector in parametric direction
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      aux_vars_j = sview(eqn.aux_vars, :, j, i)
+
+      for k=1:Tdim
+        flux_k = sview(flux_el, :, j, k)
+
+        # get the direction vector
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+        # consider calculating all directions at once
+        # not sure if that will help because the data dependencies are 
+        # really simple
+        calcEulerFlux(eqn.params, q_j, aux_vars_j, nrm, flux_k)
+      end  # end loop k
+    end  # end loop j
+
+    res_i = sview(eqn.res, :, :, i)
+    for k=1:Tdim
+      weakDifferentiateElement!(sbp, k, sview(flux_el, :, :, k), res_i, SummationByParts.Add(), true)
+    end
+
+  end  # end loop i
+
+  return nothing
+end  # end function
+
+
+
+
+
+"""
   Calculate (S .*F)1 where S is the skew symmetric part of sbp.Q and F
   is a symmetric numerical flux function.  eqn.res is updated with the result.
   Methods are available for curvilinear and non-curvilinear meshes

@@ -227,6 +227,52 @@ function test_flux_2d()
       end
     end
 
+
+    # test non-precomputed flux version of functions
+    ic_func = EulerEquationMod.ICDict["ICExp"]
+    ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+    # test volume integrals
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    fill!(eqn.res, 0.0)
+    opts["precompute_volume_flux"] = false
+    EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    # test face integrals
+    opts["precompute_volume_flux"] = true # reset, to avoid failure cascade
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    fill!(eqn.res, 0.0)
+    opts["precompute_face_flux"] = false
+    EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    # test face integrals
+    opts["precompute_face_flux"] = true # reset, to avoid failure cascade
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    fill!(eqn.res, 0.0)
+    opts["precompute_face_flux"] = false
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+
+
   end  # end facts block
 
   return nothing
