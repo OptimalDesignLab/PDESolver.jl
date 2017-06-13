@@ -67,6 +67,7 @@ function test_adjoint()
     end # End context("Checking Objective Functional Object Creation")
 
     AdvectionEquationMod.solve_advection(mesh, sbp, eqn, opts, pmesh)
+    println("running evalFunctional")
     AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
     context("Checking Functional Computation") do

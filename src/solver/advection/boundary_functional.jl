@@ -38,6 +38,8 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
+  println("eqn.q = \n", eqn.q)
+  println("eqn.q_bndry = \n", eqn.q_bndry)
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
   return nothing
@@ -166,17 +168,18 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
         coords = sview(mesh.coords_bndry, :, j, global_facenum)
-#        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-#        nrm = sview(sbp.facenormal, :, bndry_i.face)
-#        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-#        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-        nx = mesh.nrm_bndry[1, j, global_facenum]
-        ny = mesh.nrm_bndry[2, j, global_facenum]
+        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+        nrm = sview(sbp.facenormal, :, bndry_i.face)
+        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+#        nx = mesh.nrm_bndry[1, j, global_facenum]
+#        ny = mesh.nrm_bndry[2, j, global_facenum]
         boundary_integrand[1,j,i] = calcBoundaryFunctionalIntegrand(eqn.params, nx, ny, q,
                                     functionalData) # Boundary Flux
       end
     end
 
+    println("boundary_integrand = \n", boundary_integrand)
     val_per_geom_edge = zeros(Tsol, 1)
     integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range],
                          boundary_integrand, val_per_geom_edge)
