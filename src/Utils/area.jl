@@ -199,8 +199,11 @@ end
 @doc """
 ### calcProjectedAreaContribution!
 
-Returns the contribution from the given faces to the projected area onto the
-plane of coordiante `di`
+  Returns the contribution from the given faces to the projected area onto the
+  plane of coordiante `di`
+
+  Because this function uses the absolute value of the normal vector, it is not
+  differentiable at zero.
 
 **Inputs**
 

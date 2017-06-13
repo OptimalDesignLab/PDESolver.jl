@@ -132,9 +132,10 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # get components
       q = q_face[ 1, j]
       coords = sview(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
-      flux_face[1, j] = -functor(q, eqn.params, coords, dxidx, nrm, t)
+#      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+#      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm_scaled = sview(mesh.nrm_bndry, :, j, i)
+      flux_face[1, j] = -functor(q, eqn.params, coords, nrm_scaled, t)
     end
 
     res_i = sview(eqn.res, :, :, bndry_i.element)

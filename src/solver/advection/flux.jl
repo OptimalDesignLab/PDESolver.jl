@@ -84,10 +84,11 @@ function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
     interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
 
     for j=1:mesh.numNodesPerFace
-      dxidx_j = sview(mesh.dxidx_face, :, :, j, i)
-      nrm = sview(sbp.facenormal, :, iface_i.faceL)
+#      dxidx_j = sview(mesh.dxidx_face, :, :, j, i)
+#      nrm = sview(sbp.facenormal, :, iface_i.faceL)
+      nrm_scaled = sview(mesh.nrm_face, :, j, i)
 
-      flux_face[1, j] = -flux_func(q_faceL[j], q_faceR[j], dxidx_j, nrm, eqn.params)
+      flux_face[1, j] = -flux_func(q_faceL[j], q_faceR[j], nrm_scaled, eqn.params)
     end
 
     resL = sview(eqn.res, :, :, iface_i.elementL)
@@ -207,7 +208,8 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
   bndries_local = data.bndries_local
   qL_arr = data.q_send
   qR_arr = data.q_recv
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+#  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
 #  flux_arr = eqn.flux_sharedface[idx]
   flux_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
 
@@ -219,9 +221,10 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
 
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
-      dxidx = sview(dxidx_arr, :, :, k, j)
-      nrm = sview(sbp.facenormal, :, fL)
-      flux_face[1, k] = -functor(qL, qR, dxidx, nrm, eqn.params)
+#      dxidx = sview(dxidx_arr, :, :, k, j)
+#      nrm = sview(sbp.facenormal, :, fL)
+      nrm_scaled = sview(nrm_arr, :, k, j)
+      flux_face[1, k] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
 
     res_i = sview(eqn.res, :, :, interface_i.elementL)
@@ -369,7 +372,8 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
   bndries_remote = data.bndries_remote
 #    qL_arr = data.q_send
   qR_arr = data.q_recv
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+#  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
 #  flux_arr = eqn.flux_sharedface[idx]
   flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
@@ -404,10 +408,11 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
     for k=1:mesh.numNodesPerFace
       qL_k = q_faceL[k]
       qR_k = q_faceR[k]
-      dxidx = sview(dxidx_arr, :, :, k, j)
-      nrm = sview(sbp.facenormal, :, fL)
+#      dxidx = sview(dxidx_arr, :, :, k, j)
+#      nrm = sview(sbp.facenormal, :, fL)
+      nrm_scaled = sview(nrm_arr, :, k, j)
 
-      flux_face[1, k] = -functor(qL_k, qR_k, dxidx, nrm, eqn.params)
+      flux_face[1, k] = -functor(qL_k, qR_k, nrm_scaled, eqn.params)
     end
 
     res_j = sview(eqn.res, :, :, bndryL_j.element)

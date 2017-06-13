@@ -46,7 +46,7 @@ function test_area(mesh, sbp, eqn, opts)
   
   #----------------------------------------------------------------------------
   # test computeNormal
-  println("testing computeNormal")
+#  println("testing computeNormal")
   nout = mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
   nin = mesh.dim*mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
   jac = zeros(nout, nin)
@@ -91,7 +91,7 @@ i
 
   #----------------------------------------------------------------------------
   # test computeVolumeContribution
-  println("testing computeVolumecontribution")
+#  println("testing computeVolumecontribution")
   vol = calcVolumeContribution!(mesh, eqn, [1])
   @fact vol --> roughly(8, atol=1e-12)
 
@@ -121,7 +121,7 @@ i
 
   #----------------------------------------------------------------------------
   # test calcProjectedAreaContribution
-  println("testing calcProjectedAreaContribution")
+#  println("testing calcProjectedAreaContribution")
 
   proj_area = calcProjectedAreaContribution!(mesh, eqn, [1], 1)
   @fact proj_area --> roughly(4, atol=1e-12)
@@ -151,8 +151,11 @@ i
   for i=1:mesh.numBoundaryFaces
     for j=1:mesh.numNodesPerFace
       for k=1:mesh.dim
-        if abs(nrm[k, j, i]) > 1e-8  # abs is not differentiable at 0
+        if abs(mesh.nrm_bndry[k, j, i]) > 1e-8  # abs is not differentiable at 0
           diffnorm += abs(jac[1, idx] - mesh.nrm_bndry_bar[k, j, i])
+          if abs(jac[1, idx] - mesh.nrm_bndry_bar[k, j, i]) > 1e-5
+          end
+
           cnt += 1
         end
         idx += 1
@@ -164,7 +167,7 @@ i
   @fact diffnorm --> roughly(0.0, atol=1e-5)
 
   # check the other method
-  println("testing other method")
+#  println("testing other method")
 #  nrm0 = Utils.computeNormal(mesh, eqn, mesh.bndryfaces,)
   nrm0 = copy(mesh.nrm_bndry)
   coords = mesh.coords_bndry
