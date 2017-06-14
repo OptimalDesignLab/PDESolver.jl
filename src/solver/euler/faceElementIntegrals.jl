@@ -21,8 +21,8 @@ include("IR_stab.jl")  # stabilization for the IR flux
   resL and resR are updated with the results of the computation for the 
   left and right elements, respectively.
 
-  Note that dxidx_face must contains the scaled metric terms interpolated 
-  to the face nodes.
+  Note that nrm_xy must contains the normal vector in x-y space at the
+  face nodes.
 
   Aliasing restrictions: none, although its unclear what the meaning of this
                          function would be if resL and resR alias
@@ -116,15 +116,15 @@ function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::AbstractArray{Tmsh},
+                             nrm_face::AbstractMatrix{Tmsh},
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
   calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                             dxidx_face, resL, resR)
+                               nrm_face, resL, resR)
 
   return nothing
 end
@@ -142,15 +142,15 @@ function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::AbstractArray{Tmsh},  # dxidx or nrm
+                             nrm_face::AbstractMatrix{Tmsh},  # dxidx or nrm
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
   calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                             dxidx_face, resL, resR)
+                               nrm_face, resL, resR)
 
   return nothing
 end
@@ -168,15 +168,15 @@ function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::AbstractArray{Tmsh}, # dxidx or nrm
+                             nrm_face::AbstractMatrix{Tmsh}, # dxidx or nrm
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
   calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                                dxidx_face, resL, resR)
+                                nrm_face, resL, resR)
 
   return nothing
 end
@@ -191,8 +191,8 @@ end
   requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
-  Note that dxidx_face must contain the scaled metric terms interpolated
-  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  Note that nrm_face must contain the scaled face normal vector in x-y space
+  at the face nodes, and qL, qR, resL, and resR are the arrays for the
   entire element, not just the face.
 
 
@@ -322,8 +322,8 @@ end
   This requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
-  Note that dxidx_face must contain the scaled metric terms interpolated
-  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  Note that nrm_face must contain the scaled normal vector in x-y space
+  at the face nodes, and qL, qR, resL, and resR are the arrays for the
   entire element, not just the face.
 
   The approximation to Lax-Wendroff is the computation of
@@ -494,8 +494,8 @@ end
   This requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
-  Note that dxidx_face must contain the scaled metric terms interpolated
-  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  Note nrm_face must contain the scaled normal vector in x-y space
+  at the face nodes, and qL, qR, resL, and resR are the arrays for the
   entire element, not just the face.
 
   Implementation Detail:

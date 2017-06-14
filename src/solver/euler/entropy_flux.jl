@@ -35,16 +35,27 @@ end
 
 @doc """
   This function computes the integral of the potential flux over an interface
+
+  Inputs:
+    params: a ParamType
+    iface: the Interface
+    sbpface: an AbstractFace
+    nrm_scaled: the scaled normal vector at the face nodes in x-y space
+    qL: the solution at the volume nodes of elementL
+    qR: the solution at the volume nodes of elementR
+
+  Outputs:
+    rhs: the value of the integral
 """
 function computeInterfacePotentialFlux{Tdim, Tsol, Tres}(
                 params::ParamType{Tdim, :conservative, Tsol, Tres}, 
-                iface::Interface, sbpface, dxidx_face, 
+                iface::Interface, sbpface, nrm_scaled::AbstractMatrix, 
                 qL::AbstractMatrix, qR::AbstractMatrix)
 # compute the potential flux then compute the reduction with Eface
 
   rhs = zero(Tres)
   for dim=1:Tdim
-    rhs += reduceEface(params, iface, sbpface, dxidx_face, dim, qL, qR)
+    rhs += reduceEface(params, iface, sbpface, nrm_scaled, dim, qL, qR)
   end
 
   return rhs
@@ -60,7 +71,9 @@ end
 
   it determines the normal vector n
 """
-function reduceEface{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}, iface, sbpface, dxidx_face::Abstract3DArray{Tmsh}, dir::Integer, qL::AbstractMatrix, qR::AbstractMatrix)
+function reduceEface{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}, iface::Interface, 
+                                             sbpface, nrm_scaled::AbstractMatrix, dir::Integer, qL::AbstractMatrix, 
+                                             qR::AbstractMatrix)
   # compute Ex_gamma kappa * psiL + Ex_gamma_nu * psiR, where x is one 
   # of either x or y, as specified by dir
 
@@ -78,10 +91,13 @@ function reduceEface{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim, :conservati
       psiL = getPsi(params, sview(qL, :, p_jL), flux_nrm)
       psiR = getPsi(params, sview(qR, :, p_jR), flux_nrm)
       for k=1:sbpface.numnodes
+        #=
         nrm_k = zero(Tmsh)
         for d=1:Tdim
           nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dir, k]
         end
+        =#
+        nrm_k = nrm_scaled[dir, k]
         val = sbpface.interp[i,k]*sbpface.interp[j,k]*sbpface.wface[k]*nrm_k
         RHS1 += val*psiL
 
@@ -230,10 +246,11 @@ function calcInterfacePotentialFlux{Tsol, Tres, Tdim, Tmsh}(
     elR = iface.elementR
     qL = sview(q_arr, :, :, elL)
     qR = sview(q_arr, :, :, elR)
-    aux_vars = sview(eqn.aux_vars, :, :, elL)
-    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+#    aux_vars = sview(eqn.aux_vars, :, :, elL)
+#    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+    nrm_scaled = sview(mesh.nrm_face, :, :, i)
 
-    bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, dxidx_face, qL, qR)
+    bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, nrm_scaled, qL, qR)
     val += bndry_potentialflux
   end
 

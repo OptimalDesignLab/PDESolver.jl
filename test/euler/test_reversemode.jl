@@ -666,4 +666,5 @@ function test_reversemode()
   return nothing
 end # End function test_reversemode
 
-add_func1!(EulerTests, test_reversemode, [TAG_REVERSEMODE, TAG_SHORTTEST])
+println(STDERR, "Warning: not running reverse mode tests")
+#add_func1!(EulerTests, test_reversemode, [TAG_REVERSEMODE, TAG_SHORTTEST])

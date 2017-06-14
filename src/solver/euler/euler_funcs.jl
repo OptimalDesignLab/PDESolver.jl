@@ -356,7 +356,7 @@ end
    params  : ParamaterType{2, :conservative}
    q  : vector of conservative variables
    aux_vars : vector of auxiliary variables
-   dir :  unit vector in direction to calculate the flux
+   dir :  vector in direction to calculate the flux
 
    Inputs/Outputs:
    F  : vector to populate with the flux

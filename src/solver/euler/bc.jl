@@ -157,9 +157,9 @@ end
               bndry_facenums
 
   The functor must have the signature
-  functor( q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+  functor( q, aux_vars, x, nrm_xy, bndryflux_i, eqn.params)
   where q are the *conservative* variables.
-  where all arguments (except params and nrm) are vectors of values at a node.
+  where all arguments (except params) are vectors of values at a node.
 
   params is the ParamType associated with the the EulerEquation object
   nrm = sbp.facenormal[:, current_node]
@@ -179,6 +179,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
 
   nfaces = length(bndry_facenums)
   q2 = zeros(Tsol, mesh.numDofPerNode)
+  nrm_xy = zeros(Tmsh, mesh.dim)
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
 #    println("boundary ", i, "element = ", bndry_i.element, ", face = ", bndry_i.face)
@@ -194,9 +195,10 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
       nrm = sview(sbp.facenormal, :, bndry_i.face)
+      calcBCNormal(eqn.params, dxidx, nrm, nrm_xy)
       bndryflux_i = sview(bndryflux, :, j, i)
 
-      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+      functor(q2, aux_vars, x, nrm_xy, bndryflux_i, eqn.params)
 
     end
 
@@ -229,12 +231,13 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+#      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+#      nrm = sview(sbp.facenormal, :, bndry_i.face)
 #      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      nrm_xy = sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(bndryflux, :, j, i)
 
-      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, params)
+      functor(q2, aux_vars, x, nrm_xy, bndryflux_i, params)
     end
   end
 
@@ -267,12 +270,13 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+#      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+#      nrm = sview(sbp.facenormal, :, bndry_i.face)
 #      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      nrm_xy = sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(flux_face, :, j)
 
-      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, params)
+      functor(q2, aux_vars, x, nrm_xy, bndryflux_i, params)
     end
 
     res_i = sview(eqn.res, :, :, bndry_i.element)
@@ -303,7 +307,7 @@ end
 *  `aux_vars` : Auxiliary variables
 *  `x`        : physical coordinates of the SBP node
 *  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
+*  `nrm_xy`      : SBP face normal
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
@@ -313,7 +317,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   gamma = params.gamma
@@ -335,13 +339,13 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
 
   dq = zeros(Tsol, 4)
   dq = v_vals - qg
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
+#  nrm2 = params.nrm2
+#  calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
-  calcSAT(params, nrm2, dq, sat, u, v, H)
+  calcSAT(params, nrm_xy, dq, sat, u, v, H)
 
   euler_flux = zeros(Tsol, 4) # params.flux_vals1
-  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, euler_flux)
 
   sat_fac = 1.0 # Multiplier for SAT term
   for i=1:4
@@ -356,7 +360,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+               nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
@@ -460,13 +464,10 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-  calcEulerFlux(params, q, aux_vars, [nx, ny], bndryflux)
+  calcEulerFlux(params, q, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 
@@ -490,8 +491,7 @@ end # end function isentropicVortexBC_physical
 *  `q`   : Solution variable
 *  `aux_vars` : Auxiliary variables
 *  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
+*  `nrm_xy`      : scaled normal vector in x-y space 
 *  `bndryflux` : Computed flux value at the boundary
 
 """
@@ -501,21 +501,21 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
 
   # calculate normal vector in xy space
-  nx = zero(Tmsh)
-  ny = zero(Tmsh)
-  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-  fac = 1.0/(sqrt(nx2*nx2 + ny2*ny2))
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+#  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+#  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
-  nx = nx2*fac
-  ny = ny2*fac
+  nx *= fac
+  ny *= fac
 
   # Get the normal momentum
   Unrm = nx*q[2] + ny*q[3]
@@ -536,7 +536,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   # params says we are using entropy variables
 
 
-  calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
@@ -544,20 +544,19 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1}, 
+              nrm_xy::AbstractArray{Float64,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{3})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
 
   # calculate normal vector in xy space
-  nx = zero(Tmsh)
-  ny = zero(Tmsh)
-  nz = zero(Tmsh)
-  tngt = Array(Tmsh, 2)  # tangent vector
-  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
-  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
-  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  nz = nrm_xy[3]
+#  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+#  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+#  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
   fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
   # normalize normal vector
   nx *= fac  
@@ -580,16 +579,16 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
   qg[4] -= nz*Unrm
 
   # call Roe solver
-  #RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
-  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
-  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  #RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+#  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+#  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+#  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
 
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
   # params says we are using entropy variables
-  calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
@@ -619,7 +618,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
+               dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Float64,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType{2})
 
@@ -741,7 +740,7 @@ end
 *  `aux_vars` : Auxiliary variables
 *  `x`        : physical coordinates of the SBP node
 *  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
+*  `nrm_xy`      : SBP face normal
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
@@ -751,7 +750,7 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
 
@@ -761,7 +760,7 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
   qg = params.qg
   calcUnsteadyVortex(x, params, qg)
 
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 
@@ -794,8 +793,9 @@ end
 function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
-              x::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh,2},
-              nrm::AbstractArray{Float64,1}, bndryflux::AbstractArray{Tres, 1},
+              x::AbstractArray{Tmsh,1}, 
+              nrm_xy::AbstractArray{Float64,1},
+              bndryflux::AbstractArray{Tres, 1},
               params::ParamType{2})
 
 
@@ -807,7 +807,7 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC,
 
   #println("qg = ", qg)
   # call Roe solver
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
 return nothing
 
@@ -832,7 +832,7 @@ end
 *  `aux_vars` : Auxiliary variables
 *  `x`        : physical coordinates of the SBP node
 *  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
+*  `nrm_xy`      : SBP face normal
 *  `bndryflux` : Computed flux value at the boundary
 
 """
@@ -841,13 +841,13 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1}, 
+              nrm_xy::AbstractArray{Float64,1}, 
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
 
   calcFreeStream(x, params, qg)
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
@@ -865,7 +865,7 @@ Reverse mode for FreeStreamBC.
 * `aux_vars` : Auxiliary variables
 * `x`     : Node coordinates
 * `dxidx` : Mapping jacobian matrix for the SBP node
-* `nrm`   : sbpface normal vector
+* `nrm_xy`   : sbpface normal vector
 * `bndryflux_bar` : Input flux value seed that is used to compute the reverse
                     mode derivative.
 * `params`        : equation object parameters
@@ -881,7 +881,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
+               dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Float64,1}, bndryflux_bar::AbstractArray{Tres, 1},
               params::ParamType)
 
@@ -920,7 +920,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+               nrm::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = params.qg
@@ -946,13 +946,13 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = zeros(Tsol, 4)
   calcOnes(x, params, qg)
 
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   # println("bndryflux = ", bndryflux)
   return nothing
@@ -972,13 +972,13 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allZerosBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = zeros(Tsol, 4)
   calcZeros(x, params, qg)
 
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   # println("bndryflux = ", bndryflux)
   return nothing
@@ -989,12 +989,12 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 
   qg = params.qg
   calcExp(coords, params, qg)
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   # println("bndryflux = ", bndryflux)
   return nothing
@@ -1005,7 +1005,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 # use the exact solution as the boundary condition for the PeriodicMMS
 # solutions
@@ -1013,7 +1013,7 @@ function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
   qg = params.qg
   calcPeriodicMMS(coords, params, qg)
   use_efix = 0
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux, use_efix)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux, use_efix)
 
   # println("bndryflux = ", bndryflux)
   return nothing
@@ -1024,14 +1024,14 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Float64,1},
+              nrm_xy::AbstractArray{Float64,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType)
 # use the exact solution as the boundary condition for the ChannelMMS
 # solutions
 
   qg = params.qg
   calcChannelMMS(coords, params, qg)
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end # end function call

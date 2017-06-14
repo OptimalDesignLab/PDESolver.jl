@@ -1,5 +1,13 @@
 # this file contains all the flux solvers for weakly imposed boundary conditions
 
+# Some of these flux functions are used by the FaceElementIntegrals.
+# These flux functions should implement 2 forms the function: a version that
+# computes the flux in a single direction and a version that computes the flux 
+# in d dimensions simultaneously (where d is the dimensionality of the system)
+# In some cases the second form is significantly more computationally efficient
+# See calcEulerFlux_IR() for an example
+
+#=
 """
   A wrapper for the Roe Solver that computes the scaled normal vector
   in parametric coordinates from the the face normal and the scaled
@@ -23,6 +31,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
 
   return nothing
 end
+=#
 
 @doc """
 ###EulerEquationMod.RoeSolver_revm
@@ -784,6 +793,7 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   return nothing
 end
 
+#=
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
@@ -795,7 +805,7 @@ function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType,
   calcEulerFlux_standard(params, qL, qR, aux_vars, nrm2, F)
   return nothing
 end
-
+=#
 
 
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
@@ -975,7 +985,7 @@ end
 
 
 
-
+#=
 function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(
                       params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
@@ -988,7 +998,7 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(
   calcEulerFlux_Ducros(params, qL, qR, aux_vars, nrm2, F)
   return nothing
 end
-
+=#
 
 
 function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
@@ -1053,7 +1063,7 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{3, :conservati
   return nothing
 end
 
-
+#=
 function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
@@ -1065,7 +1075,7 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType,
   calcEulerFlux_IR(params, qL, qR, aux_vars, nrm2, F)
   return nothing
 end
-
+=#
 
 """
   This function calculates the Ismail-Roe numerical flux at a node in a
@@ -1247,8 +1257,9 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
 end
 
 
-
+#TODO: move documentation to second method
 # stabilized IR flux
+#=
 """
   This function calculates the flux across an interface using the IR
   numerical flux function and a Lax-Friedrich type of entropy dissipation.
@@ -1271,6 +1282,8 @@ end
   Aliasing restrictions:
     nothing may alias params.nrm2.  See also getEntropyLFStab
 """
+=#
+#=
 function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
@@ -1282,6 +1295,7 @@ function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres}(params::ParamType,
   calcEulerFlux_IRSLF(params, qL, qR, aux_vars, nrm2, F)
   return nothing
 end
+=#
 
 """
   This is the second method that takes in a normal vector directly.

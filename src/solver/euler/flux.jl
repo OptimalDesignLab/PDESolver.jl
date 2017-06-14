@@ -50,12 +50,13 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       # get components
       qL = sview(eqn.q_face, :, 1, j, i)
       qR = sview(eqn.q_face, :, 2, j, i)
-      dxidx = sview(mesh.dxidx_face, :, :, j, i)
+#      dxidx = sview(mesh.dxidx_face, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
 #      nrm[:] = sbp.facenormal[:, fL]
-      nrm = sview(sbp.facenormal, :, fL)
+#      nrm = sview(sbp.facenormal, :, fL)
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
       flux_j = sview(face_flux, :, j, i)
-      functor(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
+      functor(params, qL, qR, aux_vars, nrm_xy, flux_j)
     end
   end
 
@@ -91,15 +92,16 @@ function calcFaceIntegral_nopre{Tmsh, Tsol, Tres, Tdim}(
       qL_j = sview(q_faceL, :, j)
       qR_j = sview(q_faceR, :, j)
 
-      dxidx = sview(mesh.dxidx_face, :, :, j, i)
+#      dxidx = sview(mesh.dxidx_face, :, :, j, i)
 
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
       aux_vars[1] = calcPressure(params, qL_j)
 
-      nrm = sview(sbp.facenormal, :, iface_i.faceL)
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
+#      nrm = sview(sbp.facenormal, :, iface_i.faceL)
       flux_j = sview(flux_face, :, j)
 
-      functor(params, qL_j, qR_j, aux_vars, dxidx, nrm, flux_j)
+      functor(params, qL_j, qR_j, aux_vars, nrm_xy, flux_j)
     end  # end loop j
 
     resL = sview(eqn.res, :, :, iface_i.elementL)
@@ -140,16 +142,6 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     nrm_face = sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
-
-#    copy!(resL2, resL)
-#    copy!(resR2, resR)
-
-#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
-#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
-
-#    @assert norm(resL2 - resL) < 1e-12
-#    @assert norm(resR2 - resR) < 1e-12
-
 
     face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
                        nrm_face, flux_functor, resL, resR)
