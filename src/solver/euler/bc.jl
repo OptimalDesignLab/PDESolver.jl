@@ -575,20 +575,24 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
   nx = n1*fac
   ny = n2*fac
   Unrm = nx*q[2] + ny*q[3]
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
 
   # Subtract the normal component of the momentum from \xi & \eta components
   # of the momentum
-  q[2] = q[2] - nx*Unrm
-  q[3] = q[3] - ny*Unrm
+  qg[2] = qg[2] - nx*Unrm
+  qg[3] = qg[3] - ny*Unrm
 
   v_vals = params.v_vals
-  convertFromNaturalToWorkingVars(params, q, v_vals)
+  convertFromNaturalToWorkingVars(params, qg, v_vals)
 
   # Reverse sweep
   nrm2_bar = zeros(Tmsh, 2)
-  q_bar = zeros(Tsol, 4)
+  qg_bar = zeros(Tsol, 4)
   calcEulerFlux_revm(params, v_vals, aux_vars, [n1, n2], bndryflux_bar, nrm2_bar)
-  calcEulerFlux_revq(params, v_vals, aux_vars, [n1, n2], bndryflux_bar, q_bar)
+  calcEulerFlux_revq(params, v_vals, aux_vars, [n1, n2], bndryflux_bar, qg_bar)
 
   # TODO: reverse mode convertFromNaturalToWorkingVars(params, qg, v_vals)
   n1_bar = nrm2_bar[1]
@@ -597,9 +601,9 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
 
   # q[2] = q[2] - nx*Unrm
   # q[3] = q[3] - ny*Unrm
-  ny_bar = -q_bar[3]*Unrm
-  nx_bar = -q_bar[2]*Unrm
-  Unrm_bar = -q_bar[3]*ny -q_bar[2]*nx
+  ny_bar = -qg_bar[3]*Unrm
+  nx_bar = -qg_bar[2]*Unrm
+  Unrm_bar = -qg_bar[3]*ny -qg_bar[2]*nx
 
   # Unrm = nx*q[2] + ny*q[3]
   nx_bar += Unrm_bar*q[2]
