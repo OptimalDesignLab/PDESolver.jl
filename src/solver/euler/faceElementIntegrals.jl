@@ -414,12 +414,6 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     # get the normal vector (scaled)
 
     for dim =1:Tdim
-      #=
-      nrm_dim = zero(Tmsh)
-      for d = 1:Tdim
-        nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
-      end
-      =#
       nrm_dim = nrm_face[dim, i]
 
       # get the eigensystem in the current direction

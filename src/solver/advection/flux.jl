@@ -45,8 +45,6 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       qL = eqn.q_face[1, 1, j, i]
       qR = eqn.q_face[1, 2, j, i]
       nrm_scaled = sview(mesh.nrm_face, :, j, i)
-#      dxidx = sview(mesh.dxidx_face, :, :, j, i)
-#      nrm = sview(sbp.facenormal, :, fL)
 
       face_flux[1, j, i] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
@@ -84,8 +82,6 @@ function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
     interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
 
     for j=1:mesh.numNodesPerFace
-#      dxidx_j = sview(mesh.dxidx_face, :, :, j, i)
-#      nrm = sview(sbp.facenormal, :, iface_i.faceL)
       nrm_scaled = sview(mesh.nrm_face, :, j, i)
 
       flux_face[1, j] = -flux_func(q_faceL[j], q_faceR[j], nrm_scaled, eqn.params)
@@ -155,7 +151,6 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   qL_arr = data.q_send
   qR_arr = data.q_recv
   nrm_arr = mesh.nrm_sharedface[idx]
-#  dxidx_arr = mesh.dxidx_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
 
   for j=1:length(interfaces)
@@ -208,7 +203,6 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
   bndries_local = data.bndries_local
   qL_arr = data.q_send
   qR_arr = data.q_recv
-#  dxidx_arr = mesh.dxidx_sharedface[idx]
   nrm_arr = mesh.nrm_sharedface[idx]
 #  flux_arr = eqn.flux_sharedface[idx]
   flux_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -288,7 +282,6 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   bndries_remote = data.bndries_remote
 #    qL_arr = data.q_send
   qR_arr = data.q_recv
-#  dxidx_arr = mesh.dxidx_sharedface[idx]
   nrm_arr = mesh.nrm_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
 
@@ -372,7 +365,6 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
   bndries_remote = data.bndries_remote
 #    qL_arr = data.q_send
   qR_arr = data.q_recv
-#  dxidx_arr = mesh.dxidx_sharedface[idx]
   nrm_arr = mesh.nrm_sharedface[idx]
 #  flux_arr = eqn.flux_sharedface[idx]
   flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)

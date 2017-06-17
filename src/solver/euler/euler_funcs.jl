@@ -1776,7 +1776,6 @@ function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
     nrm = sview(mesh.nrm_bndry, :, :, face_range)
     
     # compute dforce
-#    nrm = Utils.computeNormal(mesh, eqn, bndry_faces)
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
 
     # compute moment
@@ -1803,8 +1802,6 @@ function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::Abstr
     nrm_bar = sview(mesh.nrm_bndry_bar, :, :, face_range)
     
     # compute dforce
-#    nrm = Utils.computeNormal(mesh, eqn, bndry_faces)
-#    nrm_bar = zeros(nrm)
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
     dforce_bar = zeros(dforce)
 
@@ -1813,8 +1810,6 @@ function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::Abstr
     calcMomentContribution_rev!(mesh.sbpface, coords, coords_bar, dforce, dforce_bar, xyz_about, moment_bar)
 
     computeDForce_revm!(mesh, eqn, bndry_faces, nrm_bar, dforce_bar)
-
-#    Utils.computeNormal_rev(mesh, eqn, bndry_faces, nrm_bar)
   end
 
   return nothing

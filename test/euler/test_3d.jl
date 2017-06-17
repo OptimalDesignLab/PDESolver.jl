@@ -580,7 +580,6 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     coords_faces = mesh.coords_bndry[:, :, face_range]
     nrm = mesh.nrm_bndry[:, :, face_range]
 
-#    nrm = Utils.computeNormal(mesh, eqn, bndryfaces)
     dforce = EulerEquationMod.computeDForce(mesh, eqn, bndryfaces, nrm)
     mom_0 = EulerEquationMod.calcMomentContribution!(mesh.sbpface, coords_faces, dforce, moment_about)
     nin = length(dforce)

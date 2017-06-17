@@ -240,8 +240,6 @@ function calcInterfacePotentialFlux{Tsol, Tres, Tdim, Tmsh}(
     elR = iface.elementR
     qL = sview(q_arr, :, :, elL)
     qR = sview(q_arr, :, :, elR)
-#    aux_vars = sview(eqn.aux_vars, :, :, elL)
-#    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
     nrm_scaled = sview(mesh.nrm_face, :, :, i)
 
     bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, nrm_scaled, qL, qR)

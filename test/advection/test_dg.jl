@@ -9,10 +9,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG Flux ------") do
     eqn.params.LFalpha = 1.0
     nrm_scaled = mesh.nrm_face[:, 1, 1]
-#    dxidx1 = mesh.dxidx_face[:, :, 1, 1]
-#    nrm = sview(sbp.facenormal, :, mesh.interfaces[1].faceL)
     alpha = [eqn.params.alpha_x, eqn.params.alpha_y]
-#    alpha_n = sum((dxidx1*alpha).*nrm)
     alpha_n = sum(alpha.*nrm_scaled)
     qL = 1.0
     qR = 2.0
