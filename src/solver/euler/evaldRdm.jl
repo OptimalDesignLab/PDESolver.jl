@@ -206,6 +206,7 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             opts, functor_revm::FluxType)
   # calculate the face flux and do the integration for the shared interfaces
 
+  #TODO: update this to use the new parallel communication primatives
   if opts["parallel_data"] != "face"
     throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
   end

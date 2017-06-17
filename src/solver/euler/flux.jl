@@ -795,10 +795,10 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::RoeFlux_revm, params::ParamType,
               uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
-              dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
-              flux_bar::AbstractVector{Tres}, dxidx_bar::AbstractArray{Tmsh, 2})
+              nrm::AbstractVector{Tmsh},
+              flux_bar::AbstractVector{Tres}, nrm_bar::AbstractArray{Tmsh, 1})
 
-  RoeSolver_revm(params, uL, uR, aux_vars, dxidx, nrm, flux_bar, dxidx_bar)
+  RoeSolver_revm(params, uL, uR, aux_vars, nrm, flux_bar, nrm_bar)
 
   return nothing
 end

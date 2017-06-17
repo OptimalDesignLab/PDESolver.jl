@@ -34,52 +34,6 @@ end
 =#
 
 @doc """
-###EulerEquationMod.RoeSolver_revm
-
-Wrapper for the reverse mode of the Roe Solver. This needs to get called during
-the reverse mode of Boundary condtitons
-
-**Inputs**
-
-* `params` : Object of ParamType
-* `q`  : Conservative variable of the fluid
-* `qg` : Conservative variable of the boundary or the adjacent element
-* `aux_vars` : Auxiliary variables
-* `dxidx` : Mapping jacobian for an SBP face node
-* `nrm`   : SBP face normal vector
-* `flux_bar` : Flux product that needs to git differentiated
-
-**Output**
-
-* `dxidx_bar` : Derivative w.r.t the mapping jacobian
-
-"""->
-
-function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType,
-                                     q::AbstractArray{Tsol,1},
-                                     qg::AbstractArray{Tsol, 1},
-                                     aux_vars::AbstractArray{Tres, 1},
-                                     dxidx::AbstractArray{Tmsh,2},
-                                     nrm::AbstractArray{Float64,1},
-                                     flux_bar::AbstractArray{Tres, 1},
-                                     dxidx_bar::AbstractArray{Tmsh, 2},
-                                     use_efix::Int=1)
-
-  # Forward sweep
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-
-  # Reverse sweep
-  nrm2_bar = zeros(params.nrm2)
-  RoeSolver_revm(params, q, qg, aux_vars, nrm2, flux_bar, nrm2_bar)
-  calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
-
-  return nothing
-end
-
-
-
-@doc """
 ### EulerEquationMod.RoeSolver
   This calculates the Roe flux for boundary conditions at a node. The inputs
   must be in *conservative* variables.
