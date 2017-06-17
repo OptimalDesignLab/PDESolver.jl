@@ -176,7 +176,8 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     interfaces_peer = mesh.shared_interfaces[peer]
 
     qR_peer = eqn.q_face_recv[peer]
-    dxidx_peer = mesh.dxidx_sharedface[peer]
+#    dxidx_peer = mesh.dxidx_sharedface[peer]
+    nrm_peer = mesh.nrm_sharedface[peer]
     start_elnum = mesh.shared_element_offsets[peer]
 
     for i=1:length(bndries_local)
@@ -200,11 +201,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
       for j=1:mesh.numNodesPerFace
         qL_j = sview(q_faceL, :, j)
         qR_j = sview(q_faceR, :, j)
-
-        # calculate normal vector
-        dxidx_j = sview(dxidx_peer, :, :, j, i)
-        nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)
-        calcBCNormal(eqn.params, dxidx_j, nrm_xi, nrm2)
+        nrm2 = sview(nrm_peer, :, j, i)
 
         # get max wave speed
         lambda_max = getLambdaMaxSimple(eqn.params, qL_j, qR_j, nrm2)
