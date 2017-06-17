@@ -20,15 +20,9 @@ function test_dg_flux(mesh, sbp, eqn, opts)
     for i=1:mesh.numInterfaces
       iface = mesh.interfaces[i]
       for j=1:mesh.sbpface.numnodes
-#        dxidx = mesh.dxidx_face[:, :, j, i]
         eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, uL)
         aux_vars = eqn.aux_vars_face[:, j, i]
-i#        nrm = sbp.facenormal[:, iface.faceL]
 
-
-#        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-#        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-#        nrm_scaled = [nx, ny]
         nrm_scaled = sview(mesh.nrm_face, :, j, i)
         EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
@@ -52,14 +46,9 @@ i#        nrm = sbp.facenormal[:, iface.faceL]
     for i=1:mesh.numInterfaces
       iface = mesh.interfaces[i]
       for j=1:mesh.sbpface.numnodes
-#        dxidx = mesh.dxidx_face[:, :, j, i]
         aux_vars = eqn.aux_vars_face[:, j, i]
         nrm = sbp.facenormal[:, iface.faceL]
 
-
-#        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-#        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-#        nrm_scaled = [nx, ny]
         nrm_scaled = sview(mesh.nrm_face, :, j, i)
         EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
@@ -101,15 +90,10 @@ function test_dg_boundary(mesh, sbp, eqn, opts)
     for i=1:mesh.numBoundaryFaces
       bndry_i = mesh.bndryfaces[i]
       for j=1:mesh.sbpface.numnodes
-#        dxidx = mesh.dxidx_bndry[:, :, j, i]
         eqn.aux_vars_bndry[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q_bndry[:, j, i])
         aux_vars = eqn.aux_vars_bndry[:, j, i]
-#        nrm = sbp.facenormal[:, bndry_i.face]
-
-#        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-#        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-#        nrm_scaled = [nx, ny]
         nrm_scaled = sview(mesh.nrm_bndry, :, j, i)
+
         EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
 
         @fact eqn.bndryflux[:, j, i] --> roughly(flux_euler, atol=1e-13)

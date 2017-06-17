@@ -231,9 +231,6 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
-#      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-#      nrm = sview(sbp.facenormal, :, bndry_i.face)
-#      nrm[:] = sbp.facenormal[:,bndry_i.face]
       nrm_xy = sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(bndryflux, :, j, i)
 
@@ -270,9 +267,6 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
-#      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-#      nrm = sview(sbp.facenormal, :, bndry_i.face)
-#      nrm[:] = sbp.facenormal[:,bndry_i.face]
       nrm_xy = sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(flux_face, :, j)
 

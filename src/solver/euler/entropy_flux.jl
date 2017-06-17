@@ -91,12 +91,6 @@ function reduceEface{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim, :conservati
       psiL = getPsi(params, sview(qL, :, p_jL), flux_nrm)
       psiR = getPsi(params, sview(qR, :, p_jR), flux_nrm)
       for k=1:sbpface.numnodes
-        #=
-        nrm_k = zero(Tmsh)
-        for d=1:Tdim
-          nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dir, k]
-        end
-        =#
         nrm_k = nrm_scaled[dir, k]
         val = sbpface.interp[i,k]*sbpface.interp[j,k]*sbpface.wface[k]*nrm_k
         RHS1 += val*psiL

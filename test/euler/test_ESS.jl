@@ -731,7 +731,6 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
   elR = iface.elementR
   qL = eqn.q[:, 1, elL]
   qR = eqn.q[:, 1, elR]
-#  dxidx_face = mesh.dxidx[:, :, 1, elL]
 
   q_avg = 0.5*(qL + qR)
 
@@ -743,15 +742,6 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
 
   # compute LW term
   lambda_net = 0.0
-  #=
-  for dim =1:Tdim
-    nrm_dim = zero(Tmsh)
-    for d = 1:Tdim
-      nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim]
-    end
-    nrm[dim] = nrm_dim  # needed for LF below
-  end
-  =#
 
   nrm2 = nrm./norm(nrm)
   A1 = zeros(4,4)  # flux jacobian computed via sum of x, y directions

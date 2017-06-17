@@ -164,11 +164,6 @@ function test_reversemode()
           x = sview(mesh.coords_bndry, :, j, global_facenum)
           copy!(phys_nrm, mesh.nrm_face[:, j, i])
           phys_nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
-#          dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-#          nrm = sview(sbp.facenormal, :, bndry_i.face)
-#          for k = 1:Tdim
-#            phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
-#          end # End for k = 1:Tdim
           node_info = Int[1,j,i]
           fill!(boundary_integrand, 0.0)
 
@@ -223,11 +218,9 @@ function test_reversemode()
           bndry_i = bndry_facenums[i]
           global_facenum = idx_range[i]
           for j = 1:mesh.sbpface.numnodes
-#            dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
-#            dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
              nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
              nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
-            # Perturb dxidx_bndry
+            # Perturb nrm_bndry
             for k = 1:length(nrm)
               nrm[k] += pert
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
@@ -245,7 +238,6 @@ function test_reversemode()
 
     context("Checking Complete boundary functional drag in reverse") do
       fill!(mesh.nrm_bndry_bar, 0.0)
-#      fill!(mesh.dxidx_bndry_bar, 0.0) # Clear out for this test
       EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag, "drag")
 
       # Check lift values against complex step
@@ -274,11 +266,9 @@ function test_reversemode()
           bndry_i = bndry_facenums[i]
           global_facenum = idx_range[i]
           for j = 1:mesh.sbpface.numnodes
-#            dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
-#            dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
              nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
              nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
-            # Perturb dxidx_bndry
+            # Perturb nrm_bndry
             for k = 1:length(nrm)
               nrm[k] += pert
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
@@ -353,11 +343,6 @@ function test_reversemode()
         q = sview(eqn.q_bndry, :, j, global_facenum)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
-#        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-#        nrm[:] = sbp.facenormal[:, bndry_i.face]
-#        nrm = sview(sbp.facenormal, :, bndry_i.face)
-        # println("nrm = $(real(nrm))")
-#        dxidx_bar = zeros(Complex128, 2,2)
         nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
         nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
         EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, nrm, psi, nrm_bar)
@@ -389,7 +374,6 @@ function test_reversemode()
       # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
       functor_rev = mesh.bndry_funcs_revm[4]
       functor = mesh.bndry_funcs[4]
-#      fill!(mesh.dxidx_bndry_bar, 0.0)
       fill!(mesh.nrm_bndry_bar, 0.0)
 
       start_index = mesh.bndry_offsets[4]
@@ -412,15 +396,11 @@ function test_reversemode()
           q = sview(eqn.q_bndry, :, j, global_facenum)
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
-#          dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-#          nrm[:] = sbp.facenormal[:, bndry_i.face]
-#          nrm = sview(sbp.facenormal, :, bndry_i.face)
           nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
           nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
-          # println("bndryflux_bar_i = $bndryflux_bar_i")
-#          dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
+          
           for k = 1:length(nrm)
             nrm[k] += pert
             functor(q, aux_vars, x, nrm, tmpflux, eqn.params)
@@ -429,7 +409,6 @@ function test_reversemode()
             error = norm(nrm_bar[k] - dot_product, 2)
             # println("error = $error")
             @fact error --> roughly(0.0, atol = 1e-12)
-            # println("dot_product = $dot_product, dxidx_bndry_bar[$k] = $(real(dxidx_bndry_bar[k]))")
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
@@ -463,15 +442,10 @@ function test_reversemode()
           q = sview(eqn.q_bndry, :, j, global_facenum)
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
-#          dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-#          nrm[:] = sbp.facenormal[:, bndry_i.face]
-#          nrm = sview(sbp.facenormal, :, bndry_i.face)
           nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
           nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
-          # println("bndryflux_bar_i = $bndryflux_bar_i")
-#          dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
           for k = 1:length(nrm)
             nrm[k] += pert
             functor(q, aux_vars, x, nrm, tmpflux, eqn.params)
@@ -480,7 +454,6 @@ function test_reversemode()
             error = norm(nrm_bar[k] - dot_product, 2)
             # println("error = $error")
             @fact error --> roughly(0.0, atol = 1e-12)
-            # println("dot_product = $dot_product, dxidx_bndry_bar[$k] = $(real(dxidx_bndry_bar[k]))")
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
@@ -517,13 +490,9 @@ function test_reversemode()
         # get components
         qL = sview(eqn.q_face, :, 1, j, i)
         qR = sview(eqn.q_face, :, 2, j, i)
-#        dxidx = sview(mesh.dxidx_face, :, :, j, i)
-#        dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
         nrm = sview(mesh.nrm_face, :, j, i)
         nrm_bar = sview(mesh.nrm_face_bar, :, j, i)
         aux_vars = sview(eqn.aux_vars_face, :, j, i)
-#        nrm = sview(sbp.facenormal, :, fL)
-#        nrm[:] = sbp.facenormal[:,fL]
 
         flux_j_bar = sview(eqn.flux_face_bar, :, j, i)
         # println("dxidx_bar = $(real(dxidx_bar))")
@@ -620,13 +589,9 @@ function test_reversemode()
         # get components
         qL = sview(eqn.q_face, :, 1, j, i)
         qR = sview(eqn.q_face, :, 2, j, i)
-#        dxidx = sview(mesh.dxidx_face, :, :, j, i)
-#        dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
         nrm = sview(mesh.nrm_face, :, j, i)
         nrm_bar = sview(mesh.nrm_face_bar, :, j, i)
         aux_vars = sview(eqn.aux_vars_face, :, j, i)
- #       nrm[:] = sbp.facenormal[:,fL]
-#        nrm = sview(sbp.facenormal, :, fL)
 
         flux_j_bar = sview(flux_face_bar_copy, :, j, i)
         for k = 1:length(nrm)
@@ -661,14 +626,11 @@ function test_reversemode()
           q = sview(eqn.q_bndry, :, j, global_facenum)
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
-#          dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
- #         nrm[:] = sbp.facenormal[:, bndry_i.face]
-#          nrm = sview(sbp.facenormal, :, bndry_i.face)
           nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
           nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
           tmpflux = zeros(Complex128, 4)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
-#          dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
+          
           for k = 1:length(nrm)
             nrm[k] += pert
             functor_i(q, aux_vars, x, nrm, tmpflux, eqn.params)

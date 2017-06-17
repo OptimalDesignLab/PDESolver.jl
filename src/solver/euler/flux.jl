@@ -50,12 +50,10 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       # get components
       qL = sview(eqn.q_face, :, 1, j, i)
       qR = sview(eqn.q_face, :, 2, j, i)
-#      dxidx = sview(mesh.dxidx_face, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-#      nrm[:] = sbp.facenormal[:, fL]
-#      nrm = sview(sbp.facenormal, :, fL)
       nrm_xy = sview(mesh.nrm_face, :, j, i)
       flux_j = sview(face_flux, :, j, i)
+
       functor(params, qL, qR, aux_vars, nrm_xy, flux_j)
     end
   end
@@ -92,13 +90,10 @@ function calcFaceIntegral_nopre{Tmsh, Tsol, Tres, Tdim}(
       qL_j = sview(q_faceL, :, j)
       qR_j = sview(q_faceR, :, j)
 
-#      dxidx = sview(mesh.dxidx_face, :, :, j, i)
-
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
       aux_vars[1] = calcPressure(params, qL_j)
 
       nrm_xy = sview(mesh.nrm_face, :, j, i)
-#      nrm = sview(sbp.facenormal, :, iface_i.faceL)
       flux_j = sview(flux_face, :, j)
 
       functor(params, qL_j, qR_j, aux_vars, nrm_xy, flux_j)
@@ -138,7 +133,6 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     qL = sview(eqn.q, :, :, elL)
     qR = sview(eqn.q, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
-#    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
     nrm_face = sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
@@ -204,10 +198,7 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
   bndries_remote = data.bndries_remote
 #    qL_arr = eqn.q_face_send[i]
   qR_arr = data.q_recv
-#    dxidx_face_arr = mesh.dxidx_sharedface[idx]
   nrm_face_arr = mesh.nrm_sharedface[idx]
-#    aux_vars_arr = eqn.aux_vars_sharedface[idx]
-#    flux_arr = eqn.flux_sharedface[idx]
 
   start_elnum = mesh.shared_element_offsets[idx]
 
@@ -219,7 +210,6 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
     qL = sview(q, :, :, elL)
     qR = sview(qR_arr, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
-#      dxidx_face = sview(dxidx_face_arr, :, :, :, j)
     nrm_face = sview(nrm_face_arr, :, :, j)
     resL = sview(eqn.res, :, :, elL)
 

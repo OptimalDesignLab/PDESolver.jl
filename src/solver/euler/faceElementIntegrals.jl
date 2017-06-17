@@ -581,16 +581,6 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
 
     # get the normal vector (scaled)
-#=
-    for dim =1:Tdim
-      nrm_dim = zero(Tmsh)
-      for d = 1:Tdim
-        nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
-      end
-
-      nrm[dim] = nrm_dim
-    end
-=#
     for dim=1:Tdim
       nrm[dim] = nrm_face[dim, i]
     end

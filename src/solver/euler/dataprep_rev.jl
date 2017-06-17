@@ -117,11 +117,7 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       qR = sview(eqn.q_face, :, 2, j, i)
       nrm = sview(mesh.nrm_face, :, j, i)
       nrm_bar = sview(mesh.nrm_face_bar, :, j, i)
-#      dxidx = sview(mesh.dxidx_face, :, :, j, i)
-#      dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-#      nrm[:] = sbp.facenormal[:,fL]
-#      nrm = sview(sbp.facenormal, :, fL)
 
       #flux_j = sview(flux_face_bar, :, j, i)
       #functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
