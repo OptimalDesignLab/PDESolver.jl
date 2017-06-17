@@ -236,7 +236,8 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
     qL_arr = eqn.q_face_send[idx]
     qR_arr = eqn.q_face_recv[idx]
     aux_vars_arr = eqn.aux_vars_sharedface[idx]
-    dxidx_arr = mesh.dxidx_sharedface[idx]
+#    dxidx_arr = mesh.dxidx_sharedface[idx]
+    nrm_arr = mesh.nrm_sharedface[idx]
     flux_arr_bar = eqn.flux_sharedface_bar[idx]
 
     # permute the received nodes to be in the elementR orientation
@@ -249,11 +250,12 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
         qL = sview(qL_arr, :, k, j)
         qR = sview(qR_arr, :, k, j)
-        dxidx = sview(dxidx_arr, :, :, k, j)
+#        dxidx = sview(dxidx_arr, :, :, k, j)
         aux_vars = sview(aux_vars_arr, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
+#        nrm = sview(sbp.facenormal, :, fL)
+        nrm_xy = sview(nrm_arr, :, k, j)
         flux_j = sview(flux_arr_bar, :, k, j)
-        functor_revm(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
+        functor_revm(params, qL, qR, aux_vars, nrm_xy, flux_j)
       end
     end
     # end flux calculation
