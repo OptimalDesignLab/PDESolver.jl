@@ -480,7 +480,6 @@ function test_reversemode()
 
     functor = eqn.flux_func
     nfaces = length(mesh.interfaces)
-#    nrm = zeros(Complex128, size(sbp.facenormal,1))
     for i=1:nfaces  # loop over faces
       interface_i = mesh.interfaces[i]
       for j = 1:mesh.numNodesPerFace
@@ -579,7 +578,6 @@ function test_reversemode()
 
     functor = eqn.flux_func
     nfaces = length(mesh.interfaces)
-#    nrm = zeros(Complex128, size(sbp.facenormal,1))
     for i=1:nfaces  # loop over faces
       interface_i = mesh.interfaces[i]
       for j = 1:mesh.numNodesPerFace

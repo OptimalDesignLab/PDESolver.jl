@@ -464,7 +464,7 @@ add_func1!(AdvectionTests, test_lowlevel_volumeintegrals, [TAG_VOLUMEINTEGRALS, 
     fill!(eqn.params.alpha_x, 1.0)
     fill!(eqn.params.alpha_y, 1.0)
     
-    nbrnodeindex = Array(sbp.numfacenodes:-1:1)
+    nbrnodeindex = Array(mesh.numNodesPerFace:-1:1)
 
   end
   =#

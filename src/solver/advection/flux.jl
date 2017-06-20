@@ -161,8 +161,6 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
-#      dxidx = sview(dxidx_arr, :, :, k, j)
-#      nrm = sview(sbp.facenormal, :, fL)
       nrm_scaled = sview(nrm_arr, :, k, j)
       flux_arr[1,k,j] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
@@ -215,8 +213,6 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
 
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
-#      dxidx = sview(dxidx_arr, :, :, k, j)
-#      nrm = sview(sbp.facenormal, :, fL)
       nrm_scaled = sview(nrm_arr, :, k, j)
       flux_face[1, k] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
@@ -316,8 +312,6 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
       qL_k = q_faceL[k]
       qR_k = q_faceR[k]
       nrm_scaled = sview(nrm_arr, :, k, j)
-#      dxidx = sview(dxidx_arr, :, :, k, j)
-#      nrm = sview(sbp.facenormal, :, fL)
 
       flux_tmp = -functor(qL_k, qR_k, nrm_scaled, eqn.params)
       flux_arr[1,k,j] = flux_tmp
@@ -400,8 +394,6 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
     for k=1:mesh.numNodesPerFace
       qL_k = q_faceL[k]
       qR_k = q_faceR[k]
-#      dxidx = sview(dxidx_arr, :, :, k, j)
-#      nrm = sview(sbp.facenormal, :, fL)
       nrm_scaled = sview(nrm_arr, :, k, j)
 
       flux_face[1, k] = -functor(qL_k, qR_k, nrm_scaled, eqn.params)

@@ -84,8 +84,8 @@ function writeBoundary(mesh, sbp, eqn, opts)
   for i=1:mesh.numBoundaryFaces
     el = mesh.bndryfaces[i].element
     face = mesh.bndryfaces[i].face
-    for j=1:sbp.numfacenodes  # TODO: should be mesh.numNodesPerFace?
-      jb = sbp.facenodes[j, face]
+    for j=1:mesh.numNodesPerFace  # TODO: should be mesh.numNodesPerFace?
+      jb = mesh.facenodes[j, face]
       println(f, "el ", el, ", node_index ", jb, ", flux = ",
                real(eqn.bndryflux[:, j, i]))
     end
@@ -162,7 +162,7 @@ end
   where all arguments (except params) are vectors of values at a node.
 
   params is the ParamType associated with the the EulerEquation object
-  nrm = sbp.facenormal[:, current_node]
+  nrm = mesh.sbpface.normal[:, current_node]
 
   This is a mid level function.
 """->
@@ -184,8 +184,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
     bndry_i = bndry_facenums[i]
 #    println("boundary ", i, "element = ", bndry_i.element, ", face = ", bndry_i.face)
 #    println("interface ", i)
-    for j = 1:sbp.numfacenodes
-      k = sbp.facenodes[j, bndry_i.face]
+    for j = 1:mesh.numNodesPerFace
+      k = mesh.facenodes[j, bndry_i.face]
 
       # get components
       q = sview(eqn.q, :, k, bndry_i.element)
@@ -194,7 +194,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
       calcBCNormal(eqn.params, dxidx, nrm, nrm_xy)
       bndryflux_i = sview(bndryflux, :, j, i)
 
