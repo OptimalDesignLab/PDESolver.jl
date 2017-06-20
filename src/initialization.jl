@@ -127,6 +127,13 @@ function createMeshAndOperator(opts, dofpernode)
         sbp = getTetSBPGamma(degree=order, Tsbp=Tsbp)
       end
       shape_type = 3
+    elseif opts["operator_type"] == "SBPDiagonalE"
+      if dim == 2
+        sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp)
+      else
+        throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
+      end
+      shape_type = 4
     else
       op_type = opts["operator_type"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
@@ -152,7 +159,11 @@ function createMeshAndOperator(opts, dofpernode)
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
 #      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
-      sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+      if opts["operator_type"] == "SBPDiagonalE"
+        sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
+      else
+        sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+      end
     else
 #      sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       ref_verts = sbp.vtx

@@ -1,2 +1,4 @@
 update copy constructor for equation to handle eqn.shared_data
 decide whether or not to precompute fluxes by default
+
+use new version of SBP, use_nrm branch of PumiInterface
