@@ -43,7 +43,7 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
 #        reset_repo(pkg_name)
 #      end
        Pkg.resolve()
-#      Pkg.build(pkg_name)
+      Pkg.build(pkg_name)
       println(f, "  Installation appears to have completed sucessfully")
     catch x
       println(f, "Error installing package $pkg_name")
