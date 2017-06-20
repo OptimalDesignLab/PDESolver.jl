@@ -10,8 +10,8 @@ function installPDESolver()
   # [pkg_name, git url, commit identified]
   std_pkgs = [
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "new_parallel";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork3";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "work";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "updatesbp2";
               "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
               ]
 
@@ -120,7 +120,7 @@ function installPDESolver()
               "DualNumbers" "https://github.com/JuliaDiff/DualNumbers.jl.git" "34ae2b236f4853028fc60a5efed42bd17a33230f";
               "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
 #              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
-              "ForwardDiff" "https://github.com/JuliaDiff/ForwardDiff.jl.git" "76715d249bb58cc9feab5606d3986e1b65162b8d";
+              "ForwardDiff" "https://github.com/JuliaDiff/ForwardDiff.jl.git" "805ad5da942ba5f4477d1d8c5bce0b11cf3260fe";
               "DiffBase" "https://github.com/JuliaDiff/DiffBase.jl.git" "a84a2be263ab5ec4b5261946a17f01fda358b9ac";
               "Optim" "https://github.com/JuliaNLSolvers/Optim.jl.git"  "250b50ab5f9bb87576c623fa20fdafb981ce40a1";
               "PositiveFactorizations" "https://github.com/timholy/PositiveFactorizations.jl.git" "32233b5a3d4b4453a8de28a6d363344023b1e074";
