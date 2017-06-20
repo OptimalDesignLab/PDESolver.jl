@@ -50,12 +50,11 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       # get components
       qL = sview(eqn.q_face, :, 1, j, i)
       qR = sview(eqn.q_face, :, 2, j, i)
-      dxidx = sview(mesh.dxidx_face, :, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-#      nrm[:] = sbp.facenormal[:, fL]
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
       flux_j = sview(face_flux, :, j, i)
-      functor(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
+
+      functor(params, qL, qR, aux_vars, nrm_xy, flux_j)
     end
   end
 
@@ -91,15 +90,13 @@ function calcFaceIntegral_nopre{Tmsh, Tsol, Tres, Tdim}(
       qL_j = sview(q_faceL, :, j)
       qR_j = sview(q_faceR, :, j)
 
-      dxidx = sview(mesh.dxidx_face, :, :, j, i)
-
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
       aux_vars[1] = calcPressure(params, qL_j)
 
-      nrm = sview(sbp.facenormal, :, iface_i.faceL)
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
       flux_j = sview(flux_face, :, j)
 
-      functor(params, qL_j, qR_j, aux_vars, dxidx, nrm, flux_j)
+      functor(params, qL_j, qR_j, aux_vars, nrm_xy, flux_j)
     end  # end loop j
 
     resL = sview(eqn.res, :, :, iface_i.elementL)
@@ -136,20 +133,9 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     qL = sview(eqn.q, :, :, elL)
     qR = sview(eqn.q, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
-#    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
     nrm_face = sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
-
-#    copy!(resL2, resL)
-#    copy!(resR2, resR)
-
-#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, flux_functor, resL, resR)
-#    calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, flux_functor, resL2, resR2)
-
-#    @assert norm(resL2 - resL) < 1e-12
-#    @assert norm(resR2 - resR) < 1e-12
-
 
     face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
                        nrm_face, flux_functor, resL, resR)
@@ -212,10 +198,7 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
   bndries_remote = data.bndries_remote
 #    qL_arr = eqn.q_face_send[i]
   qR_arr = data.q_recv
-#    dxidx_face_arr = mesh.dxidx_sharedface[idx]
   nrm_face_arr = mesh.nrm_sharedface[idx]
-#    aux_vars_arr = eqn.aux_vars_sharedface[idx]
-#    flux_arr = eqn.flux_sharedface[idx]
 
   start_elnum = mesh.shared_element_offsets[idx]
 
@@ -227,7 +210,6 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
     qL = sview(q, :, :, elL)
     qR = sview(qR_arr, :, :, elR)
     aux_vars = sview(eqn.aux_vars, :, :, elL)
-#      dxidx_face = sview(dxidx_face_arr, :, :, :, j)
     nrm_face = sview(nrm_face_arr, :, :, j)
     resL = sview(eqn.res, :, :, elL)
 
@@ -290,7 +272,7 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   qL_arr = data.q_send
   qR_arr = data.q_recv
   aux_vars_arr = eqn.aux_vars_sharedface[idx]
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
 
   for j=1:length(interfaces)
@@ -301,11 +283,10 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
       qL = sview(qL_arr, :, k, j)
       qR = sview(qR_arr, :, k, j)
-      dxidx = sview(dxidx_arr, :, :, k, j)
       aux_vars = sview(aux_vars_arr, :, k, j)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm_xy = sview(nrm_arr, :, k, j)
       flux_j = sview(flux_arr, :, k, j)
-      functor(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
+      functor(params, qL, qR, aux_vars, nrm_xy, flux_j)
     end
   end
   # end flux calculation
@@ -342,7 +323,7 @@ function calcSharedFaceIntegrals_nopre_inner{Tmsh, Tsol, Tres}(
   qL_arr = data.q_send
   qR_arr = data.q_recv
   aux_vars_arr = eqn.aux_vars_sharedface[idx]
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
   flux_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   for j=1:length(interfaces)
@@ -354,12 +335,11 @@ function calcSharedFaceIntegrals_nopre_inner{Tmsh, Tsol, Tres}(
     for k=1:mesh.numNodesPerFace
       qL = sview(qL_arr, :, k, j)
       qR = sview(qR_arr, :, k, j)
-      dxidx = sview(dxidx_arr, :, :, k, j)
       aux_vars = sview(aux_vars_arr, :, k, j)
       aux_vars[1] = calcPressure(params, qL)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm_xy = sview(nrm_arr, :, k, j)
       flux_k = sview(flux_j, :, k)
-      functor(params, qL, qR, aux_vars, dxidx, nrm, flux_k)
+      functor(params, qL, qR, aux_vars, nrm_xy, flux_k)
     end
     
     # do the integration
@@ -432,7 +412,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   bndries_remote = data.bndries_remote
 #    qL_arr = eqn.q_face_send[i]
   qR_arr = data.q_recv
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
   aux_vars_arr = eqn.aux_vars_sharedface[idx]
   flux_arr = eqn.flux_sharedface[idx]
 
@@ -449,15 +429,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     qL = sview(q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
     qR = sview(qR_arr, :, :, el_r)
-    #TODO:  use singel element version of interiorFaceInterpolate and 
-    #       get rid of permuteface! call below
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
-
-    # permute elementR
-#    permvec = sview(mesh.sbpface.nbrperm, :, iface_j.orient)
-#    SummationByParts.permuteface!(permvec, workarr, q_faceR)
 
     @debug1 qL_face_arr[:, :, j] = q_faceL
     @debug1 qR_face_arr[:, :, j] = q_faceR
@@ -467,13 +439,12 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
       qL_k = sview(q_faceL, :, k)
       qR_k = sview(q_faceR, :, k)
       aux_vars = sview(aux_vars_arr, :, k, j)
-      dxidx = sview(dxidx_arr, :, :, k, j)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm_xy = sview(nrm_arr, :, k, j)
       flux_k = sview(flux_arr, :, k, j)
 
       aux_vars[1] = calcPressure(params, qL_k)
 
-      functor(params, qL_k, qR_k, aux_vars, dxidx, nrm, flux_k)
+      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
      end
    end  # end loop over interfaces
 
@@ -517,9 +488,8 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
   bndries_remote = data.bndries_remote
 #    qL_arr = eqn.q_face_send[i]
   qR_arr = data.q_recv
-  dxidx_arr = mesh.dxidx_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
   aux_vars_arr = eqn.aux_vars_sharedface[idx]
-#  flux_arr = eqn.flux_sharedface[idx]
   flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   start_elnum = mesh.shared_element_offsets[idx]
@@ -535,15 +505,7 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
     qL = sview(q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
     qR = sview(qR_arr, :, :, el_r)
-    #TODO:  use singel element version of interiorFaceInterpolate and 
-    #       get rid of permuteface! call below
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryL_j.face, qL, q_faceL)
-#    boundaryFaceInterpolate!(mesh.sbpface, bndryR_j.face, qR, q_faceR)
-
-    # permute elementR
-#    permvec = sview(mesh.sbpface.nbrperm, :, iface_j.orient)
-#    SummationByParts.permuteface!(permvec, workarr, q_faceR)
 
     @debug1 qL_face_arr[:, :, j] = q_faceL
     @debug1 qR_face_arr[:, :, j] = q_faceR
@@ -553,13 +515,12 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
       qL_k = sview(q_faceL, :, k)
       qR_k = sview(q_faceR, :, k)
       aux_vars = sview(aux_vars_arr, :, k, j)
-      dxidx = sview(dxidx_arr, :, :, k, j)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm_xy = sview(nrm_arr, :, k, j)
       flux_k = sview(flux_face, :, k)
 
       aux_vars[1] = calcPressure(params, qL_k)
 
-      functor(params, qL_k, qR_k, aux_vars, dxidx, nrm, flux_k)
+      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
      end
 
      # do the integration
@@ -640,17 +601,8 @@ end
 function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
-              F::AbstractVector{Tres})
-
-  RoeSolver(params, uL, uR, aux_vars, dxidx, nrm, F)
-end
-
-function call{Tsol, Tres}(obj::RoeFlux, params::ParamType,
-              uL::AbstractArray{Tsol,1},
-              uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector,
+              nrm::AbstractVector{Tmsh},
               F::AbstractVector{Tres})
 
   RoeSolver(params, uL, uR, aux_vars, nrm, F)
@@ -658,15 +610,6 @@ function call{Tsol, Tres}(obj::RoeFlux, params::ParamType,
 end
 
 type StandardFlux <: FluxType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::StandardFlux, params::ParamType,
-              uL::AbstractArray{Tsol,1},
-              uR::AbstractArray{Tsol,1},
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
-              F::AbstractVector{Tres})
-
-  calcEulerFlux_standard(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
 function call{Tsol, Tres}(obj::StandardFlux, params::ParamType,
@@ -684,15 +627,6 @@ end
 type DucrosFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::DucrosFlux, params::ParamType,
-              uL::AbstractArray{Tsol,1},
-              uR::AbstractArray{Tsol,1},
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
-              F::AbstractVector{Tres})
-
-  calcEulerFlux_Ducros(params, uL, uR, aux_vars, dxidx, nrm, F)
-end
-
 function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
@@ -705,15 +639,6 @@ function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType,
 end
 
 type IRFlux <: FluxType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::IRFlux, params::ParamType,
-              uL::AbstractArray{Tsol,1},
-              uR::AbstractArray{Tsol,1},
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
-              F::AbstractVector{Tres})
-
-  calcEulerFlux_IR(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
 function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
@@ -729,15 +654,6 @@ function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
 end
 
 type IRSLFFlux <: FluxType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::IRSLFFlux, params::ParamType,
-              uL::AbstractArray{Tsol,1},
-              uR::AbstractArray{Tsol,1},
-              aux_vars, dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
-              F::AbstractVector{Tres})
-
-  calcEulerFlux_IRSLF(params, uL, uR, aux_vars, dxidx, nrm, F)
 end
 
 function call{Tsol, Tres}(obj::IRSLFFlux, params::ParamType,
@@ -803,10 +719,10 @@ end
 
 function call{Tsol, Tres, Tmsh}(obj::RoeFlux_revm, params::ParamType,
               uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
-              dxidx::AbstractArray{Tmsh, 2}, nrm::AbstractVector,
-              flux_bar::AbstractVector{Tres}, dxidx_bar::AbstractArray{Tmsh, 2})
+              nrm::AbstractVector{Tmsh},
+              flux_bar::AbstractVector{Tres}, nrm_bar::AbstractArray{Tmsh, 1})
 
-  RoeSolver_revm(params, uL, uR, aux_vars, dxidx, nrm, flux_bar, dxidx_bar)
+  RoeSolver_revm(params, uL, uR, aux_vars, nrm, flux_bar, nrm_bar)
 
   return nothing
 end

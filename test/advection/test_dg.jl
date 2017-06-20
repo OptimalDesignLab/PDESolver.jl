@@ -8,16 +8,15 @@ global const test_dg_inputfile = "input_vals_channelDG.jl"
 function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG Flux ------") do
     eqn.params.LFalpha = 1.0
-    dxidx1 = mesh.dxidx_face[:, :, 1, 1]
-    nrm = sview(sbp.facenormal, :, mesh.interfaces[1].faceL)
+    nrm_scaled = mesh.nrm_face[:, 1, 1]
     alpha = [eqn.params.alpha_x, eqn.params.alpha_y]
-    alpha_n = sum((dxidx1*alpha).*nrm)
+    alpha_n = sum(alpha.*nrm_scaled)
     qL = 1.0
     qR = 2.0
     flux_test = alpha_n*(qL + qR)/2
 
     flux_func = AdvectionEquationMod.FluxDict["LFFlux"]
-    flux_code = flux_func(qL, qR, dxidx1, nrm, eqn.params)
+    flux_code = flux_func(qL, qR, nrm_scaled, eqn.params)
 
     @fact flux_code --> roughly(flux_test, atol=1e-13)
 

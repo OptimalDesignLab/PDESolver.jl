@@ -81,13 +81,15 @@ function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
-      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-      dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
+      nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
+      nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
+#      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+#      dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
 #      nrm[:] = sbp.facenormal[:,bndry_i.face]
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+#      nrm = sview(sbp.facenormal, :, bndry_i.face)
       bndryflux_i = sview(bndryflux_bar, :, j, i)
 
-      functor_bar(q2, aux_vars, x, dxidx, dxidx_bar, nrm, bndryflux_i, eqn.params)
+      functor_bar(q2, aux_vars, x, nrm, nrm_bar, bndryflux_i, eqn.params)
     end
   end
 
@@ -101,7 +103,7 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           interfaces::AbstractArray{Interface,1},
                           flux_face_bar::AbstractArray{Tres, 3})
 
-  fill!(mesh.dxidx_face_bar, 0.0)
+  fill!(mesh.nrm_face_bar, 0.0)  # should this be zeroed out here?
   nfaces = length(interfaces)
 #  nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces
@@ -113,17 +115,15 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       # get components
       qL = sview(eqn.q_face, :, 1, j, i)
       qR = sview(eqn.q_face, :, 2, j, i)
-      dxidx = sview(mesh.dxidx_face, :, :, j, i)
-      dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
+      nrm = sview(mesh.nrm_face, :, j, i)
+      nrm_bar = sview(mesh.nrm_face_bar, :, j, i)
       aux_vars = sview(eqn.aux_vars_face, :, j, i)
-#      nrm[:] = sbp.facenormal[:,fL]
-      nrm = sview(sbp.facenormal, :, fL)
 
       #flux_j = sview(flux_face_bar, :, j, i)
       #functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
 
       flux_j_bar = sview(flux_face_bar, :, j, i)
-      functor_bar(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j_bar, dxidx_bar)
+      functor_bar(eqn.params, qL, qR, aux_vars, nrm, flux_j_bar, nrm_bar)
     end
   end
 

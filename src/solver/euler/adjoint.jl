@@ -226,16 +226,13 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         convertToConservative(eqn.params, q, q2)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         integrand_i = sview(integrand, :, j, global_facenum)
 
         # calcIntegrandDeriv(opts, eqn.params, q2, aux_vars, [nx, ny], integrand_i,
         #                    node_info, functor, functionalData)
-        calcIntegrandDeriv(opts, eqn.params, q2, aux_vars,[nx,ny], integrand_i, node_info,
+        calcIntegrandDeriv(opts, eqn.params, q2, aux_vars, nrm, integrand_i, node_info,
                            functionalData)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
