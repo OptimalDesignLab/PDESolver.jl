@@ -669,7 +669,7 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
                      mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale,
                      eqn.res, eqn.res_edge)
     else
-      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx,
+      edgestabilize!(sbp, mesh.interfaces, mesh, eqn.q, mesh.coords, mesh.dxidx,
                      mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
     end
   end

@@ -199,7 +199,7 @@ function test_gls_vortex()
 end
 
 #test_gls_vortex(mesh, sbp, eqn, opts)
-add_func1!(EulerTests, test_gls_vortex, [TAG_ENTROPYVARS, TAG_SHORTTEST])
+#add_func1!(EulerTests, test_gls_vortex, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 """
   Test finite differencing and complex stepping of the GLS term
@@ -308,4 +308,4 @@ function test_gls_fd()
 end  # end function
 
 #test_gls_fd()
-add_func1!(EulerTests, test_gls_fd, [TAG_COMPLEX, TAG_SHORTTEST])
+#add_func1!(EulerTests, test_gls_fd, [TAG_COMPLEX, TAG_SHORTTEST])

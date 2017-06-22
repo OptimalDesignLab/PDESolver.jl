@@ -707,22 +707,22 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
   # println("bndry_facenums = ", bndry_facenums)
 
   nfaces = length(bndry_facenums)
-  boundary_press = zeros(Tsol, Tdim, sbp.numfacenodes, nfaces)
+  boundary_press = zeros(Tsol, Tdim, mesh.numNodesPerFace, nfaces)
   boundary_force = zeros(Tsol, Tdim, sbp.numnodes, mesh.numEl)
   q2 = zeros(Tsol, mesh.numDofPerNode)
-  # analytical_force = zeros(Tsol, sbp.numfacenodes, nfaces)
+  # analytical_force = zeros(Tsol, mesh.numNodesPerFace, nfaces)
 
 
   for i = 1:nfaces
     bndry_i = bndry_facenums[i]
-    for j = 1:sbp.numfacenodes
-      k = sbp.facenodes[j, bndry_i.face]
+    for j = 1:mesh.numNodesPerFace
+      k = mesh.facenodes[j, bndry_i.face]
       q = sview(eqn.q, :, k, bndry_i.element)
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
 
       # analytical_force[k,bndry_i.element] = calc_analytical_forces(mesh, eqn.params, x)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -734,7 +734,7 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
 
       # Boundary pressure in "ndimensions" direcion
       boundary_press[:,j,i] =  euler_flux[2:3]
-    end # end for j = 1:sbp.numfacenodes
+    end # end for j = 1:mesh.numNodesPerFace
   end   # end for i = 1:nfaces
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[start_index:(end_index - 1)],
                      boundary_press, boundary_force)
@@ -742,8 +742,8 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
   functional_val = zeros(Tsol,2)
 
   for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
-    for i = 1:sbp.numfacenodes
-      k = sbp.facenodes[i, bndry.face]
+    for i = 1:mesh.numNodesPerFace
+      k = mesh.facenodes[i, bndry.face]
       functional_val[:] += boundary_force[:,k,bndry.element]
     end
   end  # end enumerate

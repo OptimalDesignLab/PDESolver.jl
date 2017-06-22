@@ -692,19 +692,19 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 
 
     # test getBCFluxes
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 1] --> roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 2] --> roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 3] --> roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 4] --> roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
     end
   end  # end facts block

@@ -47,7 +47,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
       iface = mesh.interfaces[i]
       for j=1:mesh.sbpface.numnodes
         aux_vars = eqn.aux_vars_face[:, j, i]
-        nrm = sbp.facenormal[:, iface.faceL]
+        nrm = mesh.sbpface.normal[:, iface.faceL]
 
         nrm_scaled = sview(mesh.nrm_face, :, j, i)
         EulerEquationMod.calcEulerFlux(eqn.params, uL, aux_vars, nrm_scaled, flux_euler)
