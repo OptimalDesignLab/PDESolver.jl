@@ -134,6 +134,13 @@ function createMeshAndOperator(opts, dofpernode)
         throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
       end
       shape_type = 4
+    elseif opts["operator_type"] == "SBPDiagonalE2"  # no vert nodes
+      if dim == 2
+        sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp, vertices=false)
+      else
+        sbp = getTetSBPWithDiagE(degree=order, Tsbp=Tsbp)
+      end
+      shape_type = 5
     else
       op_type = opts["operator_type"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
@@ -161,6 +168,9 @@ function createMeshAndOperator(opts, dofpernode)
 #      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
       if opts["operator_type"] == "SBPDiagonalE"
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
+      elseif opts["operator_type"] == "SBPDiagonalE2"
+        println("getting TriFaceForDiagE2")
+        sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.', vertices=false)
       else
         sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
       end
@@ -170,7 +180,12 @@ function createMeshAndOperator(opts, dofpernode)
 #      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
       topo = ElementTopology{3}(face_verts)
-      sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
+
+      if opts["operator_type"] == "SBPDiagonalE2"
+        sbpface = getTetFaceForDiagE(order, sbp.cub, ref_verts)
+      else
+        sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
+      end
     end
 
     # create mesh with 4 dof per node
