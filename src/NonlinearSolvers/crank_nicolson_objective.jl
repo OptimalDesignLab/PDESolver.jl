@@ -78,53 +78,77 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   nDof = 1
 
   local_functional_val = zeros(Tsol, nDof)
-  # println("===dJdu=== size(local_functional_val): ", size(local_functional_val))
-  # println("===dJdu=== size(eqn.q_vec): ", size(eqn.q_vec))
-  # eqn.q_vec: (96,)
-  # local_functional_val: (96,)
+  integrand2 = zeros(Tsol, 1)
 
+  # mesh.bndry_geo_nums:
+  #   [1]
+  #   [0, 2, 3]
 
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr]
+  for itr = 1:length(functional_edges)                  # 1:1
+    g_edge_number = functional_edges[itr]               # 1
     itr2 = 0
-    for itr2 = 1:mesh.numBC
+    for itr2 = 1:mesh.numBC                             # 1:2
       if findfirst(mesh.bndry_geo_nums[itr2], g_edge_number) > 0
         break
       end
     end
 
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
-    idx_range = start_index:(end_index-1)
+    # itr2: 1
+    # mesh.bndry_offsets:   [1; 3; 9]
+    # mesh.bndryfaces:
+    #   Boundary element, face = 7, 1
+    #   Boundary element, face = 8, 1
+    #   Boundary element, face = 1, 3
+    #   Boundary element, face = 1, 1
+    #   Boundary element, face = 2, 3
+    #   Boundary element, face = 4, 1
+    #   Boundary element, face = 6, 2
+    #   Boundary element, face = 8, 2
+
+    start_index = mesh.bndry_offsets[itr2]        # start_index = 1
+    end_index = mesh.bndry_offsets[itr2+1]        # end_index = 3
+    idx_range = start_index:(end_index-1)         # idx_range = 1:2
     bndry_facenums = sview(mesh.bndryfaces, idx_range)
 
-    nfaces = length(bndry_facenums)
+    # bndry_facenums:
+    #   Boundary element, face = 7, 1
+    #   Boundary element, face = 8, 1
 
-    integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
-    # println("===dJdu=== size(integrand): ", size(integrand))
-    # println("===dJdu=== nfaces: ", nfaces)
-    # println("===dJdu=== mesh.sbpface.numnodes: ", mesh.sbpface.numnodes)
+    nfaces = length(bndry_facenums)               # nfaces = 2
 
-    for i = 1:nfaces
-      bndry_i = bndry_facenums[i]
-      global_facenum = idx_range[i]
+    # for vector field version
+    # integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)     # size: (1, 2, 2)
 
-      for j = 1:mesh.sbpface.numnodes
+    # for scalar field version
+    integrand = zeros(Tsol, mesh.sbpface.numnodes, nfaces)     # size: (2, 2)
+
+    for i = 1:nfaces                # 1:2
+      bndry_i = bndry_facenums[i]   
+      global_facenum = idx_range[i]   # i of 1:2
+
+      for j = 1:mesh.sbpface.numnodes       # 1:2
         #q = sview(eqn.q_bndry, :, j, global_facenum)
         q = eqn.q_bndry[:, j, global_facenum]
-        # println("====== type of q: ", typeof(q))
-        # println("====== size of q: ", size(q))
-        # println("====== q: ", q)
         # convertToConservative(eqn.params, q, q2)
 
         # replaces calcBoundaryFunctionalIntegrand
         # integrand = zeros(Tsol, ndof, mesh.sbpface.numnodes, nfaces)    # dims?
         # integrand[1, j, i] = q.^2
         if isDeriv == false                 # calculates J = int(u^2)
-          integrand[1, j, i] = q[1]*q[1]
+          # integrand[1, j, i] = q[1]*q[1]
+          integrand[j, i] = q[1]*q[1]
         else                                # calculates dJdu = deriv(int(u^2)) = 2*u
-          integrand[1, j, i] = 2*q[1]
+          # integrand[1, j, i] = 2*q[1]
+          integrand[j, i] = 2*q[1]
         end
+
+        # 20170622: need to scale integrand!
+        # TODO: double and triple check jac_bndry index order here
+        # TODO: get dimensionality in a non BS way
+        dimensionality = 2
+        scaling_factor = 1/(mesh.jac_bndry[j, i]^*(1/dimensionality))
+        integrand[j, i] = integrand[j, i]*scaling_factor
+
 
         # TODO: how to get the analytical derivative outside of integral
 
@@ -132,16 +156,20 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       end   # end of loop: j = 1:mesh.sbpfacenumnodes
 
 
-      val_per_geom_edge = zeros(Tsol, 1)
-      # println("===dJdu=== size(val_per_geom_edge): ", size(val_per_geom_edge))
+      # val_per_geom_edge = zeros(Tsol, 1)
 
       # use integratefunctional, not boundaryintegrate: why?
-      integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
+
+      integrand2 = integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand)
+
+      # vector version
+      # integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
+
 #       boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
 
 #       println(" size of val_per_geom_edge: ", size(val_per_geom_edge))
 
-      local_functional_val[:] += val_per_geom_edge[:]
+      # local_functional_val[:] += val_per_geom_edge[:]
 
       # TODO:
       # serial: print out local_functional_val, compare with analytical
@@ -151,7 +179,10 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   end   # end of loop: itr = 1:length(functional_edges)
 
-  return local_functional_val
+  # println("      ~~~~~ objective function evalution. J = ", local_functional_val, " ~~~~~")
+
+  # return local_functional_val
+  return integrand2
 
 end
 

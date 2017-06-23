@@ -147,7 +147,7 @@ end
 #
 # Assumes you have eqn and mesh properly initialized.
 
-function print_qvec_coords(mesh, sbp, eqn, opts)
+function print_qvec_coords(mesh, sbp, eqn, opts; bndry=false)
 
   println("x-coord    y-coord    elnum    nodenum  dofnum   val")
 
@@ -167,7 +167,11 @@ function print_qvec_coords(mesh, sbp, eqn, opts)
 
     x_coord = coords_this_dof[1]
     y_coord = coords_this_dof[2]
-    val_this_dof = eqn.q_vec[dof_ix]
+    if bndry == false
+      val_this_dof = eqn.q_vec[dof_ix]
+    else
+      val_this_dof = eqn.q_bndry[dof_ix]
+    end
 
     @printf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
 

@@ -151,6 +151,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
     dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
     dJdu = dJdu_CS
+    dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_dummy, opts, isDeriv=true)
+
+    # println(" dJdu_CS: ", dJdu)
+    # println(" dJdu_CS - dJdu_analytical: ", dJdu)
+    writedlm("dJdu_IC_CS.dat", dJdu_CS)
+    writedlm("dJdu_IC_analytical.dat", dJdu_analytical)
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
     I = eye(length(eqn_dummy.q_vec))
@@ -195,6 +201,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     if neg_time == false
       println(" -------------- eqn.q_vec start of this CN iter. t = $t, i = $i --------------")
       print_qvec_coords(mesh, sbp, eqn, opts)
+      println(" -------------- J for this eqn.q_vec --------------")
+      J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+      # println(" -------------- eqn.q_bndry for this eqn.q_vec --------------")
+      # print_qvec_coords(mesh, sbp, eqn, opts; bndry=true)
+      J = J_arr[1]
+      println("  J: ", J)
       println(" -------------- Now using eqn.q_vec to compute eqn_nextstep.q_vec --------------")
     else
       println(" -------------- adj.q_vec start of this CN iter. t = $t, i = $i --------------")
@@ -235,6 +247,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
       dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
       dJdu = dJdu_CS
+      dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_dummy, opts, isDeriv=true)
+
+      filename = string("dJdu_",i,"_CS.dat")
+      writedlm(filename, dJdu_CS)
+      filename = string("dJdu_",i,"_analytical.dat")
+      writedlm(filename, dJdu_analytical)
 
       println("       checking direct method: size(dJdu): ", size(dJdu))
 
