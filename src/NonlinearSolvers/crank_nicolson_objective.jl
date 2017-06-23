@@ -63,7 +63,6 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
 end
 
-# function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
 function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts; isDeriv=false)
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -116,9 +115,6 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
     nfaces = length(bndry_facenums)               # nfaces = 2
 
-    # for vector field version
-    # integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)     # size: (1, 2, 2)
-
     # for scalar field version
     integrand = zeros(Tsol, mesh.sbpface.numnodes, nfaces)     # size: (2, 2)
 
@@ -127,18 +123,11 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       global_facenum = idx_range[i]   # i of 1:2
 
       for j = 1:mesh.sbpface.numnodes       # 1:2
-        #q = sview(eqn.q_bndry, :, j, global_facenum)
         q = eqn.q_bndry[:, j, global_facenum]
-        # convertToConservative(eqn.params, q, q2)
 
-        # replaces calcBoundaryFunctionalIntegrand
-        # integrand = zeros(Tsol, ndof, mesh.sbpface.numnodes, nfaces)    # dims?
-        # integrand[1, j, i] = q.^2
         if isDeriv == false                 # calculates J = int(u^2)
-          # integrand[1, j, i] = q[1]*q[1]
           integrand[j, i] = q[1]*q[1]
         else                                # calculates dJdu = deriv(int(u^2)) = 2*u
-          # integrand[1, j, i] = 2*q[1]
           integrand[j, i] = 2*q[1]
         end
 
@@ -156,32 +145,14 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       end   # end of loop: j = 1:mesh.sbpfacenumnodes
 
 
-      # val_per_geom_edge = zeros(Tsol, 1)
-
       # use integratefunctional, not boundaryintegrate: why?
 
       integrand2 = integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand)
-
-      # vector version
-      # integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
-
-#       boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, val_per_geom_edge)
-
-#       println(" size of val_per_geom_edge: ", size(val_per_geom_edge))
-
-      # local_functional_val[:] += val_per_geom_edge[:]
-
-      # TODO:
-      # serial: print out local_functional_val, compare with analytical
-      # parallel: mpi all reduce then do the same
 
     end   # end of loop: i = 1:nfaces
 
   end   # end of loop: itr = 1:length(functional_edges)
 
-  # println("      ~~~~~ objective function evalution. J = ", local_functional_val, " ~~~~~")
-
-  # return local_functional_val
   return integrand2
 
 end
