@@ -75,6 +75,20 @@ function test_adjoint()
     lift = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
 
+    context("Checking functional derivative w.r.t angle of attack") do
+      dLiftdAlpha = lift.dLiftdAlpha
+      dDragdAlpha = lift.dDragdAlpha
+      pert = complex(0, 1e-20)
+      eqn.params.aoa += pert
+      EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
+      dLiftdAlpha_c = imag(lift.lift_val)/imag(pert)
+      dDragdAlpha_c = imag(lift.drag_val)/imag(pert)
+      error_lift = norm(dLiftdAlpha - dLiftdAlpha_c)
+      error_drag = norm(dDragdAlpha - dDragdAlpha_c)
+      eqn.params.aoa -= pert
+    end # End context("Checking functional derivative w.r.t angle of attack")
+
+    EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     orig_Ju = deepcopy(lift.lift_val) # Copy the original objective value
     orig_q_vec = deepcopy(eqn.q_vec)
@@ -199,7 +213,7 @@ function test_adjoint()
     end # End context("checking derivative computation using adjoint vector")
 
   end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
-
+#=
   facts("--- Checking Derivative of Weak Residual w.r.t to mesh metrics") do
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
@@ -239,40 +253,7 @@ function test_adjoint()
     end
 
   end # End facts("--- Checking Derivative of Weak Residual w.r.t to mesh metrics")
-
-  #=
-  facts("--- Testing Functional Computation On a Boundary ---") do
-    include("./input_vals_vortex_adjoint_DG.jl")
-    arg_dict["smb_name"] = "src/mesh_files/gvortex1np2.smb"
-    arg_dict["run_type"] = 1
-    arg_dict["jac_type"] = 3
-    arg_dict["newton_globalize_euler"] = true
-    f = open("input_vals_vortex_adjoint_DG_parallel.jl", "w")
-    println(f, "arg_dict = ")
-    println(f, arg_dict)
-    close(f)
-
-    ARGS[1] = "input_vals_vortex_adjoint_DG_parallel.jl"
-    include("../src/solver/euler/startup.jl")
-
-    @fact mesh.isDG --> true
-    @fact opts["calc_functional"] --> true
-    @fact opts["functional_error"] --> true
-    @fact opts["functional_name1"] --> "drag"
-    @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
-    @fact opts["geom_edges_functional1"] --> [3]
-
-    fname = "./functional_error1.dat"
-    relative_error = readdlm(fname)
-
-    @fact relative_error[1] --> roughly(0.000177342284, atol = 1e-6)
-
-    rm("./functional_error1.dat") # Delete the file
-    rm("./input_vals_vortex_adjoint_DG_parallel.jl")
-
-
-  end  # End facts("--- Testing Functional Computation On a Boundary ---") do
-  =#
+=#
 end # End function test_adjoint
 
 add_func1!(EulerTests, test_adjoint, [TAG_ADJOINT])
