@@ -156,7 +156,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # println(" dJdu_CS: ", dJdu)
     # println(" dJdu_CS - dJdu_analytical: ", dJdu)
     writedlm("dJdu_IC_CS.dat", dJdu_CS)
-    writedlm("dJdu_IC_analytical.dat", dJdu_analytical)
+    writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
     I = eye(length(eqn_dummy.q_vec))
@@ -252,7 +252,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       filename = string("dJdu_",i,"_CS.dat")
       writedlm(filename, dJdu_CS)
       filename = string("dJdu_",i,"_analytical.dat")
-      writedlm(filename, dJdu_analytical)
+      writedlm(filename, reshape(dJdu_analytical, (mesh.numDof, 1)))
 
       println("       checking direct method: size(dJdu): ", size(dJdu))
 

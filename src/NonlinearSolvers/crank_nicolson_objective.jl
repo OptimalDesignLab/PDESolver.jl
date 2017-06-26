@@ -76,8 +76,11 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   functional_edges = 1
   nDof = 1
 
-  local_functional_val = zeros(Tsol, nDof)
-  integrand2 = zeros(Tsol, 1)
+  if isDeriv == false
+    J = zeros(Tsol, 1)
+  else
+    dJdu = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl)
+  end
 
   # mesh.bndry_geo_nums:
   #   [1]
@@ -118,42 +121,73 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     # for scalar field version
     integrand = zeros(Tsol, mesh.sbpface.numnodes, nfaces)     # size: (2, 2)
 
-    for i = 1:nfaces                # 1:2
-      bndry_i = bndry_facenums[i]   
-      global_facenum = idx_range[i]   # i of 1:2
+    if isDeriv == false                 # calculates J = int(u^2)
 
-      for j = 1:mesh.sbpface.numnodes       # 1:2
-        q = eqn.q_bndry[:, j, global_facenum]
+      for i = 1:nfaces                # 1:2
+        bndry_i = bndry_facenums[i]   
+        global_facenum = idx_range[i]   # i of 1:2
 
-        if isDeriv == false                 # calculates J = int(u^2)
+        for j = 1:mesh.sbpface.numnodes       # 1:2
+          q = eqn.q_bndry[:, j, global_facenum]
+
           integrand[j, i] = q[1]*q[1]
-        else                                # calculates dJdu = deriv(int(u^2)) = 2*u
-          integrand[j, i] = 2*q[1]
-        end
 
-        # 20170622: need to scale integrand!
-        # TODO: double and triple check jac_bndry index order here
-        # TODO: get dimensionality in a non BS way
-        dimensionality = 2
-        scaling_factor = 1/(mesh.jac_bndry[j, i]^*(1/dimensionality))
-        integrand[j, i] = integrand[j, i]*scaling_factor
+          # 20170622: need to scale integrand!
+          # TODO: double and triple check jac_bndry index order here
+          # TODO: get dimensionality in a non BS way
+          dimensionality = 2
+          scaling_factor = 1/(mesh.jac_bndry[j, i]^*(1/dimensionality))
+          integrand[j, i] = integrand[j, i]*scaling_factor
 
+        end   # end of loop: j = 1:mesh.sbpfacenumnodes
 
-        # TODO: how to get the analytical derivative outside of integral
+        # use integratefunctional, not boundaryintegrate: why?
 
+      end   # end of loop: i = 1:nfaces
+      J = integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand)
 
-      end   # end of loop: j = 1:mesh.sbpfacenumnodes
+    else                                # calculates dJdu = deriv(int(u^2)) = 2*u
 
+      # for u_ix = 1:length(eqn.q_vec)
+        for i = 1:nfaces                # 1:2
+          bndry_i = bndry_facenums[i]   
+          global_facenum = idx_range[i]   # i of 1:2
 
-      # use integratefunctional, not boundaryintegrate: why?
+          for j = 1:mesh.sbpface.numnodes       # 1:2
+            q = eqn.q_bndry[:, j, global_facenum]
 
-      integrand2 = integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand)
+            integrand[j, i] = 2*q[1]
 
-    end   # end of loop: i = 1:nfaces
+            # 20170622: need to scale integrand!
+            # TODO: double and triple check jac_bndry index order here
+            # TODO: get dimensionality in a non BS way
+            dimensionality = 2
+            scaling_factor = 1/(mesh.jac_bndry[j, i]^*(1/dimensionality))
+            integrand[j, i] = integrand[j, i]*scaling_factor
+
+            # println(" ``````````````````````` j: $j  i: $i  q: ", q[1], "  integrand[j,i]: ", integrand[j,i])
+
+          end   # end of loop: j = 1:mesh.sbpfacenumnodes
+
+          # dJdu[u_ix] = mesh.sbpface.wface[j] * integrand[j,i]
+          # use integratefunctional, not boundaryintegrate: why?
+        end   # end of loop: i = 1:nfaces
+      # end   # end of loop: u_ix = 1:length(eqn.q_vec)
+        
+        # dJdu = integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand)
+        # dJdu = integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand)
+
+        boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], integrand, dJdu)
+
+    end   # end of isDeriv check around loops
 
   end   # end of loop: itr = 1:length(functional_edges)
 
-  return integrand2
+  if isDeriv == false
+    return J
+  else
+    return dJdu
+  end
 
 end
 
