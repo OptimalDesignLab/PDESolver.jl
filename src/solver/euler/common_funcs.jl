@@ -184,7 +184,8 @@ end
 """->
 function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                         params::ParamType{2}, sol::AbstractArray{Tsol, 1})
-# calculate the free stream conditions using the fields of params
+
+  # calculate the free stream conditions using the fields of params
 
 
   rho = sol[1] = params.rho_free
@@ -198,11 +199,12 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   return nothing
 end
 
-function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1}, 
+function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                         params::ParamType{3}, sol::AbstractArray{Tsol, 1})
-# calculate the free stream conditions using the fields of params
 
-  
+  # calculate the free stream conditions using the fields of params
+
+
   rho = sol[1] = params.rho_free
   E = sol[5] = params.E_free
 
@@ -216,7 +218,7 @@ function calcFreeStream{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
 end
 
 @doc """
-### EulerEquationMod.calcFreeStream_dAlpha
+### EulerEquationMod.calcFreeStream_daoa
 
   This function calculates the free stream solution for an airfoil problem
   based on the angle of attack and Mach number in nondimensionalized variables.
@@ -242,9 +244,9 @@ end
 
 """->
 
-function calcFreeStream_dAlpha{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
+function calcFreeStream_daoa{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                         params::ParamType{2}, sol::AbstractArray{Tsol, 1})
-# calculate the free stream conditions using the fields of params
+  # calculate the free stream conditions using the fields of params
 
 
   rho = sol[1] = params.rho_free
@@ -254,6 +256,24 @@ function calcFreeStream_dAlpha{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
 
   sol[2] = -rho*Ma*sin(params.aoa)
   sol[3] = -rho*Ma*cos(params.aoa)
+
+  return nothing
+end
+
+function calcFreeStream_daoa{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
+                        params::ParamType{3}, sol::AbstractArray{Tsol, 1})
+
+  # calculate the free stream conditions using the fields of params
+
+
+  rho = sol[1] = params.rho_free
+  E = sol[5] = params.E_free
+
+  Ma = params.Ma
+
+  sol[2] = -rho*Ma*sin(params.aoa)
+  sol[3] = 0.0
+  sol[4] = -rho*Ma*cos(params.aoa)
 
   return nothing
 end

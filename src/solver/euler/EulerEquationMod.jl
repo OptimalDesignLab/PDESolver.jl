@@ -16,7 +16,7 @@ import ODLCommonTools.sview
 using MPI
 using Input  # input file processing
 using PETSc
-using FreeFormDeformation
+# using FreeFormDeformation
 using MeshMovement
 
 # the AbstractEquation type is declared in ODLCommonTools
@@ -205,7 +205,6 @@ include("entropy_flux.jl")
 include("eigensystem.jl")
 include("check_options.jl")
 include("startup_func.jl")  # function for invoking the solver
-include("./deriv/differentiateByMetrics.jl")
 include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")

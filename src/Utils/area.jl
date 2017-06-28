@@ -27,7 +27,7 @@ function calcVolumeContribution!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp},
   vol = zero(Tmsh)
   for f = 1:size(nrm,3)
     for i = 1:sbpface.numnodes
-      for di = 1:3
+      for di = 1:size(nrm,1)# 3
         vol += (1/3)*sbpface.wface[i]*xsbp[di,i,f]*nrm[di,i,f]
       end
     end
@@ -172,7 +172,7 @@ function calcVolumeContribution_rev!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp},
   @assert( size(xsbp,1) == size(xsbp,1) == size(nrm,1) == size(nrm_bar,1) )
   for f = 1:size(nrm,3)
     for i = 1:sbpface.numnodes
-      for di = 1:3
+      for di = 1:size(nrm,1) # 3
         # vol += (1/3)*sbpface.wface[i]*xsbp[di,i,f]*nrm[di,i,f]
         fac = vol_bar*(1/3)*sbpface.wface[i]
         xsbp_bar[di,i,f] += fac*nrm[di,i,f]

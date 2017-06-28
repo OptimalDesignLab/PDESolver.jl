@@ -1732,7 +1732,7 @@ end
 
 fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
 =#
-
+#=
 function calcMomentContribution!{Tsbp,Tmsh,Tsol,Tres
   }(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
     dforce::AbstractArray{Tsol,3}, xyz_about::AbstractArray{Tmsh,1})
@@ -1765,7 +1765,7 @@ function calMomentContribution!{Tmsh, Tres}(mesh::AbstractMesh{Tmsh}, eqn::Abstr
     face_range = start_idx:end_idx
     bndry_faces = sview(mesh.bndryfaces, face_range)
     coords = sview(mesh.coords_bndry, face_range)
-    
+
     # compute dforce
     nrm = computeNormal(mesh, sbp, bndry_faces)
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
@@ -1790,7 +1790,7 @@ function calcMomentContribution_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh, eqn:
     bndry_faces = sview(mesh.bndryfaces, face_range)
     coords = sview(mesh.coords_bndry, face_range)
     coords_bar = zeros(coords)
-    
+
     # compute dforce
     nrm = computeNormal(mesh, sbp, bndry_faces)
     nrm_bar = zeros(nrm)
@@ -1898,3 +1898,4 @@ function calcMomentContribution_rev!{Tsbp,Tmsh,Tsol,Tres
     end
   end
 end
+=#

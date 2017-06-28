@@ -8,12 +8,11 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
   myrank = mesh.myrank
 
   # TODO: Is this needed??
-  #=
-  time.t_send += @elapsed if opts["parallel_type"] == 1
-    println(eqn.params.f, "starting data exchange")
-    startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
-  end
-   =#
+  # time.t_send += @elapsed if opts["parallel_type"] == 1
+  #   println(eqn.params.f, "starting data exchange")
+  #   startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+  # end
+
 
   # !!!! MAKE SURE TO DO DATA EXCHANGE BEFORE !!!!
 
@@ -34,11 +33,11 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
    evalBoundaryIntegrals_revm(mesh, sbp, eqn)
   end
 
-#=
-  time.t_stab += @elapsed if opts["addStabilization"]
-    addStabilization(mesh, sbp, eqn, opts)
-  end
-=#
+
+  # time.t_stab += @elapsed if opts["addStabilization"]
+  #   addStabilization(mesh, sbp, eqn, opts)
+  # end
+
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
@@ -46,15 +45,15 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
-#=
-  time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
-=#
-#=
-  # apply inverse mass matrix to eqn.res, necessary for CN
-  if opts["use_Minv"]
-    applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
-  end
-=#
+
+  # time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
+
+
+  # # apply inverse mass matrix to eqn.res, necessary for CN
+  # if opts["use_Minv"]
+  #   applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
+  # end
+
 
   time.t_dataprep += @elapsed dataPrep_revm(mesh, sbp, eqn, opts)
 
@@ -265,8 +264,6 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
-
-
 function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts)
@@ -281,6 +278,121 @@ function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+function eval_∂R∂aoa(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+                  opts::Dict, t=0.0)
+
+  # Get the BC Functors
+  bndry_funcs_daoa = init_daoa(mesh, sbp, eqn, opts)
+
+  time = eqn.params.time
+  eqn.params.t = t  # record t to params
+  myrank = mesh.myrank
+
+  time.t_send += @elapsed if opts["parallel_type"] == 1
+    startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+  end
+
+  # Create arrays necessary for this function
+  ∂R∂aoa = zeros(eqn.res)   # Final value
+  bndryflux_daoa = zeros(eqn.bndryflux)
+
+  dataPrep_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
+
+  if opts["addBoundaryIntegrals"]
+    evalBoundaryIntegrals_daoa(mesh, sbp, eqn, bndryflux_daoa, ∂R∂aoa)
+  end
+
+  if mesh.isDG # TODO : create a vector
+    ∂R∂aoa_vec = reshape(eqn.res, mesh.numDof)
+  else
+    ∂R∂aoa_vec = zeros(eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, ∂R∂aoa, ∂R∂aoa_vec)
+  end
+
+  return ∂R∂aoa_vec
+end # End function evaldRdα
+
+function dataPrep_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
+
+  # Volume and face fluxes have no dependence on the angle of attack. Its only
+  # The boundary conditions (as of 27/6/2017) that has a dependence on angle of
+  # attack.
+  if mesh.isDG
+    fill!(eqn.q_bndry, 0.0)
+    fill!(eqn.q_face, 0.0)
+    fill!(eqn.flux_face, 0.0)
+    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+  end
+
+  getBCFluxes_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
+
+  return nothing
+end # End function dataPrep_dα
+
+function evalBoundaryIntegrals_daoa{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                               bndryflux_daoa, ∂R∂aoa)
+
+  if mesh.isDG
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryflux_daoa, ∂R∂aoa, SummationByParts.Subtract())
+  else
+    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryflux_daoa, ∂R∂aoa, SummationByParts.Subtract())
+  end
+
+
+  return nothing
+end  # end evalBoundaryIntegrals
+
+function getBCFluxes_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
+
+  for i=1:mesh.numBC
+    functor_i = bndry_funcs_daoa[i]
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1]
+    idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
+    bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
+    bndryflux_i = sview(bndryflux_daoa, :, :, start_index:(end_index - 1))
+
+    # call the function that calculates the flux for this boundary condition
+    # passing the functor into another function avoid type instability
+    calcBoundaryFlux_daoa(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
+  end
+
+  return nothing
+end
+
+function calcBoundaryFlux_daoa{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP, eqn::EulerData{Tsol},
+                          functor::BCType_daoa, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1},
+                          bndryflux::AbstractArray{Tres, 3})
+  # calculate the boundary flux for the boundary condition evaluated by the
+  # functor
+
+  nfaces = length(bndry_facenums)
+  q2 = zeros(Tsol, mesh.numDofPerNode)
+  nrm = zeros(Tmsh, size(sbp.facenormal,1))
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+    for j = 1:mesh.numNodesPerFace
+      # get components
+      q = sview(eqn.q_bndry, :, j, global_facenum)
+      # convert to conservative variables if needed
+      convertToConservative(eqn.params, q, q2)
+      aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
+      x = sview(mesh.coords_bndry, :, j, global_facenum)
+      dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+      nrm[:] = sbp.facenormal[:,bndry_i.face]
+      bndryflux_i = sview(bndryflux, :, j, i)
+      functor(q2, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)
+    end
+  end
+
+  return nothing
+end
+
+#=
 function evalLagrangianDerivative{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                                   sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                                   opts, objective::AbstractOptimizationData,
@@ -311,16 +423,10 @@ function evalLagrangianDerivative{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   # Checking interpolation and entities from PumiInterface
   interpolateMapping_rev(mesh)
   getVertCoords_rev(mesh, sbp)
-  
+
   # Pass it to MeshMovement subroutine
   # calcdXvdXsProd(mesh, dpsiTRdXs)
-  #=
-  f = open("dpsiTRdXs.dat", "w")
-  for i = 1:length(dpsiTRdXs)
-    println(f, dpsiTRdXs[i])
-  end
-  close(f)
-  =#
+
   # pass dψTRdXs into FFD
   evaldXdControlPointProduct(ffd_map, mesh, dpsiTRdXs)
 
@@ -386,6 +492,7 @@ function computeLagrangian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   return lagrangian
 end
+=#
 
 @doc """
 ###EulerEquationMod.updatePumiMesh

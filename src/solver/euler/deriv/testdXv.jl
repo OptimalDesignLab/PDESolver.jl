@@ -67,7 +67,7 @@ function bypassMeshMovement{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts, geom
   return vec(Xs_bar) # Return 1D form of Xs_bar
 end # End function bypassMeshMovement
 
-
+# For use with startup.jl
 Tmsh, Tsol, Tres = EulerEquationMod.getTypeParameters(mesh, eqn)
 objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
 geom_faces = objective.geom_faces_functional
@@ -82,30 +82,56 @@ bounding_box_offset = [0., 0., 0.5] # No offset in the X & Y direction
 ffd_map = initializeFFD(mesh, sbp, order, nControlPts, Tmsh, bounding_box_offset,
                        false, geom_faces)
 
-
+# When funcitonal is being used
 # Check reverse mode
 fill!(mesh.dxidx_bndry_bar, 0.0)
 fill!(mesh.dxidx_bar, 0.0)
 fill!(mesh.vert_coords_bar, 0.0)
 vert_coords_bar2 = dJdXv_rev(mesh, sbp, eqn, opts, objective)
 Xs_bar = bypassMeshMovement(mesh, sbp, eqn, opts, geom_faces, vert_coords_bar2)
-evaldXdControlPointProduct(ffd_map, mesh, Xs_bar)
+# evaldXdControlPointProduct(ffd_map, mesh, Xs_bar)
 
-dJdx = zeros(Tmsh, length(ffd_map.cp_xyz))
-dJdx_sum = zero(Tmsh)
-itr = 1
-for i = 1:size(ffd_map.work, 4)
-  for j = 1:size(ffd_map.work, 3)
-    for k = 1:size(ffd_map.work, 2)
-      for l = 1:3 # mesh.dim
-        dJdx[itr] = ffd_map.work[l,k,j,i]
-        itr += 1
-      end
-      dJdx_sum += ffd_map.work[2,k,j,i]
-    end
+# Compute dxs/db
+controlPtJac = zeros(length(Xs_bar), length(ffd_map.cp_xyz))
+nwall_faces, wallCoords = MeshMovement.getWallCoords(mesh, geom_faces)
+for i = 1:size(controlPtJac, 2)
+  ffd_map.cp_xyz[i] += 1e-6
+  evalSurface(ffd_map, mesh)
+  for j = 1:mesh.numEl
+    update_coords(mesh, j, mesh.vert_coords[:,:,j])
   end
+  commit_coords(mesh, sbp)
+  nwall_faces , newWallCoords = MeshMovement.getWallCoords(mesh, geom_faces)
+  controlPtJac[:,i] = (vec(newWallCoords) - vec(wallCoords))/1e-6
+
+
+  ffd_map.cp_xyz[i] -= 1e-6
 end
 
+println(controlPtJac)
+res_vec = transpose(controlPtJac)*Xs_bar
+pert = 1e-6
+ctr = 0
+for i = 1:length(ffd_map.cp_xyz)
+  ffd_map.cp_xyz[i] += pert
+  evalSurface(ffd_map, mesh)
+  for j = 1:mesh.numEl
+    update_coords(mesh, j, mesh.vert_coords[:,:,j])
+  end
+  commit_coords(mesh, sbp)
+  EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+  dJdx_fd_i = (objective.lift_val - orig_lift_val)/pert
+  error = norm(res_vec[i] - dJdx_fd_i, 2)
+  if error > 1e-5
+    println("res_vec[$i] = $(res_vec[i]), dJdx_fd_i = $(real(dJdx_fd_i)), error = $error")
+    ctr += 1
+  end
+  ffd_map.cp_xyz[i] -= pert
+end
+println("ctr = $ctr, length(ffd_map.cp_xyz) = $(length(ffd_map.cp_xyz))")
+
+
+#=
 # Check against finite difference
 pert = 1e-6
 
@@ -130,6 +156,89 @@ if error > 1e-5
   ctr += 1
 end
 println("ctr = $ctr")
+
+=#
+
+
+#=
+dJdXv_rev_arr = zeros(ffd_map.cp_xyz)
+for i = 1:size(ffd_map.work, 4)
+  for j = 1:size(ffd_map.work, 3)
+    for k = 1:size(ffd_map.work, 2)
+        dJdXv_rev_arr[1:3,k,j,i] = ffd_map.work[1:3, k,j,i]
+    end
+  end
+end
+U = randn(size(ffd_map.cp_xyz))
+contract_val = dot(vec(dJdXv_rev_arr), vec(U))
+=#
+#=
+ffd_map.cp_xyz[2,:,:,:] += 1e-6
+evalSurface(ffd_map, mesh)
+for j = 1:mesh.numEl
+  update_coords(mesh, j, mesh.vert_coords[:,:,j])
+end
+commit_coords(mesh, sbp)
+EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+println("orig_lift_val = $orig_lift_val")
+println("new lift val = $(objective.lift_val)")
+println("error = ", (objective.lift_val - orig_lift_val)/orig_lift_val)
+=#
+#=
+ffd_map.cp_xyz += U*1e-6
+evalSurface(ffd_map, mesh)
+for j = 1:mesh.numEl
+  update_coords(mesh, j, mesh.vert_coords[:,:,j])
+end
+commit_coords(mesh, sbp)
+EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+println("contract_val = $contract_val")
+println("new lift val = $(objective.lift_val)")
+dJdx = (objective.lift_val - orig_lift_val)/1e-6
+println("error = ", (dJdx - contract_val)/dJdx)
+=#
+
+#=
+vol = Utils.calcVolumeContribution!(mesh, eqn, [4])
+ffd_map.cp_xyz[2,:,:,:] += 1e-6
+evalSurface(ffd_map, mesh)
+for j = 1:mesh.numEl
+  update_coords(mesh, j, mesh.vert_coords[:,:,j])
+end
+commit_coords(mesh, sbp)
+new_vol = Utils.calcVolumeContribution!(mesh, eqn, [4])
+println("error = ", (new_vol - vol)/vol)
+println("vol = $vol, new_vol = $new_vol")
+=#
+
+
+#=
+# Check against finite difference
+pert = 1e-6
+
+for i = 1:size(ffd_map.work, 4)
+  for j = 1:size(ffd_map.work, 3)
+    for k = 1:size(ffd_map.work, 2)
+        ffd_map.cp_xyz[2,k,j,i] += pert
+    end
+  end
+end
+evalSurface(ffd_map, mesh)
+for j = 1:mesh.numEl
+  update_coords(mesh, j, mesh.vert_coords[:,:,j])
+end
+commit_coords(mesh, sbp)
+EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+dJdx_fd= (objective.lift_val - orig_lift_val)/pert
+error = norm(dJdx_fd - dJdx_sum, 2)
+ctr = 0
+if error > 1e-5
+  println("dJdx_fd = $(dJdx_fd), dJdx_sum = $(dJdx_sum), error = $error")
+  ctr += 1
+end
+println("ctr = $ctr")
+
+=#
 #=
 for i = 1:length(ffd_map.cp_xyz)
   ffd_map.cp_xyz[i] += pert

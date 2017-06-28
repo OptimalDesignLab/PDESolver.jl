@@ -723,6 +723,29 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
   return nothing
 end # End noPenetrationBC_revm 3D
 
+@doc """
+###EulerEquationMod.noPenetrationBC_daoa
+
+Forward mode partial derivative of the no penetration boundary condition w.r.t
+the angle of attack
+
+"""->
+
+type noPenetrationBC_daoa <: BCType_daoa
+end
+
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_daoa, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+
+  for i = 1:length(bndryflux)
+    bndryflux[i] = zero(Tres)
+  end
+
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod.unsteadyVortexBC <: BCTypes
@@ -898,7 +921,7 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1}
 end
 
 @doc """
-### EulerEquationMod.FreeStreamBC_dAlpha <: BCTypes
+### EulerEquationMod.FreeStreamBC_daoa <: BCType_daoa
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
@@ -917,17 +940,17 @@ end
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
-type FreeStreamBC_dAlpha <: BCType
+type FreeStreamBC_daoa <: BCType_daoa
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, q::AbstractArray{Tsol,1},
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_daoa, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = params.qg
 
-  calcFreeStream_dAlpha(x, params, qg)
+  calcFreeStream_daoa(x, params, qg)
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
   return nothing
@@ -1053,7 +1076,6 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "Rho1E2U3BC" => Rho1E2U3BC(),
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),
-"FreeStreamBC_dAlpha" => FreeStreamBC_dAlpha(),
 "allOnesBC" => allOnesBC(),
 "unsteadyVortexBC" => unsteadyVortexBC(),
 "ExpBC" => ExpBC(),
@@ -1102,3 +1124,20 @@ function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData
 
   return nothing
 end # End function getBCFunctors_revm
+
+global const BCDict_daoa = Dict{ASCIIString, BCType_daoa}(
+"FreeStreamBC" => FreeStreamBC_daoa(),
+"noPenetrationBC" => noPenetrationBC_daoa(),
+)
+function getBCFunctors_daoa(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+
+  bndry_funcs_daoa = Array(BCType_daoa, mesh.numBC)
+  for i = 1:mesh.numBC
+    key_i = string("BC", i, "_name")
+    val = opts[key_i]
+    println("BCDict_daoa[$val] = ", BCDict_daoa[val])
+    bndry_funcs_daoa[i] = BCDict_daoa[val]
+  end
+
+  return bndry_funcs_daoa
+end
