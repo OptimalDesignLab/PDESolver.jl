@@ -201,13 +201,13 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   if mesh.dim == 2 # 2D Flow
     functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
     functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
-    functionalData.dLiftdAlpha = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
-    functionalData.dDragdAlpha = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+    functionalData.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
+    functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
   else # 3D Flow
     functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
     functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[3]*sin(aoa)
-    functionalData.dLiftdAlpha = -bndry_force[1]*cos(aoa) - bndry_force[3]*sin(aoa)
-    functionalData.dDragdAlpha = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
+    functionalData.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[3]*sin(aoa)
+    functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
   end
 
   return nothing
@@ -593,8 +593,8 @@ global const FunctionalDict = Dict{ASCIIString, FunctionalType}(
 "drag" => drag(),
 "lift" => lift(),
 "targetCp" => targetCp(),
-"dLiftdAlpha" => dLiftdAlpha(),
-"dDragdAlpha" => dDragdAlpha(),
+"dLiftdaoa" => dLiftdaoa(),
+"dDragdaoa" => dDragdaoa(),
 "boundaryForce" => boundaryForce()
 )
 

@@ -32,8 +32,8 @@ function test_adjoint()
       @fact lift.bndry_force --> Complex{Float64}[0.0, 0.0]
       @fact lift.lift_val --> zero(Complex{Float64})
       @fact lift.drag_val --> zero(Complex{Float64})
-      @fact lift.dLiftdAlpha --> zero(Complex{Float64})
-      @fact lift.dDragdAlpha --> zero(Complex{Float64})
+      @fact lift.dLiftdaoa --> zero(Complex{Float64})
+      @fact lift.dDragdaoa --> zero(Complex{Float64})
 
     end # End context("Checking Functional Object Creation")
 
@@ -47,8 +47,8 @@ function test_adjoint()
       @fact drag.bndry_force --> Complex{Float64}[0.0, 0.0]
       @fact drag.lift_val --> zero(Complex{Float64})
       @fact drag.drag_val --> zero(Complex{Float64})
-      @fact drag.dLiftdAlpha --> zero(Complex{Float64})
-      @fact drag.dDragdAlpha --> zero(Complex{Float64})
+      @fact drag.dLiftdaoa --> zero(Complex{Float64})
+      @fact drag.dDragdaoa --> zero(Complex{Float64})
 
     end # context("Checking Objective Functional Object Creation")
 
@@ -76,15 +76,15 @@ function test_adjoint()
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
 
     context("Checking functional derivative w.r.t angle of attack") do
-      dLiftdAlpha = lift.dLiftdAlpha
-      dDragdAlpha = lift.dDragdAlpha
+      dLiftdaoa = lift.dLiftdaoa
+      dDragdaoa = lift.dDragdaoa
       pert = complex(0, 1e-20)
       eqn.params.aoa += pert
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
-      dLiftdAlpha_c = imag(lift.lift_val)/imag(pert)
-      dDragdAlpha_c = imag(lift.drag_val)/imag(pert)
-      error_lift = norm(dLiftdAlpha - dLiftdAlpha_c)
-      error_drag = norm(dDragdAlpha - dDragdAlpha_c)
+      dLiftdaoa_c = imag(lift.lift_val)/imag(pert)
+      dDragdaoa_c = imag(lift.drag_val)/imag(pert)
+      error_lift = norm(dLiftdaoa - dLiftdaoa_c)
+      error_drag = norm(dDragdaoa - dDragdaoa_c)
       eqn.params.aoa -= pert
     end # End context("Checking functional derivative w.r.t angle of attack")
 
@@ -164,7 +164,7 @@ function test_adjoint()
       @assert opts["aoa"] == 2.0*pi/180
 
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
-      dJdAlpha = lift.dLiftdAlpha
+      dJdaoa = lift.dLiftdaoa
 
       adjoint_vec = zeros(Complex128, mesh.numDof)
       EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, lift, adjoint_vec)
@@ -173,7 +173,7 @@ function test_adjoint()
       @assert opts["epsilon"] == 1e-20
       eqn.params.aoa += opts["epsilon"]*im
       EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, lift)
-      dJdAlpha_comp = imag(lift.lift_val)/opts["epsilon"]
+      dJdaoa_comp = imag(lift.lift_val)/opts["epsilon"]
 
       # Get the partial derivative of the residual vector w.r.t aoa
       eqn.params.aoa = opts["aoa"]
@@ -181,9 +181,9 @@ function test_adjoint()
       fill!(eqn.res_vec, 0.0)
       fill!(eqn.res, 0.0)
       res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
-      dRdAlpha = imag(eqn.res_vec)/opts["epsilon"]
+      dRdaoa = imag(eqn.res_vec)/opts["epsilon"]
 
-      dLdx_adjoint = dJdAlpha + dot(adjoint_vec, dRdAlpha)
+      dLdx_adjoint = dJdaoa + dot(adjoint_vec, dRdaoa)
       eqn.params.aoa = opts["aoa"]
 
       #----- Finite Differencing -----#
