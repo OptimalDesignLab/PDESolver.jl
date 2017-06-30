@@ -230,16 +230,6 @@ function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-function init_daoa{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
-
-  # Get functors for the boundary conditions
-  bndry_funcs_daoa = getBCFunctors_daoa(mesh, sbp, eqn, opts)
-  getBCFunctors_daoa(pmesh, sbp, eqn, opts)
-
-  return bndry_funcs_daoa
-end
-
 function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
                                mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP,

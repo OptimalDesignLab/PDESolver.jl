@@ -724,30 +724,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
 end # End noPenetrationBC_revm 3D
 
 @doc """
-###EulerEquationMod.noPenetrationBC_daoa
-
-Forward mode partial derivative of the no penetration boundary condition w.r.t
-the angle of attack
-
-"""->
-
-type noPenetrationBC_daoa <: BCType_daoa
-end
-
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_daoa, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
-
-  for i = 1:length(bndryflux)
-    bndryflux[i] = zero(Tres)
-  end
-
-  return nothing
-end
-
-
-@doc """
 ### EulerEquationMod.unsteadyVortexBC <: BCTypes
 
   This type and the associated call method define a functor to calculate
@@ -921,48 +897,6 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1}
 end
 
 @doc """
-### EulerEquationMod.FreeStreamBC_daoa <: BCType_daoa
-
-  This functor uses the Roe solver to calculate the flux for a boundary
-  state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
-
-  This is a low level functor
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
-"""->
-type FreeStreamBC_daoa <: BCType_daoa
-end
-
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_daoa, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
-
-  qg = params.qg
-  pert = 1e-20im
-  params.aoa += pert
-  calcFreeStream(x, params, qg)
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  for i = 1:length(bndryflux)
-    bndryflux[i] = imag(bndryflux[i])/imag(pert)
-  end
-  params.aoa -= pert
-
-  return nothing
-end
-
-
-@doc """
 ### EulerEquationMod.allOnesBC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
@@ -1130,19 +1064,3 @@ function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData
   return nothing
 end # End function getBCFunctors_revm
 
-global const BCDict_daoa = Dict{ASCIIString, BCType_daoa}(
-"FreeStreamBC" => FreeStreamBC_daoa(),
-"noPenetrationBC" => noPenetrationBC_daoa(),
-)
-function getBCFunctors_daoa(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
-
-  bndry_funcs_daoa = Array(BCType_daoa, mesh.numBC)
-  for i = 1:mesh.numBC
-    key_i = string("BC", i, "_name")
-    val = opts[key_i]
-    println("BCDict_daoa[$val] = ", BCDict_daoa[val])
-    bndry_funcs_daoa[i] = BCDict_daoa[val]
-  end
-
-  return bndry_funcs_daoa
-end
