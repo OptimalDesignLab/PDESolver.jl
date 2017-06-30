@@ -158,60 +158,32 @@ function test_adjoint()
 
     end # End context("--- Checking partial dJ/dq Calculation")
 
-
-    context("checking derivative computation using adjoint vector") do
-
-      @assert opts["aoa"] == 2.0*pi/180
+    context("Checking complete derivative of a functional using adjoint vector") do
 
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
-      dJdaoa = lift.dLiftdaoa
-
+      lift_val = lift.lift_val
+      
       adjoint_vec = zeros(Complex128, mesh.numDof)
       EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, lift, adjoint_vec)
 
-      # Check dJdALpha against the complex step method
-      @assert opts["epsilon"] == 1e-20
-      eqn.params.aoa += opts["epsilon"]*im
-      EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, lift)
-      dJdaoa_comp = imag(lift.lift_val)/opts["epsilon"]
-
-      # Get the partial derivative of the residual vector w.r.t aoa
-      eqn.params.aoa = opts["aoa"]
-      eqn.params.aoa += opts["epsilon"]*im # Imaginary perturbation
-      fill!(eqn.res_vec, 0.0)
-      fill!(eqn.res, 0.0)
-      res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
-      dRdaoa = imag(eqn.res_vec)/opts["epsilon"]
-
-      dLdx_adjoint = dJdaoa + dot(adjoint_vec, dRdaoa)
-      eqn.params.aoa = opts["aoa"]
-
-      #----- Finite Differencing -----#
-      pert = 1e-6 # FD perturbation
-      eqn.params.aoa = opts["aoa"] + pert
-      fill!(eqn.q, 0.0)
-      fill!(eqn.q_vec, 0.0)
-      fill!(eqn.res, 0.0)
-      fill!(eqn.res_vec, 0.0)
-
-      # Rerun with the perturbed value
-      ICfunc_name = opts["IC_name"]
-      ICfunc = EulerEquationMod.ICDict[ICfunc_name]
-      ICfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-      pmesh = mesh
-      EulerEquationMod.init(mesh, sbp, eqn, opts, pmesh)
-      call_nlsolver(mesh, sbp, eqn, opts, pmesh)
-
-      # lift.lift_val = 0.0
+      # Get the complete derivative of the function
+      dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, lift, "lift", adjoint_vec)
+      
+      # Check complete derivatives w.r.t alpha using finite difference
+      pert = 1e-6
+      eqn.params.aoa += pert
+      EulerEquationMod.solve_euler(mesh, sbp, eqn, opts, mesh)
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
-      dLdx = (real(lift.lift_val) - orig_Ju)/pert
+      lift_pert = lift.lift_val
+      eqn.params.aoa -= pert
 
-      errfd_norm = norm(dLdx - dLdx_adjoint,2)
-      println("errfd_norm = $errfd_norm")
-      @fact errfd_norm --> roughly(0.0, atol = 1e-6)
+      dJdaoa_fd = (lift_pert - lift_val)/pert
+      err_val = norm(dJdaoa - dJdaoa_fd, 2)
 
-    end # End context("checking derivative computation using adjoint vector")
+      @fact err_val --> roughly(0.0, atol = 1e-6)
 
+    end # End context("Checking complete derivative of a functional using adjoint vector")
+  
   end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
 #=
   facts("--- Checking Derivative of Weak Residual w.r.t to mesh metrics") do

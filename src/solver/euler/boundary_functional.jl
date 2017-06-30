@@ -107,6 +107,45 @@ end
 
 
 @doc """
+### EulerEquationMod.eval_dJdaoa
+
+Compute the complete derivative of a functional w.r.t angle of attack
+
+**Inputs**
+
+* `mesh`
+* `sbp`
+* `eqn`
+
+"""-> 
+
+function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                                 eqn::EulerData{Tsol}, opts, 
+                                 functionalData::AbstractOptimizationData,
+                                 functionalName::ASCIIString,
+                                 adjoint_vec::AbstractArray{Tsol,1})
+
+  if functionalName == "lift"
+    ∂J∂aoa = functionalData.dLiftdaoa
+  elseif functionalName == "drag"
+    ∂J∂aoa = functionalData.dDragdaoa
+  end
+
+  pert = 1e-20im
+  eqn.params.aoa += pert # Imaginary perturbation
+  fill!(eqn.res_vec, 0.0)
+  fill!(eqn.res, 0.0)
+  res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
+  ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
+  eqn.params.aoa -= pert # Remove perturbation
+
+  dJdaoa = ∂J∂aoa + dot(adjoint_vec, ∂R∂aoa)
+
+  return dJdaoa
+end
+
+
+@doc """
 ### EulerEquationMod.calcBndryFunctional
 
 This function calculates a functional on a geometric boundary of a the

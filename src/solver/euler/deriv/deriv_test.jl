@@ -19,24 +19,25 @@ include("../startup.jl")
 objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
 EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
+lift = objective.lift_val
 println("lift = ", objective.lift_val)
 
-∂lift∂aoa = objective.dLiftdAlpha
-lift = objective.lift_val
+coords = rand(mesh.dim)
+∂q∂aoa = zeros(Complex128, 4)
+EulerEquationMod.calcFreeStream_daoa(coords, eqn.params, ∂q∂aoa)
+pert = 1e-20im
+eqn.params.aoa += pert
+∂q∂aoa_complex = zeros(Complex128, 4)
+EulerEquationMod.calcFreeStream(coords, eqn.params, ∂q∂aoa_complex)
+∂q∂aoa_complex = imag(∂q∂aoa_complex)/imag(pert)
+eqn.params.aoa -= pert
+println("error ∂q∂aoa = $(abs(∂q∂aoa_complex - ∂q∂aoa))")
+
 
 adjoint_vec = zeros(Complex128, mesh.numDof)
 EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, objective, "lift", adjoint_vec)
 
-∂R∂aoa = EulerEquationMod.eval_∂R∂aoa(mesh, sbp, eqn, opts)
-ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
-dJdaoa = ∂lift∂aoa + ψT∂R∂aoa
-
-println("imag adjoint_vec = ", norm(imag(adjoint_vec)))
-println("imag ∂R∂aoa = ", norm(imag(∂R∂aoa)))
-# println("∂lift∂aoa = $∂lift∂aoa")
-# println("ψT∂R∂aoa = $ψT∂R∂aoa")
-
-#=
 # Check complete derivatives w.r.t alpha using finite difference
 pert = 1e-6
 eqn.params.aoa += pert
@@ -51,4 +52,5 @@ dLiftdaoa_fd = (lift_pert - lift)/pert
 println("dJdaoa = $dJdaoa, dLiftdaoa_fd = $dLiftdaoa_fd")
 deriv_err = norm(dLiftdaoa_fd - dJdaoa, 2)
 println("Error = $deriv_err")
-=#
+
+

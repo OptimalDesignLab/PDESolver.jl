@@ -949,9 +949,14 @@ function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_daoa, q::AbstractArray{Tsol,1}
               bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
 
   qg = params.qg
-
-  calcFreeStream_daoa(x, params, qg)
+  pert = 1e-20im
+  params.aoa += pert
+  calcFreeStream(x, params, qg)
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  for i = 1:length(bndryflux)
+    bndryflux[i] = imag(bndryflux[i])/imag(pert)
+  end
+  params.aoa -= pert
 
   return nothing
 end

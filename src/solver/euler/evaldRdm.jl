@@ -278,6 +278,8 @@ function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+#------------------------------------------------------------------------------
+
 function eval_∂R∂aoa(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                   opts::Dict, t=0.0)
 
@@ -298,12 +300,12 @@ function eval_∂R∂aoa(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   dataPrep_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
 
-  if opts["addBoundaryIntegrals"]
+  # if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals_daoa(mesh, sbp, eqn, bndryflux_daoa, ∂R∂aoa)
-  end
+  # end
 
-  if mesh.isDG # TODO : create a vector
-    ∂R∂aoa_vec = reshape(eqn.res, mesh.numDof)
+  if mesh.isDG # Make it into a vector for return
+    ∂R∂aoa_vec = reshape(∂R∂aoa, mesh.numDof)
   else
     ∂R∂aoa_vec = zeros(eqn.res_vec)
     assembleSolution(mesh, sbp, eqn, opts, ∂R∂aoa, ∂R∂aoa_vec)
@@ -317,14 +319,27 @@ function dataPrep_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
   # Volume and face fluxes have no dependence on the angle of attack. Its only
   # The boundary conditions (as of 27/6/2017) that has a dependence on angle of
   # attack.
+  
+  # zero out res
+  fill!(eqn.res, 0.0)
+  fill!(eqn.res_edge, 0.0)
+  
   if mesh.isDG
     fill!(eqn.q_bndry, 0.0)
     fill!(eqn.q_face, 0.0)
     fill!(eqn.flux_face, 0.0)
     interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    
+    # if opts["face_integral_type"] == 1
+    #   interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+    #   calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+    # end
   end
 
+  
+
   getBCFluxes_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
+  # println("\nimag bndryflux_daoa = ", norm(imag(vec(bndryflux_daoa))), '\n')
 
   return nothing
 end # End function dataPrep_dα
@@ -345,7 +360,7 @@ end  # end evalBoundaryIntegrals
 
 function getBCFluxes_daoa(mesh, sbp, eqn, opts, bndry_funcs_daoa, bndryflux_daoa)
 
-  for i=1:mesh.numBC
+  for i=1# :mesh.numBC
     functor_i = bndry_funcs_daoa[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
@@ -391,108 +406,6 @@ function calcBoundaryFlux_daoa{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
-
-#=
-function evalLagrangianDerivative{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                                  opts, objective::AbstractOptimizationData,
-                                  dv::AbstractArray{Tmsh,1},
-                                  adjoint_vec::AbstractArray{Tsol,1},
-                                  dpsiTRdXs::AbstractArray{Tmsh, 1},
-                                  ffd_map::AbstractMappingType)
-
-
-  # Get the partial derivative of the functional w.r.t aoa
-  dJdAlpha = objective.dLiftdAlpha
-
-  # Get the partial derivative of the residual vector w.r.t aoa
-  eqn.params.aoa = opts["aoa"]
-  eqn.params.aoa += opts["epsilon"]*im # Imaginary perturbation
-  fill!(eqn.res_vec, 0.0)
-  fill!(eqn.res, 0.0)
-  res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
-  dRdAlpha = imag(eqn.res_vec)/opts["epsilon"]
-  eqn.params.aoa -= opts["epsilon"]*im
-
-  # Get derivative of ψTR w.r.t design variable control points
-  EulerEquationMod.init_revm(mesh, sbp, eqn, opts) # initialize reversemode functors
-  # EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, adjoint_vec)
-  # Add contribution of boundary functional to dxidx_bndry_bar
-  EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, objective, "lift")
-
-  # Checking interpolation and entities from PumiInterface
-  interpolateMapping_rev(mesh)
-  getVertCoords_rev(mesh, sbp)
-
-  # Pass it to MeshMovement subroutine
-  # calcdXvdXsProd(mesh, dpsiTRdXs)
-
-  # pass dψTRdXs into FFD
-  evaldXdControlPointProduct(ffd_map, mesh, dpsiTRdXs)
-
-  # Create partial lagrangian derivative ∂L/∂x
-  dLdx = zeros(length(dv))
-  dLdx[1] = dJdAlpha + dot(adjoint_vec, dRdAlpha)
-  itr = 2
-  for i = 1:size(ffd_map.work, 4)
-    for j = 1:size(ffd_map.work, 3)
-      for k = 1:size(ffd_map.work, 2)
-        for l = 1:3 # mesh.dim
-          dLdx[itr] = ffd_map.work[l,k,j,i]
-          itr += 1
-        end
-      end
-    end
-  end
-
-  return dLdx
-end # End function evalLagrangianDerivative
-
-@doc """
-###EulerEquationMod.calcLagrangian
-
-given design variables that are the control points and angle of attack, compute
-the lagrangian
-
-"""->
-function computeLagrangian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                                  opts, objective::AbstractOptimizationData,
-                                  dv::AbstractArray{Tmsh, 1},
-                                  adjoint_vec::AbstractArray{Tsol,1},
-                                  ffd_map::AbstractMappingType, warp_param::warpParam)
-
-  eqn.params.aoa = dv[1]
-  for i = 1:length(ffd_map.cp_xyz)
-    ffd_map.cp_xyz[i] = dv[i+1]
-  end
-
-  # Using the above control points, get the new surface points
-  evalSurface(ffd_map, mesh)
-
-  # Use the updated surface nodes to compute the volume nodes
-  volNodes = MeshMovement.getVolNodes(mesh)
-  nwall_faces, wallCoords = MeshMovement.getWallCoords(mesh, ffd_map.geom_faces)
-  warpMesh(warp_param, volNodes, wallCoords)
-  updatePumiMesh(mesh, sbp, volNodes)
-
-  # Solve the physics for the updated problem
-  # TODO : figure out pmesh
-  pmesh = mesh # For now
-  solve_euler(mesh, sbp, eqn, opts, pmesh)
-
-  # Evaluate the functional
-  evalFunctional(mesh, sbp, eqn, opts, objective)
-
-  # Evaluate the adjoint
-  # calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
-
-  # Finally compute the lagrangian
-  lagrangian = objective.lift_val #+ dot(ad)
-
-  return lagrangian
-end
-=#
 
 @doc """
 ###EulerEquationMod.updatePumiMesh

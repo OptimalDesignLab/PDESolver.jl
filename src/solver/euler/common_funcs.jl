@@ -249,9 +249,7 @@ function calcFreeStream_daoa{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   # calculate the free stream conditions using the fields of params
 
 
-  rho = sol[1] = params.rho_free
-  E = sol[4] = params.E_free
-
+  rho = params.rho_free
   Ma = params.Ma
 
   sol[2] = -rho*Ma*sin(params.aoa)
@@ -266,9 +264,7 @@ function calcFreeStream_daoa{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   # calculate the free stream conditions using the fields of params
 
 
-  rho = sol[1] = params.rho_free
-  E = sol[5] = params.E_free
-
+  rho = params.rho_free
   Ma = params.Ma
 
   sol[2] = -rho*Ma*sin(params.aoa)

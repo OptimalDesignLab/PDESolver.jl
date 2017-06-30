@@ -127,3 +127,7 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+
+#------------------------------------------------------------------------------
+
+# Derivatives w.r.t anlge of attack
