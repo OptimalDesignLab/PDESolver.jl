@@ -183,8 +183,8 @@ function applyEuler(mesh, sbp, eqn, opts, newton_data::NewtonData,
   idx = PetscInt[0]
   idy = PetscInt[0]
   for i=1:mesh.numDof
-    idx[1] = i-1
-    idy[1] = i-1
+    idx[1] = i-1 + mesh.dof_offset
+    idy[1] = i-1 + mesh.dof_offset
     val[1] = -eqn.M[i]/newton_data.tau_vec[i]
     PetscMatSetValues(jac, idx, idy, val, PETSC_ADD_VALUES)
   end
