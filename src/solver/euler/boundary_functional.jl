@@ -1,4 +1,4 @@
-export evalFunctional, calcBndryFunctional, getFunctionalName
+export evalFunctional, calcBndryFunctional, eval_dJdaoa
 
 @doc """
 ### EulerEquationMod.evalFunctional
@@ -113,14 +113,25 @@ Compute the complete derivative of a functional w.r.t angle of attack
 
 **Inputs**
 
-* `mesh`
-* `sbp`
-* `eqn`
+* `mesh` : Abstract mesh object
+* `sbp`  : Summation-By-Parts operator
+* `eqn`  : Euler equation object
+* `opts` : Options dictionary
+* `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+                     with the functional being computed and holds all the
+                     relevant data.
+* `functionalName` : Name of the functional being evaluated
+* `adjoint_vec` : Local portion of the adjoint vector owned by an MPI rank
 
-"""-> 
+**Output**
+
+* `dJdaoa` : Complete derivative of the functional w.r.t angle of attack
+             This is a scalar value that is the same across all MPI ranks
+
+"""->
 
 function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-                                 eqn::EulerData{Tsol}, opts, 
+                                 eqn::EulerData{Tsol}, opts,
                                  functionalData::AbstractOptimizationData,
                                  functionalName::ASCIIString,
                                  adjoint_vec::AbstractArray{Tsol,1})
@@ -139,7 +150,34 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
   eqn.params.aoa -= pert # Remove perturbation
 
-  dJdaoa = ∂J∂aoa + dot(adjoint_vec, ∂R∂aoa)
+  # # outname = string("partial_dRdaoa_", mesh.myrank,".dat")
+  # outname = "partial_dRdaoa_serial.dat"
+  # f = open(outname, "w")
+  # for i = 1:length(∂R∂aoa)
+  #   println(f, real(∂R∂aoa[i]))
+  # end
+  # close(f)
+
+  saveSolutionToMesh(mesh, ∂R∂aoa)
+  # vtuname = string("partial_dRdaoa_serial")
+  vtuname = string("partial_dRdaoa_parallel")
+  writeVisFiles(mesh, vtuname)
+
+  # Get the contribution from all MPI ranks
+  local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
+  for i = 1:MPI.Comm_size(eqn.comm)
+    if mesh.myrank == i-1
+      println("Rank = $(mesh.myrank), local_ψT∂R∂aoa = $(local_ψT∂R∂aoa)")
+      println("Rank = $(mesh.myrank), norm(∂R∂aoa) = $(norm(∂R∂aoa))")
+      println("Rank = $(mesh.myrank), norm(∂J∂aoa) = $(norm(∂J∂aoa))")
+      println("Rank = $(mesh.myrank), norm(adjoint_vec) = $(norm(adjoint_vec))")
+    end
+    MPI.Barrier(eqn.comm)
+  end
+
+  ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
+
+  dJdaoa = ∂J∂aoa + ψT∂R∂aoa
 
   return dJdaoa
 end
