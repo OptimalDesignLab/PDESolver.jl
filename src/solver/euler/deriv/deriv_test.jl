@@ -47,14 +47,6 @@ EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
 
 dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, objective, "lift", adjoint_vec)
 
-for i = 1:MPI.Comm_size(eqn.comm)
-  if mesh.myrank == i-1
-    println("Rank = $(mesh.myrank), dJdaoa = $(dJdaoa)")
-  end
-  MPI.Barrier(eqn.comm)
-end
-
-#=
 # Check complete derivatives w.r.t alpha using finite difference
 pert = 1e-6
 eqn.params.aoa += pert
@@ -69,4 +61,3 @@ dLiftdaoa_fd = (lift_pert - lift)/pert
 println("dJdaoa = $dJdaoa, dLiftdaoa_fd = $dLiftdaoa_fd")
 deriv_err = norm(dLiftdaoa_fd - dJdaoa, 2)
 println("Error = $deriv_err")
-=#

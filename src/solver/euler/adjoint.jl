@@ -78,7 +78,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
     PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
     PetscMatAssemblyEnd(res_jac)
-    res_jac = MatTranspose(res_jac)
+    res_jac = MatTranspose(res_jac, inplace=true)
 
     b = PetscVec(eqn.comm)
     PetscVecSetType(b, VECMPI)
@@ -94,17 +94,9 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     # adjoint_vec = -adjoint_vec
   end # End how to solve for adjoint_vec
 
-  # outname = string("adjoint_vec_", mesh.myrank,".dat")
-  # # outname = "adjoint_vec_serial.dat"
-  # f = open(outname, "w")
-  # for i = 1:length(adjoint_vec)
-  #   println(f, real(adjoint_vec[i]))
-  # end
-  # close(f)
 
   saveSolutionToMesh(mesh, adjoint_vec)
-  # fname = "adjoint_field_serial"
-  fname = string("adjoint_field_parallel")
+  fname = "adjoint_field"
   writeVisFiles(mesh, fname)
 
   return nothing

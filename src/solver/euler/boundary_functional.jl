@@ -150,31 +150,8 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
   eqn.params.aoa -= pert # Remove perturbation
 
-  # # outname = string("partial_dRdaoa_", mesh.myrank,".dat")
-  # outname = "partial_dRdaoa_serial.dat"
-  # f = open(outname, "w")
-  # for i = 1:length(∂R∂aoa)
-  #   println(f, real(∂R∂aoa[i]))
-  # end
-  # close(f)
-
-  saveSolutionToMesh(mesh, ∂R∂aoa)
-  # vtuname = string("partial_dRdaoa_serial")
-  vtuname = string("partial_dRdaoa_parallel")
-  writeVisFiles(mesh, vtuname)
-
   # Get the contribution from all MPI ranks
   local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
-  for i = 1:MPI.Comm_size(eqn.comm)
-    if mesh.myrank == i-1
-      println("Rank = $(mesh.myrank), local_ψT∂R∂aoa = $(local_ψT∂R∂aoa)")
-      println("Rank = $(mesh.myrank), norm(∂R∂aoa) = $(norm(∂R∂aoa))")
-      println("Rank = $(mesh.myrank), norm(∂J∂aoa) = $(norm(∂J∂aoa))")
-      println("Rank = $(mesh.myrank), norm(adjoint_vec) = $(norm(adjoint_vec))")
-    end
-    MPI.Barrier(eqn.comm)
-  end
-
   ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
 
   dJdaoa = ∂J∂aoa + ψT∂R∂aoa
