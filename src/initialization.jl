@@ -288,13 +288,40 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
       if opts["adjoint_straight"] 
 
+        println(" GLOBAL: forming WWW, ZZZ")
+        # dof_global = mesh.numDof*t_steps
+        # blksz = 3
+        blksz = mesh.numDof
+        t_steps = 4
+        dof_global = blksz*t_steps
+        WWW = rand(dof_global)
+        ZZZ = rand(dof_global)
+        println(" GLOBAL: forming dRdu")
+        dRdu_global_fwd = zeros(dof_global, dof_global)
+        dRdu_global_rev = zeros(dof_global, dof_global)
+        println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
+        writedlm("global_www.dat", WWW)
+        writedlm("global_zzz.dat", ZZZ)
+        writedlm("global_dRdu_fwd_initial.dat", dRdu_global_fwd)
+        writedlm("global_dRdu_rev_initial.dat", dRdu_global_rev)
+
         # forward sweep
+        # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
+                                 # mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
-                                 mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
+                                 mesh, sbp, eqn, opts, 
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
+                                 opts["res_abstol"], 
+                                 store_u_to_disk=true)
 
         # reverse sweep
+        # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
+                                 # mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
-                                 mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
+                                 mesh, sbp, eqn, opts, 
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
+                                 opts["res_abstol"], 
+                                 neg_time=true)
 
       else
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 

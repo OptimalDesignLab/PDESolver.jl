@@ -54,11 +54,20 @@ crank_nicolson
 
    TODO: fully document eqn/eqn_nextstep
 """
+# function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
+                        # mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                        # opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
 function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
-                        opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
+                        opts, 
+                        WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
+                        res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
                         # NEWNEW: neg_time, obj_fn, store_u_to_disk
   #----------------------------------------------------------------------
+  println(" GLOBAL, CN start: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
+  println(" GLOBAL, CN start: size(dRdu_global_rev): ", size(dRdu_global_rev))
+  println(" GLOBAL, CN start: size(WWW): ", size(WWW))
+  println(" GLOBAL, CN start: size(ZZZ): ", size(ZZZ))
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -96,6 +105,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   else    
     t = time_of_final_step
   end
+
+  # NOTE: WWW, ZZZ, dRdu_global_fwd & rev formed in initialization.jl
 
   if neg_time == false
     # make a copy of the eqn object for storage of t_(n+1) information
@@ -146,6 +157,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
     dRdu_n = jac      # TODO: check transpose
+    println(" size of dRdu: ", size(dRdu_n))
     #----------------
 
     dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
@@ -292,6 +304,57 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       else
         @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+
+        ### dRdu check: fwd
+        println(" GLOBAL: forming global dRdu, i = $i")
+        # first, let's try forming the forward global dRdu without the state perturbed by WWW.
+        blksz = mesh.numDof
+        # blksz = 3
+        row_ix_start = (i-2)*blksz + 1
+        row_ix_end = (i-2)*blksz + blksz
+        col_ix_start = (i-2)*blksz + 1
+        col_ix_end = (i-2)*blksz + blksz
+        println(" GLOBAL: diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+
+        II = eye(blksz)
+
+        # TODO: check eqn or eqn_nextstep
+        newton_data_discard, jac_for_dRdu_global, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts, physics_func)
+        assert(opts["jac_method"] == 2)
+        epsilon = opts["epsilon"]
+        pert = complex(0, epsilon)
+        calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_nextstep, opts, physics_func, pert, jac_for_dRdu_global, t)
+        println(" GLOBAL: norm of jac after newtonInner call: ", norm(jac_for_dRdu_global))
+
+        # blk = II - 0.5*h*jac
+        # blk = II - 0.5*h*jac[1:3,1:3]
+        # blk = II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
+        blk = II - 0.5*h*jac_for_dRdu_global
+        # blk = ones(blksz, blksz)*44
+        println(" GLOBAL: size of blk: ", size(blk))
+
+        println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
+        dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
+
+        if i != t_steps + 1     # final time step has only one block
+          row_ix_start = (i-2)*blksz + blksz + 1
+          row_ix_end = (i-2)*blksz + 2*blksz
+          col_ix_start = (i-2)*blksz + 1
+          col_ix_end = (i-2)*blksz + blksz
+          println(" GLOBAL: off-diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+
+          # blk = -1.0*II - 0.5*h*jac
+          # blk = -1.0*II - 0.5*h*jac[1:3,1:3]
+          # blk = -1.0*II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
+          blk = -1.0*II - 0.5*h*jac_for_dRdu_global
+          # blk = ones(blksz, blksz)*55
+
+          dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
+
+        end
+
+
+
       end
     # else      # call newtonInner using cnAdjJac and cnAdjRhs
       # @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
@@ -429,6 +492,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     end
   end
   =#
+
+  ### GLOBAL: saving global dRdu
+  writedlm("global_dRdu_fwd.dat", dRdu_global_fwd)
+  writedlm("global_dRdu_rev.dat", dRdu_global_rev)
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copy!(dest, src)   

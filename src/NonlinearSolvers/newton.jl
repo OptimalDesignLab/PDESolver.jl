@@ -396,6 +396,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       end
     end
 
+    println(" ::::::::::::: in newtonInner, after calcJacobianComplex, norm(jac): ", norm(jac))
+
     # apply globalization
     if globalize_euler
 
@@ -483,7 +485,12 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
         #       access the existing delta_q_vec so excessive copies aren't required
         delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
       end
+
+      #-----------------------------------------------------------
+      # NOTE NOTE NOTE!!! Here is where the jacobian is zeroed out
       fill!(jac, 0.0)
+      #-----------------------------------------------------------
+
 #    @time solveMUMPS!(jac, res_0, delta_q_vec)
     elseif jac_type == 3 || jac_type == 4  # petsc jacobian
       # contents of ctx: (jacp, x, b, ksp)
@@ -574,6 +581,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
      flush(fstdout)
 
      println(eqn.params.f, "============ end of Newton")
+
+      println(" ::::::::::::: end of newtonInner, norm(jac): ", norm(jac))
      return nothing
     end  # end if tolerances satisfied
 
@@ -640,10 +649,12 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
    for j=1:m
      rhs_vec[j] = res_0[j]
    end
+
+   # println(" ::::::::::::: end of newtonInner, norm(jac): ", norm(jac))
  
   return nothing
 
-end               # end of function newton()
+end               # end of function newtonInner()
 # TODO: more 'end of' comments inside newton()
 
 @doc """
@@ -761,6 +772,8 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
     end   # end of jac_type check
 
   end  # end of jac_method check
+
+  println(" ::::::::::::: in physicsJac, after calcJacobianComplex, norm(jac): ", norm(jac))
 
   # TODO: all printing should actually be handled outside of this function
   if print_jacobian_timing
@@ -1104,7 +1117,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
     # writedlm("ZZ_res_reshape.dat",real(reshape(eqn.res[1,:,:],3,32)))
     # writedlm("ZZ_res_vec.dat", real(eqn.res_vec))
 
-  # println("in cJC: pert: ", pert)
+  # println(" --------- in cJC: pert: ", pert)
   for j=1:m
     if j==1
       entry_orig = eqn.q_vec[j]

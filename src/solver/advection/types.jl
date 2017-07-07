@@ -10,6 +10,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
 
   f::BufferedIO{IOStream}
   time::Timings
+
   #=
   # timings
   t_volume::Float64  # time for volume integrals
