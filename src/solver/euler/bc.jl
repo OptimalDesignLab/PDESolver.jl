@@ -1040,6 +1040,19 @@ function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, q::AbstractArray{Tsol,1},
 end # end function call
 
 
+type defaultBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::defaultBC, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+
+  calcEulerFlux(params, q, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end
+
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -1057,6 +1070,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "ExpBC" => ExpBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
 "ChannelMMSBC" => ChannelMMSBC(),
+"defaultBC" => defaultBC(),
 )
 
 @doc """

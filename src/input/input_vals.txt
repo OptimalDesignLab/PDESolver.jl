@@ -251,7 +251,9 @@ Note that any values associated with these options are shared with the regular
                           false
 "write_dofs" : write the mesh.dof array to a file dofs_myrank.dat, (Bool), 
                default false
-
+"use_linear_metrics": use the metric calculation for straight-sided elements,
+                       (Bool), default false (ie. the curvilinear calculation is
+                       used even for straight-sided meshes
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are 
                          "adjacency" for the adjacency based reordering by Zhou 

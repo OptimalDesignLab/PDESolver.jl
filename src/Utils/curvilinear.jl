@@ -81,7 +81,7 @@ end
 
 """
   Calculates the D matrices in the cartesian directions using the metric
-  terms.  This is *not* the E used in the final curvilinear discretization.
+  terms.  This is *not* the D used in the final curvilinear discretization.
 
   Inputs:
     sbp: an AbstractSBP
@@ -96,7 +96,7 @@ end
 
 function calcDCurvilinear{T, Tmsh}(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, D::AbstractArray{T, 3})
 # calculate D in x, y, z directions
-# this isn't the E actually used by the code, it is Dx =  D_xi*metrics_xi_x + 
+# this isn't the D actually used by the code, it is Dx =  D_xi*metrics_xi_x + 
 # D_eta*metrics_eta_x
 
   Tdim = size(D, 3)

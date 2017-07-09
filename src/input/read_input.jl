@@ -276,6 +276,7 @@ get!(arg_dict, "write_counts", false)
 get!(arg_dict, "write_interfaces", false)
 get!(arg_dict, "write_boundaries", false)
 get!(arg_dict, "write_sharedboundaries", false)
+get!(arg_dict, "use_linear_metrics", false)
 
 # mesh options
 get!(arg_dict, "reordering_algorithm", "default")

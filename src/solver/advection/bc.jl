@@ -587,6 +587,26 @@ function call{Tmsh, Tsol}(obj::unsteadypolyBC, u::Tsol, params::ParamType,
   return bndryflux
 end
 
+"""
+  Default BC to calculate the boundary face integral (no numerical flux
+  functions)
+"""
+type defaultBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tdim}(obj::defaultBC, u::Tsol,
+              params::ParamType{Tdim},
+              coords::AbstractArray{Tmsh,1},
+              nrm_scaled::AbstractArray{Tmsh,1}, t)
+
+  alpha_nrm = params.alpha_x*nrm_scaled[1] + params.alpha_y*nrm_scaled[2]
+  if Tdim == 3  # static analysis
+    alpha_nrm += params.alpha_z*nrm_scaled[3]
+  end
+
+  return alpha_nrm*u
+end
+
 
 @doc """
 ### AdvectionEquationMod.BCDict
@@ -617,6 +637,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "xplusyBC" => xplusyBC(),
 "unsteadymmsBC" => unsteadymmsBC(),
 "unsteadypolyBC" => unsteadypolyBC(),
+"defaultBC" => defaultBC(),
 )
 
 
