@@ -284,15 +284,7 @@ end
 function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
                             params::ParamType{2}, sol::AbstractArray{Tsol, 1})
 
-  function f(coords, params)
-    t = params.t
-    x = coords[1]
-    y = coords[2]
-    x0 = params.vortex_x0
-    return 1 - ( (  (x-x0) - t)^2 + y*y)
-  end
-
-  fval = f(coords, params)
+  fval = vortex_f(coords, params)
   t = params.t
   epsilon = params.vortex_strength
   Ma = params.Ma
@@ -327,6 +319,14 @@ function calcUnsteadyVortex{Tmsh, Tsol}(coords::AbstractArray{Tmsh, 1},
   sol[4] = E
 
   return nothing
+end
+
+function vortex_f(coords, params)
+  t = params.t
+  x = coords[1]
+  y = coords[2]
+  x0 = params.vortex_x0
+  return 1 - ( (  (x-x0) - t)^2 + y*y)
 end
 
 
@@ -627,3 +627,30 @@ function calcPeriodicMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
 
   return nothing
 end
+
+"""
+  Manufactured condition for a channel with y in [0, 1].
+  No source term.  2D only
+"""
+function calcChannelMMS{Tmsh, Tsol}(coords::AbstractArray{Tmsh,1},
+                    params::ParamType{2}, q::AbstractArray{Tsol,1})
+
+  R = params.R
+  gamma_1 = params.gamma_1
+
+  rho_inf = 1
+  u_inf = 1
+  offset = 0.1
+  T_inf = 1  # make this smaller to reduce Mach number 
+
+  y = coords[2]
+
+  q[1] = rho_inf
+  q[2] = rho_inf*u_inf*( y*(1-y) + offset)
+  q[3] = 0
+  q[4] = 0.5*rho_inf*u_inf*u_inf*( offset - y*(y-1))^2 + (R*T_inf*rho_inf)/gamma_1
+
+  return nothing
+end
+
+

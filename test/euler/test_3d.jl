@@ -494,8 +494,10 @@ function test_3d_bc(mesh, sbp, eqn, opts)
     p = EulerEquationMod.calcPressure(eqn.params, q)
     aux_vars = [p]
     dxidx = mesh.dxidx[:, :, 1, 1]
+    nrm_xy = zeros(mesh.dim)
 
-    EulerEquationMod.RoeSolver(eqn.params, q, q, aux_vars, dxidx, nrm, F2)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm_xy)
+    EulerEquationMod.RoeSolver(eqn.params, q, q, aux_vars, nrm_xy, F2)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
 
     @fact F2 --> roughly(F, atol=1e-13)
@@ -532,20 +534,20 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     # test reverse mode
     moment_about = [0.0, 0, 0]
     nout = 3
-    nin = mesh.dim*mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
+    nin = mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
     jac = zeros(nout, nin)
 
     mom_0 = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
     pert = 1e-6
     for i=1:nin
-      mesh.dxidx_bndry[i] += pert
+      mesh.nrm_bndry[i] += pert
       mom_i = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
 
       for j=1:nout
         jac[j, i] = (mom_i[j] - mom_0[j])/pert
       end
 
-      mesh.dxidx_bndry[i] -= pert
+      mesh.nrm_bndry[i] -= pert
     end
 
     # reverse mode
@@ -553,19 +555,22 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     mom_bar = zeros(mom_0)
     for i=1:nout
       mom_bar[i] = 1
-      fill!(mesh.dxidx_bndry_bar, 0.0)
+      fill!(mesh.nrm_bndry_bar, 0.0)
       EulerEquationMod.calcMomentContribution_revm!(mesh, eqn, [1], moment_about, mom_bar)
 
       for j=1:nin
-        jac2[i, j] = mesh.dxidx_bndry_bar[j]
+        jac2[i, j] = mesh.nrm_bndry_bar[j]
       end
 
       mom_bar[i] = 0
     end
 
+    #=
     for i=1:nin
       @fact norm(jac[:, i] - jac2[:, i])/size(jac, 1) --> roughly(0.0, atol=1e-5)
     end
+    =#
+    @fact norm(jac - jac2)/sqrt(length(jac)) --> roughly(0.0, atol=1e-5)
 
 
     # test other method
@@ -573,8 +578,8 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     face_range = mesh.bndry_offsets[1]:(mesh.bndry_offsets[2] - 1)
     bndryfaces = mesh.bndryfaces[face_range]
     coords_faces = mesh.coords_bndry[:, :, face_range]
+    nrm = mesh.nrm_bndry[:, :, face_range]
 
-    nrm = Utils.computeNormal(mesh, eqn, bndryfaces)
     dforce = EulerEquationMod.computeDForce(mesh, eqn, bndryfaces, nrm)
     mom_0 = EulerEquationMod.calcMomentContribution!(mesh.sbpface, coords_faces, dforce, moment_about)
     nin = length(dforce)
@@ -608,9 +613,12 @@ function test_3d_functional(mesh, sbp, eqn, opts)
       mom_bar[i] = 0
     end
 
+    #=
     for i=1:size(jac, 2)
       @fact norm(jac[:, i] - jac2[:, i]) --> roughly(0.0, atol=1e-5)
     end
+    =#
+    @fact norm(jac - jac2)/sqrt(length(jac)) --> roughly(0.0, atol=1e-5)
 
 
     eqn.q_bndry = q_bndry_orig

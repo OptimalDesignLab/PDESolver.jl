@@ -28,11 +28,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         functional_number::Int=1)
 
   if opts["parallel_type"] == 1
-
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      eqn.params.f, wait=true)
-    @debug1 println(eqn.params.f, "-----entered if statement around startDataExchange -----")
-
+    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
@@ -50,7 +46,7 @@ end
 EulerEquationMod.evalFunctional_revm
 
 Reverse mode of EulerEquationMod.evalFunctional, It takes in functional value
-and return `mesh.dxidx_bndry_bar`
+and return `mesh.nrm_bndry_bar`
 
 """->
 
@@ -61,10 +57,7 @@ function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
 
   if opts["parallel_type"] == 1
-
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      eqn.params.f, wait=true)
-    @debug1 println(eqn.params.f, "-----entered if statement around startDataExchange -----")
+    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
 
   end
 
@@ -122,7 +115,7 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   bndry_force = functionalData.bndry_force
   fill!(bndry_force, 0.0)
   functional_edges = functionalData.geom_faces_functional
-  phys_nrm = zeros(Tmsh, Tdim)
+#  phys_nrm = zeros(Tmsh, Tdim)
 
   # Get bndry_offsets for the functional edge concerned
   for itr = 1:length(functional_edges)
@@ -152,13 +145,7 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
         convertToConservative(eqn.params, q, q2)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
-        for k = 1:Tdim
-            # nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-            # ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-            phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
-          end # End for k = 1:Tdim
+        phys_nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
         calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
@@ -202,11 +189,11 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
                                        bndry_force_bar::AbstractArray{Tsol, 1})
 
   functional_faces = functionalData.geom_faces_functional
-  phys_nrm = zeros(Tmsh, Tdim)
+#  phys_nrm = zeros(Tmsh, Tdim)
   aoa = eqn.params.aoa # Angle of attack
 
   lift_bar = one(Tsol)
-  nxny_bar = zeros(Tmsh, functionalData.ndof)
+#  nxny_bar = zeros(Tmsh, functionalData.ndof)
 
   # TODO: Figure out the reverse of MPI.Allreduce. Is it even necessary
   local_functional_val_bar = zeros(Tsol, functionalData.ndof)
@@ -252,25 +239,16 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         convertToConservative(eqn.params, q, q2)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
-        for k = 1:Tdim
-            phys_nrm[k] = dxidx[1,k]*nrm[1] + dxidx[2,k]*nrm[2]
-          end # End for k = 1:Tdim
+        phys_nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
+        phys_nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji_bar = sview(boundary_integrand_bar, :, j, i)
         # calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
         #                                node_info, functionalData, b_integrand_ji)
-        fill!(nxny_bar, 0.0)
+#        fill!(nxny_bar, 0.0)
         calcBoundaryFunctionalIntegrand_revm(eqn.params, q2, aux_vars, phys_nrm, 
                                              node_info, functionalData, 
-                                             nxny_bar, b_integrand_ji_bar)
-        dxidx_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
-        for k = 1:Tdim
-          dxidx_bar[1,k] += nxny_bar[k]*nrm[1]
-          dxidx_bar[2,k] += nxny_bar[k]*nrm[2]
-        end # End for k = 1:Tdim
-
+                                             phys_nrm_bar, b_integrand_ji_bar)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
@@ -729,22 +707,22 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
   # println("bndry_facenums = ", bndry_facenums)
 
   nfaces = length(bndry_facenums)
-  boundary_press = zeros(Tsol, Tdim, sbp.numfacenodes, nfaces)
+  boundary_press = zeros(Tsol, Tdim, mesh.numNodesPerFace, nfaces)
   boundary_force = zeros(Tsol, Tdim, sbp.numnodes, mesh.numEl)
   q2 = zeros(Tsol, mesh.numDofPerNode)
-  # analytical_force = zeros(Tsol, sbp.numfacenodes, nfaces)
+  # analytical_force = zeros(Tsol, mesh.numNodesPerFace, nfaces)
 
 
   for i = 1:nfaces
     bndry_i = bndry_facenums[i]
-    for j = 1:sbp.numfacenodes
-      k = sbp.facenodes[j, bndry_i.face]
+    for j = 1:mesh.numNodesPerFace
+      k = mesh.facenodes[j, bndry_i.face]
       q = sview(eqn.q, :, k, bndry_i.element)
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
       x = sview(mesh.coords, :, k, bndry_i.element)
       dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(sbp.facenormal, :, bndry_i.face)
+      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
 
       # analytical_force[k,bndry_i.element] = calc_analytical_forces(mesh, eqn.params, x)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
@@ -756,7 +734,7 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
 
       # Boundary pressure in "ndimensions" direcion
       boundary_press[:,j,i] =  euler_flux[2:3]
-    end # end for j = 1:sbp.numfacenodes
+    end # end for j = 1:mesh.numNodesPerFace
   end   # end for i = 1:nfaces
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[start_index:(end_index - 1)],
                      boundary_press, boundary_force)
@@ -764,8 +742,8 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
   functional_val = zeros(Tsol,2)
 
   for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
-    for i = 1:sbp.numfacenodes
-      k = sbp.facenodes[i, bndry.face]
+    for i = 1:mesh.numNodesPerFace
+      k = mesh.facenodes[i, bndry.face]
       functional_val[:] += boundary_force[:,k,bndry.element]
     end
   end  # end enumerate

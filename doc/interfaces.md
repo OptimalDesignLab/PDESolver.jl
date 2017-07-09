@@ -64,12 +64,11 @@ is the datatype of the residual (when computing the Jacobian with finite
 differences or algorithmic differentiation, these will be the same).
 
 ### Required Fields
-The required fields of an `AbstractSolutionData are`:
+The required fields of an `AbstractSolutionData` are:
 ```
   q::AbstractArray{Tsol, 3}
   q_vec::AbstractArray{Tsol, 1}
-  q_face_send::AbstractArray{AbstractArray{Tsol, 3}, 1}
-  q_face_recv::AbstractArray{AbstractArray{Tsol, 3}, 1}
+  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}
   res::AbstractArray{Tres, 3}
   res_vec::AbstractArray{Tres, 1}
   M::AbstractArray{Float64, 1}
@@ -98,13 +97,12 @@ Note that for Continuous Galerkin type discretization (as opposed to
 Discontinuous Galerkin discretizations), there is not a corresponding "gather"
 operation (ie. `q` -> `q_vec`).
 
-`q_face_send`: send buffers for sending q variables to other processes.  There
-are `npeer` arrays, and the dimensions of the arrays depend on the parallel mode.
-If parallelizing `rk4`, the arrays are `numDofPerNode` x `numNodesPerFace` x `numSharedFaces`.
-If parallelizing Newtons method, the arrays are `numDofPerNode` x `numNodesPerElement x `numSharedElements`.
-
-`q_face_recv`: receive buffers for receiving `q` values from other processes.
-Same shape as `q_face_send`.
+`shared_data` is a vector of length `npeers`.  Each element contains the data
+              needed send and receive the `q` variables to/from other
+              the corresponding MPI rank listed in `mesh.peer_parts`.
+              The precise contents of `SharedFaceData` is documented in the
+              `Utils` module, however they do include the send and receive
+              buffers.
 
 `res`: similar to `q`, except that the residual evaluation function populates
        it with the residual values.  
@@ -156,8 +154,10 @@ The purpose of this type is to store any variables that need to be quickly acces
 The only required fields are:
 * `t::Float64`: hold the current time value
 * `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
+*  `time::Timings`: an object to record how long different parts of the code take,
+  defined in the Utils module.
 
-##AbstractMesh
+## AbstractMesh
 ODLCommonTools defines:
 
 `abstract AbstractMesh{Tmsh}`.
@@ -172,7 +172,7 @@ The purpose of an `AbstractMesh` is to hold all the mesh related data that the
 The static parameter `Tmsh` is used to enable differentiation with respect to
 the mesh variable in the future.
 
-###Required Fields
+### Required Fields
 ```
   # counts
   numVert::Integer
@@ -197,14 +197,6 @@ the mesh variable in the future.
   myrank::Int
   commsize::Int
   peer_parts::Array{Int, 1}
-
-  # Send/Receive Infrastructure
-  send_waited::Array{Bool, 1}
-  send_reqs::Array{MPI.Request, 1}
-  send_stats::Array{MPI.Status, 1}
-  recv_waited::Array{Bool, 1}
-  recv_reqs::Array{MPI.Request, 1}
-  recv_stats::Array{MPI.Status, 1}
 
   # Discretization type
   isDG::Bool
@@ -259,7 +251,7 @@ the mesh variable in the future.
   local_element_lists::Array{Array{Int, 1}, 1}
 
 ```
-####Counts
+#### Counts
 
 `numVert`:  number of vertices in the mesh
 
@@ -279,7 +271,7 @@ the mesh variable in the future.
 `numNodesPerFace`: number of nodes on an edge in 2D or face in 3D.  For interpolated
                    meshes it is the number of interpolation points on the face
 
-####Parallel Counts
+#### Parallel Counts
 `npeers`: number of processes that have elements that share a face with the current
          process
 
@@ -295,32 +287,19 @@ the mesh variable in the future.
 `remote_element_counts`: array of length `npeers`, number of remote elements
                          that share a face with with current process
 
-####MPI Info
+#### MPI Info
 `comm`: the MPI Communicator the mesh is defined on
 `myrank`: rank of current MPI process (0-based)
 `commsize`: number of MPI processes on this communicator
 `peer_parts`: array of MPI proccess ranks for each process that has elements that
               share a face with the current process
 
-####Send/Receive Infrastructure
-`send_waited`: array of bools (length `npeers`) that indicate if MPI_Wait has
-               already been called on on each MPI send Request
-`send_reqs`: array of MPI Requests for send operations
-`send_stats`: array of MPI Status objects for send operations
-`recv_waited`: same purpose as `send_waited`, for receives
-`recv_reqs`: same purpose as `send_reqs`, for receives
-`recv_stats`: same purpose as `recv_stats`, for receives
-
-Note that some MPI implementations do not allow calling MPI_Wait on a Request
-more than once.  The `send_waited` and `receive_waited` arrays provide a way
-to guard against this.
-
-####Discretization Type
+#### Discretization Type
 `isDG`: true if mesh is a DG type discretization
 `isInterpolated`: true if mesh requires data to be interpolated to the faces
                   of an element
 
-####Mesh Data
+#### Mesh Data
 `coords`: `n` x `numNodesPerElement` x `numEl` array, where `n` is the dimensionality of
            the equation being solved (2D or 3D typically).  
            `coords[:, nodenum, elnum] = [x, y, z]` coordinates of node `nodenum`
@@ -334,7 +313,7 @@ the parametric coordinates, `x` are the physical (x,y,z) coordinates, and
 `jac`  : `numNodesPerElement` x `numEl` array, holding the determinant of the
          mapping jacobian `dxi/dx` at each node of each element.
 
-####Interpolated Data
+#### Interpolated Data
 This data is used for interpolated mesh only.
 
 `coords_bndry`: coordinates of nodes on the boundary of the mesh,
@@ -352,7 +331,7 @@ This data is used for interpolated mesh only.
 `jac_face`: `numNodesPerFace` x `numInterfaces` array of `jac` interpolated
              to the face shared between two element
 
-####Parallel Data
+#### Parallel Data
 This data is required for parallelizing interpolated DG meshes
 
 `coords_sharedface`: array of arrays, one array for each peer process,
@@ -368,7 +347,7 @@ This data is required for parallelizing interpolated DG meshes
                   between a local element and a non-local element. Each array
                   is `numFaceNodes` x number of faces shared with this process.
 
-####Boundary Condition Data
+#### Boundary Condition Data
 The mesh object stores data related to applying boundary conditions.
 Boundary conditions are imposed weakly, so there is no need to remove degrees of
 freedom from the mesh when Dirichlet boundary conditions are applied.
@@ -399,7 +378,7 @@ edges (or faces in 3D) should have which boundary condition applied to them
                 directly, but passed as an argument to another function, to
                  avoid type instability.
 
-####Interior Edge Data
+#### Interior Edge Data
 Data about interior mesh edges (or faces in 3D) is stored to enable use of
 edge stabilization or Discontinuous Galerkin type discretizations.
 Only data for edges (faces) that are shared by two elements are stored
@@ -418,7 +397,7 @@ Only data for edges (faces) that are shared by two elements are stored
               Unlike `bndryfaces`, the entries in the array do not have to be in
               any particular order.
 
-####Degree of Freedom Numbering Data
+#### Degree of Freedom Numbering Data
 `dofs`:  `numDofPerNode` x `numNodesPerElement` x `numEl` array.
 Holds the local degree of freedom number of each degree of freedom.
 Although the exact method used to assign dof numbers is not critical, all
@@ -441,7 +420,7 @@ This array is used to to define the sparsity pattern of the jacobian matrix.
 similar the information stored in `sparsity_bnds` for degrees of freedom.
 
 
-####Mesh Coloring Data
+#### Mesh Coloring Data
 The NonlinearSolvers module uses algorithmic differentiation to compute the
 Jacobian.
 Doing so efficiently requires perturbing multiple degrees of freedom
@@ -542,7 +521,7 @@ when color `j` is being perturbed, or zero if element `i` is not affected by any
 
 `local_element_lists`: array of arrays containing the element numbers of the
                        elements that share a face with each peer process
-###Other Functions
+### Other Functions
 The mesh module must also defines and exports the functions
 
 
@@ -556,7 +535,7 @@ mesh, and the second writes Paraview files for the mesh, including the solution
 field.
 
 
-##Physics Module
+## Physics Module
 For every new physics to be solved, a new module should be created.
 The purpose of this module is to evaluate the equation:
 
@@ -566,6 +545,12 @@ where `M` is the mass matrix.
 For steady problems, `dq/dt = 0` and the module evaluates the residual.
 For unsteady problems, the form `M dq/dt = f(q)` is suitable for explicit time
 marching.
+
+Every physics module must define a boundary condition called `defaultBC`.  If
+the user does not specify a boundary condition on any geometric edges, the
+mesh constructor will add a new boundary condition and assign all mesh edges
+classified on the unspecified geometric edges are assigned to it.  This boundary
+condition can be a no-op if that is correct for the physics.
 
 ### Interface to NonlinearSolvers
 The `evalResidual` function and the fields `eqn.q` and `eqn.res` are the
@@ -596,7 +581,7 @@ to approximate derivatives numerically.  The reason for passing around the
 the data arrays it operates on.
 
 
-##Functional Programming
+## Functional Programming
 An important aspect of the use of the `mesh`, `sbp`, `eqn`, and `opts` to define
 interfaces is that the physics modules and nonlinear solvers are written in a
 purely functional programming style, which is to say that the behavior of every

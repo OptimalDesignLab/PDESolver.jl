@@ -83,9 +83,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   q_vec::Array{Tres,1}     # initial condition in vector form
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
                           # the boundaries with boundary conditions
-  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
+  shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI data, including send and receive
+                                         # buffers
+#  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
-  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
+#  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
   flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
@@ -123,7 +125,14 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim)
+
+    if opts["precompute_volume_flux"]
+      eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl,
+                                  Tdim)
+    else
+      eqn.flux_parametric = zeros(Tsol, 0, 0, 0, 0)
+    end
+
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
     if mesh.isDG
@@ -133,25 +142,52 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_vec = zeros(Tres, mesh.numDof)
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
-    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+
+    if opts["precompute_boundary_flux"]
+      eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+    else
+      eqn.bndryflux = zeros(Tsol, 0, 0, 0)
+    end
+
     eqn.multiplyA0inv = matVecA0inv
 
-    if mesh.isDG
+    if opts["precompute_q_face"]
       eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
-      eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
-      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
-      eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
-
-      for i=1:mesh.npeers
-        eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes,
-                                       mesh.peer_face_counts[i])
-      end
     else
-      eqn.q_face = Array(Tres, 0, 0, 0, 0)
-      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.q_face = zeros(Tsol, 0, 0, 0, 0)
+    end
+
+    if opts["precompute_q_bndry"]
+      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+    else
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
     end
 
+    if opts["precompute_face_flux"]
+      eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
+
+      if mesh.isDG
+        eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+        for i=1:mesh.npeers
+          eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes,
+                                         mesh.peer_face_counts[i])
+        end
+      else
+        eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+      end  # end if isDG
+
+    else
+      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+    end  # end if precompute_face_flux
+
+    if mesh.isDG
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+    else
+      eqn.shared_data = Array(SharedFaceData, 0)
+    end
+
+#=
     # send and receive buffers
     #TODO: rename buffers to not include face
     eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
@@ -177,7 +213,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
                                       dim3_recv[i])
     end
-
+=#
     return eqn
   end # ends the constructor AdvectionData_
 

@@ -1,1 +1,1 @@
-this is a real file, so git will add the directory
+# this is a real file that forces git to create this directory

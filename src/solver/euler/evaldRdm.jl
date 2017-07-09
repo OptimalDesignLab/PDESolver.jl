@@ -11,6 +11,7 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
   #=
   time.t_send += @elapsed if opts["parallel_type"] == 1
     println(eqn.params.f, "starting data exchange")
+    #TODO: update this to use new parallel primatives
     startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
    =#
@@ -205,6 +206,7 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             opts, functor_revm::FluxType)
   # calculate the face flux and do the integration for the shared interfaces
 
+  #TODO: update this to use the new parallel communication primatives
   if opts["parallel_data"] != "face"
     throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
   end
@@ -234,7 +236,8 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
     qL_arr = eqn.q_face_send[idx]
     qR_arr = eqn.q_face_recv[idx]
     aux_vars_arr = eqn.aux_vars_sharedface[idx]
-    dxidx_arr = mesh.dxidx_sharedface[idx]
+#    dxidx_arr = mesh.dxidx_sharedface[idx]
+    nrm_arr = mesh.nrm_sharedface[idx]
     flux_arr_bar = eqn.flux_sharedface_bar[idx]
 
     # permute the received nodes to be in the elementR orientation
@@ -247,11 +250,10 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
         qL = sview(qL_arr, :, k, j)
         qR = sview(qR_arr, :, k, j)
-        dxidx = sview(dxidx_arr, :, :, k, j)
         aux_vars = sview(aux_vars_arr, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
+        nrm_xy = sview(nrm_arr, :, k, j)
         flux_j = sview(flux_arr_bar, :, k, j)
-        functor_revm(params, qL, qR, aux_vars, dxidx, nrm, flux_j)
+        functor_revm(params, qL, qR, aux_vars, nrm_xy, flux_j)
       end
     end
     # end flux calculation

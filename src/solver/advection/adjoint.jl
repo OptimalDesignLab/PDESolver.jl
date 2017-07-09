@@ -77,8 +77,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   if opts["parallel_type"] == 1
 
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      params.f, wait=true)
+    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
 
   end
@@ -286,17 +285,17 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
-      for j = 1:sbp.numfacenodes
-        k = sbp.facenodes[j, bndry_i.face]
+      for j = 1:mesh.numNodesPerFace
+        k = mesh.facenodes[j, bndry_i.face]
         q = eqn.q[1,k,bndry_i.element]
         x = sview(mesh.coords, :, k, bndry_i.element)
         dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
+        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, eqn.params,
                                         nx, ny, q, functionalData)
-      end  # End for j = 1:sbp.numfacenodes
+      end  # End for j = 1:mesh.numNodesPerFace
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
 
@@ -343,10 +342,9 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
         coords = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(sbp.facenormal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
+        nx = nrm[1]
+        ny = nrm[2]
         integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, eqn.params,
                                         nx, ny, q, functionalData)
       end  # End for j = 1:mesh.sbpface.numnodes

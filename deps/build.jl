@@ -9,10 +9,10 @@ function installPDESolver()
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
   std_pkgs = [
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "HEAD";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork3";
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "new_parallel";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "work";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
-              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "d68859248ddeed79abe9005a5c75caa35f10885e"
+              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
               ]
 
 
@@ -109,7 +109,7 @@ function installPDESolver()
   #------------------------------------------------------------------------------
 
   # array of [pkg_name, commit_hash]
-  pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "b2bb3abe8057793f44d48ebce9f05c23d3dbcd69";
+  pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "fa0053b241fee05dcc8d1840f0015dfeb2450bf4";
               "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
               "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
               "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "93e80390aeedb1dbcd90281b6dff7f760f430bc8";
@@ -120,7 +120,12 @@ function installPDESolver()
               "DualNumbers" "https://github.com/JuliaDiff/DualNumbers.jl.git" "34ae2b236f4853028fc60a5efed42bd17a33230f";
               "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
 #              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
-              "ForwardDiff" "https://github.com/JuliaDiff/ForwardDiff.jl.git" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
+              "ForwardDiff" "https://github.com/JuliaDiff/ForwardDiff.jl.git" "805ad5da942ba5f4477d1d8c5bce0b11cf3260fe";
+              "DiffBase" "https://github.com/JuliaDiff/DiffBase.jl.git" "a84a2be263ab5ec4b5261946a17f01fda358b9ac";
+              "Optim" "https://github.com/JuliaNLSolvers/Optim.jl.git"  "250b50ab5f9bb87576c623fa20fdafb981ce40a1";
+              "PositiveFactorizations" "https://github.com/timholy/PositiveFactorizations.jl.git" "32233b5a3d4b4453a8de28a6d363344023b1e074";
+              "LineSearches" "https://github.com/JuliaNLSolvers/LineSearches.jl.git"  "007640e240e4e8a2a2d38636d2c6f22540c69b3c"]
+              
   
 #=
   pkg_list = ["Compat"  "5b03745a6a948781329c444f08ad67cff63f91f7";

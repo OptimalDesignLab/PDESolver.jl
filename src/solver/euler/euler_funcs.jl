@@ -146,6 +146,61 @@ F_eta = sview(eqn.flux_parametric, :, :, :, 2)
 end
 
 """
+  Calculates the volume integrals for the weak form, computing the Euler flux
+  as needed, rather than using eqn.flux_parametric
+
+  Inputs:
+    mesh
+    sbp
+    eqn: eqn.res is updated with the result
+    opts
+"""
+function calcVolumeIntegrals_nopre{Tmsh, Tsol, Tres, Tdim}(
+                                   mesh::AbstractMesh{Tmsh},
+                                   sbp::AbstractSBP,
+                                   eqn::EulerData{Tsol, Tres, Tdim},
+                                   opts)
+
+
+  # flux in the parametric directions for a given element
+  flux_el = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+
+  nrm = eqn.params.nrm  # vector in parametric direction
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      aux_vars_j = sview(eqn.aux_vars, :, j, i)
+
+      for k=1:Tdim
+        flux_k = sview(flux_el, :, j, k)
+
+        # get the direction vector
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+        # consider calculating all directions at once
+        # not sure if that will help because the data dependencies are 
+        # really simple
+        calcEulerFlux(eqn.params, q_j, aux_vars_j, nrm, flux_k)
+      end  # end loop k
+    end  # end loop j
+
+    res_i = sview(eqn.res, :, :, i)
+    for k=1:Tdim
+      weakDifferentiateElement!(sbp, k, sview(flux_el, :, :, k), res_i, SummationByParts.Add(), true)
+    end
+
+  end  # end loop i
+
+  return nothing
+end  # end function
+
+
+
+
+
+"""
   Calculate (S .*F)1 where S is the skew symmetric part of sbp.Q and F
   is a symmetric numerical flux function.  eqn.res is updated with the result.
   Methods are available for curvilinear and non-curvilinear meshes
@@ -301,7 +356,7 @@ end
    params  : ParamaterType{2, :conservative}
    q  : vector of conservative variables
    aux_vars : vector of auxiliary variables
-   dir :  unit vector in direction to calculate the flux
+   dir :  vector in direction to calculate the flux
 
    Inputs/Outputs:
    F  : vector to populate with the flux
@@ -1706,7 +1761,10 @@ function calcMomentContribution!{Tsbp,Tmsh,Tres
   return moment
 end
 
-function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData{Tsol, Tres},  bndry_nums::Array{Int, 1}, xyz_about::AbstractArray{Tmsh, 1})
+function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
+                                 eqn::AbstractSolutionData{Tsol, Tres},  
+                                 bndry_nums::Array{Int, 1}, 
+                                 xyz_about::AbstractArray{Tmsh, 1})
 
   moment = zeros(Tres, mesh.dim)
   for i=1:length(bndry_nums)
@@ -1715,9 +1773,9 @@ function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn
     face_range = start_idx:end_idx
     bndry_faces = sview(mesh.bndryfaces, face_range)
     coords = sview(mesh.coords_bndry, :, :, face_range)
+    nrm = sview(mesh.nrm_bndry, :, :, face_range)
     
     # compute dforce
-    nrm = Utils.computeNormal(mesh, eqn, bndry_faces)
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
 
     # compute moment
@@ -1739,10 +1797,11 @@ function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::Abstr
     bndry_faces = sview(mesh.bndryfaces, face_range)
     coords = sview(mesh.coords_bndry, :, :, face_range)
     coords_bar = zeros(coords)
+
+    nrm = sview(mesh.nrm_bndry, :, :, face_range)
+    nrm_bar = sview(mesh.nrm_bndry_bar, :, :, face_range)
     
     # compute dforce
-    nrm = Utils.computeNormal(mesh, eqn, bndry_faces)
-    nrm_bar = zeros(nrm)
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
     dforce_bar = zeros(dforce)
 
@@ -1751,15 +1810,16 @@ function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::Abstr
     calcMomentContribution_rev!(mesh.sbpface, coords, coords_bar, dforce, dforce_bar, xyz_about, moment_bar)
 
     computeDForce_revm!(mesh, eqn, bndry_faces, nrm_bar, dforce_bar)
-
-    Utils.computeNormal_rev(mesh, eqn, bndry_faces, nrm_bar)
   end
 
   return nothing
 end
 
 
-function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh, eqn::AbstractSolutionData{Tsol, Tres}, bndryfaces::AbstractArray{Boundary, 1}, nrm::Abstract3DArray{Tmsh})
+function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh, 
+                                         eqn::AbstractSolutionData{Tsol, Tres},
+                                         bndryfaces::AbstractArray{Boundary, 1},
+                                         nrm::Abstract3DArray{Tmsh})
 
   nfaces = length(bndryfaces)
   dforce = zeros(Tres, mesh.dim, mesh.numNodesPerFace, nfaces)
@@ -1776,7 +1836,12 @@ function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh, eqn::AbstractSoluti
   return dforce
 end
 
-function computeDForce_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData{Tsol, Tres}, bndryfaces::AbstractArray{Boundary, 1}, nrm_bar::Abstract3DArray, dforce_bar::Abstract3DArray)
+
+function computeDForce_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                             eqn::AbstractSolutionData{Tsol, Tres},
+                             bndryfaces::AbstractArray{Boundary, 1},
+                             nrm_bar::Abstract3DArray,
+                             dforce_bar::Abstract3DArray)
 
    nfaces = length(bndryfaces)
    for i=1:nfaces
@@ -1850,8 +1915,8 @@ function calcMomentContribution_rev!{Tsbp,Tmsh,Tsol,Tres
   end
 end
 
-function calcMomentContribution!{Tsbp,Tmsh,Tres
-  }(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
+function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp}, 
+    xsbp::AbstractArray{Tmsh,3},
     dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1})
   @assert( sbpface.numnodes == size(xsbp,2) == size(dforce,2) )
   @assert( size(xsbp,3) == size(dforce,3) )

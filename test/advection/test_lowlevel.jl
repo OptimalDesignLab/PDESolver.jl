@@ -1,8 +1,8 @@
 type twoxBC <: BCType
 end
-function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, dxidx, nrm, t)
+function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, nrm, t)
   u_bc = 2*coords[1]
-  bndryflux = AdvectionEquationMod.RoeSolver(u, u_bc, params, nrm, dxidx)
+  bndryflux = AdvectionEquationMod.RoeSolver(u, u_bc, params, nrm)
   return bndryflux
 end
 
@@ -159,22 +159,28 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     eqn.params.alpha_y = 0.5
     dxidx = [1. 0; 0 1]
     nrm = [1., 0]
+    nrm2 = zeros(nrm)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
 
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
 
     @fact val --> roughly(u*eqn.params.alpha_x, atol=1e-14)
 
     nrm = [-1.0, 0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(-u_bc*eqn.params.alpha_x, atol=1e-14)
 
 
     nrm = [0, 1.0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(u*eqn.params.alpha_y, atol=1e-14)
 
     nrm = [0, -1.0]
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(-u_bc*eqn.params.alpha_y, atol=1e-14)
 
     # now test rotation using dxidx
@@ -197,19 +203,21 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     # to be in the xi-eta coordinate system
     # this is still an outflow for nrm = [1, 0]
     nrm = [1., 0]  # flow is in the xi direction
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     angle_diff = theta + flow_direction
     alpha_eff = alpha_mag*cos(angle_diff)  # effective alpha in the wall normal
                                            # direction
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
     # now check eta direction
     nrm = [0, 1.]
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = u*alpha_eff
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
@@ -221,15 +229,17 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     val_exp = alpha_eff*u_bc
 
     dxidx = get_rotation_matrix( theta)
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(val_exp, atol=1e-14)
 
     # check eta direction
     nrm = [0, 1]
+    calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     angle_diff = theta + flow_direction
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm, dxidx)
+    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
     @fact val --> roughly(val_exp, atol=1e-14)
   end  # end facts block
 
@@ -249,6 +259,7 @@ function test_lowlevel_volumeintegrals()
     ARGS[1] = "input_vals_8el.jl"
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
+    println("precompute_boundary_flux = ", opts["precompute_boundary_flux"])
     Tmsh = eltype(mesh.dxidx)
 
     fill!(eqn.q, 0.0)
@@ -258,7 +269,7 @@ function test_lowlevel_volumeintegrals()
     alpha_y = zero(eqn.params.alpha_x)
 
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res --> roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-12)
 
@@ -277,7 +288,7 @@ function test_lowlevel_volumeintegrals()
     q = [eqn.q[1, 1, 1], eqn.q[1, 2, 1], eqn.q[1, 3, 1]]  # extract q values
     # sum reduces the vector to the value of the integral
     val_test = sum(Qx.'*q)  
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     # extract residual values
     vec_code =  [eqn.res[1, 1, 1], eqn.res[1, 2, 1], eqn.res[1, 3, 1]]
     val_code = sum(vec_code)
@@ -313,7 +324,7 @@ function test_lowlevel_volumeintegrals()
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
     # check the boundry contribution
-    AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
     @fact sum(eqn.res[:, :, 1]) --> roughly(-2.0, atol=1e-14)
     @fact sum(eqn.res[:, :, 3]) --> roughly(-2.0, atol=1e-14)
@@ -322,7 +333,7 @@ function test_lowlevel_volumeintegrals()
     @fact sum(eqn.res[:, :, 8]) --> roughly(-2.0, atol=1e-14)
 
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -345,7 +356,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -370,7 +381,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -398,7 +409,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
       q_i = reshape(eqn.q[1, :, i], 3)
@@ -429,7 +440,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     eqn.params.alpha_x = 1.0
     eqn.params.alpha_y = 0.0
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     println("called eval SCResidual")
     for i=1:mesh.numEl
       Qx_i = sbp.Q[:, :, 1]*mesh.dxidx[1, 1, 1, i] + sbp.Q[:, :, 2]*mesh.dxidx[2, 1, 1, i]
@@ -453,7 +464,7 @@ add_func1!(AdvectionTests, test_lowlevel_volumeintegrals, [TAG_VOLUMEINTEGRALS, 
     fill!(eqn.params.alpha_x, 1.0)
     fill!(eqn.params.alpha_y, 1.0)
     
-    nbrnodeindex = Array(sbp.numfacenodes:-1:1)
+    nbrnodeindex = Array(mesh.numNodesPerFace:-1:1)
 
   end
   =#

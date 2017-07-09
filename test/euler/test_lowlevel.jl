@@ -498,6 +498,8 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
   F = zeros(4)
   Fe = zeros(4)
   coords = [1.0,  0.0]
+  nrm_xy = zeros(mesh.dim)
+
 
   flux_parametric = zeros(4,2)
 
@@ -520,7 +522,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     nrm2 = [dxidx[2,1], dxidx[2,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
-    EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, dxidx, dir, F_roe)
+    EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, nrm, F_roe)
     @fact F_roe --> roughly(F) 
 
 
@@ -535,7 +537,8 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
     func1 = EulerEquationMod.isentropicVortexBC()
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+    calcBCNormal(eqn.params, dxidx, dir, nrm_xy)
+    func1(q, aux_vars, coords, nrm_xy, F_roe, eqn.params)
 
     @fact F_roe --> roughly(F) 
 
@@ -548,7 +551,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+    func1(q, aux_vars, coords, nrm_xy, F_roe, eqn.params)
 
     @fact F_roe --> roughly(F) 
 
@@ -561,7 +564,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+    func1(q, aux_vars, coords, nrm_xy, F_roe, eqn.params)
 
     @fact F_roe --> roughly(F) 
   end  # end facts block
@@ -689,19 +692,19 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 
 
     # test getBCFluxes
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 1] --> roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 2] --> roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 3] --> roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 4] --> roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
     end
   end  # end facts block
@@ -743,7 +746,7 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
   facts("--- Testing evalBoundaryIntegrals ---") do
     fill!(eqn.res, 0.0)
 
-    EulerEquationMod.evalBoundaryIntegrals( mesh, sbp, eqn)
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
     el1_res = [0.35355 0 -0.35355;
                0.124998 -0.750001 -0.874999;

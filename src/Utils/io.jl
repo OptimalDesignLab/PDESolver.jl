@@ -91,3 +91,59 @@ global const BSTDOUT = BufferedIO(STDOUT)
   Buffered version of STDERR.  This should *always* be used instead of STDERR
 """
 global const BSTDERR = BufferedIO(STDERR)
+
+#=
+#------------------------------------------------------------------------------
+# create file io to numbered file with time stamp, unbuffered
+
+"""
+  This IO type writes the output to a numbered file (see the constructor),
+  without buffering, prefixing the output with a time stamp using MPI_Wtime
+  Note that only println() includes the time stamp prefix, print() does not.
+"""
+type DebugFileIO  <: IO
+  fstream::IO  # TODO: make this an IOStream (concrete)
+end
+
+@doc """
+### Utils.DebugFileIO
+
+  Constructor for DebugFileIO type.  Creates a numbered file by appending
+  the supplied rank to the file name (see get_parallel_fname in ODLCommonTools)
+
+  Inputs:
+    fname: file name, including extension
+    mode: mode flags for opening the file (see docs for open() )
+    rank: the rank of the process
+
+  Outputs:
+    a DebugFileIO object
+"""->
+function DebugFileIO(fname::AbstractString, mode::AbstractString, rank::Integer )
+
+  f = open( get_parallel_fname(fname, rank), mode)
+  fbuf = DebugFileIO(f)
+
+
+  # register atexit hook to make sure any buffered data is flushed before
+  # julia exits
+  # this causes errors to be printed when julia exists, possible #10431
+  atexit( () -> if isopen(fbuf.fstream)
+                  close(fbuf)
+                end
+        )
+  return fbuf
+end
+
+write(io::DebugFileIO, x::UInt8) = write(io.fstream, x)
+flush(io::DebugFileIO) = flush(io.fstream)
+close(io::DebugFileIO) = close(io.fstream)
+
+
+import Base.println
+
+function println(io::DebugFileIO, args...)
+  tval = MPI.Wtime()
+  println(io.fstream, @printf("%16e ", tval), args...)
+end
+=#

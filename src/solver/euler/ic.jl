@@ -699,7 +699,27 @@ function ICTaylorGreen{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp,
   return nothing
 end
 
-      
+"""
+  Initial condition of channel MMS
+"""
+function ICChannelMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      calcChannelMMS(coords, eqn.params, q)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
+
+  return nothing
+end
+
+    
 
 
 
@@ -723,6 +743,7 @@ global const ICDict = Dict{Any, Function}(
 "ICExp" => ICExp,
 "ICPeriodicMMS" => ICPeriodicMMS,
 "ICTaylorGreen" => ICTaylorGreen,
+"ICChannelMMS" => ICChannelMMS
 )
 
 

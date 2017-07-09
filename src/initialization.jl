@@ -110,13 +110,37 @@ function createMeshAndOperator(opts, dofpernode)
   # should shape_type live here or be encapsulated in Pumi?
   if opts["use_DG"]
     if opts["operator_type"] == "SBPOmega"
-      reorder = false
-      internal = true
+#      reorder = false
+#      internal = true
+      if dim == 2
+        sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
+      else
+        sbp = getTetSBPOmega(degree=order, Tsbp=Tsbp)
+      end
       shape_type = 2
     elseif opts["operator_type"] == "SBPGamma"
-      reorder = false
-      internal = false
+#      reorder = false
+#      internal = false
+      if dim == 2
+        sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
+      else
+        sbp = getTetSBPGamma(degree=order, Tsbp=Tsbp)
+      end
       shape_type = 3
+    elseif opts["operator_type"] == "SBPDiagonalE"
+      if dim == 2
+        sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp)
+      else
+        throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
+      end
+      shape_type = 4
+    elseif opts["operator_type"] == "SBPDiagonalE2"  # no vert nodes
+      if dim == 2
+        sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp, vertices=false)
+      else
+        sbp = getTetSBPWithDiagE(degree=order, Tsbp=Tsbp)
+      end
+      shape_type = 5
     else
       op_type = opts["operator_type"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
@@ -127,8 +151,9 @@ function createMeshAndOperator(opts, dofpernode)
       throw(ArgumentError("invalid operator type $op_type for CG"))
     end
     # the CG varient of SBP gamma is the only option
-    reorder = true
-    internal = false
+#    reorder = true
+#    internal = false
+    sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
     shape_type = 1
   end
 
@@ -137,18 +162,30 @@ function createMeshAndOperator(opts, dofpernode)
     println("\nConstructing SBP Operator")
     # create DG SBP operator with internal nodes only
     if dim == 2
-      sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+#      sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
 #      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
-      sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+      if opts["operator_type"] == "SBPDiagonalE"
+        sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
+      elseif opts["operator_type"] == "SBPDiagonalE2"
+        println("getting TriFaceForDiagE2")
+        sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.', vertices=false)
+      else
+        sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+      end
     else
-      sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+#      sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       ref_verts = sbp.vtx
 #      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
       topo = ElementTopology{3}(face_verts)
-      sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
+
+      if opts["operator_type"] == "SBPDiagonalE2"
+        sbpface = getTetFaceForDiagE(order, sbp.cub, ref_verts)
+      else
+        sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
+      end
     end
 
     # create mesh with 4 dof per node
@@ -171,7 +208,7 @@ function createMeshAndOperator(opts, dofpernode)
   else  # continuous Galerkin
     # create SBP object
     println("\nConstructing SBP Operator")
-    sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)  # create linear sbp operator
+#    sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)  # create linear sbp operator
     sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
     # create linear mesh with 4 dof per node
 

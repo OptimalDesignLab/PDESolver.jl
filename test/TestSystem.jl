@@ -271,6 +271,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
         elseif functype_i == 2  # function with all 4 arguments
           if ARGS[1] != input_name_i
             ARGS[1] = input_name_i
+            println("about to run prep function ", prep_func, " on input ", ARGS[1])
             mesh, sbp, eqn, opts = prep_func(ARGS[1])
           end
           func_i(mesh, sbp, eqn, opts)

@@ -172,7 +172,7 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
   #writedlm("IC_$myrank.dat", real(q_vec))
   saveSolutionToMesh(mesh, q_vec)
   writeVisFiles(mesh, "solution_ic")
-  global int_advec = 1
+  global int_advec = 1  # ???
 
   if opts["calc_dt"]
     alpha_net = sqrt(eqn.params.alpha_x^2 + eqn.params.alpha_y^2)
@@ -181,7 +181,6 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
 
 
   MPI.Barrier( mesh.comm)
-  # evalResidual(mesh, sbp, eqn, opts, t)
 
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
