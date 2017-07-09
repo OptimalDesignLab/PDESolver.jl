@@ -901,6 +901,7 @@ function test_ESS()
         opts["smb_name"] = meshname
         opts["operator_type"] = "SBPOmega"
         opts["order"] = p
+        opts["numBC"] = 0
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
         ARGS[1] = fname*".jl"
