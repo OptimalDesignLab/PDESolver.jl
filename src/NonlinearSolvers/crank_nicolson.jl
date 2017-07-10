@@ -324,6 +324,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         epsilon = opts["epsilon"]
         pert = complex(0, epsilon)
         calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_nextstep, opts, physics_func, pert, jac_for_dRdu_global, t)
+        # TODO check that this jacobian equals the one inside newtonInner
         println(" GLOBAL: norm of jac after newtonInner call: ", norm(jac_for_dRdu_global))
 
         # blk = II - 0.5*h*jac
@@ -332,6 +333,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         blk = II - 0.5*h*jac_for_dRdu_global
         # blk = ones(blksz, blksz)*44
         println(" GLOBAL: size of blk: ", size(blk))
+
+        # this time step's actual portion of the global dRdu is the cnJac. so it has to be I-0.5*h*physicsJac
+        jac_filename = string("jac_fwd_cJc_t-",t,".dat")
+        writedlm(jac_filename, round(real(blk), 4))
 
         println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
         dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
@@ -351,14 +356,15 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
           dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
 
-        end
+        end   # end of "if != t_steps + 1"
 
+      end   # end of else clause of "if opts["cleansheet_CN_newton"]"
 
-
-      end
+      # NOTE: this has been commented out to remove Newton from the adjoint testing. Currently direct solving.
     # else      # call newtonInner using cnAdjJac and cnAdjRhs
       # @time newtonInner(newton_data, mesh, sbp, adj_nextstep, opts, cnAdjRhs, cnAdjJac, jac, rhs_vec, ctx_residual, t)
-    else    
+
+    else    # else clause of "if neg_time == false"
 
       # direct solve for psi_i
       # note: this needs to be called with t, not t_nextstep. 

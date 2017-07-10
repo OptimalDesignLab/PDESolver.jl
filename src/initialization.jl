@@ -308,20 +308,25 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
         # forward sweep
         # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
                                  # mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
-        @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
-                                 mesh, sbp, eqn, opts, 
+        @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts,
                                  WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
-                                 opts["res_abstol"], 
+                                 opts["res_abstol"],
                                  store_u_to_disk=true)
 
         # reverse sweep
         # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
                                  # mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
-        @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
-                                 mesh, sbp, eqn, opts, 
+        @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts,
                                  WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
-                                 opts["res_abstol"], 
+                                 opts["res_abstol"],
                                  neg_time=true)
+
+        dRdu_global_WWW = dRdu_global_fwd*WWW
+        fwd_check_number = dot(dRdu_global_WWW, ZZZ)
+        filename = "global_dRdu_check_fwd.dat"
+        writedlm(filename, fwd_check_number)
 
       else
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 

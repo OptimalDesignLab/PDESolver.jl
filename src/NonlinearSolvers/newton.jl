@@ -486,6 +486,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
         delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
       end
 
+      jac_filename = string("jac_fwd_nI_t-",t,".dat")
+      writedlm(jac_filename, round(real(jac), 4))
       #-----------------------------------------------------------
       # NOTE NOTE NOTE!!! Here is where the jacobian is zeroed out
       fill!(jac, 0.0)
