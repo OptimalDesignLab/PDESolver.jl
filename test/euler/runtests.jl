@@ -40,7 +40,6 @@ include("test_lowlevel.jl")
 include("test_dg.jl")
 #include("test_simplemesh.jl")
 include("test_GLS3.jl")
-# TODO: uncomment when SBP is fixed
 include("test_modes.jl")
 include("test_3d.jl")
 
