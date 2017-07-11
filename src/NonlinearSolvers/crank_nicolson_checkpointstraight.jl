@@ -102,7 +102,7 @@ function cnAdjDirect:
 
   returns psi_i
 """
-function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
+function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps, t, dRdu_global_rev)
 # adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_fwd, t_nextstep)
 
   # Note: t is passed in (instead of t_nextstep), but t_nextstep is calc'd & used below
@@ -124,8 +124,36 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
 
   I = eye(length(adj.q_vec))
 
-  B1 = I - 0.5*h*dRdu_i
+  ### GLOBAL dRdu section
+  B1_pos_for_dRdu_global =  1.0*I - 0.5*h*dRdu_i
+  B1_neg_for_dRdu_global = -1.0*I - 0.5*h*dRdu_i
 
+  blksz = mesh.numDof
+  # blksz = 3   # testing 44
+  # B1_pos_for_dRdu_global = ones(blksz, blksz)*44
+  # B1_neg_for_dRdu_global = ones(blksz, blksz)*55
+
+  println(" GLOBAL: forming global dRdu (rev), i_fwd = $i_fwd")
+  println(" GLOBAL: size of B1_pos_for_dRdu_global: ", size(B1_pos_for_dRdu_global))
+  row_ix_start = (i_fwd-2)*blksz + 1
+  row_ix_end = (i_fwd-2)*blksz + blksz
+  col_ix_start = (i_fwd-2)*blksz + 1
+  col_ix_end = (i_fwd-2)*blksz + blksz
+  println(" GLOBAL: diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+  dRdu_global_rev[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = B1_pos_for_dRdu_global
+
+  if i_fwd != t_steps + 1
+    col_ix_start = (i_fwd-2)*blksz + blksz + 1
+    col_ix_end = (i_fwd-2)*blksz + 2*blksz
+    row_ix_start = (i_fwd-2)*blksz + 1
+    row_ix_end = (i_fwd-2)*blksz + blksz
+    println(" GLOBAL: off-diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+
+    dRdu_global_rev[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = B1_neg_for_dRdu_global
+  end   # end of "if i_fwd != t_steps + 1"
+  ### end GLOBAL
+
+  B1 = I - 0.5*h*dRdu_i
   B2 = adj.q_vec + 0.5*h*dRdu_i*adj.q_vec - dJdu_i
 
   nextstep_q_vec = zeros(adj.q_vec)

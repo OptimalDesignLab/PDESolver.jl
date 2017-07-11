@@ -309,7 +309,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         println(" GLOBAL: forming global dRdu, i = $i")
         # first, let's try forming the forward global dRdu without the state perturbed by WWW.
         blksz = mesh.numDof
-        # blksz = 3
+        # blksz = 3 # testing 44
         row_ix_start = (i-2)*blksz + 1
         row_ix_end = (i-2)*blksz + blksz
         col_ix_start = (i-2)*blksz + 1
@@ -331,7 +331,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         # blk = II - 0.5*h*jac[1:3,1:3]
         # blk = II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
         blk = II - 0.5*h*jac_for_dRdu_global
-        # blk = ones(blksz, blksz)*44
+        # blk = ones(blksz, blksz)*44     # testing 44
         println(" GLOBAL: size of blk: ", size(blk))
 
         # this time step's actual portion of the global dRdu is the cnJac. so it has to be I-0.5*h*physicsJac
@@ -352,7 +352,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
           # blk = -1.0*II - 0.5*h*jac[1:3,1:3]
           # blk = -1.0*II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
           blk = -1.0*II - 0.5*h*jac_for_dRdu_global
-          # blk = ones(blksz, blksz)*55
+          # blk = ones(blksz, blksz)*55     # testing 44
 
           dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
 
@@ -369,11 +369,13 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # direct solve for psi_i
       # note: this needs to be called with t, not t_nextstep. 
       #   within cnAdjDirect, t_nextstep is calculated and used throughout.
-      (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
+      # (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
+      (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps, t, dRdu_global_rev)
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
     end
 
+    # TODO TODO 20170711: dRdA timing: is this being contracted in the right time step?
     # advection adjoint check
     if neg_time == true
       dRdA_CS = calcdRdA_CS(mesh, sbp, adj_nextstep, opts, t_nextstep)
@@ -402,7 +404,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # Previously, adj_nextstep corresponded to time step i, and adj corresponded to time step i+1.
 
     #------- adjoint check
-    # TODO this is wrong, what is this
+    # TODO this is wrong, what is this. seems like a first attempt at check_adjointmethod
     if neg_time == true
       # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)     # t has been updated, so no t_nextstep
       # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)

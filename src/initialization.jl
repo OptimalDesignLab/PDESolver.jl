@@ -290,7 +290,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
         println(" GLOBAL: forming WWW, ZZZ")
         # dof_global = mesh.numDof*t_steps
-        # blksz = 3
+        # blksz = 3   # testing 44
         blksz = mesh.numDof
         t_steps = 4
         dof_global = blksz*t_steps
@@ -323,10 +323,15 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                                  opts["res_abstol"],
                                  neg_time=true)
 
-        dRdu_global_WWW = dRdu_global_fwd*WWW
-        fwd_check_number = dot(dRdu_global_WWW, ZZZ)
+        dRdu_global_fwd_WWW = dRdu_global_fwd*WWW
+        fwd_check_number = dot(dRdu_global_fwd_WWW, ZZZ)
         filename = "global_dRdu_check_fwd.dat"
         writedlm(filename, fwd_check_number)
+
+        dRdu_global_rev_ZZZ = dRdu_global_rev*ZZZ
+        rev_check_number = dot(dRdu_global_rev_ZZZ, WWW)
+        filename = "global_dRdu_check_rev.dat"
+        writedlm(filename, rev_check_number)
 
       else
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
