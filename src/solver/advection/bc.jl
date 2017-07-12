@@ -57,9 +57,9 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       q = eqn.q[ 1, k, bndry_i.element]
       alpha_x = eqn.params.alpha_x
       alpha_y = eqn.params.alpha_y
-      coords = sview(mesh.coords, :, k, bndry_i.element)
-      dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
+      coords = ro_sview(mesh.coords, :, k, bndry_i.element)
+      dxidx = ro_sview(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = ro_sview(mesh.sbpface.normal, :, bndry_i.face)
       calcBCNormal(eqn.params, dxidx, nrm, nrm_scaled)
       bndryflux[1, j, i] = -functor(q, eqn.params, coords, nrm_scaled, t)
     end
@@ -91,8 +91,8 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       q = eqn.q_bndry[ 1, j, global_facenum]
       alpha_x = eqn.params.alpha_x
       alpha_y = eqn.params.alpha_y
-      coords = sview(mesh.coords_bndry, :, j, global_facenum)
-      nrm_scaled = sview(mesh.nrm_bndry, :, j, global_facenum)
+      coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+      nrm_scaled = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux[1, j, i] = -functor(q, eqn.params, coords, nrm_scaled, t)
     end
   end
@@ -123,14 +123,14 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     global_facenum = idx_range[i]
 
     # interpolate to face
-    q_el = sview(eqn.q, :, :, bndry_i.element)
+    q_el = ro_sview(eqn.q, :, :, bndry_i.element)
     boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, q_el, q_face)
 
     for j = 1:mesh.numNodesPerFace
       # get components
       q = q_face[ 1, j]
-      coords = sview(mesh.coords_bndry, :, j, global_facenum)
-      nrm_scaled = sview(mesh.nrm_bndry, :, j, i)
+      coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+      nrm_scaled = ro_sview(mesh.nrm_bndry, :, j, i)
       flux_face[1, j] = -functor(q, eqn.params, coords, nrm_scaled, t)
     end
 

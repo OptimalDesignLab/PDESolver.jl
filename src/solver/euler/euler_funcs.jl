@@ -28,8 +28,8 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   nrm = zeros(Tmsh, Tdim)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement  # loop over nodes on current element
-      q_vals = sview(eqn.q, :, j, i)
-      aux_vars = sview(eqn.aux_vars, :, j, i)
+      q_vals = ro_sview(eqn.q, :, j, i)
+      aux_vars = ro_sview(eqn.aux_vars, :, j, i)
       # put this loop here (rather than outside) to we don't have to fetch
       # q_vals twice, even though writing to the flux vector is slower
       # it might be worth copying the normal vector rather than
@@ -169,8 +169,8 @@ function calcVolumeIntegrals_nopre{Tmsh, Tsol, Tres, Tdim}(
 
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      q_j = sview(eqn.q, :, j, i)
-      aux_vars_j = sview(eqn.aux_vars, :, j, i)
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
 
       for k=1:Tdim
         flux_k = sview(flux_el, :, j, k)
@@ -249,10 +249,10 @@ function calcVolumeIntegralsSplitFormLinear{Tmsh, Tsol, Tres, Tdim}(
   
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      q_j = sview(q, :, j, i)
-      aux_vars_j = sview(aux_vars, :, j, i)
+      q_j = ro_sview(q, :, j, i)
+      aux_vars_j = ro_sview(aux_vars, :, j, i)
       for k=1:(j-1)  # loop over lower triangle of S
-        q_k = sview(q, :, k, i)
+        q_k = ro_sview(q, :, k, i)
         # calcaulate the normal vector in each parametric directions
         for d=1:Tdim
           # get the normal vector
@@ -312,14 +312,14 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
   
   for i=1:mesh.numEl
     # get S for this element
-    dxidx_i = sview(dxidx, :, :, :, i)
+    dxidx_i = ro_sview(dxidx, :, :, :, i)
     calcSCurvilinear(sbp, dxidx_i, S)
 
     for j=1:mesh.numNodesPerElement
-      q_j = sview(q, :, j, i)
-      aux_vars_j = sview(aux_vars, :, j, i)
+      q_j = ro_sview(q, :, j, i)
+      aux_vars_j = ro_sview(aux_vars, :, j, i)
       for k=1:(j-1)  # loop over lower triangle of S
-        q_k = sview(q, :, k, i)
+        q_k = ro_sview(q, :, k, i)
 
         # calculate the numerical flux functions in all Tdim
         # directions at once
@@ -642,7 +642,7 @@ function getAuxVars{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      q_vals = sview(eqn.q, :, j, i)
+      q_vals = ro_sview(eqn.q, :, j, i)
 
       # calculate pressure
       press = calcPressure(eqn.params, q_vals)
@@ -1660,7 +1660,7 @@ function calcMaxWaveSpeed{Tsol, Tdim, Tres}(mesh, sbp,
   q = eqn.q_vec
   max_speed = zero(Float64)
   for i=1:mesh.numDofPerNode:length(q)
-    q_i = sview(q, i:(i+mesh.numDofPerNode - 1))
+    q_i = ro_sview(q, i:(i+mesh.numDofPerNode - 1))
     a = calcSpeedofSound(eqn.params, q_i)
     u_nrm = zero(Tsol)
     for j=1:Tdim
@@ -1690,7 +1690,7 @@ function calcMaxWaveSpeed{Tsol, Tres}(mesh, sbp,
 
   max_speed = zero(eltype(q))
   for i=1:mesh.numDofPerNode:length(q)
-    q_i = sview(q, i:(i+mesh.numDofPerNode - 1))
+    q_i = ro_sview(q, i:(i+mesh.numDofPerNode - 1))
     a = calcSpeedofSound(eqn.params, q_i)
 
     # this is dimension specific
@@ -1772,8 +1772,8 @@ function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
     end_idx = mesh.bndry_offsets[ bndry_nums[i] + 1 ] - 1
     face_range = start_idx:end_idx
     bndry_faces = sview(mesh.bndryfaces, face_range)
-    coords = sview(mesh.coords_bndry, :, :, face_range)
-    nrm = sview(mesh.nrm_bndry, :, :, face_range)
+    coords = ro_sview(mesh.coords_bndry, :, :, face_range)
+    nrm = ro_sview(mesh.nrm_bndry, :, :, face_range)
     
     # compute dforce
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
@@ -1794,8 +1794,8 @@ function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::Abstr
     start_idx = mesh.bndry_offsets[ bndry_nums[i] ]
     end_idx = mesh.bndry_offsets[ bndry_nums[i] + 1 ] - 1
     face_range = start_idx:end_idx
-    bndry_faces = sview(mesh.bndryfaces, face_range)
-    coords = sview(mesh.coords_bndry, :, :, face_range)
+    bndry_faces = ro_sview(mesh.bndryfaces, face_range)
+    coords = ro_sview(mesh.coords_bndry, :, :, face_range)
     coords_bar = zeros(coords)
 
     nrm = sview(mesh.nrm_bndry, :, :, face_range)
@@ -1825,7 +1825,7 @@ function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh,
   dforce = zeros(Tres, mesh.dim, mesh.numNodesPerFace, nfaces)
   for i=1:nfaces
     for j=1:mesh.numNodesPerFace
-      q_j = sview(eqn.q_bndry, :, j, i)  # q_bndry must already have been populated
+      q_j = ro_sview(eqn.q_bndry, :, j, i)  # q_bndry must already have been populated
       p = calcPressure(eqn.params, q_j)
       for k=1:mesh.dim
         dforce[k, j, i] = p*nrm[k, j, i]
@@ -1846,7 +1846,7 @@ function computeDForce_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
    nfaces = length(bndryfaces)
    for i=1:nfaces
     for j=1:mesh.numNodesPerFace
-      q_j = sview(eqn.q_bndry, :, j, i)
+      q_j = ro_sview(eqn.q_bndry, :, j, i)
       p = calcPressure(eqn.params, q_j)
       for k=1:mesh.dim
         nrm_bar[k, j, i] = dforce_bar[k, j, i]*p
