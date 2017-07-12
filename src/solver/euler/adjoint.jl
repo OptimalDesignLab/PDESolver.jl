@@ -222,11 +222,11 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
         vtx_arr = mesh.topo.face_verts[:,bndry_i.face]
-        q = sview(eqn.q_bndry, :, j, global_facenum)
+        q = ro_sview(eqn.q_bndry, :, j, global_facenum)
         convertToConservative(eqn.params, q, q2)
-        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
-        x = sview(mesh.coords_bndry, :, j, global_facenum)
-        nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
+        aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+        nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         integrand_i = sview(integrand, :, j, global_facenum)
 

@@ -6,11 +6,8 @@
 
 arg_dict = Dict{ASCIIString, Any}(
 "physics" => "Euler",
-"var1" => 1,
-"var2" => "a",
-"var3" => 3.5,
-"var4" => [1,2,3],
-"var3" => 4,
+"use_DG" => true,
+"Flux_name" => "RoeFlux",
 "run_type" => 5,
 "jac_method" => 2,
 "jac_type" => 2,

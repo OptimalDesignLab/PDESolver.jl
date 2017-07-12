@@ -37,6 +37,7 @@ type NewtonData{Tsol, Tres}
   # tuple to be passed to func
   ctx_newton
 
+  #TODO; make this an outer constructor
   function NewtonData(mesh, sbp, eqn, opts)
 
     println("entered NewtonData constructor")

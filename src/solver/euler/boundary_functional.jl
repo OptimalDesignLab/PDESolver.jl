@@ -141,11 +141,11 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
-        q = sview(eqn.q_bndry, :, j, global_facenum)
+        q = ro_sview(eqn.q_bndry, :, j, global_facenum)
         convertToConservative(eqn.params, q, q2)
-        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
-        x = sview(mesh.coords_bndry, :, j, global_facenum)
-        phys_nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
+        aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+        phys_nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
         calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
@@ -235,11 +235,11 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
-        q = sview(eqn.q_bndry, :, j, global_facenum)
+        q = ro_sview(eqn.q_bndry, :, j, global_facenum)
         convertToConservative(eqn.params, q, q2)
-        aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
-        x = sview(mesh.coords_bndry, :, j, global_facenum)
-        phys_nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
+        aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+        phys_nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         phys_nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji_bar = sview(boundary_integrand_bar, :, j, i)
@@ -717,12 +717,12 @@ function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
     bndry_i = bndry_facenums[i]
     for j = 1:mesh.numNodesPerFace
       k = mesh.facenodes[j, bndry_i.face]
-      q = sview(eqn.q, :, k, bndry_i.element)
+      q = ro_sview(eqn.q, :, k, bndry_i.element)
       convertToConservative(eqn.params, q, q2)
-      aux_vars = sview(eqn.aux_vars, :, k, bndry_i.element)
-      x = sview(mesh.coords, :, k, bndry_i.element)
-      dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
+      aux_vars = ro_sview(eqn.aux_vars, :, k, bndry_i.element)
+      x = ro_sview(mesh.coords, :, k, bndry_i.element)
+      dxidx = ro_sview(mesh.dxidx, :, :, k, bndry_i.element)
+      nrm = ro_sview(mesh.sbpface.normal, :, bndry_i.face)
 
       # analytical_force[k,bndry_i.element] = calc_analytical_forces(mesh, eqn.params, x)
       nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]

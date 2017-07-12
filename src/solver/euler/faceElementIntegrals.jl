@@ -60,13 +60,13 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
     # loop over the nodes of "left" element that are in the stencil of interp
   for i = 1:sbpface.stencilsize
     p_i = sbpface.perm[i, iface.faceL]
-    qi = sview(qL, :, p_i)
-    aux_vars_i = sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
+    qi = ro_sview(qL, :, p_i)
+    aux_vars_i = ro_sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
 
     # loop over the nodes of "right" element that are in the stencil of interp
     for j = 1:sbpface.stencilsize
       p_j = sbpface.perm[j, iface.faceR]
-      qj = sview(qR, :, p_j)
+      qj = ro_sview(qR, :, p_j)
 
       # compute flux and add contribution to left and right elements
       functor(params, qi, qj, aux_vars_i, nrmD, fluxD)
@@ -221,8 +221,8 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     p_iR = sbpface.perm[i, iface.faceR]
     # these need to have different names from qL_i etc. below to avoid type
     # instability
-    qL_itmp = sview(qL, :, p_iL)
-    qR_itmp = sview(qR, :, p_iR)
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
     wL_itmp = sview(wL, :, i)
     wR_itmp = sview(wR, :, i)
     convertToIR(params, qL_itmp, wL_itmp)
@@ -248,7 +248,7 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   @simd for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i, iface.orient]
-    dir = sview(nrm_face, :, i)
+    dir = ro_sview(nrm_face, :, i)
     fastzero!(wL_i)
     fastzero!(wR_i)
 #    fastzero!(qL_i)
@@ -367,8 +367,8 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     p_iR = sbpface.perm[i, iface.faceR]
     # these need to have different names from qL_i etc. below to avoid type
     # instability
-    qL_itmp = sview(qL, :, p_iL)
-    qR_itmp = sview(qR, :, p_iR)
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
     wL_itmp = sview(wL, :, i)
     wR_itmp = sview(wR, :, i)
     convertToIR(params, qL_itmp, wL_itmp)
@@ -529,8 +529,8 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     p_iR = sbpface.perm[i, iface.faceR]
     # these need to have different names from qL_i etc. below to avoid type
     # instability
-    qL_itmp = sview(qL, :, p_iL)
-    qR_itmp = sview(qR, :, p_iR)
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
     wL_itmp = sview(wL, :, i)
     wR_itmp = sview(wR, :, i)
     convertToIR(params, qL_itmp, wL_itmp)

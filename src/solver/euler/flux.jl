@@ -47,10 +47,10 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
       eL = interface_i.elementL
       fL = interface_i.faceL
       # get components
-      qL = sview(eqn.q_face, :, 1, j, i)
-      qR = sview(eqn.q_face, :, 2, j, i)
-      aux_vars = sview(eqn.aux_vars_face, :, j, i)
-      nrm_xy = sview(mesh.nrm_face, :, j, i)
+      qL = ro_sview(eqn.q_face, :, 1, j, i)
+      qR = ro_sview(eqn.q_face, :, 2, j, i)
+      aux_vars = ro_sview(eqn.aux_vars_face, :, j, i)
+      nrm_xy = ro_sview(mesh.nrm_face, :, j, i)
       flux_j = sview(face_flux, :, j, i)
 
       functor(params, qL, qR, aux_vars, nrm_xy, flux_j)
@@ -80,19 +80,19 @@ function calcFaceIntegral_nopre{Tmsh, Tsol, Tres, Tdim}(
   for i=1:nfaces
     iface_i = interfaces[i]
 
-    qL = sview(eqn.q, :, :, iface_i.elementL)
-    qR = sview(eqn.q, :, :, iface_i.elementR)
+    qL = ro_sview(eqn.q, :, :, iface_i.elementL)
+    qR = ro_sview(eqn.q, :, :, iface_i.elementR)
     interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL,
                              q_faceR)
 
     for j=1:mesh.numNodesPerFace
-      qL_j = sview(q_faceL, :, j)
-      qR_j = sview(q_faceR, :, j)
+      qL_j = ro_sview(q_faceL, :, j)
+      qR_j = ro_sview(q_faceR, :, j)
 
-      aux_vars = sview(eqn.aux_vars_face, :, j, i)
-      aux_vars[1] = calcPressure(params, qL_j)
+      eqn.aux_vars_face[1, j, i] = calcPressure(params, qL_j)
+      aux_vars = ro_sview(eqn.aux_vars_face, :, j, i)
 
-      nrm_xy = sview(mesh.nrm_face, :, j, i)
+      nrm_xy = ro_sview(mesh.nrm_face, :, j, i)
       flux_j = sview(flux_face, :, j)
 
       functor(params, qL_j, qR_j, aux_vars, nrm_xy, flux_j)
@@ -129,10 +129,10 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     iface = interfaces[i]
     elL = iface.elementL
     elR = iface.elementR
-    qL = sview(eqn.q, :, :, elL)
-    qR = sview(eqn.q, :, :, elR)
-    aux_vars = sview(eqn.aux_vars, :, :, elL)
-    nrm_face = sview(mesh.nrm_face, :, :, i)
+    qL = ro_sview(eqn.q, :, :, elL)
+    qR = ro_sview(eqn.q, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
@@ -206,10 +206,10 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
     iface_j = interfaces[j]
     elL = iface_j.elementL
     elR = iface_j.elementR - start_elnum + 1  # is this always equal to j?
-    qL = sview(q, :, :, elL)
-    qR = sview(qR_arr, :, :, elR)
-    aux_vars = sview(eqn.aux_vars, :, :, elL)
-    nrm_face = sview(nrm_face_arr, :, :, j)
+    qL = ro_sview(q, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(nrm_face_arr, :, :, j)
     resL = sview(eqn.res, :, :, elL)
 
     face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
@@ -280,10 +280,10 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
       eL = interface_i.elementL
       fL = interface_i.faceL
 
-      qL = sview(qL_arr, :, k, j)
-      qR = sview(qR_arr, :, k, j)
-      aux_vars = sview(aux_vars_arr, :, k, j)
-      nrm_xy = sview(nrm_arr, :, k, j)
+      qL = ro_sview(qL_arr, :, k, j)
+      qR = ro_sview(qR_arr, :, k, j)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
       flux_j = sview(flux_arr, :, k, j)
       functor(params, qL, qR, aux_vars, nrm_xy, flux_j)
     end
@@ -332,11 +332,11 @@ function calcSharedFaceIntegrals_nopre_inner{Tmsh, Tsol, Tres}(
 
     # compute the flux
     for k=1:mesh.numNodesPerFace
-      qL = sview(qL_arr, :, k, j)
-      qR = sview(qR_arr, :, k, j)
-      aux_vars = sview(aux_vars_arr, :, k, j)
-      aux_vars[1] = calcPressure(params, qL)
-      nrm_xy = sview(nrm_arr, :, k, j)
+      qL = ro_sview(qL_arr, :, k, j)
+      qR = ro_sview(qR_arr, :, k, j)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      parent(aux_vars)[1] = calcPressure(params, qL)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
       flux_k = sview(flux_j, :, k)
       functor(params, qL, qR, aux_vars, nrm_xy, flux_k)
     end
@@ -425,9 +425,9 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     fL = bndryL_j.face
 
     # interpolate to face
-    qL = sview(q, :, :, iface_j.elementL)
+    qL = ro_sview(q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
-    qR = sview(qR_arr, :, :, el_r)
+    qR = ro_sview(qR_arr, :, :, el_r)
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
 
     @debug1 qL_face_arr[:, :, j] = q_faceL
@@ -435,13 +435,13 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
     # calculate flux
     for k=1:mesh.numNodesPerFace
-      qL_k = sview(q_faceL, :, k)
-      qR_k = sview(q_faceR, :, k)
-      aux_vars = sview(aux_vars_arr, :, k, j)
-      nrm_xy = sview(nrm_arr, :, k, j)
+      qL_k = ro_sview(q_faceL, :, k)
+      qR_k = ro_sview(q_faceR, :, k)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
       flux_k = sview(flux_arr, :, k, j)
 
-      aux_vars[1] = calcPressure(params, qL_k)
+      parent(aux_vars)[1] = calcPressure(params, qL_k)
 
       functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
      end
@@ -501,9 +501,9 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
     fL = bndryL_j.face
 
     # interpolate to face
-    qL = sview(q, :, :, iface_j.elementL)
+    qL = ro_sview(q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
-    qR = sview(qR_arr, :, :, el_r)
+    qR = ro_sview(qR_arr, :, :, el_r)
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
 
     @debug1 qL_face_arr[:, :, j] = q_faceL
@@ -511,13 +511,13 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
 
     # calculate flux
     for k=1:mesh.numNodesPerFace
-      qL_k = sview(q_faceL, :, k)
-      qR_k = sview(q_faceR, :, k)
-      aux_vars = sview(aux_vars_arr, :, k, j)
-      nrm_xy = sview(nrm_arr, :, k, j)
+      qL_k = ro_sview(q_faceL, :, k)
+      qR_k = ro_sview(q_faceR, :, k)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
       flux_k = sview(flux_face, :, k)
 
-      aux_vars[1] = calcPressure(params, qL_k)
+      parent(aux_vars)[1] = calcPressure(params, qL_k)
 
       functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
      end
@@ -566,7 +566,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts,
   # recalculte aux_vars
   for i=1:mesh.numInterfaces
     for j=1:mesh.numNodesPerFace
-      q_vals = sview(q_face, :, 1, j, i) # always use elementL
+      q_vals = ro_sview(q_face, :, 1, j, i) # always use elementL
       eqn.aux_vars_face[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end
@@ -577,7 +577,7 @@ function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts,
       aux_vars = eqn.aux_vars_sharedface[peer]
       for i=1:mesh.peer_face_counts[peer]
         for j=1:mesh.numNodesPerFace
-          q_vals = sview(q_vals_p, :, j, i)
+          q_vals = ro_sview(q_vals_p, :, j, i)
           aux_vars[1, j, i] = calcPressure(eqn.params, q_vals)
         end
       end

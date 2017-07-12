@@ -132,7 +132,7 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
     for i =1:mesh.numEl
       for j=1:mesh.numNodesPerElement
-        dxidx_j = sview(mesh.dxidx, :, :, j, i)
+        dxidx_j = ro_sview(mesh.dxidx, :, :, j, i)
         calcAdvectionFlux(eqn.params, eqn.q[1, j, i], alphas_xy, dxidx_j, flux_tmp)
 
         for k=1:Tdim
@@ -182,7 +182,7 @@ function calcAdvectionFlux{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp
   flux_tmp = zeros(Tres, Tdim)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      dxidx_j = sview(mesh.dxidx, :, :, j, i)
+      dxidx_j = ro_sview(mesh.dxidx, :, :, j, i)
       calcAdvectionFlux(eqn.params, q[1, j, i], alphas_xy, dxidx_j, flux_tmp)
 
       for k=1:Tdim
@@ -402,10 +402,10 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
 
   t = eqn.t
   for i=1:mesh.numEl
-    jac_i = sview(mesh.jac, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
-      coords_j = sview(mesh.coords, :, j, i)
+      coords_j = ro_sview(mesh.coords, :, j, i)
       src_val = src_func(coords_j, eqn.params, t)
       res_i[j] += weights[j]*src_val/jac_i[j]
     end

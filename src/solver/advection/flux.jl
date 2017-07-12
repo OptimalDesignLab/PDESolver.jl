@@ -1,4 +1,4 @@
-# this file contains the defitions of all the fluxes used for DG face integrals
+# this file contains the defitions of all the fluxes used for DG face integrals:
 @doc """
 ### AdvectionEquationMod.calcFaceFlux
 
@@ -44,7 +44,7 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # get components
       qL = eqn.q_face[1, 1, j, i]
       qR = eqn.q_face[1, 2, j, i]
-      nrm_scaled = sview(mesh.nrm_face, :, j, i)
+      nrm_scaled = ro_sview(mesh.nrm_face, :, j, i)
 
       face_flux[1, j, i] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
@@ -75,14 +75,14 @@ function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
 
   for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
-    qL = sview(eqn.q, :, :, iface_i.elementL)
-    qR = sview(eqn.q, :, :, iface_i.elementR)
+    qL = ro_sview(eqn.q, :, :, iface_i.elementL)
+    qR = ro_sview(eqn.q, :, :, iface_i.elementR)
 
     # interpolate to face
     interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
 
     for j=1:mesh.numNodesPerFace
-      nrm_scaled = sview(mesh.nrm_face, :, j, i)
+      nrm_scaled = ro_sview(mesh.nrm_face, :, j, i)
 
       flux_face[1, j] = -flux_func(q_faceL[j], q_faceR[j], nrm_scaled, eqn.params)
     end
@@ -161,7 +161,7 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
-      nrm_scaled = sview(nrm_arr, :, k, j)
+      nrm_scaled = ro_sview(nrm_arr, :, k, j)
       flux_arr[1,k,j] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
   end
@@ -213,7 +213,7 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
 
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
-      nrm_scaled = sview(nrm_arr, :, k, j)
+      nrm_scaled = ro_sview(nrm_arr, :, k, j)
       flux_face[1, k] = -functor(qL, qR, nrm_scaled, eqn.params)
     end
 
@@ -298,9 +298,9 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     fL = bndryL_j.face
 
     # interpolate to face
-    qL = sview(q, :, :, iface_j.elementL)
+    qL = ro_sview(q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
-    qR = sview(qR_arr, :, :, el_r)
+    qR = ro_sview(qR_arr, :, :, el_r)
 
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
     
@@ -311,7 +311,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     for k=1:mesh.numNodesPerFace
       qL_k = q_faceL[k]
       qR_k = q_faceR[k]
-      nrm_scaled = sview(nrm_arr, :, k, j)
+      nrm_scaled = ro_sview(nrm_arr, :, k, j)
 
       flux_tmp = -functor(qL_k, qR_k, nrm_scaled, eqn.params)
       flux_arr[1,k,j] = flux_tmp
@@ -380,9 +380,9 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
     fL = bndryL_j.face
 
     # interpolate to face
-    qL = sview(q, :, :, iface_j.elementL)
+    qL = ro_sview(q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
-    qR = sview(qR_arr, :, :, el_r)
+    qR = ro_sview(qR_arr, :, :, el_r)
 
 
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
@@ -394,7 +394,7 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
     for k=1:mesh.numNodesPerFace
       qL_k = q_faceL[k]
       qR_k = q_faceR[k]
-      nrm_scaled = sview(nrm_arr, :, k, j)
+      nrm_scaled = ro_sview(nrm_arr, :, k, j)
 
       flux_face[1, k] = -functor(qL_k, qR_k, nrm_scaled, eqn.params)
     end
