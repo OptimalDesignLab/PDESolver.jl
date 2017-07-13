@@ -93,7 +93,7 @@ function test_gamma_bcsolver(mesh, sbp, eqn, opts)
         net_flux = sum(flux_parametric.*nrm)
 
         # calculate boundary flux
-        bndryflux_calc = AdvectionEquationMod.RoeSolver(u, u, eqn.params, nrm2)
+        bndryflux_calc = AdvectionEquationMod.RoeSolver(eqn.params, u, u, nrm2)
         # calculate flux from evalVolumeIntegrals
         bndryflux_weak = zero(eltype(eqn.flux_parametric))
         for d=1:3
@@ -177,7 +177,7 @@ function test_gamma_faceflux(mesh, sbp, eqn, opts)
       coords_face = SummationByParts.SymCubatures.calcnodes(sbpface.cub, coords_faceverts)
       for j=1:mesh.numNodesPerFace
         coords_j = coords_face[:, j]
-        q_exp = AdvectionEquationMod.calc_p1(coords_j, eqn.params, 0.0)
+        q_exp = AdvectionEquationMod.calc_p1(eqn.params, coords_j, 0.0)
         q_calc = eqn.q_face[1, 1, j, i]
         q_calc2 = eqn.q_face[1, 2, j, i]
         @fact q_calc --> roughly(q_exp, atol=1e-13)

@@ -46,7 +46,7 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       qR = eqn.q_face[1, 2, j, i]
       nrm_scaled = ro_sview(mesh.nrm_face, :, j, i)
 
-      face_flux[1, j, i] = -functor(qL, qR, nrm_scaled, eqn.params)
+      face_flux[1, j, i] = -functor(eqn.params, qL, qR, nrm_scaled)
     end
   end
 
@@ -84,7 +84,7 @@ function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
     for j=1:mesh.numNodesPerFace
       nrm_scaled = ro_sview(mesh.nrm_face, :, j, i)
 
-      flux_face[1, j] = -flux_func(q_faceL[j], q_faceR[j], nrm_scaled, eqn.params)
+      flux_face[1, j] = -flux_func(eqn.params, q_faceL[j], q_faceR[j], nrm_scaled)
     end
 
     resL = sview(eqn.res, :, :, iface_i.elementL)
@@ -162,7 +162,7 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
       nrm_scaled = ro_sview(nrm_arr, :, k, j)
-      flux_arr[1,k,j] = -functor(qL, qR, nrm_scaled, eqn.params)
+      flux_arr[1,k,j] = -functor(eqn.params, qL, qR, nrm_scaled)
     end
   end
   # end flux calculation
@@ -214,7 +214,7 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
       qL = qL_arr[1, k, j]
       qR = qR_arr[1, k, j]
       nrm_scaled = ro_sview(nrm_arr, :, k, j)
-      flux_face[1, k] = -functor(qL, qR, nrm_scaled, eqn.params)
+      flux_face[1, k] = -functor(eqn.params, qL, qR, nrm_scaled)
     end
 
     res_i = sview(eqn.res, :, :, interface_i.elementL)
@@ -313,7 +313,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
       qR_k = q_faceR[k]
       nrm_scaled = ro_sview(nrm_arr, :, k, j)
 
-      flux_tmp = -functor(qL_k, qR_k, nrm_scaled, eqn.params)
+      flux_tmp = -functor(eqn.params, qL_k, qR_k, nrm_scaled)
       flux_arr[1,k,j] = flux_tmp
     end
   end  # end loop over interfaces
@@ -396,7 +396,7 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
       qR_k = q_faceR[k]
       nrm_scaled = ro_sview(nrm_arr, :, k, j)
 
-      flux_face[1, k] = -functor(qL_k, qR_k, nrm_scaled, eqn.params)
+      flux_face[1, k] = -functor(eqn.params, qL_k, qR_k, nrm_scaled)
     end
 
     res_j = sview(eqn.res, :, :, bndryL_j.element)
@@ -426,8 +426,8 @@ end
 type avgFlux <: FluxType
 end
 
-function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
-              nrm::AbstractArray{Tmsh,1}, params::ParamType2)
+function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType2, uL::Tsol, uR::Tsol,
+              nrm::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
@@ -441,8 +441,8 @@ function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
   return u
 end
 
-function call{Tmsh, Tsol}(obj::avgFlux, uL::Tsol, uR::Tsol,
-              nrm::AbstractArray{Tmsh,1}, params::ParamType3)
+function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType3, uL::Tsol, uR::Tsol,
+              nrm::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
@@ -479,8 +479,8 @@ end
 type LFFlux <: FluxType
 end
 
-function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
-              nrm_scaled::AbstractArray{Tmsh,1}, params::ParamType2)
+function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType2, uL::Tsol, uR::Tsol,
+              nrm_scaled::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
@@ -495,8 +495,8 @@ function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
   return u
 end
 
-function call{Tmsh, Tsol}(obj::LFFlux, uL::Tsol, uR::Tsol,
-              nrm::AbstractArray{Tmsh,1}, params::ParamType3)
+function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType3, uL::Tsol, uR::Tsol,
+              nrm::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y

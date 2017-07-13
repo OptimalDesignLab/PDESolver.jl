@@ -200,7 +200,7 @@ for i=1:numEl
       dofnums_j = sview(mesh.dofs, :, j, i)
       # get dof numbers for each variable
 
-      calcRho1Energy2U3(coords_j, eqn.params, sol)
+      calcRho1Energy2U3(eqn.params, coords_j, sol)
 
       for k=1:dofpernode
         u0[dofnums_j[k]] = sol[k]
@@ -248,7 +248,7 @@ for i=1:numEl
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
  
-      calcFreeStream(coords_j, eqn.params, sol)
+      calcFreeStream(eqn.params, coords_j, sol)
 
       for k=1:dofpernode
         u0[dofnums_j[k]] = sol[k]
@@ -289,7 +289,7 @@ for i=1:numEl
       x = coords_j[1]
       y = coords_j[2]
 
-      calcVortex(coords_j, eqn.params, sol)
+      calcVortex(eqn.params, coords_j, sol)
 
 
       for k=1:dofpernode
@@ -467,7 +467,7 @@ for i=1:numEl
   for j=1:nnodes
       dofnums_j = sview(mesh.dofs, :, j, i)
       coords_j = sview(mesh.coords, :, j, i)
-      calcIsentropicVortex(coords_j, eqn.params, sol)
+      calcIsentropicVortex(eqn.params, coords_j, sol)
 
       # apply initial conditions here
       for k=1:dofpernode
@@ -515,7 +515,7 @@ for i=1:numEl
   for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
-      calcIsentropicVortex(coords_j, eqn.params, sol)
+      calcIsentropicVortex(eqn.params, coords_j, sol)
 
       # apply initial conditions here
       for k=1:dofpernode
@@ -564,7 +564,7 @@ for i=1:numEl
       dofnums_j = sview(mesh.dofs, :, j, i)
  
       coords_j = sview(mesh.coords, :, j, i)
-      calcUnsteadyVortex(coords_j, eqn.params, sol)
+      calcUnsteadyVortex(eqn.params, coords_j, sol)
 
       for k=1:dofpernode
         u0[dofnums_j[k]] = sol[k]
@@ -631,7 +631,7 @@ function ICExp{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol},
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
       coords = sview(mesh.coords, :, j, i)
-      calcExp(coords, eqn.params, q)
+      calcExp(eqn.params, coords, q)
       for k=1:mesh.numDofPerNode
         u0[dofs[k]] = q[k]
       end
@@ -651,7 +651,7 @@ function ICPeriodicMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerDat
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
       coords = sview(mesh.coords, :, j, i)
-      calcPeriodicMMS(coords, eqn.params, q)
+      calcPeriodicMMS(eqn.params, coords, q)
       for k=1:mesh.numDofPerNode
         u0[dofs[k]] = q[k]
       end
@@ -709,7 +709,7 @@ function ICChannelMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
       coords = sview(mesh.coords, :, j, i)
-      calcChannelMMS(coords, eqn.params, q)
+      calcChannelMMS(eqn.params, coords, q)
       for k=1:mesh.numDofPerNode
         u0[dofs[k]] = q[k]
       end

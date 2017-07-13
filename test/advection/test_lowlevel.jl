@@ -1,8 +1,8 @@
 type twoxBC <: BCType
 end
-function call(obj::twoxBC, u, params::AdvectionEquationMod.ParamType, coords, nrm, t)
+function call(obj::twoxBC, params::AdvectionEquationMod.ParamType, u, coords, nrm, t)
   u_bc = 2*coords[1]
-  bndryflux = AdvectionEquationMod.RoeSolver(u, u_bc, params, nrm)
+  bndryflux = AdvectionEquationMod.RoeSolver(params, u, u_bc, nrm)
   return bndryflux
 end
 
@@ -132,10 +132,10 @@ function test_lowlevel_common(mesh, sbp, eqn, opts)
     eqn.params.alpha_x = 0.0
     eqn.params.alpha_y = 0.0
     t = 0.0
-    val = AdvectionEquationMod.calc_x5plusy5(coords, eqn.params, t)
+    val = AdvectionEquationMod.calc_x5plusy5(eqn.params, coords, t)
     @fact val --> roughly(x^5 + y^5, atol=1e-14)
    
-    val = AdvectionEquationMod.calc_exp_xplusy(coords, eqn.params, t)
+    val = AdvectionEquationMod.calc_exp_xplusy(eqn.params, coords, t)
     @fact val --> roughly(exp(x + y), atol=1e-14)
   end  # end facts block
 
@@ -163,24 +163,24 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
 
 
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
 
     @fact val --> roughly(u*eqn.params.alpha_x, atol=1e-14)
 
     nrm = [-1.0, 0]
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
     @fact val --> roughly(-u_bc*eqn.params.alpha_x, atol=1e-14)
 
 
     nrm = [0, 1.0]
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
     @fact val --> roughly(u*eqn.params.alpha_y, atol=1e-14)
 
     nrm = [0, -1.0]
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
     @fact val --> roughly(-u_bc*eqn.params.alpha_y, atol=1e-14)
 
     # now test rotation using dxidx
@@ -208,7 +208,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     alpha_eff = alpha_mag*cos(angle_diff)  # effective alpha in the wall normal
                                            # direction
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
@@ -217,7 +217,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = u*alpha_eff
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
 
     @fact val --> roughly(val_exp, atol=1e-14)
 
@@ -230,7 +230,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
 
     dxidx = get_rotation_matrix( theta)
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
     @fact val --> roughly(val_exp, atol=1e-14)
 
     # check eta direction
@@ -239,7 +239,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     angle_diff = theta + flow_direction
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = alpha_eff*u
-    val = AdvectionEquationMod.RoeSolver(u, u_bc, eqn.params, nrm2)
+    val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
     @fact val --> roughly(val_exp, atol=1e-14)
   end  # end facts block
 
@@ -401,7 +401,7 @@ function test_lowlevel_volumeintegrals()
         x = mesh.coords[1, j, i]
         alpha_x = eqn.params.alpha_x
         alpha_y = eqn.params.alpha_y
-        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(mesh.coords[:, j, i], eqn.params, 0.25)
+        eqn.q[1, j, i] = AdvectionEquationMod.calc_sinwave(eqn.params, mesh.coords[:, j, i], 0.25)
       end
     end
 

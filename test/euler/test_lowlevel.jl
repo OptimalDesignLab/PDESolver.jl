@@ -527,7 +527,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
 
     # test that roe flux = euler flux of BC functions
-    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, q)
+    EulerEquationMod.calcIsentropicVortex(eqn.params, coords, q)
 
     nrm1 = [dxidx[1,1], dxidx[1,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
@@ -538,7 +538,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     func1 = EulerEquationMod.isentropicVortexBC()
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     calcBCNormal(eqn.params, dxidx, dir, nrm_xy)
-    func1(q, aux_vars, coords, nrm_xy, F_roe, eqn.params)
+    func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe,)
 
     @fact F_roe --> roughly(F) 
 
@@ -551,11 +551,11 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, nrm_xy, F_roe, eqn.params)
+    func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
     @fact F_roe --> roughly(F) 
 
-    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
+    EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, q)
     func1 = EulerEquationMod.Rho1E2U3BC()
     nrm1 = [dxidx[1,1], dxidx[1,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
@@ -564,7 +564,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, nrm_xy, F_roe, eqn.params)
+    func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
     @fact F_roe --> roughly(F) 
   end  # end facts block
@@ -586,19 +586,19 @@ function test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
   facts("--- Testing common functions ---") do
 
     F = zeros(4)
-    EulerEquationMod.calcRho1Energy2(coords, eqn.params, F)
+    EulerEquationMod.calcRho1Energy2(eqn.params, coords, F)
     @fact F[1] --> 1.0
     @fact F[4] --> 2.0
 
     fill!(F, 0.0)
-    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, F)
+    EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, F)
     @fact F[1] --> roughly(1.0, atol=1e-4)
     @fact F[2] --> roughly(0.35355, atol=1e-4)
     @fact F[3] --> roughly(0.35355, atol=1e-4)
     @fact F[4] --> roughly(2.0, atol=1e-4)
 
     fill!(F, 0.0)
-    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, F)
+    EulerEquationMod.calcIsentropicVortex(eqn.params, coords, F)
     @fact F[1] --> roughly(2.000, atol=1e-4)
     @fact F[2] --> roughly(0.000, atol=1e-4)
     @fact F[3] --> roughly(-1.3435, atol=1e-4)

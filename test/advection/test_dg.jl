@@ -16,7 +16,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
     flux_test = alpha_n*(qL + qR)/2
 
     flux_func = AdvectionEquationMod.FluxDict["LFFlux"]
-    flux_code = flux_func(qL, qR, nrm_scaled, eqn.params)
+    flux_code = flux_func(eqn.params, qL, qR, nrm_scaled)
 
     @fact flux_code --> roughly(flux_test, atol=1e-13)
 
@@ -87,7 +87,7 @@ function test_dg_bc(mesh, sbp, eqn, opts)
     for i=1:mesh.numBoundaryFaces
       for j=1:mesh.sbpface.numnodes
         coords = mesh.coords_bndry[:, j, i]
-        q_test = AdvectionEquationMod.calc_p1(coords, eqn.params, 0.0)
+        q_test = AdvectionEquationMod.calc_p1(eqn.params, coords, 0.0)
         q_code = eqn.q_bndry[1, j, i]
         @fact q_code --> roughly(q_test, atol=1e-13)
       end

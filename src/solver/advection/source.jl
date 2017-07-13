@@ -11,7 +11,7 @@
 type SRC0 <: SRCType
 end
 
-function call(obj::SRC0, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRC0, params::ParamType2, coords::AbstractVector, t)
   return 0
 end
 
@@ -23,7 +23,7 @@ end
 type SRC1 <: SRCType
 end
 
-function call(obj::SRC1, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRC1, params::ParamType2, coords::AbstractVector, t)
   return 1
 end
 
@@ -35,7 +35,7 @@ end
 type SRC2 <: SRCType
 end
 
-function call(obj::SRC2, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRC2, params::ParamType2, coords::AbstractVector, t)
   return 2
 end
 
@@ -47,7 +47,7 @@ end
 type SRCx <: SRCType
 end
 
-function call(obj::SRCx, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRCx, params::ParamType2, coords::AbstractVector, t)
   return coords[1]
 end
 
@@ -59,8 +59,8 @@ end
 type SRCmms1 <: SRCType
 end
 
-function call(obj::SRCmms1, coords::AbstractVector, params::ParamType2, t)
-  return params.alpha_x*calc_mms1dx(coords, params, t)
+function call(obj::SRCmms1, params::ParamType2, coords::AbstractVector, t)
+  return params.alpha_x*calc_mms1dx(params, coords, t)
 end
 
 @doc """
@@ -72,8 +72,8 @@ end
 type SRCx4 <: SRCType
 end
 
-function call(obj::SRCx4, coords::AbstractVector, params::ParamType2, t)
-  return params.alpha_x*calc_x4der(coords, params, t)
+function call(obj::SRCx4, params::ParamType2, coords::AbstractVector, t)
+  return params.alpha_x*calc_x4der(params, coords, t)
 end
 
 @doc """
@@ -85,13 +85,13 @@ end
 type SRCp1 <: SRCType
 end
 
-function call(obj::SRCp1, coords::AbstractVector, params::ParamType2, t)
-  return params.alpha_x*calc_p1dx(coords, params, t) + params.alpha_y*calc_p1dy(coords, params, t)
+function call(obj::SRCp1, params::ParamType2, coords::AbstractVector, t)
+  return params.alpha_x*calc_p1dx(params, coords, t) + params.alpha_y*calc_p1dy(params, coords, t)
 
 end
 
-function call(obj::SRCp1, coords::AbstractVector, params::ParamType3, t)
-  return params.alpha_x*calc_p1dx(coords, params, t) + params.alpha_y*calc_p1dy(coords, params, t) + params.alpha_z*calc_p1dz(coords, params, t)
+function call(obj::SRCp1, params::ParamType3, coords::AbstractVector, t)
+  return params.alpha_x*calc_p1dx(params, coords, t) + params.alpha_y*calc_p1dy(params, coords, t) + params.alpha_z*calc_p1dz(params, coords, t)
 end
 
 
@@ -104,13 +104,13 @@ end
 type SRCp2 <: SRCType
 end
 
-function call(obj::SRCp2, coords::AbstractVector, params::ParamType2, t)
-  return params.alpha_x*calc_p2dx(coords, params, t) + params.alpha_y*calc_p2dy(coords, params, t)
+function call(obj::SRCp2, params::ParamType2, coords::AbstractVector, t)
+  return params.alpha_x*calc_p2dx(params, coords, t) + params.alpha_y*calc_p2dy(params, coords, t)
 
 end
 
-function call(obj::SRCp2, coords::AbstractVector, params::ParamType3, t)
-  return params.alpha_x*calc_p2dx(coords, params, t) + params.alpha_y*calc_p2dy(coords, params, t) + params.alpha_z*calc_p2dz(coords, params, t)
+function call(obj::SRCp2, params::ParamType3, coords::AbstractVector, t)
+  return params.alpha_x*calc_p2dx(params, coords, t) + params.alpha_y*calc_p2dy(params, coords, t) + params.alpha_z*calc_p2dz(params, coords, t)
 
 end
 
@@ -124,13 +124,13 @@ end
 type SRCp3 <: SRCType
 end
 
-function call(obj::SRCp3, coords::AbstractVector, params::ParamType2, t)
-  return params.alpha_x*calc_p3dx(coords, params, t) + params.alpha_y*calc_p3dy(coords, params, t)
+function call(obj::SRCp3, params::ParamType2, coords::AbstractVector, t)
+  return params.alpha_x*calc_p3dx(params, coords, t) + params.alpha_y*calc_p3dy(params, coords, t)
 
 end
 
-function call(obj::SRCp3, coords::AbstractVector, params::ParamType3, t)
-  return params.alpha_x*calc_p3dx(coords, params, t) + params.alpha_y*calc_p3dy(coords, params, t) + params.alpha_z*calc_p3dz(coords, params, t)
+function call(obj::SRCp3, params::ParamType3, coords::AbstractVector, t)
+  return params.alpha_x*calc_p3dx(params, coords, t) + params.alpha_y*calc_p3dy(params, coords, t) + params.alpha_z*calc_p3dz(params, coords, t)
 
 end
 
@@ -144,12 +144,12 @@ end
 type SRCp4 <: SRCType
 end
 
-function call(obj::SRCp4, coords::AbstractVector, params::ParamType2, t)
-  return params.alpha_x*calc_p4dx(coords, params, t) + params.alpha_y*calc_p4dy(coords, params, t)
+function call(obj::SRCp4, params::ParamType2, coords::AbstractVector, t)
+  return params.alpha_x*calc_p4dx(params, coords, t) + params.alpha_y*calc_p4dy(params, coords, t)
 end
 
-function call(obj::SRCp4, coords::AbstractVector, params::ParamType3, t)
-  return params.alpha_x*calc_p4dx(coords, params, t) + params.alpha_y*calc_p4dy(coords, params, t) + params.alpha_z*calc_p4dz(coords, params, t)
+function call(obj::SRCp4, params::ParamType3, coords::AbstractVector, t)
+  return params.alpha_x*calc_p4dx(params, coords, t) + params.alpha_y*calc_p4dy(params, coords, t) + params.alpha_z*calc_p4dz(params, coords, t)
 end
 
 
@@ -162,12 +162,12 @@ end
 type SRCp5 <: SRCType
 end
 
-function call(obj::SRCp5, coords::AbstractVector, params::ParamType2, t)
-  return params.alpha_x*calc_p5dx(coords, params, t) + params.alpha_y*calc_p5dy(coords, params, t)
+function call(obj::SRCp5, params::ParamType2, coords::AbstractVector, t)
+  return params.alpha_x*calc_p5dx(params, coords, t) + params.alpha_y*calc_p5dy(params, coords, t)
 end
 
-function call(obj::SRCp5, coords::AbstractVector, params::ParamType3, t)
-  return params.alpha_x*calc_p5dx(coords, params, t) + params.alpha_y*calc_p5dy(coords, params, t) + params.alpha_z*calc_p5dz(coords, params, t)
+function call(obj::SRCp5, params::ParamType3, coords::AbstractVector, t)
+  return params.alpha_x*calc_p5dx(params, coords, t) + params.alpha_y*calc_p5dy(params, coords, t) + params.alpha_z*calc_p5dz(params, coords, t)
 end
 
 
@@ -179,8 +179,8 @@ end
 type SRCexp_xplusy <: SRCType
 end
 
-function call(obj::SRCexp_xplusy, coords::AbstractVector, params::ParamType2, t)
-  u = calc_exp_xplusy(coords, params, t)
+function call(obj::SRCexp_xplusy, params::ParamType2, coords::AbstractVector, t)
+  u = calc_exp_xplusy(params, coords, t)
   return params.alpha_x*u + params.alpha_y*u 
 end
 
@@ -192,8 +192,8 @@ end
 type SRCx5plusy5 <: SRCType
 end
 
-function call(obj::SRCx5plusy5, coords::AbstractVector, params::ParamType2, t)
-  # u = calc_x5plusy5(coords, params, t)
+function call(obj::SRCx5plusy5, params::ParamType2, coords::AbstractVector, t)
+  # u = calc_x5plusy5(params, coords, t)
   x = coords[1]
   y = coords[2]
 
@@ -209,9 +209,9 @@ Calculates the source term for q = exp(5*x + 4*y +2)
 type SRCexp5xplus4yplus2 <: SRCType
 end
 
-function call(obj::SRCexp5xplus4yplus2, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRCexp5xplus4yplus2, params::ParamType2, coords::AbstractVector, t)
 
-  u = calc_exp5xplus4yplus2(coords, params, t)
+  u = calc_exp5xplus4yplus2(params, coords, t)
   return params.alpha_x*5*u + params.alpha_y*4*u
 end
 
@@ -223,8 +223,8 @@ Calculates the source term for q = exp(5*x + y)
 type SRCexp5xplusy <: SRCType
 end
 
-function call(obj::SRCexp5xplusy, coords::AbstractVector, params::ParamType2, t)
-  u = calc_exp5xplusy(coords, params, t)
+function call(obj::SRCexp5xplusy, params::ParamType2, coords::AbstractVector, t)
+  u = calc_exp5xplusy(params, coords, t)
   return params.alpha_x*5*u + params.alpha_y*u
 end
 
@@ -236,8 +236,8 @@ Calculates the source term for q = exp(3*x + y)
 type SRCexp3xplusy <: SRCType
 end
 
-function call(obj::SRCexp3xplusy, coords::AbstractVector, params::ParamType2, t)
-  u = calc_exp3xplusy(coords, params, t)
+function call(obj::SRCexp3xplusy, params::ParamType2, coords::AbstractVector, t)
+  u = calc_exp3xplusy(params, coords, t)
   return params.alpha_x*3*u + params.alpha_y*u
 end
 
@@ -249,8 +249,8 @@ Calculates the source term for q = exp(2*x + 2*y)
 type SRCexp2xplus2y <: SRCType
 end
 
-function call(obj::SRCexp2xplus2y, coords::AbstractVector, params::ParamType2, t)
-  u = calc_exp2xplus2y(coords, params, t)
+function call(obj::SRCexp2xplus2y, params::ParamType2, coords::AbstractVector, t)
+  u = calc_exp2xplus2y(params, coords, t)
   return params.alpha_x*2*u + params.alpha_y*2*u
 end
 
@@ -263,10 +263,10 @@ Calculates the source term for q = exp(x*y)
 type SRCexp_xy <: SRCType
 end
 
-function call(obj::SRCexp_xy, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRCexp_xy, params::ParamType2, coords::AbstractVector, t)
   x = coords[1]
   y = coords[2]
-  u = calc_exp_xy(coords, params, t)
+  u = calc_exp_xy(params, coords, t)
   return params.alpha_x*y*u + params.alpha_y*x*u
 end
 
@@ -279,7 +279,7 @@ calculates the source term for q = x + y
 type SRCxplusy <: SRCType
 end
 
-function call(obj::SRCxplusy, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRCxplusy, params::ParamType2, coords::AbstractVector, t)
 
   return params.alpha_x + params.alpha_y
 end
@@ -290,27 +290,27 @@ end
 type SRCunsteadymms <: SRCType
 end
 
-function call(obj::SRCunsteadymms, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRCunsteadymms, params::ParamType2, coords::AbstractVector, t)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
 
-  dudt = calc_unsteadymmsdt(coords, params, t)
-  dudx = calc_unsteadymmsdx(coords, params, t)
-  dudy = calc_unsteadymmsdy(coords, params, t)
+  dudt = calc_unsteadymmsdt(params, coords, t)
+  dudx = calc_unsteadymmsdx(params, coords, t)
+  dudy = calc_unsteadymmsdy(params, coords, t)
   return  dudt + alpha_x*dudx + alpha_y*dudy
 end
 
-function call(obj::SRCunsteadymms, coords::AbstractVector, params::ParamType3, t)
+function call(obj::SRCunsteadymms, params::ParamType3, coords::AbstractVector, t)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
   alpha_z = params.alpha_z
 
-  dudt = calc_unsteadymmsdt(coords, params, t)
-  dudx = calc_unsteadymmsdx(coords, params, t)
-  dudy = calc_unsteadymmsdy(coords, params, t)
-  dudz = calc_unsteadymmsdz(coords, params, t)
+  dudt = calc_unsteadymmsdt(params, coords, t)
+  dudx = calc_unsteadymmsdx(params, coords, t)
+  dudy = calc_unsteadymmsdy(params, coords, t)
+  dudz = calc_unsteadymmsdz(params, coords, t)
   return  dudt + alpha_x*dudx + alpha_y*dudy + alpha_z*dudz
 end
 
@@ -320,14 +320,14 @@ end
 type SRCunsteadypoly <: SRCType
 end
 
-function call(obj::SRCunsteadypoly, coords::AbstractVector, params::ParamType2, t)
+function call(obj::SRCunsteadypoly, params::ParamType2, coords::AbstractVector, t)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
 
-  dudt = calc_unsteadypolydt(coords, params, t)
-  dudx = calc_unsteadypolydx(coords, params, t)
-  dudy = calc_unsteadypolydy(coords, params, t)
+  dudt = calc_unsteadypolydt(params, coords, t)
+  dudx = calc_unsteadypolydx(params, coords, t)
+  dudy = calc_unsteadypolydy(params, coords, t)
  
 
   return dudt + alpha_x*dudx + alpha_y*dudy
@@ -341,7 +341,7 @@ end
 
   All functors must have the signature:
 
-  src_func(coords, params::ParamType, t)
+  src_func(params, coords::ParamType, t)
 
   where coords is the vector of length 2 containing the x and y coordinates
   of the node, params.alpha_x and params.alpha_y are the advection velocities in the x an y

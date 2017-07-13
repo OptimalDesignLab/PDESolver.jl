@@ -403,7 +403,7 @@ function test_reversemode()
           
           for k = 1:length(nrm)
             nrm[k] += pert
-            functor(q, aux_vars, x, nrm, tmpflux, eqn.params)
+            functor(eqn.params, q, aux_vars, x, nrm, tmpflux)
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
@@ -448,7 +448,7 @@ function test_reversemode()
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
           for k = 1:length(nrm)
             nrm[k] += pert
-            functor(q, aux_vars, x, nrm, tmpflux, eqn.params)
+            functor(eqn.params, q, aux_vars, x, nrm, tmpflux)
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
@@ -631,7 +631,7 @@ function test_reversemode()
           
           for k = 1:length(nrm)
             nrm[k] += pert
-            functor_i(q, aux_vars, x, nrm, tmpflux, eqn.params)
+            functor_i(eqn.params, q, aux_vars, x, nrm, tmpflux)
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
