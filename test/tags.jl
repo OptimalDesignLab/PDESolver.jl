@@ -30,7 +30,7 @@ if !tag_defs
 
   # types of tests
   global const TAG_SHORTTEST = "tag_shorttest"
-  global const TAG_LONGTEST = "tag_longest"
+  global const TAG_LONGTEST = "tag_longtest"
   global const LengthTags = Set([TAG_SHORTTEST, TAG_LONGTEST])
 
   global const TAG_TMP = "tag_tmp"  # a temporary tag
