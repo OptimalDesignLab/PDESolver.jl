@@ -19,7 +19,7 @@ level.
 *  None
 """->
 
-function flux1(u_sbp_, dxidx, nrm, net_flux, params::ParamType2)
+function flux1(params::ParamType2, u_sbp_, dxidx, nrm, net_flux )
   # This function works at the nodal level  
   # u_sbp_ is the entry from u_sbp for this node
   # dxi_dx is the jacobian for this node
@@ -71,7 +71,7 @@ each boundary. It is called at the nodal level
 *  `bndryflux` : Boundary flux at the particular node
 
 """->
-function RoeSolver{Tsol}(u::Tsol, u_bc, params::ParamType2, nrm)
+function RoeSolver{Tsol}(params::ParamType2, u::Tsol, u_bc, nrm)
     alpha_x = params.alpha_x
     alpha_y = params.alpha_y
     #=
@@ -85,7 +85,7 @@ function RoeSolver{Tsol}(u::Tsol, u_bc, params::ParamType2, nrm)
   return bndryflux
 end # end function RoeSolver
 
-function RoeSolver{Tsol}(u::Tsol, u_bc, params::ParamType3, nrm)
+function RoeSolver{Tsol}(params::ParamType3, u::Tsol, u_bc, nrm)
     alpha_x = params.alpha_x
     alpha_y = params.alpha_y
     alpha_z = params.alpha_z

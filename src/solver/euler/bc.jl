@@ -198,7 +198,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
       calcBCNormal(eqn.params, dxidx, nrm, nrm_xy)
       bndryflux_i = sview(bndryflux, :, j, i)
 
-      functor(q2, aux_vars, x, nrm_xy, bndryflux_i, eqn.params)
+      functor(eqn.params, q2, aux_vars, x, nrm_xy, bndryflux_i)
 
     end
 
@@ -230,11 +230,11 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
       aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
-      x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+      coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
       nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(bndryflux, :, j, i)
 
-      functor(q2, aux_vars, x, nrm_xy, bndryflux_i, params)
+      functor(params, q2, aux_vars, coords, nrm_xy, bndryflux_i)
     end
   end
 
@@ -266,11 +266,11 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
       aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
-      x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+      coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
       nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(flux_face, :, j)
 
-      functor(q2, aux_vars, x, nrm_xy, bndryflux_i, params)
+      functor(params, q2, aux_vars, coords, nrm_xy, bndryflux_i)
     end
 
     res_i = sview(eqn.res, :, :, bndry_i.element)
@@ -300,26 +300,25 @@ end
 *  `q`   : Solution variable
 *  `aux_vars` : Auxiliary variables
 *  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm_xy`      : SBP face normal
+*  `nrm_xy`      : sclaed face normal in physical space
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
 type isentropicVortexBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+              bndryflux::AbstractArray{Tres, 1})
 
   gamma = params.gamma
   gami = params.gamma_1
 
   # getting qg
   qg = params.qg
-  calcIsentropicVortex(x, params, qg) # Get the boundary value
+  calcIsentropicVortex(params, coords, qg) # Get the boundary value
 
   v_vals = params.q_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
@@ -332,7 +331,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
   H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
 
   dq = zeros(Tsol, 4)
-  dq = v_vals - qg
+  dq = v_vals - qg  #!!! this allocates a new vector dq every time
 #  nrm2 = params.nrm2
 #  calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
@@ -351,14 +350,14 @@ end
 
 #=
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC,
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
                nrm::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+              bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
-  calcIsentropicVortex(x, params, qg)
+  calcIsentropicVortex(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
   return nothing
@@ -392,12 +391,12 @@ Reverse mode for isentropicVortexBC.
 type isentropicVortexBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1}, 
               nrm_bar::AbstractVector{Tmsh}, 
-              bndryflux_bar::AbstractArray{Tres, 1},
-              params::ParamType{2})
+              bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward sweep
   gamma = params.gamma
@@ -405,7 +404,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, q::AbstractArray{T
 
   # getting qg
   qg = params.qg
-  calcIsentropicVortex(x, params, qg) # Get the boundary value
+  calcIsentropicVortex(params, coords, qg) # Get the boundary value
   v_vals = params.q_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
 
@@ -456,10 +455,11 @@ type isentropicVortexBC_physical <: BCType
 end
 
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical,
+              params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+              bndryflux::AbstractArray{Tres, 1})
 
   calcEulerFlux(params, q, aux_vars, nrm_xy, bndryflux)
 
@@ -493,10 +493,11 @@ type noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+              bndryflux::AbstractArray{Tres, 1})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -536,10 +537,11 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
 end
 
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1}, 
               nrm_xy::AbstractArray{Tmsh,1}, 
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{3})
+              bndryflux::AbstractArray{Tres, 1})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -610,11 +612,11 @@ Reverse mode for noPenetrationBC.
 type noPenetrationBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
-              bndryflux_bar::AbstractArray{Tres, 1},
-              params::ParamType{2})
+              bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward sweep
   n1 = nrm[1]
@@ -684,11 +686,11 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol
   return nothing
 end
 #=
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType3,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
-              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
-              params::ParamType{3})
+              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward Sweep
   nx = zero(Tmsh)
@@ -753,17 +755,18 @@ type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+              bndryflux::AbstractArray{Tres, 1})
 
 
 #  println("entered isentropicOvrtexBC (low level)")
 #  println("Tsol = ", Tsol)
   # getting qg
   qg = params.qg
-  calcUnsteadyVortex(x, params, qg)
+  calcUnsteadyVortex(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -795,20 +798,19 @@ type Rho1E2U3BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC,
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
-              x::AbstractArray{Tmsh,1}, 
+              coords::AbstractArray{Tmsh,1}, 
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1},
-              params::ParamType{2})
+              bndryflux::AbstractArray{Tres, 1})
 
 
 
   #println("in Rho1E2U3Bc")
   qg = params.qg
 
-  calcRho1Energy2U3(x, params, qg)
+  calcRho1Energy2U3(params, coords, qg)
 
   #println("qg = ", qg)
   # call Roe solver
@@ -844,14 +846,15 @@ end
 type FreeStreamBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, params::ParamType, 
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, 
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+              bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
 
-  calcFreeStream(x, params, qg)
+  calcFreeStream(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
@@ -883,15 +886,15 @@ Reverse mode for FreeStreamBC.
 type FreeStreamBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh}, 
-              bndryflux_bar::AbstractArray{Tres, 1},
-              params::ParamType)
+              bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward sweep
   qg = params.qg
-  calcFreeStream(x, params, qg)
+  calcFreeStream(params, coords, qg)
 
   # Reverse sweep
   RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
@@ -921,14 +924,15 @@ end
 type FreeStreamBC_dAlpha <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+              bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
 
-  calcFreeStream_dAlpha(x, params, qg)
+  calcFreeStream_dAlpha(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
 
   return nothing
@@ -947,13 +951,14 @@ end
 type allOnesBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::allOnesBC, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::allOnesBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+              bndryflux::AbstractArray{Tres, 1})
 
   qg = zeros(Tsol, 4)
-  calcOnes(x, params, qg)
+  calcOnes(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -973,13 +978,14 @@ end # end function call
 type allZerosBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::allZerosBC, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+function call{Tmsh, Tsol, Tres}(obj::allZerosBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType{2})
+              bndryflux::AbstractArray{Tres, 1})
 
   qg = zeros(Tsol, 4)
-  calcZeros(x, params, qg)
+  calcZeros(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -990,13 +996,13 @@ end # end function call
 type ExpBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ExpBC, q::AbstractArray{Tsol,1},
+function call{Tmsh, Tsol, Tres}(obj::ExpBC, params::ParamType, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+              bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
-  calcExp(coords, params, qg)
+  calcExp(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   # println("bndryflux = ", bndryflux)
@@ -1006,15 +1012,16 @@ end # end function call
 type PeriodicMMSBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, q::AbstractArray{Tsol,1},
+function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, params::ParamType,
+              q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+              bndryflux::AbstractArray{Tres, 1})
 # use the exact solution as the boundary condition for the PeriodicMMS
 # solutions
 
   qg = params.qg
-  calcPeriodicMMS(coords, params, qg)
+  calcPeriodicMMS(params, coords, qg)
   use_efix = 0
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux, use_efix)
 
@@ -1025,15 +1032,16 @@ end # end function call
 type ChannelMMSBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, q::AbstractArray{Tsol,1},
+function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, params::ParamType,
+              q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+              bndryflux::AbstractArray{Tres, 1})
 # use the exact solution as the boundary condition for the ChannelMMS
 # solutions
 
   qg = params.qg
-  calcChannelMMS(coords, params, qg)
+  calcChannelMMS(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
@@ -1043,10 +1051,11 @@ end # end function call
 type defaultBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::defaultBC, q::AbstractArray{Tsol,1},
+function call{Tmsh, Tsol, Tres}(obj::defaultBC, params::ParamType,
+              q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1}, params::ParamType)
+              bndryflux::AbstractArray{Tres, 1})
 
   calcEulerFlux(params, q, aux_vars, nrm_xy, bndryflux)
 

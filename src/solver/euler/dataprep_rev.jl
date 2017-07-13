@@ -84,7 +84,7 @@ function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
       bndryflux_i = sview(bndryflux_bar, :, j, i)
 
-      functor_bar(q2, aux_vars, x, nrm, nrm_bar, bndryflux_i, eqn.params)
+      functor_bar(eqn.params, q2, aux_vars, x, nrm, nrm_bar, bndryflux_i)
     end
   end
 

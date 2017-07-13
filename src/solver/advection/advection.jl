@@ -406,7 +406,7 @@ function applySRCTerm(mesh,sbp, eqn, opts, src_func)
     res_i = sview(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
       coords_j = ro_sview(mesh.coords, :, j, i)
-      src_val = src_func(coords_j, eqn.params, t)
+      src_val = src_func(eqn.params, coords_j, t)
       res_i[j] += weights[j]*src_val/jac_i[j]
     end
   end

@@ -126,7 +126,7 @@ function ICsinwave{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_sinwave(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_sinwave(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -141,7 +141,7 @@ function ICsinwavey{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_sinwavey(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_sinwavey(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -156,7 +156,7 @@ function ICsinwavey_pert{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_sinwavey_pert(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_sinwavey_pert(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -190,7 +190,7 @@ function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_mms1(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_mms1(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -204,7 +204,7 @@ function ICx4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_x4(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_x4(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -224,7 +224,7 @@ function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
           alpha_x = eqn.params.alpha_x
           alpha_y, = eqn.params.alpha_y
 
-  	  u0[dofnums_j] = calc_p1(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_p1(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -238,7 +238,7 @@ function ICp2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_p2(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_p2(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -252,7 +252,7 @@ function ICp3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_p3(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_p3(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -266,7 +266,7 @@ function ICp4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_p4(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_p4(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -281,7 +281,7 @@ function ICp5{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  u0[dofnums_j] = calc_p5(mesh.coords[:, j, i], eqn.params, eqn.t)
+  	  u0[dofnums_j] = calc_p5(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
 
@@ -295,7 +295,7 @@ function ICexp5xplus4yplus2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_exp5xplus4yplus2(mesh.coords[:, j, i], eqn.params, eqn.t)
+      u0[dofnums_j] = calc_exp5xplus4yplus2(eqn.params, mesh.coords[:, j, i], eqn.t)
     end
   end
 
@@ -309,7 +309,7 @@ function ICexp5xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_exp5xplusy(mesh.coords[:, j, i], eqn.params,
+      u0[dofnums_j] = calc_exp5xplusy(eqn.params, mesh.coords[:, j, i],
                                       eqn.t)
     end
   end
@@ -324,7 +324,7 @@ function ICexp3xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_exp3xplusy(mesh.coords[:, j, i], eqn.params,
+      u0[dofnums_j] = calc_exp3xplusy(eqn.params, mesh.coords[:, j, i],
                                       eqn.t)
     end
   end
@@ -339,7 +339,7 @@ function ICexp2xplus2y{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_exp2xplus2y(mesh.coords[:, j, i], eqn.params,
+      u0[dofnums_j] = calc_exp2xplus2y(eqn.params, mesh.coords[:, j, i],
                                        eqn.t)
     end
   end
@@ -354,7 +354,7 @@ function ICexp_xy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_exp_xy(mesh.coords[:, j, i], eqn.params, eqn.t)
+      u0[dofnums_j] = calc_exp_xy(eqn.params, mesh.coords[:, j, i], eqn.t)
     end
   end
 
@@ -368,7 +368,7 @@ function ICxplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_xplusy(mesh.coords[:, j, i], eqn.params, eqn.t)
+      u0[dofnums_j] = calc_xplusy(eqn.params, mesh.coords[:, j, i], eqn.t)
     end
   end
 
@@ -383,7 +383,7 @@ function ICunsteadymms{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_unsteadymms(mesh.coords[:, j, i], eqn.params, eqn.t)
+      u0[dofnums_j] = calc_unsteadymms(eqn.params, mesh.coords[:, j, i], eqn.t)
     end
   end
 
@@ -397,7 +397,7 @@ function ICunsteadypoly{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_unsteadypoly(mesh.coords[:, j, i], eqn.params, eqn.t)
+      u0[dofnums_j] = calc_unsteadypoly(eqn.params, mesh.coords[:, j, i], eqn.t)
     end
   end
 
