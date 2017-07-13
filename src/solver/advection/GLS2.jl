@@ -84,7 +84,7 @@ function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
    # add source term
    for j=1:mesh.numNodesPerElement
      coords_j = sview(mesh.coords, :, j, i)
-     red_vec1[j] -= src_func(coords_j, eqn.params, eqn.t)
+     red_vec1[j] -= src_func(eqn.params, coords_j, eqn.t)
    end
 
    # middle terms
