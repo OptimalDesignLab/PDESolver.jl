@@ -230,11 +230,11 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
       aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
-      x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+      coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
       nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(bndryflux, :, j, i)
 
-      functor(params, q2, aux_vars, x, nrm_xy, bndryflux_i)
+      functor(params, q2, aux_vars, coords, nrm_xy, bndryflux_i)
     end
   end
 
@@ -266,11 +266,11 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
       aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
-      x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+      coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
       nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
       bndryflux_i = sview(flux_face, :, j)
 
-      functor(params, q2, aux_vars, x, nrm_xy, bndryflux_i)
+      functor(params, q2, aux_vars, coords, nrm_xy, bndryflux_i)
     end
 
     res_i = sview(eqn.res, :, :, bndry_i.element)
@@ -300,8 +300,7 @@ end
 *  `q`   : Solution variable
 *  `aux_vars` : Auxiliary variables
 *  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm_xy`      : SBP face normal
+*  `nrm_xy`      : sclaed face normal in physical space
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
@@ -310,7 +309,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
@@ -319,7 +318,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
 
   # getting qg
   qg = params.qg
-  calcIsentropicVortex(params, x, qg) # Get the boundary value
+  calcIsentropicVortex(params, coords, qg) # Get the boundary value
 
   v_vals = params.q_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
@@ -353,12 +352,12 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
                nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
-  calcIsentropicVortex(params, x, qg)
+  calcIsentropicVortex(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
   return nothing
@@ -394,7 +393,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1}, 
               nrm_bar::AbstractVector{Tmsh}, 
               bndryflux_bar::AbstractArray{Tres, 1})
@@ -405,7 +404,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, params::ParamType2
 
   # getting qg
   qg = params.qg
-  calcIsentropicVortex(params, x, qg) # Get the boundary value
+  calcIsentropicVortex(params, coords, qg) # Get the boundary value
   v_vals = params.q_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
 
@@ -458,7 +457,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical,
               params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
@@ -496,7 +495,7 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 # a clever optimizing compiler will clean this up
@@ -540,7 +539,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1}, 
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1}, 
               nrm_xy::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1})
 # a clever optimizing compiler will clean this up
@@ -615,7 +614,7 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1})
 
@@ -689,7 +688,7 @@ end
 #=
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType3,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1})
 
@@ -758,7 +757,7 @@ end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
@@ -767,7 +766,7 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType2,
 #  println("Tsol = ", Tsol)
   # getting qg
   qg = params.qg
-  calcUnsteadyVortex(params, x, qg)
+  calcUnsteadyVortex(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -802,7 +801,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
-              x::AbstractArray{Tmsh,1}, 
+              coords::AbstractArray{Tmsh,1}, 
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
@@ -811,7 +810,7 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType2,
   #println("in Rho1E2U3Bc")
   qg = params.qg
 
-  calcRho1Energy2U3(params, x, qg)
+  calcRho1Energy2U3(params, coords, qg)
 
   #println("qg = ", qg)
   # call Roe solver
@@ -849,13 +848,13 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, params::ParamType, 
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, 
               bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
 
-  calcFreeStream(params, x, qg)
+  calcFreeStream(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
@@ -889,13 +888,13 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh}, 
               bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward sweep
   qg = params.qg
-  calcFreeStream(params, x, qg)
+  calcFreeStream(params, coords, qg)
 
   # Reverse sweep
   RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
@@ -927,13 +926,13 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
 
-  calcFreeStream_dAlpha(params, x, qg)
+  calcFreeStream_dAlpha(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
 
   return nothing
@@ -954,12 +953,12 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allOnesBC, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
   qg = zeros(Tsol, 4)
-  calcOnes(params, x, qg)
+  calcOnes(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -981,12 +980,12 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::allZerosBC, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, x::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
   qg = zeros(Tsol, 4)
-  calcZeros(params, x, qg)
+  calcZeros(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
