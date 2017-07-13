@@ -151,19 +151,19 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     # load checkpoint to calculate dRdu at this time step
     println("Setting IC for reverse sweep, i_fwd (forward sweep time step index): ", i_fwd)
-    # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)
-    eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
-    check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
+    # eqn_fwd = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)
+    eqn_fwd = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
+    check_q_qvec_consistency(mesh, sbp, eqn_fwd, opts)
 
-    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
+    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_fwd, physics_func, i_fwd, t)
     dRdu_n = jac      # TODO: check transpose
     println(" size of dRdu: ", size(dRdu_n))
     #----------------
 
-    dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
-    dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
+    dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
+    dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
     dJdu = dJdu_CS
-    dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_dummy, opts, isDeriv=true)
+    dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, isDeriv=true)
 
     # println(" dJdu_CS: ", dJdu)
     # println(" dJdu_CS - dJdu_analytical: ", dJdu)
@@ -171,7 +171,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
-    I = eye(length(eqn_dummy.q_vec))
+    I = eye(length(eqn_fwd.q_vec))
     B = (I - (h/2) * (dRdu_n))
     psi = transpose(B)\(-dJdu)
     adj.q_vec = copy(psi)
@@ -256,10 +256,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # 2. call it, complex step it, and store it in dJdu
     if neg_time == true
       dJdu = zeros(Tsol, length(eqn.q_vec))
-      dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
-      dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step n
+      dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
+      dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
       dJdu = dJdu_CS
-      dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_dummy, opts, isDeriv=true)
+      dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, isDeriv=true)
 
       filename = string("dJdu_",i,"_CS.dat")
       writedlm(filename, dJdu_CS)
@@ -406,8 +406,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     #------- adjoint check
     # TODO this is wrong, what is this. seems like a first attempt at check_adjointmethod
     if neg_time == true
-      # eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)     # t has been updated, so no t_nextstep
-      # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, t)
+      # eqn_fwd = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)     # t has been updated, so no t_nextstep
+      # jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_fwd, physics_func, t)
       omega = 1.0
       v_bc = sin(omega*t)
       dRdA = -1.0*jac*v_bc
