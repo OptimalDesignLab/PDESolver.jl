@@ -647,6 +647,17 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
 end  # end of type declaration
 
+"""
+  Useful alias for 2D ParamType
+"""
+typealias ParamType2 ParamType{2}
+
+"""
+  Useful alias for 3D ParamType
+"""
+typealias ParamType3 ParamType{3}
+
+
 @doc """
 ###EulerEquationMod.BoundaryForceData
 
