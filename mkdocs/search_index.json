@@ -2,7 +2,7 @@
     "docs": [
         {
             "location": "/", 
-            "text": "PDESolver Documentation\n\n\nWelcome to the PDESolver documentation.  These documents provide an overview of PDESolver, a Julia based solver for partial differential equations. This page will describe the form of the equations and the Summation-By-Parts operators used to discretize them.  The \nTable of Contents\n links to the components of PDESolver that calculate each term.\n\n\n\n\nForm of the Equation\n\n\nPDESolver discretizes equation in the form:\n\n\n$\\frac{n!}{k!(n - k)!} = \\binom{n}{k}$\n\n\n$\\frac{\\partial q}{\\partial t} = \\mathcal{R}(u, t)$\n\n\n\n\nTable of Contents\n\n\n\n\nOverview of Physics Modules\n\n\nAdvection Physics Documentation\n\n\nEuler Physics Documentation\n\n\nSimple ODE Documentation\n\n\nNonlinearSolvers Documentation\n\n\nInput Module Documentation\n\n\nUtils Documentation", 
+            "text": "PDESolver Documentation\n\n\nWelcome to the PDESolver documentation.  These documents provide an overview of PDESolver, a Julia based solver for partial differential equations. This page will describe the form of the equations and the Summation-By-Parts operators used to discretize them.  The \nTable of Contents\n links to the components of PDESolver that calculate each term.\n\n\n\n\nForm of the Equation\n\n\nPDESolver discretizes equation in the form:\n\n\n$\\frac{n!}{k!(n - k)!} = \\binom{n}{k}$\n\n\n$\\frac{\\partial q}{\\partial t} = \\mathcal{R}(u, t)$\n\n\n\n\nTable of Contents\n\n\n\n\nOverview of Physics Modules\n\n\nAdvection Physics Documentation\n\n\nEuler Physics Documentation\n\n\nSimple ODE Documentation\n\n\nNonlinearSolvers Documentation\n\n\nInput Module Documentation\n\n\nUtilties", 
             "title": "Home"
         }, 
         {
@@ -17,7 +17,7 @@
         }, 
         {
             "location": "/#table-of-contents", 
-            "text": "Overview of Physics Modules  Advection Physics Documentation  Euler Physics Documentation  Simple ODE Documentation  NonlinearSolvers Documentation  Input Module Documentation  Utils Documentation", 
+            "text": "Overview of Physics Modules  Advection Physics Documentation  Euler Physics Documentation  Simple ODE Documentation  NonlinearSolvers Documentation  Input Module Documentation  Utilties", 
             "title": "Table of Contents"
         }, 
         {
@@ -387,13 +387,13 @@
         }, 
         {
             "location": "/Utils/Utils/", 
-            "text": "Utils Documentation\n\n\nExplain purpose of Utils, contrast with ODLCommonTools\n\n\n\n\nUtils Documentation\n\n\nIO Documentation\n\n\nLogging Documentation\n\n\nProjections documentation", 
+            "text": "Utilties\n\n\nThis module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the \nODLCommontools\n. The functions defined in the \nUtils\n module are useful in the context of \nPDESolver\n and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in \nODLCommonTools\n are more general in nature and usable independently of `PDESolver.\n\n\nExplain purpose of Utils, contrast with ODLCommonTools\n\n\n\n\nUtilties\n\n\nIO Documentation\n\n\nLogging Documentation\n\n\nProjections documentation", 
             "title": "Utils"
         }, 
         {
-            "location": "/Utils/Utils/#utils-documentation", 
-            "text": "Explain purpose of Utils, contrast with ODLCommonTools   Utils Documentation  IO Documentation  Logging Documentation  Projections documentation", 
-            "title": "Utils Documentation"
+            "location": "/Utils/Utils/#utilties", 
+            "text": "This module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the  ODLCommontools . The functions defined in the  Utils  module are useful in the context of  PDESolver  and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in  ODLCommonTools  are more general in nature and usable independently of `PDESolver.  Explain purpose of Utils, contrast with ODLCommonTools   Utilties  IO Documentation  Logging Documentation  Projections documentation", 
+            "title": "Utilties"
         }, 
         {
             "location": "/Utils/parallel/", 
