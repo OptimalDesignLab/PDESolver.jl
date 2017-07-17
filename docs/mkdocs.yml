@@ -26,12 +26,6 @@ pages:
   - Sections:
     - 'PDESolver User Interface': 'pdesolver_user.md'
     - 'PDESolver Physics Interface': 'pdesolver_physics.md'
-  - 'Input': 'input/input.md'
-  - 'NonlinearSolvers': "NonlinearSolvers/nonlinearsolvers.md"
-  - Sections:
-    - "Steady": "NonlinearSolvers/steady.md"
-    - "Unsteady": "NonlinearSolvers/unsteady.md"
-  - "Solver": "solver/Readme.md"
   - Physics:
     - 'Advection': 'solver/advection/advection.md'
     - Components:
@@ -60,6 +54,12 @@ pages:
       - 'Boundary Functional': 'solver/euler/boundary_functional.md'
       - 'Misc': 'solver/euler/misc.md'
     - "Simple ODE": 'solver/simpleODE/simpleODE.md'
+  - 'Input': 'input/input.md'
+  - 'NonlinearSolvers': "NonlinearSolvers/nonlinearsolvers.md"
+  - Sections:
+    - "Steady": "NonlinearSolvers/steady.md"
+    - "Unsteady": "NonlinearSolvers/unsteady.md"
+  - "Solver": "solver/Readme.md"
   - "Utils": "Utils/Utils.md"
   - Components:
     - "Parallel Constructs": "Utils/parallel.md"

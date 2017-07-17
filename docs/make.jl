@@ -7,19 +7,11 @@ ode = "solver/simpleODE"
 
 makedocs(
   pages = Any["Home" => "index.md"
-              "PDESolver" =>   # create sub pages
+              "PDESolver Contents" =>
                 Any[ "Main" => "pdesolver.md",
                      "PDESolver User Interface" => "pdesolver_user.md",
                      "PDESolver PhysicsInterface" => "pdesolver_physics.md"
                    ]
-              "Input" => 
-                Any["Main" => "input/input.md"
-                   ]
-              "NonlinearSolvers" => 
-                Any["Main" => "NonlinearSolvers/nonlinearsolvers.md"
-                    "Steady" => "NonlinearSolvers/steady.md"
-                    "Unsteady" => "NonlinearSolvers/unsteady.md"
-                    ]
               "Solver" => Any["solver/Readme.md"
                               "Advection" => 
                                 Any[ "Main" => "$advec/advection.md"
@@ -52,7 +44,16 @@ makedocs(
                               "Simple ODE" =>
                                 Any[ "Main" => "$ode/simpleODE.md"
                                    ]
+
                              ]  # end Solver
+              "Input" => 
+                Any["Main" => "input/input.md"
+                   ]
+              "NonlinearSolvers" => 
+                Any["Main" => "NonlinearSolvers/nonlinearsolvers.md"
+                    "Steady" => "NonlinearSolvers/steady.md"
+                    "Unsteady" => "NonlinearSolvers/unsteady.md"
+                    ]
               "Utils" => Any[ "Main" => "Utils/Utils.md"
                               "Parallel Constructs" => "Utils/parallel.md"
                               "Projections" => "Utils/projections.md"
