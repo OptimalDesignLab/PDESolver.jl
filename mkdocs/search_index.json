@@ -2,22 +2,32 @@
     "docs": [
         {
             "location": "/", 
-            "text": "PDESolver Documentation\n\n\nWelcome to the PDESolver documentation", 
+            "text": "PDESolver Documentation\n\n\nWelcome to the PDESolver documentation.  These documents provide an overview of PDESolver, a Julia based solver for partial differential equations. This page will describe the form of the equations and the Summation-By-Parts operators used to discretize them.  The \nTable of Contents\n links to the components of PDESolver that calculate each term.\n\n\n\n\nForm of the Equation\n\n\nPDESolver discretizes equation in the form:\n\n\n$\\frac{\\partial q}{\\partial t} = \\mathcal{R}(u, t)$\n\n\n\n\nTable of Contents\n\n\n\n\nOverview of Physics Modules\n\n\nAdvection Physics Documentation\n\n\nEuler Physics Documentation\n\n\nSimple ODE Documentation\n\n\nNonlinearSolvers Documentation\n\n\nInput Module Documentation\n\n\nUtils Documentation", 
             "title": "Home"
         }, 
         {
             "location": "/#pdesolver-documentation", 
-            "text": "Welcome to the PDESolver documentation", 
+            "text": "Welcome to the PDESolver documentation.  These documents provide an overview of PDESolver, a Julia based solver for partial differential equations. This page will describe the form of the equations and the Summation-By-Parts operators used to discretize them.  The  Table of Contents  links to the components of PDESolver that calculate each term.", 
             "title": "PDESolver Documentation"
         }, 
         {
+            "location": "/#form-of-the-equation", 
+            "text": "PDESolver discretizes equation in the form:  $\\frac{\\partial q}{\\partial t} = \\mathcal{R}(u, t)$", 
+            "title": "Form of the Equation"
+        }, 
+        {
+            "location": "/#table-of-contents", 
+            "text": "Overview of Physics Modules  Advection Physics Documentation  Euler Physics Documentation  Simple ODE Documentation  NonlinearSolvers Documentation  Input Module Documentation  Utils Documentation", 
+            "title": "Table of Contents"
+        }, 
+        {
             "location": "/pdesolver/", 
-            "text": "Documentation of the PDESolver Module", 
+            "text": "Documentation of the PDESolver Module\n\n\n\n\nDocumentation of the PDESolver User Facing Interface\n\n\nDocumentation of the PDESolver Physics Module Interface", 
             "title": "PDESolver"
         }, 
         {
             "location": "/pdesolver/#documentation-of-the-pdesolver-module", 
-            "text": "", 
+            "text": "Documentation of the PDESolver User Facing Interface  Documentation of the PDESolver Physics Module Interface", 
             "title": "Documentation of the PDESolver Module"
         }, 
         {
@@ -41,49 +51,14 @@
             "title": "Documentation of the PDESolver Physics Module Interface"
         }, 
         {
-            "location": "/input/input/", 
-            "text": "Input Module Documentation", 
-            "title": "Input"
-        }, 
-        {
-            "location": "/input/input/#input-module-documentation", 
-            "text": "", 
-            "title": "Input Module Documentation"
-        }, 
-        {
-            "location": "/NonlinearSolvers/nonlinearsolvers/", 
-            "text": "NonlinearSolvers Documentation", 
-            "title": "NonlinearSolvers"
-        }, 
-        {
-            "location": "/NonlinearSolvers/nonlinearsolvers/#nonlinearsolvers-documentation", 
-            "text": "", 
-            "title": "NonlinearSolvers Documentation"
-        }, 
-        {
-            "location": "/NonlinearSolvers/steady/", 
-            "text": "Steady NonlinearSolver Documentation", 
-            "title": "Steady"
-        }, 
-        {
-            "location": "/NonlinearSolvers/steady/#steady-nonlinearsolver-documentation", 
-            "text": "", 
-            "title": "Steady NonlinearSolver Documentation"
-        }, 
-        {
-            "location": "/NonlinearSolvers/unsteady/", 
-            "text": "Unsteady NonlinearSolver Documentation", 
-            "title": "Unsteady"
-        }, 
-        {
-            "location": "/NonlinearSolvers/unsteady/#unsteady-nonlinearsolver-documentation", 
-            "text": "", 
-            "title": "Unsteady NonlinearSolver Documentation"
-        }, 
-        {
             "location": "/solver/Readme/", 
-            "text": "AbstractSolutionData\n and Physics Module Implementation\n\n\nThis document describes some best practices for implementing a physics module. These practices are not required, but have proven to be useful for producing organized, readable, and reusable code.\n\n\n\n\nLevels of Functions\n\n\nIt is useful to divide functions into 3 catagories, high, mid, and low level functions.  The purpose of high level functions is to decide which method of performing an operation should be used and call other functions to do it. For example, the Euler physics modules has \nevalVolumeIntegrals\n and \nevalBoundaryIntegrals\n as high level functions.  There are several different ways of calculating both the volume and boundary integrals.  The options dictionary is used to decide what mid level function to call.  Each mid level function implements a different way of doing the calculation.\n\n\nThe purpose of mid level functions is to loop over the mesh and call a low level function for each node.  For example, the function \ngetEulerFlux\n loops over the nodes of the mesh and calls a function to calculate the Euler flux at each node.  Mid level function names usually start with \nget\n to indicate that their purpose is to calculate some quantity but don't do the calculation themselves.\n\n\nLow level functions calculate a quantity at a node.  For example, \ncalcEulerFlux\n calculates the Euler flux at a single node.  Low level function names usually start with \ncalc\n to indicate that they perform a specific calculation. Often, different discretizations use the same structure of loops, but do a slightly different calculation at each node.  Low level functions are called inside the innermost loop of the code, so it would be too expensive to have if statements to select which low level function to call, so various tricks involving Julia's multiple dispatch system are used to get the compiler to decide which low level function to call.  These will be described later in this document.\n\n\nIt is often useful to dispatch to low level functions based on \nTdim\n and \nvar_type\n.  For this reason the Euler equation implementation of \nAbstractParamType\n is\n\n\ntype ParamType{Tdim, var_type, Tsol, Tres, Tmsh} \n: AbstractParamType{Tdim}\n\n\n\n\nThe other static parameters are necessary because \nParamType\n has fields of those datatypes.\n\n\n\n\nAbstractSolutionData\n implementation\n\n\nEach physics module should define and export a subtype of \nAbstractSolutionData{Tsol, Tres}\n. The implementation of \nAbstractSolutionData{Tsol, Tres}\n must inherit the \nTsol\n and \nTres\n static parameters, and may have additional static parameters as well. It may also be helpful to define additional abstract types within the physics module to provide different levels of abstractions. For example, the Euler physics module defines:\n\n\nabstract AbstractEulerData{Tsol, Tres} \n: AbstractSolutionData{Tsol, Tres}\nabstract EulerData {Tsol, Tdim, Tres, var_type} \n: AbstractEulerData{Tsol, Tres}\ntype EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} \n: EulerData{Tsol, Tdim, Tres, var_type}\n\n\n\n\nThe first line is effectively just a name change and may not be necessary. The second line adds the static parameters \nTdim\n, and \nvar_type\n while inheriting the \nTsol\n and \nTres\n types from \nAbstractEulerData\n. \nTdim\n is the dimensionality of the equation, \nTres\n is the datatype of the residual variables, and \nvar_type\n is a symbol indicating whether the equation is being solved with conservative or entropy variables. The third line defines a concrete type that implements all the features required of an \nAbstractSolutionData\n, and adds a static parameter \nTmsh\n, the datatype of the mesh variables.   The additional static parameter is necessary because one field of \nEulerData_\n has type \nTmsh\n. Note that there could be multiple implementations of \nAbstractSolutionData\n for the Euler equations, perhaps with different fields to store certain data or not. All these implementations will need to have the static parameters \nTsol\n, \nTdim\n, \nTres\n, and \nvar_type\n, so \nEulerData\n is defined as an abstract type,  allowing all implementations to inherit from it. All high level functions involved in evaluating the residual will take in an argument of type \nEulerData\n. Only when low level functions need to dispatch based on which implementation is  used would it take in an \nEulerData_\n or another implementation.\n\n\n\n\nVariable Conversion\n\n\nSome equations can be written in different variables, and need to convert between them.  To do this, it is \nfunction convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type},                qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})\n\n\nthat converts from the \"natural\" variables in which to write an equation to some other set of variables at a node.  For the Euler equations, the \"natural\" variables would be the conservative variables, and one example of \"other\" variables would be the entropy variables.\n\n\nIt is also sometimes useful to define the opposite conversion, ie. from the working variables to the natural variables.\n\n\nInput Options\n\n\nMany of the components of PDESolver have different options that control how they work and what they do. In order to  provide a unified method of specifying these options, an dictionary  of type \nDict{ASCIIString, Any}\n is read in from a disk file. This dictionary (called \nopts\n in function signatures), is passed to all high and mid level function so they can use values in the dictionary to determine their  control flow. Low level functions need to be extremely efficient, so they cannot have conditional logic, therefore they are not passed the dictionary. Note that retrieving values from a dictionary is very slow compared to accessing the fields of a type, so all values that are accessed repeatedly should be stored  as the field of a type.\n\n\n\n\nFunctors\n\n\nFunctors are a trick used to get Julia's dispatch system to make decisions at compile time rather than runtime.  This is particularly useful for boundary conditions, where the list of mesh faces that have boundary conditions applied is determined at runtime, but having conditional statements that execute for every node on the mesh boundary would be slow.  Instead a construct is used as follows:\n\n\ntype myBC \n: BCType  # create a singleton type\nend\n\nfunction call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)\n  # calculate boundary flux here\nend\n\n\n\n\nThis defines a datatype and adds a method to the \ncall\n function for that type. The call function is what makes a datatype callable like a function.  This method is called as follows:\n\n\nfunctor = myBC()  # construct and object of type myBC\nq = rand(4)\nbndryflux = zeros(4)\nfunctor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bndryflux)  \n\n\n\n\nThe way this is used for boundary conditions is through a two level construct where an outer function passes a functor to an inner function.  Julia's JIT with generate a method of the inner function that is specialized to the functor (this is why it is important that the functor is a datatype).  For example:\n\n\n```julia function getBCFluxes(mesh, sbp, eqn, opts)\n\n\nfor i=1:mesh.numBC  # loop over different boundary conditions     functor_i = mesh.bndry_functor[i]  # get the functor for this boundary condition     start_index = mesh.bndry_offsets[i]     end_index = mesh.bndry_offsets[i+1] - 1     # get data for boundary faces start_index:end_index\n\n\ncalcBoundaryFlux(functor_i, data for boundary faces start_index:end_index)\n\n\n\n\nend end  # end function\n\n\nfunction calcBoundaryFlux(functor_i::BCType, data for boundary faces start_index:end_index)     for i=1:length(start_index:end_index)       for j=1:num_nodes_on_face         # get data for this boundary face node         functor_i(data for this boundary face node)       end     end\n\n\nend  # end function   ```\n\n\nThe benefit of this arrangement is that \nmesh.numBC\n different version of calcBoundaryFlux get compiled, one for each functor, and each version knows about the \ncall\n method that was defined for the functor it is passed.  This two level scheme allows the compiler to make all the decisions about what function to call (ie. the \ncall\n method of the functor), avoiding any conditional logic at runtime\n\n\nThis idea is also applicable to the flux functions used by DG methods.\n\n\nInitialization of a Simulation\n\n\nThis section lists an outline of how a simulation gets launched After step 4, the procedure becomes a bit more complicated because there are optional steps. Only the required steps are listed below.\n\n\n\n\n\n\nThe options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.\n\n\n\n\n\n\nSecond, the \nsbp\n operator is constructed.\n\n\n\n\n\n\nThe \nmesh\n object is constructed, using the options dictionary and the \nsbp\n operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.\n\n\n\n\n\n\nThe \neqn\n object is constructed, using the \nmesh\n, \nsbp\n, and \nopts\n objects.\n\n\n\n\n\n\nThe physics module \ninit\n function is called, which initializes the physics module and finishes any initialization that \nmesh\n and \neqn\n objects require.\n\n\n\n\n\n\nThe initial condition is applied to \neqn.q_vec\n.\n\n\n\n\n\n\nA nonlinear solver is called.  Which solver is called and what parameters it uses are determined by the options dictionary.\n\n\n\n\n\n\nPost-processing is done, if required by the options dictionary.", 
+            "text": "Overview of Physics Modules\n\n\n\n\nAbstractSolutionData\n and Physics Module Implementation\n\n\nThis document describes some best practices for implementing a physics module. These practices are not required, but have proven to be useful for producing organized, readable, and reusable code.\n\n\n\n\nLevels of Functions\n\n\nIt is useful to divide functions into 3 catagories, high, mid, and low level functions.  The purpose of high level functions is to decide which method of performing an operation should be used and call other functions to do it. For example, the Euler physics modules has \nevalVolumeIntegrals\n and \nevalBoundaryIntegrals\n as high level functions.  There are several different ways of calculating both the volume and boundary integrals.  The options dictionary is used to decide what mid level function to call.  Each mid level function implements a different way of doing the calculation.\n\n\nThe purpose of mid level functions is to loop over the mesh and call a low level function for each node.  For example, the function \ngetEulerFlux\n loops over the nodes of the mesh and calls a function to calculate the Euler flux at each node.  Mid level function names usually start with \nget\n to indicate that their purpose is to calculate some quantity but don't do the calculation themselves.\n\n\nLow level functions calculate a quantity at a node.  For example, \ncalcEulerFlux\n calculates the Euler flux at a single node.  Low level function names usually start with \ncalc\n to indicate that they perform a specific calculation. Often, different discretizations use the same structure of loops, but do a slightly different calculation at each node.  Low level functions are called inside the innermost loop of the code, so it would be too expensive to have if statements to select which low level function to call, so various tricks involving Julia's multiple dispatch system are used to get the compiler to decide which low level function to call.  These will be described later in this document.\n\n\nIt is often useful to dispatch to low level functions based on \nTdim\n and \nvar_type\n.  For this reason the Euler equation implementation of \nAbstractParamType\n is\n\n\ntype ParamType{Tdim, var_type, Tsol, Tres, Tmsh} \n: AbstractParamType{Tdim}\n\n\n\n\nThe other static parameters are necessary because \nParamType\n has fields of those datatypes.\n\n\n\n\nAbstractSolutionData\n implementation\n\n\nEach physics module should define and export a subtype of \nAbstractSolutionData{Tsol, Tres}\n. The implementation of \nAbstractSolutionData{Tsol, Tres}\n must inherit the \nTsol\n and \nTres\n static parameters, and may have additional static parameters as well. It may also be helpful to define additional abstract types within the physics module to provide different levels of abstractions. For example, the Euler physics module defines:\n\n\nabstract AbstractEulerData{Tsol, Tres} \n: AbstractSolutionData{Tsol, Tres}\nabstract EulerData {Tsol, Tdim, Tres, var_type} \n: AbstractEulerData{Tsol, Tres}\ntype EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} \n: EulerData{Tsol, Tdim, Tres, var_type}\n\n\n\n\nThe first line is effectively just a name change and may not be necessary. The second line adds the static parameters \nTdim\n, and \nvar_type\n while inheriting the \nTsol\n and \nTres\n types from \nAbstractEulerData\n. \nTdim\n is the dimensionality of the equation, \nTres\n is the datatype of the residual variables, and \nvar_type\n is a symbol indicating whether the equation is being solved with conservative or entropy variables. The third line defines a concrete type that implements all the features required of an \nAbstractSolutionData\n, and adds a static parameter \nTmsh\n, the datatype of the mesh variables.   The additional static parameter is necessary because one field of \nEulerData_\n has type \nTmsh\n. Note that there could be multiple implementations of \nAbstractSolutionData\n for the Euler equations, perhaps with different fields to store certain data or not. All these implementations will need to have the static parameters \nTsol\n, \nTdim\n, \nTres\n, and \nvar_type\n, so \nEulerData\n is defined as an abstract type,  allowing all implementations to inherit from it. All high level functions involved in evaluating the residual will take in an argument of type \nEulerData\n. Only when low level functions need to dispatch based on which implementation is  used would it take in an \nEulerData_\n or another implementation.\n\n\n\n\nVariable Conversion\n\n\nSome equations can be written in different variables, and need to convert between them.  To do this, it is \nfunction convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type},                qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})\n\n\nthat converts from the \"natural\" variables in which to write an equation to some other set of variables at a node.  For the Euler equations, the \"natural\" variables would be the conservative variables, and one example of \"other\" variables would be the entropy variables.\n\n\nIt is also sometimes useful to define the opposite conversion, ie. from the working variables to the natural variables.\n\n\n\n\nInput Options\n\n\nMany of the components of PDESolver have different options that control how they work and what they do. In order to  provide a unified method of specifying these options, an dictionary  of type \nDict{ASCIIString, Any}\n is read in from a disk file. This dictionary (called \nopts\n in function signatures), is passed to all high and mid level function so they can use values in the dictionary to determine their  control flow. Low level functions need to be extremely efficient, so they cannot have conditional logic, therefore they are not passed the dictionary. Note that retrieving values from a dictionary is very slow compared to accessing the fields of a type, so all values that are accessed repeatedly should be stored  as the field of a type.\n\n\n\n\nFunctors\n\n\nFunctors are a trick used to get Julia's dispatch system to make decisions at compile time rather than runtime.  This is particularly useful for boundary conditions, where the list of mesh faces that have boundary conditions applied is determined at runtime, but having conditional statements that execute for every node on the mesh boundary would be slow.  Instead a construct is used as follows:\n\n\ntype myBC \n: BCType  # create a singleton type\nend\n\nfunction call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)\n  # calculate boundary flux here\nend\n\n\n\n\nThis defines a datatype and adds a method to the \ncall\n function for that type. The call function is what makes a datatype callable like a function.  This method is called as follows:\n\n\nfunctor = myBC()  # construct and object of type myBC\nq = rand(4)\nbndryflux = zeros(4)\nfunctor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bndryflux)  \n\n\n\n\nThe way this is used for boundary conditions is through a two level construct where an outer function passes a functor to an inner function.  Julia's JIT with generate a method of the inner function that is specialized to the functor (this is why it is important that the functor is a datatype).  For example:\n\n\n```julia function getBCFluxes(mesh, sbp, eqn, opts)\n\n\nfor i=1:mesh.numBC  # loop over different boundary conditions     functor_i = mesh.bndry_functor[i]  # get the functor for this boundary condition     start_index = mesh.bndry_offsets[i]     end_index = mesh.bndry_offsets[i+1] - 1     # get data for boundary faces start_index:end_index\n\n\ncalcBoundaryFlux(functor_i, data for boundary faces start_index:end_index)\n\n\n\n\nend end  # end function\n\n\nfunction calcBoundaryFlux(functor_i::BCType, data for boundary faces start_index:end_index)     for i=1:length(start_index:end_index)       for j=1:num_nodes_on_face         # get data for this boundary face node         functor_i(data for this boundary face node)       end     end\n\n\nend  # end function   ```\n\n\nThe benefit of this arrangement is that \nmesh.numBC\n different version of calcBoundaryFlux get compiled, one for each functor, and each version knows about the \ncall\n method that was defined for the functor it is passed.  This two level scheme allows the compiler to make all the decisions about what function to call (ie. the \ncall\n method of the functor), avoiding any conditional logic at runtime\n\n\nThis idea is also applicable to the flux functions used by DG methods.\n\n\nInitialization of a Simulation\n\n\nThis section lists an outline of how a simulation gets launched After step 4, the procedure becomes a bit more complicated because there are optional steps. Only the required steps are listed below.\n\n\n\n\n\n\nThe options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.\n\n\n\n\n\n\nSecond, the \nsbp\n operator is constructed.\n\n\n\n\n\n\nThe \nmesh\n object is constructed, using the options dictionary and the \nsbp\n operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.\n\n\n\n\n\n\nThe \neqn\n object is constructed, using the \nmesh\n, \nsbp\n, and \nopts\n objects.\n\n\n\n\n\n\nThe physics module \ninit\n function is called, which initializes the physics module and finishes any initialization that \nmesh\n and \neqn\n objects require.\n\n\n\n\n\n\nThe initial condition is applied to \neqn.q_vec\n.\n\n\n\n\n\n\nA nonlinear solver is called.  Which solver is called and what parameters it uses are determined by the options dictionary.\n\n\n\n\n\n\nPost-processing is done, if required by the options dictionary.", 
             "title": "Solver"
+        }, 
+        {
+            "location": "/solver/Readme/#overview-of-physics-modules", 
+            "text": "", 
+            "title": "Overview of Physics Modules"
         }, 
         {
             "location": "/solver/Readme/#abstractsolutiondata-and-physics-module-implementation", 
@@ -122,12 +97,12 @@
         }, 
         {
             "location": "/solver/advection/advection/", 
-            "text": "Advection Physics Documentation\n\n\nDescribe the equation being solved here", 
+            "text": "Advection Physics Documentation\n\n\nDescribe the equation being solved here\n\n\n\n\nAdvection Physics Documentation\n\n\nAdvection Types\n\n\nAdvection Volume Integrals\n\n\nAdvection Face Integrals\n\n\nAdvection Boundary Integrals\n\n\nAdvection Initial Conditions\n\n\nAdvection Source Term\n\n\nAdvection Common Functions\n\n\nAdvection Adjoint\n\n\nAdvection Boundary Functional", 
             "title": "Advection"
         }, 
         {
             "location": "/solver/advection/advection/#advection-physics-documentation", 
-            "text": "Describe the equation being solved here", 
+            "text": "Describe the equation being solved here   Advection Physics Documentation  Advection Types  Advection Volume Integrals  Advection Face Integrals  Advection Boundary Integrals  Advection Initial Conditions  Advection Source Term  Advection Common Functions  Advection Adjoint  Advection Boundary Functional", 
             "title": "Advection Physics Documentation"
         }, 
         {
@@ -222,12 +197,12 @@
         }, 
         {
             "location": "/solver/euler/euler/", 
-            "text": "Euler Physics Documentation", 
+            "text": "Euler Physics Documentation\n\n\nDescribe the equation being solved here\n\n\n\n\nEuler Datatype Documentation\n\n\nVolume Integrals\n\n\nFace Integral\n\n\nBoundary Integrals\n\n\nInitial Conditions\n\n\nSource Term\n\n\nCommon Functions\n\n\nConversion Between Different Variables\n\n\nNumerical Flux Functions\n\n\nStabilization Documentation\n\n\nAdjoint\n\n\nBoundary Functional\n\n\nMiscellaneous Function", 
             "title": "Euler"
         }, 
         {
             "location": "/solver/euler/euler/#euler-physics-documentation", 
-            "text": "", 
+            "text": "Describe the equation being solved here   Euler Datatype Documentation  Volume Integrals  Face Integral  Boundary Integrals  Initial Conditions  Source Term  Common Functions  Conversion Between Different Variables  Numerical Flux Functions  Stabilization Documentation  Adjoint  Boundary Functional  Miscellaneous Function", 
             "title": "Euler Physics Documentation"
         }, 
         {
@@ -371,13 +346,53 @@
             "title": "Simple ODE Documentation"
         }, 
         {
+            "location": "/input/input/", 
+            "text": "Input Module Documentation", 
+            "title": "Input"
+        }, 
+        {
+            "location": "/input/input/#input-module-documentation", 
+            "text": "", 
+            "title": "Input Module Documentation"
+        }, 
+        {
+            "location": "/NonlinearSolvers/nonlinearsolvers/", 
+            "text": "NonlinearSolvers Documentation", 
+            "title": "NonlinearSolvers"
+        }, 
+        {
+            "location": "/NonlinearSolvers/nonlinearsolvers/#nonlinearsolvers-documentation", 
+            "text": "", 
+            "title": "NonlinearSolvers Documentation"
+        }, 
+        {
+            "location": "/NonlinearSolvers/steady/", 
+            "text": "Steady NonlinearSolver Documentation", 
+            "title": "Steady"
+        }, 
+        {
+            "location": "/NonlinearSolvers/steady/#steady-nonlinearsolver-documentation", 
+            "text": "", 
+            "title": "Steady NonlinearSolver Documentation"
+        }, 
+        {
+            "location": "/NonlinearSolvers/unsteady/", 
+            "text": "Unsteady NonlinearSolver Documentation", 
+            "title": "Unsteady"
+        }, 
+        {
+            "location": "/NonlinearSolvers/unsteady/#unsteady-nonlinearsolver-documentation", 
+            "text": "", 
+            "title": "Unsteady NonlinearSolver Documentation"
+        }, 
+        {
             "location": "/Utils/Utils/", 
-            "text": "Utils Documentation\n\n\nExplain purpose of Utils, contrast with ODLCommonTools", 
+            "text": "Utils Documentation\n\n\nExplain purpose of Utils, contrast with ODLCommonTools\n\n\n\n\nUtils Documentation\n\n\nIO Documentation\n\n\nLogging Documentation\n\n\nProjections documentation", 
             "title": "Utils"
         }, 
         {
             "location": "/Utils/Utils/#utils-documentation", 
-            "text": "Explain purpose of Utils, contrast with ODLCommonTools", 
+            "text": "Explain purpose of Utils, contrast with ODLCommonTools   Utils Documentation  IO Documentation  Logging Documentation  Projections documentation", 
             "title": "Utils Documentation"
         }, 
         {

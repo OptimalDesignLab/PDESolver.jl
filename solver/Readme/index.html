@@ -73,39 +73,16 @@
     </ul>
 	    </li>
           
-            <li class="toctree-l1">
-		
-    <a class="" href="../../input/input/">Input</a>
-	    </li>
-          
-            <li class="toctree-l1">
-		
-    <a class="" href="../../NonlinearSolvers/nonlinearsolvers/">NonlinearSolvers</a>
-	    </li>
-          
-            <li class="toctree-l1">
-		
-    <span class="caption-text">Sections</span>
-    <ul class="subnav">
-                <li class="">
-                    
-    <a class="" href="../../NonlinearSolvers/steady/">Steady</a>
-                </li>
-                <li class="">
-                    
-    <a class="" href="../../NonlinearSolvers/unsteady/">Unsteady</a>
-                </li>
-    </ul>
-	    </li>
-          
             <li class="toctree-l1 current">
 		
     <a class="current" href="./">Solver</a>
     <ul class="subnav">
             
-    <li class="toctree-l2"><a href="#abstractsolutiondata-and-physics-module-implementation">AbstractSolutionData and Physics Module Implementation</a></li>
+    <li class="toctree-l2"><a href="#overview-of-physics-modules">Overview of Physics Modules</a></li>
     
         <ul>
+        
+            <li><a class="toctree-l3" href="#abstractsolutiondata-and-physics-module-implementation">AbstractSolutionData and Physics Module Implementation</a></li>
         
             <li><a class="toctree-l3" href="#levels-of-functions">Levels of Functions</a></li>
         
@@ -115,9 +92,10 @@
         
             <li><a class="toctree-l3" href="#functors">Functors</a></li>
         
-            <li><a class="toctree-l3" href="#initialization-of-a-simulation">Initialization of a Simulation</a></li>
-        
         </ul>
+    
+
+    <li class="toctree-l2"><a href="#initialization-of-a-simulation">Initialization of a Simulation</a></li>
     
 
     </ul>
@@ -244,6 +222,31 @@
           
             <li class="toctree-l1">
 		
+    <a class="" href="../../input/input/">Input</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../NonlinearSolvers/nonlinearsolvers/">NonlinearSolvers</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">Sections</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="../../NonlinearSolvers/steady/">Steady</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../NonlinearSolvers/unsteady/">Unsteady</a>
+                </li>
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
     <a class="" href="../../Utils/Utils/">Utils</a>
 	    </li>
           
@@ -305,8 +308,10 @@
           <div role="main">
             <div class="section">
               
-                <p><a id='AbstractSolutionData-and-Physics-Module-Implementation-1'></a></p>
-<h1 id="abstractsolutiondata-and-physics-module-implementation"><code>AbstractSolutionData</code> and Physics Module Implementation</h1>
+                <p><a id='Overview-of-Physics-Modules-1'></a></p>
+<h1 id="overview-of-physics-modules">Overview of Physics Modules</h1>
+<p><a id='AbstractSolutionData-and-Physics-Module-Implementation-1'></a></p>
+<h2 id="abstractsolutiondata-and-physics-module-implementation"><code>AbstractSolutionData</code> and Physics Module Implementation</h2>
 <p>This document describes some best practices for implementing a physics module. These practices are not required, but have proven to be useful for producing organized, readable, and reusable code.</p>
 <p><a id='Levels-of-Functions-1'></a></p>
 <h2 id="levels-of-functions">Levels of Functions</h2>
@@ -332,6 +337,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} &lt;: EulerData{Tsol, Tdim, Tr
 <p>Some equations can be written in different variables, and need to convert between them.  To do this, it is <code>function convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type},                qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})</code></p>
 <p>that converts from the "natural" variables in which to write an equation to some other set of variables at a node.  For the Euler equations, the "natural" variables would be the conservative variables, and one example of "other" variables would be the entropy variables.</p>
 <p>It is also sometimes useful to define the opposite conversion, ie. from the working variables to the natural variables.</p>
+<p><a id='Input-Options-1'></a></p>
 <h2 id="input-options">Input Options</h2>
 <p>Many of the components of PDESolver have different options that control how they work and what they do. In order to  provide a unified method of specifying these options, an dictionary  of type <code>Dict{ASCIIString, Any}</code> is read in from a disk file. This dictionary (called <code>opts</code> in function signatures), is passed to all high and mid level function so they can use values in the dictionary to determine their  control flow. Low level functions need to be extremely efficient, so they cannot have conditional logic, therefore they are not passed the dictionary. Note that retrieving values from a dictionary is very slow compared to accessing the fields of a type, so all values that are accessed repeatedly should be stored  as the field of a type.</p>
 <p><a id='Functors-1'></a></p>
@@ -363,7 +369,7 @@ functor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bnd
 <p>end  # end function   ```</p>
 <p>The benefit of this arrangement is that <code>mesh.numBC</code> different version of calcBoundaryFlux get compiled, one for each functor, and each version knows about the <code>call</code> method that was defined for the functor it is passed.  This two level scheme allows the compiler to make all the decisions about what function to call (ie. the <code>call</code> method of the functor), avoiding any conditional logic at runtime</p>
 <p>This idea is also applicable to the flux functions used by DG methods.</p>
-<h2 id="initialization-of-a-simulation">Initialization of a Simulation</h2>
+<h1 id="initialization-of-a-simulation">Initialization of a Simulation</h1>
 <p>This section lists an outline of how a simulation gets launched After step 4, the procedure becomes a bit more complicated because there are optional steps. Only the required steps are listed below.</p>
 <ol>
 <li>
@@ -401,7 +407,7 @@ functor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bnd
         <a href="../advection/advection/" class="btn btn-neutral float-right" title="Advection">Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
-        <a href="../../NonlinearSolvers/unsteady/" class="btn btn-neutral" title="Unsteady"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../pdesolver_physics/" class="btn btn-neutral" title="PDESolver Physics Interface"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -429,7 +435,7 @@ functor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bnd
           <a href="https://github.com/USER_NAME/PACKAGE_NAME.jl" class="fa fa-github" style="float: left; color: #fcfcfc"> GitHub</a>
       
       
-        <span><a href="../../NonlinearSolvers/unsteady/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+        <span><a href="../../pdesolver_physics/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
       
         <span style="margin-left: 15px"><a href="../advection/advection/" style="color: #fcfcfc">Next &raquo;</a></span>
