@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <meta name="author" content="USER_NAME">
+  <link rel="shortcut icon" href="../../../img/favicon.ico">
+  <title>Face Integrals - PACKAGE_NAME.jl</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../../../css/highlight.css">
+  <link href="../../../assets/Documenter.css" rel="stylesheet">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Face Integrals";
+    var mkdocs_page_input_path = "solver/euler/flux.md";
+    var mkdocs_page_url = "/solver/euler/flux/";
+  </script>
+  
+  <script src="../../../js/jquery-2.1.1.min.js"></script>
+  <script src="../../../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../../../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../../.." class="icon icon-home"> PACKAGE_NAME.jl</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../../pdesolver/">PDESolver</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">Sections</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="../../../pdesolver_user/">PDESolver User Interface</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../../pdesolver_physics/">PDESolver Physics Interface</a>
+                </li>
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../../input/input/">Input</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../../NonlinearSolvers/nonlinearsolvers/">NonlinearSolvers</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">Sections</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="../../../NonlinearSolvers/steady/">Steady</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../../NonlinearSolvers/unsteady/">Unsteady</a>
+                </li>
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../Readme/">Solver</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">Physics</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="../../advection/advection/">Advection</a>
+                </li>
+                <li class="">
+                    
+    <span class="caption-text">Components</span>
+    <ul class="subnav">
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/types/">Datatypes</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/volume/">Volume Integrals</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/flux/">Face Integrals</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/bc/">Boundary Integrals</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/ic/">Initial Conditions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/source/">Source Term</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/common/">Common Functions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/adjoint/">Adjoint</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../advection/boundary_functional/">Boundary Functional</a>
+                </li>
+    </ul>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../euler/">Euler</a>
+                </li>
+                <li class=" current">
+                    
+    <span class="caption-text">Components</span>
+    <ul class="subnav">
+                <li class="toctree-l3">
+                    
+    <a class="" href="../types/">Datatypes</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../volume/">Volume Integrals</a>
+                </li>
+                <li class="toctree-l3 current">
+                    
+    <a class="current" href="./">Face Integrals</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l4"><a href="#face-integral">Face Integral</a></li>
+    
+
+    </ul>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../bc/">Boundary Integrals</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../ic/">Initial Conditions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../source/">Source Term</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../common/">Common Functions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../conversion/">Conversion</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../flux_functions/">Numerical Flux Functions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../stabilization/">Stabilization</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../adjoint/">Adjoint</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../boundary_functional/">Boundary Functional</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../misc/">Misc</a>
+                </li>
+    </ul>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../simpleODE/simpleODE/">Simple ODE</a>
+                </li>
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../../Utils/Utils/">Utils</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">Components</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="../../../Utils/parallel/">Parallel Constructs</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../../Utils/projections/">Projections</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../../Utils/logging/">Logging</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../../Utils/io/">Input/Output</a>
+                </li>
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../..">PACKAGE_NAME.jl</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../..">Docs</a> &raquo;</li>
+    
+      
+        
+          <li>Physics &raquo;</li>
+        
+      
+        
+          <li>Components &raquo;</li>
+        
+      
+    
+    <li>Face Integrals</li>
+    <li class="wy-breadcrumbs-aside">
+      
+        <a href="https://github.com/USER_NAME/PACKAGE_NAME.jl/edit/master/docs/solver/euler/flux.md"
+          class="icon icon-github"> Edit on GitHub</a>
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <p><a id='Face-Integral-1'></a></p>
+<h1 id="face-integral">Face Integral</h1>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../bc/" class="btn btn-neutral float-right" title="Boundary Integrals">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../volume/" class="btn btn-neutral" title="Volume Integrals"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+	  
+        </div>
+      </div>
+
+    </section>
+    
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+          <a href="https://github.com/USER_NAME/PACKAGE_NAME.jl" class="fa fa-github" style="float: left; color: #fcfcfc"> GitHub</a>
+      
+      
+        <span><a href="../volume/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../bc/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script src="../../../js/theme.js"></script>
+      <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script src="../../../assets/mathjaxhelper.js"></script>
+
+</body>
+</html>
