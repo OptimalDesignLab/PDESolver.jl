@@ -11,6 +11,8 @@ PDESolver discretizes equation in the form:
 
 $\frac{n!}{k!(n - k)!} = \binom{n}{k}$
 
+$\frac{\partial q}{\partial t} = \mathcal{R}(u, t)$
+
 
 ## Table of Contents
 [//]: # (specifying pages also specifies the order of the pages)
