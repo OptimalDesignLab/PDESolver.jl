@@ -141,4 +141,6 @@ v0.4: curvilinear works (both entropy stable and Roe scheme)
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 [![Documentation Status](https://readthedocs.org/projects/pdesolverjl/badge/?version=latest)](https://readthedocs.org/projects/pdesolverjl/?badge=latest)
 [![codecov](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](www.optimialdesignlab.com/PDESolver.jl)
+# for some reason the webite is hosted at optimaldesignlab.com instead of github
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://OptimialDesignLab.github.io/PDESolver.jl)
