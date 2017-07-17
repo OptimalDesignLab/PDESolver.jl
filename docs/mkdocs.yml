@@ -26,6 +26,7 @@ pages:
   - Sections:
     - 'PDESolver User Interface': 'pdesolver_user.md'
     - 'PDESolver Physics Interface': 'pdesolver_physics.md'
+  - "Solver": "solver/Readme.md"
   - Physics:
     - 'Advection': 'solver/advection/advection.md'
     - Components:
@@ -59,7 +60,6 @@ pages:
   - Sections:
     - "Steady": "NonlinearSolvers/steady.md"
     - "Unsteady": "NonlinearSolvers/unsteady.md"
-  - "Solver": "solver/Readme.md"
   - "Utils": "Utils/Utils.md"
   - Components:
     - "Parallel Constructs": "Utils/parallel.md"

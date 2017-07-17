@@ -1,1 +1,1 @@
-## Euler Datatype Documentation
+# Euler Datatype Documentation
