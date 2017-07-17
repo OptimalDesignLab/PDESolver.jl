@@ -1,6 +1,18 @@
 # PDESolver Documentation
-Welcome to the PDESolver documentation
+Welcome to the PDESolver documentation.  These documents provide an overview
+of PDESolver, a Julia based solver for partial differential equations.
+This page will describe the form of the equations and the Summation-By-Parts
+operators used to discretize them.  The [Table of Contents](@ref) links to
+the components of PDESolver that calculate each term.
 
+## Form of the Equation
+
+PDESolver discretizes equation in the form:
+
+$\frac{n!}{k!(n - k)!} = \binom{n}{k}$
+
+
+## Table of Contents
 [//]: # (specifying pages also specifies the order of the pages)
 ```@contents
 Pages = ["solver/Readme.md",
