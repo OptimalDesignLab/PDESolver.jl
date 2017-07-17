@@ -145,4 +145,4 @@ v0.4: curvilinear works (both entropy stable and Roe scheme)
 
 [//]: # (for some reason the webite is hosted at optimaldesignlab.com instead of github)
 
- [//]: # ( [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://OptimialDesignLab.github.io/PDESolver.jl) )
+[//]: # ( [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://OptimialDesignLab.github.io/PDESolver.jl) )
