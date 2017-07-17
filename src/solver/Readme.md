@@ -1,10 +1,12 @@
-#`AbstractSolutionData` and Physics Module Implementation
+# `AbstractSolutionData` and Physics Module Implementation
+
 This document describes some best practices for implementing a physics module.
 These practices are not required, but have proven to be useful for producing
 organized, readable, and reusable code.
 
 
 ## Levels of Functions
+
 It is useful to divide functions into 3 catagories, high, mid, and low level
 functions.  The purpose of high level functions is to decide which method of
 performing an operation should be used and call other functions to do it.
@@ -81,6 +83,7 @@ Only when low level functions need to dispatch based on which implementation is
 
 
 ### Variable Conversion
+
 Some equations can be written in different variables, and need to convert
 between them.  To do this, it is
 `function convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type},
@@ -97,6 +100,7 @@ the working variables to the natural variables.
 
 
 ##Input Options
+
 Many of the components of PDESolver have different options that control how they
 work and what they do.
 In order to  provide a unified method of specifying these options, an dictionary
@@ -111,6 +115,7 @@ the fields of a type, so all values that are accessed repeatedly should be store
  as the field of a type.
 
 ## Functors
+
 Functors are a trick used to get Julia's dispatch system to make decisions at
 compile time rather than runtime.  This is particularly useful for boundary
 conditions, where the list of mesh faces that have boundary conditions applied
@@ -174,7 +179,9 @@ scheme allows the compiler to make all the decisions about what function to call
 (ie. the `call` method of the functor), avoiding any conditional logic at runtime
 
 This idea is also applicable to the flux functions used by DG methods.
+
 ##Initialization of a Simulation
+
 This section lists an outline of how a simulation gets launched
 After step 4, the procedure becomes a bit more complicated because there are optional steps.
 Only the required steps are listed below.

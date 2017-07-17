@@ -1,0 +1,69 @@
+site_name:        PACKAGE_NAME.jl
+repo_url:         https://github.com/USER_NAME/PACKAGE_NAME.jl
+site_description: Description...
+site_author:      USER_NAME
+
+theme: readthedocs
+
+extra_css:
+  - assets/Documenter.css
+
+extra_javascript:
+  - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+  - assets/mathjaxhelper.js
+
+markdown_extensions:
+  - extra
+  - tables
+  - fenced_code
+  - mdx_math
+
+docs_dir: 'build'
+
+pages:
+  - Home: index.md
+  - 'PDESolver': 'pdesolver.md'
+  - Sections:
+    - 'PDESolver User Interface': 'pdesolver_user.md'
+    - 'PDESolver Physics Interface': 'pdesolver_physics.md'
+  - 'Input': 'input/input.md'
+  - 'NonlinearSolvers': "NonlinearSolvers/nonlinearsolvers.md"
+  - Sections:
+    - "Steady": "NonlinearSolvers/steady.md"
+    - "Unsteady": "NonlinearSolvers/unsteady.md"
+  - "Solver": "solver/Readme.md"
+  - Physics:
+    - 'Advection': 'solver/advection/advection.md'
+    - Components:
+      - 'Datatypes': 'solver/advection/types.md'
+      - 'Volume Integrals': 'solver/advection/volume.md'
+      - 'Face Integrals': 'solver/advection/flux.md'
+      - 'Boundary Integrals': 'solver/advection/bc.md'
+      - 'Initial Conditions': 'solver/advection/ic.md'
+      - 'Source Term': 'solver/advection/source.md'
+      - 'Common Functions': 'solver/advection/common.md'
+      - 'Adjoint': 'solver/advection/adjoint.md'
+      - 'Boundary Functional': 'solver/advection/boundary_functional.md'
+    - "Euler": "solver/euler/euler.md"
+    - Components:
+      - 'Datatypes': 'solver/euler/types.md'
+      - 'Volume Integrals': 'solver/euler/volume.md'
+      - 'Face Integrals': 'solver/euler/flux.md'
+      - 'Boundary Integrals': 'solver/euler/bc.md'
+      - 'Initial Conditions': 'solver/euler/ic.md'
+      - 'Source Term': 'solver/euler/source.md'
+      - 'Common Functions': 'solver/euler/common.md'
+      - 'Conversion': 'solver/euler/conversion.md'
+      - 'Numerical Flux Functions': 'solver/euler/flux_functions.md'
+      - 'Stabilization': 'solver/euler/stabilization.md'
+      - 'Adjoint': 'solver/euler/adjoint.md'
+      - 'Boundary Functional': 'solver/euler/boundary_functional.md'
+      - 'Misc': 'solver/euler/misc.md'
+    - "Simple ODE": 'solver/simpleODE/simpleODE.md'
+  - "Utils": "Utils/Utils.md"
+  - Components:
+    - "Parallel Constructs": "Utils/parallel.md"
+    - "Projections": "Utils/projections.md"
+    - "Logging": "Utils/logging.md"
+    - "Input/Output": "Utils/io.md"
+
