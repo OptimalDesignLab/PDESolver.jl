@@ -240,6 +240,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
+    #-----------------------------------------------------------------------
     # time step update: h is passed in as argument to crank_nicolson
     if neg_time == false
       # need to add h in the forward time usage
@@ -272,7 +273,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
       # TODO: figure out if calcVV is to be called with t or t_nextstep. I think it's t_nextstep. 
       #       It is for sure t_nextstep when dJdu is called during the direct solve.
-      VV = calcVV(mesh, sbp, adj, opts, t_nextstep)     # scalar only because our x-value of interest is unchanging
+      # VV = calcVV(mesh, sbp, adj, opts, t_nextstep)     # scalar only because our x-value of interest is unchanging
+      VV = calcVV(mesh, sbp, adj, opts, t)     # scalar only because our x-value of interest is unchanging
+      # NOTE 20170712: think I need to be doing t, not t_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
 
       println("       checking direct method: VV: ", VV)
       println("       checking direct method: size(VV): ", size(VV))
@@ -295,6 +298,16 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # TODO: eventual fix, issue #92, t_steps + 2. needs to be done in RK4 also
       println(" time step variables-  i: ", i, "  i_fwd: ", i_fwd, "  t_steps: ", t_steps)
       ctx_residual = (physics_func, adj, h, newton_data, i_fwd, dJdu)
+
+      #-------------------------------------------------
+      # Output times & indices
+      println(" --- CN times and indices ---")
+      println("  CN: i = $i")
+      println("  CN: i_fwd = $i_fwd")
+      println("  CN: t = $t")
+      println("  CN: t_nextstep = $t_nextstep")
+      #-------------------------------------------------
+
     end
 
     if neg_time == false
@@ -378,10 +391,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # TODO TODO 20170711: dRdA timing: is this being contracted in the right time step?
     # advection adjoint check
     if neg_time == true
-      dRdA_CS = calcdRdA_CS(mesh, sbp, adj_nextstep, opts, t_nextstep)
-      dRdA_FD = calcdRdA_FD(mesh, sbp, adj_nextstep, opts, t_nextstep)
+      # dRdA_CS = calcdRdA_CS(mesh, sbp, adj_nextstep, opts, t_nextstep)
+      # dRdA_FD = calcdRdA_FD(mesh, sbp, adj_nextstep, opts, t_nextstep)
+      dRdA_CS = calcdRdA_CS(mesh, sbp, eqn_fwd, opts, t)
+      dRdA_FD = calcdRdA_FD(mesh, sbp, eqn_fwd, opts, t)
       dRdA = dRdA_CS
-      check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
+      # check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
+      # NOTE 20170712: think I need to be doing adj, not adj_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
+      check_adjointmethod = transpose(adj.q_vec)*dRdA
       filename = string("check_adjointmethod-", i, ".dat")
       writedlm(filename, check_adjointmethod)
     end
