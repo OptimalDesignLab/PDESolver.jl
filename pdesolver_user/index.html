@@ -76,7 +76,15 @@
     <a class="current" href="./">PDESolver User Interface</a>
     <ul class="subnav">
             
-    <li class="toctree-l3"><a href="#documentation-of-the-pdesolver-user-facing-interface">Documentation of the PDESolver User Facing Interface</a></li>
+    <li class="toctree-l3"><a href="#pdesolver-user-interface-interface">PDESolver User Interface Interface</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l4" href="#invoking-the-code">Invoking the Code</a></li>
+        
+            <li><a class="toctree-l4" href="#registering-ics-and-bcs">Registering ICs and BCs</a></li>
+        
+        </ul>
     
 
     </ul>
@@ -316,8 +324,66 @@
           <div role="main">
             <div class="section">
               
-                <p><a id='Documentation-of-the-PDESolver-User-Facing-Interface-1'></a></p>
-<h1 id="documentation-of-the-pdesolver-user-facing-interface">Documentation of the PDESolver User Facing Interface</h1>
+                <p><a id='PDESolver-User-Interface-Interface-1'></a></p>
+<h1 id="pdesolver-user-interface-interface">PDESolver User Interface Interface</h1>
+<p><a id='Invoking-the-Code-1'></a></p>
+<h2 id="invoking-the-code">Invoking the Code</h2>
+<p>This page describes the API for running the code, as well as utility scripts that provide simple operation of the code.</p>
+<p>The entry point for running the code is the function <a href="./#PDESolver.run_solver"><code>run_solver</code></a></p>
+<p><a id='PDESolver.run_solver' href='#PDESolver.run_solver'>#</a>
+<strong><code>PDESolver.run_solver</code></strong> &mdash; <em>Function</em>.</p>
+<p>This function provides a way to invoke any physics solver based on the   specification of the physics in the input file.   This requires loading the input file twice, once to figure out the physics,   and a second time when the physics-specific startup function is called</p>
+<p>The physics module must have already been registered using <a href="../pdesolver_physics/#PDESolver.register_physics"><code>register_physics</code></a></p>
+<p>Inputs:</p>
+<pre><code>input_file: an AbstractString specifying the path to the input file
+</code></pre>
+
+<p>Outputs:</p>
+<pre><code>mesh: the AbstractMesh object used during the solve
+sbp: the SBP operator used by the solver
+eqn: the AbstractSolutionData object during the solve.  At exit,
+     eqn.q_vec should have the final solution in it
+opts: the options dictionary
+</code></pre>
+
+<p>Each physics module is required to register itself with <code>using PhysicsModule</code> is run. When using this API to invoke the code, using should be sure to using the required physics module before calling <code>run_solver</code>.</p>
+<p>In order to facilitate running the code, the script <code>src/startup.jl</code> loads all the physics modules and passes the first command line argument as the input file name</p>
+<p><a id='Registering-ICs-and-BCs-1'></a></p>
+<h2 id="registering-ics-and-bcs">Registering ICs and BCs</h2>
+<p>These functions allow users to register new initial conditions and boundary conditions without modifying the source code</p>
+<p><a id='PDESolver.registerIC' href='#PDESolver.registerIC'>#</a>
+<strong><code>PDESolver.registerIC</code></strong> &mdash; <em>Function</em>.</p>
+<p>This function registers a new initial condition function with the specified   physics module.  The function must have the signature:</p>
+<p><code>ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},                 opts:Dict, q_vec::AbstractVector{Tsol})</code></p>
+<p>where q_vec is a vector of length numDof that will be populated with the   initial condition.  If the function is used to provide the exact solution   for an unsteady problem (for calculating the error via the <code>exact_soln_func</code>   key in the options dictionary), then it should use eqn.params.t as the   current time value.</p>
+<p>This function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.</p>
+<p>Inputs:</p>
+<pre><code>mod: physics module to register the function with
+fname: name associated with the function, used as the value for the
+       for any key in the options dictionary that specifies an initial
+       condition function
+func: the function itself
+</code></pre>
+
+<p>Outputs:</p>
+<pre><code>none
+</code></pre>
+
+<p><a id='PDESolver.registerBC' href='#PDESolver.registerBC'>#</a>
+<strong><code>PDESolver.registerBC</code></strong> &mdash; <em>Function</em>.</p>
+<p>This function registers a new boundary condition functor with the specified   physics module.  The exact signature of the functor varies by physics module.   The purpose of the functor is to calculate the flux across a boundary at   a particular node. It usually takes in the solution values at that node, as   well as the coordinates and mapping jacobian.  The params type is typically   used to dispatch to different methods for 2D or 3D, if needed.  Generally,   this functor will calculate the boundary state and then call a numerical   flux function of some kind to compute the flux.</p>
+<p>This function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.</p>
+<p>Inputs:</p>
+<pre><code>mod: module to register the the functor with
+fname: the name associated with this function, used as the value for any
+       key in the options dictionary that specifies a boundary condition,
+       for example `BC1_name`
+func: the functor itself
+</code></pre>
+
+<p>Outputs:</p>
+<pre><code>none
+</code></pre>
               
             </div>
           </div>

@@ -82,6 +82,14 @@
             
     <li class="toctree-l3"><a href="#documentation-of-the-pdesolver-physics-module-interface">Documentation of the PDESolver Physics Module Interface</a></li>
     
+        <ul>
+        
+            <li><a class="toctree-l4" href="#evaluating-the-physics">Evaluating the Physics</a></li>
+        
+            <li><a class="toctree-l4" href="#registration-functions">Registration Functions</a></li>
+        
+        </ul>
+    
 
     </ul>
                 </li>
@@ -318,6 +326,42 @@
               
                 <p><a id='Documentation-of-the-PDESolver-Physics-Module-Interface-1'></a></p>
 <h1 id="documentation-of-the-pdesolver-physics-module-interface">Documentation of the PDESolver Physics Module Interface</h1>
+<p><a id='Evaluating-the-Physics-1'></a></p>
+<h2 id="evaluating-the-physics">Evaluating the Physics</h2>
+<p><a id='Registration-Functions-1'></a></p>
+<h2 id="registration-functions">Registration Functions</h2>
+<p>These function provide the basic API for registering and retrieving physics modules with the <code>PDESolver</code> module.</p>
+<p><a id='PDESolver.register_physics' href='#PDESolver.register_physics'>#</a>
+<strong><code>PDESolver.register_physics</code></strong> &mdash; <em>Function</em>.</p>
+<p>This function registered a new physics module with the global list of all   known physics modules.  Every physics module should do this as part of   module initialization.  The name, the module, and the startup function must   be unique (ie. they must not already exist in the list).  This function   throws and exception if they are not.</p>
+<p>Inputs:</p>
+<pre><code>modname:  an ASCIIString name for this entry in the list.  It is used
+          to retrieve the module and startup function in the 
+          retrieve_physics function. Typically the name is capitalized.
+mod:  the Module itself
+startup_func: the function for running the physics.  It must have signature
+              startup_func(fname::ASCIIString), where fname is the name of
+              an input file
+</code></pre>
+
+<p>Outputs:</p>
+<pre><code>none
+</code></pre>
+
+<p><a id='PDESolver.retrieve_physics' href='#PDESolver.retrieve_physics'>#</a>
+<strong><code>PDESolver.retrieve_physics</code></strong> &mdash; <em>Function</em>.</p>
+<p>Retrieves the physics module and function registered using <a href="./#PDESolver.register_physics"><code>register_physics</code></a></p>
+<p>Input:</p>
+<pre><code>modname: an ASCIIString containing the name of the module supplied to
+         `register_physics`
+</code></pre>
+
+<p>Outputs:</p>
+<pre><code>mod: the physics Module
+func: the function to evaluate the physics
+</code></pre>
+
+<p>See also <a href="../pdesolver_user/#PDESolver.registerIC"><code>registerIC</code></a> and <a href="../pdesolver_user/#PDESolver.registerBC"><code>registerBC</code></a>.</p>
               
             </div>
           </div>
