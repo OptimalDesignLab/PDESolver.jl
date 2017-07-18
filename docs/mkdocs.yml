@@ -1,7 +1,7 @@
-site_name:        PACKAGE_NAME.jl
-repo_url:         https://github.com/USER_NAME/PACKAGE_NAME.jl
-site_description: Description...
-site_author:      USER_NAME
+site_name:        PDESolver.jl (Ticon)
+repo_url:         https://github.com/OptimalDesignLab/PDESolver.jl
+site_description: A Julia-based PDE Solver for use in PDE-constrained optimization problems
+site_author:      RPI's Optimal Design Lab
 
 theme: readthedocs
 
