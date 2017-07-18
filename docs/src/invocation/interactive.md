@@ -1,16 +1,16 @@
-# Running Ticon in an interactive session using Julia's REPL
+# Running PDESolver in an interactive session using Julia's REPL
 
 Julia's REPL is a powerful tool for debugging. 
 Being able to run commands interactively can reveal important information 
  that would otherwise be available only through cumbersome print statements and
  error logs.
 
-This page describes the first steps involved for running Ticon interactively.
-Calling Ticon from Julia's REPL in the fashion described here is an experimental 
+This page describes the first steps involved for running PDESolver interactively.
+Calling PDESolver from Julia's REPL in the fashion described here is an experimental 
   method, and is not tested consistently.
-Additionally, not all parts of Ticon are usable after the steps below.
+Additionally, not all parts of PDESolver are usable after the steps below.
 Instead, this document is intended to provide a springing-off point for the developer 
-  who wishes to run Ticon interactively, and can adapt the commands below to their needs.
+  who wishes to run PDESolver interactively, and can adapt the commands below to their needs.
 
 # Script
 
