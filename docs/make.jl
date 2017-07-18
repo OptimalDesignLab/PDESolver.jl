@@ -14,7 +14,7 @@ makedocs(
                      "PDESolver User Interface" => "pdesolver_user.md",
                      "PDESolver PhysicsInterface" => "pdesolver_physics.md"
                    ]
-              "Invocation" => Any[ "Calling Ticon" => "invocation/calling.md"
+              "Invocation" => Any[ "Calling PDESolver" => "invocation/calling.md"
                                    "Interactive Session (experimental)" => "invocation/interactive.md"
                                  ]
               "Solver" => Any["solver/Readme.md"

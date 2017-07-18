@@ -29,7 +29,7 @@ pages:
     - 'PDESolver User Interface': 'pdesolver_user.md'
     - 'PDESolver Physics Interface': 'pdesolver_physics.md'
   - Invocation:
-    - 'Calling Ticon': 'invocation/calling.md'
+    - 'Calling PDESolver': 'invocation/calling.md'
     - 'Interactive Session (experimental)': 'invocation/interactive.md'
   - Solver:
     - 'Introduction': 'solver/Readme.md'
