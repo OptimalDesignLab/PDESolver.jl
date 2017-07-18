@@ -1,7 +1,0 @@
-# Advection Physics Documentation
-
-Describe the equation being solved here
-
-```@contents
-  Pages = readdir(joinpath(Pkg.dir("PDESolver"), "docs", "src", "solver", "advection"))[map(file -> endswith(file, ".md"), readdir(joinpath(Pkg.dir("PDESolver"), "docs", "src", "solver", "advection")))]
-```
