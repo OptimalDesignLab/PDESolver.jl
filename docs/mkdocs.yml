@@ -22,16 +22,16 @@ docs_dir: 'build'
 
 pages:
   - Home: index.md
-  - 'PDESolver': 'pdesolver.md'
   - 'Code Interfaces': 'interfaces.md'
   - 'Code Parallelization': 'parallel.md'
-  - Sections:
+  - PDESolver:
+    - 'Introduction': 'pdesolver.md'
     - 'PDESolver User Interface': 'pdesolver_user.md'
     - 'PDESolver Physics Interface': 'pdesolver_physics.md'
-  - "Solver": "solver/Readme.md"
-  - Physics:
-    - 'Advection': 'solver/advection/advection.md'
-    - Components:
+  - Solver:
+    - "Introduction": "solver/Readme.md"
+    - Advection:
+      - 'Introduction': 'solver/advection/advection.md'
       - 'Datatypes': 'solver/advection/types.md'
       - 'Volume Integrals': 'solver/advection/volume.md'
       - 'Face Integrals': 'solver/advection/flux.md'
@@ -41,8 +41,8 @@ pages:
       - 'Common Functions': 'solver/advection/common.md'
       - 'Adjoint': 'solver/advection/adjoint.md'
       - 'Boundary Functional': 'solver/advection/boundary_functional.md'
-    - "Euler": "solver/euler/euler.md"
-    - Components:
+    - Euler:
+      - "Introduction": "solver/euler/euler.md"
       - 'Datatypes': 'solver/euler/types.md'
       - 'Volume Integrals': 'solver/euler/volume.md'
       - 'Face Integrals': 'solver/euler/flux.md'
@@ -58,12 +58,12 @@ pages:
       - 'Misc': 'solver/euler/misc.md'
     - "Simple ODE": 'solver/simpleODE/simpleODE.md'
   - 'Input': 'input/input.md'
-  - 'NonlinearSolvers': "NonlinearSolvers/nonlinearsolvers.md"
-  - Sections:
+  - Nonlinear Solvers:
+    - 'Introduction': "NonlinearSolvers/nonlinearsolvers.md"
     - "Steady": "NonlinearSolvers/steady.md"
     - "Unsteady": "NonlinearSolvers/unsteady.md"
-  - "Utils": "Utils/Utils.md"
-  - Components:
+  - Utils:
+    - "Introduction": "Utils/Utils.md"
     - "Parallel Constructs": "Utils/parallel.md"
     - "Projections": "Utils/projections.md"
     - "Logging": "Utils/logging.md"

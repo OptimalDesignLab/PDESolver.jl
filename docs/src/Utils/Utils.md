@@ -15,7 +15,7 @@ usable independent of `PDESolver`.
   Pages = ["io.md"
            "logging.md"
            "projections.md"
-           "paralle.md"
+           "parallel.md"
           ]
   Depth = 1
 ```
