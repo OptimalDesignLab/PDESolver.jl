@@ -248,7 +248,13 @@
     <a class="current" href="./">Input/Output</a>
     <ul class="subnav">
             
-    <li class="toctree-l3"><a href="#io-documentation">IO Documentation</a></li>
+    <li class="toctree-l3"><a href="#inputoutput">Input/Output</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l4" href="#detailed-documentation">Detailed Documentation</a></li>
+        
+        </ul>
     
 
     </ul>
@@ -295,8 +301,32 @@
           <div role="main">
             <div class="section">
               
-                <p><a id='IO-Documentation-1'></a></p>
-<h1 id="io-documentation">IO Documentation</h1>
+                <p><a id='Input/Output-1'></a></p>
+<h1 id="inputoutput">Input/Output</h1>
+<p>The functions and types defined here facilitate writing to <code>STDOUT</code> and <code>STDERR</code> as well as files. In particular, performance tests have shown that buffering is important when running in parallel. To this end, the <a href="../@ref"><code>BufferedIO</code></a> type is introduced that stores output in an in-memory buffer before writing to an underlying stream. This can create some difficulty when debuging, because output written to a buffered stream is not immediately written to the underlying stream. In cases where precise control of output is needed, users should call <a href="../@ref"><code>flush</code></a> to make sure all output is written to the underlying stream</p>
+<p><a id='Detailed-Documentation-1'></a></p>
+<h2 id="detailed-documentation">Detailed Documentation</h2>
+<p><a id='Utils.BSTDERR' href='#Utils.BSTDERR'>#</a>
+<strong><code>Utils.BSTDERR</code></strong> &mdash; <em>Constant</em>.</p>
+<p>Buffered version of STDERR.  This should <em>always</em> be used instead of STDERR</p>
+<p><a id='Utils.BSTDOUT' href='#Utils.BSTDOUT'>#</a>
+<strong><code>Utils.BSTDOUT</code></strong> &mdash; <em>Constant</em>.</p>
+<p>Buffered version of STDOUT.  This should <em>always</em> be used instead of STDOUT</p>
+<p><a id='Utils.BufferedIO' href='#Utils.BufferedIO'>#</a>
+<strong><code>Utils.BufferedIO</code></strong> &mdash; <em>Type</em>.</p>
+<p><strong>Utils.BufferedIO</strong></p>
+<p>This type provides a means to buffer IO in memory before writing it to a file.   Data written to the object is stored in the IOBuffer until flush() is called,    when the buffer is (efficiently) dumped into the file</p>
+<p><a id='Utils.BufferedIO' href='#Utils.BufferedIO'>#</a>
+<strong><code>Utils.BufferedIO</code></strong> &mdash; <em>Type</em>.</p>
+<p><strong>Utils.BufferedIO</strong></p>
+<p>Constructor for BufferedIO type.  Takes an IOStream and creates an IOBuffer.   If no IOStream is given, a dummy stream is created.  If a dummy stream is   used, flush must never be called on the returned BufferedIO object</p>
+<p>Inputs:     f: and IOStream object, defaults to a dummy stream</p>
+<p>Outputs:     a BufferedIO object</p>
+<p><a id='Utils.BufferedIO' href='#Utils.BufferedIO'>#</a>
+<strong><code>Utils.BufferedIO</code></strong> &mdash; <em>Type</em>.</p>
+<p>Alternative constructor for BufferedIO, emulating the open() function.   This function creates the underlying file using open() and then creates   a BufferedIO around it.</p>
+<p>Inputs:     fname: AbstractString, name of file to open     mode: file open mode, see documentation of open(), defaults to append</p>
+<p>Outputs:     a BufferedIO object</p>
               
             </div>
           </div>

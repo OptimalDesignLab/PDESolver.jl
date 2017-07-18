@@ -387,12 +387,12 @@
         }, 
         {
             "location": "/Utils/Utils/", 
-            "text": "Utilties\n\n\nThis module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the \nODLCommontools\n. The functions defined in the \nUtils\n module are useful in the context of \nPDESolver\n and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in \nODLCommonTools\n are more general in nature and usable independently of `PDESolver.\n\n\nExplain purpose of Utils, contrast with ODLCommonTools\n\n\n\n\nUtilties\n\n\nIO Documentation\n\n\nLogging Documentation\n\n\nProjections documentation", 
+            "text": "Utilties\n\n\nThis module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the \nODLCommontools\n. The functions defined in the \nUtils\n module are useful in the context of \nPDESolver\n and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in \nODLCommonTools\n are more general in nature and usable independent of \nPDESolver\n.\n\n\n\n\nInput/Output\n\n\nLogging Documentation\n\n\nProjections documentation", 
             "title": "Utils"
         }, 
         {
             "location": "/Utils/Utils/#utilties", 
-            "text": "This module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the  ODLCommontools . The functions defined in the  Utils  module are useful in the context of  PDESolver  and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in  ODLCommonTools  are more general in nature and usable independently of `PDESolver.  Explain purpose of Utils, contrast with ODLCommonTools   Utilties  IO Documentation  Logging Documentation  Projections documentation", 
+            "text": "This module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the  ODLCommontools . The functions defined in the  Utils  module are useful in the context of  PDESolver  and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in  ODLCommonTools  are more general in nature and usable independent of  PDESolver .   Input/Output  Logging Documentation  Projections documentation", 
             "title": "Utilties"
         }, 
         {
@@ -427,13 +427,18 @@
         }, 
         {
             "location": "/Utils/io/", 
-            "text": "IO Documentation", 
+            "text": "Input/Output\n\n\nThe functions and types defined here facilitate writing to \nSTDOUT\n and \nSTDERR\n as well as files. In particular, performance tests have shown that buffering is important when running in parallel. To this end, the \nBufferedIO\n type is introduced that stores output in an in-memory buffer before writing to an underlying stream. This can create some difficulty when debuging, because output written to a buffered stream is not immediately written to the underlying stream. In cases where precise control of output is needed, users should call \nflush\n to make sure all output is written to the underlying stream\n\n\n\n\nDetailed Documentation\n\n\n#\n\n\nUtils.BSTDERR\n \n \nConstant\n.\n\n\nBuffered version of STDERR.  This should \nalways\n be used instead of STDERR\n\n\n#\n\n\nUtils.BSTDOUT\n \n \nConstant\n.\n\n\nBuffered version of STDOUT.  This should \nalways\n be used instead of STDOUT\n\n\n#\n\n\nUtils.BufferedIO\n \n \nType\n.\n\n\nUtils.BufferedIO\n\n\nThis type provides a means to buffer IO in memory before writing it to a file.   Data written to the object is stored in the IOBuffer until flush() is called,    when the buffer is (efficiently) dumped into the file\n\n\n#\n\n\nUtils.BufferedIO\n \n \nType\n.\n\n\nUtils.BufferedIO\n\n\nConstructor for BufferedIO type.  Takes an IOStream and creates an IOBuffer.   If no IOStream is given, a dummy stream is created.  If a dummy stream is   used, flush must never be called on the returned BufferedIO object\n\n\nInputs:     f: and IOStream object, defaults to a dummy stream\n\n\nOutputs:     a BufferedIO object\n\n\n#\n\n\nUtils.BufferedIO\n \n \nType\n.\n\n\nAlternative constructor for BufferedIO, emulating the open() function.   This function creates the underlying file using open() and then creates   a BufferedIO around it.\n\n\nInputs:     fname: AbstractString, name of file to open     mode: file open mode, see documentation of open(), defaults to append\n\n\nOutputs:     a BufferedIO object", 
             "title": "Input/Output"
         }, 
         {
-            "location": "/Utils/io/#io-documentation", 
-            "text": "", 
-            "title": "IO Documentation"
+            "location": "/Utils/io/#inputoutput", 
+            "text": "The functions and types defined here facilitate writing to  STDOUT  and  STDERR  as well as files. In particular, performance tests have shown that buffering is important when running in parallel. To this end, the  BufferedIO  type is introduced that stores output in an in-memory buffer before writing to an underlying stream. This can create some difficulty when debuging, because output written to a buffered stream is not immediately written to the underlying stream. In cases where precise control of output is needed, users should call  flush  to make sure all output is written to the underlying stream", 
+            "title": "Input/Output"
+        }, 
+        {
+            "location": "/Utils/io/#detailed-documentation", 
+            "text": "#  Utils.BSTDERR     Constant .  Buffered version of STDERR.  This should  always  be used instead of STDERR  #  Utils.BSTDOUT     Constant .  Buffered version of STDOUT.  This should  always  be used instead of STDOUT  #  Utils.BufferedIO     Type .  Utils.BufferedIO  This type provides a means to buffer IO in memory before writing it to a file.   Data written to the object is stored in the IOBuffer until flush() is called,    when the buffer is (efficiently) dumped into the file  #  Utils.BufferedIO     Type .  Utils.BufferedIO  Constructor for BufferedIO type.  Takes an IOStream and creates an IOBuffer.   If no IOStream is given, a dummy stream is created.  If a dummy stream is   used, flush must never be called on the returned BufferedIO object  Inputs:     f: and IOStream object, defaults to a dummy stream  Outputs:     a BufferedIO object  #  Utils.BufferedIO     Type .  Alternative constructor for BufferedIO, emulating the open() function.   This function creates the underlying file using open() and then creates   a BufferedIO around it.  Inputs:     fname: AbstractString, name of file to open     mode: file open mode, see documentation of open(), defaults to append  Outputs:     a BufferedIO object", 
+            "title": "Detailed Documentation"
         }
     ]
 }
