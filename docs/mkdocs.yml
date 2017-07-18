@@ -28,8 +28,11 @@ pages:
     - 'Introduction': 'pdesolver.md'
     - 'PDESolver User Interface': 'pdesolver_user.md'
     - 'PDESolver Physics Interface': 'pdesolver_physics.md'
+  - Invocation:
+    - 'Calling Ticon': 'invocation/calling.md'
+    - 'Interactive Session (experimental)': 'invocation/interactive.md'
   - Solver:
-    - "Introduction": "solver/Readme.md"
+    - 'Introduction': 'solver/Readme.md'
     - Advection:
       - 'Introduction': 'solver/advection/advection.md'
       - 'Datatypes': 'solver/advection/types.md'
@@ -42,7 +45,7 @@ pages:
       - 'Adjoint': 'solver/advection/adjoint.md'
       - 'Boundary Functional': 'solver/advection/boundary_functional.md'
     - Euler:
-      - "Introduction": "solver/euler/euler.md"
+      - 'Introduction': 'solver/euler/euler.md'
       - 'Datatypes': 'solver/euler/types.md'
       - 'Volume Integrals': 'solver/euler/volume.md'
       - 'Face Integrals': 'solver/euler/flux.md'
@@ -56,16 +59,16 @@ pages:
       - 'Adjoint': 'solver/euler/adjoint.md'
       - 'Boundary Functional': 'solver/euler/boundary_functional.md'
       - 'Misc': 'solver/euler/misc.md'
-    - "Simple ODE": 'solver/simpleODE/simpleODE.md'
+    - 'Simple ODE': 'solver/simpleODE/simpleODE.md'
   - 'Input': 'input/input.md'
   - Nonlinear Solvers:
-    - 'Introduction': "NonlinearSolvers/nonlinearsolvers.md"
-    - "Steady": "NonlinearSolvers/steady.md"
-    - "Unsteady": "NonlinearSolvers/unsteady.md"
+    - 'Introduction': 'NonlinearSolvers/nonlinearsolvers.md'
+    - 'Steady': 'NonlinearSolvers/steady.md'
+    - 'Unsteady': 'NonlinearSolvers/unsteady.md'
   - Utils:
-    - "Introduction": "Utils/Utils.md"
-    - "Parallel Constructs": "Utils/parallel.md"
-    - "Projections": "Utils/projections.md"
-    - "Logging": "Utils/logging.md"
-    - "Input/Output": "Utils/io.md"
+    - 'Introduction': 'Utils/Utils.md'
+    - 'Parallel Constructs': 'Utils/parallel.md'
+    - 'Projections': 'Utils/projections.md'
+    - 'Logging': 'Utils/logging.md'
+    - 'Input/Output': 'Utils/io.md'
 

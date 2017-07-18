@@ -7,13 +7,16 @@ ode = "solver/simpleODE"
 
 makedocs(
   pages = Any["Home" => "index.md"
-              "PDESolver Contents" =>
-                Any[ "Main" => "pdesolver.md",
+              "Code Interfaces" => "interfaces.md"
+              "Code Parallelization" => "parallel.md"
+              "PDESolver" =>
+                Any[ "Introduction" => "pdesolver.md",
                      "PDESolver User Interface" => "pdesolver_user.md",
                      "PDESolver PhysicsInterface" => "pdesolver_physics.md"
                    ]
-              "Code Interfaces" => "interfaces.md"
-              "Code Parallelization" => "parallel.md"
+              "Invocation" => Any[ "Calling Ticon" => "invocation/calling.md"
+                                   "Interactive Session (experimental)" => "invocation/interactive.md"
+                                 ]
               "Solver" => Any["solver/Readme.md"
                               "Advection" => 
                                 Any[ "Main" => "$advec/advection.md"
