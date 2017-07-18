@@ -7,25 +7,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <meta name="author" content="RPI's Optimal Design Lab">
-  <link rel="shortcut icon" href="../../../img/favicon.ico">
-  <title>Adjoint - PDESolver.jl (Ticon)</title>
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+  <title>Interactive Session (experimental) - PDESolver.jl (Ticon)</title>
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
-  <link rel="stylesheet" href="../../../css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../../../css/theme_extra.css" type="text/css" />
-  <link rel="stylesheet" href="../../../css/highlight.css">
-  <link href="../../../assets/Documenter.css" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/highlight.css">
+  <link href="../../assets/Documenter.css" rel="stylesheet">
   
   <script>
     // Current page data
-    var mkdocs_page_name = "Adjoint";
-    var mkdocs_page_input_path = "solver/euler/adjoint.md";
-    var mkdocs_page_url = "/solver/euler/adjoint/";
+    var mkdocs_page_name = "Interactive Session (experimental)";
+    var mkdocs_page_input_path = "invocation/interactive.md";
+    var mkdocs_page_url = "/invocation/interactive/";
   </script>
   
-  <script src="../../../js/jquery-2.1.1.min.js"></script>
-  <script src="../../../js/modernizr-2.8.3.min.js"></script>
-  <script type="text/javascript" src="../../../js/highlight.pack.js"></script> 
+  <script src="../../js/jquery-2.1.1.min.js"></script>
+  <script src="../../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../../js/highlight.pack.js"></script> 
   
 </head>
 
@@ -36,9 +36,9 @@
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
       <div class="wy-side-nav-search">
-        <a href="../../.." class="icon icon-home"> PDESolver.jl (Ticon)</a>
+        <a href="../.." class="icon icon-home"> PDESolver.jl (Ticon)</a>
         <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
   </form>
 </div>
@@ -50,17 +50,17 @@
           
             <li class="toctree-l1">
 		
-    <a class="" href="../../..">Home</a>
+    <a class="" href="../..">Home</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="../../../interfaces/">Code Interfaces</a>
+    <a class="" href="../../interfaces/">Code Interfaces</a>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="../../../parallel/">Code Parallelization</a>
+    <a class="" href="../../parallel/">Code Parallelization</a>
 	    </li>
           
             <li class="toctree-l1">
@@ -69,15 +69,15 @@
     <ul class="subnav">
                 <li class="">
                     
-    <a class="" href="../../../pdesolver/">Introduction</a>
+    <a class="" href="../../pdesolver/">Introduction</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../pdesolver_user/">PDESolver User Interface</a>
+    <a class="" href="../../pdesolver_user/">PDESolver User Interface</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../pdesolver_physics/">PDESolver Physics Interface</a>
+    <a class="" href="../../pdesolver_physics/">PDESolver Physics Interface</a>
                 </li>
     </ul>
 	    </li>
@@ -88,11 +88,20 @@
     <ul class="subnav">
                 <li class="">
                     
-    <a class="" href="../../../invocation/calling/">Calling Ticon</a>
+    <a class="" href="../calling/">Calling Ticon</a>
                 </li>
-                <li class="">
+                <li class=" current">
                     
-    <a class="" href="../../../invocation/interactive/">Interactive Session (experimental)</a>
+    <a class="current" href="./">Interactive Session (experimental)</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l3"><a href="#running-ticon-in-an-interactive-session-using-julias-repl">Running Ticon in an interactive session using Julia's REPL</a></li>
+    
+
+    <li class="toctree-l3"><a href="#script">Script</a></li>
+    
+
+    </ul>
                 </li>
     </ul>
 	    </li>
@@ -103,7 +112,7 @@
     <ul class="subnav">
                 <li class="">
                     
-    <a class="" href="../../Readme/">Introduction</a>
+    <a class="" href="../../solver/Readme/">Introduction</a>
                 </li>
                 <li class="">
                     
@@ -111,124 +120,118 @@
     <ul class="subnav">
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/advection/">Introduction</a>
+    <a class="" href="../../solver/advection/advection/">Introduction</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/types/">Datatypes</a>
+    <a class="" href="../../solver/advection/types/">Datatypes</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/volume/">Volume Integrals</a>
+    <a class="" href="../../solver/advection/volume/">Volume Integrals</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/flux/">Face Integrals</a>
+    <a class="" href="../../solver/advection/flux/">Face Integrals</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/bc/">Boundary Integrals</a>
+    <a class="" href="../../solver/advection/bc/">Boundary Integrals</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/ic/">Initial Conditions</a>
+    <a class="" href="../../solver/advection/ic/">Initial Conditions</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/source/">Source Term</a>
+    <a class="" href="../../solver/advection/source/">Source Term</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/common/">Common Functions</a>
+    <a class="" href="../../solver/advection/common/">Common Functions</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/adjoint/">Adjoint</a>
+    <a class="" href="../../solver/advection/adjoint/">Adjoint</a>
                 </li>
                 <li class="toctree-l3">
                     
-    <a class="" href="../../advection/boundary_functional/">Boundary Functional</a>
-                </li>
-    </ul>
-                </li>
-                <li class=" current">
-                    
-    <span class="caption-text">Euler</span>
-    <ul class="subnav">
-                <li class="toctree-l3">
-                    
-    <a class="" href="../euler/">Introduction</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../types/">Datatypes</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../volume/">Volume Integrals</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../flux/">Face Integrals</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../bc/">Boundary Integrals</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../ic/">Initial Conditions</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../source/">Source Term</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../common/">Common Functions</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../conversion/">Conversion</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../flux_functions/">Numerical Flux Functions</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../stabilization/">Stabilization</a>
-                </li>
-                <li class="toctree-l3 current">
-                    
-    <a class="current" href="./">Adjoint</a>
-    <ul class="subnav">
-            
-    <li class="toctree-l4"><a href="#adjoint">Adjoint</a></li>
-    
-
-    </ul>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../boundary_functional/">Boundary Functional</a>
-                </li>
-                <li class="toctree-l3">
-                    
-    <a class="" href="../misc/">Misc</a>
+    <a class="" href="../../solver/advection/boundary_functional/">Boundary Functional</a>
                 </li>
     </ul>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../simpleODE/simpleODE/">Simple ODE</a>
+    <span class="caption-text">Euler</span>
+    <ul class="subnav">
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/euler/">Introduction</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/types/">Datatypes</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/volume/">Volume Integrals</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/flux/">Face Integrals</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/bc/">Boundary Integrals</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/ic/">Initial Conditions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/source/">Source Term</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/common/">Common Functions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/conversion/">Conversion</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/flux_functions/">Numerical Flux Functions</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/stabilization/">Stabilization</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/adjoint/">Adjoint</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/boundary_functional/">Boundary Functional</a>
+                </li>
+                <li class="toctree-l3">
+                    
+    <a class="" href="../../solver/euler/misc/">Misc</a>
+                </li>
+    </ul>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../../solver/simpleODE/simpleODE/">Simple ODE</a>
                 </li>
     </ul>
 	    </li>
           
             <li class="toctree-l1">
 		
-    <a class="" href="../../../input/input/">Input</a>
+    <a class="" href="../../input/input/">Input</a>
 	    </li>
           
             <li class="toctree-l1">
@@ -237,15 +240,15 @@
     <ul class="subnav">
                 <li class="">
                     
-    <a class="" href="../../../NonlinearSolvers/nonlinearsolvers/">Introduction</a>
+    <a class="" href="../../NonlinearSolvers/nonlinearsolvers/">Introduction</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../NonlinearSolvers/steady/">Steady</a>
+    <a class="" href="../../NonlinearSolvers/steady/">Steady</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../NonlinearSolvers/unsteady/">Unsteady</a>
+    <a class="" href="../../NonlinearSolvers/unsteady/">Unsteady</a>
                 </li>
     </ul>
 	    </li>
@@ -256,23 +259,23 @@
     <ul class="subnav">
                 <li class="">
                     
-    <a class="" href="../../../Utils/Utils/">Introduction</a>
+    <a class="" href="../../Utils/Utils/">Introduction</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../Utils/parallel/">Parallel Constructs</a>
+    <a class="" href="../../Utils/parallel/">Parallel Constructs</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../Utils/projections/">Projections</a>
+    <a class="" href="../../Utils/projections/">Projections</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../Utils/logging/">Logging</a>
+    <a class="" href="../../Utils/logging/">Logging</a>
                 </li>
                 <li class="">
                     
-    <a class="" href="../../../Utils/io/">Input/Output</a>
+    <a class="" href="../../Utils/io/">Input/Output</a>
                 </li>
     </ul>
 	    </li>
@@ -287,7 +290,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../../..">PDESolver.jl (Ticon)</a>
+        <a href="../..">PDESolver.jl (Ticon)</a>
       </nav>
 
       
@@ -295,22 +298,18 @@
         <div class="rst-content">
           <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="../../..">Docs</a> &raquo;</li>
+    <li><a href="../..">Docs</a> &raquo;</li>
     
       
         
-          <li>Solver &raquo;</li>
-        
-      
-        
-          <li>Euler &raquo;</li>
+          <li>Invocation &raquo;</li>
         
       
     
-    <li>Adjoint</li>
+    <li>Interactive Session (experimental)</li>
     <li class="wy-breadcrumbs-aside">
       
-        <a href="https://github.com/OptimalDesignLab/PDESolver.jl/edit/master/docs/solver/euler/adjoint.md"
+        <a href="https://github.com/OptimalDesignLab/PDESolver.jl/edit/master/docs/invocation/interactive.md"
           class="icon icon-github"> Edit on GitHub</a>
       
     </li>
@@ -320,8 +319,13 @@
           <div role="main">
             <div class="section">
               
-                <p><a id='Adjoint-1'></a></p>
-<h1 id="adjoint">Adjoint</h1>
+                <p><a id='Running-Ticon-in-an-interactive-session-using-Julia's-REPL-1'></a></p>
+<h1 id="running-ticon-in-an-interactive-session-using-julias-repl">Running Ticon in an interactive session using Julia's REPL</h1>
+<p>Julia's REPL is a powerful tool for debugging.  Being able to run commands interactively can reveal important information   that would otherwise be available only through cumbersome print statements and  error logs.</p>
+<p>This page describes the first steps involved for running Ticon interactively. Calling Ticon from Julia's REPL in the fashion described here is an experimental    method, and is not tested consistently. Additionally, not all parts of Ticon are usable after the steps below. Instead, this document is intended to provide a springing-off point for the developer    who wishes to run Ticon interactively, and can adapt the commands below to their needs.</p>
+<p><a id='Script-1'></a></p>
+<h1 id="script">Script</h1>
+<p>Script 123</p>
               
             </div>
           </div>
@@ -329,10 +333,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../boundary_functional/" class="btn btn-neutral float-right" title="Boundary Functional">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../../solver/Readme/" class="btn btn-neutral float-right" title="Introduction">Next <span class="icon icon-circle-arrow-right"></span></a>
       
       
-        <a href="../stabilization/" class="btn btn-neutral" title="Stabilization"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../calling/" class="btn btn-neutral" title="Calling Ticon"><span class="icon icon-circle-arrow-left"></span> Previous</a>
       
     </div>
   
@@ -360,16 +364,16 @@
           <a href="https://github.com/OptimalDesignLab/PDESolver.jl" class="fa fa-github" style="float: left; color: #fcfcfc"> GitHub</a>
       
       
-        <span><a href="../stabilization/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+        <span><a href="../calling/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
       
-        <span style="margin-left: 15px"><a href="../boundary_functional/" style="color: #fcfcfc">Next &raquo;</a></span>
+        <span style="margin-left: 15px"><a href="../../solver/Readme/" style="color: #fcfcfc">Next &raquo;</a></span>
       
     </span>
 </div>
-    <script src="../../../js/theme.js"></script>
+    <script src="../../js/theme.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-      <script src="../../../assets/mathjaxhelper.js"></script>
+      <script src="../../assets/mathjaxhelper.js"></script>
 
 </body>
 </html>

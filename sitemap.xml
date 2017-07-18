@@ -50,6 +50,22 @@
     
         
     <url>
+     <loc>/invocation/calling/</loc>
+     <lastmod>2017-07-18</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+        
+    <url>
+     <loc>/invocation/interactive/</loc>
+     <lastmod>2017-07-18</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+        
+    
+
+    
+        
+    <url>
      <loc>/solver/Readme/</loc>
      <lastmod>2017-07-18</lastmod>
      <changefreq>daily</changefreq>
