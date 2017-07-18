@@ -342,8 +342,9 @@ using MPI
 using Input
 
 # after here, hopefully this is the absolute minimum commands needed
-
 MPI.Init()
+
+# example for input file; substitute your own
 opts = read_input(&quot;sine_adv_input_CN_adjoint.jl&quot;)
 
 Tdim = opts[&quot;dimensions&quot;]
@@ -355,15 +356,13 @@ sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofp
 
 var_type = opts[&quot;variable_type&quot;]
 
+# initialize the eqn object with the desired physics
 # eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
-# now at the phase where we make a blank copy and copy over fields
-# eqn_copy = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
-
 init(mesh, sbp, eqn, opts)
 
-# first need to populate eqn
+# sample commands for populating some fields of eqn
 rand!(eqn.q)
 rand!(eqn.res)
 # q_vec and res_vec are populated after this too
