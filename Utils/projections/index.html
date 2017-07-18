@@ -306,6 +306,37 @@
 <p>The functions here project the vector of conservative variables back and  forth between x-y-z and n-t-b (normal-tangential-binormal) cordinates.</p>
 <p><a id='Detailed-Documentation-1'></a></p>
 <h2 id="detailed-documentation">Detailed Documentation</h2>
+<p><a id='Utils.calcLength-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,1}}' href='#Utils.calcLength-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,1}}'>#</a>
+<strong><code>Utils.calcLength</code></strong> &mdash; <em>Method</em>.</p>
+<p>Calculates the length of a vector, using a manually unrolled loop.   Methods are available for 2D and 3D.</p>
+<p>Inputs:     params: an AbstractParamType{Tdim}, used to dispatch to the right method     nrm: the vector to calculate the length of.  Must have length 2 in 2D          and 3 in 3D</p>
+<p>Outputs:     length of nrm</p>
+<p><a id='Utils.getProjectionMatrix-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,1},AbstractArray{T,2}}' href='#Utils.getProjectionMatrix-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,1},AbstractArray{T,2}}'>#</a>
+<strong><code>Utils.getProjectionMatrix</code></strong> &mdash; <em>Method</em>.</p>
+<p>This function populates the matrix P that project from x-y-z to n-t-b.   Methods are available for 2D and 3D, determined from the AbstractParamType   object.  This is a somewhat specialized routine in that it only works for   vectors like the state vector of the Euler or Navier-Stokes equations,   where the first and last equations are coordinate system invarient and   only the middle 2 (in 2D) or 3 (in 3D) equations need to be rotated.   Specialized multiplication routines are provied as projectToXY and   projectToNT.</p>
+<p>Inputs:     params:  An AbstractParamType{Tdim}     nrm: the normal direction in x-y coordinate system.  Must be a unit vector</p>
+<p>Inputs/Outputs     P:  matrix to be populated with projection matrix</p>
+<p>Aliasing restrictions: none</p>
+<p><a id='Utils.projectToNT-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,2},AbstractArray{T,1},AbstractArray{T,1}}' href='#Utils.projectToNT-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,2},AbstractArray{T,1},AbstractArray{T,1}}'>#</a>
+<strong><code>Utils.projectToNT</code></strong> &mdash; <em>Method</em>.</p>
+<p>This function projects a vector x from x-y coordinates to normal-tangential   (n-t) coordinates, where A is a projection matrix from x-y to n-t, obtained   from getProjectionMatrix.  This function is a specialized matrix-vector   multiplication routine and only works for matrices with the particular   sparsity pattern created by getProjectionMatrix.   Methods are available for 2D and 3D</p>
+<p>Inputs:     params: an AbstractParamType{{Tdim} used to dispatch to the 2D or 3D             method     P: the projection matrix     x: vector to be projected</p>
+<p>Inputs/Outputs:     b: the result of the projection</p>
+<p>Aliasing restrictions: x and b cannot alias</p>
+<p><a id='Utils.projectToXY-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,2},AbstractArray{T,1},AbstractArray{T,1}}' href='#Utils.projectToXY-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,2},AbstractArray{T,1},AbstractArray{T,1}}'>#</a>
+<strong><code>Utils.projectToXY</code></strong> &mdash; <em>Method</em>.</p>
+<p>This function is similar to projectToNT, except it project from n-t   to x-y.  Note that P is still the projection matrix from getProjectionMatrix   that projects from x-y to n-t.</p>
+<p><a id='Utils.getBinormalVector-Tuple{Number,Number,Number,Number,Number,Number}' href='#Utils.getBinormalVector-Tuple{Number,Number,Number,Number,Number,Number}'>#</a>
+<strong><code>Utils.getBinormalVector</code></strong> &mdash; <em>Method</em>.</p>
+<p>This function computes a vector normal to the 2 supplied vectors and   returns the components.</p>
+<p>Inputs:     n1, n2, n3: the components of the first vector     t1, t2, t3: the components of the second vector</p>
+<p>Aliasing restrictions: none</p>
+<p><a id='Utils.getOrthogonalVector-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,1}}' href='#Utils.getOrthogonalVector-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,1}}'>#</a>
+<strong><code>Utils.getOrthogonalVector</code></strong> &mdash; <em>Method</em>.</p>
+<p>This function generates a unit vector orthogonal to the input vector nrm and    returns its components.  Methods are availble for 2D and 3D</p>
+<p>Inputs:     params: an AbstractParamType, used to dispatch to the 2D or 3D method     nrm: the input vector</p>
+<p>Outputs:     t1, t2, (and t3 in 3D): the components of the unit vector orthogonal to                             nrm</p>
+<p>Aliasing restrictions: none</p>
               
             </div>
           </div>
