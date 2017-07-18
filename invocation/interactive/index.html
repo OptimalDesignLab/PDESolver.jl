@@ -101,6 +101,9 @@
     <li class="toctree-l3"><a href="#script">Script</a></li>
     
 
+    <li class="toctree-l3"><a href="#repl-debugging-commands">REPL debugging commands</a></li>
+    
+
     </ul>
                 </li>
     </ul>
@@ -325,7 +328,57 @@
 <p>This page describes the first steps involved for running Ticon interactively. Calling Ticon from Julia's REPL in the fashion described here is an experimental    method, and is not tested consistently. Additionally, not all parts of Ticon are usable after the steps below. Instead, this document is intended to provide a springing-off point for the developer    who wishes to run Ticon interactively, and can adapt the commands below to their needs.</p>
 <p><a id='Script-1'></a></p>
 <h1 id="script">Script</h1>
-<p>Script 123</p>
+<pre><code>using PDESolver
+using AdvectionEquationMod
+using ArrayViews
+using ODLCommonTools
+using SummationByParts
+using PdePumiInterface
+using NonlinearSolvers
+using ForwardDiff
+using Utils
+import ODLCommonTools.sview
+using MPI
+using Input
+
+# after here, hopefully this is the absolute minimum commands needed
+
+MPI.Init()
+opts = read_input(&quot;sine_adv_input_CN_adjoint.jl&quot;)
+
+Tdim = opts[&quot;dimensions&quot;]
+# note: funny character in opts, last entry when loaded in REPL
+opts[&quot;Tdim&quot;] = Tdim
+dofpernode = 1
+
+sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
+
+var_type = opts[&quot;variable_type&quot;]
+
+# eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
+eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+
+# now at the phase where we make a blank copy and copy over fields
+# eqn_copy = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
+
+init(mesh, sbp, eqn, opts)
+
+# first need to populate eqn
+rand!(eqn.q)
+rand!(eqn.res)
+# q_vec and res_vec are populated after this too
+</code></pre>
+
+<p><a id='REPL-debugging-commands-1'></a></p>
+<h1 id="repl-debugging-commands">REPL debugging commands</h1>
+<p>Here are some helpful Julia commands for debugging/investigation within the REPL at this stage. Refer to the Julia documentation for details, or press '?' within the REPL    and type the command you wish to see help for.</p>
+<pre><code>size()
+length()
+typeof()
+fieldnames()
+isimmutable()
+whos()
+</code></pre>
               
             </div>
           </div>
