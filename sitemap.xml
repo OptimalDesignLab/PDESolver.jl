@@ -11,14 +11,6 @@
 
     
     <url>
-     <loc>/pdesolver/</loc>
-     <lastmod>2017-07-17</lastmod>
-     <changefreq>daily</changefreq>
-    </url>
-    
-
-    
-    <url>
      <loc>/interfaces/</loc>
      <lastmod>2017-07-17</lastmod>
      <changefreq>daily</changefreq>
@@ -36,6 +28,12 @@
     
         
     <url>
+     <loc>/pdesolver/</loc>
+     <lastmod>2017-07-17</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+        
+    <url>
      <loc>/pdesolver_user/</loc>
      <lastmod>2017-07-17</lastmod>
      <changefreq>daily</changefreq>
@@ -50,17 +48,9 @@
     
 
     
-    <url>
-     <loc>/solver/Readme/</loc>
-     <lastmod>2017-07-17</lastmod>
-     <changefreq>daily</changefreq>
-    </url>
-    
-
-    
         
     <url>
-     <loc>/solver/advection/advection/</loc>
+     <loc>/solver/Readme/</loc>
      <lastmod>2017-07-17</lastmod>
      <changefreq>daily</changefreq>
     </url>
@@ -68,12 +58,6 @@
     <url>
      <loc></loc>
      <lastmod></lastmod>
-     <changefreq>daily</changefreq>
-    </url>
-        
-    <url>
-     <loc>/solver/euler/euler/</loc>
-     <lastmod>2017-07-17</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
@@ -100,14 +84,12 @@
     
 
     
+        
     <url>
      <loc>/NonlinearSolvers/nonlinearsolvers/</loc>
      <lastmod>2017-07-17</lastmod>
      <changefreq>daily</changefreq>
     </url>
-    
-
-    
         
     <url>
      <loc>/NonlinearSolvers/steady/</loc>
@@ -124,14 +106,12 @@
     
 
     
+        
     <url>
      <loc>/Utils/Utils/</loc>
      <lastmod>2017-07-17</lastmod>
      <changefreq>daily</changefreq>
     </url>
-    
-
-    
         
     <url>
      <loc>/Utils/parallel/</loc>
