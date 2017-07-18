@@ -11,12 +11,8 @@ The functions defined in `ODLCommonTools` are more general in nature and
 usable independent of `PDESolver`.
 
 
-
-Explain purpose of Utils, contrast with ODLCommonTools
-
 ```@contents
-  Pages = ["Utils.md"
-           "io.md"
+  Pages = ["io.md"
            "logging.md"
            "projections.md"
            "paralle.md"

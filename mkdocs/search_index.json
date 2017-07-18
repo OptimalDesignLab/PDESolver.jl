@@ -532,12 +532,12 @@
         }, 
         {
             "location": "/Utils/Utils/", 
-            "text": "Utilties\n\n\nThis module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the \nODLCommontools\n. The functions defined in the \nUtils\n module are useful in the context of \nPDESolver\n and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in \nODLCommonTools\n are more general in nature and usable independent of \nPDESolver\n.\n\n\n\n\nInput/Output\n\n\nLogging Documentation\n\n\nProjections documentation", 
+            "text": "Utilties\n\n\nThis module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the \nODLCommontools\n. The functions defined in the \nUtils\n module are useful in the context of \nPDESolver\n and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in \nODLCommonTools\n are more general in nature and usable independent of \nPDESolver\n.\n\n\n\n\nInput/Output\n\n\nLogging Documentation\n\n\nProjections documentation\n\n\nParallel Constructs Documentations", 
             "title": "Introduction"
         }, 
         {
             "location": "/Utils/Utils/#utilties", 
-            "text": "This module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the  ODLCommontools . The functions defined in the  Utils  module are useful in the context of  PDESolver  and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in  ODLCommonTools  are more general in nature and usable independent of  PDESolver .   Input/Output  Logging Documentation  Projections documentation", 
+            "text": "This module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the  ODLCommontools . The functions defined in the  Utils  module are useful in the context of  PDESolver  and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in  ODLCommonTools  are more general in nature and usable independent of  PDESolver .   Input/Output  Logging Documentation  Projections documentation  Parallel Constructs Documentations", 
             "title": "Utilties"
         }, 
         {
