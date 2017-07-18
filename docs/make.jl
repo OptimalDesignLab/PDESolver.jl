@@ -6,6 +6,8 @@ euler = "solver/euler"
 ode = "solver/simpleODE"
 
 makedocs(
+  format = :html,
+  sitename = "PDESolver.jl",
   pages = Any["Home" => "index.md"
               "Code Interfaces" => "interfaces.md"
               "Code Parallelization" => "parallel.md"
@@ -68,3 +70,7 @@ makedocs(
 
              ] # end Home
 )  # end mkdocs
+
+deploydocs(
+  repo = "github.com/OptimalDesignLab/PDESolver.jl.git",
+)
