@@ -246,6 +246,12 @@
             
     <li class="toctree-l3"><a href="#logging-documentation">Logging Documentation</a></li>
     
+        <ul>
+        
+            <li><a class="toctree-l4" href="#detailed-documentation">Detailed Documentation</a></li>
+        
+        </ul>
+    
 
     </ul>
                 </li>
@@ -297,6 +303,18 @@
               
                 <p><a id='Logging-Documentation-1'></a></p>
 <h1 id="logging-documentation">Logging Documentation</h1>
+<p>The functions define here assist with debugging by logging some results to disk.</p>
+<p><a id='Detailed-Documentation-1'></a></p>
+<h2 id="detailed-documentation">Detailed Documentation</h2>
+<p><a id='Utils.sharedFaceLogging-Tuple{Any,Any,ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,Utils.SharedFaceData{T},Any,Any}' href='#Utils.sharedFaceLogging-Tuple{Any,Any,ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,Utils.SharedFaceData{T},Any,Any}'>#</a>
+<strong><code>Utils.sharedFaceLogging</code></strong> &mdash; <em>Method</em>.</p>
+<p><strong>Utils.sharedFaceLogging</strong></p>
+<p>This function writes files for the function that evalutes the shared face   integrals.  This function should only be called in debug mode.</p>
+<p>If opts["writeqface"] is true,  writes the q values at the face to a file    q_sharedface_i_myrank.dat, where i is the peer process index (not MPI rank)   and myrank is the MPI rank of the current process. </p>
+<p>If opts["write_fluxface"] is true, it writes eqn.flux_sharedface to a file   flux_sharedface_i_myrank.dat</p>
+<p>Inputs:     mesh     sbp     eqn: and AbstractSolutionData     opts: options dictonary     data: SharedFaceData object     qL_arr: an array holding solution values at face nodes on the              left side of the interface,  numDofPerNode x numfacenodes x              numsharedfaces on this partition boundary     qR_arr: solution values at face nodes on the right side of the interface.             same shape as qL_arr</p>
+<p>also, the eqn.flux_shared is used to write the face flux.  It is the same   shape as qL_arr</p>
+<p>Aliasing restrictions: qL_arr, qR_arr, and eqn.flux_sharedface must not alias.</p>
               
             </div>
           </div>
