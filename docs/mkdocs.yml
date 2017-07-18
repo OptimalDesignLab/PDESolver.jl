@@ -3,7 +3,8 @@ repo_url:         https://github.com/OptimalDesignLab/PDESolver.jl
 site_description: A Julia-based PDE Solver for use in PDE-constrained optimization problems
 site_author:      RPI's Optimal Design Lab
 
-theme: readthedocs
+#theme: readthedocs
+theme: material
 
 extra_css:
   - assets/Documenter.css
