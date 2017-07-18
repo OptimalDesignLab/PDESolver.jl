@@ -463,8 +463,17 @@ opts: the options dictonary
 <p><a id='Utils.getSendDataElement' href='#Utils.getSendDataElement'>#</a>
 <strong><code>Utils.getSendDataElement</code></strong> &mdash; <em>Function</em>.</p>
 <p>This function populates the send buffer from eqn.q for    opts["parallle_data"]  == "element"</p>
-<p>Inputs:     mesh: a mesh     sbp: an SBP operator     eqn: an AbstractSolutionData     opts: options dictonary</p>
-<p>Inputs/Outputs:     data: a SharedFaceData.  data.q_send will be overwritten</p>
+<p>Inputs:</p>
+<pre><code>mesh: a mesh
+sbp: an SBP operator
+eqn: an AbstractSolutionData
+opts: options dictonary
+</code></pre>
+
+<p>Inputs/Outputs:</p>
+<pre><code>data: a SharedFaceData.  data.q_send will be overwritten
+</code></pre>
+
 <p><a id='Utils.@mpi_master' href='#Utils.@mpi_master'>#</a>
 <strong><code>Utils.@mpi_master</code></strong> &mdash; <em>Macro</em>.</p>
 <p><strong>Utils.mpi_master</strong></p>
