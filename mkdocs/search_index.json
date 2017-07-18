@@ -407,13 +407,18 @@
         }, 
         {
             "location": "/Utils/projections/", 
-            "text": "Projections documentation", 
+            "text": "Projections documentation\n\n\nThe functions here project the vector of conservative variables back and  forth between x-y-z and n-t-b (normal-tangential-binormal) cordinates.\n\n\n\n\nDetailed Documentation", 
             "title": "Projections"
         }, 
         {
             "location": "/Utils/projections/#projections-documentation", 
-            "text": "", 
+            "text": "The functions here project the vector of conservative variables back and  forth between x-y-z and n-t-b (normal-tangential-binormal) cordinates.", 
             "title": "Projections documentation"
+        }, 
+        {
+            "location": "/Utils/projections/#detailed-documentation", 
+            "text": "", 
+            "title": "Detailed Documentation"
         }, 
         {
             "location": "/Utils/logging/", 
