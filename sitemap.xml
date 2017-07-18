@@ -18,6 +18,22 @@
     
 
     
+    <url>
+     <loc>/interfaces/</loc>
+     <lastmod>2017-07-17</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+    
+
+    
+    <url>
+     <loc>/parallel/</loc>
+     <lastmod>2017-07-17</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+    
+
+    
         
     <url>
      <loc>/pdesolver_user/</loc>

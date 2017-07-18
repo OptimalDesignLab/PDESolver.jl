@@ -60,6 +60,16 @@
           
             <li class="toctree-l1">
 		
+    <a class="" href="../../interfaces/">Code Interfaces</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../../parallel/">Code Parallelization</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
     <span class="caption-text">Sections</span>
     <ul class="subnav">
                 <li class="">
@@ -413,7 +423,7 @@ opts: the options dictonary
 <p>Like MPI.WaitAny, but operates on the receives of  a vector of SharedFaceData.   Only the index of the Request that was waited on is returned,    the Status and recv_waited fields of hte SharedFaceData are updated internally</p>
 <p><a id='Parallel-Data-Exchange-1'></a></p>
 <h2 id="parallel-data-exchange">Parallel Data Exchange</h2>
-<p>The functions in this section are used to start sending data in parallel and finish receiving it. All functions operate on a <code>Vector</code> of <a href="./#Utils.SharedFaceData"><code>SharedFaceData</code></a> that define what data to send to which peer processes.  See <a href="../parallel.md#Parallel-Overview-1">Parallel Overview</a> for a high-level overview of how the code is parallelized.</p>
+<p>The functions in this section are used to start sending data in parallel and finish receiving it. All functions operate on a <code>Vector</code> of <a href="./#Utils.SharedFaceData"><code>SharedFaceData</code></a> that define what data to send to which peer processes.  See <a href="../../parallel/#Parallel-Overview-1">Parallel Overview</a> for a high-level overview of how the code is parallelized.</p>
 <p>Sending the data to the other processes is straight-forward.  Receiving it (efficiently) is not. In particular, [<code>finishExchangeData</code>] waits to receive data from one peer process, calls a user supplied callback function to do calculations involving the received data, and then waits for the next receive to finish. This is significantly more efficient than waiting for all receives to finish and then doing computations on all the data.</p>
 <p>This section describes the API the physics modules use to do parallel  communication.  The <a href="./#utils_parallel_internals-1">Internals</a> section describes the helper functions used in the implementation.</p>
 <p><a id='Utils.startSolutionExchange' href='#Utils.startSolutionExchange'>#</a>
