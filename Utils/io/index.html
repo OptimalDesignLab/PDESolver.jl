@@ -303,7 +303,7 @@
               
                 <p><a id='Input/Output-1'></a></p>
 <h1 id="inputoutput">Input/Output</h1>
-<p>The functions and types defined here facilitate writing to <code>STDOUT</code> and <code>STDERR</code> as well as files. In particular, performance tests have shown that buffering is important when running in parallel. To this end, the <a href="./#Utils.BufferedIO"><code>BufferedIO</code></a> type is introduced that stores output in an in-memory buffer before writing to an underlying stream. This can create some difficulty when debuging, because output written to a buffered stream is not immediately written to the underlying stream. In cases where precise control of output is needed, users should call <a href="../@ref"><code>flush</code></a> to make sure all output is written to the underlying stream</p>
+<p>The functions and types defined here facilitate writing to <code>STDOUT</code> and <code>STDERR</code> as well as files. In particular, performance tests have shown that buffering is important when running in parallel. To this end, the <a href="./#Utils.BufferedIO"><code>BufferedIO</code></a> type is introduced that stores output in an in-memory buffer before writing to an underlying stream. This can create some difficulty when debuging, because output written to a buffered stream is not immediately written to the underlying stream. In cases where precise control of output is needed, users should call <a href="./#Base.flush-Tuple{Utils.BufferedIO{T&lt;:IO}}"><code>flush</code></a> to make sure all output is written to the underlying stream</p>
 <p><a id='Detailed-Documentation-1'></a></p>
 <h2 id="detailed-documentation">Detailed Documentation</h2>
 <p><a id='Utils.BSTDERR' href='#Utils.BSTDERR'>#</a>
@@ -339,6 +339,13 @@ mode: file open mode, see documentation of open(), defaults to append
 <p>Outputs:</p>
 <pre><code>a BufferedIO object
 </code></pre>
+
+<p><a id='Base.close-Tuple{Utils.BufferedIO{T<:IO}}' href='#Base.close-Tuple{Utils.BufferedIO{T<:IO}}'>#</a>
+<strong><code>Base.close</code></strong> &mdash; <em>Method</em>.</p>
+<p><code>Base</code> function <code>close</code> extended for BufferedIO</p>
+<p><a id='Base.flush-Tuple{Utils.BufferedIO{T<:IO}}' href='#Base.flush-Tuple{Utils.BufferedIO{T<:IO}}'>#</a>
+<strong><code>Base.flush</code></strong> &mdash; <em>Method</em>.</p>
+<p><code>Base</code> function <code>flush</code> extended for BufferedIO</p>
               
             </div>
           </div>
