@@ -1,5 +1,5 @@
 #!/bin/bash
 
 julia ./make.jl
-mkdocs build
+#mkdocs build
 mkdocs gh-deploy

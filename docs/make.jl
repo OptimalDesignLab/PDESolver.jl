@@ -12,6 +12,8 @@ makedocs(
                      "PDESolver User Interface" => "pdesolver_user.md",
                      "PDESolver PhysicsInterface" => "pdesolver_physics.md"
                    ]
+              "Code Interfaces" => "interfaces.md"
+              "Code Parallelization" => "parallel.md"
               "Solver" => Any["solver/Readme.md"
                               "Advection" => 
                                 Any[ "Main" => "$advec/advection.md"

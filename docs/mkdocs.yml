@@ -23,6 +23,8 @@ docs_dir: 'build'
 pages:
   - Home: index.md
   - 'PDESolver': 'pdesolver.md'
+  - 'Code Interfaces': 'interfaces.md'
+  - 'Code Parallelization': 'parallel.md'
   - Sections:
     - 'PDESolver User Interface': 'pdesolver_user.md'
     - 'PDESolver Physics Interface': 'pdesolver_physics.md'
