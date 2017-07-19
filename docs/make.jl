@@ -71,6 +71,3 @@ makedocs(
              ] # end Home
 )  # end mkdocs
 
-deploydocs(
-  repo = "github.com/OptimalDesignLab/PDESolver.jl.git",
-)

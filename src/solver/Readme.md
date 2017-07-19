@@ -180,7 +180,7 @@ scheme allows the compiler to make all the decisions about what function to call
 
 This idea is also applicable to the flux functions used by DG methods.
 
-##Initialization of a Simulation
+## Initialization of a Simulation
 
 This section lists an outline of how a simulation gets launched
 After step 4, the procedure becomes a bit more complicated because there are optional steps.

@@ -16,7 +16,7 @@
   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated
   every time the function is called.  This function is used as a building block
   by other parts of the solver, particularly the NonlinearSolvers.  See
-  doc/interfaces.md for details
+  interfaces.md for details
 
   Inputs:
     mesh: an AbstractMesh describing the mesh on which to solve the physics
