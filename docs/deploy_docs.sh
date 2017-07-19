@@ -20,6 +20,12 @@ echo "using temporary directory = $tdir"
 
 # download another copy of the repo to a temporary directory
 cd $tdir
+
+if [ $? != 0 ]; then
+  echo "Error: could not cd into temporary directory"
+  exit 1
+fi
+
 git clone https://github.com/OptimalDesignLab/PDESolver.jl.git
 cd ./PDESolver.jl
 git checkout gh-pages
