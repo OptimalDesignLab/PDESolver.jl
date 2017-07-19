@@ -4,7 +4,8 @@ README for generating docs + using Documenter & mkdocs
 We now use Documenter to generate html directly
 
 1. Make doc changes
-2. 
+2. Use web browser to view changes, ex. firefox ./build/index.html
+2. run deploy_docs.sh to deploy docs to github
 
 ### Old Method ###
 === How to run mkdocs locally ===
