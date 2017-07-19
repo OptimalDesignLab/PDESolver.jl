@@ -33,14 +33,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Temporary-heading-1",
-    "page": "Home",
-    "title": "Temporary heading",
-    "category": "section",
-    "text": ""
-},
-
-{
     "location": "index.html#Table-of-Contents-1",
     "page": "Home",
     "title": "Table of Contents",
