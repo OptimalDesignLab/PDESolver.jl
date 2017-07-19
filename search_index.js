@@ -33,11 +33,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "index.html#Temporary-heading-1",
+    "page": "Home",
+    "title": "Temporary heading",
+    "category": "section",
+    "text": ""
+},
+
+{
     "location": "index.html#Table-of-Contents-1",
     "page": "Home",
     "title": "Table of Contents",
     "category": "section",
-    "text": "[//]: # (specifying pages also specifies the order of the pages)Pages = [\"solver/Readme.md\",\n         \"solver/advection/advection.md\",\n         \"solver/euler/euler.md\",\n         \"solver/simpleODE/simpleODE.md\",\n         \"NonlinearSolvers/nonlinearsolvers.md\",\n         \"input/input.md\",\n         \"Utils/Utils.md\"\n        ]\nDepth=1"
+    "text": "<!–  (specifying pages also specifies the order of the pages) –>Pages = [\"solver/Readme.md\",\n         \"solver/advection/advection.md\",\n         \"solver/euler/euler.md\",\n         \"solver/simpleODE/simpleODE.md\",\n         \"NonlinearSolvers/nonlinearsolvers.md\",\n         \"input/input.md\",\n         \"Utils/Utils.md\"\n        ]\nDepth=1"
 },
 
 {
