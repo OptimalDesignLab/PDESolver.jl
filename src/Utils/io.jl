@@ -21,9 +21,11 @@ end
   used, flush must never be called on the returned BufferedIO object
 
   Inputs:
-    f: and IOStream object, defaults to a dummy stream
+
+    f: an IOStream object, defaults to a dummy stream
 
   Outputs:
+
     a BufferedIO object
 """->
 function BufferedIO(f::IO=DevNull)
@@ -47,10 +49,12 @@ end
   a BufferedIO around it.
 
   Inputs:
+
     fname: AbstractString, name of file to open
     mode: file open mode, see documentation of open(), defaults to append
 
   Outputs:
+
     a BufferedIO object
 """
 function BufferedIO(fname::AbstractString, mode::AbstractString="a")
@@ -65,12 +69,17 @@ import Base.write, Base.flush, Base.close
 # functions like println and print to convert things to arrays of UInt8s
 write(io::BufferedIO, x::UInt8) = write(io.fbuf, x)
 
-
+"""
+  `Base` function `flush` extended for BufferedIO
+"""
 function flush(io::BufferedIO)
   write(io.fstream, takebuf_array(io.fbuf))
   flush(io.fstream)
 end
 
+"""
+  `Base` function `close` extended for BufferedIO
+"""
 function close(io::BufferedIO)
   if isopen(io.fstream)
     flush(io)

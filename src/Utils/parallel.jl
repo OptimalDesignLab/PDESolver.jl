@@ -252,12 +252,14 @@ end
   opts["parallle_data"]  == "element"
 
   Inputs:
+
     mesh: a mesh
     sbp: an SBP operator
     eqn: an AbstractSolutionData
     opts: options dictonary
 
   Inputs/Outputs:
+
     data: a SharedFaceData.  data.q_send will be overwritten
 """
 function getSendDataElement(mesh::AbstractMesh, sbp::AbstractSBP,

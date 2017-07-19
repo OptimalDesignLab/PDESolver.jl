@@ -8,6 +8,7 @@
   current process.
 
   Fields:
+
     peernum: the MPI rank of the peer process
     peeridx: the index of this peer in mesh.peer_parts
     myrank: MPI rank of the current process
@@ -73,6 +74,7 @@ end
   Outer constructor for SharedFaceData.
 
   Inputs:
+
     mesh: a mesh object
     peeridx: the index of a peer in mesh.peer_parts
     q_send: the send buffer
@@ -193,12 +195,14 @@ end
     different for the send and receive buffers.
 
   Inputs:
+
     Tsol: element type of the arrays
     mesh: an AbstractMesh object
     sbp: an SBP operator
     opts: the options dictonary
 
   Outputs:
+
     data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
               mesh.peer_parts[i]
 """
@@ -253,9 +257,11 @@ end
   exception otherwise.
 
   Inputs:
+
     shared_data: Vector of SharedFaceData objects
 
   Output:
+
     val: number of receives that have been waited on
 """
 function assertSendsConsistent{T}(shared_data::Vector{SharedFaceData{T}})

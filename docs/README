@@ -1,0 +1,15 @@
+README for generating docs + using Documenter & mkdocs
+
+### New Method ###
+We now use Documenter to generate html directly
+
+1. Make doc changes
+2. Use web browser to view changes, ex. firefox ./build/index.html
+2. run deploy_docs.sh to deploy docs to github
+
+### Old Method ###
+=== How to run mkdocs locally ===
+1. Make your doc changes
+2. run `mkdocs serve --dev-addr=IP:PORT`
+    Example: `mkdocs serve --dev-addr=128.113.130.100:8005`
+3. Open IP:PORT in any browser on the correct network
