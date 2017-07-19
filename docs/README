@@ -1,5 +1,12 @@
 README for generating docs + using Documenter & mkdocs
 
+### New Method ###
+We now use Documenter to generate html directly
+
+1. Make doc changes
+2. 
+
+### Old Method ###
 === How to run mkdocs locally ===
 1. Make your doc changes
 2. run `mkdocs serve --dev-addr=IP:PORT`

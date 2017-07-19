@@ -43,7 +43,7 @@ See the introductor PDF (to be posted shortly) for an introduction to the
 operators.
 
 ## Table of Contents
-[//]: # (specifying pages also specifies the order of the pages)
+<!--  (specifying pages also specifies the order of the pages) -->
 ```@contents
 Pages = ["solver/Readme.md",
          "solver/advection/advection.md",
