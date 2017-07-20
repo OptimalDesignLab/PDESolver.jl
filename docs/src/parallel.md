@@ -1,4 +1,5 @@
-#Parallel Overview
+# Parallel Overview
+
 This document describes how PDEs are solved in parallel.
 
 In general, the mesh is partitioned and each part is assigned to a different
@@ -25,7 +26,8 @@ interface, similar to the interior interfaces.
 There are 2 modes of parallel operation, one for explicit time marching and
 the other for Newton's method.
 
-##Explicate Time Marching
+## Explicate Time Marching
+
 In this mode, each process each process sends the solution values at the 
 shared faces to the other processes.  Each process then evaluates the residual
 using the received values and updates the solution.
@@ -41,7 +43,8 @@ recommended to use `MPI_Waitany` to wait for the first receive to complete,
 do as many computations as possible on the data, and then call `MPI_Waitany`
 again for the next receive.
 
-##Newtons Method
+## Newtons Method
+
 For Newton's method, each process sends the solution values for all the 
 elements on the shared interface at the beginning of a Jacobian calculation. 
 Each process is then responsible for perturbing the solutions values of both 

@@ -12,10 +12,12 @@
   projectToNT.
 
   Inputs:
+
     params:  An AbstractParamType{Tdim}
     nrm: the normal direction in x-y coordinate system.  Must be a unit vector
 
   Inputs/Outputs
+
     P:  matrix to be populated with projection matrix
 
   Aliasing restrictions: none
@@ -72,10 +74,12 @@ end
   returns its components.  Methods are availble for 2D and 3D
 
   Inputs:
+
     params: an AbstractParamType, used to dispatch to the 2D or 3D method
     nrm: the input vector
 
   Outputs:
+
     t1, t2, (and t3 in 3D): the components of the unit vector orthogonal to
                             nrm
 
@@ -169,8 +173,13 @@ end
   returns the components.
 
   Inputs:
+
     n1, n2, n3: the components of the first vector
     t1, t2, t3: the components of the second vector
+
+  Outputs:
+
+    b1, b2, b3: the components of the binormal vector
 
   Aliasing restrictions: none
 """
@@ -189,11 +198,13 @@ end
   Methods are available for 2D and 3D.
 
   Inputs:
+
     params: an AbstractParamType{Tdim}, used to dispatch to the right method
     nrm: the vector to calculate the length of.  Must have length 2 in 2D
          and 3 in 3D
 
   Outputs:
+
     length of nrm
 """
 @inline function calcLength(params::AbstractParamType{2}, nrm::AbstractVector)
@@ -214,12 +225,14 @@ end
   Methods are available for 2D and 3D
 
   Inputs:
+
     params: an AbstractParamType{{Tdim} used to dispatch to the 2D or 3D
             method
     P: the projection matrix
     x: vector to be projected
 
   Inputs/Outputs:
+
     b: the result of the projection
 
   Aliasing restrictions: x and b cannot alias
@@ -276,6 +289,7 @@ function projectToNT(params::AbstractParamType{3}, P::AbstractMatrix,
  
   return nothing
 end
+
 """
   This function is similar to projectToNT, except it project from n-t
   to x-y.  Note that P is still the projection matrix from getProjectionMatrix

@@ -15,8 +15,9 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function}}()
   module initialization.  The name, the module, and the startup function must
   be unique (ie. they must not already exist in the list).  This function
   throws and exception if they are not.
-    '
+
   Inputs:
+
     modname:  an ASCIIString name for this entry in the list.  It is used
               to retrieve the module and startup function in the 
               retrieve_physics function. Typically the name is capitalized.
@@ -25,7 +26,9 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function}}()
                   startup_func(fname::ASCIIString), where fname is the name of
                   an input file
 
-  Outputs: none
+  Outputs:
+  
+    none
 """
 function register_physics(modname::ASCIIString, mod::Module, startup_func::Function)
 
@@ -55,6 +58,19 @@ function register_physics(modname::ASCIIString, mod::Module, startup_func::Funct
   return nothing
 end  # end function
 
+"""
+  Retrieves the physics module and function registered using [`register_physics`](@ref)
+
+  Input:
+  
+    modname: an ASCIIString containing the name of the module supplied to
+             `register_physics`
+
+  Outputs:
+
+    mod: the physics Module
+    func: the function to evaluate the physics
+"""
 function retrieve_physics(modname::ASCIIString)
 
   if !haskey(PhysicsModDict, modname)
@@ -76,8 +92,10 @@ end
   This function registers a new initial condition function with the specified
   physics module.  The function must have the signature:
 
+  ```
    ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},
                 opts:Dict, q_vec::AbstractVector{Tsol})
+  ```
 
   where q_vec is a vector of length numDof that will be populated with the
   initial condition.  If the function is used to provide the exact solution
@@ -90,6 +108,7 @@ end
   physics module.
 
   Inputs:
+
     mod: physics module to register the function with
     fname: name associated with the function, used as the value for the
            for any key in the options dictionary that specifies an initial
@@ -97,6 +116,7 @@ end
     func: the function itself
 
   Outputs:
+
     none
 """
 function registerIC(mod::Module, fname::ASCIIString, func::Function)
@@ -139,6 +159,7 @@ end
   physics module.
 
   Inputs:
+
     mod: module to register the the functor with
     fname: the name associated with this function, used as the value for any
            key in the options dictionary that specifies a boundary condition,
@@ -146,6 +167,7 @@ end
     func: the functor itself
 
   Outputs:
+
     none
 """
 function registerBC(mod::Module, fname::ASCIIString, func::BCType)

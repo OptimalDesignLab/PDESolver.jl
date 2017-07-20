@@ -1,4 +1,6 @@
-# `AbstractSolutionData` and Physics Module Implementation
+# Overview of Physics Modules
+
+## `AbstractSolutionData` and Physics Module Implementation
 
 This document describes some best practices for implementing a physics module.
 These practices are not required, but have proven to be useful for producing
@@ -99,14 +101,14 @@ the working variables to the natural variables.
 
 
 
-##Input Options
+## Input Options
 
 Many of the components of PDESolver have different options that control how they
 work and what they do.
 In order to  provide a unified method of specifying these options, an dictionary
  of type `Dict{ASCIIString, Any}` is read in from a disk file.
 This dictionary (called `opts` in function signatures), is passed to all high
-and mid level function so they can use values in the dictionary to determine their
+and mid level functions so they can use values in the dictionary to determine their
  control flow.
 Low level functions need to be extremely efficient, so they cannot have
 conditional logic, therefore they are not passed the dictionary.
@@ -144,11 +146,11 @@ functor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bnd
 ```
 
 The way this is used for boundary conditions is through a two level construct
-where an outer function passes a functor to an inner function.  Julia's JIT with
+where an outer function passes a functor to an inner function.  Julia's JIT will
 generate a method of the inner function that is specialized to the functor (this
 is why it is important that the functor is a datatype).  For example:
 
-```julia
+```
 function getBCFluxes(mesh, sbp, eqn, opts)
 
   for i=1:mesh.numBC  # loop over different boundary conditions
@@ -170,7 +172,7 @@ end  # end function
     end
 
   end  # end function
-  ```
+```
 
 The benefit of this arrangement is that `mesh.numBC` different version of
 calcBoundaryFlux get compiled, one for each functor, and each version knows
@@ -180,7 +182,7 @@ scheme allows the compiler to make all the decisions about what function to call
 
 This idea is also applicable to the flux functions used by DG methods.
 
-## Initialization of a Simulation
+#Initialization of a Simulation
 
 This section lists an outline of how a simulation gets launched
 After step 4, the procedure becomes a bit more complicated because there are optional steps.
