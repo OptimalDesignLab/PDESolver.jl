@@ -1,0 +1,4 @@
+vortex_s_i_.smb: rectangular domain x: 0 to 20, y: -5 to 5, 20 x 20 elements
+                 to 60 x 60 elements, by 5s, i=1:9 
+
+vortex_p_i_.smb: same as vortex_s_i_.smb, but partitioned into 4 parts
