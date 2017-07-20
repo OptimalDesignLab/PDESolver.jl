@@ -40,7 +40,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   # some checks for when parallelism is enabled
   @assert opts["parallel_data"] == "element"
   for i=1:mesh.npeers
-    @assert mesh.recv_waited[i]
+    @assert eqn.shared_data[i].recv_waited
   end
 
   fill!(res, 0.0)
@@ -175,7 +175,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     bndries_remote = mesh.bndries_remote[peer]
     interfaces_peer = mesh.shared_interfaces[peer]
 
-    qR_peer = eqn.q_face_recv[peer]
+    qR_peer = eqn.shared_data[peer].q_recv
 #    dxidx_peer = mesh.dxidx_sharedface[peer]
     nrm_peer = mesh.nrm_sharedface[peer]
     start_elnum = mesh.shared_element_offsets[peer]
