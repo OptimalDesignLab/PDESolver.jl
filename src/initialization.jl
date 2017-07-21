@@ -32,55 +32,10 @@ function createMeshAndOperator(opts, dofpernode)
   opts["Tsbp"] = Tsbp
   opts["Tmsh"] = Tmsh
 
-  sbp, sbpface, shape_type, topo = getSBPOperator(opts, Tsbp)
+  sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
  
-  mesh_time = @elapsed if opts["use_DG"]
-    # create mesh with 4 dof per node
-
-    println("constructing DG mesh")
-    if dim == 2
-
-      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; 
-                               dofpernode=dofpernode, 
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
-    else
-      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface,
-                               topo; dofpernode=dofpernode,
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
-    end
-
-    # create preconditioning mesh
-    if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
-      @assert dim == 2
-      pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts;
-                     coloring_distance=opts["coloring_distance_prec"])
-    else
-      pmesh = mesh
-    end
-
-  else  # continuous Galerkin
-    if dim == 2
-
-      println("constructing CG mesh")
-      mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface;
-                             dofpernode=dofpernode,
-                             coloring_distance=opts["coloring_distance"],
-                             shape_type=shape_type)
-
-      if opts["jac_type"] == 3 || opts["jac_type"] == 4
-        pmesh = PumiMesh2Preconditioning(mesh, sbp, opts;
-                               coloring_distance=opts["coloring_distance_prec"])
-      else
-        pmesh = mesh
-      end
-
-    else  # dim == 3
-      throw(ErrorException("3D continuous Galerkin not supported"))
-    end
-  end  # end if DG
-
+  mesh_time = @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
+                                                topo, Tmsh, dofpernode)
   return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
 end
 
@@ -198,7 +153,7 @@ end
     topo: in the 3D DG case, an ElementTopology describing the SBP reference
           element, otherwise the integer 0.
 """
-function getSBPOperator(opts::Dict, Tsbp::DataType)
+function createSBPOperator(opts::Dict, Tsbp::DataType)
   # construct SBP operator and figure out shape_type needed by Pumi
   order = opts["order"]  # order of accuracy
   dim = opts["dimensions"]
@@ -281,6 +236,79 @@ function getSBPOperator(opts::Dict, Tsbp::DataType)
   end
  
   return sbp, sbpface, shape_type, topo
+end
+
+"""
+  This function creates the mesh object and, optionally, a second mesh
+  used for preconditioning
+
+  Inputs:
+    opts: the options dictionary
+    sbp: an SBP operator
+    sbpface: an SBP face operator
+    topo: an ElementTopology describing the SBP reference element.  Only
+          needed for 3D DG, otherwise can be any value
+    Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)
+    dofpernode: number of degrees of freedom on every node
+
+  All arguments except opts are typically provided by 
+  [`createSBPOperator`](@ref) and [`getDataTypes`](@ref)
+"""
+function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
+                    Tmsh, dofpernode)
+
+  dmg_name = opts["dmg_name"]
+  smb_name = opts["smb_name"]
+  order = opts["order"]  # order of accuracy
+  dim = opts["dimensions"]
+
+
+  if opts["use_DG"]
+    println("constructing DG mesh")
+    if dim == 2
+      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; 
+                               dofpernode=dofpernode, 
+                               coloring_distance=opts["coloring_distance"],
+                               shape_type=shape_type)
+    else
+      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface,
+                               topo; dofpernode=dofpernode,
+                               coloring_distance=opts["coloring_distance"],
+                               shape_type=shape_type)
+    end
+
+    # create preconditioning mesh
+    if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
+      @assert dim == 2
+      pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts;
+                     coloring_distance=opts["coloring_distance_prec"])
+    else
+      pmesh = mesh
+    end
+
+  else  # continuous Galerkin
+    if dim == 2
+
+      println("constructing CG mesh")
+      mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface;
+                             dofpernode=dofpernode,
+                             coloring_distance=opts["coloring_distance"],
+                             shape_type=shape_type)
+
+      if opts["jac_type"] == 3 || opts["jac_type"] == 4
+        pmesh = PumiMesh2Preconditioning(mesh, sbp, opts;
+                               coloring_distance=opts["coloring_distance_prec"])
+      else
+        pmesh = mesh
+      end
+
+    else  # dim == 3
+      throw(ErrorException("3D continuous Galerkin not supported"))
+    end
+  end  # end if DG
+
+
+  return mesh, pmesh
 end
 
 """
@@ -453,13 +481,8 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
   #  close(f)
 
     saveSolutionToMesh(mesh, real(eqn.q_vec))
-  #  printSolution(mesh, real(eqn.q_vec))
-  #  printCoordinates(mesh)
     writeVisFiles(mesh, "solution_done")
 
-    # write timings
-  #  timings = [params.t_volume, params.t_face, params.t_source, params.t_sharedface, params.t_bndry, params.t_send, params.t_wait, params.t_allreduce, params.t_jacobian, params.t_solve, params.t_barrier, params.t_barrier2, params.t_barrier3]
-  #  writedlm("timing_breakdown_$myrank.dat", vcat(timings, params.t_barriers))
   end  # end if (opts[solve])
 
   return nothing
