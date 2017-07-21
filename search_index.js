@@ -1013,7 +1013,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Unsteady",
     "title": "Unsteady NonlinearSolver Documentation",
     "category": "section",
-    "text": "\\begin{aligned} \\underbrace{\\mathbf{I} - \\frac{\\Delta t}{2} \\underbrace{\\frac{\\partial R\\left(u^{i+1}\\right)}{\\partial u^{i+1}}}_{\\text{jac from \\texttt{physicsJac}}} \n}_{\\text{\\texttt{cnJac}}} \n= \\\n\\underbrace{- \\left( \n  \\underbrace{u^{i+1}}_{\\text{\\texttt{eqn_nextstep.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^{i+1}\\right)}_{\\text{\\texttt{eqn_nextstep.res_vec}}} - \\    \\underbrace{u^i}_{\\text{\\texttt{eqn.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^i\\right)}_{\\text{\\texttt{eqn.res_vec}}} \n\\right)}_{\\text{\\texttt{cnRhs}}} \\end{aligned}"
+    "text": "\\newcommand{\\die}{\\partial} \\begin{aligned} \\underbrace{\\mathbf{I} - \\frac{\\Delta t}{2} \\underbrace{\\frac{\\die R\\left(u^{i+1}\\right)}{\\die u^{i+1}}}_{\\text{jac from \\texttt{physicsJac}}} \n}_{\\text{\\texttt{cnJac}}} \n= \\\n\\underbrace{- \\left( \n  \\underbrace{u^{i+1}}_{\\text{\\texttt{eqn_nextstep.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^{i+1}\\right)}_{\\text{\\texttt{eqn_nextstep.res_vec}}} - \\    \\underbrace{u^i}_{\\text{\\texttt{eqn.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^i\\right)}_{\\text{\\texttt{eqn.res_vec}}} \n\\right)}_{\\text{\\texttt{cnRhs}}} \\end{aligned}"
 },
 
 {
