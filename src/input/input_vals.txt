@@ -34,6 +34,9 @@ where input_file_name.jl is in your current directory.
 "operator_type" : name of discretization operator to use for DG, currently 
                   either SBPOmega or SBPGamma , (String), default SBPOmega
 
+"operator_type2": like "operator_type", but for the staggered grid, (String),
+                  default "SBPNone"
+
 "use_Minv" : apply the inverse mass matrix to the residual within the physics module
 
 # time stepping options
