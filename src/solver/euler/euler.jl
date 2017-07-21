@@ -210,6 +210,21 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
 
+  if opts["operator_type2"] != "SBPNone"
+    mesh2 = mesh.mesh2
+    sbp2 = mesh.sbp2
+    
+    getBCFunctors(mesh2, sbp2, eqn, opts)
+
+    getSRCFunctors(mesh2, sbp2, eqn, opts)
+    if mesh2.isDG
+      getFluxFunctors(mesh2, sbp2, eqn, opts)
+      getFaceElementFunctors(mesh2, sbp2, eqn, opts)
+    end
+  end
+
+
+
   return nothing
 end
 
