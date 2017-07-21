@@ -23,26 +23,8 @@ EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
 lift = objective.lift_val
 
-# coords = rand(mesh.dim)
-# ∂q∂aoa = zeros(Complex128, 4)
-# EulerEquationMod.calcFreeStream_daoa(coords, eqn.params, ∂q∂aoa)
-# pert = 1e-20im
-# eqn.params.aoa += pert
-# ∂q∂aoa_complex = zeros(Complex128, 4)
-# EulerEquationMod.calcFreeStream(coords, eqn.params, ∂q∂aoa_complex)
-# ∂q∂aoa_complex = imag(∂q∂aoa_complex)/imag(pert)
-# eqn.params.aoa -= pert
-# println("error ∂q∂aoa = $(abs(∂q∂aoa_complex - ∂q∂aoa))")
-
-
 adjoint_vec = zeros(Complex128, mesh.numDof)
 EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
-# for i = 1:MPI.Comm_size(eqn.comm)
-#   if mesh.myrank == i-1
-#     println("Rank = $(mesh.myrank), length adjoint_vec = $(length(adjoint_vec))")
-#   end
-#   MPI.Barrier(eqn.comm)
-# end
 
 
 dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, objective, "lift", adjoint_vec)
