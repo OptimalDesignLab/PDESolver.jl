@@ -181,6 +181,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   end
 
+  #--------------------------------------------------------------------------------------------------------------------------
+  # Start of CN loop
+  #--------------------------------------------------------------------------------------------------------------------------
   # TODO: Ideally should be t_steps + 2 for clarity, issue #92. Should be fixed for RK4 also.
   t_steps_end = t_steps + 1
   for i = 2:t_steps_end
@@ -188,6 +191,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     println(" ")
     println(" -------------- start of this CN iter. t = $t, i = $i, neg_time = ", neg_time, " --------------")
     @debug1 flush(eqn.params.f)
+
+    println("   eqn.params.alpha_x: ",eqn.params.alpha_x)
+    println("   eqn.params.alpha_y: ",eqn.params.alpha_y)
 
     # Write checkpoint data at start of time step
     if neg_time == false

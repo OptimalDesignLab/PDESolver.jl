@@ -29,7 +29,7 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
 
   check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
   println(" -------------- eqn_dummy.q_vec loaded. i_fwd: ", i_fwd, " --------------")
-  print_qvec_coords(mesh, sbp, eqn_dummy, opts)
+  # print_qvec_coords(mesh, sbp, eqn_dummy, opts)
 
 
   vis_filename = string("solution_loadedfromdisk_ifwd-", i_fwd)
