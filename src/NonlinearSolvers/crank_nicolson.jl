@@ -218,7 +218,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     if neg_time == false
       println(" -------------- eqn.q_vec start of this CN iter. t = $t, i = $i --------------")
-      print_qvec_coords(mesh, sbp, eqn, opts)
+      # print_qvec_coords(mesh, sbp, eqn, opts)
       println(" -------------- J for this eqn.q_vec --------------")
       J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
       # println(" -------------- eqn.q_bndry for this eqn.q_vec --------------")
@@ -228,7 +228,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       println(" -------------- Now using eqn.q_vec to compute eqn_nextstep.q_vec --------------")
     else
       println(" -------------- adj.q_vec start of this CN iter. t = $t, i = $i --------------")
-      print_qvec_coords(mesh, sbp, adj, opts)
+      # print_qvec_coords(mesh, sbp, adj, opts)
       println(" -------------- Now using adj.q_vec to compute adj_nextstep.q_vec --------------")
     end
     println(" ")
@@ -283,7 +283,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       VV = calcVV(mesh, sbp, adj, opts, t)     # scalar only because our x-value of interest is unchanging
       # NOTE 20170712: think I need to be doing t, not t_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
 
-      println("       checking direct method: VV: ", VV)
+      # println("       checking direct method: VV: ", VV)
       println("       checking direct method: size(VV): ", size(VV))
       check_directmethod = transpose(dJdu)*VV
       filename = string("check_directmethod-", i, ".dat")
@@ -496,11 +496,11 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   if neg_time == false
     println(" -------------- eqn.q_vec of last time step. after CN loop. t = $t, i = $i --------------")
-    print_qvec_coords(mesh, sbp, eqn, opts)
+    # print_qvec_coords(mesh, sbp, eqn, opts)
     println(" -------------- End of CN --------------")
   else
     println(" -------------- adj.q_vec of last time step. after CN loop. t = $t, i = $i --------------")
-    print_qvec_coords(mesh, sbp, adj, opts)
+    # print_qvec_coords(mesh, sbp, adj, opts)
     println(" -------------- End of CN --------------")
   end
   println(" ")
