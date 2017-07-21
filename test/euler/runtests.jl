@@ -53,6 +53,7 @@ include(joinpath("./convergence/runtests.jl"))
 include("Utils.jl")
 include("test_parallel.jl")
 include("test_homotopy.jl")
+include("test_staggered.jl")
 
 #------------------------------------------------------------------------------
 # run tests

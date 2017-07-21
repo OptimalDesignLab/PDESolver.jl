@@ -3,6 +3,9 @@
   to create the right type of operator and mesh based on the input options.
   It is type unstable, but that is ok.
 
+  If the options dictionary specifies a second SBP operator type, a second
+  mesh and SBP operator will be created and stored in the `mesh2` and `sbp2`
+
   Inputs:
     opts: options dictonary
     dofpernode: number of degrees of freedom on each node
@@ -32,10 +35,41 @@ function createMeshAndOperator(opts, dofpernode)
   opts["Tsbp"] = Tsbp
   opts["Tmsh"] = Tmsh
 
+  # if there is a second mesh/sbp pair, construct it first
+  # this is important because Pumi is going to finalize the first mesh
+  # when the second mesh is created
+
+  mesh_time = 0.0
+  if opts["operator_type2"] != "SBPNone"
+    op_type_orig = opts["operator_type"]
+    op_type_2 = opts["operator_type2"]
+
+    opts["operator_type"] = op_type_2
+
+    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
+    mesh_time = @elapsed mesh2, pmesh2 = createMesh(opts, sbp2, sbpface, 
+                                                  shape_type, topo, Tmsh,
+                                                  dofpernode)
+    if !(mesh2 === pmesh2)
+      throw(ErrorException("preconditioning mesh not supported with staggered girds"))
+    end
+
+    # reset the options dictionary
+    opts["operator_type"] = op_type_orig
+    opts["operator_type2"] = op_type_2
+  end
+
   sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
  
-  mesh_time = @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
+  mesh_time += @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
                                                 topo, Tmsh, dofpernode)
+
+  # store the second mesh and SBP operator inside the first mesh
+  if opts["operator_type2"] != "SBPNone"
+    mesh.mesh2 = mesh2
+    mesh.sbp2 = sbp2
+  end
+
   return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
 end
 

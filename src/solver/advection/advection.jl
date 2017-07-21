@@ -474,6 +474,18 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
+
+  if opts["operator_type2"] != "SBPNone"
+    mesh2 = mesh.mesh2
+    sbp2 = sbp.sbp2
+    getBCFunctors(mesh2, sbp2, eqn, opts)
+    getSRCFunctors(mesh2, sbp2, eqn, opts)
+    if mesh.isDG
+      getFluxFunctors(mesh2, sbp2, eqn, opts)
+    end
+  end
+
+
 #  initMPIStructures(mesh, opts)
   return nothing
 end

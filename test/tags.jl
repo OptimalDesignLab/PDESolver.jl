@@ -27,6 +27,7 @@ if !tag_defs
   global const TAG_MISC = "tag_misc"
   global const TAG_CURVILINEAR = "tag_curvilinear"
   global const TAG_HOMOTOPY = "tag_homotopy"
+  global const TAG_STAGGERED = "tag_staggered"
 
   # types of tests
   global const TAG_SHORTTEST = "tag_shorttest"
