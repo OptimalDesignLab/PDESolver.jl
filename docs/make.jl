@@ -22,7 +22,7 @@ makedocs(
                     "Unsteady Vortex" => "examples/unsteady.md"
                    ]
               "Frontend" => Any[
-                    "Introduction" => "pdesolver.md",
+                    "Introduction" => "pdesolver.md"
                     "PDESolver User Interface" => "pdesolver_user.md"
                     "PDESolver PhysicsInterface" => "pdesolver_physics.md"
                    ]
