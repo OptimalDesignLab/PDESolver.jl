@@ -9,6 +9,10 @@ makedocs(
   format = :html,
   sitename = "PDESolver.jl",
   pages = Any["Home" => "index.md"
+              "Building PDESolver" => 
+                Any[ "build.md",
+                     "Build Options" => "deps_readme.md"
+                   ]
               "Code Interfaces" => "interfaces.md"
               "Code Parallelization" => "parallel.md"
               "PDESolver" =>
