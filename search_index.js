@@ -2,15 +2,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "index.html#",
-    "page": "Home",
-    "title": "Home",
+    "page": "PDESolver Introduction",
+    "title": "PDESolver Introduction",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "index.html#PDESolver-Documentation-1",
-    "page": "Home",
+    "page": "PDESolver Introduction",
     "title": "PDESolver Documentation",
     "category": "section",
     "text": "Welcome to the PDESolver documentation.  These documents provide an overview of PDESolver, a Julia based solver for partial differential equations. This page will describe the form of the equations and the Summation-By-Parts operators used to discretize them.  The Table of Contents links to the components of PDESolver that calculate each term."
@@ -18,7 +18,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "index.html#Form-of-the-Equation-1",
-    "page": "Home",
+    "page": "PDESolver Introduction",
     "title": "Form of the Equation",
     "category": "section",
     "text": "PDESolver discretizes equation in the form:fracpartial qpartial t = mathcalR(q t)where q is the variable being solved for, mathcalR(u t) is called the residual and t is time. The residual contains all the spatial derivatives.  For example, the residual for the 1D advection equation is $ a\\frac{\\partial q}{\\partial x} where a is the advection velocity. The code is capable of solving both unsteady problems, in the form shown above, and steady problem of the formmathcalR(q) = 0The code is structured such that the physics modules are responsible for  evaluating the residual and the Nonlinear Solvers are responsible for the time term in the unsteady case, or solving the nonlinear rootfinding problem for steady cases."
@@ -26,7 +26,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "index.html#Summation-by-Parts-operators-1",
-    "page": "Home",
+    "page": "PDESolver Introduction",
     "title": "Summation-by-Parts operators",
     "category": "section",
     "text": "Summation-by-Parts (SBP) operators are used to discretize the spatial derivatives in the residual. In particular, we use the multi-dimensional Summation-by-Parts operators first defined in   Hicken, J.E., Del Rey Fernandez, D.C, and Zingg, D.W., \"Multi-dimensional \n  Summation-by-Parts Operators: General Theory and Application to \n  Simplex Elements\", SIAM Journal on Scientific Computing, Vol, 38, No. 4, 2016,\n   pp. A1935-A1958See the introductor PDF (to be posted shortly) for an introduction to the operators."
@@ -34,10 +34,90 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "index.html#Table-of-Contents-1",
-    "page": "Home",
+    "page": "PDESolver Introduction",
     "title": "Table of Contents",
     "category": "section",
     "text": "Pages = [\"invocation/calling.md\",\n         \"solver/Readme.md\",\n         \"solver/advection/advection.md\",\n         \"solver/euler/euler.md\",\n         \"solver/simpleODE/simpleODE.md\",\n         \"NonlinearSolvers/nonlinearsolvers.md\",\n         \"input/input.md\",\n         \"Utils/Utils.md\"\n        ]\nDepth=1"
+},
+
+{
+    "location": "build.html#",
+    "page": "Building PDESolver",
+    "title": "Building PDESolver",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "build.html#Building-PDESolver-1",
+    "page": "Building PDESolver",
+    "title": "Building PDESolver",
+    "category": "section",
+    "text": "PDESolver is not listed in Julia's METADATA, so you will have to clone the repository and then build the code.Before installing PDESolver, you should already have the following installed:   * Julia v0.4   * C/C++/Fortran compilers   * An MPI implementation (including MPI compiler wrappers)   * CMake v3.0.0 or laterIf you are on a Debian based system, the following packages will install  To do so, run the following Julia commands:  Pkg.clone(\"https://github.com/OptimalDesignLab/PDESolver.jl.git\")\n  Pkg.resolve()  # install all packages in PDESolvers REQUIRE file\n  Pkg.build(\"PDESolver\")  # install all packages not in REQUIRE file"
+},
+
+{
+    "location": "deps_readme.html#",
+    "page": "Build Options",
+    "title": "Build Options",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "deps_readme.html#Installation-1",
+    "page": "Build Options",
+    "title": "Installation",
+    "category": "section",
+    "text": "PDESolver depends on several packages, some registered Julia packages, others  not."
+},
+
+{
+    "location": "deps_readme.html#Regular-Packages-1",
+    "page": "Build Options",
+    "title": "Regular Packages",
+    "category": "section",
+    "text": "Like any Julia package, most of the dependencies that are registered packages are listed in the REQUIRE file along with version numbers known to work. The Julia package manager is used to resolve any dependency conflicts with  other installed packages."
+},
+
+{
+    "location": "deps_readme.html#Non-Standard-Packages-1",
+    "page": "Build Options",
+    "title": "Non-Standard Packages",
+    "category": "section",
+    "text": "The dependencies that are not registered packages are installed by manually  cloning their repositories and building them.  Commit hashes are used to  identify versions known to work.  The commits are checked out into a branch called pdesolver_version.If a package is already installed, by default it will left alone (ie. the  specified commit will not be checked out).  This behavior can be overrided  by declaring certain environmental variables in the shell before launching  Julia (see below)"
+},
+
+{
+    "location": "deps_readme.html#Manual-Installation-Process-1",
+    "page": "Build Options",
+    "title": "Manual Installation Process",
+    "category": "section",
+    "text": "The packages listed in the REQUIRE file can be installed manually, by  cloning the repository and checkout out a particular commit known to work. This will force the checking out of he commit and re-building of the package  even if it is already installed."
+},
+
+{
+    "location": "deps_readme.html#Environmental-Variables-1",
+    "page": "Build Options",
+    "title": "Environmental Variables",
+    "category": "section",
+    "text": "PDESOLVER_INSTALL_DEPS_MANUAL: install the packages in the REQUIRE file manually, forcefully. PDESOLVER_FORCE_DEP_INSTALL_ALL: forces the checkout and re-installation   of the non-standard packages, even if already installed PDESOLVER_FORCE_DEP_INSTALL_pkg_name: force the checkout and re-installation of the package named pkg_name.For all these environmental variables, the value is not important, only the  existance of the variable."
+},
+
+{
+    "location": "deps_readme.html#Offline-Installation-1",
+    "page": "Build Options",
+    "title": "Offline Installation",
+    "category": "section",
+    "text": "If the internet is not accessible from the machine where the code is to be  installed, it is possible to download the packages to a specified  directory on another machine and then copy them to the machine where they will be installed.  To do this, set the envinronmental variable  PDESOLVER_BUNDLE_DEPS to tell the build script to perform bundling instead of  installation, and set the path to the directory where the deps should be stored in the variable PDESOLVER_PKGDIR.After running the build script, copy the contents of the PDESOLVER_PKGDIR to the package directory on the target machine, set PDESOLVER_UNBUNDLE_DEPS, and run the PDESolver/build.jl."
+},
+
+{
+    "location": "deps_readme.html#Logging-1",
+    "page": "Build Options",
+    "title": "Logging",
+    "category": "section",
+    "text": "The file deps/install.log is created and written to with the progress of the checkout process, including error information if a build fails."
 },
 
 {
@@ -262,6 +342,38 @@ var documenterSearchIndex = {"docs": [
     "title": "Newtons Method",
     "category": "section",
     "text": "For Newton's method, each process sends the solution values for all the  elements on the shared interface at the beginning of a Jacobian calculation.  Each process is then responsible for perturbing the solutions values of both  the local and non-local elements.  The benefit of this is that parallel  communication is required once per Jacobian calculation, rather than once  per residual evaluation as with the explicit time marching mode.The function exchangeElementData copies the data from the shared elements into the send buffer and sends it, and also posts the corresponding receives. It does not wait for the communications to finish before returning.   The function is called by Newton's method after a new solution is calculated, so the physics module does not have to do it, but the physics module does  have to wait for the receives to finish before using the data.  This is  necessary to allow overlap of the communication with computation.  As  with the explicit time marching mode, use of MPI_Waitany is recommended. "
+},
+
+{
+    "location": "examples/isentropic.html#",
+    "page": "Isentropic Vortex",
+    "title": "Isentropic Vortex",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "examples/isentropic.html#Example-1:-Steady-Isentropic-Vortex-1",
+    "page": "Isentropic Vortex",
+    "title": "Example 1: Steady Isentropic Vortex",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "examples/unsteady.html#",
+    "page": "Unsteady Vortex",
+    "title": "Unsteady Vortex",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "examples/unsteady.html#Example-2:-Unsteady-Advecting-Isentropic-Vortex-1",
+    "page": "Unsteady Vortex",
+    "title": "Example 2: Unsteady Advecting Isentropic Vortex",
+    "category": "section",
+    "text": ""
 },
 
 {
@@ -554,15 +666,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "solver/advection/advection.html#",
-    "page": "Main",
-    "title": "Main",
+    "page": "Introduction",
+    "title": "Introduction",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "solver/advection/advection.html#Advection-Physics-Documentation-1",
-    "page": "Main",
+    "page": "Introduction",
     "title": "Advection Physics Documentation",
     "category": "section",
     "text": "Describe the equation being solved here  Pages = [ \"advection.md\"\n            \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n          ]\n  Depth = 1"
@@ -714,15 +826,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "solver/euler/euler.html#",
-    "page": "Main",
-    "title": "Main",
+    "page": "Introduction",
+    "title": "Introduction",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "solver/euler/euler.html#Euler-Physics-Documentation-1",
-    "page": "Main",
+    "page": "Introduction",
     "title": "Euler Physics Documentation",
     "category": "section",
     "text": "Describe the equation being solved here  Pages = [ \"advection.md\"\n            \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"conversion.md\"\n            \"flux_functions.md\"\n            \"stabilization.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n            \"misc.md\"\n          ]\n  Depth = 1"
@@ -954,15 +1066,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "input/input.html#",
-    "page": "Main",
-    "title": "Main",
+    "page": "Introduction",
+    "title": "Introduction",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "input/input.html#Input-Module-Documentation-1",
-    "page": "Main",
+    "page": "Introduction",
     "title": "Input Module Documentation",
     "category": "section",
     "text": ""
@@ -970,15 +1082,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "NonlinearSolvers/nonlinearsolvers.html#",
-    "page": "Main",
-    "title": "Main",
+    "page": "Introduction",
+    "title": "Introduction",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "NonlinearSolvers/nonlinearsolvers.html#NonlinearSolvers-Documentation-1",
-    "page": "Main",
+    "page": "Introduction",
     "title": "NonlinearSolvers Documentation",
     "category": "section",
     "text": ""
@@ -1013,7 +1125,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Unsteady",
     "title": "Unsteady NonlinearSolver Documentation",
     "category": "section",
-    "text": "\\newcommand{\\die}{\\partial} \\begin{aligned} \\underbrace{\\mathbf{I} - \\frac{\\Delta t}{2} \\underbrace{\\frac{\\die R\\left(u^{i+1}\\right)}{\\die u^{i+1}}}_{\\text{jac from \\texttt{physicsJac}}} \n}_{\\text{\\texttt{cnJac}}} \n= \\\n\\underbrace{- \\left( \n  \\underbrace{u^{i+1}}_{\\text{\\texttt{eqn_nextstep.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^{i+1}\\right)}_{\\text{\\texttt{eqn_nextstep.res_vec}}} - \\    \\underbrace{u^i}_{\\text{\\texttt{eqn.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^i\\right)}_{\\text{\\texttt{eqn.res_vec}}} \n\\right)}_{\\text{\\texttt{cnRhs}}}12345 \\end{aligned}"
+    "text": "\\begin{aligned} \\underbrace{\\mathbf{I} - \\frac{\\Delta t}{2} \\underbrace{\\frac{\\partial R\\left(u^{i+1}\\right)}{\\partial u^{i+1}}}_{\\text{jac from \\texttt{physicsJac}}} \n}_{\\text{\\texttt{cnJac}}} \n= \\\n\\underbrace{- \\left( \n  \\underbrace{u^{i+1}}_{\\text{\\texttt{eqn_nextstep.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^{i+1}\\right)}_{\\text{\\texttt{eqn_nextstep.res_vec}}} - \\    \\underbrace{u^i}_{\\text{\\texttt{eqn.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^i\\right)}_{\\text{\\texttt{eqn.res_vec}}} \n\\right)}_{\\text{\\texttt{cnRhs}}} \\end{aligned}"
 },
 
 {
