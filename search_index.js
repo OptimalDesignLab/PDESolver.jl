@@ -1013,7 +1013,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Unsteady",
     "title": "Unsteady NonlinearSolver Documentation",
     "category": "section",
-    "text": ""
+    "text": "\\begin{equation} \\begin{aligned} \\underbrace{\\mathbf{I} - \\frac{\\dt}{2} \\underbrace{\\frac{\\die R\\left(u^{i+1}\\right)}{\\die u^{i+1}}}_{\\text{jac from \\ttt{physicsJac}}} \n}_{\\text{\\ttt{cnJac}}} \n= \\\n\\underbrace{- \\left( \n  \\underbrace{u^{i+1}}_{\\text{\\ttt{eqn_nextstep.q_vec}}} - \\      \\frac{\\dt}{2} \\underbrace{R\\left(u^{i+1}\\right)}_{\\text{\\ttt{eqn_nextstep.res_vec}}} - \\    \\underbrace{u^i}_{\\text{\\ttt{eqn.q_vec}}} - \\      \\frac{\\dt}{2} \\underbrace{R\\left(u^i\\right)}_{\\text{\\ttt{eqn.res_vec}}} \n\\right)}_{\\text{\\ttt{cnRhs}}} \\end{aligned} \\end{equation}"
 },
 
 {
