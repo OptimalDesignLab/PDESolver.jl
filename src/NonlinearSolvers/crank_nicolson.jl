@@ -60,14 +60,16 @@ crank_nicolson
 function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         opts, 
-                        WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
+                        WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
                         res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
                         # NEWNEW: neg_time, obj_fn, store_u_to_disk
   #----------------------------------------------------------------------
-  println(" GLOBAL, CN start: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
-  println(" GLOBAL, CN start: size(dRdu_global_rev): ", size(dRdu_global_rev))
-  println(" GLOBAL, CN start: size(WWW): ", size(WWW))
-  println(" GLOBAL, CN start: size(ZZZ): ", size(ZZZ))
+  if opts["uadj_global"]
+    println(" GLOBAL, CN start: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
+    println(" GLOBAL, CN start: size(dRdu_global_rev): ", size(dRdu_global_rev))
+    println(" GLOBAL, CN start: size(WWW): ", size(WWW))
+    println(" GLOBAL, CN start: size(ZZZ): ", size(ZZZ))
+  end
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   fstdout = BufferedIO(STDOUT)
@@ -95,7 +97,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
  
   # calculate t_steps, the number of time steps that CN will take
   t_steps = floor(Int, t_max/h)   # this allows t_max to be any value up to h greater the final time step
-  # TODO: should be t_steps*h, issue #92. Should be fixed for RK4 also.
+  # TODO: Ideally should be t_steps*h for clarity, issue #92. Should be fixed for RK4 also.
   time_of_final_step = (t_steps-1)*h
 
   println("=========== t_steps: ", t_steps, " =========")
@@ -179,7 +181,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
   end
 
-  # TODO: should be t_steps + 2, issue #92. Should be fixed for RK4 also.
+  # TODO: Ideally should be t_steps + 2 for clarity, issue #92. Should be fixed for RK4 also.
   t_steps_end = t_steps + 1
   for i = 2:t_steps_end
 
@@ -318,58 +320,59 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       else
         @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
 
-        ### dRdu check: fwd
-        println(" GLOBAL: forming global dRdu, i = $i")
-        # first, let's try forming the forward global dRdu without the state perturbed by WWW.
-        blksz = mesh.numDof
-        # blksz = 3 # testing 44
-        row_ix_start = (i-2)*blksz + 1
-        row_ix_end = (i-2)*blksz + blksz
-        col_ix_start = (i-2)*blksz + 1
-        col_ix_end = (i-2)*blksz + blksz
-        println(" GLOBAL: diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
-
-        II = eye(blksz)
-
-        # TODO: check eqn or eqn_nextstep
-        newton_data_discard, jac_for_dRdu_global, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts, physics_func)
-        assert(opts["jac_method"] == 2)
-        epsilon = opts["epsilon"]
-        pert = complex(0, epsilon)
-        calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_nextstep, opts, physics_func, pert, jac_for_dRdu_global, t)
-        # TODO check that this jacobian equals the one inside newtonInner
-        println(" GLOBAL: norm of jac after newtonInner call: ", norm(jac_for_dRdu_global))
-
-        # blk = II - 0.5*h*jac
-        # blk = II - 0.5*h*jac[1:3,1:3]
-        # blk = II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
-        blk = II - 0.5*h*jac_for_dRdu_global
-        # blk = ones(blksz, blksz)*44     # testing 44
-        println(" GLOBAL: size of blk: ", size(blk))
-
-        # this time step's actual portion of the global dRdu is the cnJac. so it has to be I-0.5*h*physicsJac
-        jac_filename = string("jac_fwd_cJc_t-",t,".dat")
-        writedlm(jac_filename, round(real(blk), 4))
-
-        println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
-        dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
-
-        if i != t_steps + 1     # final time step has only one block
-          row_ix_start = (i-2)*blksz + blksz + 1
-          row_ix_end = (i-2)*blksz + 2*blksz
+        if opts["uadj_global"]
+          ### dRdu check: fwd
+          println(" GLOBAL: forming global dRdu, i = $i")
+          # first, let's try forming the forward global dRdu without the state perturbed by WWW.
+          blksz = mesh.numDof
+          # blksz = 3 # testing 44
+          row_ix_start = (i-2)*blksz + 1
+          row_ix_end = (i-2)*blksz + blksz
           col_ix_start = (i-2)*blksz + 1
           col_ix_end = (i-2)*blksz + blksz
-          println(" GLOBAL: off-diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+          println(" GLOBAL: diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
 
-          # blk = -1.0*II - 0.5*h*jac
-          # blk = -1.0*II - 0.5*h*jac[1:3,1:3]
-          # blk = -1.0*II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
-          blk = -1.0*II - 0.5*h*jac_for_dRdu_global
-          # blk = ones(blksz, blksz)*55     # testing 44
+          II = eye(blksz)
 
+          # TODO: check eqn or eqn_nextstep
+          newton_data_discard, jac_for_dRdu_global, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts, physics_func)
+          assert(opts["jac_method"] == 2)
+          epsilon = opts["epsilon"]
+          pert = complex(0, epsilon)
+          calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_nextstep, opts, physics_func, pert, jac_for_dRdu_global, t)
+          # TODO check that this jacobian equals the one inside newtonInner
+          println(" GLOBAL: norm of jac after newtonInner call: ", norm(jac_for_dRdu_global))
+
+          # blk = II - 0.5*h*jac
+          # blk = II - 0.5*h*jac[1:3,1:3]
+          # blk = II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
+          blk = II - 0.5*h*jac_for_dRdu_global
+          # blk = ones(blksz, blksz)*44     # testing 44
+          println(" GLOBAL: size of blk: ", size(blk))
+
+          # this time step's actual portion of the global dRdu is the cnJac. so it has to be I-0.5*h*physicsJac
+          jac_filename = string("jac_fwd_cJc_t-",t,".dat")
+          writedlm(jac_filename, round(real(blk), 4))
+
+          println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
           dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
 
-        end   # end of "if != t_steps + 1"
+          if i != t_steps + 1     # final time step has only one block
+            row_ix_start = (i-2)*blksz + blksz + 1
+            row_ix_end = (i-2)*blksz + 2*blksz
+            col_ix_start = (i-2)*blksz + 1
+            col_ix_end = (i-2)*blksz + blksz
+            println(" GLOBAL: off-diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+
+            # blk = -1.0*II - 0.5*h*jac
+            # blk = -1.0*II - 0.5*h*jac[1:3,1:3]
+            # blk = -1.0*II - 0.5*h*jac_for_dRdu_global[1:3, 1:3]
+            blk = -1.0*II - 0.5*h*jac_for_dRdu_global
+            # blk = ones(blksz, blksz)*55     # testing 44
+
+            dRdu_global_fwd[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = blk
+          end   # end of "if != t_steps + 1"
+        end # end of "if opts["uadj_global"]
 
       end   # end of else clause of "if opts["cleansheet_CN_newton"]"
 
@@ -518,9 +521,11 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   end
   =#
 
-  ### GLOBAL: saving global dRdu
-  writedlm("global_dRdu_fwd.dat", dRdu_global_fwd)
-  writedlm("global_dRdu_rev.dat", dRdu_global_rev)
+  if opts["uadj_global"]
+    ### GLOBAL: saving global dRdu
+    writedlm("global_dRdu_fwd.dat", dRdu_global_fwd)
+    writedlm("global_dRdu_rev.dat", dRdu_global_rev)
+  end
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copy!(dest, src)   

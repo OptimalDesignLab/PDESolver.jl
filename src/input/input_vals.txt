@@ -306,6 +306,7 @@ Note that any values associated with these options are shared with the regular
 "adjoint_revolve"  : calculate the unsteady adjoint, but using revolve to handle checkpointing
                      and state saving
 "adjoint_saveall"  : save every time step's adjoint to disk
+"uadj_global" : compute global dRdu
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved 

@@ -288,29 +288,41 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
       if opts["adjoint_straight"] 
 
-        println(" GLOBAL: forming WWW, ZZZ")
-        # dof_global = mesh.numDof*t_steps
-        # blksz = 3   # testing 44
-        blksz = mesh.numDof
-        t_steps = 4
-        dof_global = blksz*t_steps
-        WWW = rand(dof_global)
-        ZZZ = rand(dof_global)
-        println(" GLOBAL: forming dRdu")
-        dRdu_global_fwd = zeros(dof_global, dof_global)
-        dRdu_global_rev = zeros(dof_global, dof_global)
-        println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
-        writedlm("global_www.dat", WWW)
-        writedlm("global_zzz.dat", ZZZ)
-        writedlm("global_dRdu_fwd_initial.dat", dRdu_global_fwd)
-        writedlm("global_dRdu_rev_initial.dat", dRdu_global_rev)
+        if opts["uadj_global"]
+
+          println(" GLOBAL: forming WWW, ZZZ")
+          # dof_global = mesh.numDof*t_steps
+          # blksz = 3   # testing 44
+          blksz = mesh.numDof
+          t_steps = 4
+          dof_global = blksz*t_steps
+          WWW = rand(dof_global)
+          ZZZ = rand(dof_global)
+          println(" GLOBAL: forming dRdu")
+          dRdu_global_fwd = zeros(dof_global, dof_global)
+          dRdu_global_rev = zeros(dof_global, dof_global)
+          # PM stands for piecemeal. intended to do it step by step during the adj calc to test bookkeeping
+          dRdu_global_rev_PM = zeros(dof_global, dof_global) 
+          println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
+          writedlm("global_www.dat", WWW)
+          writedlm("global_zzz.dat", ZZZ)
+          writedlm("global_dRdu_fwd_initial.dat", dRdu_global_fwd)
+          writedlm("global_dRdu_rev_initial.dat", dRdu_global_rev)
+        else
+          WWW = zeros(1,1)
+          ZZZ = zeros(1,1)
+          dRdu_global_fwd = zeros(1,1)
+          dRdu_global_rev = zeros(1,1)
+          dRdu_global_rev_PM = zeros(1,1) 
+        end
+
 
         # forward sweep
         # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
                                  # mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
                                  mesh, sbp, eqn, opts,
-                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
                                  opts["res_abstol"],
                                  store_u_to_disk=true)
 
@@ -319,19 +331,21 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                                  # mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
                                  mesh, sbp, eqn, opts,
-                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev,
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
                                  opts["res_abstol"],
                                  neg_time=true)
 
-        dRdu_global_fwd_WWW = dRdu_global_fwd*WWW
-        fwd_check_number = dot(dRdu_global_fwd_WWW, ZZZ)
-        filename = "global_dRdu_check_fwd.dat"
-        writedlm(filename, fwd_check_number)
+        if opts["uadj_global"]
+          dRdu_global_fwd_WWW = dRdu_global_fwd*WWW
+          fwd_check_number = dot(dRdu_global_fwd_WWW, ZZZ)
+          filename = "global_dRdu_check_fwd.dat"
+          writedlm(filename, fwd_check_number)
 
-        dRdu_global_rev_ZZZ = dRdu_global_rev*ZZZ
-        rev_check_number = dot(dRdu_global_rev_ZZZ, WWW)
-        filename = "global_dRdu_check_rev.dat"
-        writedlm(filename, rev_check_number)
+          dRdu_global_rev_ZZZ = dRdu_global_rev*ZZZ
+          rev_check_number = dot(dRdu_global_rev_ZZZ, WWW)
+          filename = "global_dRdu_check_rev.dat"
+          writedlm(filename, rev_check_number)
+        end
 
       else
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 

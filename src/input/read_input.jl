@@ -306,6 +306,7 @@ get!(arg_dict, "calc_adjoint", false)
 get!(arg_dict, "revolve", false)
 get!(arg_dict, "adjoint_revolve", false)
 get!(arg_dict, "adjoint_straight", false)
+get!(arg_dict, "uadj_global", false)
 
 # write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)

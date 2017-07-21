@@ -120,38 +120,40 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps,
   # TODO: double check that there is not an off by one error on dRdu:
   #       even though calculated at t_nextstep, am I loading q_vec at i+1 instead of i?
 
-  dJdu_i = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step i
-
   I = eye(length(adj.q_vec))
 
-  ### GLOBAL dRdu section
-  B1_pos_for_dRdu_global =  1.0*I - 0.5*h*dRdu_i
-  B1_neg_for_dRdu_global = -1.0*I - 0.5*h*dRdu_i
+  if opts["uadj_global"]
+    ### GLOBAL dRdu section
+    B1_pos_for_dRdu_global =  1.0*I - 0.5*h*dRdu_i
+    B1_neg_for_dRdu_global = -1.0*I - 0.5*h*dRdu_i
 
-  blksz = mesh.numDof
-  # blksz = 3   # testing 44
-  # B1_pos_for_dRdu_global = ones(blksz, blksz)*44
-  # B1_neg_for_dRdu_global = ones(blksz, blksz)*55
+    blksz = mesh.numDof
+    # blksz = 3   # testing 44
+    # B1_pos_for_dRdu_global = ones(blksz, blksz)*44
+    # B1_neg_for_dRdu_global = ones(blksz, blksz)*55
 
-  println(" GLOBAL: forming global dRdu (rev), i_fwd = $i_fwd")
-  println(" GLOBAL: size of B1_pos_for_dRdu_global: ", size(B1_pos_for_dRdu_global))
-  row_ix_start = (i_fwd-2)*blksz + 1
-  row_ix_end = (i_fwd-2)*blksz + blksz
-  col_ix_start = (i_fwd-2)*blksz + 1
-  col_ix_end = (i_fwd-2)*blksz + blksz
-  println(" GLOBAL: diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
-  dRdu_global_rev[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = B1_pos_for_dRdu_global
-
-  if i_fwd != t_steps + 1
-    col_ix_start = (i_fwd-2)*blksz + blksz + 1
-    col_ix_end = (i_fwd-2)*blksz + 2*blksz
+    println(" GLOBAL: forming global dRdu (rev), i_fwd = $i_fwd")
+    println(" GLOBAL: size of B1_pos_for_dRdu_global: ", size(B1_pos_for_dRdu_global))
     row_ix_start = (i_fwd-2)*blksz + 1
     row_ix_end = (i_fwd-2)*blksz + blksz
-    println(" GLOBAL: off-diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+    col_ix_start = (i_fwd-2)*blksz + 1
+    col_ix_end = (i_fwd-2)*blksz + blksz
+    println(" GLOBAL: diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+    dRdu_global_rev[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = B1_pos_for_dRdu_global
 
-    dRdu_global_rev[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = B1_neg_for_dRdu_global
-  end   # end of "if i_fwd != t_steps + 1"
-  ### end GLOBAL
+    if i_fwd != t_steps + 1
+      col_ix_start = (i_fwd-2)*blksz + blksz + 1
+      col_ix_end = (i_fwd-2)*blksz + 2*blksz
+      row_ix_start = (i_fwd-2)*blksz + 1
+      row_ix_end = (i_fwd-2)*blksz + blksz
+      println(" GLOBAL: off-diagonal block ix's: [",row_ix_start,":",row_ix_end,", ",col_ix_start,":", col_ix_end,"]")
+
+      dRdu_global_rev[row_ix_start:row_ix_end, col_ix_start:col_ix_end] = B1_neg_for_dRdu_global
+    end   # end of "if i_fwd != t_steps + 1"
+    ### end GLOBAL
+  end # end of "if opts["uadj_global"]
+
+  dJdu_i = calcdJdu_CS(mesh, sbp, eqn_dummy, opts)  # obtain dJdu at time step i
 
   B1 = I - 0.5*h*dRdu_i
   B2 = adj.q_vec + 0.5*h*dRdu_i*adj.q_vec - dJdu_i
