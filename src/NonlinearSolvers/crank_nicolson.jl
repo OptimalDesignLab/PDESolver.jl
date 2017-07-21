@@ -209,6 +209,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       if opts["adjoint_saveall"]
         filename = string("adj-", i, ".dat")
         writedlm(filename, adj.q_vec)
+
+        vis_filename = string("adj_i-", i)
+        saveSolutionToMesh(mesh, real(adj.q_vec))
+        writeVisFiles(mesh, vis_filename)
       end
     end
 
@@ -460,7 +464,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
 
   end   # end of t step loop
+
   i = i+1
+
   # Checkpoint final time step
   if neg_time == false
     # for adjoint_straight option: stores every time step's q to disk
@@ -477,10 +483,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
                                               #   correctly corresponds to the q_vec stored just above
     end
   else
-    # save every time step's adjoint to disk
+    # save every time step's adjoint to disk. This is for the final time step
     if opts["adjoint_saveall"]
       filename = string("adj-", i, ".dat")
       writedlm(filename, adj.q_vec)
+
+      vis_filename = string("adj_i-", i)
+      saveSolutionToMesh(mesh, real(adj.q_vec))
+      writeVisFiles(mesh, vis_filename)
     end
   end
 
