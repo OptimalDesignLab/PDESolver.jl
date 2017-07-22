@@ -53,23 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Building PDESolver",
     "title": "Building PDESolver",
     "category": "section",
-    "text": "This page describes how to build the PDESolver package. Julia has two kinds of dependencies, system packages and Julia packages. System packages can either be installed using a Linux package manager (such as apt-get on Debian-based system) or built from source. Julia packages are install using the Julia package manager."
-},
-
-{
-    "location": "build.html#System-Dependencies-1",
-    "page": "Building PDESolver",
-    "title": "System Dependencies",
-    "category": "section",
-    "text": "Before installing PDESolver, you should already have the following installed:Julia v0.4\nC/C++/Fortran compilers\nAn MPI implementation (including MPI compiler wrappers)\nCMake v3.0.0 or later\nBLAS and LAPACKThe build process for Julia itself can be found here.If you are on a Debian based system, the following command will install the remaining dependencies:  sudo apt-get install build-essential gfortran cmake libblas-dev liblapack-dev mpich"
-},
-
-{
-    "location": "build.html#PDESolver-Installation-1",
-    "page": "Building PDESolver",
-    "title": "PDESolver Installation",
-    "category": "section",
-    "text": "PDESolver is not listed in Julia's METADATA, so you will have to clone the repository and then build the code.After installing the system System Dependencies, run the following Julia commands to install the Julia dependencies and and PDESolver itself:  Pkg.clone(\"https://github.com/OptimalDesignLab/PDESolver.jl.git\")\n  Pkg.resolve()  # install all packages in PDESolvers REQUIRE file\n  Pkg.build(\"PDESolver\")  # install all packages not in REQUIRE file and\n                          # build PDESolverThis will install PDESolver and all Julia dependencies into the directory specified by the JULIA_PKGDIR environmental variable. If this variable is not specified, it will install to ~/.julia/v0.4/PDESolver.If there are errors building any Julia dependencies, see the Installation page for methods of installing particular versions of the dependencies.After installation it is recommended to run the test suite. To do so, run the following commands in the terminal:  cd /path/to/pdesolver # (for example ~/.julia/v0.4/PDESolver)\n  cd ./test\n  ./runtests_fast.shIf the tests complete without error, then the package is properly installed.TODO: link to examples page"
+    "text": "PDESolver is not listed in Julia's METADATA, so you will have to clone the repository and then build the code.Before installing PDESolver, you should already have the following installed:   * Julia v0.4   * C/C++/Fortran compilers   * An MPI implementation (including MPI compiler wrappers)   * CMake v3.0.0 or laterIf you are on a Debian based system, the following packages will install  To do so, run the following Julia commands:  Pkg.clone(\"https://github.com/OptimalDesignLab/PDESolver.jl.git\")\n  Pkg.resolve()  # install all packages in PDESolvers REQUIRE file\n  Pkg.build(\"PDESolver\")  # install all packages not in REQUIRE file"
 },
 
 {
@@ -345,17 +329,17 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "parallel.html#Explicate-Time-Marching-1",
+    "location": "parallel.html#Explicit-Time-Marching-1",
     "page": "Code Parallelization",
-    "title": "Explicate Time Marching",
+    "title": "Explicit Time Marching",
     "category": "section",
     "text": "In this mode, each process each process sends the solution values at the  shared faces to the other processes.  Each process then evaluates the residual using the received values and updates the solution.The function exchangeFaceData is designed to perform the sending and  receiving of data.  Non-blocking communications are used, and the function does not wait for the communication to finish before returning.  The  MPI_Requests for the sends and receives are stored in the appropriate fields of the mesh.  It is the responsibility of each physics module call  exchangeFaceData and to wait for the communication to finish before using the data.  Because the receives could be completed in any order, it is  recommended to use MPI_Waitany to wait for the first receive to complete,  do as many computations as possible on the data, and then call MPI_Waitany again for the next receive."
 },
 
 {
-    "location": "parallel.html#Newtons-Method-1",
+    "location": "parallel.html#Newton's-Method-1",
     "page": "Code Parallelization",
-    "title": "Newtons Method",
+    "title": "Newton's Method",
     "category": "section",
     "text": "For Newton's method, each process sends the solution values for all the  elements on the shared interface at the beginning of a Jacobian calculation.  Each process is then responsible for perturbing the solutions values of both  the local and non-local elements.  The benefit of this is that parallel  communication is required once per Jacobian calculation, rather than once  per residual evaluation as with the explicit time marching mode.The function exchangeElementData copies the data from the shared elements into the send buffer and sends it, and also posts the corresponding receives. It does not wait for the communications to finish before returning.   The function is called by Newton's method after a new solution is calculated, so the physics module does not have to do it, but the physics module does  have to wait for the receives to finish before using the data.  This is  necessary to allow overlap of the communication with computation.  As  with the explicit time marching mode, use of MPI_Waitany is recommended. "
 },
