@@ -53,7 +53,23 @@ var documenterSearchIndex = {"docs": [
     "page": "Building PDESolver",
     "title": "Building PDESolver",
     "category": "section",
-    "text": "PDESolver is not listed in Julia's METADATA, so you will have to clone the repository and then build the code.Before installing PDESolver, you should already have the following installed:   * Julia v0.4   * C/C++/Fortran compilers   * An MPI implementation (including MPI compiler wrappers)   * CMake v3.0.0 or laterIf you are on a Debian based system, the following packages will install  To do so, run the following Julia commands:  Pkg.clone(\"https://github.com/OptimalDesignLab/PDESolver.jl.git\")\n  Pkg.resolve()  # install all packages in PDESolvers REQUIRE file\n  Pkg.build(\"PDESolver\")  # install all packages not in REQUIRE file"
+    "text": "This page describes how to build the PDESolver package. Julia has two kinds of dependencies, system packages and Julia packages. System packages can either be installed using a Linux package manager (such as apt-get on Debian-based system) or built from source. Julia packages are install using the Julia package manager."
+},
+
+{
+    "location": "build.html#System-Dependencies-1",
+    "page": "Building PDESolver",
+    "title": "System Dependencies",
+    "category": "section",
+    "text": "Before installing PDESolver, you should already have the following installed:Julia v0.4\nC/C++/Fortran compilers\nAn MPI implementation (including MPI compiler wrappers)\nCMake v3.0.0 or later\nBLAS and LAPACKThe build process for Julia itself can be found here.If you are on a Debian based system, the following command will install the remaining dependencies:  sudo apt-get install build-essential gfortran cmake libblas-dev liblapack-dev mpich"
+},
+
+{
+    "location": "build.html#PDESolver-Installation-1",
+    "page": "Building PDESolver",
+    "title": "PDESolver Installation",
+    "category": "section",
+    "text": "PDESolver is not listed in Julia's METADATA, so you will have to clone the repository and then build the code.After installing the system System Dependencies, run the following Julia commands to install the Julia dependencies and and PDESolver itself:  Pkg.clone(\"https://github.com/OptimalDesignLab/PDESolver.jl.git\")\n  Pkg.resolve()  # install all packages in PDESolvers REQUIRE file\n  Pkg.build(\"PDESolver\")  # install all packages not in REQUIRE file and\n                          # build PDESolverThis will install PDESolver and all Julia dependencies into the directory specified by the JULIA_PKGDIR environmental variable. If this variable is not specified, it will install to ~/.julia/v0.4/PDESolver.If there are errors building any Julia dependencies, see the Installation page for methods of installing particular versions of the dependencies.After installation it is recommended to run the test suite. To do so, run the following commands in the terminal:  cd /path/to/pdesolver # (for example ~/.julia/v0.4/PDESolver)\n  cd ./test\n  ./runtests_fast.shIf the tests complete without error, then the package is properly installed.TODO: link to examples page"
 },
 
 {
