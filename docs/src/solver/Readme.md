@@ -182,24 +182,17 @@ scheme allows the compiler to make all the decisions about what function to call
 
 This idea is also applicable to the flux functions used by DG methods.
 
-#Initialization of a Simulation
+# Initialization of a Simulation
 
 This section lists an outline of how a simulation gets launched
 After step 4, the procedure becomes a bit more complicated because there are optional steps.
 Only the required steps are listed below.
 
 1. The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.
-
 2. Second, the `sbp` operator is constructed.
-
 3. The `mesh` object is constructed, using the options dictionary and the `sbp` operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.
-
-4. The `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects.
-
+4. The `eqn` object is constructed, using the `mesh`, `sbp`, and `opts` objects
 5. The physics module `init` function is called, which initializes the physics module and finishes any initialization that `mesh` and `eqn` objects require.
-
 6. The initial condition is applied to `eqn.q_vec`.
-
 7. A nonlinear solver is called.  Which solver is called and what parameters it uses are determined by the options dictionary.
-
 8. Post-processing is done, if required by the options dictionary.

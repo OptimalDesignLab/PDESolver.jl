@@ -28,6 +28,7 @@ This requires all implementations have the same interface.
 
 The question of how to enforce interfaces, and how strongly to do so, is still an open question in Julia.
 Some relevant Github issues:
+
 * [5](https://github.com/JuliaLang/julia/issues/5)
 * [4935](https://github.com/JuliaLang/julia/issues/4935)
 * [6975](https://github.com/JuliaLang/julia/issues/6975)
@@ -550,7 +551,9 @@ Every physics module must define a boundary condition called `defaultBC`.  If
 the user does not specify a boundary condition on any geometric edges, the
 mesh constructor will add a new boundary condition and assign all mesh edges
 classified on the unspecified geometric edges are assigned to it.  This boundary
-condition can be a no-op if that is correct for the physics.
+condition can be a no-op if that is correct for the physics, or it can be
+the face integral that should be done for every element (recall that boundary
+faces do not appear in `mesh.interfaces`).
 
 ### Interface to NonlinearSolvers
 The `evalResidual` function and the fields `eqn.q` and `eqn.res` are the

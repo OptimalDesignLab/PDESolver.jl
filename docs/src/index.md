@@ -26,7 +26,7 @@ evaluating the residual and the Nonlinear Solvers are responsible for the
 time term in the unsteady case, or solving the nonlinear rootfinding problem
 for steady cases.
 
-## Summation-by-Parts operators
+## [Summation-by-Parts operators](@id index_sbp)
 
 Summation-by-Parts (SBP) operators are used to discretize the spatial derivatives in
 the residual. In particular, we use the multi-dimensional Summation-by-Parts
