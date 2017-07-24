@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractSolutionData",
     "category": "Type",
-    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
+    "text": "ODLCommonTools.AbtractSolutionData{Tsol, Tres}\n\nThis abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:     Tsol: datatype of solution variables     Tres: datatype of the mesh variables\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractParamType",
     "category": "Type",
-    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
+    "text": "ODLCommonTools.AbstractParamType\n\nThis abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
 },
 
 {
@@ -189,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractMesh",
     "category": "Type",
-    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
+    "text": "ODLCommonTools.AbstractMesh{Tmsh}\n\nThis abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:     Tmsh: datatype of the mesh data (coordinates, mapping to/from parametric           space, mapping jacobian).\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -421,7 +421,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Isentropic Vortex",
     "title": "Example 1: Steady Isentropic Vortex",
     "category": "section",
-    "text": ""
+    "text": "Save the following as input_vals.jl.arg_dict = Dict{Any, Any}(\n# specify the physics and SBP operator\n\"physics\" => \"Euler\",  # specify physics to run\n\"dimensions\" => 2,  # this is a two dimensional mesh\n\n# specify temporal and spatial discretization\n\"run_type\" => 5,  # steady Newton (5 historically was complex-stepped Newton, as opposed to 4 being FD)\n\"jac_method\" => 2,  # complex-step Newton Jacobian calculation\n\"jac_type\" => 1,  # store the Jacobian as a Julia sparse matrix\n\"t_max\" => 10.0,  # make time\n\"operator_type\" => \"SBPOmega\",  # specify SBP operator\n\"order\" => 1,  # p = 1 operator\n\"use_DG\" => true,  # use discontinuous galerkin solver\n\"Flux_name\" => \"RoeFlux\",  # numerical flux function used in face integrals\n\"CFL\" => 0.10,  # CFL number\n\"itermax\" => 20,\n\n# specify the problem itself\n\"IC_name\" => \"ICIsentropicVortex\",  # initial condtiion\n\"numBC\" => 1,  # number of boundary conditions\n\"BC1\" => [0, 1, 2, 3],  # geometric edges to apply the BC to\n\"BC1_name\" => \"isentropicVortexBC\",   # name of boundary condition\n\n# specify mesh\n\"smb_name\" => \"SRCMESHES/squarevortex_small.smb\",\n\n# misc options\n\"write_vis\" => true,  # write paraview files\n\"do_postproc\" => true,  # calculate error at end of run\n\"exact_soln_func\" => \"ICIsentropicVortex\",  # use this function for the exact soltuion (to calculate error)\n)Run the case with julia ~/.julia/v0.4/PDESolver/src/solver/euler/startup.jl input_vals.jl."
 },
 
 {
@@ -753,99 +753,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/misc.html#ODLCommonTools.BCType",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.BCType",
-    "category": "Type",
-    "text": "Abstract supertype of all boundary condition functors\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.BCType_revm",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.BCType_revm",
-    "category": "Type",
-    "text": "Abstract supertype of all boundary condition functors that compute the   reverse mode with respect to the metrics\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.SRCType",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.SRCType",
-    "category": "Type",
-    "text": "Abstract supertype of all source term functors\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.FluxType",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.FluxType",
-    "category": "Type",
-    "text": "Abstract supertype of all numerical flux functions used by standard DG face   integrals\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.FluxType_revm",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.FluxType_revm",
-    "category": "Type",
-    "text": "Abstract supertype of all numerical flux functions used by standard DG   face integral that compute the reverse mode with respect to the metrics\n\n\n\n"
-},
-
-{
     "location": "solver/misc.html#Abstract-Functor-Types-1",
     "page": "Assorted Function and Types",
     "title": "Abstract Functor Types",
     "category": "section",
     "text": "Abstract types are provided for commonly used Functors:BCType\nBCType_revm\nSRCType\nFluxType\nFluxType_revm"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.Boundary",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.Boundary",
-    "category": "Type",
-    "text": "ODLCommonTools.Boundary\n\nUsed to identify boundary faces in a finite-element grid.\n\nFields\n\nelement\n : index of the element to which the boundary face belongs\nface\n : the face index of the boundary (local index to the element)\n\nExample\n\nTo mark face 2 of element 7 to be a boundary face, use Boundary(7,2)\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.Interface",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.Interface",
-    "category": "Type",
-    "text": "ODLCommonTools.Interface\n\nUsed to identify interfaces between elements in a finite-element grid.\n\nFields\n\nelementL\n : index of the so-called left element in the pair\nelementR\n : index of the so-called right element in the pair\nfaceL\n : the face index of the interface with respect to the left element\nfaceR\n : the face index of the interface with respect to the right element\norient\n : orientation of the 'right' element relative to the 'left'\n\nExample\n\nConsider an interface between elements 2 and 5.  Suppose the interface is on face 1 of element 2 and face 3 of element 5.  Furthermore, suppose element 5 has orientation 1 relative to element 1 (defintion of orientation TBD).  This can be indicated as Interface(2,5,1,3,1)\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.getElementL",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.getElementL",
-    "category": "Function",
-    "text": "This function returns either the element field of a Boundary or the   elementL field of an interface.\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#ODLCommonTools.getFaceL",
-    "page": "Assorted Function and Types",
-    "title": "ODLCommonTools.getFaceL",
-    "category": "Function",
-    "text": "This function returns either the face field of a Boundary or the   faceL field of an Interface\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Boundary}",
-    "page": "Assorted Function and Types",
-    "title": "Base.show",
-    "category": "Method",
-    "text": "Show method for Boundary objects\n\n\n\n"
-},
-
-{
-    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Interface}",
-    "page": "Assorted Function and Types",
-    "title": "Base.show",
-    "category": "Method",
-    "text": "Show method for Interface objects\n\n\n\n"
 },
 
 {
