@@ -1,5 +1,14 @@
 # definitions of concrete subtypes of AbstractParamType and AbstractSolutionData
+"""
+  Subtype of AbstractParamType.
 
+  Static Parameters:
+    Tsol
+    Tres
+    Tdim
+
+  See
+"""
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
   alpha_x::Float64
@@ -48,19 +57,33 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   end
 end
 
+"""
+  Convenient alias for all 2D ParamTypes
+"""
 typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
+
+"""
+  Convenient alias for all 3D ParamTypes
+"""
 typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
+
+"""
+  All ParamTypes, without static parameters specified
+"""
 typealias ParamTypes Union{ParamType2, ParamType3}
 
-@doc """
+"""
 ### AdvectionEquationMod.AdvectionData_
 
   This type is an implementation of the abstract AdvectionData.  It is
-  paramterized by the residual type Tres and the mesh type Tmsh
-  because it stores some arrays of those types.  Tres is the 'maximum' type of
-  Tsol and Tmsh, where Tsol is the type of the conservative variables.
+  parameterized by Tsol, the datatype of the solution variables and Tmsh,
+  the datatype of the mesh variables.
+  Tres is the 'maximum' type of Tsol and Tmsh.
+  Tdim is the dimensionality of the equation being solve (2 or 3).
 
-"""->
+  This type is (ultimately) a subtype of [`AbstractSolutionData`](@ref) 
+  and contains all the required fields.
+"""
 type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}

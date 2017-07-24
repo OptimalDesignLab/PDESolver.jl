@@ -1,6 +1,5 @@
 # this file contains the defitions of all the fluxes used for DG face integrals:
-@doc """
-### AdvectionEquationMod.calcFaceFlux
+"""
 
   This function calculates the DG flux between a specified set of faces,
   using the solution data at the faces stored in eqn.q_face.
@@ -8,6 +7,7 @@
   negative sign in the weak form.
 
   Inputs:
+
     mesh
     sbp
     eqn
@@ -16,6 +16,7 @@
                 to calculate the flux for
 
   Inputs/Outputs:
+
     face_flux: array to store the flux in, numDofPerNode x nnodesPerFace
                x length(interfaces)
 
@@ -27,7 +28,7 @@
   dxidx is the scaled mapping jacobian for elementL, and nrm is the face
   normal in reference space.  params is eqn.params
 
-"""->
+"""
 function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
                           functor::FluxType, 
@@ -58,6 +59,7 @@ end
   The integral is computed directly and res is updated
 
   Inputs:
+
     mesh
     sbp
     eqn
@@ -99,8 +101,8 @@ end
 """
   Thin wrapper around calcSharedFaceIntegrals_inner.  This function is passed
   to finishDataExchange, and internally calls calcSharedFaceIntegrals_inner.
-  See finishDataExchange for details on the interface and 
-  calcSharedFaceIntegrals_inner for the integral that is computed.
+  See [`finishExchangeData`](@ref) for details on the interface and 
+  [`calcSharedFaceIntegrals_inner`](@ref) for the integral that is computed.
 """
 function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
@@ -125,6 +127,7 @@ end
   entropy-stable face integrals) only.
 
   Inputs:
+
     mesh
     sbp
     eqn
@@ -181,7 +184,7 @@ end
   face at a time rather than computing all the flux, storing it in
   eqn.flux_sharedface and then doing the integral
 
-  See calcSharedFaceIntegrals_inner() for a description of the arguments
+  See [`calcSharedFaceIntegrals_inner`](@ref) for a description of the arguments
 """
 function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
                             mesh::AbstractDGMesh{Tmsh},
@@ -233,7 +236,7 @@ end
   Thin wrapper around calcSharedFaceIntegrals_inner.  This function is passed
   to finishDataExchange, and internally calls calcSharedFaceIntegrals_inner.
   See finishDataExchange for details on the interface and 
-  calcSharedFaceIntegrals_inner for the integral that is computed.
+  [`calcSharedFaceIntegrals_inner`](@ref) for the integral that is computed.
 """
 function calcSharedFaceIntegrals_element{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
@@ -250,6 +253,12 @@ end
 
 
 # element parallel version
+"""
+  Like [`calcSharedFaceIntegrals_inner`](@ref), but for the case when
+  opts["parallel_data"] == element.  This effectively means it has to
+  interpolate the solution from the elements to the faces and then do the
+  integral
+"""
 function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}( 
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
@@ -328,10 +337,10 @@ end
 
 # element parallel version
 """
-  Like calcSharedFaceIntegarl_element_inner, but computes the integral one
+  Like [`calcSharedFaceIntegrals_element_inner`](@ref), but computes the
+  integral one
   face at a time instead of computing the entire flux and then integrating.
 
-  See calcSharedFaceIntegrals_element_inner for the meaning of the arguments
 """
 function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}( 
                             mesh::AbstractDGMesh{Tmsh},
@@ -416,11 +425,13 @@ end
   This flux function averages the two states to calculate the flux
 
   Inputs:
+
     uL: the left state
     uR: the right state
     nrm: the scaled normal vector for elementL in x-y space
 
   Outputs:
+
     the flux
 """->
 type avgFlux <: FluxType

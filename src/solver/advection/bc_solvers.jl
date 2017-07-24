@@ -1,6 +1,6 @@
 # bc_solvers.jl for advection
 
-@doc """
+"""
 flux1
 
 Calculates the boundary flux for the advection equation. It works at the nodal
@@ -17,8 +17,7 @@ level.
 **Outputs**
 
 *  None
-"""->
-
+"""
 function flux1(params::ParamType2, u_sbp_, dxidx, nrm, net_flux )
   # This function works at the nodal level  
   # u_sbp_ is the entry from u_sbp for this node
@@ -53,7 +52,7 @@ function flux1(params::ParamType2, u_sbp_, dxidx, nrm, net_flux )
 end # end function flux1
 
 #TODO: consolidate this with LFFlux?
-@doc """
+"""
 ### AdvectionEquationMod.RoeSolver
 
 Roe solver for the advection equations. It determines the boundary flux on 
@@ -70,7 +69,7 @@ each boundary. It is called at the nodal level
 
 *  `bndryflux` : Boundary flux at the particular node
 
-"""->
+"""
 function RoeSolver{Tsol}(params::ParamType2, u::Tsol, u_bc, nrm)
     alpha_x = params.alpha_x
     alpha_y = params.alpha_y
