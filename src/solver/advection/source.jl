@@ -372,7 +372,6 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 )
 
 @doc """
-### AdvectionEquationMod.getSRCFunctors
 
   This function gets the functor specified by opts["SRCname"] and stores
   it to the equation object.  Currently one 1 source functor is allowed.

@@ -23,3 +23,12 @@ This section describes all boundary conditions currently available
   Order = [:type]
 ```
 
+## Numerical Flux Functions
+
+This section lists the numerical flux functions used to impose the boundary
+conditions weakly.
+
+```@autodocs
+  Modules = [AdvectionEquationMod]
+  Pages = ["advection/bc_solvers.jl"]
+```
