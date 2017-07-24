@@ -396,7 +396,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       end
     end
 
-    println(" ::::::::::::: in newtonInner, after calcJacobianComplex, norm(jac): ", norm(jac))
+    println(" ::::::::::::: in newtonInner, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
 
     # apply globalization
     if globalize_euler
@@ -775,7 +775,7 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
 
   end  # end of jac_method check
 
-  println(" ::::::::::::: in physicsJac, after calcJacobianComplex, norm(jac): ", norm(jac))
+  println(" ::::::::::::: in physicsJac, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
 
   # TODO: all printing should actually be handled outside of this function
   if print_jacobian_timing
