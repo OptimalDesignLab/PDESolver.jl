@@ -3,6 +3,9 @@
   to create the right type of operator and mesh based on the input options.
   It is type unstable, but that is ok.
 
+  If the options dictionary specifies a second SBP operator type, a second
+  mesh and SBP operator will be created and stored in the `mesh2` and `sbp2`
+
   Inputs:
     opts: options dictonary
     dofpernode: number of degrees of freedom on each node
@@ -23,12 +26,74 @@ function createMeshAndOperator(opts, dofpernode)
   dmg_name = opts["dmg_name"]
   smb_name = opts["smb_name"]
   order = opts["order"]  # order of accuracy
-  # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
+  dim = opts["dimensions"]
+
+  Tmsh, Tsbp, Tsol, Tres = getDataTypes(opts)
+
+  opts["Tsol"] = Tsol
+  opts["Tres"] = Tres
+  opts["Tsbp"] = Tsbp
+  opts["Tmsh"] = Tmsh
+
+  # if there is a second mesh/sbp pair, construct it first
+  # this is important because Pumi is going to finalize the first mesh
+  # when the second mesh is created
+
+  mesh_time = 0.0
+  if opts["operator_type2"] != "SBPNone"
+    op_type_orig = opts["operator_type"]
+    op_type_2 = opts["operator_type2"]
+
+    opts["operator_type"] = op_type_2
+
+    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
+    mesh_time = @elapsed mesh2, pmesh2 = createMesh(opts, sbp2, sbpface, 
+                                                  shape_type, topo, Tmsh,
+                                                  dofpernode)
+    if !(mesh2 === pmesh2)
+      throw(ErrorException("preconditioning mesh not supported with staggered girds"))
+    end
+
+    # reset the options dictionary
+    opts["operator_type"] = op_type_orig
+    opts["operator_type2"] = op_type_2
+  end
+
+  sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
+ 
+  mesh_time += @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
+                                                topo, Tmsh, dofpernode)
+
+  # store the second mesh and SBP operator inside the first mesh
+  if opts["operator_type2"] != "SBPNone"
+    mesh.mesh2 = mesh2
+    mesh.sbp2 = sbp2
+  end
+
+  return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
+end
+
+"""
+  This function determines the datatypes of the elements of the arrays of the
+  mesh quantities, sbp operator, solution variables and residual.
+
+  If the datatypes cannot be determined, an error is thrown.
+
+  Inputs:
+    opts: the options dictionary
+
+  Outputs
+    Tmsh
+    Tsbp
+    Tsol
+    Tres
+"""
+function getDataTypes(opts::Dict)
+
   flag = opts["run_type"]
   if haskey(opts, "jac_method")
     jac_method = opts["jac_method"]
   end
-  dim = opts["dimensions"]
 
   if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
     Tmsh = Float64
@@ -97,21 +162,40 @@ function createMeshAndOperator(opts, dofpernode)
       throw(ErrorException("Illegal or no jac_method specified for CN initialization."))
     end
   else
-    throw(ErrorException("Illegal flag or jac_method combination specified in input."))
+    throw(ErrorException("Unrecognized run_type: $flag"))
   end
-  # If the user specifies a flag other than the ones within the above if checks,
-  #   then an error will be thrown now because Tsol is not defined
-  opts["Tsol"] = Tsol
-  opts["Tres"] = Tres
-  opts["Tsbp"] = Tsbp
-  opts["Tmsh"] = Tmsh
 
-  # figure out reorder, internal args for SBP, shape_type for Pumi
-  # should shape_type live here or be encapsulated in Pumi?
+  return Tmsh, Tsbp, Tsol, Tres
+end
+
+"""
+  This function constructs the SBP operator and the associated SBP face
+  operator, as specified by the options dictionary.  It also determines
+  the shape_type that PumiInterface uses to describe the SBP operator to
+  Pumi.
+
+  Inputs:
+    opts: the options dictionary
+    Tsbp: the DataType specifying the Tsbp passed to the SBP operator
+          constructor
+
+  Outputs:
+    sbp: the SBP operator
+    sbpface: the SBP face operator
+    shape_type: an integer passed to the mesh constructor to describe the
+                operator
+    topo: in the 3D DG case, an ElementTopology describing the SBP reference
+          element, otherwise the integer 0.
+"""
+function createSBPOperator(opts::Dict, Tsbp::DataType)
+  # construct SBP operator and figure out shape_type needed by Pumi
+  order = opts["order"]  # order of accuracy
+  dim = opts["dimensions"]
+
+  println("\nConstructing SBP Operator")
+  topo = 0  # generally not needed, so return a default value
   if opts["use_DG"]
     if opts["operator_type"] == "SBPOmega"
-#      reorder = false
-#      internal = true
       if dim == 2
         sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
       else
@@ -119,8 +203,6 @@ function createMeshAndOperator(opts, dofpernode)
       end
       shape_type = 2
     elseif opts["operator_type"] == "SBPGamma"
-#      reorder = false
-#      internal = false
       if dim == 2
         sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
       else
@@ -146,26 +228,20 @@ function createMeshAndOperator(opts, dofpernode)
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
     end
   else  # CG mesh
+    # the CG varient of SBP gamma is the only option
     if opts["operator_type"] != "SBPGamma"
       op_type = opts["operator_type"]
       throw(ArgumentError("invalid operator type $op_type for CG"))
     end
-    # the CG varient of SBP gamma is the only option
-#    reorder = true
-#    internal = false
     sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
     shape_type = 1
   end
-
-
-  mesh_time = @elapsed if opts["use_DG"]
-    println("\nConstructing SBP Operator")
-    # create DG SBP operator with internal nodes only
+ 
+  println("\nConstructing SBP Face Operator")
+  if opts["use_DG"]
     if dim == 2
-#      sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
-#      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts)
       if opts["operator_type"] == "SBPDiagonalE"
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
       elseif opts["operator_type"] == "SBPDiagonalE2"
@@ -174,10 +250,8 @@ function createMeshAndOperator(opts, dofpernode)
       else
         sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
       end
-    else
-#      sbp = TetSBP{Float64}(degree=order, reorder=reorder, internal=internal)
+    else  # dim == 3
       ref_verts = sbp.vtx
-#      interp_op = SummationByParts.buildinterpolation(sbp, ref_verts.')
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
       topo = ElementTopology{3}(face_verts)
 
@@ -186,17 +260,58 @@ function createMeshAndOperator(opts, dofpernode)
       else
         sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
       end
+    end  # end if dim == 2
+  else   # CG
+    if dim == 2
+      sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
+    else
+      throw(ErrorException("3D CG not supported"))
     end
+  end
+ 
+  return sbp, sbpface, shape_type, topo
+end
 
-    # create mesh with 4 dof per node
+"""
+  This function creates the mesh object and, optionally, a second mesh
+  used for preconditioning
 
+  Inputs:
+    opts: the options dictionary
+    sbp: an SBP operator
+    sbpface: an SBP face operator
+    topo: an ElementTopology describing the SBP reference element.  Only
+          needed for 3D DG, otherwise can be any value
+    Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)
+    dofpernode: number of degrees of freedom on every node
+
+  All arguments except opts are typically provided by 
+  [`createSBPOperator`](@ref) and [`getDataTypes`](@ref)
+"""
+function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
+                    Tmsh, dofpernode)
+
+  dmg_name = opts["dmg_name"]
+  smb_name = opts["smb_name"]
+  order = opts["order"]  # order of accuracy
+  dim = opts["dimensions"]
+
+
+  if opts["use_DG"]
     println("constructing DG mesh")
     if dim == 2
-
-      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; 
+                               dofpernode=dofpernode, 
+                               coloring_distance=opts["coloring_distance"],
+                               shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface, topo; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface,
+                               topo; dofpernode=dofpernode,
+                               coloring_distance=opts["coloring_distance"],
+                               shape_type=shape_type)
     end
+
+    # create preconditioning mesh
     if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
       @assert dim == 2
       pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts;
@@ -206,25 +321,29 @@ function createMeshAndOperator(opts, dofpernode)
     end
 
   else  # continuous Galerkin
-    # create SBP object
-    println("\nConstructing SBP Operator")
-#    sbp = TriSBP{Float64}(degree=order, reorder=reorder, internal=internal)  # create linear sbp operator
-    sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
-    # create linear mesh with 4 dof per node
+    if dim == 2
 
-    println("constructing CG mesh")
-    mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; dofpernode=dofpernode, coloring_distance=opts["coloring_distance"], shape_type=shape_type)
+      println("constructing CG mesh")
+      mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface;
+                             dofpernode=dofpernode,
+                             coloring_distance=opts["coloring_distance"],
+                             shape_type=shape_type)
 
-    if opts["jac_type"] == 3 || opts["jac_type"] == 4
-      pmesh = PumiMesh2Preconditioning(mesh, sbp, opts; coloring_distance=opts["coloring_distance_prec"])
-    else
-      pmesh = mesh
+      if opts["jac_type"] == 3 || opts["jac_type"] == 4
+        pmesh = PumiMesh2Preconditioning(mesh, sbp, opts;
+                               coloring_distance=opts["coloring_distance_prec"])
+      else
+        pmesh = mesh
+      end
+
+    else  # dim == 3
+      throw(ErrorException("3D continuous Galerkin not supported"))
     end
-  end
+  end  # end if DG
 
-  return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
+
+  return mesh, pmesh
 end
-
 
 """
   This function takes in the 4 principle object, fully initialized, and calls
@@ -396,13 +515,8 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
   #  close(f)
 
     saveSolutionToMesh(mesh, real(eqn.q_vec))
-  #  printSolution(mesh, real(eqn.q_vec))
-  #  printCoordinates(mesh)
     writeVisFiles(mesh, "solution_done")
 
-    # write timings
-  #  timings = [params.t_volume, params.t_face, params.t_source, params.t_sharedface, params.t_bndry, params.t_send, params.t_wait, params.t_allreduce, params.t_jacobian, params.t_solve, params.t_barrier, params.t_barrier2, params.t_barrier3]
-  #  writedlm("timing_breakdown_$myrank.dat", vcat(timings, params.t_barriers))
   end  # end if (opts[solve])
 
   return nothing
