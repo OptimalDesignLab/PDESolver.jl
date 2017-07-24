@@ -1,4 +1,9 @@
 # Interfaces in PDESolver
+
+```@meta
+  CurrentModule = ODLCommonTools
+```
+
 PDESolver depends on the the three main objects, the `AbstractSolutionData`
 object,  `AbstractMesh` object, and the SBP object implementing certain interfaces.
 This document describes what the interfaces are, and gives some hints for how to
@@ -46,7 +51,9 @@ storing the kind of data used in PDESolver.
 ## AbstractSolutionData
 ODLCommonTools defines:
 
-`abstract AbstractSolutionData{Tsol, Tres}`.
+```@docs
+AbstractSolutionData
+```
 
 The purpose of an `AbstractSolutionData` is to hold all the data related to the
 solution of an equation.
@@ -150,7 +157,12 @@ The function must have the signature:
 
 `function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)`
 
-`params`:  user defined type that inherits from `AbstractParamType`.
+`params`:  user defined type that inherits from `AbstractParamType`:
+
+```@docs
+AbstractParamType
+```
+
 The purpose of this type is to store any variables that need to be quickly accessed or updated.
 The only required fields are:
 * `t::Float64`: hold the current time value
@@ -159,9 +171,12 @@ The only required fields are:
   defined in the Utils module.
 
 ## AbstractMesh
+
 ODLCommonTools defines:
 
-`abstract AbstractMesh{Tmsh}`.
+```@docs
+AbstractMesh
+```
 
 The purpose of an `AbstractMesh` is to hold all the mesh related data that the
  solver will need.  It also serves to establish an interface between the solver
@@ -535,6 +550,12 @@ where the first function takes a vector of length `numDof` and saves it to the
 mesh, and the second writes Paraview files for the mesh, including the solution
 field.
 
+### Subtypes
+
+```@docs
+AbstractCGMesh
+AbstractDGMesh
+```
 
 ## Physics Module
 For every new physics to be solved, a new module should be created.

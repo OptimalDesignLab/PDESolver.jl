@@ -1,4 +1,9 @@
-using Documenter, PDESolver
+using Documenter, PDESolver, ODLCommonTools
+
+# need to use the physics modules here too
+using AdvectionEquationMod
+using EulerEquationMod
+using SimpleODEMod
 
 # some abbreviations
 advec = "solver/advection"
@@ -32,6 +37,7 @@ makedocs(
                    ]
               "Solver" => Any[
                   "solver/Readme.md"
+                  "solver/misc.md"
                   "Advection" => Any[
                       "Introduction" => "$advec/advection.md"
                       "Datatypes" => "$advec/types.md"

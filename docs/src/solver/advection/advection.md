@@ -1,5 +1,9 @@
 # Advection Physics Documentation
 
+```@meta
+  CurrentModule = AdvectionEquationMod
+```
+
 This module evaluates the residual for the constant-coefficient advection
 equation
 
@@ -12,8 +16,7 @@ is the source term.
 This weak form of the equation is discretized as described in the [Introduction](@ref index_sbp).
 
 ```@contents
-  Pages = [ "advection.md"
-            "types.md"
+  Pages = [ "types.md"
             "volume.md"
             "flux.md"
             "bc.md"
