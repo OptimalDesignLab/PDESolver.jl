@@ -25,7 +25,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Summation-by-Parts-operators-1",
+    "location": "index.html#index_sbp-1",
     "page": "PDESolver Introduction",
     "title": "Summation-by-Parts operators",
     "category": "section",
@@ -149,7 +149,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Interfaces in PDESolver",
     "category": "section",
-    "text": "PDESolver depends on the the three main objects, the AbstractSolutionData object,  AbstractMesh object, and the SBP object implementing certain interfaces. This document describes what the interfaces are, and gives some hints for how to  implement them.Before doing so, a short description of what general Julia interfaces look like is in order.   The paradigm of Julia code is that of \"objects with associated functions\", where  a new Type is defined, and then functions that take the Type as an argument are defined. The functions define the interface to the Type. The Type holds data (ie. state), and the functions perform operations on that state (ie. behavior). Perhaps counter-intuitively, it is generally not recommended for users of a type to access the fields directly. Instead, any needed operations on the data that the Type holds should be provided through functions. The benefit of this convention is that it imposes no requirements on how the Type stores its data or implements its behavior. This is important because a user of the Type should not be concerned with these things. The user needs to know what behavior the Type has, but not how it is implemented. This distinction becomes even more important when there are multiple implementations certain functionality. The user should be able to seamlessly transition between different implementations. This requires all implementations have the same interface.The question of how to enforce interfaces, and how strongly to do so, is still an open question in Julia. Some relevant Github issues:5\n4935\n6975One of the strongest arguments against the \"functions as interfaces\" idea is that for many applications, just storing data in an array is best. Creating interface functions for the Type to implement the array interface would be a lot of extra code with no benefit. For this reason, it makes sense to directly access the fields of some Types, to avoid trivial get/set methods. We do this extensively in PDESolver, because arrays are the natural choice for storing the kind of data used in PDESolver."
+    "text": "  CurrentModule = ODLCommonToolsPDESolver depends on the the three main objects, the AbstractSolutionData object,  AbstractMesh object, and the SBP object implementing certain interfaces. This document describes what the interfaces are, and gives some hints for how to  implement them.Before doing so, a short description of what general Julia interfaces look like is in order.   The paradigm of Julia code is that of \"objects with associated functions\", where  a new Type is defined, and then functions that take the Type as an argument are defined. The functions define the interface to the Type. The Type holds data (ie. state), and the functions perform operations on that state (ie. behavior). Perhaps counter-intuitively, it is generally not recommended for users of a type to access the fields directly. Instead, any needed operations on the data that the Type holds should be provided through functions. The benefit of this convention is that it imposes no requirements on how the Type stores its data or implements its behavior. This is important because a user of the Type should not be concerned with these things. The user needs to know what behavior the Type has, but not how it is implemented. This distinction becomes even more important when there are multiple implementations certain functionality. The user should be able to seamlessly transition between different implementations. This requires all implementations have the same interface.The question of how to enforce interfaces, and how strongly to do so, is still an open question in Julia. Some relevant Github issues:5\n4935\n6975One of the strongest arguments against the \"functions as interfaces\" idea is that for many applications, just storing data in an array is best. Creating interface functions for the Type to implement the array interface would be a lot of extra code with no benefit. For this reason, it makes sense to directly access the fields of some Types, to avoid trivial get/set methods. We do this extensively in PDESolver, because arrays are the natural choice for storing the kind of data used in PDESolver."
+},
+
+{
+    "location": "interfaces.html#ODLCommonTools.AbstractSolutionData",
+    "page": "Code Interfaces",
+    "title": "ODLCommonTools.AbstractSolutionData",
+    "category": "Type",
+    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -157,7 +165,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "AbstractSolutionData",
     "category": "section",
-    "text": "ODLCommonTools defines:abstract AbstractSolutionData{Tsol, Tres}.The purpose of an AbstractSolutionData is to hold all the data related to the solution of an equation. This includes the solution at every node and any auxiliary quantities. The storage for any quantity that is calculated over the entire mesh should be allocated as part of this object, in order to avoid repeatedly reallocated the array for every residual evaluation. In general, there should never be a need to allocate a vector longer than the number of degrees of freedom at a node (or a matrix similarly sized matrix) during a residual evaluation. Structuring code such that it conforms with this requirement has significant performance benefits because it reduces memory allocation/deallocation.The static parameter Tsol is the datatype of the solution variables and Tres is the datatype of the residual (when computing the Jacobian with finite differences or algorithmic differentiation, these will be the same)."
+    "text": "ODLCommonTools defines:AbstractSolutionDataThe purpose of an AbstractSolutionData is to hold all the data related to the solution of an equation. This includes the solution at every node and any auxiliary quantities. The storage for any quantity that is calculated over the entire mesh should be allocated as part of this object, in order to avoid repeatedly reallocated the array for every residual evaluation. In general, there should never be a need to allocate a vector longer than the number of degrees of freedom at a node (or a matrix similarly sized matrix) during a residual evaluation. Structuring code such that it conforms with this requirement has significant performance benefits because it reduces memory allocation/deallocation.The static parameter Tsol is the datatype of the solution variables and Tres is the datatype of the residual (when computing the Jacobian with finite differences or algorithmic differentiation, these will be the same)."
+},
+
+{
+    "location": "interfaces.html#ODLCommonTools.AbstractParamType",
+    "page": "Code Interfaces",
+    "title": "ODLCommonTools.AbstractParamType",
+    "category": "Type",
+    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
 },
 
 {
@@ -165,7 +181,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Required Fields",
     "category": "section",
-    "text": "The required fields of an AbstractSolutionData are:  q::AbstractArray{Tsol, 3}\n  q_vec::AbstractArray{Tsol, 1}\n  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}\n  res::AbstractArray{Tres, 3}\n  res_vec::AbstractArray{Tres, 1}\n  M::AbstractArray{Float64, 1}\n  Minv::AbstractArray{Float64, 1}\n  disassembleSolution::Function\n  assembleSolution::Function\n  multiplyA0inv::Function\n  majorIterationCallback::Function\n  params{Tsol..., Tdim}::AbstractParamType{Tdim}The purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.disassembleSolution:  Function that takes the a vector such as q_vec and                         scatters it to an array such as q.                         This function must have the signature:                         disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})                         Because this variable is a field of a type, it will be dynamically dispatched.                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.assembleSolution:  Function that takes an array such as res and performs an additive reduction to a vector such as res_vec.                      This function must have the signature:                      assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)                      The argument zero_resvec determines whether res_vec is zeroed before the reduction is performed.                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.                      Thus the default is true.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType. The purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module."
+    "text": "The required fields of an AbstractSolutionData are:  q::AbstractArray{Tsol, 3}\n  q_vec::AbstractArray{Tsol, 1}\n  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}\n  res::AbstractArray{Tres, 3}\n  res_vec::AbstractArray{Tres, 1}\n  M::AbstractArray{Float64, 1}\n  Minv::AbstractArray{Float64, 1}\n  disassembleSolution::Function\n  assembleSolution::Function\n  multiplyA0inv::Function\n  majorIterationCallback::Function\n  params{Tsol..., Tdim}::AbstractParamType{Tdim}The purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.disassembleSolution:  Function that takes the a vector such as q_vec and                         scatters it to an array such as q.                         This function must have the signature:                         disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})                         Because this variable is a field of a type, it will be dynamically dispatched.                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.assembleSolution:  Function that takes an array such as res and performs an additive reduction to a vector such as res_vec.                      This function must have the signature:                      assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)                      The argument zero_resvec determines whether res_vec is zeroed before the reduction is performed.                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.                      Thus the default is true.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:AbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module."
+},
+
+{
+    "location": "interfaces.html#ODLCommonTools.AbstractMesh",
+    "page": "Code Interfaces",
+    "title": "ODLCommonTools.AbstractMesh",
+    "category": "Type",
+    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -173,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "AbstractMesh",
     "category": "section",
-    "text": "ODLCommonTools defines:abstract AbstractMesh{Tmsh}.The purpose of an AbstractMesh is to hold all the mesh related data that the  solver will need.  It also serves to establish an interface between the solver  and whatever mesh software is used.  By storing all data in the fields of the  AbstractMesh object, the details of how the mesh software stores and allows  retrieval of data are not needed by the solver.  This should make it easy to  accommodate different mesh software without making any changes to the solver.The static parameter Tmsh is used to enable differentiation with respect to the mesh variable in the future."
+    "text": "ODLCommonTools defines:AbstractMeshThe purpose of an AbstractMesh is to hold all the mesh related data that the  solver will need.  It also serves to establish an interface between the solver  and whatever mesh software is used.  By storing all data in the fields of the  AbstractMesh object, the details of how the mesh software stores and allows  retrieval of data are not needed by the solver.  This should make it easy to  accommodate different mesh software without making any changes to the solver.The static parameter Tmsh is used to enable differentiation with respect to the mesh variable in the future."
 },
 
 {
@@ -286,6 +310,30 @@ var documenterSearchIndex = {"docs": [
     "title": "Other Functions",
     "category": "section",
     "text": "The mesh module must also defines and exports the functionssaveSolutionToMesh(mesh::MeshImplementationType, vec::AbstractVector)\nwriteVisFiles(mesh::MeshImplementationType, fname::ASCIIString)where the first function takes a vector of length numDof and saves it to the mesh, and the second writes Paraview files for the mesh, including the solution field."
+},
+
+{
+    "location": "interfaces.html#ODLCommonTools.AbstractCGMesh",
+    "page": "Code Interfaces",
+    "title": "ODLCommonTools.AbstractCGMesh",
+    "category": "Type",
+    "text": "ODLCommonTools.AbstractCGMesh\n\nThe abstrac type is the supertype of all continuous Galerkin meshes\n\n\n\n"
+},
+
+{
+    "location": "interfaces.html#ODLCommonTools.AbstractDGMesh",
+    "page": "Code Interfaces",
+    "title": "ODLCommonTools.AbstractDGMesh",
+    "category": "Type",
+    "text": "ODLCommonTools.AbstractDGGMesh\n\nThe abstrac type is the supertype of all discontinuous Galerkin meshes\n\n\n\n"
+},
+
+{
+    "location": "interfaces.html#Subtypes-1",
+    "page": "Code Interfaces",
+    "title": "Subtypes",
+    "category": "section",
+    "text": "AbstractCGMesh\nAbstractDGMesh"
 },
 
 {
@@ -517,7 +565,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver PhysicsInterface",
     "title": "PDESolver.evalResidual",
     "category": "Function",
-    "text": "This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)   at some state q.  The state is stored in eqn.q, and eqn.res is populated with   R(q).  Note that these are 3 dimensional arrays.  The physics modules only   interact with the 3 dimensional arrays, never the vectors eqn.q_vec and   eqn.res_vec.  Each physics module must implement this function for its   own subtype of AbstractSolutionData (ie. with a more specific type for   the eqn argument and equallty specific types for the other arguments).   This is important because evalResidual is common to all physics modules,   so a user or some other part of the code can call evalResidual(mesh, sbp   eqn, opts), and Julia's multiple dispatch will figure out the right method   to call based on the type of the eqn argument.\n\nThe evaluation of the residual R(q) should depend only on the data stored in   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated   every time the function is called.  This function is used as a building block   by other parts of the solver, particularly the NonlinearSolvers.  See   interfaces.md for details\n\nInputs:     mesh: an AbstractMesh describing the mesh on which to solve the physics     sbp: an SBP operator     eqn: a subtype of AbstractSolution data, used to store all of the data used          by the physics module     opts: the options dictionary     t: the current time value, defaults to 0.0\n\n\n\n"
+    "text": "This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)   at some state q.  The state is stored in eqn.q, and eqn.res is populated with   R(q).  Note that these are 3 dimensional arrays.  The physics modules only   interact with the 3 dimensional arrays, never the vectors eqn.q_vec and   eqn.res_vec.  Each physics module must implement this function for its   own subtype of AbstractSolutionData (ie. with a more specific type for   the eqn argument and equallty specific types for the other arguments).   This is important because evalResidual is common to all physics modules,   so a user or some other part of the code can call evalResidual(mesh, sbp   eqn, opts), and Julia's multiple dispatch will figure out the right method   to call based on the type of the eqn argument.\n\nThe evaluation of the residual R(q) should depend only on the data stored in   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated   every time the function is called.  This function is used as a building block   by other parts of the solver, particularly the NonlinearSolvers.  See   interfaces.md for details\n\nInputs:     mesh: an AbstractMesh describing the mesh on which to solve the physics     sbp: an SBP operator     eqn: a subtype of AbstractSolution data, used to store all of the data used          by the physics module     opts: the options dictionary     t: the current time value, defaults to 0.0\n\n\n\nAdvectionEquationMod.evalResidual\n\nThis function evaluates the Advection equation.\n\nInputs\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nEffectively updates eqn.res – not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec\n\nOutputs\n\n None\n\n\n\nEulerEquationMod.evalResidual\n\nThis function drives the evaluation of the EulerEquations.   It is agnostic to the dimension of the equation. and the types the arguments   are paramaterized on.\n\nThe function calls only high level functions, all of which take the same   four arguments.  Mid level function also take the same arguments.\n\nThe input/output variables are eqn.q and eqn.res, respectively.   eqn.q_vec and eqn.res_vec exist for reusable storage outside the residual   evaluation.  They should never be used inside the residual evaluation.\n\nThe function disassembleSolution takes q_vec and puts it into eqn.q   The function assembleSolution takes eqn.res and puts it into res_vec\n\nArguments:     * mesh  : a mesh object     * sbp   : SBP operator object     * eqn   : an EulerData object     * opts  : options dictionary\n\nThe optional time argument is used for unsteady equations\n\n\n\nSimpleODEMod.evalResidual\n\nThis function evaluates the simple ODE equation.\n\n** Inputs **\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Simple ODE equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nOutputs\n\n None\n\n\n\n"
 },
 
 {
@@ -677,7 +725,135 @@ var documenterSearchIndex = {"docs": [
     "page": "Overview of Physics Modules",
     "title": "Functors",
     "category": "section",
-    "text": "Functors are a trick used to get Julia's dispatch system to make decisions at compile time rather than runtime.  This is particularly useful for boundary conditions, where the list of mesh faces that have boundary conditions applied is determined at runtime, but having conditional statements that execute for every node on the mesh boundary would be slow.  Instead a construct is used as follows:type myBC <: BCType  # create a singleton type\nend\n\nfunction call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)\n  # calculate boundary flux here\nendThis defines a datatype and adds a method to the call function for that type. The call function is what makes a datatype callable like a function.  This method is called as follows:functor = myBC()  # construct and object of type myBC\nq = rand(4)\nbndryflux = zeros(4)\nfunctor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bndryflux)  The way this is used for boundary conditions is through a two level construct where an outer function passes a functor to an inner function.  Julia's JIT will generate a method of the inner function that is specialized to the functor (this is why it is important that the functor is a datatype).  For example:function getBCFluxes(mesh, sbp, eqn, opts)\n\n  for i=1:mesh.numBC  # loop over different boundary conditions\n    functor_i = mesh.bndry_functor[i]  # get the functor for this boundary condition\n    start_index = mesh.bndry_offsets[i]\n    end_index = mesh.bndry_offsets[i+1] - 1\n    # get data for boundary faces start_index:end_index\n\n    calcBoundaryFlux(functor_i, data for boundary faces start_index:end_index)\n  end\nend  # end function\n\n  function calcBoundaryFlux(functor_i::BCType, data for boundary faces start_index:end_index)\n    for i=1:length(start_index:end_index)\n      for j=1:num_nodes_on_face\n        # get data for this boundary face node\n        functor_i(data for this boundary face node)\n      end\n    end\n\n  end  # end functionThe benefit of this arrangement is that mesh.numBC different version of calcBoundaryFlux get compiled, one for each functor, and each version knows about the call method that was defined for the functor it is passed.  This two level scheme allows the compiler to make all the decisions about what function to call (ie. the call method of the functor), avoiding any conditional logic at runtimeThis idea is also applicable to the flux functions used by DG methods.#Initialization of a SimulationThis section lists an outline of how a simulation gets launched After step 4, the procedure becomes a bit more complicated because there are optional steps. Only the required steps are listed below.The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.Second, the \nsbp\n operator is constructed.The \nmesh\n object is constructed, using the options dictionary and the \nsbp\n operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.The \neqn\n object is constructed, using the \nmesh\n, \nsbp\n, and \nopts\n objects.The physics module \ninit\n function is called, which initializes the physics module and finishes any initialization that \nmesh\n and \neqn\n objects require.The initial condition is applied to \neqn.q_vec\n.A nonlinear solver is called.  Which solver is called and what parameters it uses are determined by the options dictionary.Post-processing is done, if required by the options dictionary."
+    "text": "Functors are a trick used to get Julia's dispatch system to make decisions at compile time rather than runtime.  This is particularly useful for boundary conditions, where the list of mesh faces that have boundary conditions applied is determined at runtime, but having conditional statements that execute for every node on the mesh boundary would be slow.  Instead a construct is used as follows:type myBC <: BCType  # create a singleton type\nend\n\nfunction call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)\n  # calculate boundary flux here\nendThis defines a datatype and adds a method to the call function for that type. The call function is what makes a datatype callable like a function.  This method is called as follows:functor = myBC()  # construct and object of type myBC\nq = rand(4)\nbndryflux = zeros(4)\nfunctor(q, bndryflux)  # the Julia compiler turns this into call(functor, q, bndryflux)  The way this is used for boundary conditions is through a two level construct where an outer function passes a functor to an inner function.  Julia's JIT will generate a method of the inner function that is specialized to the functor (this is why it is important that the functor is a datatype).  For example:function getBCFluxes(mesh, sbp, eqn, opts)\n\n  for i=1:mesh.numBC  # loop over different boundary conditions\n    functor_i = mesh.bndry_functor[i]  # get the functor for this boundary condition\n    start_index = mesh.bndry_offsets[i]\n    end_index = mesh.bndry_offsets[i+1] - 1\n    # get data for boundary faces start_index:end_index\n\n    calcBoundaryFlux(functor_i, data for boundary faces start_index:end_index)\n  end\nend  # end function\n\n  function calcBoundaryFlux(functor_i::BCType, data for boundary faces start_index:end_index)\n    for i=1:length(start_index:end_index)\n      for j=1:num_nodes_on_face\n        # get data for this boundary face node\n        functor_i(data for this boundary face node)\n      end\n    end\n\n  end  # end functionThe benefit of this arrangement is that mesh.numBC different version of calcBoundaryFlux get compiled, one for each functor, and each version knows about the call method that was defined for the functor it is passed.  This two level scheme allows the compiler to make all the decisions about what function to call (ie. the call method of the functor), avoiding any conditional logic at runtimeThis idea is also applicable to the flux functions used by DG methods."
+},
+
+{
+    "location": "solver/Readme.html#Initialization-of-a-Simulation-1",
+    "page": "Overview of Physics Modules",
+    "title": "Initialization of a Simulation",
+    "category": "section",
+    "text": "This section lists an outline of how a simulation gets launched After step 4, the procedure becomes a bit more complicated because there are optional steps. Only the required steps are listed below.The options dictionary is read in.  Default values are supplied for any key that is not specified, if a reasonable default value exists.\nSecond, the \nsbp\n operator is constructed.\nThe \nmesh\n object is constructed, using the options dictionary and the \nsbp\n operator.  Some of the options in the dictionary are used to determine how the mesh gets constructed.  For example, the options dictionary specifies what kind of mesh coloring to do.\nThe \neqn\n object is constructed, using the \nmesh\n, \nsbp\n, and \nopts\n objects\nThe physics module \ninit\n function is called, which initializes the physics module and finishes any initialization that \nmesh\n and \neqn\n objects require.\nThe initial condition is applied to \neqn.q_vec\n.\nA nonlinear solver is called.  Which solver is called and what parameters it uses are determined by the options dictionary.\nPost-processing is done, if required by the options dictionary."
+},
+
+{
+    "location": "solver/misc.html#",
+    "page": "Assorted Function and Types",
+    "title": "Assorted Function and Types",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/misc.html#Assorted-Function-and-Types-1",
+    "page": "Assorted Function and Types",
+    "title": "Assorted Function and Types",
+    "category": "section",
+    "text": "  CurrentModule = ODLCommonToolsThis page contains several types and functions that are used throughout the physics modules.  Many of these are defined in ODLCommonTools"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.BCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.BCType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors that compute the   reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.SRCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.SRCType",
+    "category": "Type",
+    "text": "Abstract supertype of all source term functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG face   integrals\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG   face integral that compute the reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Abstract-Functor-Types-1",
+    "page": "Assorted Function and Types",
+    "title": "Abstract Functor Types",
+    "category": "section",
+    "text": "Abstract types are provided for commonly used Functors:BCType\nBCType_revm\nSRCType\nFluxType\nFluxType_revm"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Boundary",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Boundary",
+    "category": "Type",
+    "text": "ODLCommonTools.Boundary\n\nUsed to identify boundary faces in a finite-element grid.\n\nFields\n\nelement\n : index of the element to which the boundary face belongs\nface\n : the face index of the boundary (local index to the element)\n\nExample\n\nTo mark face 2 of element 7 to be a boundary face, use Boundary(7,2)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Interface",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Interface",
+    "category": "Type",
+    "text": "ODLCommonTools.Interface\n\nUsed to identify interfaces between elements in a finite-element grid.\n\nFields\n\nelementL\n : index of the so-called left element in the pair\nelementR\n : index of the so-called right element in the pair\nfaceL\n : the face index of the interface with respect to the left element\nfaceR\n : the face index of the interface with respect to the right element\norient\n : orientation of the 'right' element relative to the 'left'\n\nExample\n\nConsider an interface between elements 2 and 5.  Suppose the interface is on face 1 of element 2 and face 3 of element 5.  Furthermore, suppose element 5 has orientation 1 relative to element 1 (defintion of orientation TBD).  This can be indicated as Interface(2,5,1,3,1)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getElementL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getElementL",
+    "category": "Function",
+    "text": "This function returns either the element field of a Boundary or the   elementL field of an interface.\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getFaceL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getFaceL",
+    "category": "Function",
+    "text": "This function returns either the face field of a Boundary or the   faceL field of an Interface\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Boundary}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Boundary objects\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Interface}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Interface objects\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Boundaries-and-Interfaces-1",
+    "page": "Assorted Function and Types",
+    "title": "Boundaries and Interfaces",
+    "category": "section",
+    "text": "All physics modules need to apply boundary conditions and all DG schemes and some CG schemes need to do face integrals. The types and functions described here assist in identifying them:Boundary\nInterface\ngetElementL\ngetFaceL\nshow(::IO, ::Boundary)\nshow(::IO, ::Interface)"
 },
 
 {
@@ -693,7 +869,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Advection Physics Documentation",
     "category": "section",
-    "text": "Describe the equation being solved here  Pages = [ \"advection.md\"\n            \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n          ]\n  Depth = 1"
+    "text": "  CurrentModule = AdvectionEquationModThis module evaluates the residual for the constant-coefficient advection equationfracpartial qpartial t = - boldsymbola cdot fracpartial qpartial boldsymbolx + Swhere boldsymbola is the vector of advection velocities in the x, y, and z directions, boldsymbolx is the vector and x, y, and z directions, and S is the source term.This weak form of the equation is discretized as described in the Introduction.  Pages = [ \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n          ]\n  Depth = 1"
 },
 
 {
@@ -705,11 +881,67 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/types.html#AdvectionEquationMod.ParamType",
+    "page": "Datatypes",
+    "title": "AdvectionEquationMod.ParamType",
+    "category": "Type",
+    "text": "Subtype of AbstractParamType.\n\nStatic Parameters:     Tsol     Tres     Tdim\n\nSee\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/types.html#AdvectionEquationMod.ParamType2",
+    "page": "Datatypes",
+    "title": "AdvectionEquationMod.ParamType2",
+    "category": "Constant",
+    "text": "Convenient alias for all 2D ParamTypes\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/types.html#AdvectionEquationMod.ParamType3",
+    "page": "Datatypes",
+    "title": "AdvectionEquationMod.ParamType3",
+    "category": "Constant",
+    "text": "Convenient alias for all 3D ParamTypes\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/types.html#AdvectionEquationMod.AbstractAdvectionData",
+    "page": "Datatypes",
+    "title": "AdvectionEquationMod.AbstractAdvectionData",
+    "category": "Type",
+    "text": "Direct subtype of AbstractSolutionData, inheriting Tsol and   Tres as static parameter\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/types.html#AdvectionEquationMod.AdvectionData",
+    "page": "Datatypes",
+    "title": "AdvectionEquationMod.AdvectionData",
+    "category": "Type",
+    "text": "Subtype of AbstractAdvectionData, inheriting its static parameters   and adding Tdim.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/types.html#AdvectionEquationMod.AdvectionData_",
+    "page": "Datatypes",
+    "title": "AdvectionEquationMod.AdvectionData_",
+    "category": "Type",
+    "text": "AdvectionEquationMod.AdvectionData_\n\nThis type is an implementation of the abstract AdvectionData.  It is   parameterized by Tsol, the datatype of the solution variables and Tmsh,   the datatype of the mesh variables.   Tres is the 'maximum' type of Tsol and Tmsh.   Tdim is the dimensionality of the equation being solve (2 or 3).\n\nThis type is (ultimately) a subtype of AbstractSolutionData    and contains all the required fields.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/types.html#AdvectionEquationMod.PhysicsName",
+    "page": "Datatypes",
+    "title": "AdvectionEquationMod.PhysicsName",
+    "category": "Constant",
+    "text": "This physics is named Advection\n\n\n\n"
+},
+
+{
     "location": "solver/advection/types.html#Advection-Types-1",
     "page": "Datatypes",
     "title": "Advection Types",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = AdvectionEquationModThis page provides the documentation for the DataTypes defined in the Advection moduleParamType\nParamType2\nParamType3\nAbstractAdvectionData\nAdvectionData\nAdvectionData_\nPhysicsName"
 },
 
 {
@@ -721,11 +953,27 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/volume.html#AdvectionEquationMod.evalVolumeIntegrals",
+    "page": "Volume Integrals",
+    "title": "AdvectionEquationMod.evalVolumeIntegrals",
+    "category": "Function",
+    "text": "AdvectionEquationMod.evalVolumeIntegrals\n\nEvaluates the volume integrals of the weak form.  eqn.res is updated   with the result.  Both the precompute_volume_flux and non    precompute_volume_flux versions are contained within this function\n\nInputs:\n\nmesh : mesh type    sbp  : Summation-by-parts operator    eqn  : Advection equation object    opts : options dictionary\n\nOutputs\n\nNone\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/volume.html#AdvectionEquationMod.calcAdvectionFlux",
+    "page": "Volume Integrals",
+    "title": "AdvectionEquationMod.calcAdvectionFlux",
+    "category": "Function",
+    "text": "Populates eqn.flux_parametric.  Repeatedly calls the other method of this   function.\n\nInputs:\n\nmesh\nsbp\neqn\nopts\n\n\n\nCalculates the advection flux in the parametric directions at a node.\n\nInputs:\n\nparams: a ParamType object\nq: the solution value at the node\nalphas_xy: the advection velocities in the x-y directions, vector of length\n           Tdim\ndxidx: scaled mapping jacobian at the node, Tdim x Tdim matrix\n\nInputs/Outputs:\n\nflux: vector of length Tdim to populate with the flux in the parametric\n      directions\n\n\n\n"
+},
+
+{
     "location": "solver/advection/volume.html#Advection-Volume-Integrals-1",
     "page": "Volume Integrals",
     "title": "Advection Volume Integrals",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = AdvectionEquationModThis page describes the different functions involved in computing the volume integralsevalVolumeIntegrals\ncalcAdvectionFlux"
 },
 
 {
@@ -737,11 +985,83 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/flux.html#AdvectionEquationMod.evalFaceIntegrals",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.evalFaceIntegrals",
+    "category": "Function",
+    "text": "AdvectionEquationMod.evalFaceIntegrals\n\nThis function evaluates the interior face integrals for DG methods, using   the flux function from eqn.flux_func.  The solution variables are interpolated   to the faces, the flux computed, and then interpolated back to the   solution points.\n\nThis function also logs some quantities to disk (TODO: move this to   Utils/logging)\n\nInputs:     mesh:  an AbstractDGMesh     sbp     eqn     opts\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcFaceFlux",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcFaceFlux",
+    "category": "Function",
+    "text": "This function calculates the DG flux between a specified set of faces,   using the solution data at the faces stored in eqn.q_face.   Note that the flux is negated because the face integrals have a    negative sign in the weak form.\n\nInputs:\n\nmesh\nsbp\neqn\nfunctor: the functor that calculates the flux at a node\ninterfaces: an array of type Interface that specifies which interfaces\n            to calculate the flux for\n\nInputs/Outputs:\n\nface_flux: array to store the flux in, numDofPerNode x nnodesPerFace\n           x length(interfaces)\n\nThe functor must have the signature:   func( uL, qR, alpha_x, alpha_y, dxidx, nrm, params)\n\nwhere uL and uR are the solution values for a node on the left and right   elements, alpha_x and alpha_y are the x and y advection velocities,   dxidx is the scaled mapping jacobian for elementL, and nrm is the face   normal in reference space.  params is eqn.params\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcFaceIntegrals_nopre",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcFaceIntegrals_nopre",
+    "category": "Function",
+    "text": "Compute the face integrals without using eqn.q_face or eqn.flux_face.   The integral is computed directly and res is updated\n\nInputs:\n\nmesh\nsbp\neqn\nopts\nflux_func: the flux functor that computes the face flux at a node\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcSharedFaceIntegrals",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcSharedFaceIntegrals",
+    "category": "Function",
+    "text": "Thin wrapper around calcSharedFaceIntegrals_inner.  This function is passed   to finishDataExchange, and internally calls calcSharedFaceIntegrals_inner.   See finishExchangeData for details on the interface and    calcSharedFaceIntegrals_inner for the integral that is computed.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcSharedFaceIntegrals_inner",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcSharedFaceIntegrals_inner",
+    "category": "Function",
+    "text": "AdvectionEquationMod.calcSharedFaceIntegrals\n\nThis function calculates the shared face integrals for the faces shared   with a single peer process.  This function is for   opts[\"parallel_type\"] == \"face\" and regular face integrals (ie. not the   entropy-stable face integrals) only.\n\nInputs:\n\nmesh\nsbp\neqn\nopts:\ndata: a SharedFaceData specifying which faces to compute\nfunctor: the FluxType to use for the face flux\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcSharedFaceIntegrals_inner_nopre",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcSharedFaceIntegrals_inner_nopre",
+    "category": "Function",
+    "text": "Like calcSharedFaceIntegrals_inner_nopre, but it computes the integral one   face at a time rather than computing all the flux, storing it in   eqn.flux_sharedface and then doing the integral\n\nSee calcSharedFaceIntegrals_inner for a description of the arguments\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcSharedFaceIntegrals_element",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcSharedFaceIntegrals_element",
+    "category": "Function",
+    "text": "Thin wrapper around calcSharedFaceIntegrals_inner.  This function is passed   to finishDataExchange, and internally calls calcSharedFaceIntegrals_inner.   See finishDataExchange for details on the interface and    calcSharedFaceIntegrals_inner for the integral that is computed.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcSharedFaceIntegrals_element_inner",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcSharedFaceIntegrals_element_inner",
+    "category": "Function",
+    "text": "Like calcSharedFaceIntegrals_inner, but for the case when   opts[\"parallel_data\"] == element.  This effectively means it has to   interpolate the solution from the elements to the faces and then do the   integral\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/flux.html#AdvectionEquationMod.calcSharedFaceIntegrals_element_inner_nopre",
+    "page": "Face Integrals",
+    "title": "AdvectionEquationMod.calcSharedFaceIntegrals_element_inner_nopre",
+    "category": "Function",
+    "text": "Like calcSharedFaceIntegrals_element_inner, but computes the   integral one   face at a time instead of computing the entire flux and then integrating.\n\n\n\n"
+},
+
+{
     "location": "solver/advection/flux.html#Advection-Face-Integrals-1",
     "page": "Face Integrals",
     "title": "Advection Face Integrals",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = AdvectionEquationModThis page describes the functions that compute the face integrals used by DG schemes.evalFaceIntegrals\ncalcFaceFlux\ncalcFaceIntegrals_nopre\ncalcSharedFaceIntegrals\ncalcSharedFaceIntegrals_inner\ncalcSharedFaceIntegrals_inner_nopre\ncalcSharedFaceIntegrals_element\ncalcSharedFaceIntegrals_element_inner\ncalcSharedFaceIntegrals_element_inner_nopre"
 },
 
 {
@@ -753,11 +1073,251 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/bc.html#AdvectionEquationMod.evalBoundaryIntegrals",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.evalBoundaryIntegrals",
+    "category": "Function",
+    "text": "Evaluate boundary integrals for advection equation, updating eqn.res with the result.\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : options dictionary\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.calcBoundaryFlux",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.calcBoundaryFlux",
+    "category": "Function",
+    "text": "This function calculates the boundary flux for the portion of the boundary   with a particular boundary condition.  The eqn.q are converted to    conservative variables if needed.  For the DG version, eqn.q_bndry must   already be populated with the q variables interpolated to the boundary\n\nInputs:\n\nmesh : AbstractMesh   sbp : AbstractSBP   eqn : AdvectionEquation   functor : a callable object that calculates the boundary flux at a node   idx_range: the Range describing which Boundaries have the current BC   bndry_facenums:  An array with elements of type Boundary that tell which                    element faces have the boundary condition   Outputs:\n\nbndryflux : the array to store the boundary flux, corresponds to                bndry_facenums\n\nnote that bndry_facenums and bndryflux must be only the portion of the    their parent arrays that correspond to the Boundaries that have the    current boundary condition applied.\n\nThe functor must have the signature:   functor( q, aux_vars, x, dxidx, nrm, bndryflux_i, eqn.params)   where q are the conservative variables.   where all arguments (except params and nrm) are vectors of values at a node.\n\nparams is the ParamType associated with the the EulerEquation object   nrm = mesh.sbpface.normal[:, current_node]\n\nThis is a mid level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.calcBoundaryFlux_nopre",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.calcBoundaryFlux_nopre",
+    "category": "Function",
+    "text": "This function computes the boundary integrals (and should probably be renamed)   without using eqn.q_bndry of eqn.bndryflux.  eqn.res is updated with   the results.\n\nSee calcBoundaryFlux for the meaning of the arguments\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.BCDict",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.BCDict",
+    "category": "Constant",
+    "text": "AdvectionEquationMod.BCDict\n\nIt stores all the possible boundary condition dictionary options. Whenever a  new boundary condition is created, it should get added to BCDict.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.getBCFunctors",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.getBCFunctors",
+    "category": "Function",
+    "text": "AdvectionEquationMod.getBCFunctors\n\nThis function uses the opts dictionary to populate mesh.bndry_funcs with the the functors\n\nThis is a high level function.\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Input dictionary options\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
     "location": "solver/advection/bc.html#Advection-Boundary-Integrals-1",
     "page": "Boundary Integrals",
     "title": "Advection Boundary Integrals",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = AdvectionEquationModThis page describes the functions that compute the boundary integrals.  evalBoundaryIntegrals\n  calcBoundaryFlux\n  calcBoundaryFlux_nopre\n  BCDict\n  getBCFunctors"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.defaultBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.defaultBC",
+    "category": "Type",
+    "text": "Default BC to calculate the boundary face integral (no numerical flux   functions)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.exp2xplus2yBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.exp2xplus2yBC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.exp2xplus2yBC\n\nUses the Roe solver to calculate the boundary flux using calc_exp2xplus2y to get the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.exp3xplusyBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.exp3xplusyBC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.exp3xplusyBC\n\nUses the Roe solver to calculate the boundary flux using calc_exp3xplusy to get the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.exp5xplus4yplus2BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.exp5xplus4yplus2BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.exp5xplus4yplus2BC\n\nUses the Roe solver to calculate the boundary flux using calc_exp5xplus4yplus2  to get the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.exp5xplusyBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.exp5xplusyBC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.exp5xplusyBC\n\nUses the Roe solver to calculate the boundary flux using calc_exp5xplusy to get the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.exp_xplusyBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.exp_xplusyBC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.exp_xplusyBC\n\nCalculates q at the boundary which is equal to exp(x+y). It is a nodal  level function.\n\nInputs\n\n \nu\n : Advection variable (eqn.q)\n \nalpha_x\n & \nalpha_y\n : velocities in the X & Y directions\n \ncoords\n : Nodal coordinates\n \ndxidx\n  : Mapping Jacobian\n \nnrm\n    : SBP face-normal vectors\n \nbndryflux\n : Flux at the boundary\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.exp_xyBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.exp_xyBC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.exp_xyBC\n\nUses the Roe solver to calculate the boundary flux using calc_exp_xy to get the boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.mms1BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.mms1BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.mms1BC\n\nUses the Roe solver to calculate the boundary flux using calc_mms1 to get   the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.p1BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.p1BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.p1BC\n\nUses the Roe solver to calculate the boundary flux using calc_p1 to   get the boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.p2BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.p2BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.p2BC\n\nUses the Roe solver to calculate the boundary flux using calc_p2 to   get the boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.p3BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.p3BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.p3BC\n\nUses the Roe solver to calculate the boundary flux using calc_p3 to   get the boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.p4BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.p4BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.p4BC\n\nUses the Roe solver to calculate the boundary flux using calc_p4 to   get the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.p5BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.p5BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.p5BC\n\nUses the Roe solver to calculate the boundary flux using calc_p5 to   get the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.sinwave_BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.sinwave_BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.sinwave_BC\n\nUses the Roe solver to calculate the boundary flux using calc_sinewave to   get the boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.sinwavey_BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.sinwavey_BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.sinwavey_BC\n\nUses the Roe solver to calculate the boundary flux using calc_sinewavey to   get the boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.sinwavey_pertBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.sinwavey_pertBC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.sinwavey_pertBC\n\nUses the Roe solver to calculate the boundary flux using calc_sinewave_pert to   get the boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.unsteadymmsBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.unsteadymmsBC",
+    "category": "Type",
+    "text": "BC for unsteadymms\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.unsteadypolyBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.unsteadypolyBC",
+    "category": "Type",
+    "text": "BC for unsteadypoly\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.x4BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.x4BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.x4BC\n\nUses the Roe solver to calculate the boundary flux using calc_x4 to   get the boundary state.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.x5plusy5BC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.x5plusy5BC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.x5plusy5BC\n\nCalculates q at the boundary which is equal to x^5 + y^5. It is a nodal  level function.\n\nInputs\n\n \nu\n : Advection variable (eqn.q)\n \nparams\n: the equation ParamType\n \ncoords\n : Nodal coordinates\n \nnrm_scaled\n    : scaled face normal vector in x-y space\n \nt\n:  current time value\n\nOutputs *  bndryflux : Flux at the boundary\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.xplusyBC",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.xplusyBC",
+    "category": "Type",
+    "text": "AdvectionEquationMod.xplusyBC\n\nUses Roe solver to calculate the boundary flux using calc_xplusy to get the  boundary state\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#Boundary-Conditions-1",
+    "page": "Boundary Integrals",
+    "title": "Boundary Conditions",
+    "category": "section",
+    "text": "This section describes all boundary conditions currently available  Modules = [AdvectionEquationMod]\n  Pages = [\"advection/bc.jl\"]\n  Order = [:type]"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.RoeSolver-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},Tsol,Any,Any}",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.RoeSolver",
+    "category": "Method",
+    "text": "AdvectionEquationMod.RoeSolver\n\nRoe solver for the advection equations. It determines the boundary flux on  each boundary. It is called at the nodal level\n\nInputs\n\n \nu\n    : Solution of advection equation at a particular node\n \nu_bc\n : Prescribed solution value at the boundary\n \nparams\n: the equation ParamType object\n \nnrm\n  : scaled face normal vector in x-y space\n\nOutputs\n\n \nbndryflux\n : Boundary flux at the particular node\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#AdvectionEquationMod.flux1-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},Any,Any,Any,Any}",
+    "page": "Boundary Integrals",
+    "title": "AdvectionEquationMod.flux1",
+    "category": "Method",
+    "text": "flux1\n\nCalculates the boundary flux for the advection equation. It works at the nodal level.\n\nInputs\n\n \nu_sbp_\n: The entry from u_sbp for this node\n \ndxidx\n : The jacobian for this node\n \nnrm\n   : nrm is the normal vector\n \nnet_flux\n:\n \nparams\n: the equation ParamType\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/bc.html#Numerical-Flux-Functions-1",
+    "page": "Boundary Integrals",
+    "title": "Numerical Flux Functions",
+    "category": "section",
+    "text": "This section lists the numerical flux functions used to impose the boundary conditions weakly.  Modules = [AdvectionEquationMod]\n  Pages = [\"advection/bc_solvers.jl\"]"
 },
 
 {
@@ -769,11 +1329,43 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/ic.html#AdvectionEquationMod.ICDict",
+    "page": "Initial Condition",
+    "title": "AdvectionEquationMod.ICDict",
+    "category": "Constant",
+    "text": "Dictionary that maps IC names to functions.  Every new IC should be added   to the list\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/ic.html#AdvectionEquationMod.ICFile-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Condition",
+    "title": "AdvectionEquationMod.ICFile",
+    "category": "Method",
+    "text": "AdvectionEquationMod.ICFile\n\nThis function reads a vector from a file on disk and set the solution to it. The vector must contain the same number of entries as there are degrees of  freedom in the mesh. \n\nThis function is useful for things like restarting from a checkpoint. In this case, the file should be the output of writedlm(eqn.q).  The degree  of freedom number must be the same for both simulation for this to work (the  file contains no degree of freedom number information).\n\nInputs\n\n \nmesh\n \nsbp\n \neqn\n \nopts\n\nInputs/Outputs\n\n \nu0\n: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/ic.html#AdvectionEquationMod.ICexp_xplusy-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},AdvectionEquationMod.AdvectionData{Tsol,Tres,2},Any,AbstractArray{Tsol,N}}",
+    "page": "Initial Condition",
+    "title": "AdvectionEquationMod.ICexp_xplusy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.ICexp_xplusy\n\nComputes the initial conditions for the state variable     u = exp(x + y + z), z is omitted in 2d\n\nInputs\n\n \nmesh\n : AbstractMesh type\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nu0\n   : Array that stores inital state variables\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/ic.html#AdvectionEquationMod.ICx5plusy5-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},AdvectionEquationMod.AdvectionData{Tsol,Tres,2},Any,AbstractArray{Tsol,N}}",
+    "page": "Initial Condition",
+    "title": "AdvectionEquationMod.ICx5plusy5",
+    "category": "Method",
+    "text": "AdvectionEquationMod.ICx5plusy5\n\nComputes the initial conditions for the state variable     u = x^5 + y^5 + z^5; z is omitted it 2d\n\nInputs\n\n \nmesh\n : AbstractMesh type\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nu0\n   : Array that stores inital state variables\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
     "location": "solver/advection/ic.html#Advection-Initial-Conditions-1",
     "page": "Initial Condition",
     "title": "Advection Initial Conditions",
     "category": "section",
-    "text": ""
+    "text": "This pages describes the functions that apply initial conditions  CurrentModule = AdvectionEquationMod  Modules = [AdvectionEquationMod]\n  Pages = [\"advection/ic.jl\"]"
 },
 
 {
@@ -785,11 +1377,195 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCDict",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCDict",
+    "category": "Constant",
+    "text": "AdvectionEquationMod.SRCDict\n\nIt stores all the possible boundary condition dictionary options. Whenever a    new boundary condition is created, it should get added to BCDict.\n\nAll functors must have the signature:\n\nsrc_func(params, coords::ParamType, t)\n\nwhere coords is the vector of length 2 containing the x and y coordinates   of the node, params.alpha_x and params.alpha_y are the advection velocities in the x an y   directions, and t is the current time\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRC0",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRC0",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRC0\n\nThis is the zero source term.  This is the default of source term   is specified\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRC1",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRC1",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRC1\n\nThis source term returns 1 everywhere.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRC2",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRC2",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRC2\n\nThis source term returns 1 everywhere.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCexp2xplus2y",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCexp2xplus2y",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCexp2xplus2y\n\nCalculates the source term for q = exp(2x + 2y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCexp3xplusy",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCexp3xplusy",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCexp3xplusy\n\nCalculates the source term for q = exp(3*x + y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCexp5xplus4yplus2",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCexp5xplus4yplus2",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCexp5xplus4yplus2\n\nCalculates the source term for q = exp(5x + 4y +2)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCexp5xplusy",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCexp5xplusy",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCexp5xplusy\n\nCalculates the source term for q = exp(5*x + y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCexp_xplusy",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCexp_xplusy",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCexp_xplusy\n\nThis is a source term that returns a source term for e^(x+y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCexp_xy",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCexp_xy",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCexp_xy\n\nCalculates the source term for q = exp(x*y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCmms1",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCmms1",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRC1\n\nThis source term that returns: the derivative of mms1\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCp1",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCp1",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCp1\n\nThis source term that returns: the source term for a manufactured solution   using a 1st order polynomial\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCp2",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCp2",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCp3\n\nThis source term that returns: the source term for a manufactured solution   using a 2nd order polynomial\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCp3",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCp3",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCp3\n\nThis source term that returns: the source term for a manufactured solution   using a 3rd order polynomial\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCp4",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCp4",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCp4\n\nThis source term that returns: the source term for a manufactured solution   using a 4th order polynomial\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCp5",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCp5",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCp5\n\nThis source term that returns: the source term for a manufactured solution   using a 5th order polynomial\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCunsteadymms",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCunsteadymms",
+    "category": "Type",
+    "text": "Source term for unsteady mms\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCunsteadypoly",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCunsteadypoly",
+    "category": "Type",
+    "text": "Source term for unsteady poly\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCx",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCx",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCx\n\nThis source term that returns: f = x\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCx4",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCx4",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCx4\n\nThis source term that returns: the source term for a manufactured solution   using a 4th order polynomial\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCx5plusy5",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCx5plusy5",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCx5plusy5\n\nThis is a source term that returns a source term for e^(x+y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.SRCxplusy",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.SRCxplusy",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRCxplusy\n\ncalculates the source term for q = x + y\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/source.html#AdvectionEquationMod.getSRCFunctors-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any}",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.getSRCFunctors",
+    "category": "Method",
+    "text": "This function gets the functor specified by opts[\"SRCname\"] and stores   it to the equation object.  Currently one 1 source functor is allowed.\n\n\n\n"
+},
+
+{
     "location": "solver/advection/source.html#Advection-Source-Term-1",
     "page": "Source Term",
     "title": "Advection Source Term",
     "category": "section",
-    "text": ""
+    "text": "This pages describes the functions that apply source terms  CurrentModule = AdvectionEquationMod  Modules = [AdvectionEquationMod]\n  Pages = [\"advection/source.jl\"]"
 },
 
 {
@@ -801,11 +1577,299 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_exp2xplus2y-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_exp2xplus2y",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_exp2xplus2y\n\nCalculates and return the expression u = exp(2x + 2y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_exp3xplusy-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_exp3xplusy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_exp3xplusy\n\nCalculates and return the expression u = exp(3*x + y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_exp5xplus4yplus2-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_exp5xplus4yplus2",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_exp5xplus4yplus2\n\nCalculates and returns the expression u = exp(5x + 4y +2)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_exp5xplusy-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_exp5xplusy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_exp5xplusy\n\nCalculates and return the expression u = exp(5*x + y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_exp_xplusy-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_exp_xplusy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_exp_xplusy\n\nCalculates and returns e^(x + y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_exp_xy-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_exp_xy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_exp_xy\n\nCalculates and returns u = exp(x*y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_mms1-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_mms1",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_mms1\n\nCalculates and returns the value of the solution for doing Method of    Manufactured solutions.  This is for debugging only, and could change   at any time.\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_mms1dx-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_mms1dx",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_mms1dx\n\nCalculates and returns the x derivative of calc_mms1\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p1-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p1",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p1\n\nCalculates and returns a 1st order polynomial of x and y\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p1dx-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p1dx",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p1dx\n\nCalculates and returns the x derivative of calc_p1\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p1dy-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p1dy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p1dy\n\nCalculates and returns the y derivative of calc_p1\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p1dz-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,3},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p1dz",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p1dz\n\nCalculates and returns the z derivative of calc_p1\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p2-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p2",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p2\n\nCalculates and returns a 2nd order polynomial in x and y\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p2dx-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p2dx",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p2dx\n\nCalculates and returns a the x derivative of calc_p2\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p2dy-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p2dy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p2dy\n\nCalculates and returns the y derivative of calc_p2\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p2dz-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,3},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p2dz",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p2dz\n\nCalculates and returns the z derivative of calc_p2\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p3-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p3",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p3\n\nCalculates and returns a 3rd order polynomial in x and y (and z in 3d)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p3dx-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p3dx",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p3dx\n\nCalculates and returns the x derivataive of calc_p3\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p3dy-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p3dy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p3dy\n\nCalculates and returns the y derivative of calc_p3\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p3dz-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,3},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p3dz",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p3dz\n\nCalculates and returns the z derivative of calc_p3\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p4-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p4",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p4\n\nCalculates and returns a 4th order polynomial in x and y\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p4dx-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p4dx",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p4x\n\nCalculates and returns the x derivative of calc_p4\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p4dy-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p4dy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p4dy\n\nCalculates and returns the y derivative of calc_p4\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p4dz-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,3},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p4dz",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p4dz\n\nCalculates and returns the z derivative of calc_p4\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p5-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p5",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p5\n\nCalculates and returns a 5th order polynomial in x and y (and z in 3d)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p5dx-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p5dx",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p5dx\n\nCalculates and returns the x derivative of calc_p5\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p5dy-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p5dy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p5y\n\nCalculates and returns the y derivative of calc_p5\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p5dz-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,3},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_p5dz",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_p5z\n\nCalculates and returns the z derivative of calc_p5\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_sinwave-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_sinwave",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_sinwave\n\nCalculates and returns sin(-x + t)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_sinwavey-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_sinwavey",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_sinwavey\n\nCalculates and returns sin(y)^2 + 5*sin(y) + 3/sin(y)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_sinwavey_pert-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_sinwavey_pert",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_sinwavey_pert\n\nCalculates and returns 1000sin(x)calc_sinwavey\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_unsteadymms-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_unsteadymms",
+    "category": "Method",
+    "text": "u = exp(x + y + z + t) in 3d (z = 0 in 2d)\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_x4-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_x4",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_x4\n\nCalculates and returns a 4th order polynomial in x\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_x4der-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_x4der",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_x5plusy5\n\nCalculates and returns the x derivative of calc_x4\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_x5plusy5-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_x5plusy5",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_x5plusy5\n\nCalculates and returns x^5 + y^5\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_xplusy-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "page": "Common Functions",
+    "title": "AdvectionEquationMod.calc_xplusy",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calc_x5plusy5\n\nCalculates and returns u = x+y\n\n\n\n"
+},
+
+{
     "location": "solver/advection/common.html#Advection-Common-Functions-1",
     "page": "Common Functions",
     "title": "Advection Common Functions",
     "category": "section",
-    "text": ""
+    "text": "This page describes functions that are used to calculated quantities that are needed for IC, BCs, and source terms. They are particularly useful for defining manufactures solutions.  CurrentModule = AdvectionEquationMod  Modules = [AdvectionEquationMod]\n  Pages = [\"advection/common_funcs.jl\"]"
 },
 
 {
