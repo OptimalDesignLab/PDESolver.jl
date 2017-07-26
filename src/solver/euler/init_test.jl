@@ -2,8 +2,8 @@
 # include("pressure.jl")
 
 resize!(ARGS, 1)
-# ARGS[1] = "input_vals_vortex.jl"
-ARGS[1] = "input_vals_vortex_parallel.jl"
+ARGS[1] = "input_vals_airfoil.jl"
+# ARGS[1] = "input_vals_vortex_parallel.jl"
 
 #----  Initialize EulerEquationMod for all the global variables necessary  ----#
 include("startup.jl")
@@ -28,10 +28,9 @@ EulerEquationMod.writeSurfacePressureCoeff(mesh, sbp, eqn, opts, g_edges, pressC
 
 
 # Create the objective function data object
-# objective = EulerEquationMod.OptimizationData{Complex128}(mesh, sbp, opts)
-#=functional_faces = opts["geom_faces_objective"]
+functional_faces = opts["geom_faces_objective"]
 objective = EulerEquationMod.BoundaryForceData{Complex128, :drag}(mesh, sbp, eqn, opts, functional_faces)
-objective.is_objective_fn = true=#
+objective.is_objective_fn = true
 objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
 
 #=
@@ -73,10 +72,10 @@ println("objective.lift_val = $(objective.lift_val)")
 # Calculate the adjoint vector
 adjoint_vec = zeros(Complex128, mesh.numDof)
 EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
-#=
+
 PdePumiInterface.saveSolutionToMesh(mesh, real(adjoint_vec))
 PdePumiInterface.writeVisFiles(mesh, "adjoint_field")
-=#
+
 if MPI.Initialized()
   MPI.Finalize()
 end

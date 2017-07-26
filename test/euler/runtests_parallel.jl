@@ -27,6 +27,8 @@ global const EulerTests = TestList()
 # NOTE: For adding parallel tests to TICON, Write them in a separate file and
 # include them below `global const EulerTests = TestList()`.
 
+include("test_parallel_derivatives.jl")
+
 """
   Run the parallel tests and compare against serial results run as part of
   the serial tests
@@ -140,30 +142,6 @@ facts("----- Running Euler 2 process tests -----") do
   run_testlist(EulerTests, run_euler, tags)
 end
 
-#=
-facts("--- Testing Functional Computation On a Boundary in Parallel ---") do
-
-  ARGS[1] = "input_vals_vortex_adjoint_DG_parallel.jl"
-  include("../src/solver/euler/startup.jl")
-
-  @fact mesh.isDG --> true
-  @fact opts["calc_functional"] --> true
-  @fact opts["functional_error"] --> true
-  @fact opts["functional_name1"] --> "drag"
-  @fact opts["analytical_functional_val"] --> roughly(-1/1.4, atol = 1e-13)
-  @fact opts["geom_edges_functional1"] --> [3]
-
-  fname = "./functional_error1.dat"
-  relative_error = readdlm(fname)
-
-  @fact relative_error[1] --> roughly(0.000177342284, atol = 1e-6)
-
-  # rm("./functional_error1.dat") # Delete the file
-
-
-end  # End do
-=#
-
 # define global variable if needed
 # this trick allows running the test files for multiple physics in the same
 # session without finalizing MPI too soon
@@ -177,5 +155,3 @@ if MPI.Initialized() && TestFinalizeMPI
 end
 
 FactCheck.exitstatus()
-
-

@@ -80,10 +80,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   nrm::Array{Tmsh, 1}  # a normal vector
   nrm2::Array{Tmsh, 1}
   nrm3::Array{Tmsh, 1}
-  nrmD::Array{Tmsh, 2}  # Tdim x Tdim array for Tdim normal vectors 
+  nrmD::Array{Tmsh, 2}  # Tdim x Tdim array for Tdim normal vectors
                         # (one per column)
-  nrm_face::Array{Tmsh, 2}  # sbpface.numnodes x Tdim array for normal vectors 
-                            # of all face nodes on an element  
+  nrm_face::Array{Tmsh, 2}  # sbpface.numnodes x Tdim array for normal vectors
+                            # of all face nodes on an element
   nrm_face2::Array{Tmsh, 2}  # like nrm_face, but transposed
 
   dxidx_element::Array{Tmsh, 3}  # Tdim x Tdim x numNodesPerElement array for
@@ -93,9 +93,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   velocity_deriv::Array{Tsol, 3}  # Tdim x numNodesPerElement x Tdim for
                                   # derivative of velocities.  First two
                                   # dimensions are same as velocities array,
-                                  # 3rd dimensions is direction of 
+                                  # 3rd dimensions is direction of
                                   # differentiation
-  velocity_deriv_xy::Array{Tres, 3} # Tdim x Tdim x numNodesPerElement array 
+  velocity_deriv_xy::Array{Tres, 3} # Tdim x Tdim x numNodesPerElement array
                                     # for velocity derivatives in x-y-z
                                     # first dim is velocity direction, second
                                     # dim is derivative direction, 3rd is node
@@ -215,7 +215,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     dxidx_element = Array(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
     velocities = Array(Tsol, Tdim, mesh.numNodesPerElement)
     velocity_deriv = Array(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
-    velocity_deriv_xy = Array(Tres, Tdim, Tdim, mesh.numNodesPerElement) 
+    velocity_deriv_xy = Array(Tres, Tdim, Tdim, mesh.numNodesPerElement)
 
 
     h = maximum(mesh.jac)
@@ -291,13 +291,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
-               res_vals2, res_vals3,  flux_vals1, 
-               flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
+               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1,
+               res_vals2, res_vals3,  flux_vals1,
+               flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2,
                A_mats, Rmat1, Rmat2, P,
                nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
                velocity_deriv, velocity_deriv_xy,
-               h, cv, R, gamma, gamma_1, Ma, Re, aoa, 
+               h, cv, R, gamma, gamma_1, Ma, Re, aoa,
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
@@ -673,8 +673,8 @@ type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
   bndry_force::AbstractArray{Topt,1}
   lift_val::Topt
   drag_val::Topt
-  dLiftdAlpha::Topt # Partial derivative of lift w.r.t. alpha
-  dDragdAlpha::Topt # Partial derivative of drag w.r.t. alpha
+  dLiftdaoa::Topt # Partial derivative of lift w.r.t. angle of attack
+  dDragdaoa::Topt # Partial derivative of drag w.r.t. angle of attack
 
   function BoundaryForceData(mesh, sbp, eqn, opts, geom_faces_functional)
 
@@ -685,8 +685,8 @@ type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
     functional.bndry_force = zeros(Topt, mesh.dim)
     functional.lift_val = 0.0
     functional.drag_val = 0.0
-    functional.dLiftdAlpha = 0.0
-    functional.dDragdAlpha = 0.0
+    functional.dLiftdaoa = 0.0
+    functional.dDragdaoa = 0.0
 
     return functional
   end
@@ -703,7 +703,7 @@ end
   controls whether or not to write the output, and the second is the
   file name (including extension) to write.
 
-  This function contains a list of all possible log files.  Every new 
+  This function contains a list of all possible log files.  Every new
   log file must be added to the list
 
   Inputs:
@@ -749,7 +749,7 @@ function openLoggingFiles(mesh, opts)
       file_dict[fname] = f
 
     end  # end if
-  end  # end 
+  end  # end
 
   return file_dict
 end

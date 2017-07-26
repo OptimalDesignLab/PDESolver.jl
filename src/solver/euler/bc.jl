@@ -394,8 +394,8 @@ end
 function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
-              nrm::AbstractArray{Tmsh,1}, 
-              nrm_bar::AbstractVector{Tmsh}, 
+              nrm::AbstractArray{Tmsh,1},
+              nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward sweep
@@ -473,7 +473,7 @@ end # end function isentropicVortexBC_physical
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state where the fluid velocity is projected into the wall.
- 
+
   Works in 2D, untested in 3D.
 
   This is a low level functor
@@ -485,7 +485,7 @@ end # end function isentropicVortexBC_physical
 *  `q`   : Solution variable
 *  `aux_vars` : Auxiliary variables
 *  `x`        : physical coordinates of the SBP node
-*  `nrm_xy`      : scaled normal vector in x-y space 
+*  `nrm_xy`      : scaled normal vector in x-y space
 *  `bndryflux` : Computed flux value at the boundary
 
 """
@@ -539,8 +539,8 @@ end
 
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1}, 
-              nrm_xy::AbstractArray{Tmsh,1}, 
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
@@ -555,9 +555,9 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
 #  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
   fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
   # normalize normal vector
-  nx *= fac  
-  ny *= fac
-  nz *= fac
+  nx = nx2*fac
+  ny = ny2*fac
+  nz = nz2*fac
 
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
@@ -566,8 +566,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
   for i=1:length(q)
     qg[i] = q[i]
   end
-
-  #qg = copy(q)
 
   # calculate normal velocity
   qg[2] -= nx*Unrm
@@ -627,16 +625,16 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
   nx = n1*fac
   ny = n2*fac
   Unrm = nx*q[2] + ny*q[3]
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
 
   # Subtract the normal component of the momentum from \xi & \eta components
   # of the momentum
-  qg = params.qg
-  for i=1:length(qg)
-    qg[i] = q[i]
-  end
   qg[2] = qg[2] - nx*Unrm
   qg[3] = qg[3] - ny*Unrm
-  
+
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
 
@@ -653,9 +651,9 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
 
   # q[2] = q[2] - nx*Unrm
   # q[3] = q[3] - ny*Unrm
-  ny_bar = -q_bar[3]*Unrm
-  nx_bar = -q_bar[2]*Unrm
-  Unrm_bar = -q_bar[3]*ny -q_bar[2]*nx
+  ny_bar = -qg_bar[3]*Unrm
+  nx_bar = -qg_bar[2]*Unrm
+  Unrm_bar = -qg_bar[3]*ny -qg_bar[2]*nx
 
   # Unrm = nx*q[2] + ny*q[3]
   nx_bar += Unrm_bar*q[2]
@@ -692,21 +690,21 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType3,
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1})
 
-  # Forward Sweep
+  # Forward sweep
   nx = zero(Tmsh)
   ny = zero(Tmsh)
   nz = zero(Tmsh)
-  tngt = Array(Tmsh, 2)  # tangent vector
   nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
   ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
   nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
-  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
-  nx = nx2*fac  
+  fac = 1.0/(sqrt(nx2*nx2 + ny2*ny2 + nz2*nz2))
+  # normalize normal vector
+  nx = nx2*fac
   ny = ny2*fac
   nz = nz2*fac
 
   # this is momentum, not velocity?
-  Unrm = nx*q[2] + ny*q[3] + ny*q[4]
+  Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
   qg = params.qg
   for i=1:length(q)
@@ -720,15 +718,66 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType3,
 
   v_vals = params.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
-  calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux)
 
-  
-  # Reverse sweep
+  # Reverse Sweep
+  nrm2_bar = zeros(Tmsh, 3)
+  v_vals_bar = zeros(Tsol, 5)
+  calcEulerFlux_revm(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux_bar, nrm2_bar)
+  calcEulerFlux_revq(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux_bar, v_vals_bar)
+
+  nz2_bar = nrm2_bar[3]
+  ny2_bar = nrm2_bar[2]
+  nx2_bar = nrm2_bar[1]
+
+  # TODO: reverse mode convertFromNaturalToWorkingVars(params, qg, v_vals)
+  qg_bar = v_vals_bar
+
+  # qg[4] = qg[4] - nz*Unrm
+  nz_bar = -qg_bar[4]*Unrm
+  Unrm_bar = -qg_bar[4]*nz
+  # qg[3] -= ny*Unrm
+  ny_bar = -qg_bar[3]*Unrm
+  Unrm_bar -= qg_bar[3]*ny
+  # qg[2] -= nx*Unrm
+  nx_bar = -qg_bar[2]*Unrm
+  Unrm_bar -= qg_bar[2]*nx
+
+  # Unrm = nx*q[2] + ny*q[3] + nz*q[4]
+  nx_bar += Unrm_bar*q[2]
+  ny_bar += Unrm_bar*q[3]
+  nz_bar += Unrm_bar*q[4]
+
+  # nz = nz2*fac
+  nz2_bar += nz_bar*fac
+  fac_bar = nz_bar*nz2
+  # ny = ny2*fac
+  ny2_bar += ny_bar*fac
+  fac_bar += ny_bar*ny2
+  # nx = nx2*fac
+  nx2_bar += nx_bar*fac
+  fac_bar += nx_bar*nx2
+
+  # fac = 1.0/(sqrt(nx2*nx2 + ny2*ny2 + nz2*nz2))
+  nx2_bar -= fac_bar*nx2*((nx2*nx2 + ny2*ny2 + nz2*nz2)^(-1.5))
+  ny2_bar -= fac_bar*ny2*((nx2*nx2 + ny2*ny2 + nz2*nz2)^(-1.5))
+  nz2_bar -= fac_bar*nz2*((nx2*nx2 + ny2*ny2 + nz2*nz2)^(-1.5))
+
+  # nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  dxidx_bar[1,3] += nz2_bar*nrm[1]
+  dxidx_bar[2,3] += nz2_bar*nrm[2]
+  dxidx_bar[3,3] += nz2_bar*nrm[3]
+  # ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+  dxidx_bar[1,2] += ny2_bar*nrm[1]
+  dxidx_bar[2,2] += ny2_bar*nrm[2]
+  dxidx_bar[3,2] += ny2_bar*nrm[3]
+  # nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+  dxidx_bar[1,1] += nx2_bar*nrm[1]
+  dxidx_bar[2,1] += nx2_bar*nrm[2]
+  dxidx_bar[3,1] += nx2_bar*nrm[3]
 
   return nothing
-end
+end # End noPenetrationBC_revm 3D
 =#
-
 @doc """
 ### EulerEquationMod.unsteadyVortexBC <: BCTypes
 
@@ -801,7 +850,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
-              coords::AbstractArray{Tmsh,1}, 
+              coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
@@ -846,10 +895,10 @@ end
 type FreeStreamBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, params::ParamType, 
+function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1}, 
+              nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
   qg = params.qg
@@ -889,7 +938,7 @@ end
 function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh}, 
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward sweep
@@ -1009,6 +1058,26 @@ function call{Tmsh, Tsol, Tres}(obj::ExpBC, params::ParamType, q::AbstractArray{
   return nothing
 end # end function call
 
+type ExpBC_revm <: BCType_revm
+end
+
+function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
+              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
+              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
+              params::ParamType)
+
+  # Forward Sweep
+  qg = params.qg
+  calcExp(x, params, qg)
+  # RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+
+  # Reverse Sweep
+  RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, bndryflux_bar, dxidx_bar)
+
+  return nothing
+end
+
 type PeriodicMMSBC <: BCType
 end
 
@@ -1073,7 +1142,6 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "Rho1E2U3BC" => Rho1E2U3BC(),
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),
-"FreeStreamBC_dAlpha" => FreeStreamBC_dAlpha(),
 "allOnesBC" => allOnesBC(),
 "unsteadyVortexBC" => unsteadyVortexBC(),
 "ExpBC" => ExpBC(),
@@ -1109,6 +1177,7 @@ end # ENd function getBCFunctors
 global const BCDict_revm = Dict{ASCIIString, BCType_revm}(
 "noPenetrationBC" => noPenetrationBC_revm(),
 "FreeStreamBC" => FreeStreamBC_revm(),
+"ExpBC" => ExpBC_revm(),
 "isentropicVortexBC" => isentropicVortexBC_revm(),
 )
 
