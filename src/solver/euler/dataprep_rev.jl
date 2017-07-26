@@ -1,4 +1,17 @@
 # dataprep_rev.jl
+"""
+### EulerEquationMod.getEulerFlux_revm
+
+Reverse mode of `getEulerFlux` w.r.t mesh metrics.
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""
 function getEulerFlux_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                         sbp::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts)
@@ -37,6 +50,20 @@ function getEulerFlux_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+"""
+### EulerEquationMod.getBCFluxes_revm
+
+Reverse mode of getBCFluxes w.r.t mesh metrics
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""
+
 function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
@@ -59,8 +86,26 @@ function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
   return nothing
 end
 
+"""
+### EulerEquationMod.calcBoundaryFlux_revm
 
-function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+Reverse mode of `calcBoundaryFlux` w.r.t mesh metrics. A different method is
+needed for CG and DG meshes.
+
+**Arguments**
+
+* `mesh`  : a mesh object
+* `sbp`   : SBP operator object
+* `eqn`   : an EulerData object
+* `functor_bar` : Name of the reverse mode boundary condition functor
+* `idx_range` : Index range in `mesh.bndryfaces` & `eqn.bndryflux_bar` upon
+                which this boundary condition acts.
+* `bndry_facenums` : `mesh.bndryfaces` corresonding to a boundary condition
+* `bndryflux_bar`  : `eqn.bndryflux_bar` corresonding to a boundary condition
+
+"""
+
+function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol},
                           functor_bar::BCType_revm, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1},
@@ -92,6 +137,13 @@ function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+
+"""
+### EulerEquationMod.calcFaceFlux_revm
+
+Reverse mode of `calcFaceFlux`.
+
+"""
 
 function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP,
@@ -127,7 +179,3 @@ function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
-
-#------------------------------------------------------------------------------
-
-# Derivatives w.r.t anlge of attack

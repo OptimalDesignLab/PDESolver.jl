@@ -1,3 +1,17 @@
+@doc """
+### EulerEquationMod.evalrevm_transposeproduct
+
+Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""->
+
 function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, input_array::AbstractArray{Tsol, 1}, t=0.0)
 
@@ -62,10 +76,16 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
 end  # end evalResidual
 
 @doc """
+### EulerEquationMod.dataPrep_revm
 
 Reverse mode of dataPrep w.r.t mesh metrics
 
-"""
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""->
 function dataPrep_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 
@@ -91,8 +111,16 @@ function dataPrep_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::Abstract
 end
 
 @doc """
+### EulerEquationMod.evalVolumeIntegrals_revm
 
-Reverse mode of evalVolumeIntegrals
+Reverse mode of evalVolumeIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
 
 """->
 
@@ -127,8 +155,16 @@ function evalVolumeIntegrals_revm{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
 end  # end evalVolumeIntegrals
 
 @doc """
+### EulerEquationMod.evalBoundaryIntegrals_revm
 
-Reverse mode of evalBoundaryIntegrals
+Reverse mode of evalBoundaryIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
 
 """->
 
@@ -149,6 +185,20 @@ function evalBoundaryIntegrals_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{T
   return nothing
 
 end  # end evalBoundaryIntegrals
+
+@doc """
+### EulerEquationMod.evalFaceIntegrals_revm
+
+Reverse mode of evalFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""->
 
 function evalFaceIntegrals_revm{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
@@ -174,6 +224,13 @@ function evalFaceIntegrals_revm{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+@doc """
+### EulerEquationMod.evalSharedFaceIntegrals_revm
+
+Reverse mode evalSharedFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+"""
+
 function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   face_integral_type = opts["face_integral_type"]
@@ -198,6 +255,13 @@ function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end
+
+"""
+### EulerEquationMod.calcSharedFaceIntegrals_revm
+
+Reverse mode of calcSharedFaceIntegrals w.r.t mesh metrics, ∂ξ/∂x.
+
+"""
 
 function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
@@ -264,6 +328,16 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+"""
+### EulerEquationMod.evalSourceTerm_revm
+
+Reverse mode of evalSourceTerm w.r.t mesh metrics.
+
+*This function has not been written properly. The developer must update this
+documentation as and when this code is developed*
+
+"""
+
 function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts)
@@ -284,6 +358,12 @@ end  # end function
 
 Given the volume nodes in the MeshMovement `volNodes` data structure, update the
 Pumi mesh object
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* volNodes : A 2D array containing coordinates of all the mesh vertices/nodes
+             owned by a perticular rank. There are no repeated vertices, i.e.
+             all the coordinates are unique. size(volNodes) = (3, numVert)
 
 """->
 
