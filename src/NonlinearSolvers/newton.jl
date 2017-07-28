@@ -486,8 +486,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
         delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
       end
 
-      jac_filename = string("jac_fwd_nI_t-",t,".dat")
-      writedlm(jac_filename, round(real(jac), 4))
+      # jac_filename = string("jac_fwd_nI_t-",t,".dat")
+      # writedlm(jac_filename, round(real(jac), 4))
       #-----------------------------------------------------------
       # NOTE NOTE NOTE!!! Here is where the jacobian is zeroed out
       fill!(jac, 0.0)
@@ -584,7 +584,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
      println(eqn.params.f, "============ end of Newton")
 
-      println(" ::::::::::::: end of newtonInner, norm(jac): ", norm(jac))
+      # println(" ::::::::::::: end of newtonInner, norm(jac): ", norm(jac))
      return nothing
     end  # end if tolerances satisfied
 
@@ -775,7 +775,7 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
 
   end  # end of jac_method check
 
-  println(" ::::::::::::: in physicsJac, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
+  # println(" ::::::::::::: in physicsJac, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
 
   # TODO: all printing should actually be handled outside of this function
   if print_jacobian_timing
