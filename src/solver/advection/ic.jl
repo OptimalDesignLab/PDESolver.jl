@@ -1,6 +1,6 @@
 # ic.jl
 # Needed to initialize a problem.
-
+# TODO: doc these
 function ICConstant(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData, opts,
                     u0::AbstractArray)
 
@@ -450,6 +450,10 @@ function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end
 
+"""
+  Dictionary that maps IC names to functions.  Every new IC should be added
+  to the list
+"""
 global const ICDict = Dict{Any, Function}(
 "ICConstant" => ICConstant,
 "ICx5plusy5" => ICx5plusy5,

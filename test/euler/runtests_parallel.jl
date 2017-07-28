@@ -54,6 +54,18 @@ function test_parallel2()
     datap = readdlm("./error_calc.dat")
     @fact datas[1] --> roughly(datap[1], atol=1e-13)
 
+    fill!(eqn.q, 1.0)
+    fill!(eqn.res, 0.0)
+
+    println("recv_waited = ", eqn.shared_data[1].recv_waited)
+    for i=1:mesh.npeers
+      fill!(eqn.shared_data[i].q_send, 1.0)
+      fill!(eqn.shared_data[i].q_recv, 1.0)
+    end
+    evalHomotopy(mesh, sbp, eqn, opts, eqn.res)
+
+    @fact vecnorm(eqn.res) --> roughly(0.0, atol=1e-13)
+
     cd(start_dir)
 
   end

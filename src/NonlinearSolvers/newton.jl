@@ -1297,6 +1297,9 @@ end  # end function
   This function applies a perturbation to a the specified degree of freedom
   on each element according to a mask.
 
+  Because this is element based perturbation, opts["parallel_data"] must
+  be "element".
+
   Inputs:
     mesh: an AbstractMesh
     color: the color to perturb
@@ -1326,6 +1329,11 @@ function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray,
   @assert i <= size(arr, 1)
   @assert j <= size(arr, 2)
 
+  # check that element, not face, data is shared in parallel
+  for peer=1:length(shared_data)
+    @assert size(shared_data[peer].q_send, 2) == mesh.numNodesPerElement
+  end
+
   (ndof, nnodes, numel) = size(arr)
   mask = mesh.color_masks[color]
   for k=1:numel
@@ -1343,11 +1351,12 @@ function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray,
 
       # perturb the send buffer, using the mask for eqn.q
       send_arr_i = shared_data[peer].q_send
-      bndries_local = shared_data[peer].bndries_local
+#      bndries_local = shared_data[peer].bndries_local
+      elnums_local = mesh.local_element_lists[peer]
 
-      for k=1:length(bndries_local)
-        bndry_k = bndries_local[k]
-        send_arr_i[i, j, k] = pert*mask[bndry_k.element]
+      for k=1:length(elnums_local)
+        el_k = elnums_local[k]
+        send_arr_i[i, j, k] += pert*mask[el_k]
       end
     end
   end

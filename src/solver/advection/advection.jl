@@ -91,18 +91,20 @@ end
 @doc """
 ### AdvectionEquationMod.evalVolumeIntegrals
 
-Evaluate the residual using summation by parts (not including boundary 
-integrals) this only works for triangular meshes, where are elements are same
+  Evaluates the volume integrals of the weak form.  eqn.res is updated
+  with the result.  Both the precompute_volume_flux and non 
+  precompute_volume_flux versions are contained within this function
 
-**Inputs**
+  Inputs:
 
-*  `mesh` : mesh type
-*  `sbp`  : Summation-by-parts operator
-*  `eqn`  : Advection equation object
+   `mesh` : mesh type
+   `sbp`  : Summation-by-parts operator
+   `eqn`  : Advection equation object
+   `opts` : options dictionary
 
-**Outputs**
+  Outputs
 
-*  None
+  None
 
 """->
 function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
@@ -159,6 +161,7 @@ end
   function.
 
   Inputs:
+
     mesh
     sbp
     eqn
@@ -198,6 +201,7 @@ end
   Calculates the advection flux in the parametric directions at a node.
 
   Inputs:
+
     params: a ParamType object
     q: the solution value at the node
     alphas_xy: the advection velocities in the x-y directions, vector of length
@@ -205,6 +209,7 @@ end
     dxidx: scaled mapping jacobian at the node, Tdim x Tdim matrix
 
   Inputs/Outputs:
+
     flux: vector of length Tdim to populate with the flux in the parametric
           directions
 """
@@ -230,15 +235,15 @@ end
 
 
 @doc """
-### AdvectionEquationMod.evalBoundaryIntegrals
-
-Evaluate boundary integrals for advection equation
+Evaluate boundary integrals for advection equation, updating eqn.res with
+the result.
 
 **Inputs**
 
 *  `mesh` : Abstract mesh type
 *  `sbp`  : Summation-by-parts operator
 *  `eqn`  : Advection equation object
+*  `opts` : options dictionary
 
 **Outputs**
 
@@ -289,6 +294,9 @@ end # end function evalBoundaryIntegrals
   the flux function from eqn.flux_func.  The solution variables are interpolated
   to the faces, the flux computed, and then interpolated back to the
   solution points.
+
+  This function also logs some quantities to disk (TODO: move this to
+  Utils/logging)
 
   Inputs:
     mesh:  an AbstractDGMesh
@@ -474,6 +482,18 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
+
+  if opts["operator_type2"] != "SBPNone"
+    mesh2 = mesh.mesh2
+    sbp2 = sbp.sbp2
+    getBCFunctors(mesh2, sbp2, eqn, opts)
+    getSRCFunctors(mesh2, sbp2, eqn, opts)
+    if mesh.isDG
+      getFluxFunctors(mesh2, sbp2, eqn, opts)
+    end
+  end
+
+
 #  initMPIStructures(mesh, opts)
   return nothing
 end

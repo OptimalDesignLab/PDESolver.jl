@@ -1,7 +1,6 @@
 # bc.jl
 
 @doc """
-### AdvectionEquationMod.calcBoundaryFlux
 
   This function calculates the boundary flux for the portion of the boundary
   with a particular boundary condition.  The eqn.q are converted to 
@@ -9,6 +8,7 @@
   already be populated with the q variables interpolated to the boundary
 
   Inputs:
+
   mesh : AbstractMesh
   sbp : AbstractSBP
   eqn : AdvectionEquation
@@ -17,6 +17,7 @@
   bndry_facenums:  An array with elements of type Boundary that tell which
                    element faces have the boundary condition
   Outputs:
+
   bndryflux : the array to store the boundary flux, corresponds to 
               bndry_facenums
 
