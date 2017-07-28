@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractSolutionData",
     "category": "Type",
-    "text": "ODLCommonTools.AbtractSolutionData{Tsol, Tres}\n\nThis abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:     Tsol: datatype of solution variables     Tres: datatype of the mesh variables\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractParamType",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractParamType\n\nThis abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
+    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
 },
 
 {
@@ -189,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractMesh",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractMesh{Tmsh}\n\nThis abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:     Tmsh: datatype of the mesh data (coordinates, mapping to/from parametric           space, mapping jacobian).\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -753,11 +753,99 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/misc.html#ODLCommonTools.BCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.BCType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors that compute the   reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.SRCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.SRCType",
+    "category": "Type",
+    "text": "Abstract supertype of all source term functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG face   integrals\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG   face integral that compute the reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
     "location": "solver/misc.html#Abstract-Functor-Types-1",
     "page": "Assorted Function and Types",
     "title": "Abstract Functor Types",
     "category": "section",
     "text": "Abstract types are provided for commonly used Functors:BCType\nBCType_revm\nSRCType\nFluxType\nFluxType_revm"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Boundary",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Boundary",
+    "category": "Type",
+    "text": "ODLCommonTools.Boundary\n\nUsed to identify boundary faces in a finite-element grid.\n\nFields\n\nelement\n : index of the element to which the boundary face belongs\nface\n : the face index of the boundary (local index to the element)\n\nExample\n\nTo mark face 2 of element 7 to be a boundary face, use Boundary(7,2)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Interface",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Interface",
+    "category": "Type",
+    "text": "ODLCommonTools.Interface\n\nUsed to identify interfaces between elements in a finite-element grid.\n\nFields\n\nelementL\n : index of the so-called left element in the pair\nelementR\n : index of the so-called right element in the pair\nfaceL\n : the face index of the interface with respect to the left element\nfaceR\n : the face index of the interface with respect to the right element\norient\n : orientation of the 'right' element relative to the 'left'\n\nExample\n\nConsider an interface between elements 2 and 5.  Suppose the interface is on face 1 of element 2 and face 3 of element 5.  Furthermore, suppose element 5 has orientation 1 relative to element 1 (defintion of orientation TBD).  This can be indicated as Interface(2,5,1,3,1)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getElementL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getElementL",
+    "category": "Function",
+    "text": "This function returns either the element field of a Boundary or the   elementL field of an interface.\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getFaceL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getFaceL",
+    "category": "Function",
+    "text": "This function returns either the face field of a Boundary or the   faceL field of an Interface\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Boundary}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Boundary objects\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Interface}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Interface objects\n\n\n\n"
 },
 
 {
@@ -797,7 +885,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Datatypes",
     "title": "AdvectionEquationMod.ParamType",
     "category": "Type",
-    "text": "Subtype of AbstractParamType.\n\nStatic Parameters:     Tsol     Tres     Tdim\n\nThis is a container passed to all low level function, useful for storing   miscellaneous parameters or constants\n\n\n\n"
+    "text": "Subtype of AbstractParamType.\n\nStatic Parameters:\n\nTsol\nTres\n Tdim\n\nThis is a container passed to all low level function, useful for storing   miscellaneous parameters or constants\n\n\n\n"
 },
 
 {
@@ -1289,6 +1377,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/source.html#AdvectionEquationMod.getSRCFunctors-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any}",
+    "page": "Source Term",
+    "title": "AdvectionEquationMod.getSRCFunctors",
+    "category": "Method",
+    "text": "This function gets the functor specified by opts[\"SRCname\"] and stores   it to the equation object.  Currently one 1 source functor is allowed.\n\n\n\n"
+},
+
+{
     "location": "solver/advection/source.html#AdvectionEquationMod.SRCDict",
     "page": "Source Term",
     "title": "AdvectionEquationMod.SRCDict",
@@ -1465,19 +1561,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/source.html#AdvectionEquationMod.getSRCFunctors-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any}",
-    "page": "Source Term",
-    "title": "AdvectionEquationMod.getSRCFunctors",
-    "category": "Method",
-    "text": "This function gets the functor specified by opts[\"SRCname\"] and stores   it to the equation object.  Currently one 1 source functor is allowed.\n\n\n\n"
-},
-
-{
     "location": "solver/advection/source.html#Advection-Source-Term-1",
     "page": "Source Term",
     "title": "Advection Source Term",
     "category": "section",
-    "text": "This pages describes the functions that apply source terms  CurrentModule = AdvectionEquationMod  Modules = [AdvectionEquationMod]\n  Pages = [\"advection/source.jl\"]"
+    "text": "This pages describes the functions that apply source terms  CurrentModule = AdvectionEquationMod  Modules = [AdvectionEquationMod]\n  Pages = [\"advection/source.jl\"]\n  Order = [:function, :constant, :type, :module, :macro]"
 },
 
 {
@@ -1829,7 +1917,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Euler Physics Documentation",
     "category": "section",
-    "text": "Describe the equation being solved here  Pages = [ \"advection.md\"\n            \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"conversion.md\"\n            \"flux_functions.md\"\n            \"stabilization.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n            \"misc.md\"\n          ]\n  Depth = 1"
+    "text": "Describe the equation being solved herefracpartial qpartial t = - nabla cdot F(q) + SWhere q are the conservative variables and F is the Euler flux.q = beginbmatrix rho rho u rho v rho w e endbmatrixwhere rho is density, u is the x velocity, v is the y velocity, w is the z velocity and e is the energy.The calloricaly perfect ideal gas law is used to close the system (TODO ref calcPressure)The x-y-z components of the Euler flux are:beginbmatrix rho u  rho v  rho w  rho u^2 + p  rho u v  rho u w  rho u v  rho v^2 + p  rho v w   rho u w  rho v w  rho w^2 + p   (e + p)u  (e + p)v  (e + p)w endbmatrixTODO: describe the physical quantities (include units)  Pages = [ \"advection.md\"\n            \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"conversion.md\"\n            \"flux_functions.md\"\n            \"stabilization.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n            \"misc.md\"\n          ]\n  Depth = 1"
 },
 
 {
@@ -1841,11 +1929,131 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/types.html#Euler-Datatype-Documentation-1",
+    "location": "solver/euler/types.html#EulerEquationMod.EulerData_",
     "page": "Datatypes",
-    "title": "Euler Datatype Documentation",
+    "title": "EulerEquationMod.EulerData_",
+    "category": "Type",
+    "text": "This type is an implimentation of the abstract EulerData.  It is   paramterized by the residual datatype Tres and the mesh datatype Tmsh   because it stores some arrays of those types.  Tres is the 'maximum' type of   Tsol and Tmsh, where Tsol is the type of the conservative variables.   It is also paremterized by var_type, which should be a symbol describing   the set of variables stored in eqn.q.  Currently supported values are   :conservative and :entropy, which indicate the conservative variables and   the entropy variables described in:\n\n'A New Finite Element Formulation for   Computational Fluid Dynamics: Part I' by Hughes et al.`\n\nEventually there will be additional implimentations of EulerData,   specifically a 3D one.\n\nStatic Parameters:\n\nTsol : datatype of variables solution variables, ie. the            q vector and array\nTres : datatype of residual. ie. eltype(res_vec)\nTdim : dimensionality of equation, integer, (2 or 3, currently only 2 is            supported).\nTmsh : datatype of mesh related quantities\nvar_type : symbol describing variables used in weak form, (:conservative                or :entropy)\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.AbstractEulerData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.AbstractEulerData",
+    "category": "Type",
+    "text": "EulerEquationMod.AbstractEulerData{Tsol, Tres}\n\nThis abstract type should be the supertype of all solution data objects   that are related to the Euler equations.\n\nIt should be used for specify the type of a function argument only when   the function does no operations on the solution data object itself, it just   passes it onto other functions that do the work (thus AbstractEulerData   should be used for only the highest level functions).\n\nAnother way of saying say it is that this type should only be used when   the function only needs to ensure that it is solving the Euler equations,   but does not care even a little bit about how.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.EulerData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.EulerData",
+    "category": "Type",
+    "text": "EulerEquationMod.EulerData\n\nThis type, although abstract, is the type functions should use for their   input arguments if they do any operations on the solution data object.   It stores all data used in evaluting the Euler Equations.\n\nIt is paramaterized on the types Tsol, the type of the   conservative variables q, and Tdim, the dimension of the equation\n\nIt should have the following fields:    * res_type : datatype of residual (depreciated)     * q  : 3D array holding conservative variables     * q_vec  : vector to assemble q into     * aux_vars : 3D array holding auxiliary variables     * flux_parametric : 4D array [ndof per node, nnodes per element, nelements, Tdim]              holding the Euler flux in the xi and eta directions     * res  : 3D array holding residual     * res_vec   : vector form of res     * edgestab_alpha : paramater used for edge stabilization, 4d array     * bndryflux : 3D array holding boundary flux data     * stabscale : 2D array holding edge stabilization scale factor     * M : vector holding the mass matrix     * Minv :  vector holding inverse mass matrix     # Minv3D :  3D array holding inverse mass matrix for application to res (not res_vec)\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.BoundaryForceData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.BoundaryForceData",
+    "category": "Type",
+    "text": "###EulerEquationMod.BoundaryForceData\n\nComposite data type for storing data pertaining to the boundaryForce. It holds lift and drag values\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.ParamType",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.ParamType",
+    "category": "Type",
+    "text": "This type holds the values of any constants or paramters needed during the   computation.  These paramters can be specified in the opts dictionary or   have default values set here.  If there is no reasonable default, values   are initialized to -1\n\nThere are also a bunch of arrays that are used as temporaries by low   level functions (to avoid having to allocate arrays themselves, which is   a performance trap).  In general, this Type is used as a container to pass   around values.\n\ngamma and R are the independent themodynamic variables\n\nWhether this type should be immutable or not is an open question\n\nThis type is paramaterized on the dimension of the equation for purposes   of multiple dispatch\n\nStatic Parameters:\n\nTdim : dimensionality of the equation, integer, (used for dispatch)\nvar_type : type of variables used used in the weak form, symbol, (used for              dispatch), currently supported values: :conservative, :entropy\nTsol : datatype of solution variables q\nTres : datatype of residual\nTmsh : datatype of mesh related quantities (mapping jacobian etc.)\n\nFields (with default values):\n\ncv  : specific heat constant\nR : specific gas constant (J/(Kg*K))\ngamma : ratio of specific heats\ngamma_1 : gamma - 1\n\nFields (without default values):\n\nMa  : free stream Mach number\nRe  : free stream Reynolds number\naoa : angle of attack (radians)\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.ParamType2",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.ParamType2",
+    "category": "Type",
+    "text": "Useful alias for 2D ParamType\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.ParamType3",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.ParamType3",
+    "category": "Type",
+    "text": "Useful alias for 3D ParamType\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.cleanup-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.cleanup",
+    "category": "Method",
+    "text": "This function performs all cleanup activities before the run_physics()   function returns.  The mesh, sbp, eqn, opts are returned by run_physics()   so there is not much cleanup that needs to be done, mostly closing files.\n\nInputs/Outputs:\n\n* mesh: an AbstractMesh object\n* sbp: an SBP operator\n* eqn: the EulerData object\n* opts: the options dictionary\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.openLoggingFiles-Tuple{Any,Any}",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.openLoggingFiles",
+    "category": "Method",
+    "text": "This function opens all used for logging data.  In particular, every data   file that has data appended to it in majorIterationCallback should be   opened here.  Most files are of type BufferedIO, so they must be flushed   periodically.\n\nThis function requires each output to have two keys: \"write_outname\"   and \"write_outname_fname\", where the first has a boolean value that   controls whether or not to write the output, and the second is the   file name (including extension) to write.\n\nThis function contains a list of all possible log files.  Every new    log file must be added to the list\n\nInputs:\n\nmesh: an AbstractMesh (needed for MPI Communicator)\nopts: options dictionary\n\nOutputs:\n\n* file_dict: dictionary mapping names of files to the file object\n             ie. opts[\"write_entropy_fname\"] => f\n\nExceptions: this function will throw an exception if any two file names               are the same\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.DragData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.DragData",
+    "category": "Type",
+    "text": "EulerEquationMod.DragData\n\nSubtype of AbstractOptimizationData. Stores all the information relevant to computing an objective function pertaining to drag. Presently its an empty type\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.FaceElementIntegralType",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.FaceElementIntegralType",
+    "category": "Type",
+    "text": "Functor type for faceElementIntegrals.  These integrals operate on a face,   but require data from the entirety of the elements that make up the   face, rather than data interpolated to the face\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.LiftData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.LiftData",
+    "category": "Type",
+    "text": "EulerEquationMod.LiftData\n\nSubtype of AbstractOptimizationData. Stores all the information relevant to computing an objective function pertaining to lift. Presently its an empty type\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.PressureData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.PressureData",
+    "category": "Type",
+    "text": "EulerEquationMod.PressureData\n\nSubtype of AbstractOptimizationData. Stores all the information relevant to computing an objective function pertaining to pressure coefficeint\n\nMembers\n\n \ntargetCp_arr\n : An array of arrays that stores the target coefficient of                     pressure. length(targetCp_arr) = number of geometric edges                     over which the functional is being computed. Each sub array                     has dimensions (sbpface.numnodes, nfaces) \n(from calcBoundarFlux                     in bc.jl)\n \nnodal_info\n : 1D array of indices for one node needed to acces \ntargetCp_arr\n                   at a particular data point.                   nodal_info[1] = geometric edge number                   nodal_info[2] = sbpface node number                   nodal_info[3] = element face number on the geometric edge\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.createFunctionalData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.createFunctionalData",
+    "category": "Function",
+    "text": "###EulerEquationMod.createFunctionalData\n\nCreates an object for functional computation. This function needs to be called the same number of times as the number of functionals EXCLUDING the objective function are being computed\n\nArguments\n\nmesh\n : Abstract PUMI mesh\nsbp\n  : Summation-by-parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\nfunctional_number\n : Which functional object is being generated. Default = 1\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.createObjectiveFunctionalData-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.createObjectiveFunctionalData",
+    "category": "Method",
+    "text": "###EulerEquationMod.createObjectiveFunctionalData\n\nFunction for create an object for functional and adjoint computation where the functional is an objective function in an optimization.\n\nArguments\n\nmesh\n : Abstract PUMI mesh\nsbp\n  : Summation-by-parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#Euler-Types-1",
+    "page": "Datatypes",
+    "title": "Euler Types",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModThis page provides documentations for DataTypes and and simple functions that are defined in the Euler module  Modules = [EulerEquationMod]\n  Pages = [\"euler/types.jl\", \"euler/EulerEquationMod.jl\"]"
 },
 
 {
@@ -2105,91 +2313,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/intro.html#",
-    "page": "Intro",
-    "title": "Intro",
+    "location": "NonlinearSolvers/unsteady.html#",
+    "page": "Unsteady",
+    "title": "Unsteady",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/intro.html#Unsteady-NonlinearSolver-Basics-1",
-    "page": "Intro",
-    "title": "Unsteady NonlinearSolver Basics",
+    "location": "NonlinearSolvers/unsteady.html#Unsteady-NonlinearSolver-Documentation-1",
+    "page": "Unsteady",
+    "title": "Unsteady NonlinearSolver Documentation",
     "category": "section",
-    "text": "PDESolver contains multiple time-stepping methods. They are selectable with the \"run_type\" input option."
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/rk4.html#",
-    "page": "Runge-Kutta",
-    "title": "Runge-Kutta",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/rk4.html#Fourth-Order-Runge-Kutta-(RK4)-1",
-    "page": "Runge-Kutta",
-    "title": "Fourth Order Runge-Kutta (RK4)",
-    "category": "section",
-    "text": "RK4 is a very widely used explicit time stepping method. See the Wikipedia page for the mathematical details."
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/lserk.html#",
-    "page": "LSERK",
-    "title": "LSERK",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/lserk.html#Low-Storage-Explicit-Runge-Kutta-(LSERK)-1",
-    "page": "LSERK",
-    "title": "Low Storage Explicit Runge-Kutta (LSERK)",
-    "category": "section",
-    "text": ""
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/cn.html#",
-    "page": "Crank-Nicolson",
-    "title": "Crank-Nicolson",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/cn.html#Crank-Nicolson-(CN)-1",
-    "page": "Crank-Nicolson",
-    "title": "Crank-Nicolson (CN)",
-    "category": "section",
-    "text": "Crank-Nicolson is an implicit time marching scheme. While it adds a measure of complexity, it is unconditionally stable.  Note that this does not mean that accuracy is unaffected by time step size,  degree of the operator (p = 1 or p = 2, etc.), or element size."
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/cn.html#Selecting-CN-and-Problem-Setup-1",
-    "page": "Crank-Nicolson",
-    "title": "Selecting CN & Problem Setup",
-    "category": "section",
-    "text": "CN is selected with \"run_type\" => 20 in your problem's input options file. As this is an unsteady problem, you will also need to specify your    time step size (\"delta_t\" option) and your final solution time (\"t_max\" option)"
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/cn.html#Forward-in-time-1",
-    "page": "Crank-Nicolson",
-    "title": "Forward-in-time",
-    "category": "section",
-    "text": "\\begin{aligned} \\underbrace{\\mathbf{I} - \\frac{\\Delta t}{2} \\underbrace{\\frac{\\partial R\\left(u^{i+1}\\right)}{\\partial u^{i+1}}}_{\\text{jac from \\texttt{physicsJac}}} \n}_{\\text{\\texttt{cnJac}}} \n= \\\n\\underbrace{- \\left( \n  \\underbrace{u^{i+1}}_{\\text{\\texttt{eqn_nextstep.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^{i+1}\\right)}_{\\text{\\texttt{eqn_nextstep.res_vec}}} - \\    \\underbrace{u^i}_{\\text{\\texttt{eqn.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^i\\right)}_{\\text{\\texttt{eqn.res_vec}}} \n\\right)}_{\\text{\\texttt{cnRhs}}} \\end{aligned}This equation is solved with PDESolver's Newton's method."
-},
-
-{
-    "location": "NonlinearSolvers/unsteady/cn.html#Backward-in-time-(unsteady-adjoint)-1",
-    "page": "Crank-Nicolson",
-    "title": "Backward-in-time (unsteady adjoint)",
-    "category": "section",
-    "text": ""
+    "text": "\\begin{aligned} \\underbrace{\\mathbf{I} - \\frac{\\Delta t}{2} \\underbrace{\\frac{\\partial R\\left(u^{i+1}\\right)}{\\partial u^{i+1}}}_{\\text{jac from \\texttt{physicsJac}}} \n}_{\\text{\\texttt{cnJac}}} \n= \\\n\\underbrace{- \\left( \n  \\underbrace{u^{i+1}}_{\\text{\\texttt{eqn_nextstep.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^{i+1}\\right)}_{\\text{\\texttt{eqn_nextstep.res_vec}}} - \\    \\underbrace{u^i}_{\\text{\\texttt{eqn.q_vec}}} - \\      \\frac{\\Delta t}{2} \\underbrace{R\\left(u^i\\right)}_{\\text{\\texttt{eqn.res_vec}}} \n\\right)}_{\\text{\\texttt{cnRhs}}} \\end{aligned}"
 },
 
 {
