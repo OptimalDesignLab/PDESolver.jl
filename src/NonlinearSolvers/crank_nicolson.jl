@@ -411,7 +411,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       dRdA = dRdA_CS
       # check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
       # NOTE 20170712: think I need to be doing adj, not adj_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
-      check_adjointmethod = transpose(adj.q_vec)*dRdA
+      # check_adjointmethod = transpose(adj.q_vec)*dRdA
+      check_adjointmethod = transpose(adj.q_vec)*(-1.0*dRdA)
       filename = string("check_adjointmethod-", i, ".dat")
       writedlm(filename, check_adjointmethod)
     end
