@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractSolutionData",
     "category": "Type",
-    "text": "ODLCommonTools.AbtractSolutionData{Tsol, Tres}\n\nThis abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:     Tsol: datatype of solution variables     Tres: datatype of the mesh variables\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractParamType",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractParamType\n\nThis abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
+    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
 },
 
 {
@@ -189,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractMesh",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractMesh{Tmsh}\n\nThis abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:     Tmsh: datatype of the mesh data (coordinates, mapping to/from parametric           space, mapping jacobian).\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -753,11 +753,99 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/misc.html#ODLCommonTools.BCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.BCType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors that compute the   reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.SRCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.SRCType",
+    "category": "Type",
+    "text": "Abstract supertype of all source term functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG face   integrals\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG   face integral that compute the reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
     "location": "solver/misc.html#Abstract-Functor-Types-1",
     "page": "Assorted Function and Types",
     "title": "Abstract Functor Types",
     "category": "section",
     "text": "Abstract types are provided for commonly used Functors:BCType\nBCType_revm\nSRCType\nFluxType\nFluxType_revm"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Boundary",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Boundary",
+    "category": "Type",
+    "text": "ODLCommonTools.Boundary\n\nUsed to identify boundary faces in a finite-element grid.\n\nFields\n\nelement\n : index of the element to which the boundary face belongs\nface\n : the face index of the boundary (local index to the element)\n\nExample\n\nTo mark face 2 of element 7 to be a boundary face, use Boundary(7,2)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Interface",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Interface",
+    "category": "Type",
+    "text": "ODLCommonTools.Interface\n\nUsed to identify interfaces between elements in a finite-element grid.\n\nFields\n\nelementL\n : index of the so-called left element in the pair\nelementR\n : index of the so-called right element in the pair\nfaceL\n : the face index of the interface with respect to the left element\nfaceR\n : the face index of the interface with respect to the right element\norient\n : orientation of the 'right' element relative to the 'left'\n\nExample\n\nConsider an interface between elements 2 and 5.  Suppose the interface is on face 1 of element 2 and face 3 of element 5.  Furthermore, suppose element 5 has orientation 1 relative to element 1 (defintion of orientation TBD).  This can be indicated as Interface(2,5,1,3,1)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getElementL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getElementL",
+    "category": "Function",
+    "text": "This function returns either the element field of a Boundary or the   elementL field of an interface.\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getFaceL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getFaceL",
+    "category": "Function",
+    "text": "This function returns either the face field of a Boundary or the   faceL field of an Interface\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Boundary}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Boundary objects\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Interface}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Interface objects\n\n\n\n"
 },
 
 {
@@ -2065,11 +2153,67 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "input/input.html#Input-Module-Documentation-1",
+    "location": "input/input.html#Input-1",
     "page": "Introduction",
-    "title": "Input Module Documentation",
+    "title": "Input",
     "category": "section",
-    "text": ""
+    "text": "A PDESolver execution is controlled by an options dictonary.  The user must supply this dictonary in the form of a Julia source file that declares a Dict{Any, Any} called arg_dict. The file path (relative to the users pwd must be passed to the solver as the the first optional argument.  For example, to launch a PDESolver run, executejulia /path/to/startup.jl \"path/to/dictonary\"Descriptions of the valid keys and values can be found in the file input_vals.txt. PDESolver supplies default values for all keys for which there is a sane default.  Values that might be unused are initialized to -1 or \"none\"."
+},
+
+{
+    "location": "input/input.html#Conventions-1",
+    "page": "Introduction",
+    "title": "Conventions",
+    "category": "section",
+    "text": "Physics modules generally use the majorIterationCallback function to log important quantities to files.  Such logging should be controlled by two keys, \"write_outname\" where outname is the name of the quantity, which has a boolean value, and \"write_outname_fname\" that has a string value containing the name of the file to write (including extension).  Examples out things that can be logged are entropy and kinetic energy.  Both these keys should have default values, and users should generally not need to modify the second one."
+},
+
+{
+    "location": "input/input.html#Input.make_input-Tuple{Dict{K,V},AbstractString}",
+    "page": "Introduction",
+    "title": "Input.make_input",
+    "category": "Method",
+    "text": "Make an input file from an options dictionary.\n\nInputs:     dict: the options dictionary     fname: the file name (without extension)\n\n\n\n"
+},
+
+{
+    "location": "input/input.html#Input.read_input-Tuple{AbstractString}",
+    "page": "Introduction",
+    "title": "Input.read_input",
+    "category": "Method",
+    "text": "PDESolver.read_input\n\nThis function reads a file which must  be a julia source file that declares   a dictionary of option keywords and values for the options named arg_dict.   See the documention on input variables for valid keywords.\n\nread_input() returns the dictionary after doing some sanity checks and   supplying default values for any unspecified keys.\n\nAfter supplying default values, it prints the dictonary to arg_dict_output.jl,   which is a valid julia source file and can be read in to re-run a simulation.\n\nThis function checks whether the keys in arg_dict are recognized keywords   and prints a warning to STDERR if an unrecognized key is found.  The list of   known keys is read from the julia source file known_keys.jl\n\nInputs:     * fname : name of file to read\n\nOutputs:     arg_dict: a Dict{Any, Any} containing the option keywords and values\n\n\n\n"
+},
+
+{
+    "location": "input/input.html#Input.checkForIllegalOptions_post-Tuple{Any}",
+    "page": "Introduction",
+    "title": "Input.checkForIllegalOptions_post",
+    "category": "Method",
+    "text": "Check the user supplied options for errors after supplying default options.\n\n\n\n"
+},
+
+{
+    "location": "input/input.html#Input.checkForIllegalOptions_pre-Tuple{Any}",
+    "page": "Introduction",
+    "title": "Input.checkForIllegalOptions_pre",
+    "category": "Method",
+    "text": "Check the user supplied options for errors before supplying default values\n\n\n\n"
+},
+
+{
+    "location": "input/input.html#Input.checkKeys-Tuple{Any,Any}",
+    "page": "Introduction",
+    "title": "Input.checkKeys",
+    "category": "Method",
+    "text": "PDESolver.checkKeys\n\nThis function verifies all the keys in the first argument are also keys   of the second argument and prints a warning to STDERR if they are not.\n\nInputs     arg_dict: first dictonary     known_keys: second dictonary\n\nOutputs:     cnt: number of unrecognized keys\n\n\n\n"
+},
+
+{
+    "location": "input/input.html#Key-Validation-1",
+    "page": "Introduction",
+    "title": "Key Validation",
+    "category": "section",
+    "text": "After supplying default values, PDESolver checks that all keys in the dictonary are recognized keys.  It does this by comparing against the list of keys documented in the input_vals.txt file.  A warning of is printed to STDERR if an unrecognized key is found.The mechanics of the key validation are as follows.  The extract_keys.jl script reads the input_vals.txt file (and the input_vals_internal.txt), looking for any string that is surrounded by double quotes and starts in the first character of a line.  All keys are written to a dictonary in the file known_keys.jl.  This file is included by PDESolver.The script extract_keys.jl is run as part of PDESolver installation.  If new keys are added it must be run again to silence warnings during key validation.  Modules = [Input]\n  Pages = [\"input/extract_keys.jl\",\n           \"input/Input.jl\",\n           \"input/make_input.jl\",\n           \"input/read_input.jl\"]"
 },
 
 {
@@ -2133,7 +2277,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Main",
     "title": "Utilties",
     "category": "section",
-    "text": "This module contains functions and types that are useful for the solver but independent the equation being solved. Additional utility functions are located in the ODLCommontools. The functions defined in the Utils module are useful in the context of PDESolver and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in ODLCommonTools are more general in nature and usable independent of PDESolver.  Pages = [\"io.md\"\n           \"logging.md\"\n           \"projections.md\"\n           \"parallel.md\"\n          ]\n  Depth = 1"
+    "text": "This module contains functions and types that are useful for the solver but independent of the equation being solved. Additional utility functions are located in the ODLCommontools. The functions defined in the Utils module are useful in the context of PDESolver and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in ODLCommonTools are more general in nature and usable independent of PDESolver.  Pages = [\"io.md\"\n           \"logging.md\"\n           \"projections.md\"\n           \"parallel.md\"\n          ]\n  Depth = 1"
 },
 
 {
