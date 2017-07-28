@@ -645,40 +645,6 @@ function test_reversemode()
 
   end # End facts("--- Testing evalrevm_transposeproduct ---")
 
-
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_3d_reversemode.jl"
-  include("../../src/solver/euler/startup.jl")
-  EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
-
-  facts("--- Testing Pressure derivative in reverse mode in 3D ---") do
-
-    press_bar = complex(rand(Float64),0)
-    q_bar = zeros(Complex128, mesh.numDofPerNode)
-    q_bar_complex = zeros(Complex128, mesh.numDofPerNode)
-    pert = complex(0,1e-20)
-    # println("type of eqn.q = ", typeof(eqn.q))
-    for i = 1:mesh.numEl
-      for j = 1:mesh.numNodesPerElement
-        q_vals = sview(eqn.q, :,j,i)
-        fill!(q_bar, 0.0)
-        EulerEquationMod.calcPressure_revq(eqn.params, q_vals, press_bar, q_bar)
-
-        # Check agains complex step
-        for k = 1:mesh.numDofPerNode
-          q_vals[k] += pert
-          press_complex = EulerEquationMod.calcPressure(eqn.params, q_vals)
-          press_complex = imag(press_complex)/imag(pert)
-          q_bar_complex[k] = press_complex*press_bar
-          q_vals[k] -= pert
-          error = norm(q_bar_complex[k] - q_bar[k], 2)
-          @fact error --> roughly(0.0, atol=1e-10)
-        end
-      end # End for j = 1:mesh.numNodesPerElement
-    end   # End for i = 1:mesh.numEl
-
-  end # facts("--- Testing Pressure derivative in reverse mode ---")
-
   facts("--- Testing 3D Euler Flux derivative in Reverse mode ---") do
 
     Tdim = mesh.dim
@@ -795,19 +761,31 @@ function test_reversemode()
         q = sview(eqn.q_bndry, :, j, global_facenum)
         aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm[:] = sbp.facenormal[:, bndry_i.face]
-        dxidx_bar = zeros(Complex128, Tdim, Tdim)
-        EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, psi, dxidx_bar)
-        for k = 1:length(dxidx)
-          dxidx[k] += pert
-          EulerEquationMod.RoeSolver(params, q, qg, aux_vars, dxidx, nrm, complex_flux)
+        nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
+        nrm_bar = zeros(Complex128, Tdim)
+        EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, nrm, psi, nrm_bar)
+        for k = 1:length(nrm)
+          nrm[k] += pert
+          EulerEquationMod.RoeSolver(params, q, qg, aux_vars, nrm, complex_flux)
           dRoeFlux = imag(complex_flux)/imag(pert)
           complex_psi_dRoeFlux = dot(psi, dRoeFlux)
-          error = norm(dxidx_bar[k] - complex_psi_dRoeFlux, 2)
+          error = norm(nrm_bar[k] - complex_psi_dRoeFlux, 2)
           @fact error --> roughly(0.0, atol = 1e-12)
-          dxidx[k] -= pert
-        end # End for k = 1:Tdim
+          nrm[k] -=pert
+        end
+        # dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+        # nrm[:] = sbp.facenormal[:, bndry_i.face]
+        # dxidx_bar = zeros(Complex128, Tdim, Tdim)
+        # EulerEquationMod.RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, psi, dxidx_bar)
+        # for k = 1:length(dxidx)
+        #   dxidx[k] += pert
+        #   EulerEquationMod.RoeSolver(params, q, qg, aux_vars, dxidx, nrm, complex_flux)
+        #   dRoeFlux = imag(complex_flux)/imag(pert)
+        #   complex_psi_dRoeFlux = dot(psi, dRoeFlux)
+        #   error = norm(dxidx_bar[k] - complex_psi_dRoeFlux, 2)
+        #   @fact error --> roughly(0.0, atol = 1e-12)
+        #   dxidx[k] -= pert
+        # end # End for k = 1:Tdim
       end
     end
 
@@ -827,7 +805,7 @@ function test_reversemode()
       # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
       functor_rev = mesh.bndry_funcs_revm[2]
       functor = mesh.bndry_funcs[2]
-      fill!(mesh.dxidx_bndry_bar, 0.0)
+      fill!(mesh.nrm_bndry_bar, 0.0)
 
 
       start_index = mesh.bndry_offsets[2]
@@ -851,23 +829,33 @@ function test_reversemode()
           q = sview(eqn.q_bndry, :, j, global_facenum)
           aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
           x = sview(mesh.coords_bndry, :, j, global_facenum)
-          dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-          nrm[:] = sbp.facenormal[:, bndry_i.face]
+          nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
           tmpflux = zeros(Complex128, mesh.numDofPerNode)
           bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
-          # println("bndryflux_bar_i = $bndryflux_bar_i")
-          dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
-          for k = 1:length(dxidx)
-            dxidx[k] += pert
-            functor(q, aux_vars, x, dxidx, nrm, tmpflux, eqn.params)
+          nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
+          for k = 1:length(nrm)
+            nrm[k] += pert
+            functor(eqn.params, q, aux_vars, x, nrm, tmpflux)
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
-            error = norm(dxidx_bndry_bar[k] - dot_product, 2)
-            # println("error = $error")
+            error = norm(nrm_bar[k] - dot_product, 2)
             @fact error --> roughly(0.0, atol = 1e-12)
-            # println("dot_product = $dot_product, dxidx_bndry_bar[$k] = $(real(dxidx_bndry_bar[k]))")
-            dxidx[k] -= pert
-          end # End for k = 1:Tdim
+            nrm[k] -= pert
+          end
+          # dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
+          # nrm[:] = sbp.facenormal[:, bndry_i.face]
+          # tmpflux = zeros(Complex128, mesh.numDofPerNode)
+          # bndryflux_bar_i = sview(bndryflux_bar, :, j, i)
+          # dxidx_bndry_bar = sview(mesh.dxidx_bndry_bar, :, :, j, global_facenum)
+          # for k = 1:length(dxidx)
+          #   dxidx[k] += pert
+          #   functor(q, aux_vars, x, dxidx, nrm, tmpflux, eqn.params)
+          #   tmpflux[:] = imag(tmpflux[:])/imag(pert)
+          #   dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
+          #   error = norm(dxidx_bndry_bar[k] - dot_product, 2)
+          #   @fact error --> roughly(0.0, atol = 1e-12)
+          #   dxidx[k] -= pert
+          # end # End for k = 1:Tdim
         end
       end
 
@@ -891,7 +879,7 @@ function test_reversemode()
 
     functor = eqn.flux_func
     nfaces = length(mesh.interfaces)
-    nrm = zeros(Complex128, size(sbp.facenormal,1))
+    nrm = zeros(Complex128, mesh.dim)
     for i=1:nfaces  # loop over faces
       interface_i = mesh.interfaces[i]
       for j = 1:mesh.numNodesPerFace
@@ -901,21 +889,39 @@ function test_reversemode()
         # get components
         qL = sview(eqn.q_face, :, 1, j, i)
         qR = sview(eqn.q_face, :, 2, j, i)
-        dxidx = sview(mesh.dxidx_face, :, :, j, i)
-        dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
+        nrm = sview(mesh.nrm_face, :, :, j, i)
+        nrm_bar = sview(mesh.nrm_face_bar, :, :, j, i)
         aux_vars = sview(eqn.aux_vars_face, :, j, i)
-        nrm[:] = sbp.facenormal[:,fL]
-
         flux_j_bar = sview(eqn.flux_face_bar, :, j, i)
-        for k = 1:length(dxidx)
-          dxidx[k] += pert
-          functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, tmpflux)
+        for k = 1:length(nrm)
+          nrm[k] += pert
+          println("params ", typeof(eqn.params))
+          println("qL ", typeof(qL))
+          println("qR ", typeof(qR))
+          println("aux_vars ", typeof(aux_vars))
+          println("nrm ", typeof(nrm))
+          println("tmpflux ", typeof(tmpflux))
+          functor(eqn.params, qL, qR, aux_vars, nrm, tmpflux)
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
-          error = norm(dxidx_bar[k] - dot_product, 2)
+          error = norm(nrm_bar[k] - dot_product, 2)
           @fact error --> roughly(0.0, atol = 1e-12)
-          dxidx[k] -= pert
-        end # End for k = 1:length(dxidx)
+          nrm[k] -= pert
+        end
+        # dxidx = sview(mesh.dxidx_face, :, :, j, i)
+        # dxidx_bar = sview(mesh.dxidx_face_bar, :, :, j, i)
+        # aux_vars = sview(eqn.aux_vars_face, :, j, i)
+        # nrm[:] = sbp.facenormal[:,fL]
+        # flux_j_bar = sview(eqn.flux_face_bar, :, j, i)
+        # for k = 1:length(dxidx)
+        #   dxidx[k] += pert
+        #   functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, tmpflux)
+        #   tmpflux[:] = imag(tmpflux[:])/imag(pert)
+        #   dot_product = dot(real(flux_j_bar),real(tmpflux))
+        #   error = norm(dxidx_bar[k] - dot_product, 2)
+        #   @fact error --> roughly(0.0, atol = 1e-12)
+        #   dxidx[k] -= pert
+        # end # End for k = 1:length(dxidx)
       end
     end
 
@@ -1216,6 +1222,39 @@ function test_reversemode()
     end # End context("Checking Complete boundary functional drag in reverse")
 
   end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
+
+  resize!(ARGS, 1)
+  ARGS[1] = "input_vals_3d_reversemode.jl"
+  include("../../src/solver/euler/startup.jl")
+  EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+
+  facts("--- Testing Pressure derivative in reverse mode in 3D ---") do
+
+    press_bar = complex(rand(Float64),0)
+    q_bar = zeros(Complex128, mesh.numDofPerNode)
+    q_bar_complex = zeros(Complex128, mesh.numDofPerNode)
+    pert = complex(0,1e-20)
+    # println("type of eqn.q = ", typeof(eqn.q))
+    for i = 1:mesh.numEl
+      for j = 1:mesh.numNodesPerElement
+        q_vals = sview(eqn.q, :,j,i)
+        fill!(q_bar, 0.0)
+        EulerEquationMod.calcPressure_revq(eqn.params, q_vals, press_bar, q_bar)
+
+        # Check agains complex step
+        for k = 1:mesh.numDofPerNode
+          q_vals[k] += pert
+          press_complex = EulerEquationMod.calcPressure(eqn.params, q_vals)
+          press_complex = imag(press_complex)/imag(pert)
+          q_bar_complex[k] = press_complex*press_bar
+          q_vals[k] -= pert
+          error = norm(q_bar_complex[k] - q_bar[k], 2)
+          @fact error --> roughly(0.0, atol=1e-10)
+        end
+      end # End for j = 1:mesh.numNodesPerElement
+    end   # End for i = 1:mesh.numEl
+
+  end # facts("--- Testing Pressure derivative in reverse mode ---")
 
   return nothing
 end # End function test_reversemode

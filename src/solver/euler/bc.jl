@@ -555,9 +555,9 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
 #  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
   fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
   # normalize normal vector
-  nx = nx2*fac
-  ny = ny2*fac
-  nz = nz2*fac
+  nx = nx*fac
+  ny = ny*fac
+  nz = nz*fac
 
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
@@ -640,17 +640,17 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
 
   # Reverse sweep
 #  nrm2_bar = zeros(Tmsh, 2)
-  q_bar = zeros(Tsol, 4)
+  qg_bar = zeros(Tsol, 4)
   calcEulerFlux_revm(params, v_vals, aux_vars, nrm, bndryflux_bar, nrm_bar)
-  calcEulerFlux_revq(params, v_vals, aux_vars, nrm, bndryflux_bar, q_bar)
+  calcEulerFlux_revq(params, v_vals, aux_vars, nrm, bndryflux_bar, qg_bar)
 
   # TODO: reverse mode convertFromNaturalToWorkingVars(params, qg, v_vals)
   n1_bar = nrm_bar[1]
   n2_bar = nrm_bar[2]
 
 
-  # q[2] = q[2] - nx*Unrm
-  # q[3] = q[3] - ny*Unrm
+  # qg[2] = qg[2] - nx*Unrm
+  # qg[3] = qg[3] - ny*Unrm
   ny_bar = -qg_bar[3]*Unrm
   nx_bar = -qg_bar[2]*Unrm
   Unrm_bar = -qg_bar[3]*ny -qg_bar[2]*nx
