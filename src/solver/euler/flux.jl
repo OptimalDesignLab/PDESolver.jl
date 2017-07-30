@@ -144,6 +144,42 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
 end
 
 """
+  This function loops over interfaces and computes a face integral that
+  uses data from all volume nodes. See FaceElementIntegralType for details on
+  the integral performed. This function works on the staggered grid.
+
+  Inputs:
+    mesh_s: mesh object on solution mesh
+    mesh_f: mesh object on flux mesh
+    sbp_s: SBP operator on solution mesh
+    sbp_f: SBP operator on flux mesh
+    face_integral_functor: a [`FaceElementIntegralType`](@doc) functor
+    flux_functor: a [`FluxType`] functor that is passed to face_integral_functor
+                  to use as the numerical flux function
+    sbpface: an AbstractFace for the flux grid
+    interfaces: vector of [`Interfaces`](@doc) that the integral will be
+                computed for.
+
+  Inputs/Outputs:
+    eqn: equation object (implicitly lives on solution grid).  eqn.res is
+          updated with the results.
+"""
+function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
+                           mesh_s::AbstractDGMesh{Tmsh},
+                           mesh_f::AbstractDGMesh{Tmsh},
+                           sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, Tdim},
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
+                           sbpface::AbstractFace,
+                           interfaces::AbstractArray{Interface, 1})
+
+  error("getFaceElementIntegrals not implemented for staggered grid")
+
+  return nothing
+end
+
+"""
   This function is a thin wrapper around
   getShareFaceElementIntegral_element_inner, presenting the interface needed
   by finishExchangeData.  See that function for the interface details.
@@ -153,8 +189,15 @@ function calcSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData)
 
-  calcSharedFaceElementIntegrals_element_inner(mesh, sbp, eqn, opts, data,
-                          eqn.face_element_integral_func,  eqn.flux_func)
+  if opts["use_staggered_grid"]
+    calcSharedFaceElementIntegralsStaggered_element_inner(mesh, mesh.mesh2, 
+                            sbp, mesh.sbp2, eqn, opts, data,
+                            eqn.face_element_integral_func, eqn.flux_func)
+
+  else
+    calcSharedFaceElementIntegrals_element_inner(mesh, sbp, eqn, opts, data,
+                            eqn.face_element_integral_func,  eqn.flux_func)
+  end
 
   return nothing
 end
@@ -215,6 +258,40 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
     face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
                           nrm_face, flux_functor, resL, resR)
   end  # end loop j
+
+  return nothing
+end
+
+"""
+  Like [`calcSharedFaceElementIntegrals_inner`](@ref), but for staggered grid.
+
+  **Inputs**:
+
+   * mesh_s: solution grid mesh
+   * mesh_f: flux grid mesh
+   * sbp_s: SBP operator for solution grid
+   * sbp_f: SBP operator for the flux grid
+   * opts: options dictionary
+   * data: [`SharedFaceData`](@ref)
+   * face_integral_functor: [`FaceElementIntegralType`](@ref)
+   * flux_functor: [`FluxType`](@ref) passed to face_integral functor
+
+  **Inputs/Outputs**:
+
+    * eqn: equation object (lives on solution grid)
+
+  Aliasing restrictions: none
+"""
+function calcSharedFaceElementIntegralsStaggered_element_inner{Tmsh, Tsol, Tres}(
+                            mesh_s::AbstractDGMesh{Tmsh},
+                            mesh_f::AbstractDGMesh{Tmsh},
+                            sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                            eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            face_integral_functor::FaceElementIntegralType,
+                            flux_functor::FluxType)
+
+  error("sharedFaceElementIntegrals not implemented for staggered grid")
 
   return nothing
 end
