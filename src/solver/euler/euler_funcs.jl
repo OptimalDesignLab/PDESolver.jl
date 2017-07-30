@@ -217,10 +217,17 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
                                         sbp::AbstractSBP,  
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
-  if mesh.coord_order == 1
-    calcVolumeIntegralsSplitFormLinear(mesh, sbp, eqn, opts, functor)
+
+  if opts["use_staggered_grid"]
+    # not planning on implementing the non-curvilinear version of this
+    calcVolumeIntegralsSplitFormStaggered(mesh, mesh,mesh2, sbp, mesh.sbp2,
+                                          eqn, opts, functor)
   else
-    calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn, opts, functor)
+    if mesh.coord_order == 1
+      calcVolumeIntegralsSplitFormLinear(mesh, sbp, eqn, opts, functor)
+    else
+      calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn, opts, functor)
+    end
   end
 
   return nothing
@@ -342,6 +349,41 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end
 
+
+"""
+  This function calculates I_S2F.'*(S .* F( uk(I_S2F wk), uk(I_S2F wk)))1.
+  This is similar to
+  [`calcVolumeIntegralsSplitFormCurvilinear](@ref), but for the staggered grid
+  algorithm.
+
+  Inputs:
+    mesh_s: the mesh object for the solution grid
+    mesh_f: the mesh object for the flux grid
+    sbp_s: SBP operator for solution grid
+    sbp_f: SBP operator for flux grid
+    functor: the numerical flux functor ([`FluxType`](@ref)) used to compute F
+
+  Inputs/Outputs:
+    eqn: the equation object (implicitly on the solution grid).  eqn.res is
+         updated with the result
+
+  Aliasing Restrictions: none (the meshes and the sbp operators could alias,
+                         in which case this algorithm reduces to the 
+                         non-staggered version
+"""
+function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
+                                        mesh_s::AbstractMesh{Tmsh},
+                                        mesh_f::AbstractMesh{Tmsh},
+                                        sbp_s::AbstractSBP,
+                                        sbp_f::AbstractSBP
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                                        functor::FluxType)
+
+
+  error("calcVolumeIntegralsSplitForm not implemented for staggered grid")
+
+  return nothing
+end
 
 
 # calculating the Euler flux at a node
