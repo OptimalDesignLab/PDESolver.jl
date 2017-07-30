@@ -40,7 +40,7 @@ function createMeshAndOperator(opts, dofpernode)
   # when the second mesh is created
 
   mesh_time = 0.0
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     op_type_orig = opts["operator_type"]
     op_type_2 = opts["operator_type2"]
 
@@ -65,7 +65,7 @@ function createMeshAndOperator(opts, dofpernode)
                                                 topo, Tmsh, dofpernode)
 
   # store the second mesh and SBP operator inside the first mesh
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     mesh.mesh2 = mesh2
     mesh.sbp2 = sbp2
   end

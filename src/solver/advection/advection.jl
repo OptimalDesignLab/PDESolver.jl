@@ -483,7 +483,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
 
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     mesh2 = mesh.mesh2
     sbp2 = sbp.sbp2
     getBCFunctors(mesh2, sbp2, eqn, opts)

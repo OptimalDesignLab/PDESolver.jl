@@ -210,7 +210,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
 
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_gird"]
     mesh2 = mesh.mesh2
     sbp2 = mesh.sbp2
     

@@ -46,3 +46,6 @@
 
 "precompute_q_bndry": whether or not to use eqn.q_bndyr, (Bool), determined from
                       "precompute_bndry_flux" and other things
+
+"use_staggered_grid": whether or not the staggered grid algorithm is used,
+                      (Bool), determined from "operator_ type2".
