@@ -51,7 +51,7 @@ function createMeshAndOperator(opts, dofpernode)
                                                   shape_type, topo, Tmsh,
                                                   dofpernode)
     if !(mesh2 === pmesh2)
-      throw(ErrorException("preconditioning mesh not supported with staggered girds"))
+      throw(ErrorException("preconditioning mesh not supported with staggered grids"))
     end
 
     # reset the options dictionary

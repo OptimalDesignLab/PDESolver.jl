@@ -164,6 +164,15 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
 
+    # all the spatial computations happen on the *flux* grid when using
+    # the staggered grid algorithm, so make the temporary vectors the
+    # right size
+    if opts["use_staggered_grid"]
+      numNodesPerElement = mesh.mesh2.numNodesPerElement
+    else
+      numNodesPerElement = mesh.numNodesPerElement
+    end
+
     t = 0.0
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
@@ -212,10 +221,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
     nrm_face2 = zeros(Tmsh, Tdim, mesh.sbpface.numnodes)
 
-    dxidx_element = Array(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
-    velocities = Array(Tsol, Tdim, mesh.numNodesPerElement)
-    velocity_deriv = Array(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
-    velocity_deriv_xy = Array(Tres, Tdim, Tdim, mesh.numNodesPerElement) 
+    dxidx_element = Array(Tmsh, Tdim, Tdim, numNodesPerElement)
+    velocities = Array(Tsol, Tdim, numNodesPerElement)
+    velocity_deriv = Array(Tsol, Tdim, numNodesPerElement, Tdim)
+    velocity_deriv_xy = Array(Tres, Tdim, Tdim, numNodesPerElement) 
 
 
     h = maximum(mesh.jac)
@@ -269,7 +278,6 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     sbpface = mesh.sbpface
 
-    numNodesPerElement = mesh.numNodesPerElement
     Rprime = zeros(size(sbpface.interp, 2), numNodesPerElement)
     # expand into right size (used in SBP Gamma case)
     for i=1:size(sbpface.interp, 1)

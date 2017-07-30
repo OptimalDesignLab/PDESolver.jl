@@ -5,6 +5,9 @@ function test_staggered()
   fname = "input_vals_staggered.jl"
   mesh, sbp, eqn, opts = run_solver(fname)
 
+  # force it to not use the staggered grid
+
+  opts["use_staggered_grid"] = false
   # evalute the residual on the original, second mesh, make sure they are
   # the same
   mesh2 = mesh.mesh2

@@ -375,7 +375,7 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
                                         mesh_s::AbstractMesh{Tmsh},
                                         mesh_f::AbstractMesh{Tmsh},
                                         sbp_s::AbstractSBP,
-                                        sbp_f::AbstractSBP
+                                        sbp_f::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
 
