@@ -59,6 +59,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   res_el1::Array{Tsol, 2}
   res_el2::Array{Tsol, 2}
 
+  # solution grid temporaries
+  qs_el1::Array{Tsol, 2}
+  qs_el2::Array{Tsol, 2}
+
+  ress_el1::Array{Tsol, 2}
+  ress_el2::Array{Tsol, 2}
+
   # numDofPerNode x stencilsize arrays for entropy variables
   w_vals_stencil::Array{Tsol, 2}
   w_vals2_stencil::Array{Tsol, 2}
@@ -206,6 +213,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     res_el1 = Array(Tres, mesh.numDofPerNode, numNodesPerElement)
     res_el2 = Array(Tres, mesh.numDofPerNode, numNodesPerElement)
 
+    qs_el1 = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+    qs_el2 = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+    ress_el1 = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+    ress_el2 = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+
     w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
     w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
 
@@ -317,6 +330,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
                Lambda,q_el1, q_el2, q_el3, q_el4, res_el1, res_el2,
+               qs_el1, qs_el2, ress_el1, ress_el2,
                w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3,  flux_vals1, 
                flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 

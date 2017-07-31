@@ -393,11 +393,12 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
   # temporary arrays for interpolation
 
   # need one for conversion to entropy variables on solution grid
-  wvars_s = zeros(Tsol, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
-  wvars_f = eqn.params.q_el2  # entropy variables on flux grid
-  qvars_f = eqn.params.q_el3  # entropy variables on solution grid
+  wvars_s = eqn.params.qs_el1 #zeros(Tsol, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
+  wvars_f = eqn.params.q_el1  # entropy variables on flux grid
+  qvars_f = eqn.params.q_el2  # entropy variables on solution grid
   aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
   res_f = eqn.params.res_el1
+  res_s = eqn.params.ress_el1 #zeros(Tres, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
 
   # S is calculated in x-y-z, so the normal vectors should be the unit normals
   fill!(nrm, 0.0)
@@ -455,10 +456,17 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
     end  # end j loop
 
     # reverse interpolate the residual
-    res_i = sview(res, :, :, i)
     #TODO: smallmatTmat might be faster
-    # TODO: make this += into res_i
-    smallmatmat!(res_f, mesh_s.I_S2F, res_i)
+    # TODO: emulate BLAS interface to allow updating the rhs
+    smallmatmat!(res_f, mesh_s.I_S2F, res_s)
+
+    # accumulate into res
+    for j=1:mesh_s.numNodesPerElement
+      for k=1:mesh_s.numDofPerNode
+        res[k, j, i] += res_s[k, j]
+      end
+    end
+
 
   end  # end i loop
 

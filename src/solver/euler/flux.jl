@@ -174,11 +174,90 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
                            sbpface::AbstractFace,
                            interfaces::AbstractArray{Interface, 1})
 
-  error("getFaceElementIntegrals not implemented for staggered grid")
+  params = eqn.params
+#  sbpface = mesh.sbpface
+  res = eqn.res
+  nfaces = length(interfaces)
+#  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+#  resR2 = zeros(resL2)
+  
+  wvarsL_s = params.qs_el1
+  wvarsR_s = params.qs_el2
+  wvarsL_f = params.q_el1
+  wvarsR_f = params.q_el2
+  qvarsL_f = params.q_el3
+  qvarsR_f = params.q_el4
+  resL_s = params.ress_el1
+  resR_s = params.ress_el2
+  resL_f = params.res_el1
+  resR_f = params.res_el2
+
+  aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
+
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+#    qL = ro_sview(eqn.q, :, :, elL)
+#    qR = ro_sview(eqn.q, :, :, elR)
+#    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(mesh_f.nrm_face, :, :, i)
+#    resL = sview(eqn.res, :, :, elL)
+#    resR = sview(eqn.res, :, :, elR)
+
+    # convert to entropy
+    # TODO: see how much time is spent converting back and forth between
+    # entropy and conservative variables and see if caching the result
+    # makes sense
+    for j=1:mesh_s.numNodesPerElement
+      qL_j = ro_sview(eqn.q, :, j, elL)
+      qR_j = ro_sview(eqn.q, :, j, elR)
+      wL_j = sview(wvarsL_s, :, j)
+      wR_j = sview(wvarsR_s, :, j)
+      convertToIR(eqn.params, qL_j, wL_j)
+      convertToIR(eqn.params, qR_j, wR_j)
+    end
+
+    # interpolate
+    smallmatmat!(wvarsL_s, mesh_s.I_S2FT, wvarsL_f)
+    smallmatmat!(wvarsR_s, mesh_s.I_S2FT, wvarsR_f)
+
+    # convert back
+    for j=1:mesh_f.numNodesPerElement
+      wL_j = ro_sview(wvarsL_f, :, j)
+      wR_j = ro_sview(wvarsR_f, :, j)
+      qL_j = sview(qvarsL_f, :, j)
+      qR_j = sview(qvarsR_f, :, j)
+
+      convertToConservativeFromIR_(eqn.params, wL_j, qL_j)
+      convertToConservativeFromIR_(eqn.params, wR_j, qR_j)
+      aux_vars[1, j] = calcPressure(eqn.params, qL_j)
+    end
+
+    fill!(resL_f, 0.0)
+    fill!(resR_f, 0.0)
+
+    face_integral_functor(params, sbpface, iface, qvarsL_f, qvarsR_f, aux_vars,
+                       nrm_face, flux_functor, resL_f, resR_f)
+
+    # interpolate back
+    smallmatmat!(resL_f, mesh_s.I_S2F, resL_s)
+    smallmatmat!(resR_f, mesh_s.I_S2F, resR_s)
+
+    # accumulate into res
+    @simd for j=1:mesh_s.numNodesPerElement
+      @simd for k=1:mesh_s.numDofPerNode
+        res[k, j, elL] += resL_s[k, j]
+        res[k, j, elR] += resR_s[k, j]
+      end
+    end
+
+  end  # end loop i
 
   return nothing
 end
 
+                         
 """
   This function is a thin wrapper around
   getShareFaceElementIntegral_element_inner, presenting the interface needed

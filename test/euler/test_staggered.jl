@@ -77,6 +77,18 @@ function test_staggered_same(mesh, sbp, eqn, opts)
 
   @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
 
+
+  fill!(eqn.res, 0.0)
+  EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func, eqn.flux_func, mesh.sbpface, mesh.interfaces)
+
+  res_orig = copy(eqn.res)
+  fill!(eqn.res, 0.0)
+  EulerEquationMod.getFaceElementIntegral(mesh, mesh2, sbp, sbp2, eqn, eqn.face_element_integral_func, eqn.flux_func, mesh2.sbpface, mesh.interfaces)
+
+  @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
+
+  fill!(eqn.res, 0.0)
+
   return nothing
 end
 
@@ -142,6 +154,14 @@ function test_staggered_different(mesh, sbp, eqn, opts)
   EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear(mesh, mesh2, sbp, sbp2, eqn, opts, eqn.flux_func)
   @fact sum(eqn.res) --> roughly(0.0, atol=1e-13)
 
+
+  fill!(eqn.res, 0.0)
+  applyPoly(mesh, sbp, eqn, opts, sbp.degree)
+  penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+
+  EulerEquationMod.getFaceElementIntegral(mesh, mesh2, sbp, sbp2, eqn, penalty_functor, eqn.flux_func, mesh2.sbpface, mesh.interfaces)
+  
+  @fact vecnorm(eqn.res) --> roughly(0.0, atol=1e-13)
 
   return nothing
 end
