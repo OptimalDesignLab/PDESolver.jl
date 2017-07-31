@@ -69,7 +69,20 @@ function createObjects(input_file::AbstractString)
 end
 
 @doc """
-Gets the type parameters for mesh and equation objects
+### EulerEquationMod.getTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+
+**Output**
+
+* `Tmsh` : Type parameter of the mesh.
+* `Tsol` : Type parameter of the solution array.
+* `Tres` : Type parameter of the residual array.
 """->
 
 function getTypeParameters{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres})
