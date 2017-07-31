@@ -77,7 +77,12 @@ makedocs(
               "NonlinearSolvers" => Any[
                   "Introduction" => "NonlinearSolvers/nonlinearsolvers.md"
                   "Steady" => "NonlinearSolvers/steady.md"
-                  "Unsteady" => "NonlinearSolvers/unsteady.md"
+                  "Unsteady" => Any[
+                      "Intro" => "NonlinearSolvers/unsteady/intro.md"
+                      "Runge-Kutta" => "NonlinearSolvers/unsteady/rk4.md"
+                      "LSERK" => "NonlinearSolvers/unsteady/lserk.md"
+                      "Crank-Nicolson" => "NonlinearSolvers/unsteady/cn.md"
+                    ]
                  ]
               "Utils" => Any[ 
                   "Main" => "Utils/Utils.md"
