@@ -50,6 +50,15 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   v_vals2::Array{Tsol, 1}
   Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
 
+  # temporary storage for element level solution
+  q_el1::Array{Tsol, 2}
+  q_el2::Array{Tsol, 2}
+  q_el3::Array{Tsol, 2}
+  q_el4::Array{Tsol, 2}
+
+  res_el1::Array{Tsol, 2}
+  res_el2::Array{Tsol, 2}
+
   # numDofPerNode x stencilsize arrays for entropy variables
   w_vals_stencil::Array{Tsol, 2}
   w_vals2_stencil::Array{Tsol, 2}
@@ -189,6 +198,14 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     v_vals2 = Array(Tsol, Tdim + 2)
     Lambda = Array(Tsol, Tdim + 2)
 
+    q_el1 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
+    q_el2 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
+    q_el3 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
+    q_el4 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
+
+    res_el1 = Array(Tres, mesh.numDofPerNode, numNodesPerElement)
+    res_el2 = Array(Tres, mesh.numDofPerNode, numNodesPerElement)
+
     w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
     w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
 
@@ -299,7 +316,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
+               Lambda,q_el1, q_el2, q_el3, q_el4, res_el1, res_el2,
+               w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3,  flux_vals1, 
                flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
                A_mats, Rmat1, Rmat2, P,

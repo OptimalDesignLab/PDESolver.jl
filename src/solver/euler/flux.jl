@@ -671,6 +671,44 @@ end
 # Different fluxes
 #------------------------------------------------------------------------------
 
+"""
+  This flux function sets F = q.  Useful for testing
+"""
+type IdentityFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IdentityFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F::AbstractVector{Tres})
+
+  for i=1:length(F)
+    F[i] = q[i]
+  end
+
+  return nothing
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IdentityFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractMatrix{Tmsh},
+              F::AbstractMatrix{Tres})
+
+  for j=1:size(F, 2)
+    for i=1:length(F)
+      F[i, j] = q[i]
+    end
+  end
+
+  return nothing
+end
+
+
+
 type RoeFlux <: FluxType
 end
 
@@ -762,6 +800,7 @@ end
 
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
+"IdentityFlux" => IdentityFlux(),
 "RoeFlux" => RoeFlux(),
 "StandardFlux" => StandardFlux(),
 "DucrosFlux" => DucrosFlux(),

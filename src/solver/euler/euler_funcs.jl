@@ -344,6 +344,7 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
 
 
     end  # end j loop
+
   end  # end i loop
 
   return nothing
@@ -378,13 +379,91 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
                                         sbp_f::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
+  dxidx = mesh_f.dxidx
+  res = eqn.res
+  q = eqn.q
+  nrm = eqn.params.nrmD
+#  aux_vars = eqn.aux_vars
+  F_d = eqn.params.flux_valsD
+#  S = eqn.params.S
+  S = Array(Tmsh, mesh_f.numNodesPerElement, mesh_f.numNodesPerElement, Tdim)
+  params = eqn.params
 
 
-  error("calcVolumeIntegralsSplitForm not implemented for staggered grid")
+  # temporary arrays for interpolation
+
+  # need one for conversion to entropy variables on solution grid
+  wvars_s = zeros(Tsol, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
+  wvars_f = eqn.params.q_el2  # entropy variables on flux grid
+  qvars_f = eqn.params.q_el3  # entropy variables on solution grid
+  aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
+  res_f = eqn.params.res_el1
+
+  # S is calculated in x-y-z, so the normal vectors should be the unit normals
+  fill!(nrm, 0.0)
+  for d=1:Tdim
+    nrm[d, d] = 1
+  end
+  
+  for i=1:mesh_f.numEl
+    # get S for this element
+    dxidx_i = ro_sview(dxidx, :, :, :, i)
+    calcSCurvilinear(sbp_f, dxidx_i, S)
+
+    # interpolation to flux grid
+
+    # convert to entropy variables
+    for j=1:mesh_s.numNodesPerElement
+      q_j = ro_sview(q, :, j, i)
+      w_j = sview(wvars_s, :, j)
+      convertToIR(eqn.params, q_j, w_j)
+    end
+
+    # interpolate
+    smallmatmat!(wvars_s, mesh_s.I_S2FT, wvars_f)
+
+    # convert back to conservative
+    for j=1:mesh_f.numNodesPerElement
+      w_j = ro_sview(wvars_f, :, j)
+      q_j = sview(qvars_f, :, j)
+      convertToConservativeFromIR_(eqn.params, w_j, q_j)
+      aux_vars[1, j] = calcPressure(eqn.params, q_j)
+    end
+
+    fill!(res_f, 0.0)
+    for j=1:mesh_f.numNodesPerElement
+      q_j = ro_sview(qvars_f, :, j)
+      aux_vars_j = ro_sview(aux_vars, :, j)
+      for k=1:(j-1)  # loop over lower triangle of S
+        q_k = ro_sview(qvars_f, :, k)
+
+        # calculate the numerical flux functions in all Tdim
+        # directions at once
+        functor(params, q_j, q_k, aux_vars_j, nrm, F_d)
+
+        @simd for d=1:Tdim
+          # update residual
+          @simd for p=1:(Tdim+2)
+            res_f[p, j] -= 2*S[j, k, d]*F_d[p, d]
+            res_f[p, k] += 2*S[j, k, d]*F_d[p, d]
+          end
+
+        end  # end d loop
+      end  # end k loop
+
+
+    end  # end j loop
+
+    # reverse interpolate the residual
+    res_i = sview(res, :, :, i)
+    #TODO: smallmatTmat might be faster
+    # TODO: make this += into res_i
+    smallmatmat!(res_f, mesh_s.I_S2F, res_i)
+
+  end  # end i loop
 
   return nothing
 end
-
 
 # calculating the Euler flux at a node
 #------------------------------------------------------------------------------
