@@ -173,7 +173,6 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
                            flux_functor::FluxType,
                            sbpface::AbstractFace,
                            interfaces::AbstractArray{Interface, 1})
-
   params = eqn.params
   qf = eqn.q_flux
   res = eqn.res
