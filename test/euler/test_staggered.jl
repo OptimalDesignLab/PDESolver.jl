@@ -4,7 +4,6 @@ function test_staggered()
 
   fname = "input_vals_staggered.jl"
   mesh, sbp, eqn, opts = run_solver(fname)
-
   test_staggered_same(mesh, sbp, eqn, opts)
 
 
@@ -33,6 +32,7 @@ end
 function test_staggered_same(mesh, sbp, eqn, opts)
 
   # force it to not use the staggered grid
+  EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
   opts["use_staggered_grid"] = false
   # evalute the residual on the original, second mesh, make sure they are
   # the same
@@ -53,6 +53,12 @@ function test_staggered_same(mesh, sbp, eqn, opts)
   # test a non-uniform condition
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  opts["use_staggered_grid"] = true
+  EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+  opts["use_staggered_grid"] = false
+
+
 
   fill!(eqn.res, 0.0)
   evalResidual(mesh, sbp, eqn, opts)
@@ -150,6 +156,9 @@ function test_staggered_different(mesh, sbp, eqn, opts)
 
   res_orig = copy(eqn.res)
   =#
+
+  EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+
   fill!(eqn.res, 0.0)
   EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear(mesh, mesh2, sbp, sbp2, eqn, opts, eqn.flux_func)
   @fact sum(eqn.res) --> roughly(0.0, atol=1e-13)

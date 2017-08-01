@@ -176,6 +176,7 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
 
   params = eqn.params
 #  sbpface = mesh.sbpface
+  qf = eqn.q_flux
   res = eqn.res
   nfaces = length(interfaces)
 #  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
@@ -209,6 +210,20 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     # TODO: see how much time is spent converting back and forth between
     # entropy and conservative variables and see if caching the result
     # makes sense
+
+    #=
+    interpolateElementStaggered(params, mesh_s, ro_sview(eqn.q, :, :, elR),
+                                aux_vars, qvarsR_f)
+    interpolateElementStaggered(params, mesh_s, ro_sview(eqn.q, :, :, elL),
+                                aux_vars, qvarsL_f)
+    =#
+    qf_L = ro_sview(qf, :, :, elL)
+    qf_R = ro_sview(qf, :, :, elR)
+
+    for j=1:mesh_f.numNodesPerElement
+      aux_vars[1, j] = calcPressure(params, ro_sview(qf_L, :, j))
+    end
+    #=
     for j=1:mesh_s.numNodesPerElement
       qL_j = ro_sview(eqn.q, :, j, elL)
       qR_j = ro_sview(eqn.q, :, j, elR)
@@ -233,11 +248,12 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
       convertToConservativeFromIR_(eqn.params, wR_j, qR_j)
       aux_vars[1, j] = calcPressure(eqn.params, qL_j)
     end
+    =#
 
     fill!(resL_f, 0.0)
     fill!(resR_f, 0.0)
 
-    face_integral_functor(params, sbpface, iface, qvarsL_f, qvarsR_f, aux_vars,
+    face_integral_functor(params, sbpface, iface, qf_L, qf_R, aux_vars,
                        nrm_face, flux_functor, resL_f, resR_f)
 
     # interpolate back

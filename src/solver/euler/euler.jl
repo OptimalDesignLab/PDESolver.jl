@@ -472,6 +472,15 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   # calculate fluxes
 
+  if opts["use_staggered_grid"]
+    aux_vars = zeros(Tres, 1, mesh.mesh2.numNodesPerElement)
+    for i=1:mesh.numEl
+      qs = ro_sview(eqn.q, :, :, i)
+      qf = sview(eqn.q_flux, :, :, i)
+      interpolateElementStaggered(eqn.params, mesh, qs, aux_vars, qf)
+    end
+  end
+
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
   end

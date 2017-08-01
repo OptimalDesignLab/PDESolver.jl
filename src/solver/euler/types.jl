@@ -406,6 +406,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   q_face_bar::Array{Tsol, 4}  # adjoint part of q_face
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
   q_bndry_bar::Array{Tsol, 3}  # adjoint part
+
+  q_flux::Array{Tsol, 3}  # flux variable solution
+
   q_vec::Array{Tres,1}            # initial condition in vector form
 
   aux_vars::Array{Tres, 3}        # storage for auxiliary variables
@@ -532,6 +535,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     # Taking a sview(A,...) of undefined values is illegal
     # I think its a bug that Array(Float64, ...) initializes values
     eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
+
+    if opts["use_staggered_grid"]
+      eqn.q_flux = zeros(Tsol, mesh.numDofPerNode, mesh.mesh2.numNodesPerElement, mesh.numEl)
+    end
 
     #TODO: don't store these, recalculate as needed
     eqn.Axi = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, sbp.numnodes,

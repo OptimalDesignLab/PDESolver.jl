@@ -220,7 +220,7 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
 
   if opts["use_staggered_grid"]
     # not planning on implementing the non-curvilinear version of this
-    calcVolumeIntegralsSplitFormStaggered(mesh, mesh,mesh2, sbp, mesh.sbp2,
+    calcVolumeIntegralsSplitFormCurvilinear(mesh, mesh.mesh2, sbp, mesh.sbp2,
                                           eqn, opts, functor)
   else
     if mesh.coord_order == 1
@@ -352,6 +352,56 @@ end
 
 
 """
+  This function does the interpolation from the solution grid to the flux
+  grid for a single element
+
+  **Inputs**:
+   * params: a ParamType.  The qs_el1 and q_el1 fields are overwritten.
+   * qs_el: the conservative variables for the element on the solution grid
+
+  **Inputs/Outputs**:
+   
+   * aux_vars: array to be populated with the aux vars on the staggered grid
+   * qf_el: conservative variables on the flux grid
+   
+"""
+function interpolateElementStaggered{Tdim}(
+                                     params::ParamType{Tdim, :conservative},
+                                     mesh,
+                                     qs_el::AbstractMatrix, 
+                                     aux_vars::AbstractMatrix, 
+                                     qf_el::AbstractMatrix)
+
+  numNodesPerElement_s = size(qs_el, 2)
+  numNodesPerElement_f = size(qf_el, 2)
+
+  # temporary arrays
+  wvars_s = params.qs_el1
+  wvars_f = params.q_el1
+
+  for j=1:numNodesPerElement_s
+    q_j = ro_sview(qs_el, :, j)
+    w_j = sview(wvars_s, :, j)
+    convertToIR(params, q_j, w_j)
+  end
+
+  # interpolate
+  smallmatmat!(wvars_s, mesh.I_S2FT, wvars_f)
+
+  # convert back to conservative
+  for j=1:numNodesPerElement_f
+    w_j = ro_sview(wvars_f, :, j)
+    q_j = sview(qf_el, :, j)
+    convertToConservativeFromIR_(params, w_j, q_j)
+    aux_vars[1, j] = calcPressure(params, q_j)
+  end
+  
+  return nothing
+end
+
+
+
+"""
   This function calculates I_S2F.'*(S .* F( uk(I_S2F wk), uk(I_S2F wk)))1.
   This is similar to
   [`calcVolumeIntegralsSplitFormCurvilinear](@ref), but for the staggered grid
@@ -382,6 +432,7 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
   dxidx = mesh_f.dxidx
   res = eqn.res
   q = eqn.q
+  qf = eqn.q_flux
   nrm = eqn.params.nrmD
 #  aux_vars = eqn.aux_vars
   F_d = eqn.params.flux_valsD
@@ -393,8 +444,8 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
   # temporary arrays for interpolation
 
   # need one for conversion to entropy variables on solution grid
-  wvars_s = eqn.params.qs_el1 #zeros(Tsol, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
-  wvars_f = eqn.params.q_el1  # entropy variables on flux grid
+#  wvars_s = eqn.params.qs_el1 #zeros(Tsol, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
+#  wvars_f = eqn.params.q_el1  # entropy variables on flux grid
   qvars_f = eqn.params.q_el2  # entropy variables on solution grid
   aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
   res_f = eqn.params.res_el1
@@ -413,6 +464,9 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
 
     # interpolation to flux grid
 
+#    interpolateElementStaggered(params, mesh_s, ro_sview(q, :, :, i), aux_vars,
+#                                qvars_f)
+    #=
     # convert to entropy variables
     for j=1:mesh_s.numNodesPerElement
       q_j = ro_sview(q, :, j, i)
@@ -430,13 +484,19 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
       convertToConservativeFromIR_(eqn.params, w_j, q_j)
       aux_vars[1, j] = calcPressure(eqn.params, q_j)
     end
+    =#
+
 
     fill!(res_f, 0.0)
     for j=1:mesh_f.numNodesPerElement
-      q_j = ro_sview(qvars_f, :, j)
-      aux_vars_j = ro_sview(aux_vars, :, j)
+#      q_j = ro_sview(qvars_f, :, j)
+#      aux_vars_j = ro_sview(aux_vars, :, j)
+       q_j = ro_sview(qf, :, j, i)
+       aux_vars[1, j] = calcPressure(eqn.params, q_j)
+       aux_vars_j = ro_sview(aux_vars, :, j)
       for k=1:(j-1)  # loop over lower triangle of S
-        q_k = ro_sview(qvars_f, :, k)
+#        q_k = ro_sview(qvars_f, :, k)
+         q_k = ro_sview(qf, :, k, i)
 
         # calculate the numerical flux functions in all Tdim
         # directions at once
