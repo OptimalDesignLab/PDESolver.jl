@@ -1,3 +1,17 @@
+@doc """
+### EulerEquationMod.evalrevm_transposeproduct
+
+Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""->
+
 function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, input_array::AbstractArray{Tsol, 1}, t=0.0)
 
@@ -8,13 +22,12 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
   myrank = mesh.myrank
 
   # TODO: Is this needed??
-  #=
-  time.t_send += @elapsed if opts["parallel_type"] == 1
-    println(eqn.params.f, "starting data exchange")
-    #TODO: update this to use new parallel primatives
-    startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
-  end
-   =#
+  # time.t_send += @elapsed if opts["parallel_type"] == 1
+  #   println(eqn.params.f, "starting data exchange")
+  #   #TODO: update this to use new parallel primatives
+  #   startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+  # end
+
 
   # !!!! MAKE SURE TO DO DATA EXCHANGE BEFORE !!!!
 
@@ -35,11 +48,11 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
    evalBoundaryIntegrals_revm(mesh, sbp, eqn)
   end
 
-#=
-  time.t_stab += @elapsed if opts["addStabilization"]
-    addStabilization(mesh, sbp, eqn, opts)
-  end
-=#
+
+  # time.t_stab += @elapsed if opts["addStabilization"]
+  #   addStabilization(mesh, sbp, eqn, opts)
+  # end
+
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
@@ -47,15 +60,15 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
-#=
-  time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
-=#
-#=
-  # apply inverse mass matrix to eqn.res, necessary for CN
-  if opts["use_Minv"]
-    applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
-  end
-=#
+
+  # time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
+
+
+  # # apply inverse mass matrix to eqn.res, necessary for CN
+  # if opts["use_Minv"]
+  #   applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
+  # end
+
 
   time.t_dataprep += @elapsed dataPrep_revm(mesh, sbp, eqn, opts)
 
@@ -64,10 +77,16 @@ function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, e
 end  # end evalResidual
 
 @doc """
+### EulerEquationMod.dataPrep_revm
 
 Reverse mode of dataPrep w.r.t mesh metrics
 
-"""
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""->
 function dataPrep_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                      eqn::AbstractEulerData{Tsol, Tres}, opts)
 
@@ -93,8 +112,16 @@ function dataPrep_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::Abstract
 end
 
 @doc """
+### EulerEquationMod.evalVolumeIntegrals_revm
 
-Reverse mode of evalVolumeIntegrals
+Reverse mode of evalVolumeIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
 
 """->
 
@@ -129,8 +156,16 @@ function evalVolumeIntegrals_revm{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
 end  # end evalVolumeIntegrals
 
 @doc """
+### EulerEquationMod.evalBoundaryIntegrals_revm
 
-Reverse mode of evalBoundaryIntegrals
+Reverse mode of evalBoundaryIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
 
 """->
 
@@ -140,7 +175,7 @@ function evalBoundaryIntegrals_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{T
   #TODO: remove conditional
   fill!(eqn.bndryflux_bar, 0.0)
   if mesh.isDG
-    boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar, 
+    boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar,
                            eqn.res_bar, SummationByParts.Subtract())
   else
     boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar,
@@ -151,6 +186,20 @@ function evalBoundaryIntegrals_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{T
   return nothing
 
 end  # end evalBoundaryIntegrals
+
+@doc """
+### EulerEquationMod.evalFaceIntegrals_revm
+
+Reverse mode of evalFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+**Arguments**
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* eqn   : an EulerData object
+* opts  : options dictionary
+
+"""->
 
 function evalFaceIntegrals_revm{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
@@ -176,6 +225,13 @@ function evalFaceIntegrals_revm{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+@doc """
+### EulerEquationMod.evalSharedFaceIntegrals_revm
+
+Reverse mode evalSharedFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
+
+"""
+
 function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   face_integral_type = opts["face_integral_type"]
@@ -200,6 +256,13 @@ function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end
+
+"""
+### EulerEquationMod.calcSharedFaceIntegrals_revm
+
+Reverse mode of calcSharedFaceIntegrals w.r.t mesh metrics, ∂ξ/∂x.
+
+"""
 
 function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
@@ -267,7 +330,15 @@ function calcSharedFaceIntegrals_revm{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+"""
+### EulerEquationMod.evalSourceTerm_revm
 
+Reverse mode of evalSourceTerm w.r.t mesh metrics.
+
+*This function has not been written properly. The developer must update this
+documentation as and when this code is developed*
+
+"""
 
 function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
@@ -282,3 +353,39 @@ function evalSourceTerm_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end  # end function
+
+
+@doc """
+###EulerEquationMod.updatePumiMesh
+
+Given the volume nodes in the MeshMovement `volNodes` data structure, update the
+Pumi mesh object
+
+* mesh  : a mesh object
+* sbp   : SBP operator object
+* volNodes : A 2D array containing coordinates of all the mesh vertices/nodes
+             owned by a perticular rank. There are no repeated vertices, i.e.
+             all the coordinates are unique. size(volNodes) = (3, numVert)
+
+"""->
+
+function updatePumiMesh{Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+                              volNodes::AbstractArray{Tmsh, 2})
+
+  for i = 1:mesh.numEl
+    for j = 1:size(mesh.vert_coords,2)
+      # Get the vertex numbering on the portion of mesh owned by the processor
+      local_vertnum = mesh.element_vertnums[j,i]
+      for k = 1:mesh.dim
+        mesh.vert_coords[k,j,i] = volNodes[k,local_vertnum]
+      end
+    end
+  end
+
+  for i = 1:mesh.numEl
+    update_coords(mesh, i, mesh.vert_coords[:,:,i])
+  end
+  commit_coords(mesh, sbp)
+
+  return nothing
+end

@@ -4,7 +4,7 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 
-arg_dict = Dict{ASCIIString, Any} (
+arg_dict = Dict{ASCIIString, Any}(
 "run_type" => 1,
 "jac_type" => 2,
 "order" => 4,

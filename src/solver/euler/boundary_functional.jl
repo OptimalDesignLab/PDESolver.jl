@@ -1,4 +1,4 @@
-export evalFunctional, calcBndryFunctional, getFunctionalName
+export evalFunctional, calcBndryFunctional, eval_dJdaoa
 
 @doc """
 ### EulerEquationMod.evalFunctional
@@ -43,10 +43,22 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 end
 
 @doc """
-EulerEquationMod.evalFunctional_revm
+### EulerEquationMod.evalFunctional_revm
 
 Reverse mode of EulerEquationMod.evalFunctional, It takes in functional value
-and return `mesh.nrm_bndry_bar`
+and return `mesh.nrm_bndry_bar`. Different functionals will need to be added
+to the if statement to further extend this function.
+
+**Arguments**
+
+*  `mesh` :  Abstract mesh object
+*  `sbp`  : Summation-By-Parts operator
+*  `eqn`  : Euler equation object
+*  `opts` : Options dictionary
+*  `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+                      with the functional being computed and holds all the
+                      relevant data.
+*  `functionalName` : Name of the functional being evaluated.
 
 """->
 
@@ -68,14 +80,27 @@ function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   # Calculate functional over edges
   if functionalName == "lift"
+
     bndry_force_bar = zeros(Tsol, mesh.dim)
-    bndry_force_bar[1] -= sin(eqn.params.aoa)
-    bndry_force_bar[2] += cos(eqn.params.aoa)
+    if mesh.dim == 2
+      bndry_force_bar[1] -= sin(eqn.params.aoa)
+      bndry_force_bar[2] += cos(eqn.params.aoa)
+    else
+      bndry_force_bar[1] -= sin(eqn.params.aoa)
+      bndry_force_bar[3] += cos(eqn.params.aoa)
+    end
     calcBndryFunctional_revm(mesh, sbp, eqn, opts, functionalData, bndry_force_bar)
+
   elseif functionalName == "drag"
+
     bndry_force_bar = zeros(Tsol, mesh.dim)
-    bndry_force_bar[1] = cos(eqn.params.aoa)
-    bndry_force_bar[2] = sin(eqn.params.aoa)
+    if mesh.dim == 2
+      bndry_force_bar[1] = cos(eqn.params.aoa)
+      bndry_force_bar[2] = sin(eqn.params.aoa)
+    else
+      bndry_force_bar[1] = cos(eqn.params.aoa)
+      bndry_force_bar[3] = sin(eqn.params.aoa)
+    end
     calcBndryFunctional_revm(mesh, sbp, eqn, opts, functionalData, bndry_force_bar)
 
   else
@@ -87,11 +112,65 @@ end
 
 
 @doc """
+### EulerEquationMod.eval_dJdaoa
+
+Compute the complete derivative of a functional w.r.t angle of attack
+
+**Inputs**
+
+* `mesh` : Abstract mesh object
+* `sbp`  : Summation-By-Parts operator
+* `eqn`  : Euler equation object
+* `opts` : Options dictionary
+* `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+                     with the functional being computed and holds all the
+                     relevant data.
+* `functionalName` : Name of the functional being evaluated
+* `adjoint_vec` : Local portion of the adjoint vector owned by an MPI rank
+
+**Output**
+
+* `dJdaoa` : Complete derivative of the functional w.r.t angle of attack
+             This is a scalar value that is the same across all MPI ranks
+
+"""->
+
+function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                                 eqn::EulerData{Tsol}, opts,
+                                 functionalData::AbstractOptimizationData,
+                                 functionalName::ASCIIString,
+                                 adjoint_vec::AbstractArray{Tsol,1})
+
+  if functionalName == "lift"
+    ∂J∂aoa = functionalData.dLiftdaoa
+  elseif functionalName == "drag"
+    ∂J∂aoa = functionalData.dDragdaoa
+  end
+
+  pert = 1e-20im
+  eqn.params.aoa += pert # Imaginary perturbation
+  fill!(eqn.res_vec, 0.0)
+  fill!(eqn.res, 0.0)
+  res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
+  ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
+  eqn.params.aoa -= pert # Remove perturbation
+
+  # Get the contribution from all MPI ranks
+  local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
+  ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
+
+  dJdaoa = ∂J∂aoa + ψT∂R∂aoa
+
+  return dJdaoa
+end
+
+
+@doc """
 ### EulerEquationMod.calcBndryFunctional
 
 This function calculates a functional on a geometric boundary of a the
 computational space. This is a mid level function that should not be called from
-outside the module. DEpending on the functional being computd, it may be
+outside the module. Depending on the functional being computed, it may be
 necessary to define another method for this function based on a different
 boundary functional type or parameters.
 
@@ -168,10 +247,17 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Compute lift, drag and their corresponding derivatives w.r.t alpha
   aoa = eqn.params.aoa # Angle of attack
-  functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
-  functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
-  functionalData.dLiftdAlpha = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
-  functionalData.dDragdAlpha = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+  if mesh.dim == 2 # 2D Flow
+    functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+    functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
+    functionalData.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
+    functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+  else # 3D Flow
+    functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
+    functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[3]*sin(aoa)
+    functionalData.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[3]*sin(aoa)
+    functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
+  end
 
   return nothing
 end
@@ -179,7 +265,22 @@ end
 @doc """
 ###EulerEquationMod.calcBndryFunctional_revm
 
-Reverse mode function That actually does the work.
+Reverse mode of `calcBndryFunctional` that actually does the work. The commented
+lines indicate the line being reverse diffed.
+
+**Arguments**
+
+*  `mesh` :  Abstract mesh object
+*  `sbp`  : Summation-By-Parts operator
+*  `eqn`  : Euler equation object
+*  `opts` : Options dictionary
+*  `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+                      with the functional being computed and holds all the
+                      relevant data.
+*  `bndry_force_bar`: Seed for the reverse mode. This is typically the adjoint
+                      vector in our case but could be any vector that is being
+                      multiplied to the partial derivative w.r.t mesh metrics
+                      being evaluated here.
 
 """
 
@@ -222,15 +323,15 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     nfaces = length(bndry_facenums)
     boundary_integrand_bar = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
     q2 = zeros(Tsol, mesh.numDofPerNode)
-    
+
     # local_functional_val[:] += val_per_geom_edge[:]
     val_per_geom_face_bar = zeros(Tsol, functionalData.ndof)
     val_per_geom_face_bar[:] += local_functional_val_bar[:]
     local_functional_val_bar[:] += local_functional_val_bar[:]
-    integratefunctional_rev!(mesh.sbpface, mesh.bndryfaces[idx_range], 
+    integratefunctional_rev!(mesh.sbpface, mesh.bndryfaces[idx_range],
                              boundary_integrand_bar, val_per_geom_face_bar)
 
-    
+
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
@@ -245,14 +346,14 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         b_integrand_ji_bar = sview(boundary_integrand_bar, :, j, i)
         # calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
         #                                node_info, functionalData, b_integrand_ji)
-#        fill!(nxny_bar, 0.0)
-        calcBoundaryFunctionalIntegrand_revm(eqn.params, q2, aux_vars, phys_nrm, 
-                                             node_info, functionalData, 
+        # fill!(nxny_bar, 0.0)
+        calcBoundaryFunctionalIntegrand_revm(eqn.params, q2, aux_vars, phys_nrm,
+                                             node_info, functionalData,
                                              phys_nrm_bar, b_integrand_ji_bar)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
-  end # End for itr = 1:length(functional_faces) 
+  end # End for itr = 1:length(functional_faces)
 
   return nothing
 end
@@ -276,7 +377,7 @@ integrand. The type of the functional object, which is a subtype of
 *  `val` : Function output value
 
 """->
-function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
+function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{2},
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},
                                          nrm::AbstractArray{Tmsh},
@@ -289,8 +390,6 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
   # to the physical space from the parametric space.
 
   euler_flux = params.flux_vals1 # Reuse existing memory
-  # nx = nrm[1]
-  # ny = nrm[2]
 
   fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
   # normalize normal vector
@@ -310,7 +409,37 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params,
   val[:] = euler_flux[2:3]
 
   return nothing
-end
+end # End calcBoundaryFunctionalIntegrand 2D
+
+function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{3},
+                                         q::AbstractArray{Tsol,1},
+                                         aux_vars::AbstractArray{Tres, 1},
+                                         nrm::AbstractArray{Tmsh},
+                                         node_info::AbstractArray{Int},
+                                         objective::BoundaryForceData,
+                                         val::AbstractArray{Tsol,1})
+
+  fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]))
+  # normalize normal vector
+  nx = nrm[1]*fac
+  ny = nrm[2]*fac
+  nz = nrm[3]*fac
+
+  normal_momentum = nx*q[2] + ny*q[3] + nz*q[4]
+  qg = params.qg
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+  qg[2] -= nx*normal_momentum
+  qg[3] -= ny*normal_momentum
+  qg[4] -= nz*normal_momentum
+
+  euler_flux = params.flux_vals1 # Reuse existing memory
+  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  val[:] = euler_flux[2:4]
+
+  return nothing
+end # End calcBoundaryFunctionalIntegrand 3D
 
 @doc """
 calcBoundaryFunctionalIntegrand_revm
@@ -318,15 +447,27 @@ calcBoundaryFunctionalIntegrand_revm
 Reverse mode for boundary functional integrand w.r.t. nrm. Takes in input
 val_bar and return nrm_bar for further reverse propagation.
 
+**Arguments**
+
+*  `params` : eqn.params object
+*  `q` : Nodal solution
+*  `aux_vars` : Auxiliary variables
+*  `nrm` : Face normal vector in the physical space
+*  `node_info` : Information about the SBP node
+*  `objective` : Functional data type
+*  `nrm_bar` : Resulting vector
+*  `val_bar` : Nodal portion of the seeding vector
+
 """->
 
-function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
+function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params::ParamType{2},
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},
                                          nrm::AbstractArray{Tmsh},
                                          node_info::AbstractArray{Int},
                                          objective::BoundaryForceData,
-                                         nrm_bar, val_bar)
+                                         nrm_bar::AbstractArray{Tmsh,1},
+                                         val_bar::AbstractArray{Tres, 1})
 
   #---- Forward sweep
   fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
@@ -388,367 +529,87 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params,
   nrm_bar[2] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2])^(-1.5))*nrm[2]
 
   return nothing
-end
+end # End calcBoundaryFunctionalIntegrand_revm 2D
 
-#=
-@doc """
-### EulerEquationMod.drag
+function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params::ParamType{3},
+                                         q::AbstractArray{Tsol,1},
+                                         aux_vars::AbstractArray{Tres, 1},
+                                         nrm::AbstractArray{Tmsh},
+                                         node_info::AbstractArray{Int},
+                                         objective::BoundaryForceData,
+                                         nrm_bar::AbstractArray{Tmsh,1},
+                                         val_bar::AbstractArray{Tres, 1})
 
-Computes the integrand at a node for computing the drag force on a boundary
-surface/edge. Note that the drag is always tangential to the free-stream
-velocity.
+  # Forward Sweep
+  fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]))
+  nx = nrm[1]*fac
+  ny = nrm[2]*fac
+  nz = nrm[3]*fac
 
-**Inputs**
-
-*  `params` : Parameter type
-*  `q`      : Solution at a node
-*  `aux_vars` : Vector of auxiliary variables
-*  `nrm`    : Normal vector in the physical space
-*  `node_info` : 1D, 3 element array containing information about the node.
-                 node_info[1] = geometric edge number
-                 node_info[2] = sbpface node number
-                 node_info[3] = element face number on the geometric edge
-
-**Outputs**
-
-*  `val`    : Momentum derivative in the X-direction
-
-"""->
-
-type drag <: FunctionalType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::drag, params, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int},
-              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
-
-  aoa = params.aoa # Angle of attack
-  euler_flux = params.flux_vals1 # Reuse existing memory
-  nx = nrm[1]
-  ny = nrm[2]
-
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
-  # normalize normal vector
-  nx *= fac
-  ny *= fac
-
-  normal_momentum = nx*q[2] + ny*q[3]
-
+  normal_momentum = nx*q[2] + ny*q[3] + nz*q[4]
   qg = params.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
   qg[2] -= nx*normal_momentum
   qg[3] -= ny*normal_momentum
+  qg[4] -= nz*normal_momentum
 
-  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  # Reverse Sweep
+  euler_flux_bar = zeros(Tsol, 5) # For 2D
+  qg_bar = zeros(Tsol, 5)
+  q_bar = zeros(Tsol,5)
 
-  val[1] = euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
+  # Reverse diff val[:] = euler_flux[2:4]
+  euler_flux_bar[2:4] += val_bar[:]
 
-  return nothing
-end
+  # Reverse diff calcEulerFlux
+  calcEulerFlux_revm(params, qg, aux_vars, nrm, euler_flux_bar, nrm_bar)
+  calcEulerFlux_revq(params, qg, aux_vars, nrm, euler_flux_bar, qg_bar)
+  nz_bar = zero(Tsol)               #
+  ny_bar = zero(Tsol)               # Initialize
+  nx_bar = zero(Tsol)               #
+  normal_momentum_bar = zero(Tsol)  #
 
-@doc """
-###EulerEquationMod.dDragdALpha
+  # qg[4] -= nz*normal_momentum
+  nz_bar -= qg_bar[4]*normal_momentum
+  normal_momentum_bar -= qg_bar[4]*nz
+  qg_bar[4] += qg_bar[4]
 
-Compute the integrand for computing \frac{\partial Drag}/{\partial Alpha}
+  # Reverse diff qg[3] -= ny*normal_momentum
+  ny_bar -= qg_bar[3]*normal_momentum
+  normal_momentum_bar -= qg_bar[3]*ny
+  qg_bar[3] += qg_bar[3]
 
-"""->
-type dDragdAlpha <: FunctionalType
-end
+  # Reverse diff qg[2] -= nx*normal_momentum
+  nx_bar -= qg_bar[2]*normal_momentum
+  normal_momentum_bar -= qg_bar[2]*nx
+  qg_bar[2] += qg_bar[2]
 
-function call{Tsol, Tres, Tmsh}(obj::dDragdAlpha, params, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int},
-              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
+  # Reverse diff qg[:] = q[:]
+  q_bar[:] += qg_bar[:]
 
-  aoa = params.aoa # Angle of attack
-  euler_flux = params.flux_vals1 # Reuse existing memory
-  nx = nrm[1]
-  ny = nrm[2]
+  # normal_momentum = nx*q[2] + ny*q[3] + nz*q[4]
+  nx_bar += normal_momentum_bar*q[2]
+  ny_bar += normal_momentum_bar*q[3]
+  nz_bar += normal_momentum_bar*q[4]
 
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
-  # normalize normal vector
-  nx *= fac
-  ny *= fac
+  # nz = nrm[3]*fac
+  nrm_bar[3] += nz_bar*fac
+  fac_bar = nz_bar*nrm[3]
 
-  normal_momentum = nx*q[2] + ny*q[3]
+  # Reverse diff ny = nrm[2]*fac
+  nrm_bar[2] += ny_bar*fac
+  fac_bar += ny_bar*nrm[2]
 
-  qg = params.qg
-  for i=1:length(q)
-    qg[i] = q[i]
-  end
-  qg[2] -= nx*normal_momentum
-  qg[3] -= ny*normal_momentum
-  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
+  # Reverse diff nx = nrm[1]*fac
+  nrm_bar[1] += nx_bar*fac
+  fac_bar += nx_bar*nrm[1]
 
-  # calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
-
-  val[1] = -euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
-
-  return nothing
-end
-
-@doc """
-### EulerEquationMod.lift
-
-Computes the lift force. Note lift is always perpendicular to the free-stream
-velocity.
-
-**Inputs**
-
-*  `params` : Parameter type
-*  `q`      : Solution at a node
-*  `aux_vars` : Vector of auxiliary variables
-*  `nrm`    : Normal vector in the physical space
-
-**Outputs**
-
-*  `val`    : Momentum derivative in the Y-direction
-
-"""->
-
-type lift <: FunctionalType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::lift, params, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int},
-              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
-
-  aoa = params.aoa # Angle of attack
-  euler_flux = params.flux_vals1 # Reuse existing memory
-  nx = nrm[1]
-  ny = nrm[2]
-
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
-  # normalize normal vector
-  nx *= fac
-  ny *= fac
-
-  normal_momentum = nx*q[2] + ny*q[3]
-
-  qg = params.qg
-  for i=1:length(q)
-    qg[i] = q[i]
-  end
-  qg[2] -= nx*normal_momentum
-  qg[3] -= ny*normal_momentum
-  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
-  # calcEulerFlux(params, q, aux_vars, nrm, euler_flux)
-  val[1] = -euler_flux[2]*cos(aoa) + euler_flux[3]*sin(aoa)
+  # fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]))
+  nrm_bar[1] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3])^(-1.5))*nrm[1]
+  nrm_bar[2] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3])^(-1.5))*nrm[2]
+  nrm_bar[3] -= fac_bar*((nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3])^(-1.5))*nrm[3]
 
   return nothing
-end
-
-@doc """
-### EulerEquationMod.dLiftdALpha
-
-Compute the integrand for computing \frac{\partial lift}/{\partial alpha}
-
-"""->
-type dLiftdAlpha <: FunctionalType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::dLiftdAlpha, params, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int},
-              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
-
-  aoa = params.aoa # Angle of attack
-  euler_flux = params.flux_vals1 # Reuse existing memory
-  nx = nrm[1]
-  ny = nrm[2]
-
-  fac = 1.0/(sqrt(nx*nx + ny*ny))
-  # normalize normal vector
-  nx *= fac
-  ny *= fac
-
-  normal_momentum = nx*q[2] + ny*q[3]
-
-  qg = params.qg
-  for i=1:length(q)
-    qg[i] = q[i]
-  end
-  qg[2] -= nx*normal_momentum
-  qg[3] -= ny*normal_momentum
-  calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
-  val[1] = euler_flux[2]*sin(aoa) + euler_flux[3]*cos(aoa)
-
-  return nothing
-end
-
-@doc """
-### EulerEquationMod.targetCp
-
-"""
-
-type targetCp <: FunctionalType
-end
-
-function call{Tsol, Tres, Tmsh}(obj::targetCp, params, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-              node_info::AbstractArray{Int},
-              objective::AbstractOptimizationData, val::AbstractArray{Tsol,1})
-
-  cp_node = calcPressureCoeff(params, q)
-  g_face = node_info[1]
-  node = node_info[2]
-  face = node_info[3]
-  cp_target = objective.pressCoeff_obj.targetCp_arr[g_face][node, face]
-
-  val[1] = 0.5*((cp_node - cp_target).^2)
-
-  return nothing
-end
-
-
-@doc """
-### EulerEquationMod.FunctionalDict
-
-It stores the names of all possible functional options that can be computed.
-Whenever a new functional is created, it should be added to FunctionalDict.
-
-"""->
-global const FunctionalDict = Dict{ASCIIString, FunctionalType}(
-"drag" => drag(),
-"lift" => lift(),
-"targetCp" => targetCp(),
-"dLiftdAlpha" => dLiftdAlpha(),
-"dDragdAlpha" => dDragdAlpha(),
-"boundaryForce" => boundaryForce()
-)
-
-
-@doc """
-### EulerEquationMod.getFunctionalName
-
-Gets the name of the functional that needs to be computed at a particular point
-
-**Inputs**
-
-*  `opts`     : Input dictionary
-*  `f_number` : Number of the functional in the input dictionary
-
-**Outputs**
-
-*  `functional` : Returns the functional name in the dictionary. It is of type
-                  `FucntionalType`,
-
-"""->
-function getFunctionalName(opts, f_number;is_objective_fn=false)
-
-  key = string("functional_name", f_number)
-  val = opts[key]
-
-  return functional = FunctionalDict[val]
-end
-
-function getnFaces(mesh::AbstractDGMesh, g_face::Int)
-
-  i = 0
-  for i = 1:mesh.numBC
-    if findfirst(mesh.bndry_geo_nums[i],g_face) > 0
-      break
-    end
-  end
-
-  start_index = mesh.bndry_offsets[i]
-  end_index = mesh.bndry_offsets[i+1]
-  idx_range = start_index:(end_index-1)
-  bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
-  nfaces = length(bndry_facenums)
-
-  return nfaces
-end
-=#
-
-#=
-
-function calcPhysicalEulerFlux{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
-                               F::AbstractArray{Tsol, 2})
-
-  u = q[2]/q[1]
-  v = q[3]/q[1]
-  p = calcPressure(params, q)
-
-  # Calculate Euler Flux in X-direction
-  F[1,1] = q[2]
-  F[2,1] = q[2]*u + p
-  F[3,1] = q[2]*v
-  F[4,1] = u*(q[4] + p)
-
-  # Calculate Euler Flux in Y-direction
-
-  F[1,2] = q[3]
-  F[2,2] = q[3]*u
-  F[3,2] = q[3]*v + p
-  F[4,2] = v*(q[4] + p)
-
-  return nothing
-end
-
-function calcBndryfunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                            opts, g_edge_number)
-
-  # Specify the boundary conditions for the edge on which the force needs to be computed
-  # separately in the input dictionary. Use that boundary number to access the boundary
-  # offset array. Then proceed the same as bndryflux to get the forces using
-  # boundaryintegrate!
-
-
-  # g_edge_number = 1 # Geometric boundary edge on which the force needs to be computed
-  start_index = mesh.bndry_offsets[g_edge_number]
-  end_index = mesh.bndry_offsets[g_edge_number+1]
-  bndry_facenums = sview(mesh.bndryfaces, start_index:(end_index - 1)) # faces on geometric edge i
-  # println("bndry_facenums = ", bndry_facenums)
-
-  nfaces = length(bndry_facenums)
-  boundary_press = zeros(Tsol, Tdim, mesh.numNodesPerFace, nfaces)
-  boundary_force = zeros(Tsol, Tdim, sbp.numnodes, mesh.numEl)
-  q2 = zeros(Tsol, mesh.numDofPerNode)
-  # analytical_force = zeros(Tsol, mesh.numNodesPerFace, nfaces)
-
-
-  for i = 1:nfaces
-    bndry_i = bndry_facenums[i]
-    for j = 1:mesh.numNodesPerFace
-      k = mesh.facenodes[j, bndry_i.face]
-      q = ro_sview(eqn.q, :, k, bndry_i.element)
-      convertToConservative(eqn.params, q, q2)
-      aux_vars = ro_sview(eqn.aux_vars, :, k, bndry_i.element)
-      x = ro_sview(mesh.coords, :, k, bndry_i.element)
-      dxidx = ro_sview(mesh.dxidx, :, :, k, bndry_i.element)
-      nrm = ro_sview(mesh.sbpface.normal, :, bndry_i.face)
-
-      # analytical_force[k,bndry_i.element] = calc_analytical_forces(mesh, eqn.params, x)
-      nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-      ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-      # Calculate euler flux for the current iteration
-      euler_flux = zeros(Tsol, mesh.numDofPerNode)
-      calcEulerFlux(eqn.params, q2, aux_vars, [nx, ny], euler_flux)
-
-      # Boundary pressure in "ndimensions" direcion
-      boundary_press[:,j,i] =  euler_flux[2:3]
-    end # end for j = 1:mesh.numNodesPerFace
-  end   # end for i = 1:nfaces
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[start_index:(end_index - 1)],
-                     boundary_press, boundary_force)
-
-  functional_val = zeros(Tsol,2)
-
-  for (bindex, bndry) in enumerate(mesh.bndryfaces[start_index:(end_index - 1)])
-    for i = 1:mesh.numNodesPerFace
-      k = mesh.facenodes[i, bndry.face]
-      functional_val[:] += boundary_force[:,k,bndry.element]
-    end
-  end  # end enumerate
-
-
-  return functional_val
-end
-=#
+end # End calcBoundaryFunctionalIntegrand_revm 3D

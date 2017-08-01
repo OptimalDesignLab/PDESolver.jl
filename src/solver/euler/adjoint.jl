@@ -13,7 +13,8 @@ Calculates the adjoint vector for a single functional
 *  `functor` : functional to be evaluated
 *  `functional_number` : Numerical identifier to obtain geometric edges on
                          which a functional acts
-*  `adjoint_vec` : Resulting adjoint vector
+*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint
+                   vector is distributed over the processors similar to eqn.q_vec
 
 **Outputs**
 
@@ -73,7 +74,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
     PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
     PetscMatAssemblyEnd(res_jac)
-    res_jac = MatTranspose(res_jac)
+    res_jac = MatTranspose(res_jac, inplace=true)
 
     b = PetscVec(eqn.comm)
     PetscVecSetType(b, VECMPI)
@@ -85,16 +86,14 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     KSPSetFromOptions(ksp)
     KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
     NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts,
-                     func_deriv, adjoint_vec)
-    adjoint_vec = -adjoint_vec
+                     -func_deriv, adjoint_vec)
+    # adjoint_vec = -adjoint_vec
   end # End how to solve for adjoint_vec
 
-  outname = string("adjoint_vec_", mesh.myrank,".dat")
-  f = open(outname, "w")
-  for i = 1:length(adjoint_vec)
-    println(f, real(adjoint_vec[i]))
-  end
-  close(f)
+
+  saveSolutionToMesh(mesh, adjoint_vec)
+  fname = "adjoint_field"
+  writeVisFiles(mesh, fname)
 
   return nothing
 end
