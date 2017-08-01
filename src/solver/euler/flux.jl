@@ -175,19 +175,9 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
                            interfaces::AbstractArray{Interface, 1})
 
   params = eqn.params
-#  sbpface = mesh.sbpface
   qf = eqn.q_flux
   res = eqn.res
   nfaces = length(interfaces)
-#  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-#  resR2 = zeros(resL2)
-  
-  wvarsL_s = params.qs_el1
-  wvarsR_s = params.qs_el2
-  wvarsL_f = params.q_el1
-  wvarsR_f = params.q_el2
-  qvarsL_f = params.q_el3
-  qvarsR_f = params.q_el4
   resL_s = params.ress_el1
   resR_s = params.ress_el2
   resL_f = params.res_el1
@@ -199,56 +189,14 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
     iface = interfaces[i]
     elL = iface.elementL
     elR = iface.elementR
-#    qL = ro_sview(eqn.q, :, :, elL)
-#    qR = ro_sview(eqn.q, :, :, elR)
-#    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
     nrm_face = ro_sview(mesh_f.nrm_face, :, :, i)
-#    resL = sview(eqn.res, :, :, elL)
-#    resR = sview(eqn.res, :, :, elR)
-
-    # convert to entropy
-    # TODO: see how much time is spent converting back and forth between
-    # entropy and conservative variables and see if caching the result
-    # makes sense
-
-    #=
-    interpolateElementStaggered(params, mesh_s, ro_sview(eqn.q, :, :, elR),
-                                aux_vars, qvarsR_f)
-    interpolateElementStaggered(params, mesh_s, ro_sview(eqn.q, :, :, elL),
-                                aux_vars, qvarsL_f)
-    =#
+    
     qf_L = ro_sview(qf, :, :, elL)
     qf_R = ro_sview(qf, :, :, elR)
 
     for j=1:mesh_f.numNodesPerElement
       aux_vars[1, j] = calcPressure(params, ro_sview(qf_L, :, j))
     end
-    #=
-    for j=1:mesh_s.numNodesPerElement
-      qL_j = ro_sview(eqn.q, :, j, elL)
-      qR_j = ro_sview(eqn.q, :, j, elR)
-      wL_j = sview(wvarsL_s, :, j)
-      wR_j = sview(wvarsR_s, :, j)
-      convertToIR(eqn.params, qL_j, wL_j)
-      convertToIR(eqn.params, qR_j, wR_j)
-    end
-
-    # interpolate
-    smallmatmat!(wvarsL_s, mesh_s.I_S2FT, wvarsL_f)
-    smallmatmat!(wvarsR_s, mesh_s.I_S2FT, wvarsR_f)
-
-    # convert back
-    for j=1:mesh_f.numNodesPerElement
-      wL_j = ro_sview(wvarsL_f, :, j)
-      wR_j = ro_sview(wvarsR_f, :, j)
-      qL_j = sview(qvarsL_f, :, j)
-      qR_j = sview(qvarsR_f, :, j)
-
-      convertToConservativeFromIR_(eqn.params, wL_j, qL_j)
-      convertToConservativeFromIR_(eqn.params, wR_j, qR_j)
-      aux_vars[1, j] = calcPressure(eqn.params, qL_j)
-    end
-    =#
 
     fill!(resL_f, 0.0)
     fill!(resR_f, 0.0)

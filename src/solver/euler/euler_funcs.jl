@@ -431,22 +431,13 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
                                         functor::FluxType)
   dxidx = mesh_f.dxidx
   res = eqn.res
-  q = eqn.q
   qf = eqn.q_flux
   nrm = eqn.params.nrmD
-#  aux_vars = eqn.aux_vars
   F_d = eqn.params.flux_valsD
-#  S = eqn.params.S
   S = Array(Tmsh, mesh_f.numNodesPerElement, mesh_f.numNodesPerElement, Tdim)
   params = eqn.params
 
 
-  # temporary arrays for interpolation
-
-  # need one for conversion to entropy variables on solution grid
-#  wvars_s = eqn.params.qs_el1 #zeros(Tsol, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
-#  wvars_f = eqn.params.q_el1  # entropy variables on flux grid
-  qvars_f = eqn.params.q_el2  # entropy variables on solution grid
   aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
   res_f = eqn.params.res_el1
   res_s = eqn.params.ress_el1 #zeros(Tres, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
@@ -462,40 +453,12 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
     dxidx_i = ro_sview(dxidx, :, :, :, i)
     calcSCurvilinear(sbp_f, dxidx_i, S)
 
-    # interpolation to flux grid
-
-#    interpolateElementStaggered(params, mesh_s, ro_sview(q, :, :, i), aux_vars,
-#                                qvars_f)
-    #=
-    # convert to entropy variables
-    for j=1:mesh_s.numNodesPerElement
-      q_j = ro_sview(q, :, j, i)
-      w_j = sview(wvars_s, :, j)
-      convertToIR(eqn.params, q_j, w_j)
-    end
-
-    # interpolate
-    smallmatmat!(wvars_s, mesh_s.I_S2FT, wvars_f)
-
-    # convert back to conservative
-    for j=1:mesh_f.numNodesPerElement
-      w_j = ro_sview(wvars_f, :, j)
-      q_j = sview(qvars_f, :, j)
-      convertToConservativeFromIR_(eqn.params, w_j, q_j)
-      aux_vars[1, j] = calcPressure(eqn.params, q_j)
-    end
-    =#
-
-
     fill!(res_f, 0.0)
     for j=1:mesh_f.numNodesPerElement
-#      q_j = ro_sview(qvars_f, :, j)
-#      aux_vars_j = ro_sview(aux_vars, :, j)
        q_j = ro_sview(qf, :, j, i)
        aux_vars[1, j] = calcPressure(eqn.params, q_j)
        aux_vars_j = ro_sview(aux_vars, :, j)
       for k=1:(j-1)  # loop over lower triangle of S
-#        q_k = ro_sview(qvars_f, :, k)
          q_k = ro_sview(qf, :, k, i)
 
         # calculate the numerical flux functions in all Tdim
@@ -521,8 +484,8 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
     smallmatmat!(res_f, mesh_s.I_S2F, res_s)
 
     # accumulate into res
-    for j=1:mesh_s.numNodesPerElement
-      for k=1:mesh_s.numDofPerNode
+    @simd for j=1:mesh_s.numNodesPerElement
+      @simd for k=1:mesh_s.numDofPerNode
         res[k, j, i] += res_s[k, j]
       end
     end
