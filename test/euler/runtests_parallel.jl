@@ -37,7 +37,7 @@ function test_parallel2()
   facts("----- Testing Parallel -----") do
 
     start_dir = pwd()
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = run_euler(ARGS[1])
 
