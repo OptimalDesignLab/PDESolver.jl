@@ -185,8 +185,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     # right size
     if opts["use_staggered_grid"]
       numNodesPerElement = mesh.mesh2.numNodesPerElement
+      stencilsize = mesh.mesh2.sbpface.stencilsize
     else
       numNodesPerElement = mesh.numNodesPerElement
+      stencilsize = mesh.sbpface.stencilsize
     end
 
     t = 0.0
@@ -219,8 +221,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     ress_el1 = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
     ress_el2 = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
 
-    w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
-    w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
+    w_vals_stencil = Array(Tsol, Tdim + 2, stencilsize)
+    w_vals2_stencil = Array(Tsol, Tdim + 2, stencilsize)
 
     res_vals1 = Array(Tres, Tdim + 2)
     res_vals2 = Array(Tres, Tdim + 2)

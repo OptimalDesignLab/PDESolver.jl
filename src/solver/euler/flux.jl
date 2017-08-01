@@ -308,6 +308,9 @@ end
 """
   Like [`calcSharedFaceElementIntegrals_inner`](@ref), but for staggered grid.
 
+  data.q_recv is the solution grid data.  This function interpolates it to the
+  flux grid on the fly.
+
   **Inputs**:
 
    * mesh_s: solution grid mesh
@@ -334,7 +337,59 @@ function calcSharedFaceElementIntegralsStaggered_element_inner{Tmsh, Tsol, Tres}
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType)
 
-  error("sharedFaceElementIntegrals not implemented for staggered grid")
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+  end
+
+  q = eqn.q_flux
+  res = eqn.res
+  params = eqn.params
+
+  # temporary arrays needed for interpolating to the flux grid
+  qvars_f = params.q_el2
+  resL_f = params.res_el1
+  resR_f = params.res_el2
+  resL_s = params.ress_el1
+  # we don't care about resR here
+  aux_vars = Array(Tres, 1, mesh_f.numNodesPerElement)
+
+  # get the data for the parallel interface
+  idx = data.peeridx
+  interfaces = data.interfaces
+  qR_arr = data.q_recv
+  nrm_face_arr = mesh_f.nrm_sharedface[idx]
+  start_elnum = mesh_f.shared_element_offsets[idx]
+
+  # compute the integrals
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1
+    qL = ro_sview(q, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR)
+#    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(nrm_face_arr, :, :, j)
+
+    # interpolate to flux grid
+    interpolateElementStaggered(params, mesh_s, qR, aux_vars, qvars_f)
+
+    fill!(resL_f, 0.0)
+    # we dont carea bout resR, so dont waste time zeroing it out
+    face_integral_functor(eqn.params, mesh_f.sbpface, iface_j, qL, qvars_f,
+                          aux_vars, nrm_face, flux_functor, resL_f, resR_f)
+
+
+    # interpolate residual back to solution grid
+    smallmatmat!(resL_f, mesh_s.I_S2F, resL_s)
+
+    @simd for k=1:mesh_s.numNodesPerElement
+      @simd for p=1:mesh_s.numDofPerNode
+        res[p, k, elL] += resL_s[p, k]
+      end
+    end
+
+  end  # end loop j
+
 
   return nothing
 end

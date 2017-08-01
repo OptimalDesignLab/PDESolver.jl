@@ -35,6 +35,8 @@ function test_parallel2()
   facts("----- Testing Parallel -----") do
 
     start_dir = pwd()
+
+    # test rk4
     cd ("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = run_euler(ARGS[1])
@@ -44,8 +46,22 @@ function test_parallel2()
 
     @fact datas[1] --> roughly(datap[1], atol=1e-13)
     @fact datas[2] --> roughly(datap[2], atol=1e-13)
+
+    # test staggered_parallel
+    cd ("../staggered_parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+
+    datas = readdlm("../staggered_serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
+
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+
+
     cd("../../")
 
+    # test newton
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = run_euler(ARGS[1])
