@@ -54,6 +54,8 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+
+
 """
   Compute the face integrals without using eqn.q_face or eqn.flux_face.
   The integral is computed directly and res is updated
@@ -97,6 +99,63 @@ function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
   return nothing
 end
 
+function calcFaceIntegralsStaggered_nopre{Tsol, Tres, Tmsh, Tdim}(
+                                          mesh_s::AbstractDGMesh{Tmsh},
+                                          mesh_f::AbstractDGMesh{Tmsh},
+                                          sbp_s::AbstractSBP,
+                                          sbp_f::AbstractSBP,
+                                          eqn::AdvectionData{Tsol, Tres, Tdim},
+                                          opts,
+                                          flux_func::FluxType)
+
+  q_faceL = zeros(Tsol, mesh_f.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+  flux_face = zeros(Tres, mesh_f.numNodesPerFace)
+
+  qL_f = eqn.params.qL_f
+  qR_f = eqn.params.qR_f
+
+  resL_f = eqn.params.resL_f
+  resR_f = eqn.params.resR_f
+  resL_s = eqn.params.resL_s
+  resR_s = eqn.params.resR_s
+
+  for i=1:mesh_f.numInterfaces
+    iface_i = mesh_f.interfaces[i]
+    qL = ro_sview(eqn.q, :, :, iface_i.elementL)
+    qR = ro_sview(eqn.q, :, :, iface_i.elementR)
+
+    # interpolate to flux grid
+    interpolateElementStaggered(eqn.params, mesh_s, qL, qL_f)
+    interpolateElementStaggered(eqn.params, mesh_s, qR, qR_f)
+
+    # interpolate to face
+    interiorFaceInterpolate!(mesh_f.sbpface, iface_i, qL_f, qR_f, q_faceL, q_faceR)
+
+    for j=1:mesh_f.numNodesPerFace
+      nrm_scaled = ro_sview(mesh_f.nrm_face, :, j, i)
+
+      flux_face[j] = -flux_func(eqn.params, q_faceL[j], q_faceR[j], nrm_scaled)
+    end
+
+    fill!(resL_f, 0.0)
+    fill!(resR_f, 0.0)
+    interiorFaceIntegrate!(mesh_f.sbpface, iface_i, flux_face, resL_f, resR_f)
+
+    # reverse interpolate
+    smallmatvec!(mesh_s.I_S2FT, resL_f, resL_s)
+    smallmatvec!(mesh_s.I_S2FT, resR_f, resR_s)
+
+    # update res
+    @simd for j=1:mesh_s.numNodesPerElement
+      eqn.res[1, j, iface_i.elementL] += resL_s[j]
+      eqn.res[1, j, iface_i.elementR] += resR_s[j]
+    end
+
+  end
+
+  return nothing
+end
 
 """
   Thin wrapper around calcSharedFaceIntegrals_inner.  This function is passed

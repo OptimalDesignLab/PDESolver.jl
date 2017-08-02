@@ -41,6 +41,7 @@ include("test_jac.jl")
 include("test_GLS2.jl")
 # test_newton.jl?
 include("test_dg.jl")
+include("test_staggered.jl")
 include("test_adjoint.jl")
 include("test_parallel.jl")
 include( "./energy/runtests.jl")

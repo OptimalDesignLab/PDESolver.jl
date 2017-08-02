@@ -43,6 +43,9 @@ function checkOptions(opts)
     error("Advection does not support dissipation stabilization")
   end
 
+  if opts["use_staggered_grid"] && MPI.Comm_size(MPI.COMM_WORLD) > 1
+    error("cannot use staggered grid Advection in parallel (yet)")
+  end
 
 
   return nothing
