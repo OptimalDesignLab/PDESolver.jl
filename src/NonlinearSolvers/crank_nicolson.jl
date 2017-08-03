@@ -153,7 +153,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     # load checkpoint to calculate dRdu at this time step
     println("Setting IC for reverse sweep, i_fwd (forward sweep time step index): ", i_fwd)
-    # eqn_fwd = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd, t)
     eqn_fwd = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
     check_q_qvec_consistency(mesh, sbp, eqn_fwd, opts)
 
@@ -167,8 +166,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     dJdu = dJdu_CS
     dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, isDeriv=true)
 
-    # println(" dJdu_CS: ", dJdu)
-    # println(" dJdu_CS - dJdu_analytical: ", dJdu)
     writedlm("dJdu_IC_CS.dat", dJdu_CS)
     writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
 
@@ -206,14 +203,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         saveSolutionToMesh(mesh, real(eqn.q_vec))
         writeVisFiles(mesh, vis_filename)
 
-        time_filename = string("t-",i,".dat")
+        time_filename = string("t_during_fwd_sweep_i-",i,".dat")
         writedlm(time_filename, t)              # make sure that this time value, whether t or t_nextstep,
                                                 #   correctly corresponds to the q_vec stored just above
       end
     else
       # save every time step's adjoint to disk
       if opts["adjoint_saveall"]
-        filename = string("adj-", i, ".dat")
+        filename = string("adj_irev-", i, ".dat")
         writedlm(filename, adj.q_vec)
 
         vis_filename = string("adj_i-", i)
@@ -231,6 +228,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # print_qvec_coords(mesh, sbp, eqn, opts; bndry=true)
       J = J_arr[1]
       println("  J: ", J)
+      J_filename = string("J_during_fwd_sweep_i-", i,".dat")
+      writedlm(J_filename, J)
       println(" -------------- Now using eqn.q_vec to compute eqn_nextstep.q_vec --------------")
     else
       println(" -------------- adj.q_vec start of this CN iter. t = $t, i = $i --------------")
@@ -274,9 +273,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       dJdu = dJdu_CS
       dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, isDeriv=true)
 
-      filename = string("dJdu_",i,"_CS.dat")
+      filename = string("dJdu_irev-",i,"_CS.dat")
       writedlm(filename, dJdu_CS)
-      filename = string("dJdu_",i,"_analytical.dat")
+      filename = string("dJdu_irev-",i,"_analytical.dat")
       writedlm(filename, reshape(dJdu_analytical, (mesh.numDof, 1)))
 
       println("       checking direct method: size(dJdu): ", size(dJdu))
@@ -292,7 +291,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # println("       checking direct method: VV: ", VV)
       println("       checking direct method: size(VV): ", size(VV))
       check_directmethod = transpose(dJdu)*VV
-      filename = string("check_directmethod-", i, ".dat")
+      filename = string("check_directmethod_irev-", i, ".dat")
       writedlm(filename, check_directmethod)
 
     end
@@ -413,7 +412,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # NOTE 20170712: think I need to be doing adj, not adj_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
       # check_adjointmethod = transpose(adj.q_vec)*dRdA
       check_adjointmethod = transpose(adj.q_vec)*(-1.0*dRdA)
-      filename = string("check_adjointmethod-", i, ".dat")
+      filename = string("check_adjointmethod_irev-", i, ".dat")
       writedlm(filename, check_adjointmethod)
     end
 

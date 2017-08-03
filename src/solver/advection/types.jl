@@ -46,7 +46,10 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
 #     alpha_y = 0.0
     alpha_z = 1.0
 
+    # A = 2.0 for unperturbed, A = 2.0 + 1e-6 for perturbed. Trying to get dJdA
     sin_amplitude = 2.0
+    # pert = 1e-6
+    # sin_amplitude += pert
     omega = 1.0
 
     t = Timings()
