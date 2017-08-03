@@ -168,13 +168,14 @@ function ICsinwavexy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
                     opts, u0::AbstractArray{Tsol})
 
+  n = 1  # number of sin waves
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = mesh.dofs[1, j, i]
       coords = sview(mesh.coords, :, j, i)
-      u0[dofnums_j] = sin(2*pi*coords[1]) + sin(2*pi*coords[2])
+      u0[dofnums_j] = sin(2*pi*n*coords[1]) + sin(2*pi*n*coords[2])
       if mesh.dim == 3
-        u0[dofnums_j] += sin(2*pi*coords[3])
+        u0[dofnums_j] += sin(2*pi*n*coords[3])
       end
     end
   end

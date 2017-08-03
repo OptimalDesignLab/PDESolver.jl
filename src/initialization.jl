@@ -256,7 +256,7 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
         println("getting TriFaceForDiagE2")
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.', vertices=false)
       else
-        sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+        sbpface = TriFace{Tsbp}(order, sbp.cub, ref_verts.')
       end
     else  # dim == 3
       ref_verts = sbp.vtx
@@ -266,12 +266,12 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
       if opts["operator_type$suffix"] == "SBPDiagonalE2"
         sbpface = getTetFaceForDiagE(order, sbp.cub, ref_verts)
       else
-        sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
+        sbpface = TetFace{Tsbp}(order, sbp.cub, ref_verts)
       end
     end  # end if dim == 2
   else   # CG
     if dim == 2
-      sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
+      sbpface = TriFace{Tsbp}(order, sbp.cub, sbp.vtx)
     else
       throw(ErrorException("3D CG not supported"))
     end

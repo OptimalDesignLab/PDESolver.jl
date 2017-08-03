@@ -17,16 +17,16 @@ function checkOptions(opts)
     error("use_edge_res does not work correctly, do not use")
   end
 
-  if arg_dict["use_staggered_grid"]
-    if arg_dict["volume_integral_type"] != 2
+  if opts["use_staggered_grid"]
+    if opts["volume_integral_type"] != 2
       error("cannot use staggered grids with non entropy stable volume integrals")
     end
 
-    if arg_dict["face_integral_type"] != 2
+    if opts["face_integral_type"] != 2
       error("cannot use staggered grids with non entropy stable face integrals")
     end
 
-    if arg_dict["operator_type2"] == "SBPNone"
+    if opts["operator_type2"] == "SBPNone"
       error("must specify a real SBP operator for staggered grid")
     end
   end

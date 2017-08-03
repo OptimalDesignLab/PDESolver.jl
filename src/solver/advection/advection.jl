@@ -423,7 +423,7 @@ function evalFaceIntegrals(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::Advectio
 
 #  println("----- Entered evalFaceIntegrals -----")
   if opts["use_staggered_grid"]
-    calcFaceIntegralsStaggered_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn. opts, eqn.flux_func)
+    calcFaceIntegralsStaggered_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts, eqn.flux_func)
 
   elseif opts["precompute_face_flux"]
     # interpolate solution to faces
