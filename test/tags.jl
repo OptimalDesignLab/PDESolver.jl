@@ -28,6 +28,7 @@ if !tag_defs
   global const TAG_CURVILINEAR = "tag_curvilinear"
   global const TAG_HOMOTOPY = "tag_homotopy"
   global const TAG_STAGGERED = "tag_staggered"
+  global const TAG_PARALLEL_DERIVATIVES = "tag_parallel_derivatives"
 
   # types of tests
   global const TAG_SHORTTEST = "tag_shorttest"
@@ -36,4 +37,3 @@ if !tag_defs
 
   global const TAG_TMP = "tag_tmp"  # a temporary tag
 end
-

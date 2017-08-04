@@ -1,7 +1,7 @@
 # Utilties
 
 This module contains functions and types that are useful for the solver but
-independent the equation being solved.
+independent of the equation being solved.
 Additional utility functions are located in the
 [ODLCommontools](https://github.com/OptimalDesignLab/ODLCommonTools.jl).
 The functions defined in the `Utils` module are useful in the context

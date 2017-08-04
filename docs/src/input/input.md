@@ -1,1 +1,1 @@
-# Input Module Documentation
+../../../src/input/README.md

@@ -35,7 +35,7 @@ function runtests_parallel()
   facts("----- Testing Parallel -----") do
 
     start_dir = pwd()
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel_runp.jl"
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
