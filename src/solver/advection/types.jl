@@ -1,13 +1,14 @@
 # definitions of concrete subtypes of AbstractParamType and AbstractSolutionData
 """
-  Subtype of AbstractParamType.
+  Subtype of [`AbstractParamType`](@ref).
 
   Static Parameters:
     Tsol
     Tres
     Tdim
 
-  See
+  This is a container passed to all low level function, useful for storing
+  miscellaneous parameters or constants
 """
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
