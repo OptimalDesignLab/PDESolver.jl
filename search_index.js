@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractSolutionData",
     "category": "Type",
-    "text": "ODLCommonTools.AbtractSolutionData{Tsol, Tres}\n\nThis abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:     Tsol: datatype of solution variables     Tres: datatype of the mesh variables\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractParamType",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractParamType\n\nThis abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
+    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
 },
 
 {
@@ -189,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractMesh",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractMesh{Tmsh}\n\nThis abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:     Tmsh: datatype of the mesh data (coordinates, mapping to/from parametric           space, mapping jacobian).\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -793,11 +793,99 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/misc.html#ODLCommonTools.BCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.BCType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors that compute the   reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.SRCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.SRCType",
+    "category": "Type",
+    "text": "Abstract supertype of all source term functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG face   integrals\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG   face integral that compute the reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
     "location": "solver/misc.html#Abstract-Functor-Types-1",
     "page": "Assorted Function and Types",
     "title": "Abstract Functor Types",
     "category": "section",
     "text": "Abstract types are provided for commonly used Functors:BCType\nBCType_revm\nSRCType\nFluxType\nFluxType_revm"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Boundary",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Boundary",
+    "category": "Type",
+    "text": "ODLCommonTools.Boundary\n\nUsed to identify boundary faces in a finite-element grid.\n\nFields\n\nelement\n : index of the element to which the boundary face belongs\nface\n : the face index of the boundary (local index to the element)\n\nExample\n\nTo mark face 2 of element 7 to be a boundary face, use Boundary(7,2)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Interface",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Interface",
+    "category": "Type",
+    "text": "ODLCommonTools.Interface\n\nUsed to identify interfaces between elements in a finite-element grid.\n\nFields\n\nelementL\n : index of the so-called left element in the pair\nelementR\n : index of the so-called right element in the pair\nfaceL\n : the face index of the interface with respect to the left element\nfaceR\n : the face index of the interface with respect to the right element\norient\n : orientation of the 'right' element relative to the 'left'\n\nExample\n\nConsider an interface between elements 2 and 5.  Suppose the interface is on face 1 of element 2 and face 3 of element 5.  Furthermore, suppose element 5 has orientation 1 relative to element 1 (defintion of orientation TBD).  This can be indicated as Interface(2,5,1,3,1)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getElementL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getElementL",
+    "category": "Function",
+    "text": "This function returns either the element field of a Boundary or the   elementL field of an interface.\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getFaceL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getFaceL",
+    "category": "Function",
+    "text": "This function returns either the face field of a Boundary or the   faceL field of an Interface\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Boundary}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Boundary objects\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Interface}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Interface objects\n\n\n\n"
 },
 
 {
@@ -1833,11 +1921,43 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/adjoint.html#Advection-Adjoint-1",
+    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData,Array{Tsol,1}}",
     "page": "Adjoint",
-    "title": "Advection Adjoint",
+    "title": "AdvectionEquationMod.calcAdjoint",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization. The user always call this function in order to compute the adjoint.\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is the type                       associated with the adjoint of the functional being                       computed and holds all the necessary data.\n \nadjoint_vec\n : Adjoint vector corresponding to the particular functional                    computed. If called in parallel, the vector should be                    distributed across \neqn.comm\n, just like \neqn.q_vec\n \nfunctional_number\n : The functional for which the adjoint vector is being,                          default = 1\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,AdvectionEquationMod.QfluxData{Topt},Any}",
+    "page": "Adjoint",
+    "title": "AdvectionEquationMod.calcFunctionalDeriv",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calcFunctionalDeriv\n\nComputes a 3D array of the derivative of a functional w.r.t eqn.q on all mesh nodes.\n\nInputs\n\n \nmesh\n  : Abstract mesh object\n \nsbp\n   : Summation-By-Parts operator\n \neqn\n   : Advection equation object\n \nopts\n  : Options dictionary\n \nfunctionalData\n : Object of subtype of AbstractOptimizationData. This is                       the type associated with the adjoint of the functional                       being computed and holds all the necessary data.\n \nfunc_deriv_arr\n : 3D array that stors the derivative of functional w.r.t                       eqn.q. It has a structure [1, numnodes_per_element, numEl]\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcIntegrandDeriv-Tuple{Any,AdvectionEquationMod.ParamType{Tsol,Tres,2},Any,Any,Any,AdvectionEquationMod.QfluxData{Topt}}",
+    "page": "Adjoint",
+    "title": "AdvectionEquationMod.calcIntegrandDeriv",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calcIntegrandDeriv\n\nCompute the derivative of the integrand at a point. It presently uses complex step to compute the derivative\n\nInputs\n\n \nopts\n    : Input dictionary\n \nparams\n  : the ParamType for the equation\n \nnx\n & \nny\n : Normal vectors\n \nq\n       : Solution variable\n \nfunctionalData\n : Functional object\n\nOutputs\n\n \nintegrand_deriv\n : derivative of the functor w.r.t q\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcResidualJacobian-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any}",
+    "page": "Adjoint",
+    "title": "AdvectionEquationMod.calcResidualJacobian",
+    "category": "Method",
+    "text": "###AdvectionEquationMod.calcResidualJacobian\n\nThe function calculates the residual for computing the adjoint vector. The function allows for jacobian to be computed depending on the jacobian type specified in the options dictionary jac_type.\n\nInput\n\nmesh\n : Abstract mesh object\nsbp\n  : Summation-By-parts operator\neqn\n  : Euler equation object\nopts\n : options dictionary\n\nOutput\n\njac\n : Jacobian matrix\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/adjoint.html#Advection-Equation-Steady-Adjoint-1",
+    "page": "Adjoint",
+    "title": "Advection Equation Steady Adjoint",
     "category": "section",
-    "text": ""
+    "text": "PDESolver currently has the capability to compute the steady adjoint of a boundary functional. Recall the adjoint equation asfracpartial mathcalLpartial q = fracpartial mathcalJpartial q + psi^T fracpartial mathcalRpartial q = 0where, mathcalL is the Lagrangian for functional mathcalJ and q is the solution variable. The adjoint can be computed by calling the function calcAdjoint, which has been described below.  Modules = [AdvectionEquationMod]\n  Pages = [\"solver/advection/adjoint.jl\"]"
 },
 
 {
@@ -1849,11 +1969,35 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData}",
+    "page": "Boundary Functional",
+    "title": "AdvectionEquationMod.evalFunctional",
+    "category": "Method",
+    "text": "AdvectionEquationMod.evalFunctional\n\nHight level function that evaluates functionals specified in the options dictionary. The user must call this function for functional evaluation.This function is agnostic which type of a functional is being computed and calls a mid level type specific function for the actual functional evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of the functional being computed.\n \nfunctional_number\n : Optional argument. This needs to be specified for all                          non-objective functionals being computed, if there are                          more than 1 of them. Default = 1\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.calcBndryFunctional-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,AdvectionEquationMod.QfluxData{Topt}}",
+    "page": "Boundary Functional",
+    "title": "AdvectionEquationMod.calcBndryFunctional",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calcBndryfunctional\n\nThis function calculates the functional on a geometric boundary of a the computational space. This is a mid level function that should not be called from outside the module. Depending on the functional being computed, it may be necessary to define another method for this function based on a different boundary functional type.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of the functional being computed\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.calcBoundaryFunctionalIntegrand-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},Any,Any,Any,AdvectionEquationMod.QfluxData{Topt}}",
+    "page": "Boundary Functional",
+    "title": "AdvectionEquationMod.calcBoundaryFunctionalIntegrand",
+    "category": "Method",
+    "text": "AdvectionEquationMod.calcBoundaryFunctionalIntegrand\n\nComputes the integrand for boundary functional at a surface SBP node. Every functional needs to have its own method and the functional type determines which method is called.\n\nInputs\n\n \nparams\n : eqn.params object\n \nnx\n : X component of face normal vector\n \nny\n : Y component of face normal vector\n \nq\n  : Nodal solution variable\n \nfunctionalData\n : Object of the functional being computed\n\nOutputs\n\nfunctional_integrand\n : Computed integrand at the surface node\n\n\n\n"
+},
+
+{
     "location": "solver/advection/boundary_functional.html#Advection-Boundary-Functional-1",
     "page": "Boundary Functional",
     "title": "Advection Boundary Functional",
     "category": "section",
-    "text": ""
+    "text": "This page consists of all the functions necessary for computing a boundary functional along the geometric edges of a mesh for the advection equation.  Modules = [AdvectionEquationMod]\n  Pages = [\"solver/advection/boundary_functional.jl\"]"
 },
 
 {
@@ -2161,27 +2305,107 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/adjoint.html#Adjoint-1",
+    "location": "solver/euler/adjoint.html#EulerEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,Array{Tsol,1}}",
     "page": "Adjoint",
-    "title": "Adjoint",
+    "title": "EulerEquationMod.calcAdjoint",
+    "category": "Method",
+    "text": "EulerEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. The user must always call this function in order to compute the adjoint vector. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization.\n\nInputs\n\n \nmesh\n : Abstract DG mesh type\n \nsbp\n  : Summation-By-parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object corresponding the boundary functional being                       computed. It must be a subtype of \nAbstractOptimizationData\n \nadjoint_vec\n : Resulting adjoint vector. In the parallel case, the adjoint                    vector is distributed over the processors similar to eqn.q_vec\n \nfunctional_number\n : Numerical identifier to obtain geometric edges on                          which a functional acts\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/adjoint.html#EulerEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,Any}",
+    "page": "Adjoint",
+    "title": "EulerEquationMod.calcFunctionalDeriv",
+    "category": "Method",
+    "text": "EulerEquationMod. calcFunctionalDeriv\n\nComputes a 3D array of the derivative of a functional w.r.t eqn.q on all mesh nodes.\n\nInputs\n\n \nmesh\n : Abstract DG mesh type\n \nsbp\n  : Summation-By-parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Functional object of super-type AbstractOptimizationData                       that is needed for computing the adjoint vector.                       Depending on the functional being computed, a different                       method based on functional type may be needed to be                       defined.\n \nfunc_deriv_arr\n : 3D array that stores the derivative of the functional                       w.r.t. eqn.q. The array is the same size as eqn.q\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/adjoint.html#EulerEquationMod.calcIntegrandDeriv-Tuple{Any,EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Tsol,1},Any,EulerEquationMod.BoundaryForceData{Tsol,:lift}}",
+    "page": "Adjoint",
+    "title": "EulerEquationMod.calcIntegrandDeriv",
+    "category": "Method",
+    "text": "EulerEquationMod.calcIntegrandDeriv\n\nCompute the derivative of the functional Integrand at a node w.r.t all the degrees of freedom at the node.\n\nInputs\n\n \nopts\n   : Options dictionary\n \nparams\n : parameter type\n \nq\n      : Solution variable at a node\n \naux_vars\n : Auxiliary variables\n \nnrm\n    : normal vector in the physical space\n \nintegrand_deriv\n : Derivative of the integrand at that particular node\n \nnode_info\n : Tuple containing information about the node\n \nfunctionalData\n : Functional object that is a subtype of AbstractOptimizationData.\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/adjoint.html#EulerEquationMod.calcResidualJacobian-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Adjoint",
+    "title": "EulerEquationMod.calcResidualJacobian",
+    "category": "Method",
+    "text": "###EulerEquationMod.calcResidualJacobian\n\nThe function calculates the residual for computing the adjoint vector. The function allows for jacobian to be computed depending on the jacobian type specified in the options dictionary jac_type.\n\nInput\n\nmesh\n : Abstract mesh object\nsbp\n  : Summation-By-parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\n\nOutput\n\njac\n : Jacobian matrix\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/adjoint.html#Euler-Equation-Steady-Adjoint-1",
+    "page": "Adjoint",
+    "title": "Euler Equation Steady Adjoint",
     "category": "section",
-    "text": ""
+    "text": "PDESolver currently has the capability to compute the steady adjoint of a boundary functional. Recall the adjoint equation asfracpartial mathcalLpartial q = fracpartial mathcalJpartial q + psi^T fracpartial mathcalRpartial q = 0where, mathcalL is the Lagrangian for functional mathcalJ and q is the solution variable. The adjoint can be computed by calling the function calcAdjoint, which has been described below.  Modules = [EulerEquationMod]\n  Pages = [\"solver/euler/adjoint.jl\"]"
 },
 
 {
     "location": "solver/euler/boundary_functional.html#",
-    "page": "Boundary Functions",
-    "title": "Boundary Functions",
+    "page": "Boundary Functional",
+    "title": "Boundary Functional",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "solver/euler/boundary_functional.html#Boundary-Functional-1",
-    "page": "Boundary Functions",
-    "title": "Boundary Functional",
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.calcBndryFunctional-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,EulerEquationMod.BoundaryForceData{Topt,fname}}",
+    "page": "Boundary Functional",
+    "title": "EulerEquationMod.calcBndryFunctional",
+    "category": "Method",
+    "text": "EulerEquationMod.calcBndryFunctional\n\nThis function calculates a functional on a geometric boundary of a the computational space. This is a mid level function that should not be called from outside the module. Depending on the functional being computed, it may be necessary to define another method for this function based on a different boundary functional type or parameters.\n\nInputs\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object which is a subtype of Abstract OptimizationData.                       This is type is associated with the functional being                       computed and holds all the relevant data.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData}",
+    "page": "Boundary Functional",
+    "title": "EulerEquationMod.evalFunctional",
+    "category": "Method",
+    "text": "EulerEquationMod.evalFunctional\n\nHight level function that evaluates all the functionals specified over various edges. This function is agnostic to the type of the functional being computed and calls a mid level functional-type specific function for the actual evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n \nfunctional_number\n : A number identifying which functional is being computed.                          This is important when multiple functions, that aren't                          objective functions are being evaluated. Default value                          is 1.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.eval_dJdaoa-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,ASCIIString,AbstractArray{Tsol,1}}",
+    "page": "Boundary Functional",
+    "title": "EulerEquationMod.eval_dJdaoa",
+    "category": "Method",
+    "text": "EulerEquationMod.eval_dJdaoa\n\nCompute the complete derivative of a functional w.r.t angle of attack\n\nInputs\n\nmesh\n : Abstract mesh object\nsbp\n  : Summation-By-Parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\nfunctionalData\n : Object of type AbstractOptimizationData. This is type is associated                      with the functional being computed and holds all the                      relevant data.\nfunctionalName\n : Name of the functional being evaluated\nadjoint_vec\n : Local portion of the adjoint vector owned by an MPI rank\n\nOutput\n\ndJdaoa\n : Complete derivative of the functional w.r.t angle of attack              This is a scalar value that is the same across all MPI ranks\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.calcBoundaryFunctionalIntegrand-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Int64,N},EulerEquationMod.BoundaryForceData{Topt,fname},AbstractArray{Tsol,1}}",
+    "page": "Boundary Functional",
+    "title": "EulerEquationMod.calcBoundaryFunctionalIntegrand",
+    "category": "Method",
+    "text": "EulerEquationMod.calcBoundaryFunctionalIntegrand\n\nComputes the integrand for boundary functional at a surface SBP node. Every functional of a different type may need a corresponding method to compute the integrand. The type of the functional object, which is a subtype of AbstractOptimizationData.\n\nArguments\n\n \nparams\n : eqn.params object\n \nq\n : Nodal solution\n \naux_vars\n : Auxiliary variables\n \nnrm\n : Face normal vector in the physical space\n \nnode_info\n : Information about the SBP node\n \nobjective\n : Functional data type\n \nval\n : Function output value\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.calcBoundaryFunctionalIntegrand_revm-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Int64,N},EulerEquationMod.BoundaryForceData{Topt,fname},AbstractArray{Tmsh,1},AbstractArray{Tres,1}}",
+    "page": "Boundary Functional",
+    "title": "EulerEquationMod.calcBoundaryFunctionalIntegrand_revm",
+    "category": "Method",
+    "text": "EulerEquationMod. calcBoundaryFunctionalIntegrand_revm\n\nReverse mode for boundary functional integrand w.r.t. nrm. Takes in input val_bar and return nrm_bar for further reverse propagation.\n\nArguments\n\n \nparams\n : eqn.params object\n \nq\n : Nodal solution\n \naux_vars\n : Auxiliary variables\n \nnrm\n : Face normal vector in the physical space\n \nnode_info\n : Information about the SBP node\n \nobjective\n : Functional data type\n \nnrm_bar\n : Resulting vector\n \nval_bar\n : Nodal portion of the seeding vector\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional_revm-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,ASCIIString}",
+    "page": "Boundary Functional",
+    "title": "EulerEquationMod.evalFunctional_revm",
+    "category": "Method",
+    "text": "EulerEquationMod.evalFunctional_revm\n\nReverse mode of EulerEquationMod.evalFunctional, It takes in functional value and return mesh.nrm_bndry_bar. Different functionals will need to be added to the if statement to further extend this function.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n \nfunctionalName\n : Name of the functional being evaluated.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/boundary_functional.html#Euler-Boundary-Functional-1",
+    "page": "Boundary Functional",
+    "title": "Euler Boundary Functional",
     "category": "section",
-    "text": ""
+    "text": "This page consists of all the functions necessary for computing a boundary functional along the geometric edges of a mesh for Euler equations. A boundary functional should ALWAYS be evaluated by calling evalFunctional which is the highest level function.  Modules = [EulerEquationMod]\n  Pages = [\"solver/euler/boundary_functional.jl\"]"
 },
 
 {
@@ -2405,7 +2629,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Crank-Nicolson",
     "title": "Backward-in-time (unsteady adjoint)",
     "category": "section",
-    "text": "The unstead adjoint derivation starts with the generic Lagrangian equation:\\begin{equation} \\mathcal{L}(u, \\psi) = \\psi^T R(u) + J(u) \\end{equation}In the discrete context of CN, all of these variables are global-in-time. That is, the adjoint vector contains the adjoint at time step 1 concatenated with    the adjoint at time step 2, and so on, until time step n. Therefore, in this document we will rewrite the Lagrangian using bolded symbols to indicate    that a vector or matrix is global-in-time, as there will be corresponding variables   specific to a particular time step:\\begin{equation} \\boldsymbol{\\mathcal{L}}(\\boldsymbol{u}, \\boldsymbol{\\psi}) = \\boldsymbol{\\psi}^T \\boldsymbol{R}(\\boldsymbol{u}) + \\boldsymbol{J}(\\boldsymbol{u}) \\end{equation}The global-in-time residual discretized according to the Crank-Nicolson method is:boldsymbolR(boldsymbolu) = beginbmatrix u_1 - u_0 - fracDelta t2 R(u_1) - fracDelta t2 R(u_0)  u_2 - u_1 - fracDelta t2 R(u_2) - fracDelta t2 R(u_1)  vdots  u_i - u_i-1 - fracDelta t2 R(u_i) - fracDelta t2 R(u_i-1)  u_i+1 - u_i - fracDelta t2 R(u_i+1) - fracDelta t2 R(u_i)  vdots  u_n - u_n-1 - fracDelta t2 R(u_n) - fracDelta t2 R(u_n-1) endbmatrixTaking the derivative of the Lagrangian with respect to the state at step i yields:"
+    "text": "The unstead adjoint derivation starts with the generic Lagrangian equation:\\begin{equation} \\mathcal{L}(u, \\psi) = \\psi^T R(u) + J(u) \\end{equation}In the discrete context of CN, all of these variables are global-in-time. That is, the adjoint vector contains the adjoint at time step 1 concatenated with    the adjoint at time step 2, and so on, until time step n. Therefore, in this document we will rewrite the Lagrangian using bolded symbols to indicate    that a vector or matrix is global-in-time, as there will also be corresponding variables   specific to a particular time step:\\begin{equation} \\boldsymbol{\\mathcal{L}}(\\boldsymbol{u}, \\boldsymbol{\\psi}) = \\boldsymbol{\\psi}^T \\boldsymbol{R}(\\boldsymbol{u}) + \\boldsymbol{J}(\\boldsymbol{u}) \\end{equation}The global-in-time residual discretized according to the Crank-Nicolson method is:boldsymbolR(boldsymbolu) = beginbmatrix u_1 - u_0 - fracDelta t2 R(u_1) - fracDelta t2 R(u_0)  u_2 - u_1 - fracDelta t2 R(u_2) - fracDelta t2 R(u_1)  vdots  u_i - u_i-1 - fracDelta t2 R(u_i) - fracDelta t2 R(u_i-1)  u_i+1 - u_i - fracDelta t2 R(u_i+1) - fracDelta t2 R(u_i)  vdots  u_n - u_n-1 - fracDelta t2 R(u_n) - fracDelta t2 R(u_n-1) endbmatrixThe global-in-time adjoint vector is:boldsymbolpsi^T = psi_1 psi_2 dots psi_i psi_i+1 dots psi_nTaking the derivative of the Lagrangian with respect to the state at step i yields:"
 },
 
 {
@@ -2417,17 +2641,17 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/cn.html#Checkpointing-1",
+    "location": "NonlinearSolvers/unsteady/cn.html#Direct-Solve-1",
     "page": "Crank-Nicolson",
-    "title": "Checkpointing",
+    "title": "Direct Solve",
     "category": "section",
     "text": ""
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/cn.html#-1",
+    "location": "NonlinearSolvers/unsteady/cn.html#Checkpointing-1",
     "page": "Crank-Nicolson",
-    "title": "",
+    "title": "Checkpointing",
     "category": "section",
     "text": ""
 },
