@@ -1,4 +1,4 @@
-# PDESolver User Interface Interface
+# PDESolver User Interface
 
 ```@meta
 CurrentModule = PDESolver
