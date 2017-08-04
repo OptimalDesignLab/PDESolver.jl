@@ -61,7 +61,11 @@ Taking the derivative of the Lagrangian with respect to the state at step $i$ yi
 ### Initial Condition
 
 
+### Direct Solve
+
 ### Checkpointing
+
+
 
 
 
