@@ -263,7 +263,7 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 end
 
 @doc """
-###EulerEquationMod.calcBndryFunctional_revm
+### EulerEquationMod.calcBndryFunctional_revm
 
 Reverse mode of `calcBndryFunctional` that actually does the work. The commented
 lines indicate the line being reverse diffed.
@@ -359,7 +359,7 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 end
 
 @doc """
-###EulerEquationMod.calcBoundaryFunctionalIntegrand
+### EulerEquationMod.calcBoundaryFunctionalIntegrand
 
 Computes the integrand for boundary functional at a surface SBP node. Every
 functional of a different type may need a corresponding method to compute the
@@ -442,7 +442,7 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{3},
 end # End calcBoundaryFunctionalIntegrand 3D
 
 @doc """
-calcBoundaryFunctionalIntegrand_revm
+### EulerEquationMod. calcBoundaryFunctionalIntegrand_revm
 
 Reverse mode for boundary functional integrand w.r.t. nrm. Takes in input
 val_bar and return nrm_bar for further reverse propagation.

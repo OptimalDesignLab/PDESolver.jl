@@ -3,18 +3,24 @@
 @doc """
 ### EulerEquationMod.calcAdjoint
 
-Calculates the adjoint vector for a single functional
+Calculates the adjoint vector, ψ, for a single functional. The user must always
+call this function in order to compute the adjoint vector. Currently only DG meshes
+are supported. The function performs a direct solve using Julia's  `\\` operator.
+For parallel meshes, a PETSc solve is done using ILU factorization.
 
 **Inputs**
 
 *  `mesh` : Abstract DG mesh type
 *  `sbp`  : Summation-By-parts operator
 *  `eqn`  : Euler equation object
-*  `functor` : functional to be evaluated
-*  `functional_number` : Numerical identifier to obtain geometric edges on
-                         which a functional acts
+*  `opts` : Options dictionary
+*  `functionalData` : Object corresponding the boundary functional being
+                      computed. It must be a subtype of `AbstractOptimizationData`
 *  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint
                    vector is distributed over the processors similar to eqn.q_vec
+*  `functional_number` : Numerical identifier to obtain geometric edges on
+                         which a functional acts
+
 
 **Outputs**
 
@@ -110,7 +116,7 @@ specified in the options dictionary `jac_type`.
 * `mesh` : Abstract mesh object
 * `sbp`  : Summation-By-parts operator
 * `eqn`  : Euler equation object
-* `opts` : options dictionary
+* `opts` : Options dictionary
 
 **Output**
 
