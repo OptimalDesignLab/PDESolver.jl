@@ -40,7 +40,7 @@ In the discrete context of CN, all of these variables are global-in-time.
 That is, the adjoint vector contains the adjoint at time step 1 concatenated with 
   the adjoint at time step 2, and so on, until time step $n$.
 Therefore, in this document we will rewrite the Lagrangian using bolded symbols to indicate 
-  that a vector or matrix is global-in-time, as there will be corresponding variables
+  that a vector or matrix is global-in-time, as there will also be corresponding variables
   specific to a particular time step:
 
 \begin{equation}
@@ -51,6 +51,10 @@ The global-in-time residual discretized according to the Crank-Nicolson method i
 
 $\boldsymbol{R(\boldsymbol{u})} = \begin{bmatrix} u_1 - u_0 - \frac{\Delta t}{2} R(u_1) - \frac{\Delta t}{2} R(u_0) \\ u_2 - u_1 - \frac{\Delta t}{2} R(u_2) - \frac{\Delta t}{2} R(u_1) \\ \vdots \\ u_i - u_{i-1} - \frac{\Delta t}{2} R(u_i) - \frac{\Delta t}{2} R(u_{i-1}) \\ u_{i+1} - u_{i} - \frac{\Delta t}{2} R(u_{i+1}) - \frac{\Delta t}{2} R(u_{i}) \\ \vdots \\ u_n - u_{n-1} - \frac{\Delta t}{2} R(u_n) - \frac{\Delta t}{2} R(u_{n-1}) \end{bmatrix}$
 
+The global-in-time adjoint vector is:
+
+$\boldsymbol{\psi}^T = [\psi_1, \psi_2, \dots, \psi_i, \psi_i+1, \dots, \psi_n]$
+
 Taking the derivative of the Lagrangian with respect to the state at step $i$ yields:
 
 
@@ -60,7 +64,6 @@ Taking the derivative of the Lagrangian with respect to the state at step $i$ yi
 ### Checkpointing
 
 
-### 
 
 
 
