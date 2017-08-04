@@ -180,7 +180,7 @@ function calcVolumeIntegrals_nopre{Tmsh, Tsol, Tres, Tdim}(
           nrm[p] = mesh.dxidx[k, p, j, i]
         end
         # consider calculating all directions at once
-        # not sure if that will help because the data dependencies are 
+        # not sure if that will help because the data dependencies are
         # really simple
         calcEulerFlux(eqn.params, q_j, aux_vars_j, nrm, flux_k)
       end  # end loop k
@@ -213,8 +213,8 @@ end  # end function
     functor: the numerical flux function F, of type FluxType
 """
 function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
-                                        mesh::AbstractMesh{Tmsh}, 
-                                        sbp::AbstractSBP,  
+                                        mesh::AbstractMesh{Tmsh},
+                                        sbp::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
   if mesh.coord_order == 1
@@ -227,13 +227,13 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
 end
 
 @doc """
-  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q 
-  and F is a symmetric numerical flux function.  eqn.res is updated 
+  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q
+  and F is a symmetric numerical flux function.  eqn.res is updated
   with the result.  Linear (non-curvilinear) meshes only
 """
 function calcVolumeIntegralsSplitFormLinear{Tmsh, Tsol, Tres, Tdim}(
-                                        mesh::AbstractMesh{Tmsh}, 
-                                        sbp::AbstractSBP,  
+                                        mesh::AbstractMesh{Tmsh},
+                                        sbp::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
 
@@ -246,7 +246,7 @@ function calcVolumeIntegralsSplitFormLinear{Tmsh, Tsol, Tres, Tdim}(
   F_d = eqn.params.flux_valsD
   S = eqn.params.S
   params = eqn.params
-  
+
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(q, :, j, i)
@@ -257,7 +257,7 @@ function calcVolumeIntegralsSplitFormLinear{Tmsh, Tsol, Tres, Tdim}(
         for d=1:Tdim
           # get the normal vector
           for p=1:Tdim
-            nrm[p, d] = dxidx[d, p, j, i] 
+            nrm[p, d] = dxidx[d, p, j, i]
           end
         end
 
@@ -283,13 +283,13 @@ function calcVolumeIntegralsSplitFormLinear{Tmsh, Tsol, Tres, Tdim}(
 end
 
 @doc """
-  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q 
-  and F is a symmetric numerical flux function.  eqn.res is updated 
+  Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q
+  and F is a symmetric numerical flux function.  eqn.res is updated
   with the result.  This function is used for curvilinear meshes.
 """
 function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
-                                        mesh::AbstractMesh{Tmsh}, 
-                                        sbp::AbstractSBP,  
+                                        mesh::AbstractMesh{Tmsh},
+                                        sbp::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
 
@@ -309,7 +309,7 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
   for d=1:Tdim
     nrm[d, d] = 1
   end
-  
+
   for i=1:mesh.numEl
     # get S for this element
     dxidx_i = ro_sview(dxidx, :, :, :, i)
@@ -400,9 +400,11 @@ Compute the derivative of the euler flux in reverse mode w.r.t to unit vector
 flux direction.
 
 """->
-function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{2, :conservative},
+function calcEulerFlux_revm{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                             q::AbstractArray{Tsol,1}, aux_vars,
-                            dir::AbstractArray{Tmsh,1}, F_bar, dir_bar)
+                            dir::AbstractArray{Tmsh,1},
+                            F_bar::AbstractArray{Tres,1},
+                            dir_bar::AbstractArray{Tmsh,1})
 
   # Compute the reverse mode
   # Differentiate euler flux product with F_bar in reverse mode w.r.t dir to get
@@ -428,6 +430,37 @@ function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{2, :conservative},
   return nothing
 end
 
+function calcEulerFlux_revm{Tmsh,Tsol,Tres}(params::ParamType{3, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1},
+                            F_bar::AbstractArray{Tres,1},
+                            dir_bar::AbstractArray{Tmsh,1})
+
+  # press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
+  press = calcPressure(params, q)
+
+  U_bar = zero(Tres)
+  # F[5] = (q[5] + press)*U
+  U_bar += (q[5] + press)*F_bar[5]
+  #F[4] = q[4]*U + dir[3]*press
+  U_bar += q[4]*F_bar[4]
+  dir_bar[3] += press*F_bar[4]
+  # F[3] = q[3]*U + dir[2]*press
+  U_bar += q[3]*F_bar[3]
+  dir_bar[2] += press*F_bar[3]
+  # F[2] = q[2]*U + dir[1]*press
+  U_bar += q[2]*F_bar[2]
+  dir_bar[1] += press*F_bar[2]
+  # F[1] = q[1]*U
+  U_bar += q[1]*F_bar[1]
+  # U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  dir_bar[1] += q[2]*U_bar/q[1]
+  dir_bar[2] += q[3]*U_bar/q[1]
+  dir_bar[3] += q[4]*U_bar/q[1]
+
+  return nothing
+end
+
 @doc """
 ###EulerEquationMod.calcEulerFlux_revq
 
@@ -435,9 +468,10 @@ Compute the derivative of the Euler flux in reverse mode w.r.t q
 
 """->
 
-function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{2, :conservative},
+function calcEulerFlux_revq{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                             q::AbstractArray{Tsol,1}, aux_vars,
-                            dir::AbstractArray{Tmsh,1}, F_bar, q_bar)
+                            dir::AbstractArray{Tmsh,1}, F_bar::AbstractArray{Tres,1},
+                            q_bar::AbstractArray{Tsol,1})
 
   press = calcPressure(params, q)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
@@ -469,6 +503,52 @@ function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{2, :conservative},
   q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
 
   # Reverse diff press = calcPressure(params, q)
+  calcPressure_revq(params, q, press_bar, q_bar)
+
+  return nothing
+end
+
+function calcEulerFlux_revq{Tmsh, Tsol}(params::ParamType{3, :conservative},
+                            q::AbstractArray{Tsol,1}, aux_vars,
+                            dir::AbstractArray{Tmsh,1},
+                            F_bar::AbstractArray{Tsol,1},
+                            q_bar::AbstractArray{Tsol,1})
+
+  #  Forward Sweep
+  press = calcPressure(params, q)
+  U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+
+  # Reverse sweep
+  # F[5] = (q[5] + press)*U
+  U_bar = F_bar[5]*(q[5] + press)
+  press_bar = F_bar[5]*U
+  q_bar[5] += F_bar[5]*U
+
+  # F[4] = q[4]*U + dir[3]*press
+  q_bar[4] += F_bar[4]*U
+  U_bar += F_bar[4]*q[4]
+  press_bar += F_bar[4]*dir[3]
+
+  # F[3] = q[3]*U + dir[2]*press
+  q_bar[3] += F_bar[3]*U
+  U_bar += F_bar[3]*q[3]
+  press_bar += F_bar[3]*dir[2]
+
+  # F[2] = q[2]*U + dir[1]*press
+  U_bar += F_bar[2]*q[2]
+  q_bar[2] += F_bar[2]*U
+  press_bar += F_bar[2]*dir[1]
+
+  # F[1] = q[1]*U
+  q_bar[1] += F_bar[1]*U
+  U_bar += F_bar[1]*q[1]
+
+  # U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
+  q_bar[2] += U_bar*dir[1]/q[1]
+  q_bar[3] += U_bar*dir[2]/q[1]
+  q_bar[4] += U_bar*dir[3]/q[1]
+  q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/(q[1]*q[1])
+
   calcPressure_revq(params, q, press_bar, q_bar)
 
   return nothing
@@ -547,50 +627,6 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
 
   return nothing
 
-end
-
-function calcEulerFlux_revm{Tmsh,Tsol,Tres}(q::AbstractArray{Tsol,1},
-                            dir::AbstractArray{Tmsh,1},
-                            dir_bar::AbstractArray{Tmsh,1},
-  F_bar::AbstractArray{Tres,1})
-  press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
-  U_bar = zero(Tres)
-  # F[5] = (q[5] + press)*U
-  U_bar += (q[5] + press)*F_bar[5]
-  #F[4] = q[4]*U + dir[3]*press
-  U_bar += q[4]*F_bar[4]
-  dir_bar[3] += press*F_bar[4]
-  # F[3] = q[3]*U + dir[2]*press
-  U_bar += q[3]*F_bar[3]
-  dir_bar[2] += press*F_bar[3]
-  # F[2] = q[2]*U + dir[1]*press
-  U_bar += q[2]*F_bar[2]
-  dir_bar[1] += press*F_bar[2]
-  # F[1] = q[1]*U
-  U_bar += q[1]*F_bar[1]
-  # U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
-  dir_bar[1] += q[2]*U_bar/q[1]
-  dir_bar[2] += q[3]*U_bar/q[1]
-  dir_bar[3] += q[4]*U_bar/q[1]
-end
-
-function calcEulerFlux_revm{Tmsh, Tsol}(params::ParamType{3, :conservative},
-                            q::AbstractArray{Tsol,1}, aux_vars,
-                            dir::AbstractArray{Tmsh,1}, F_bar, dir_bar)
-
-  # Forward sweep
-  press = calcPressure(params, q)
-  U = (q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/q[1]
-  F[1] = q[1]*U
-  F[2] = q[2]*U + dir[1]*press
-  F[3] = q[3]*U + dir[2]*press
-  F[4] = q[4]*U + dir[3]*press
-  F[5] = (q[5] + press)*U
-
-  # Reverse sweep
-
-
-  return nothing
 end
 
 
@@ -722,7 +758,7 @@ Compute the gradient of pressure w.r.t q in the reverse mode
 """->
 
 function calcPressure_revq{Tsol}(params::ParamType{2, :conservative},
-                           q::AbstractArray{Tsol,1}, press_bar, 
+                           q::AbstractArray{Tsol,1}, press_bar,
                            q_bar)
 
   gamma_1 = params.gamma_1
@@ -731,6 +767,21 @@ function calcPressure_revq{Tsol}(params::ParamType{2, :conservative},
   q_bar[3] -= gamma_1*press_bar*q[3]*q1_inv
   q_bar[2] -= gamma_1*press_bar*q[2]*q1_inv
   q_bar[1] += 0.5*gamma_1*press_bar*(q[2]*q[2] + q[3]*q[3])*q1_inv*q1_inv
+
+  return nothing
+end
+
+function calcPressure_revq{Tsol}(params::ParamType{3, :conservative},
+                           q::AbstractArray{Tsol,1}, press_bar,
+                           q_bar)
+
+  gamma_1 = params.gamma_1
+  q1_inv = 1.0/q[1]
+  q_bar[5] += press_bar*gamma_1
+  q_bar[4] -= press_bar*gamma_1*q1_inv*q[4]
+  q_bar[3] -= press_bar*gamma_1*q1_inv*q[3]
+  q_bar[2] -= press_bar*gamma_1*q1_inv*q[2]
+  q_bar[1] += press_bar*gamma_1*0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])*q1_inv*q1_inv
 
   return nothing
 end
@@ -927,22 +978,22 @@ end
 
   Inputs:
     params: a ParamType
-    q: numDofPerNode x numNodesPerElement array of conservative variables at 
+    q: numDofPerNode x numNodesPerElement array of conservative variables at
        each node
     dxidx: the 3 x 3 x numNodesPerElement  scaled  mapping jacobian at the node
     jac: numNodesPerElement vector of the mapping jacobian determinant at
          each node
 
   Input/Outputs:
-    vorticity: a 3 x numNodesPerElement array  containing the vorticity in the 
+    vorticity: a 3 x numNodesPerElement array  containing the vorticity in the
                x, y, and z directions at each node, overwritten
 
   Aliasing restrictions: from params: dxidx_element, velocities, velocity_deriv,
                                       velocity_deriv_xy
 """
 function calcVorticity{Tsol, Tmsh, Tres}(params::ParamType{3, :conservative}, sbp,
-                       q::AbstractMatrix{Tsol}, dxidx::Abstract3DArray{Tmsh}, 
-                       jac::AbstractVector{Tmsh}, 
+                       q::AbstractMatrix{Tsol}, dxidx::Abstract3DArray{Tmsh},
+                       jac::AbstractVector{Tmsh},
                        vorticity::AbstractMatrix{Tres})
 
   Tdim = 3
@@ -987,7 +1038,7 @@ function calcVorticity{Tsol, Tmsh, Tres}(params::ParamType{3, :conservative}, sb
     for v=1:3 # velocity component
       for cart_dim=1:3  # cartesian direction
         for para_dim=1:3  # parametric direction, summed
-          velocity_deriv_xy[v, cart_dim, i] += 
+          velocity_deriv_xy[v, cart_dim, i] +=
               velocity_deriv[v, i, para_dim]*dxidx_unscaled[para_dim, cart_dim]
         end
       end
@@ -1762,8 +1813,8 @@ function calcMomentContribution!{Tsbp,Tmsh,Tres
 end
 
 function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                 eqn::AbstractSolutionData{Tsol, Tres},  
-                                 bndry_nums::Array{Int, 1}, 
+                                 eqn::AbstractSolutionData{Tsol, Tres},
+                                 bndry_nums::Array{Int, 1},
                                  xyz_about::AbstractArray{Tmsh, 1})
 
   moment = zeros(Tres, mesh.dim)
@@ -1774,7 +1825,7 @@ function calcMomentContribution!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
     bndry_faces = sview(mesh.bndryfaces, face_range)
     coords = ro_sview(mesh.coords_bndry, :, :, face_range)
     nrm = ro_sview(mesh.nrm_bndry, :, :, face_range)
-    
+
     # compute dforce
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
 
@@ -1800,7 +1851,7 @@ function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::Abstr
 
     nrm = sview(mesh.nrm_bndry, :, :, face_range)
     nrm_bar = sview(mesh.nrm_bndry_bar, :, :, face_range)
-    
+
     # compute dforce
     dforce = computeDForce(mesh, eqn, bndry_faces, nrm)
     dforce_bar = zeros(dforce)
@@ -1816,7 +1867,7 @@ function calcMomentContribution_revm!{Tmsh, Tres}(mesh::AbstractMesh, eqn::Abstr
 end
 
 
-function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh, 
+function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh,
                                          eqn::AbstractSolutionData{Tsol, Tres},
                                          bndryfaces::AbstractArray{Boundary, 1},
                                          nrm::Abstract3DArray{Tmsh})
@@ -1837,7 +1888,7 @@ function computeDForce{Tmsh, Tsol, Tres}(mesh::AbstractMesh,
 end
 
 
-function computeDForce_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+function computeDForce_revm!{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                              eqn::AbstractSolutionData{Tsol, Tres},
                              bndryfaces::AbstractArray{Boundary, 1},
                              nrm_bar::Abstract3DArray,
@@ -1915,7 +1966,7 @@ function calcMomentContribution_rev!{Tsbp,Tmsh,Tsol,Tres
   end
 end
 
-function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp}, 
+function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp},
     xsbp::AbstractArray{Tmsh,3},
     dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1})
   @assert( sbpface.numnodes == size(xsbp,2) == size(dforce,2) )
@@ -1938,5 +1989,3 @@ function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp},
 
   return moment
 end
-
-

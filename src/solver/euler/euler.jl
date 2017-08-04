@@ -243,7 +243,6 @@ function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-
 function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
                                mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP,
@@ -401,7 +400,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       flush(f)
     end
   end
- 
+
   if opts["write_kinetic_energydt"]
     @mpi_master f = eqn.file_dict[opts["write_kinetic_energydt_fname"]]
 
@@ -622,7 +621,7 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
 
-  # artificialViscosity(mesh, sbp, eqn) 
+  # artificialViscosity(mesh, sbp, eqn)
 
 end  # end evalVolumeIntegrals
 
@@ -746,7 +745,7 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
-    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,
                            eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
   else

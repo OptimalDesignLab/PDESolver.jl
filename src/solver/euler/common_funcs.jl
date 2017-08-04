@@ -76,7 +76,7 @@ return nothing
 end
 
 
-function calcIsentropicVortex{Tmsh, Tsol}(params::ParamType3, 
+function calcIsentropicVortex{Tmsh, Tsol}(params::ParamType3,
                               coords::AbstractArray{Tmsh},
                               sol::AbstractVector{Tsol})
 # calculates the solution at a point of the isentropic vortex
@@ -184,7 +184,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcFreeStream{Tmsh, Tsol}(params::ParamType2, 
+function calcFreeStream{Tmsh, Tsol}(params::ParamType2,
                         coords::AbstractArray{Tmsh, 1},
                         sol::AbstractArray{Tsol, 1})
 # calculate the free stream conditions using the fields of params
@@ -201,12 +201,14 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end
 
-function calcFreeStream{Tmsh, Tsol}(params::ParamType3, 
-                        coords::AbstractArray{Tmsh, 1}, 
+function calcFreeStream{Tmsh, Tsol}(params::ParamType3,
+                        coords::AbstractArray{Tmsh, 1},
                         sol::AbstractArray{Tsol, 1})
 # calculate the free stream conditions using the fields of params
 
-  
+  # calculate the free stream conditions using the fields of params
+
+
   rho = sol[1] = params.rho_free
   E = sol[5] = params.E_free
 
@@ -220,7 +222,7 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType3,
 end
 
 @doc """
-### EulerEquationMod.calcFreeStream_dAlpha
+### EulerEquationMod.calcFreeStream_daoa
 
   This function calculates the free stream solution for an airfoil problem
   based on the angle of attack and Mach number in nondimensionalized variables.
@@ -246,19 +248,35 @@ end
 
 """->
 
-function calcFreeStream_dAlpha{Tmsh, Tsol}(params::ParamType2, 
+function calcFreeStream_dAlpha{Tmsh, Tsol}(params::ParamType2,
                                coords::AbstractArray{Tmsh, 1},
                                sol::AbstractArray{Tsol, 1})
 # calculate the free stream conditions using the fields of params
 
 
-  rho = sol[1] = params.rho_free
-  E = sol[4] = params.E_free
 
+  rho = params.rho_free
   Ma = params.Ma
 
   sol[2] = -rho*Ma*sin(params.aoa)
   sol[3] = -rho*Ma*cos(params.aoa)
+
+  return nothing
+end
+
+function calcFreeStream_daoa{Tmsh, Tsol}(params::ParamType3,
+                             coords::AbstractArray{Tmsh, 1},
+                             sol::AbstractArray{Tsol, 1})
+
+  # calculate the free stream conditions using the fields of params
+
+
+  rho = params.rho_free
+  Ma = params.Ma
+
+  sol[2] = -rho*Ma*sin(params.aoa)
+  sol[3] = 0.0
+  sol[4] = -rho*Ma*cos(params.aoa)
 
   return nothing
 end
@@ -286,7 +304,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcUnsteadyVortex{Tmsh, Tsol}(params::ParamType2, 
+function calcUnsteadyVortex{Tmsh, Tsol}(params::ParamType2,
                             coords::AbstractArray{Tmsh, 1},
                             sol::AbstractArray{Tsol, 1})
 
@@ -355,7 +373,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcRho1Energy2{Tmsh, Tsol}(params::ParamType2, 
+function calcRho1Energy2{Tmsh, Tsol}(params::ParamType2,
                          coords::AbstractArray{Tmsh, 1},
                          sol::AbstractArray{Tsol,1})
   # for square test case with rho = 1, everything else  = 0
@@ -415,7 +433,7 @@ end  # end function calcOnes
 
 """->
 
-function calcZeros{Tmsh, Tsol}(params::ParamType2, 
+function calcZeros{Tmsh, Tsol}(params::ParamType2,
                    coords::AbstractArray{Tmsh, 1},
                    sol::AbstractArray{Tsol,1})
 
@@ -446,7 +464,7 @@ end  # end function calcZeros
   Aliasing restrictions: none
 
 """->
-function calcRho1Energy2U3{Tmsh, Tsol}(params::ParamType2, 
+function calcRho1Energy2U3{Tmsh, Tsol}(params::ParamType2,
                            coords::AbstractArray{Tmsh},
                            sol::AbstractArray{Tsol, 1})
   # for square test case with rho = 1, digonal momentum, energy
@@ -585,7 +603,7 @@ end
   This is typically used with a mesh that spans [-1, 1] in all directions
 
 """
-function calcPeriodicMMS{Tmsh, Tsol}(params::ParamType2, 
+function calcPeriodicMMS{Tmsh, Tsol}(params::ParamType2,
                          coords::AbstractArray{Tmsh,1},
                          q::AbstractArray{Tsol,1})
 
@@ -656,7 +674,7 @@ function calcChannelMMS{Tmsh, Tsol}(params::ParamType2,
   rho_inf = 1
   u_inf = 1
   offset = 0.1
-  T_inf = 1  # make this smaller to reduce Mach number 
+  T_inf = 1  # make this smaller to reduce Mach number
 
   y = coords[2]
 
@@ -667,5 +685,3 @@ function calcChannelMMS{Tmsh, Tsol}(params::ParamType2,
 
   return nothing
 end
-
-

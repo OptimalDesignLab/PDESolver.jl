@@ -506,7 +506,8 @@ function calcBCNormal(params::AbstractParamType{3}, dxidx::AbstractMatrix,
 end
 
 function calcBCNormal_revm(params::AbstractParamType{2}, dxidx::AbstractMatrix,
-                    nrm::AbstractVector, nrm2_bar::AbstractVector, dxidx_bar)
+                           nrm::AbstractVector, nrm2_bar::AbstractVector,
+                           dxidx_bar::AbstractMatrix)
 
   dxidx_bar[1,1] += nrm2_bar[1]*nrm[1]
   dxidx_bar[2,1] += nrm2_bar[1]*nrm[2]
@@ -516,27 +517,22 @@ function calcBCNormal_revm(params::AbstractParamType{2}, dxidx::AbstractMatrix,
   return nothing
 end
 
-function calcBCNormal_revm(params::AbstractParamType{3}, dxidx::AbstractMatrix, nrm::AbstractVector, nrm2_bar::AbstractVector, dxidx_bar)
+function calcBCNormal_revm(params::AbstractParamType{3}, dxidx::AbstractMatrix,
+                           nrm::AbstractVector, nrm2_bar::AbstractVector, 
+                           dxidx_bar::AbstractMatrix)
 
-  n1 = nrm[1]; n2 = nrm[2]; n3 = nrm[3]
-  dxidx_bar[1,1] += nrm2_bar[1]*n1
-  dxidx_bar[2,1] += nrm2_bar[1]*n2
-  dxidx_bar[3,1] += nrm2_bar[1]*n3
-
-  dxidx_bar[1,2] += nrm2_bar[2]*n1
-  dxidx_bar[2,2] += nrm2_bar[2]*n2
-  dxidx_bar[3,2] += nrm2_bar[2]*n3
-
-  dxidx_bar[1,3] += nrm2_bar[3]*n1
-  dxidx_bar[2,3] += nrm2_bar[3]*n2
-  dxidx_bar[3,3] += nrm2_bar[3]*n3
+  dxidx_bar[1,1] += nrm2_bar[1]*nrm[1]
+  dxidx_bar[2,1] += nrm2_bar[1]*nrm[2]
+  dxidx_bar[3,1] += nrm2_bar[1]*nrm[3]
+  dxidx_bar[1,2] += nrm2_bar[2]*nrm[1]
+  dxidx_bar[2,2] += nrm2_bar[2]*nrm[2]
+  dxidx_bar[3,2] += nrm2_bar[2]*nrm[3]
+  dxidx_bar[1,3] += nrm2_bar[3]*nrm[1]
+  dxidx_bar[2,3] += nrm2_bar[3]*nrm[2]
+  dxidx_bar[3,3] += nrm2_bar[3]*nrm[3]
 
   return nothing
 end
-
-
-
-
 
 #------------------------------------------------------------------------------
 # permutation functions
