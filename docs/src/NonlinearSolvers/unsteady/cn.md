@@ -53,7 +53,7 @@ $\boldsymbol{R(\boldsymbol{u})} = \begin{bmatrix} u_1 - u_0 - \frac{\Delta t}{2}
 
 The global-in-time adjoint vector is:
 
-$\boldsymbol{\psi}^T = [\psi_1, \psi_2, \dots, \psi_i, \psi_i+1, \dots, \psi_n]$
+$\boldsymbol{\psi}^T = [\psi_1, \psi_2, \dots, \psi_i, \psi_{i+1}, \dots, \psi_n]$
 
 Taking the derivative of the Lagrangian with respect to the state at step $i$ yields:
 
