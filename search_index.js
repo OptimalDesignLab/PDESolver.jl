@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractSolutionData",
     "category": "Type",
-    "text": "ODLCommonTools.AbtractSolutionData{Tsol, Tres}\n\nThis abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:     Tsol: datatype of solution variables     Tres: datatype of the mesh variables\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractParamType",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractParamType\n\nThis abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
+    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\nStatic Parameters:\n\nTdim: the dimensionality of the equation being solved (2d or 3d usually)\n\n\n\n"
 },
 
 {
@@ -189,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractMesh",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractMesh{Tmsh}\n\nThis abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:     Tmsh: datatype of the mesh data (coordinates, mapping to/from parametric           space, mapping jacobian).\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -749,7 +749,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Overview of Physics Modules",
     "title": "Source Term",
     "category": "section",
-    "text": "To create the source term functor, locate the file where the source terms are defined for the physics modules, usually called source.jl and create a new functor and associated call() method (see description of functors above). Make sure the functor object is a subtype of SRCType and the call() method has the same signature (except for the first argument) as the other call methods in the file.For simple equations such as linear advection, the body of the call() function should construct the source term from the functions in common_funcs.jl. For more complicated equations, the code that evalutes the source term at a given point should be placed in the body of the call() function directly.Note that the purpose of this function is to evalute the value of the source term, not to do integration of any kind.Once the functor is created, it should be added to the list of source terms (usually a Dictionary located at the bottom of the file where the source terms are defined). Consult the physics module documentation for details."
+    "text": "To create the source term functor, locate the file where the source terms are defined for the physics modules, usually called source.jl and create a new functor and associated call() method (see description of functors above). Make sure the functor object is a subtype of SRCType and the call() method has the same signature (except for the first argument) as the other call methods in the file. The name of the functor should be SRCfoo, where foo is the name of the  source term.For simple equations such as linear advection, the body of the call() function should construct the source term from the functions in common_funcs.jl. For more complicated equations, the code that evalutes the source term at a given point should be placed in the body of the call() function directly.Note that the purpose of this function is to evalute the value of the source term, not to do integration of any kind.Once the functor is created, it should be added to the list of source terms (usually a Dictionary located at the bottom of the file where the source terms are defined). Consult the physics module documentation for details."
 },
 
 {
@@ -757,7 +757,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Overview of Physics Modules",
     "title": "Boundary Condition",
     "category": "section",
-    "text": "Construction of a boundary term is similar to construction of a source term. Locate the file where the boundary conditions are defined, usually bc.jl, and add a new functor. Make sure the functor type is a subtype of BCType and the call() method has the same signature (except for the first argument) as the other call() methods in the file. The body of the call() method should evalute the flux caused by the imposition of the boundary condition (because boundary conditions are imposed weakly). This is typically accomplished by calculating the boundary condition state and then calling a numerical flux function with both the current state and the boundary state.For simple equations, the boundary state should construct the boundary state by calling the functions in common_funcs.jl. For more complicated equations, the code to evalute the boundary state should be contained in the call() method body.Once the functor is created, it should be added to the list of boundary conditions, usually a dictionary located at the bottom of the file where the boundary conditions are defined. Consults the physical module documentation for details."
+    "text": "Construction of a boundary term is similar to construction of a source term. Locate the file where the boundary conditions are defined, usually bc.jl, and add a new functor. Make sure the functor type is a subtype of BCType and the call() method has the same signature (except for the first argument) as the other call() methods in the file. The naming convention for BC functors is fooBC, where foo is the name of the  boundary condition. The body of the call() method should evalute the flux caused by the imposition of the boundary condition (because boundary conditions are imposed weakly). This is typically accomplished by calculating the boundary condition state and then calling a numerical flux function with both the current state and the boundary state.For simple equations, the boundary state should construct the boundary state by calling the functions in common_funcs.jl. For more complicated equations, the code to evalute the boundary state should be contained in the call() method body.Once the functor is created, it should be added to the list of boundary conditions, usually a dictionary located at the bottom of the file where the boundary conditions are defined. Consults the physical module documentation for details."
 },
 
 {
@@ -765,7 +765,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Overview of Physics Modules",
     "title": "Initial condition",
     "category": "section",
-    "text": "Initial conditions are a bit different than boundary conditions and source terms because they do not use functors (functors are unnecessary because ICs are evaluated infrequently). Locate the file where initial conditions are defined, typically ic.jl, and create a new function with the same signature as the the other functions in the file. This function should loop over all elements in the mesh "
+    "text": "Initial conditions are a bit different than boundary conditions and source terms because they do not use functors (functors are unnecessary because ICs are evaluated infrequently). Locate the file where initial conditions are defined, typically ic.jl, and create a new function with the same signature as the the other functions in the file. This function should loop over all elements in the mesh, every node on the element, and use mesh.dofs to assign the solution to proper indices of the supplied vector. The naming convention for IC functions is ICfoo, where foo is the name of the initial condition.For simple equations, the solution should be calculated using the functions in common_funcs.jl, otherwise it should be calculated in the initial condition function.Initial condition functions are used to calculate errors during post-processing, so it is important for the initial condition function to evaluate the solution at the proper time for unsteady problems.After the initial condition function is created, it should be added to the list of initial conditions, usually a dictionary at the bottom of the file where the initial conditions are defined. See the physics module documentation for details."
 },
 
 {
@@ -793,11 +793,99 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/misc.html#ODLCommonTools.BCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.BCType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors that compute the   reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.SRCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.SRCType",
+    "category": "Type",
+    "text": "Abstract supertype of all source term functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG face   integrals\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG   face integral that compute the reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
     "location": "solver/misc.html#Abstract-Functor-Types-1",
     "page": "Assorted Function and Types",
     "title": "Abstract Functor Types",
     "category": "section",
     "text": "Abstract types are provided for commonly used Functors:BCType\nBCType_revm\nSRCType\nFluxType\nFluxType_revm"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Boundary",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Boundary",
+    "category": "Type",
+    "text": "ODLCommonTools.Boundary\n\nUsed to identify boundary faces in a finite-element grid.\n\nFields\n\nelement\n : index of the element to which the boundary face belongs\nface\n : the face index of the boundary (local index to the element)\n\nExample\n\nTo mark face 2 of element 7 to be a boundary face, use Boundary(7,2)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Interface",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Interface",
+    "category": "Type",
+    "text": "ODLCommonTools.Interface\n\nUsed to identify interfaces between elements in a finite-element grid.\n\nFields\n\nelementL\n : index of the so-called left element in the pair\nelementR\n : index of the so-called right element in the pair\nfaceL\n : the face index of the interface with respect to the left element\nfaceR\n : the face index of the interface with respect to the right element\norient\n : orientation of the 'right' element relative to the 'left'\n\nExample\n\nConsider an interface between elements 2 and 5.  Suppose the interface is on face 1 of element 2 and face 3 of element 5.  Furthermore, suppose element 5 has orientation 1 relative to element 1 (defintion of orientation TBD).  This can be indicated as Interface(2,5,1,3,1)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getElementL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getElementL",
+    "category": "Function",
+    "text": "This function returns either the element field of a Boundary or the   elementL field of an interface.\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getFaceL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getFaceL",
+    "category": "Function",
+    "text": "This function returns either the face field of a Boundary or the   faceL field of an Interface\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Boundary}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Boundary objects\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Interface}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Interface objects\n\n\n\n"
 },
 
 {
@@ -1957,7 +2045,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Datatypes",
     "title": "EulerEquationMod.EulerData",
     "category": "Type",
-    "text": "EulerEquationMod.EulerData\n\nThis type, although abstract, is the type functions should use for their   input arguments if they do any operations on the solution data object.   It stores all data used in evaluting the Euler Equations.\n\nIt is paramaterized on the types Tsol, the type of the   conservative variables q, and Tdim, the dimension of the equation\n\nIt should have the following fields:    * res_type : datatype of residual (depreciated)     * q  : 3D array holding conservative variables     * q_vec  : vector to assemble q into     * aux_vars : 3D array holding auxiliary variables     * flux_parametric : 4D array [ndof per node, nnodes per element, nelements, Tdim]              holding the Euler flux in the xi and eta directions     * res  : 3D array holding residual     * res_vec   : vector form of res     * edgestab_alpha : paramater used for edge stabilization, 4d array     * bndryflux : 3D array holding boundary flux data     * stabscale : 2D array holding edge stabilization scale factor     * M : vector holding the mass matrix     * Minv :  vector holding inverse mass matrix     # Minv3D :  3D array holding inverse mass matrix for application to res (not res_vec)\n\n\n\n"
+    "text": "EulerEquationMod.EulerData\n\nThis type, although abstract, is the type functions should use for their   input arguments if they do any operations on the solution data object.   It stores all data used in evaluting the Euler Equations.\n\nIt is paramaterized on the types Tsol, the type of the   conservative variables q, and Tdim, the dimension of the equation\n\nIt should have the following fields:\n\n* res_type : datatype of residual (depreciated)\n* q  : 3D array holding conservative variables\n* q_vec  : vector to assemble q into\n* aux_vars : 3D array holding auxiliary variables\n* flux_parametric : 4D array [ndof per node, nnodes per element, nelements, Tdim]\n         holding the Euler flux in the xi and eta directions\n* res  : 3D array holding residual\n* res_vec   : vector form of res\n* edgestab_alpha : paramater used for edge stabilization, 4d array\n* bndryflux : 3D array holding boundary flux data\n* stabscale : 2D array holding edge stabilization scale factor\n* M : vector holding the mass matrix\n* Minv :  vector holding inverse mass matrix\n# Minv3D :  3D array holding inverse mass matrix for application to res (not res_vec)\n\n\n\n"
 },
 
 {
@@ -1997,7 +2085,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Datatypes",
     "title": "EulerEquationMod.cleanup",
     "category": "Method",
-    "text": "This function performs all cleanup activities before the run_physics()   function returns.  The mesh, sbp, eqn, opts are returned by run_physics()   so there is not much cleanup that needs to be done, mostly closing files.\n\nInputs/Outputs:\n\n* mesh: an AbstractMesh object\n* sbp: an SBP operator\n* eqn: the EulerData object\n* opts: the options dictionary\n\n\n\n"
+    "text": "This function performs all cleanup activities before the run_physics()   function returns.  The mesh, sbp, eqn, opts are returned by run_physics()   so there is not much cleanup that needs to be done, mostly closing files.\n\nInputs/Outputs:\n\nmesh: an AbstractMesh object\nsbp: an SBP operator\neqn: the EulerData object\nopts: the options dictionary\n\n\n\n"
 },
 
 {
@@ -2005,7 +2093,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Datatypes",
     "title": "EulerEquationMod.openLoggingFiles",
     "category": "Method",
-    "text": "This function opens all used for logging data.  In particular, every data   file that has data appended to it in majorIterationCallback should be   opened here.  Most files are of type BufferedIO, so they must be flushed   periodically.\n\nThis function requires each output to have two keys: \"write_outname\"   and \"write_outname_fname\", where the first has a boolean value that   controls whether or not to write the output, and the second is the   file name (including extension) to write.\n\nThis function contains a list of all possible log files.  Every new   log file must be added to the list\n\nInputs:\n\nmesh: an AbstractMesh (needed for MPI Communicator)\nopts: options dictionary\n\nOutputs:\n\n* file_dict: dictionary mapping names of files to the file object\n             ie. opts[\"write_entropy_fname\"] => f\n\nExceptions: this function will throw an exception if any two file names               are the same\n\n\n\n"
+    "text": "This function opens all used for logging data.  In particular, every data   file that has data appended to it in majorIterationCallback should be   opened here.  Most files are of type BufferedIO, so they must be flushed   periodically.\n\nThis function requires each output to have two keys: \"write_outname\"   and \"write_outname_fname\", where the first has a boolean value that   controls whether or not to write the output, and the second is the   file name (including extension) to write.\n\nThis function contains a list of all possible log files.  Every new   log file must be added to the list\n\nInputs:\n\nmesh: an AbstractMesh (needed for MPI Communicator)\nopts: options dictionary\n\nOutputs:\n\nfile_dict: dictionary mapping names of files to the file object                  ie. opts[\"write_entropy_fname\"] => f\n\nExceptions: this function will throw an exception if any two file names               are the same\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.PhysicsName",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.PhysicsName",
+    "category": "Constant",
+    "text": "This physics is named Euler\n\n\n\n"
 },
 
 {
@@ -2089,11 +2185,203 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/flux.html#Face-Integral-1",
+    "location": "solver/euler/flux.html#Face-Integrals-1",
     "page": "Face Integrals",
-    "title": "Face Integral",
+    "title": "Face Integrals",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModThis page describes the functions that evaluate the face and shared face integrals."
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.evalFaceIntegrals",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.evalFaceIntegrals",
+    "category": "Function",
+    "text": "EulerEquationMod.evalFaceIntegrals\n\nThis function evaluates the face integrals in a DG formulation and   updates the residual.  The array eqn.flux_face must already be populated   with the face flux.\n\nInputs:\n\nmesh: an AbstractDGMesh\nsbp: an SBP operator\neqn: an EulerData object\nopts: the options dictonary\n\nOutputs:\n\nnone\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.evalSharedFaceIntegrals",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.evalSharedFaceIntegrals",
+    "category": "Function",
+    "text": "EulerEquationMod.evalSharedFaceIntegrals\n\nThis function does the computation that needs the parallel   communication to have finished already, namely the face integrals   for the shared faces\n\nInputs:\n\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#Entry-Point-1",
+    "page": "Face Integrals",
+    "title": "Entry Point",
+    "category": "section",
+    "text": "evalFaceIntegrals\nevalSharedFaceIntegrals"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcFaceFlux-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,:conservative},ODLCommonTools.FluxType,AbstractArray{ODLCommonTools.Interface,1},AbstractArray{Tres,3}}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcFaceFlux",
+    "category": "Method",
+    "text": "EulerEquationMod.calcFaceFlux\n\nThis function calculates the DG flux between a specified set of faces,   using the solution data at the faces stored in eqn.q_face.   Note that the flux is negated because the face integrals have a   negative sign in the weak form.\n\nConservative variables only!\n\nInputs:\n\nmesh\nsbp\neqn\nfunctor: the functor that calculates the flux at a node\ninterfaces: an array of type Interface that specifies which interfaces                 to calculate the flux for\n\nInputs/Outputs:    * face_flux: array to store the flux in, numDofPerNode x nnodesPerFace                x length(interfaces)\n\nThe functor must have the signature:\n\nfunc( uL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params)\n\nwhere uL and uR are the solution values for a node on the left and right   elements, aux_vars are the auxiliary variables for the node,   dxidx is the scaled mapping jacobian for elementL, and nrm is the face   normal in reference space. flux_j is the array of length numDofPerNode to be   populated with the flux. params is eqn.params.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcFaceIntegral_nopre-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,:conservative},Any,ODLCommonTools.FluxType,AbstractArray{ODLCommonTools.Interface,1}}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcFaceIntegral_nopre",
+    "category": "Method",
+    "text": "Like calcFaceFlux, but computes the flux for a single element and   then integrates it immediately, updating eqn.res\n\nInputs:    * mesh    * sbp    * eqn    * opts    * functor: a FluxType that evalutes the flux    * interfaces: the vector of Interfaces to compute the integrals for\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceElementIntegrals_element-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T}}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceElementIntegrals_element",
+    "category": "Method",
+    "text": "This function is a thin wrapper around   calcSharedFaceElementIntegrals_element_inner,   presenting the interface needed by finishExchangeData.   See that function for the interface details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceElementIntegrals_element_inner-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T},EulerEquationMod.FaceElementIntegralType,ODLCommonTools.FluxType}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceElementIntegrals_element_inner",
+    "category": "Method",
+    "text": "This function loops over given set of shared faces and computes a face   integral that   uses data from all volume nodes.  See FaceElementIntegralType   for details on the integral performed.\n\nInputs:\n\nmesh\nsbp\neqn\nopts\ndata: a SharedFaceData specifying which shared faces to compute\nface_integral_functor\nflux_functor\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceIntegrals-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T}}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals",
+    "category": "Method",
+    "text": "This function is a thin wrapper around calcSharedFaceIntegrals_inner.   It present the interface needed by finishExchangeData.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceIntegrals_element-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T}}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals_element",
+    "category": "Method",
+    "text": "This function is a thin wrapper around   calcSharedFaceIntegrals_element_inner.   It presents the interface required by finishExchangeData\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceIntegrals_element_inner-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T},ODLCommonTools.FluxType}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals_element_inner",
+    "category": "Method",
+    "text": "This function calculates the shared face integrals for a given set of faces.   It uses the MPI send and receive buffers that contain the solution for the   elements on the boundary (rather than the data on the faces).  This   enables calculating a sparse jacobian with minimal parallel communication.\n\nInputs:\n\nmesh\nsbp\neqn\nopts\ndata: a SharedFaceData specifying the faces to calculate\nfunctor: the flux functor\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceIntegrals_inner-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T},ODLCommonTools.FluxType}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals_inner",
+    "category": "Method",
+    "text": "EulerEquationMod.calcSharedFaceIntegrals\n\nThis function calculates the shared face integrals over a given set of   faces.\n\nInputs:\n\nmesh\nsbp\neqn\nopts\ndata: the SharedFaceData specifying which faces to compute\nfunctor: the FluxType to use for the face flux\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceIntegrals_nopre_element_inner-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T},ODLCommonTools.FluxType}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals_nopre_element_inner",
+    "category": "Method",
+    "text": "Like calcSharedFaceIntegrals_element_inner, but performs the integration and   updates eqn.res rather than computing the flux only and storing it in   eqn.flux_sharedface\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.calcSharedFaceIntegrals_nopre_inner-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T},ODLCommonTools.FluxType}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals_nopre_inner",
+    "category": "Method",
+    "text": "Like calcSharedFaceIntegrals_inner, but performs the integration and   updates eqn.res rather than computing the flux and storing it in   eqn.flux_sharedface\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.getFaceElementIntegral-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},EulerEquationMod.FaceElementIntegralType,ODLCommonTools.FluxType,SummationByParts.AbstractFace{T<:Number},AbstractArray{ODLCommonTools.Interface,1}}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.getFaceElementIntegral",
+    "category": "Method",
+    "text": "This function loops over interfaces and computes a face integral that   uses data from all volume nodes. See FaceElementIntegralType   for details on the integral performed.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.getFluxFunctors-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},Any,Any,Any}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.getFluxFunctors",
+    "category": "Method",
+    "text": "EulerEquationMod.getFluxFunctors\n\nThis function retrieves the flux functors from the dictonary and   stores them to eqn.flux_func.\n\nInputs:     mesh: an AbstractDGMesh     sbp     eqn     opts\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.interpolateFace-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},Any,Any,Any,AbstractArray{T,3},AbstractArray{Tsol,4}}",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.interpolateFace",
+    "category": "Method",
+    "text": "EulerEquationMod.interpolateFace\n\nThis function interpolates the solution values from the internal nodes   to the face flux points of the elements\n\nInputs:\n\nmesh: an AbstractDGMesh\nsbp\neqn\nopts\nq: a 3D array of solution values at the nodes, numDofPerNode x        numNodesPerElement x numEl\n\nInputs/Outputs:\n\nq_face: a 4D array of solution values at each interface,             numDofPerNode x 2 x numfacenodes x numInterface             q_face[:, 1, j, i] stores the q values for elementL of interface             i node j and q_face[:, 2, j, i] stores the values for elementR\n\neqn.aux_vars_face is also populated\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.FluxDict",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.FluxDict",
+    "category": "Constant",
+    "text": "EulerEquationMod.FluxDict\n\nThis dictonary maps the names of the fluxes (ASCIIStrings) to the   functor object itself.  All flux functors should be added to the dictionary.\n\nAll fluxes have one method that calculates the flux in a particular direction   at a node.  Some fluxes have an additional method that computes the flux   in several directions at a node in a single function call, which can be   more efficient.  See calcEulerFlux_standard for an example.\n\nIn general, these functors call similarly-named function in bc_solvers.jl.   It is recommened to look at the documentation for those functions.\n\nTODO: document signature of the functors here\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#Functions-1",
+    "page": "Face Integrals",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:function, :constant, :macro]\n  Pages = [\"euler/flux.jl\"]"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.DucrosFlux",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.DucrosFlux",
+    "category": "Type",
+    "text": "Calls calcEulerFlux_Ducros\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.IRFlux",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.IRFlux",
+    "category": "Type",
+    "text": "Calls calcEulerFlux_IR\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.IRSLFFlux",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.IRSLFFlux",
+    "category": "Type",
+    "text": "Calls calcEulerFlux_IRSLF\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.RoeFlux",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.RoeFlux",
+    "category": "Type",
+    "text": "Calls the RoeSolver\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#EulerEquationMod.StandardFlux",
+    "page": "Face Integrals",
+    "title": "EulerEquationMod.StandardFlux",
+    "category": "Type",
+    "text": "Calls calcEulerFlux_standard\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux.html#Flux-Functors-1",
+    "page": "Face Integrals",
+    "title": "Flux Functors",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:type]\n  Pages = [\"euler/flux.jl\"]"
 },
 
 {
@@ -2185,11 +2473,99 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.RoeSolver",
+    "category": "Function",
+    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.RoeSolver",
+    "category": "Function",
+    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver_revm",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.RoeSolver_revm",
+    "category": "Function",
+    "text": "###EulerEquationMod.RoeSolver_revm\n\nReverse mode of EulerEquationMod.RoeSolver. This function computes the reverse mode of the Roe flux w.r.t the mesh metrics\n\nInputs\n\nparams\n : Parameter object\nq\n  : Conservative variable of the fluid\nqg\n : Conservative variable of the boundary or the adjacent element\naux_vars\n : Auxiliary variables\nnrm\n : Element face normal vector in the physical space\nflux_bar\n : Flux value which needs to get differentiated\n\nOutput\n\nnrm_bar\n : derivaitve of the flux_bar w.r.t the mesh metrics\n\nAliasing Restrictions: Same as the forward function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcEulerFlux_Ducros-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,N},AbstractArray{Tmsh,N},AbstractArray{Tres,1}}",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcEulerFlux_Ducros",
+    "category": "Method",
+    "text": "Calculates the numerical flux function associated with the Ducros flux   splitting.  Methods are available for 2D and 3D.\n\nInputs:\n\nparams:\nqL: the left state\nqR: the right state\naux_vars: the aux vars for the left state\ndir: the direction vector\n\nInputs/Outputs:\n\nF: vector to be populated with the flux\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcEulerFlux_IR-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,N},AbstractArray{Tmsh,1},AbstractArray{Tres,1}}",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcEulerFlux_IR",
+    "category": "Method",
+    "text": "This function calculates the Ismail-Roe numerical flux at a node in a   specified direction\n\nInputs:\n\nparams: ParamType\nqL: left state vector\nqR: right state vector\naux_vars: auxiliary variable vector for qL\ndir: a direction vector of length Tdim\n\nInputs/Outputs:\n\nF: a numDofPerNode x Tdim matrix where each column will be populated with        the flux in the direction specified by the corresponding column of nrm\n\nAliasing Restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcEulerFlux_IR-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,N},AbstractArray{Tmsh,2},AbstractArray{Tres,2}}",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcEulerFlux_IR",
+    "category": "Method",
+    "text": "This function computes the Ismail-Roe   flux in Tdim directions at once for a given state.  This is more efficient   Than calling the single direction method Tdim times.  Methods are available   for 2 and 3 dimensions.\n\nInputs:\n\nparams: ParamType\nqL: left state vector\nqR: right state vector\naux_vars: auxiliary variable vector for qL\ndir: a Tdim x Tdim matrix with each column containing a normal vector\n\nInputs/Outputs:\n\nF: a numDofPerNode x Tdim matrix where each column will be populated with        the flux in the direction specified by the corresponding column of nrm\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcEulerFlux_IRSLF-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,1},AbstractArray{Tres,1}}",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcEulerFlux_IRSLF",
+    "category": "Method",
+    "text": "This is the second method that takes in a normal vector directly.   See the first method for a description of what this function does.\n\nInputs     qL, qR: vectors conservative variables at left and right states     aux_vars: aux_vars for qL     nrm: a normal vector in xy space\n\nInputs/Outputs     F: vector to be updated with the result\n\nAlising restrictions:     See getEntropyLFStab\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcEulerFlux_IRSLW-Tuple{EulerEquationMod.ParamType{Tdim,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,N},AbstractArray{Tmsh,2},AbstractArray{Tmsh,N},AbstractArray{Tres,1}}",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcEulerFlux_IRSLW",
+    "category": "Method",
+    "text": "This function is similar to calcEulerFlux_IRSLF, but uses Lax-Wendroff   dissipation rather than Lax-Friedrich.\n\nAliasing restrictions: see getEntropyLWStab\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcEulerFlux_standard-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tmsh,2},AbstractArray{Tres,2}}",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcEulerFlux_standard",
+    "category": "Method",
+    "text": "This function computes the split form flux corresponding to the standard   flux in Tdim directions at once for a given state.  This is more efficient   Than calling the single direction method Tdim times.  Methods are available   for 2 and 3 dimensions.\n\nInputs:     params: ParamType     qL: left state vector     qR: right state vector     aux_vars: auxiliary variable vector for qL     dir: a Tdim x Tdim matrix with each column containing a normal vector\n\nInputs/Outputs:     F: a numDofPerNode x Tdim matrix where each column will be populated with        the flux in the direction specified by the corresponding column of nrm\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcSAT",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcSAT",
+    "category": "Function",
+    "text": "###EulerEquationMod.calcSAT\n\nComputes the simultaneous approximation term for use in computing the numerical flux\n\nArguments\n\nparams\n : Parameter object of type ParamType\nnrm\n : Normal to face in the physical space\ndq\n  : Boundary condition penalty variable\nsat\n : Simultaneous approximation Term\nu\n   : Velocity in the X-direction in physical space\nv\n   : Velocity in the Y-direction in physical space\nH\n   : Total enthalpy\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcSAT_revm",
+    "page": "Numerical Flux Functions",
+    "title": "EulerEquationMod.calcSAT_revm",
+    "category": "Function",
+    "text": "###EulerEquationMod.calcSAT_revm\n\nReverse mode of calcSAT\n\nInputs * params : Parameter object of type ParamType * nrm : Normal to face in the physical space * dq  : Boundary condition penalty variable * vel : Velocities along X & Y directions in the physical space * H   : Total enthalpy * sat_bar : Inpute seed for sat flux whose derivative needs to be computed\n\nOutput\n\nnrm_bar\n : derivative of \nsat_bar\n w.r.t physical normal vector\n\n\n\n"
+},
+
+{
     "location": "solver/euler/flux_functions.html#Numerical-Flux-Functions-1",
     "page": "Numerical Flux Functions",
     "title": "Numerical Flux Functions",
     "category": "section",
-    "text": "bc_solvers.jl should be renamed to this"
+    "text": "This page documents the numerical flux functions available in the codebc_solvers.jl should be renamed to this  CurrentModule = EulerEquationModModules = [EulerEquationMod]\nPages = [\"euler/bc_solvers.jl\"]"
 },
 
 {
