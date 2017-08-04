@@ -83,6 +83,7 @@ makedocs(
                       "LSERK" => "NonlinearSolvers/unsteady/lserk.md"
                       "Crank-Nicolson" => "NonlinearSolvers/unsteady/cn.md"
                     ]
+                  "Newton's Method" => "NonlinearSolvers/newton.md"
                  ]
               "Utils" => Any[ 
                   "Main" => "Utils/Utils.md"
