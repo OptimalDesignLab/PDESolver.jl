@@ -219,6 +219,8 @@ new functor and associated `call()` method (see description of functors above).
 Make sure the functor object is a subtype of [`SRCType`](@ref) and the `call()`
 method has the same signature (except for the first argument) as the other
 call methods in the file.
+The name of the functor should be `SRCfoo`, where `foo` is the name of the 
+source term.
 
 For simple equations such as linear advection, the body of the `call()`
 function should construct the source term from the functions in `common_funcs.jl`.
@@ -242,6 +244,8 @@ add a new functor.
 Make sure the functor type is a subtype of [`BCType`](@ref) and the `call()`
 method has the same signature (except for the first argument) as the other
 `call()` methods in the file.
+The naming convention for BC functors is `fooBC`, where `foo` is the name of the 
+boundary condition.
 The body of the `call()` method should evalute the flux caused by the imposition
 of the boundary condition (because boundary conditions are imposed weakly).
 This is typically accomplished by calculating the boundary condition state
@@ -267,7 +271,24 @@ are evaluated infrequently).
 Locate the file where initial conditions are defined, typically `ic.jl`, and
 create a new function with the same signature as the the other functions in
 the file.
-This function should loop over all elements in the mesh 
+This function should loop over all elements in the mesh, every node on the
+element, and use `mesh.dofs` to assign the solution to proper indices of
+the supplied vector.
+The naming convention for IC functions is `ICfoo`, where `foo` is the name of
+the initial condition.
+
+For simple equations, the solution should be calculated using the functions
+in `common_funcs.jl`, otherwise it should be calculated in the initial
+condition function.
+
+Initial condition functions are used to calculate errors during post-processing,
+so it is important for the initial condition function to evaluate the solution
+at the proper time for unsteady problems.
+
+After the initial condition function is created, it should be added to the list
+of initial conditions, usually a dictionary at the bottom of the file where
+the initial conditions are defined.
+See the physics module documentation for details.
 
 # Initialization of a Simulation
 

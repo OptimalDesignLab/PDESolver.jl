@@ -720,13 +720,15 @@ end
   updates the residual.  The array eqn.flux_face must already be populated
   with the face flux.
 
-  Inputs:
-    mesh: an AbstractDGMesh
-    sbp: an SBP operator
-    eqn: an EulerData object
-    opts: the options dictonary
+  **Inputs**:
 
-  Outputs:
+   * mesh: an AbstractDGMesh
+   * sbp: an SBP operator
+   * eqn: an EulerData object
+   * opts: the options dictonary
+
+  **Outputs**:
+
     none
 
 """->
@@ -789,11 +791,12 @@ end
   communication to have finished already, namely the face integrals
   for the shared faces
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
+  **Inputs**:
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
@@ -830,11 +833,12 @@ end
   an abstract field, so it cannot be accessed (performantly) directly, so
   it is passed to an inner function.
 
-  Inputs:
-    mesh : Abstract mesh type
-    sbp  : Summation-by-parts operator
-    eqn  : Euler equation object
-    opts : options dictonary
+  **Inputs**:
+
+   * mesh : Abstract mesh type
+   * sbp  : Summation-by-parts operator
+   * eqn  : Euler equation object
+   * opts : options dictonary
 
   Outputs: none
 
@@ -861,12 +865,13 @@ end  # end function
   This function applies the 3D inverse mass matrix to an array.
     The array passed in should always be eqn.res
 
-  Inputs:
-    mesh: mesh object, needed for numEl and numDofPerNode fields
-    sbp: sbp object, needed for numnodes field
-    eqn: equation object, needed for Minv3D field
-    opts
-    arr: the 3D array to have the 3D mass matrix inverse applied to it
+  **Inputs**:
+
+   * mesh: mesh object, needed for numEl and numDofPerNode fields
+   * sbp: sbp object, needed for numnodes field
+   * eqn: equation object, needed for Minv3D field
+   * opts
+   * arr: the 3D array to have the 3D mass matrix inverse applied to it
 
 """->
 function applyMassMatrixInverse3D(mesh, sbp, eqn, opts, arr)

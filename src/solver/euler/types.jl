@@ -721,7 +721,7 @@ end
 
   **Outputs**:
 
-    * file_dict: dictionary mapping names of files to the file object
+   * file_dict: dictionary mapping names of files to the file object
                  ie. opts["write_entropy_fname"] => f
 
   Exceptions: this function will throw an exception if any two file names
@@ -771,10 +771,10 @@ end
 
   **Inputs/Outputs**:
 
-    * mesh: an AbstractMesh object
-    * sbp: an SBP operator
-    * eqn: the EulerData object
-    * opts: the options dictionary
+   * mesh: an AbstractMesh object
+   * sbp: an SBP operator
+   * eqn: the EulerData object
+   * opts: the options dictionary
 
 """
 function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
