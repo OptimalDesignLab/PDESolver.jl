@@ -9,4 +9,5 @@ This pages describes the functions that apply source terms
 ```@autodocs
   Modules = [AdvectionEquationMod]
   Pages = ["advection/source.jl"]
+  Order = [:function, :constant, :type, :module, :macro]
 ```
