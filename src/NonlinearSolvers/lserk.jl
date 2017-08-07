@@ -35,7 +35,7 @@
 
 function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-             post_func, ctx, opts, timing::Timings=Timings(); 
+             post_func, ctx, opts, timing::Timings; 
              majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
 
@@ -115,6 +115,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)
+    println("t_func = ", timing.t_func)
+    eqn = ctx[3]
+    println("eqn.params.time.t_func = ", eqn.params.time.t_func)
     sol_norm = post_func(ctx..., opts)
  
     #--------------------------------------------------------------------------
@@ -198,13 +201,16 @@ end  # end lserk54
   See rk4 method with same signature
 """
 function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
+             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts,
+             timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
-        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
-        majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+              q_vec::AbstractVector, res_vec::AbstractVector,
+              pde_pre_func, pde_post_func, ctx, opts, timing; 
+              majorIterationCallback=majorIterationCallback, res_tol=res_tol,
+              real_time=real_time)
 
         return t
 end

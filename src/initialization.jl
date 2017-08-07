@@ -372,7 +372,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
            # stepper returns a new t value
   if opts["solve"]
 
-    solve_time = @elapsed if flag == 1 # normal run
+    t_nlsolve = @elapsed if flag == 1 # normal run
       # RK4 solver
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
@@ -478,8 +478,10 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     println("total solution time printed above")
     params = eqn.params
+    params.time.t_nlsolve += t_nlsolve
     myrank = mesh.myrank
 
+    println("after solve, eqn.params.t_func = ", eqn.params.time.t_func)
     if opts["write_timing"]
       MPI.Barrier(mesh.comm)
       fname = "timing_breakdown_$myrank"
