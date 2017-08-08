@@ -89,46 +89,55 @@ function test_adjoint()
     end # End context("Checking functional derivative w.r.t angle of attack")
 
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
+    # Write the values of BoundaryForceData to file
+    fname = "BoundaryForceData_values.dat"
+    file = open(fname, "w")
+    println(file, lift.lift_val)
+    println(file, lift.drag_val)
+    println(file, lift.dLiftdaoa)
+    println(file, lift.dDragdaoa)
+    close(file)
+
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     orig_Ju = deepcopy(lift.lift_val) # Copy the original objective value
     orig_q_vec = deepcopy(eqn.q_vec)
     original_res_vec = deepcopy(eqn.res_vec)
 
-    context("Checking partial dR/dq Calculation") do
-
-      # Copy all the original values
-      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-      rand_vec = rand(length(eqn.q_vec))
-      fill!(eqn.res, 0.0)
-      fill!(eqn.res_vec, 0.0)
-      res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
-      boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-      res_jac, jacData = EulerEquationMod.calcResidualJacobian(mesh, sbp, eqn, opts)
-      contract_vec = res_jac*rand_vec
-
-      # Check against FD
-      copy!(eqn.q_vec, orig_q_vec)
-      for i = 1:length(eqn.q_vec)
-        eqn.q_vec[i] += 1e-6*rand_vec[i]
-      end
-      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-      fill!(eqn.res, 0.0)
-      fill!(eqn.res_vec, 0.0)
-      res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
-      assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-      partialRpartialu = (eqn.res_vec - original_res_vec)/1e-6
-
-      for i = 1:length(partialRpartialu)
-        @fact abs(real(contract_vec[i] - partialRpartialu[i])) --> roughly(0.0,
-                                                                    atol = 1e-5)
-        # println(f,real(contract_vec[i] - partialRpartialu[i]))
-      end
-
-      for i = 1:length(eqn.q_vec)
-        eqn.q_vec[i] = orig_q_vec[i]
-      end
-
-    end # End context("--- Checking partial dR/dq Calculation")
+    # context("Checking partial dR/dq Calculation") do
+#
+    #   # Copy all the original values
+    #   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    #   rand_vec = rand(length(eqn.q_vec))
+    #   fill!(eqn.res, 0.0)
+    #   fill!(eqn.res_vec, 0.0)
+    #   res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    #   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+    #   res_jac, jacData = EulerEquationMod.calcResidualJacobian(mesh, sbp, eqn, opts)
+    #   contract_vec = res_jac*rand_vec
+#
+    #   # Check against FD
+    #   copy!(eqn.q_vec, orig_q_vec)
+    #   for i = 1:length(eqn.q_vec)
+    #     eqn.q_vec[i] += 1e-6*rand_vec[i]
+    #   end
+    #   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    #   fill!(eqn.res, 0.0)
+    #   fill!(eqn.res_vec, 0.0)
+    #   res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    #   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    #   partialRpartialu = (eqn.res_vec - original_res_vec)/1e-6
+#
+    #   for i = 1:length(partialRpartialu)
+    #     @fact abs(real(contract_vec[i] - partialRpartialu[i])) --> roughly(0.0,
+    #                                                                 atol = 1e-5)
+    #     # println(f,real(contract_vec[i] - partialRpartialu[i]))
+    #   end
+#
+    #   for i = 1:length(eqn.q_vec)
+    #     eqn.q_vec[i] = orig_q_vec[i]
+    #   end
+#
+    # end # End context("--- Checking partial dR/dq Calculation")
 
     context("Checking partial dJ/dq Calculation") do
 
