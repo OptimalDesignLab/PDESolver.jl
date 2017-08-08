@@ -143,20 +143,7 @@ function test_adjoint_parallel()
     for i = 1:length(adjoint_vec)
       @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)
     end
-   #=
-    @fact mesh.isDG --> true
-    @fact opts["functional_name1"] --> "qflux"
-    @fact opts["functional_error"] --> true
-    @fact opts["smb_name"] --> "src/mesh_files/gsquare2np2.smb"
-    @fact opts["analytical_functional_val"] --> roughly(2*(exp(1) - 1), atol=1e-12)
-    @fact opts["geom_edges_functional1"] --> [1,2]
-
-    # fname = "./functional_error1.dat"
-    # error = readdlm(fname)
-
-    @fact error[1] --> roughly(0.00681567877682826, atol=1e-6)=#
-
-
+   
   end # End facts("--- Testing Functional Computation on a Geometric Boundary ---")
 
   return nothing

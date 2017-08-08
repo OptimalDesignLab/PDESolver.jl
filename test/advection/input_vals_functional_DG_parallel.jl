@@ -43,7 +43,6 @@ arg_dict = Dict{Any, Any}(
 "objective_function" => "qflux",
 "geom_faces_objective" => [1,2],
 "analytical_functional_val" => 2*(exp(1) - 1),
-# "calc_adjoint" => false,
 "writeq" => false,
 "write_edge_vertnums" => false,
 "write_qic" => false,

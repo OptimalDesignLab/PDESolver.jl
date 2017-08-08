@@ -1069,12 +1069,12 @@ function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, params::ParamType,
 
   # Forward Sweep
   qg = params.qg
-  calcExp(x, params, qg)
+  calcExp(params, coords, qg)
 
   # Reverse Sweep
 
-  # RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
-  RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, bndryflux_bar, dxidx_bar)
+  # RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
 
   return nothing
 end
