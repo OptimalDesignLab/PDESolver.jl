@@ -57,7 +57,7 @@ $\boldsymbol{\psi}^T = [\psi_1, \psi_2, \dots, \psi_i, \psi_{i+1}, \dots, \psi_n
 
 And finally, the global-in-time objective function vector is:
 
-$\boldsymbol{J}^T = [\J_1, \J_2, \dots, \J_i, \J_{i+1}, \dots, \J_n]$
+$\boldsymbol{J}^T = [J_1, J_2, \dots, J_i, J_{i+1}, \dots, J_n]$
 
 Therefore, the full discrete Lagrangian is:
 
