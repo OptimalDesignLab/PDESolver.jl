@@ -87,7 +87,7 @@ function test_precompute()
     start_dir = pwd()
 
     # test rk4
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel_runp.jl"
     #TODO: set opts["solve"] = false before doing this
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
@@ -125,6 +125,44 @@ function test_precompute()
 end
 
 add_func1!(AdvectionTests, test_precompute, [TAG_SHORTTEST, TAG_TMP])
+
+function test_adjoint_parallel()
+
+  facts("--- Testing Adjoint Computation on a Geometric Boundary ---") do
+
+    resize!(ARGS, 1)
+    ARGS[1] = "input_vals_functional_DG_parallel.jl"
+    # include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+
+    objective = AdvectionEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
+    AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+
+    for i = 1:length(adjoint_vec)
+      @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)
+    end
+   #=
+    @fact mesh.isDG --> true
+    @fact opts["functional_name1"] --> "qflux"
+    @fact opts["functional_error"] --> true
+    @fact opts["smb_name"] --> "src/mesh_files/gsquare2np2.smb"
+    @fact opts["analytical_functional_val"] --> roughly(2*(exp(1) - 1), atol=1e-12)
+    @fact opts["geom_edges_functional1"] --> [1,2]
+
+    # fname = "./functional_error1.dat"
+    # error = readdlm(fname)
+
+    @fact error[1] --> roughly(0.00681567877682826, atol=1e-6)=#
+
+
+  end # End facts("--- Testing Functional Computation on a Geometric Boundary ---")
+
+  return nothing
+end
+
+add_func1!(AdvectionTests, test_adjoint_parallel, [TAG_ADJOINT, TAG_LONGTEST])
 
 #------------------------------------------------------------------------------
 # run tests
@@ -178,4 +216,3 @@ if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 FactCheck.exitstatus()
-

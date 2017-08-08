@@ -81,7 +81,46 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
 
   end
-  
+
+  # Allocate space for adjoint solve
+  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, evalResidual, alloc_rhs=true)
+
+  # Get the residual jacobian
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
+
+  # Re-interpolate interior q to q_bndry. This is done because the above step
+  # pollutes the existing eqn.q_bndry with complex values.
+  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  # calculate the derivative of the function w.r.t q_vec
+  func_deriv = zeros(Tsol, mesh.numDof)
+
+  # 3D array into which func_deriv_arr gets interpolated
+  func_deriv_arr = zeros(eqn.q)
+
+  # Calculate df/dq_bndry on edges where the functional is calculated and put
+  # it back in func_deriv_arr
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)  # populate df_dq_bndry
+
+  # Assemble func_deriv
+  assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  func_deriv[:] = -func_deriv[:]
+
+  # Solve for adjoint vector. residual jacobian needs to be transposed first.
+  jac_type = typeof(res_jac)
+  if jac_type <: Array || jac_type <: SparseMatrixCSC
+    res_jac = res_jac.'
+  elseif  jac_type <: PetscMat
+    PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
+    PetscMatAssemblyEnd(res_jac)
+    res_jac = MatTranspose(res_jac, inplace=true)
+  else
+    error("Unsupported jacobian type")
+  end
+  step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
+                                           adjoint_vec, real(func_deriv), BSTDOUT)
+
+  #=
   # Calculate the Jacobian of the residual
   res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
 
@@ -129,7 +168,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
     adjoint_vec = -adjoint_vec
 
   end # End how to solve for adjoint_vec
-
+=#
   outname = string("adjoint_vec_", mesh.myrank,".dat")
   f = open(outname, "w")
   for i = 1:length(adjoint_vec)
