@@ -1061,19 +1061,20 @@ end # end function call
 type ExpBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
-              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
-              params::ParamType)
+function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward Sweep
   qg = params.qg
-  calcExp(x, params, qg)
-  # RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  calcExp(params, coords, qg)
 
   # Reverse Sweep
-  RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, bndryflux_bar, dxidx_bar)
+
+  # RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
 
   return nothing
 end

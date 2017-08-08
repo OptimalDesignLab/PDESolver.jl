@@ -15,7 +15,7 @@ arg_dict = Dict{Any, Any}(
 "BC1_name" => "FreeStreamBC",
 "BC2" => [5],
 "BC2_name" => "noPenetrationBC",
-"aoa" => -2.0, # -2.0,
+"aoa" => 2.0, # -2.0,
 "Ma" => 0.5,# default working = 0.3
 "use_DG" => true,
 "Flux_name" => "RoeFlux",
