@@ -2389,7 +2389,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
+    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
 },
 
 {
@@ -2397,7 +2397,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
+    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
 },
 
 {
