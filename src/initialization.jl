@@ -253,7 +253,10 @@ function createSBPOperator(opts::Dict, Tsbp::DataType)
     else  # dim == 3
       ref_verts = sbp.vtx
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
-      topo = ElementTopology{3}(face_verts)
+      edge_verts = [1 2 1 1 2 3;  # TODO: SBP should provide this
+                    2 3 3 4 4 4]
+      topo2 = ElementTopology2()   #TODO: make this the correct one for SBP
+      topo = ElementTopology{3}(face_verts, edge_verts, topo2=topo2)
 
       if opts["operator_type"] == "SBPDiagonalE2"
         sbpface = getTetFaceForDiagE(order, sbp.cub, ref_verts)

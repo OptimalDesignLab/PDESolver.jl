@@ -35,7 +35,7 @@
 
 function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-             post_func, ctx, opts, timing::Timings; 
+             post_func, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
 
@@ -115,9 +115,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)
-    println("t_func = ", timing.t_func)
-    eqn = ctx[3]
-    println("eqn.params.time.t_func = ", eqn.params.time.t_func)
     sol_norm = post_func(ctx..., opts)
  
     #--------------------------------------------------------------------------
