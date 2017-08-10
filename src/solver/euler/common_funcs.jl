@@ -304,7 +304,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcUnsteadyVortex{Tmsh, Tsol}(params::ParamType2,
+function calcUnsteadyVortex{Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
                             coords::AbstractArray{Tmsh, 1},
                             sol::AbstractArray{Tsol, 1})
 
@@ -340,7 +340,13 @@ function calcUnsteadyVortex{Tmsh, Tsol}(params::ParamType2,
   sol[1] = rho
   sol[2] = q2
   sol[3] = q3
-  sol[4] = E
+
+  if Tdim == 2
+    sol[4] = E
+  else
+    sol[4] = 0
+    sol[5] = E
+  end
 
   return nothing
 end

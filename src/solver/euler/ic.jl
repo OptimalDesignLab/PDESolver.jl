@@ -553,12 +553,12 @@ function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-println("entered ICUnsteadyVortex")
-
 numEl = mesh.numEl
 nnodes = operator.numnodes
 dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, 4)
+sol = zeros(Tsol, mesh.numDofPerNode)
+
+
 for i=1:numEl
   for j=1:nnodes
       dofnums_j = sview(mesh.dofs, :, j, i)
