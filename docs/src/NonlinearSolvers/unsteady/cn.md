@@ -105,7 +105,7 @@ $\psi_i = \left[ I - \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u
 
 Currently, all time steps are checkpointed. 
 Eventually, Revolve will be implemented, for which a separate Julia package has been developed. 
-See [here](http://dl.acm.org/citation.cfm?id=347846) for the publication discussion the Revolve algorithm.
+See [here](http://dl.acm.org/citation.cfm?id=347846) for the publication discussing the Revolve algorithm.
 
 
 ### Global-in-time Jacobian
