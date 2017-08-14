@@ -103,8 +103,16 @@ $\psi_i = \left[ I - \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u
 
 ### Checkpointing
 
-Currently, all time steps are checkpointed. Eventually, Revolve will be implemented.
+Currently, all time steps are checkpointed. 
+Eventually, Revolve will be implemented, for which a separate Julia package has been developed. 
+See [here](http://dl.acm.org/citation.cfm?id=347846) for the publication discussion the Revolve algorithm.
 
+
+### Global-in-time Jacobian
+
+For reference, the structure of the global-in-time Jacobian is shown here.
+It should never be formed except in the course of debugging very simple use cases, 
+  but it can be helpful for visualizing the matrix form of CN for all space and time.
 
 
 
