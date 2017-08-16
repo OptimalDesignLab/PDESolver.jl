@@ -58,8 +58,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                     2006345519317/3224310063776; 
                     2802321613138/2924317926251]
 
-  println("c_coeffs = \n", c_coeffs)
-
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 #  MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0

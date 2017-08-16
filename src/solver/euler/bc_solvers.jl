@@ -1596,7 +1596,7 @@ function logavg(aL, aR)
   xi = aL/aR
   f = (xi - 1)/(xi + 1)
   u = f*f
-  eps = 1e-2
+  eps = 1e-3
   if u < eps
     F = @evalpoly( u, 1, 1/3, 1/5, 1/7, 1/9)
 #    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0 + u*u*u*u/9.0

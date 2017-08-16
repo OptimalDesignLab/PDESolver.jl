@@ -484,7 +484,6 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     params.time.t_nlsolve += t_nlsolve
     myrank = mesh.myrank
 
-    println("after solve, eqn.params.t_func = ", eqn.params.time.t_func)
     if opts["write_timing"]
       MPI.Barrier(mesh.comm)
       fname = "timing_breakdown_$myrank"
