@@ -30,6 +30,8 @@ if !tag_defs
   global const TAG_STAGGERED = "tag_staggered"
   global const TAG_PARALLEL_DERIVATIVES = "tag_parallel_derivatives"
 
+  global const TAG_PARALLEL = "tag_parallel"
+
   # types of tests
   global const TAG_SHORTTEST = "tag_shorttest"
   global const TAG_LONGTEST = "tag_longtest"

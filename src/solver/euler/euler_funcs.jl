@@ -217,10 +217,17 @@ function calcVolumeIntegralsSplitForm{Tmsh, Tsol, Tres, Tdim}(
                                         sbp::AbstractSBP,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType)
-  if mesh.coord_order == 1
-    calcVolumeIntegralsSplitFormLinear(mesh, sbp, eqn, opts, functor)
+
+  if opts["use_staggered_grid"]
+    # not planning on implementing the non-curvilinear version of this
+    calcVolumeIntegralsSplitFormCurvilinear(mesh, mesh.mesh2, sbp, mesh.sbp2,
+                                          eqn, opts, functor)
   else
-    calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn, opts, functor)
+    if mesh.coord_order == 1
+      calcVolumeIntegralsSplitFormLinear(mesh, sbp, eqn, opts, functor)
+    else
+      calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn, opts, functor)
+    end
   end
 
   return nothing
@@ -337,12 +344,158 @@ function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
 
 
     end  # end j loop
+
   end  # end i loop
 
   return nothing
 end
 
 
+"""
+  This function does the interpolation from the solution grid to the flux
+  grid for a single element
+
+  **Inputs**:
+   * params: a ParamType.  The qs_el1 and q_el1 fields are overwritten.
+   * qs_el: the conservative variables for the element on the solution grid
+
+  **Inputs/Outputs**:
+   
+   * aux_vars: array to be populated with the aux vars on the staggered grid
+   * qf_el: conservative variables on the flux grid
+   
+"""
+function interpolateElementStaggered{Tdim}(
+                                     params::ParamType{Tdim, :conservative},
+                                     mesh,
+                                     qs_el::AbstractMatrix, 
+                                     aux_vars::AbstractMatrix, 
+                                     qf_el::AbstractMatrix)
+
+  numNodesPerElement_s = size(qs_el, 2)
+  numNodesPerElement_f = size(qf_el, 2)
+
+  # temporary arrays
+  wvars_s = params.qs_el1
+  wvars_f = params.q_el1
+
+  for j=1:numNodesPerElement_s
+    q_j = ro_sview(qs_el, :, j)
+    w_j = sview(wvars_s, :, j)
+    convertToIR(params, q_j, w_j)
+  end
+
+  # interpolate
+  smallmatmat!(wvars_s, mesh.I_S2FT, wvars_f)
+
+  # convert back to conservative
+  for j=1:numNodesPerElement_f
+    w_j = ro_sview(wvars_f, :, j)
+    q_j = sview(qf_el, :, j)
+    convertToConservativeFromIR_(params, w_j, q_j)
+    aux_vars[1, j] = calcPressure(params, q_j)
+  end
+  
+  return nothing
+end
+
+
+
+"""
+  This function calculates I_S2F.'*(S .* F( uk(I_S2F wk), uk(I_S2F wk)))1.
+  This is similar to
+  [`calcVolumeIntegralsSplitFormCurvilinear](@ref), but for the staggered grid
+  algorithm.
+
+  Inputs:
+    mesh_s: the mesh object for the solution grid
+    mesh_f: the mesh object for the flux grid
+    sbp_s: SBP operator for solution grid
+    sbp_f: SBP operator for flux grid
+    functor: the numerical flux functor ([`FluxType`](@ref)) used to compute F
+
+  Inputs/Outputs:
+    eqn: the equation object (implicitly on the solution grid).  eqn.res is
+         updated with the result
+
+  Aliasing Restrictions: none (the meshes and the sbp operators could alias,
+                         in which case this algorithm reduces to the 
+                         non-staggered version
+"""
+function calcVolumeIntegralsSplitFormCurvilinear{Tmsh, Tsol, Tres, Tdim}(
+                                        mesh_s::AbstractMesh{Tmsh},
+                                        mesh_f::AbstractMesh{Tmsh},
+                                        sbp_s::AbstractSBP,
+                                        sbp_f::AbstractSBP,
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                                        functor::FluxType)
+
+  dxidx = mesh_f.dxidx
+  res = eqn.res
+  qf = eqn.q_flux
+  nrm = eqn.params.nrmD
+  F_d = eqn.params.flux_valsD
+  S = Array(Tmsh, mesh_f.numNodesPerElement, mesh_f.numNodesPerElement, Tdim)
+  params = eqn.params
+
+
+  aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
+  res_f = eqn.params.res_el1
+  res_s = eqn.params.ress_el1 #zeros(Tres, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
+
+  # S is calculated in x-y-z, so the normal vectors should be the unit normals
+  fill!(nrm, 0.0)
+  for d=1:Tdim
+    nrm[d, d] = 1
+  end
+  
+  for i=1:mesh_f.numEl
+    # get S for this element
+    dxidx_i = ro_sview(dxidx, :, :, :, i)
+    calcSCurvilinear(sbp_f, dxidx_i, S)
+
+    fill!(res_f, 0.0)
+    for j=1:mesh_f.numNodesPerElement
+       q_j = ro_sview(qf, :, j, i)
+       aux_vars[1, j] = calcPressure(eqn.params, q_j)
+       aux_vars_j = ro_sview(aux_vars, :, j)
+      for k=1:(j-1)  # loop over lower triangle of S
+         q_k = ro_sview(qf, :, k, i)
+
+        # calculate the numerical flux functions in all Tdim
+        # directions at once
+        functor(params, q_j, q_k, aux_vars_j, nrm, F_d)
+
+        @simd for d=1:Tdim
+          # update residual
+          @simd for p=1:(Tdim+2)
+            res_f[p, j] -= 2*S[j, k, d]*F_d[p, d]
+            res_f[p, k] += 2*S[j, k, d]*F_d[p, d]
+          end
+
+        end  # end d loop
+      end  # end k loop
+
+
+    end  # end j loop
+
+    # reverse interpolate the residual
+    #TODO: smallmatTmat might be faster
+    # TODO: emulate BLAS interface to allow updating the rhs
+    smallmatmat!(res_f, mesh_s.I_S2F, res_s)
+
+    # accumulate into res
+    @simd for j=1:mesh_s.numNodesPerElement
+      @simd for k=1:mesh_s.numDofPerNode
+        res[k, j, i] += res_s[k, j]
+      end
+    end
+
+
+  end  # end i loop
+
+  return nothing
+end
 
 # calculating the Euler flux at a node
 #------------------------------------------------------------------------------

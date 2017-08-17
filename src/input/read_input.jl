@@ -65,6 +65,7 @@ else
 end
 
 get!(arg_dict, "operator_type2", "SBPNone")
+get!(arg_dict, "use_staggered_grid", arg_dict["operator_type2"] != "SBPNone")
 
 get!(arg_dict, "need_adjoint", false)
 

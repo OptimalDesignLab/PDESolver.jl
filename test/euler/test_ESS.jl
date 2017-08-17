@@ -827,10 +827,10 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
   return nothing
 end
 
-function applyPoly(mesh, sbp, eqn, opts, p)
+function applyPoly{Tsol, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, p)
 # set the solution to be a polynomial of degree p of the entropy variables
 
-  v_vals = zeros(mesh.numDofPerNode)
+  v_vals = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       x = mesh.coords[1, j, i]

@@ -210,7 +210,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
 
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     mesh2 = mesh.mesh2
     sbp2 = mesh.sbp2
     
@@ -470,6 +470,15 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # calculate fluxes
+
+  if opts["use_staggered_grid"]
+    aux_vars = zeros(Tres, 1, mesh.mesh2.numNodesPerElement)
+    for i=1:mesh.numEl
+      qs = ro_sview(eqn.q, :, :, i)
+      qf = sview(eqn.q_flux, :, :, i)
+      interpolateElementStaggered(eqn.params, mesh, qs, aux_vars, qf)
+    end
+  end
 
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
@@ -745,8 +754,15 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
-    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,
-                           eqn.flux_func, mesh.sbpface, mesh.interfaces)
+    if opts["use_staggered_grid"]
+      getFaceElementIntegral(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn,
+                             eqn.face_element_integral_func,  
+                             eqn.flux_func, mesh.mesh2.sbpface, mesh.interfaces)
+ 
+    else
+      getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+                             eqn.flux_func, mesh.sbpface, mesh.interfaces)
+    end
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))

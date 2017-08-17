@@ -112,7 +112,9 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                            eqn::AdvectionData{Tsol, Tres, Tdim},
                                            opts)
 
-  if opts["precompute_volume_flux"]
+  if opts["use_staggered_grid"]
+    calcVolumeIntegralsStaggered(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts)
+  elseif opts["precompute_volume_flux"]
     calcAdvectionFlux(mesh, sbp, eqn, opts)
     for i=1:Tdim
       # multiplies flux_parametric by the SBP Q matrix (transposed), stores result in res
@@ -155,6 +157,117 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end
+
+"""
+  Interpolate data for a single element from the solution grid to the flux
+  grid.
+
+  **Inputs**:
+  
+   * params
+   * mesh: the solution mesh (needed for the interpolation operator)
+   * q_s: the data on the solution mesh, can be either a vector or
+          1 x mesh.numNodesPerelement matrix
+
+  **Inputs/Outputs**:
+
+   * q_f: the data on the flux mesh (overwritten)
+
+  Note: q_s *cannot* be params.qL_s
+"""
+function interpolateElementStaggered(params::ParamType, mesh,
+                                     q_s::AbstractArray, q_f::AbstractVector)
+
+
+  qs_tmp = params.qL_s
+
+  # extract data to vector
+  for i=1:mesh.numNodesPerElement
+    qs_tmp[i] = q_s[i]
+  end
+
+  smallmatvec!(mesh.I_S2F, qs_tmp, q_f)
+
+  return nothing
+end
+
+"""
+  Volume integrals for staggered grid.
+
+  **Inputs**:
+
+   * mesh_s: solution grid mesh
+   * mesh_f: flux grid mesh
+   * sbp_s: solution grid SBP
+   * sbp_f: flux grid SBP
+   * eqn: equation object (eqn.res is updated with the result)
+   * opts: options dictionary 
+
+"""
+function calcVolumeIntegralsStaggered{Tmsh, Tsol, Tres, Tdim}(
+                                     mesh_s::AbstractDGMesh{Tmsh},
+                                     mesh_f::AbstractDGMesh{Tmsh},
+                                     sbp_s::AbstractSBP,
+                                     sbp_f::AbstractSBP,
+                                     eqn::AdvectionData{Tsol, Tres, Tdim},
+                                     opts)
+  q_f = eqn.params.qL_f
+  alphas_xy = zeros(Float64, Tdim)  # advection coefficients in the xy 
+                                    #directions
+  alphas_xy[1] = eqn.params.alpha_x
+  alphas_xy[2] = eqn.params.alpha_y
+  if Tdim == 3
+    alphas_xy[3] = eqn.params.alpha_z
+  end
+  flux_el = zeros(Tres, mesh_f.numNodesPerElement, Tdim)
+  flux_tmp = zeros(Tres, Tdim)
+  res_f = eqn.params.resL_f
+  res_s = eqn.params.resL_s
+
+
+
+  for i=1:mesh_f.numEl
+
+    # interpolate to flux grid
+    q_s = ro_sview(eqn.q, :, :, i)
+    interpolateElementStaggered(eqn.params, mesh_s, q_s, q_f)
+
+    # compute integral
+    for j=1:mesh_f.numNodesPerElement
+      dxidx_j = ro_sview(mesh_f.dxidx, :, :, j, i)
+      calcAdvectionFlux(eqn.params, q_f[j], alphas_xy, dxidx_j, flux_tmp)
+
+      for k=1:Tdim
+        flux_el[j, k] = flux_tmp[k]
+      end
+
+    end  # end loop j
+
+    # do integration
+#    res_i = sview(eqn.res, :, :, i)
+
+    fill!(res_f, 0.0)
+    for k=1:Tdim
+      weakDifferentiateElement!(sbp_f, k, sview(flux_el, :, k), res_f,
+                                SummationByParts.Add(), true)
+    end
+
+
+    # interpolate residual back
+    smallmatvec!(mesh_s.I_S2FT, res_f, res_s)
+
+    # update residual
+    for j=1:mesh_s.numNodesPerElement
+      eqn.res[1, j, i] += res_s[j]
+    end
+
+
+
+  end  # end loop i
+
+  return nothing
+end
+
 
 """
   Populates eqn.flux_parametric.  Repeatedly calls the other method of this
@@ -309,7 +422,10 @@ function evalFaceIntegrals(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::Advectio
                       opts)
 
 #  println("----- Entered evalFaceIntegrals -----")
-  if opts["precompute_face_flux"]
+  if opts["use_staggered_grid"]
+    calcFaceIntegralsStaggered_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts, eqn.flux_func)
+
+  elseif opts["precompute_face_flux"]
     # interpolate solution to faces
     if opts["precompute_q_face"]
       interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
@@ -483,9 +599,9 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFluxFunctors(mesh, sbp, eqn, opts)
   end
 
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     mesh2 = mesh.mesh2
-    sbp2 = sbp.sbp2
+    sbp2 = mesh.sbp2
     getBCFunctors(mesh2, sbp2, eqn, opts)
     getSRCFunctors(mesh2, sbp2, eqn, opts)
     if mesh.isDG

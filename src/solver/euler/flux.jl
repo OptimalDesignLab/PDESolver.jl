@@ -144,6 +144,84 @@ function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
 end
 
 """
+  This function loops over interfaces and computes a face integral that
+  uses data from all volume nodes. See FaceElementIntegralType for details on
+  the integral performed. This function works on the staggered grid.
+
+  Inputs:
+    mesh_s: mesh object on solution mesh
+    mesh_f: mesh object on flux mesh
+    sbp_s: SBP operator on solution mesh
+    sbp_f: SBP operator on flux mesh
+    face_integral_functor: a [`FaceElementIntegralType`](@doc) functor
+    flux_functor: a [`FluxType`] functor that is passed to face_integral_functor
+                  to use as the numerical flux function
+    sbpface: an AbstractFace for the flux grid
+    interfaces: vector of [`Interfaces`](@doc) that the integral will be
+                computed for.
+
+  Inputs/Outputs:
+    eqn: equation object (implicitly lives on solution grid).  eqn.res is
+          updated with the results.
+"""
+function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
+                           mesh_s::AbstractDGMesh{Tmsh},
+                           mesh_f::AbstractDGMesh{Tmsh},
+                           sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, Tdim},
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
+                           sbpface::AbstractFace,
+                           interfaces::AbstractArray{Interface, 1})
+  params = eqn.params
+  qf = eqn.q_flux
+  res = eqn.res
+  nfaces = length(interfaces)
+  resL_s = params.ress_el1
+  resR_s = params.ress_el2
+  resL_f = params.res_el1
+  resR_f = params.res_el2
+
+  aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
+
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    nrm_face = ro_sview(mesh_f.nrm_face, :, :, i)
+    
+    qf_L = ro_sview(qf, :, :, elL)
+    qf_R = ro_sview(qf, :, :, elR)
+
+    for j=1:mesh_f.numNodesPerElement
+      aux_vars[1, j] = calcPressure(params, ro_sview(qf_L, :, j))
+    end
+
+    fill!(resL_f, 0.0)
+    fill!(resR_f, 0.0)
+
+    face_integral_functor(params, sbpface, iface, qf_L, qf_R, aux_vars,
+                       nrm_face, flux_functor, resL_f, resR_f)
+
+    # interpolate back
+    smallmatmat!(resL_f, mesh_s.I_S2F, resL_s)
+    smallmatmat!(resR_f, mesh_s.I_S2F, resR_s)
+
+    # accumulate into res
+    @simd for j=1:mesh_s.numNodesPerElement
+      @simd for k=1:mesh_s.numDofPerNode
+        res[k, j, elL] += resL_s[k, j]
+        res[k, j, elR] += resR_s[k, j]
+      end
+    end
+
+  end  # end loop i
+
+  return nothing
+end
+
+                         
+"""
   This function is a thin wrapper around
   getShareFaceElementIntegral_element_inner, presenting the interface needed
   by finishExchangeData.  See that function for the interface details.
@@ -153,8 +231,15 @@ function calcSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData)
 
-  calcSharedFaceElementIntegrals_element_inner(mesh, sbp, eqn, opts, data,
-                          eqn.face_element_integral_func,  eqn.flux_func)
+  if opts["use_staggered_grid"]
+    calcSharedFaceElementIntegralsStaggered_element_inner(mesh, mesh.mesh2, 
+                            sbp, mesh.sbp2, eqn, opts, data,
+                            eqn.face_element_integral_func, eqn.flux_func)
+
+  else
+    calcSharedFaceElementIntegrals_element_inner(mesh, sbp, eqn, opts, data,
+                            eqn.face_element_integral_func,  eqn.flux_func)
+  end
 
   return nothing
 end
@@ -215,6 +300,95 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
     face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
                           nrm_face, flux_functor, resL, resR)
   end  # end loop j
+
+  return nothing
+end
+
+"""
+  Like [`calcSharedFaceElementIntegrals_inner`](@ref), but for staggered grid.
+
+  data.q_recv is the solution grid data.  This function interpolates it to the
+  flux grid on the fly.
+
+  **Inputs**:
+
+   * mesh_s: solution grid mesh
+   * mesh_f: flux grid mesh
+   * sbp_s: SBP operator for solution grid
+   * sbp_f: SBP operator for the flux grid
+   * opts: options dictionary
+   * data: [`SharedFaceData`](@ref)
+   * face_integral_functor: [`FaceElementIntegralType`](@ref)
+   * flux_functor: [`FluxType`](@ref) passed to face_integral functor
+
+  **Inputs/Outputs**:
+
+    * eqn: equation object (lives on solution grid)
+
+  Aliasing restrictions: none
+"""
+function calcSharedFaceElementIntegralsStaggered_element_inner{Tmsh, Tsol, Tres}(
+                            mesh_s::AbstractDGMesh{Tmsh},
+                            mesh_f::AbstractDGMesh{Tmsh},
+                            sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                            eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            face_integral_functor::FaceElementIntegralType,
+                            flux_functor::FluxType)
+
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+  end
+
+  q = eqn.q_flux
+  res = eqn.res
+  params = eqn.params
+
+  # temporary arrays needed for interpolating to the flux grid
+  qvars_f = params.q_el2
+  resL_f = params.res_el1
+  resR_f = params.res_el2
+  resL_s = params.ress_el1
+  # we don't care about resR here
+  aux_vars = Array(Tres, 1, mesh_f.numNodesPerElement)
+
+  # get the data for the parallel interface
+  idx = data.peeridx
+  interfaces = data.interfaces
+  qR_arr = data.q_recv
+  nrm_face_arr = mesh_f.nrm_sharedface[idx]
+  start_elnum = mesh_f.shared_element_offsets[idx]
+
+  # compute the integrals
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1
+    qL = ro_sview(q, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR)
+#    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(nrm_face_arr, :, :, j)
+
+    # interpolate to flux grid
+    interpolateElementStaggered(params, mesh_s, qR, aux_vars, qvars_f)
+
+    fill!(resL_f, 0.0)
+    # we dont carea bout resR, so dont waste time zeroing it out
+    face_integral_functor(eqn.params, mesh_f.sbpface, iface_j, qL, qvars_f,
+                          aux_vars, nrm_face, flux_functor, resL_f, resR_f)
+
+
+    # interpolate residual back to solution grid
+    smallmatmat!(resL_f, mesh_s.I_S2F, resL_s)
+
+    @simd for k=1:mesh_s.numNodesPerElement
+      @simd for p=1:mesh_s.numDofPerNode
+        res[p, k, elL] += resL_s[p, k]
+      end
+    end
+
+  end  # end loop j
+
 
   return nothing
 end
@@ -594,6 +768,44 @@ end
 # Different fluxes
 #------------------------------------------------------------------------------
 
+"""
+  This flux function sets F = q.  Useful for testing
+"""
+type IdentityFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IdentityFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F::AbstractVector{Tres})
+
+  for i=1:length(F)
+    F[i] = q[i]
+  end
+
+  return nothing
+end
+
+function call{Tsol, Tres, Tmsh}(obj::IdentityFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractMatrix{Tmsh},
+              F::AbstractMatrix{Tres})
+
+  for j=1:size(F, 2)
+    for i=1:length(F)
+      F[i, j] = q[i]
+    end
+  end
+
+  return nothing
+end
+
+
+
 type RoeFlux <: FluxType
 end
 
@@ -685,6 +897,7 @@ end
 
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
+"IdentityFlux" => IdentityFlux(),
 "RoeFlux" => RoeFlux(),
 "StandardFlux" => StandardFlux(),
 "DucrosFlux" => DucrosFlux(),

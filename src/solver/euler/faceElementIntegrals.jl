@@ -268,6 +268,8 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     end
 
 
+    #TODO: write getLambdaMaxSimple and getIRA0 in terms of the entropy
+    #      variables to avoid the conversion
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0

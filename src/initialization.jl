@@ -40,34 +40,37 @@ function createMeshAndOperator(opts, dofpernode)
   # when the second mesh is created
 
   mesh_time = 0.0
-  if opts["operator_type2"] != "SBPNone"
-    op_type_orig = opts["operator_type"]
-    op_type_2 = opts["operator_type2"]
+  if opts["use_staggered_grid"]
+    println("constructing flux grid")
 
-    opts["operator_type"] = op_type_2
+    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp, 2)
 
-    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
     mesh_time = @elapsed mesh2, pmesh2 = createMesh(opts, sbp2, sbpface, 
                                                   shape_type, topo, Tmsh,
-                                                  dofpernode)
+                                                  dofpernode, 2)
     if !(mesh2 === pmesh2)
-      throw(ErrorException("preconditioning mesh not supported with staggered girds"))
+      throw(ErrorException("preconditioning mesh not supported with staggered grids"))
     end
 
-    # reset the options dictionary
-    opts["operator_type"] = op_type_orig
-    opts["operator_type2"] = op_type_2
   end
 
+  println("constructing solution grid")
   sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
  
   mesh_time += @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
                                                 topo, Tmsh, dofpernode)
 
   # store the second mesh and SBP operator inside the first mesh
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     mesh.mesh2 = mesh2
     mesh.sbp2 = sbp2
+
+    # build the interpolation operators
+    I_S2F, I_F2S = buildinterpolation(sbp, sbp2)
+    mesh.I_S2F = I_S2F
+    mesh.I_S2FT = I_S2F.'
+    mesh.I_F2S = I_F2S
+    mesh.I_F2ST = I_F2S.'
   end
 
   return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
@@ -178,6 +181,11 @@ end
     opts: the options dictionary
     Tsbp: the DataType specifying the Tsbp passed to the SBP operator
           constructor
+    suffix: this suffix is added to all keys accessed in the options dictionary.
+            Usually the suffix is either the empty string or an integer.  This
+            provides a convenient way for the input file to specify several
+            different SBP operator and have this operator construct them.
+            Default value is the empty string.
 
   Outputs:
     sbp: the SBP operator
@@ -187,36 +195,36 @@ end
     topo: in the 3D DG case, an ElementTopology describing the SBP reference
           element, otherwise the integer 0.
 """
-function createSBPOperator(opts::Dict, Tsbp::DataType)
+function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
   # construct SBP operator and figure out shape_type needed by Pumi
-  order = opts["order"]  # order of accuracy
+  order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
-  println("\nConstructing SBP Operator")
+  println("\nConstructing SBP Operator $suffix")
   topo = 0  # generally not needed, so return a default value
   if opts["use_DG"]
-    if opts["operator_type"] == "SBPOmega"
+    if opts["operator_type$suffix"] == "SBPOmega"
       if dim == 2
         sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
       else
         sbp = getTetSBPOmega(degree=order, Tsbp=Tsbp)
       end
       shape_type = 2
-    elseif opts["operator_type"] == "SBPGamma"
+    elseif opts["operator_type$suffix"] == "SBPGamma"
       if dim == 2
         sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
       else
         sbp = getTetSBPGamma(degree=order, Tsbp=Tsbp)
       end
       shape_type = 3
-    elseif opts["operator_type"] == "SBPDiagonalE"
+    elseif opts["operator_type$suffix"] == "SBPDiagonalE"
       if dim == 2
         sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp)
       else
         throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
       end
       shape_type = 4
-    elseif opts["operator_type"] == "SBPDiagonalE2"  # no vert nodes
+    elseif opts["operator_type$suffix"] == "SBPDiagonalE2"  # no vert nodes
       if dim == 2
         sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp, vertices=false)
       else
@@ -224,13 +232,13 @@ function createSBPOperator(opts::Dict, Tsbp::DataType)
       end
       shape_type = 5
     else
-      op_type = opts["operator_type"]
+      op_type = opts["operator_type$suffix"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
     end
   else  # CG mesh
     # the CG varient of SBP gamma is the only option
-    if opts["operator_type"] != "SBPGamma"
-      op_type = opts["operator_type"]
+    if opts["operator_type$suffix"] != "SBPGamma"
+      op_type = opts["operator_type$suffix"]
       throw(ArgumentError("invalid operator type $op_type for CG"))
     end
     sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
@@ -242,13 +250,13 @@ function createSBPOperator(opts::Dict, Tsbp::DataType)
     if dim == 2
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
-      if opts["operator_type"] == "SBPDiagonalE"
+      if opts["operator_type$suffix"] == "SBPDiagonalE"
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
-      elseif opts["operator_type"] == "SBPDiagonalE2"
+      elseif opts["operator_type$suffix"] == "SBPDiagonalE2"
         println("getting TriFaceForDiagE2")
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.', vertices=false)
       else
-        sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+        sbpface = TriFace{Tsbp}(order, sbp.cub, ref_verts.')
       end
     else  # dim == 3
       ref_verts = sbp.vtx
@@ -258,15 +266,15 @@ function createSBPOperator(opts::Dict, Tsbp::DataType)
       topo2 = ElementTopology2()   #TODO: make this the correct one for SBP
       topo = ElementTopology{3}(face_verts, edge_verts, topo2=topo2)
 
-      if opts["operator_type"] == "SBPDiagonalE2"
+      if opts["operator_type$suffix"] == "SBPDiagonalE2"
         sbpface = getTetFaceForDiagE(order, sbp.cub, ref_verts)
       else
-        sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
+        sbpface = TetFace{Tsbp}(order, sbp.cub, ref_verts)
       end
     end  # end if dim == 2
   else   # CG
     if dim == 2
-      sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
+      sbpface = TriFace{Tsbp}(order, sbp.cub, sbp.vtx)
     else
       throw(ErrorException("3D CG not supported"))
     end
@@ -287,16 +295,18 @@ end
           needed for 3D DG, otherwise can be any value
     Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)
     dofpernode: number of degrees of freedom on every node
+    suffix: suffix added to options dictionary keys that describe the SBP
+            operator.  See [`createSBPOperator`](@ref)
 
   All arguments except opts are typically provided by 
   [`createSBPOperator`](@ref) and [`getDataTypes`](@ref)
 """
 function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
-                    Tmsh, dofpernode)
+                    Tmsh, dofpernode, suffix="")
 
   dmg_name = opts["dmg_name"]
   smb_name = opts["smb_name"]
-  order = opts["order"]  # order of accuracy
+  order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
 
