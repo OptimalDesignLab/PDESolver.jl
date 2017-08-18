@@ -858,6 +858,21 @@ global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
 
 )
 
+"""
+  Populates the field(s) of the EulerData object with
+  [`FaceElementIntegralType`](@ref) functors as specified by the options
+  dictionary
+
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * opts: the options dictionary
+
+  **Inputs/Outputs**
+
+   * eqn: the EulerData object
+"""
 function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)
 
   eqn.face_element_integral_func = FaceElementDict[opts["FaceElementIntegral_name"]]

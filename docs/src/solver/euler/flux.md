@@ -1,4 +1,4 @@
-# Face Integrals
+# [Face Integrals](@id sec:euler_face_integrals)
 
 ```@meta
   CurrentModule = EulerEquationMod
@@ -23,7 +23,8 @@ evalSharedFaceIntegrals
   Pages = ["euler/flux.jl"]
 ```
 
-## Flux Functors
+## [Flux Functors](@id sec:euler_flux_functors)
+TODO: move this to another file (both code and docs)
 
 ```@autodocs
   Modules = [EulerEquationMod]

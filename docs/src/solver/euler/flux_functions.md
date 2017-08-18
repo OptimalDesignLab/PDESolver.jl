@@ -1,4 +1,4 @@
-# Numerical Flux Functions
+# [Numerical Flux Functions](@id sec:euler_flux_funcs)
 
 This page documents the numerical flux functions available in the code
 

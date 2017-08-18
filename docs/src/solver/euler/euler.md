@@ -1,4 +1,4 @@
-# Euler Physics Documentation
+# Euler Physics
 
 Describe the equation being solved here
 
@@ -19,11 +19,30 @@ $\begin{bmatrix} \rho u & \rho v & \rho w \\ \rho u^{2} + p & \rho u v & \rho u 
 
 TODO: describe the physical quantities (include units)
 
+## Discretizations
+
+The code currently implements three kinds of discretizations.
+
+The first is a standard discontinuous-Galerkin scheme using SBP operators
+and uses the numerical flux functions in [flux functions](@ref sec:euler_flux_funcs) section.
+
+The second scheme is an entropy stable discretization that uses a Hadamard
+product between the SBP operator matrices and matrices of flux values.
+The face integrals for the entropy stable scheme are described on the
+[face element integrals](@ref sec:euler_face_element_integrals) page.
+
+The third scheme is a staggerd grid approach based on the entropy stable
+scheme.  It uses all the same mechanics as the entropy stable scheme, but
+requires interpolating data back and forth between the solution and flux
+grids. The functions for doing the interpolation are listed on the relevent
+pages for the volume and face integrals. 
+
 ```@contents
   Pages = [ "advection.md"
             "types.md"
             "volume.md"
             "flux.md"
+            "faceElementIntegrals.md"
             "bc.md"
             "ic.md"
             "source.md"

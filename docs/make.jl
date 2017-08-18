@@ -55,6 +55,7 @@ makedocs(
                       "Datatypes" => "$euler/types.md"
                       "Volume Integrals" => "$euler/volume.md"
                       "Face Integrals" => "$euler/flux.md"
+                      "Face Element Integrals" => "$euler/faceElementIntegrals.md"
                       "Boundary Integrals" => "$euler/bc.md"
                       "Initial Conditions" => "$euler/ic.md"
                       "Source Term" => "$euler/source.md"

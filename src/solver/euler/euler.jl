@@ -626,15 +626,14 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 end  # end evalVolumeIntegrals
 
 
-@doc """
+ """
   This function evaluates the boundary integrals in the Euler equations by
   calling the appropriate SBP function on eqn.bndryflux, which must be populated
   before calling this function.  eqn.res is updated with the result
 
   This is a mid level function
 
-"""->
-# mid level function
+"""
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
@@ -825,7 +824,7 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
-@doc """
+"""
 ### EulerEquationMod.evalSourceTerm
 
   This function performs all the actions necessary to update eqn.res
@@ -844,7 +843,7 @@ end
 
   Aliasing restrictions: none
 
-"""->
+"""
 function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts)
