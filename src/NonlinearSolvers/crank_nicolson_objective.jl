@@ -1,7 +1,7 @@
 # import PDESolver.evalResidual
 export calcdJdu_CS, calcObjectiveFn, obj_zero, calcVV, calcdRdA_CS
 
-function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t)
 
   # complex step it
   pert = complex(0, 1e-20)
@@ -14,7 +14,7 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     evalResidual(mesh, sbp, eqn, opts)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
-    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, dt, h)
     J = J_arr[1]
     # println("=== in dJdu_CS: typeof(J_arr): ", typeof(J_arr))
     # println("=== in dJdu_CS: typeof(J): ", typeof(J))
@@ -31,14 +31,14 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
 end
 
-function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts)
+function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t)
 
   pert = 1e-6
 
   dJdu = zeros(Tsol, length(eqn.q_vec))
 
   # unperturbed
-  J_unpert_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+  J_unpert_arr = calcObjectiveFn(mesh, sbp, eqn, opts, dt, h)
   J_unpert = J_unpert_arr[1]
 
   for i = 1:length(eqn.q_vec)
@@ -48,7 +48,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     evalResidual(mesh, sbp, eqn, opts)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
-    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, dt, h)
     J = J_arr[1]
 
     dJdu[i] = (J - J_unpert)/norm(pert)
@@ -63,7 +63,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
 end
 
-function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts; isDeriv=false)
+function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t; isDeriv=false)
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG

@@ -161,10 +161,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     println(" size of dRdu: ", size(dRdu_n))
     #----------------
 
-    dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
-    dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
+    dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts, h, t)  # obtain dJdu at time step n
+    dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts, h, t)  # obtain dJdu at time step n
     dJdu = dJdu_CS
-    dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, isDeriv=true)
+    dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t, isDeriv=true)
 
     writedlm("dJdu_IC_CS.dat", dJdu_CS)
     writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
@@ -223,7 +223,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       println(" -------------- eqn.q_vec start of this CN iter. t = $t, i = $i --------------")
       # print_qvec_coords(mesh, sbp, eqn, opts)
       println(" -------------- J for this eqn.q_vec --------------")
-      J_arr = calcObjectiveFn(mesh, sbp, eqn, opts)
+      J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
       # println(" -------------- eqn.q_bndry for this eqn.q_vec --------------")
       # print_qvec_coords(mesh, sbp, eqn, opts; bndry=true)
       J = J_arr[1]
@@ -268,10 +268,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # 2. call it, complex step it, and store it in dJdu
     if neg_time == true
       dJdu = zeros(Tsol, length(eqn.q_vec))
-      dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
-      dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts)  # obtain dJdu at time step n
+      dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts, h, t)  # obtain dJdu at time step n
+      dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts, h, t)  # obtain dJdu at time step n
       dJdu = dJdu_CS
-      dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, isDeriv=true)
+      dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t, isDeriv=true)
 
       filename = string("dJdu_irev-",i,"_CS.dat")
       writedlm(filename, dJdu_CS)
