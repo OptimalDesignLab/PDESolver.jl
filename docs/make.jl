@@ -67,6 +67,7 @@ makedocs(
                       "Boundary Functional" => "$euler/boundary_functional.md"
                       "Misc" => "$euler/misc.md"
                       "Eigensystem" => "$euler/eigensystem.md"
+                      "Startup" => "$euler/startup.md"
                      ]
                   "Simple ODE" => Any[
                       "Main" => "$ode/simpleODE.md"

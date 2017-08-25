@@ -22,7 +22,7 @@ be entropy stable!  The IR flux function is typically used.
 ```@autodocs
   Modules = [EulerEquationMod]
   Order = [:function]
-  Pages = ["euler/faceElementIntegrals.jl"]
+  Pages = ["euler/faceElementIntegrals.jl", "euler/IR_stab.jl"]
 ```
 
 ## Flux Functors

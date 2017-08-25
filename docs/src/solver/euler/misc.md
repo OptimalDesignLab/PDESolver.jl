@@ -15,7 +15,7 @@ A bunch of the things in euler_funcs.jl
 
 ```@autodocs
   Modules = [EulerEquationMod]
-  Pages = ["euler/euler_funcs.jl"]
+  Pages = ["euler/euler_funcs.jl", "euler/entropy_flux.jl"]
 ```
 
 
