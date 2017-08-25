@@ -1,6 +1,8 @@
-# import PDESolver.evalResidual
 export calcdJdu_CS, calcObjectiveFn, obj_zero, calcVV, calcdRdA_CS
 
+"""
+  calculates dJdu using the complex step method
+"""
 function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t)
 
   # complex step it
@@ -31,6 +33,9 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
 end
 
+"""
+  calculates dJdu using the finite difference method
+"""
 function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t)
 
   pert = 1e-6
@@ -63,6 +68,37 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
 end
 
+""" 
+  calculates the time integral of the objective function, 
+    storing it in a file each time as well as returning it
+"""
+function calcTimeIntObjFn(mesh, sbp, eqn, opts, h, t; isDeriv=false, isFirstOrLastStep=false)
+
+  J_total = readdlm(filename)
+
+  if isFirstOrLastStep
+    fac = 1.0
+  else
+    fac = 2.0
+  end
+
+  J_i = calcObjectiveFn(mesh, sbp, eqn, opts, h, t; isDeriv)
+  J_total += (h*0.5)*fac*J_i
+
+  filename = "J_total.dat"
+  writedlm(filename, J_total)
+
+  return J_total
+
+end
+
+""" 
+  calculates the objective function
+
+  J = int(u^2)
+
+  or optionally (if isDeriv is passed as true), calculates dJdu = int(2u)
+"""
 function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t; isDeriv=false)
 
   eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
