@@ -14,7 +14,7 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     evalResidual(mesh, sbp, eqn, opts)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
-    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, dt, h)
+    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
     J = J_arr[1]
     # println("=== in dJdu_CS: typeof(J_arr): ", typeof(J_arr))
     # println("=== in dJdu_CS: typeof(J): ", typeof(J))
@@ -38,7 +38,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
   dJdu = zeros(Tsol, length(eqn.q_vec))
 
   # unperturbed
-  J_unpert_arr = calcObjectiveFn(mesh, sbp, eqn, opts, dt, h)
+  J_unpert_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
   J_unpert = J_unpert_arr[1]
 
   for i = 1:length(eqn.q_vec)
@@ -48,7 +48,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     evalResidual(mesh, sbp, eqn, opts)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
-    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, dt, h)
+    J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
     J = J_arr[1]
 
     dJdu[i] = (J - J_unpert)/norm(pert)

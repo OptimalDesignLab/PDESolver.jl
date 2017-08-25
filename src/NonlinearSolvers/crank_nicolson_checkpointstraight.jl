@@ -153,7 +153,7 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps,
     ### end GLOBAL
   end # end of "if opts["uadj_global"]
 
-  dJdu_i = calcdJdu_CS(mesh, sbp, eqn_dummy, opts, h, dt)  # obtain dJdu at time step i
+  dJdu_i = calcdJdu_CS(mesh, sbp, eqn_dummy, opts, h, t)  # obtain dJdu at time step i
 
   B1 = I - 0.5*h*dRdu_i
   B2 = adj.q_vec + 0.5*h*dRdu_i*adj.q_vec - dJdu_i
