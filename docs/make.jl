@@ -14,6 +14,11 @@ makedocs(
   format = :html,
   sitename = "PDESolver.jl",
   pages = Any["PDESolver Introduction" => "index.md"
+              "PDESolver Concepts" => Any[
+                    "Intro" => "concepts/intro.md"
+                    "PUMI" => "concepts/pumi.md"
+                    "SBP" => "concepts/sbp.md"
+                   ]
               "Building PDESolver" => Any[
                     "build.md",
                     "Build Options" => "deps_readme.md"
