@@ -98,7 +98,7 @@ $\left[ I - \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u_i} \righ
 
 Solving for $\psi_i$:
 
-$\psi_i = \left[ I - \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u_i} \right)^T \right]^{-1} \left[ \psi_{i+1} + \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u_i} \right)^T \psi_{i+1} \right] - \frac{\partial J(u_i)}{\partial u_i}$
+$\psi_i = \left[ I - \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u_i} \right)^T \right]^{-1} \left( \left[ \psi_{i+1} + \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u_i} \right)^T \psi_{i+1} \right] - \frac{\partial J(u_i)}{\partial u_i} \right)$
 
 
 ### Checkpointing
