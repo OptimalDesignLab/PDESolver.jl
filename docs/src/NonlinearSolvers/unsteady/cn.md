@@ -101,6 +101,8 @@ Solving for $\psi_i$:
 
 $\psi_i = \left[ I - \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u_i} \right)^T \right]^{-1} \left( \left[ \psi_{i+1} + \frac{\Delta t}{2} \left( \frac{\partial R(u_i)}{\partial u_i} \right)^T \psi_{i+1} \right] - \frac{\partial J(u_i)}{\partial u_i} \right)$
 
+Therefore, $\psi_i$ is a function of 1) the Jacobian of the primal solution at step $i$, which is loaded from checkpointed data, 2) the derivative of the objective function with respect to the state, at step $i$, and 3) the adjoint solution at time step $i+1$. 
+The adjoint solution sweep is thus stepped backwards in time, starting at time step $n$.
 
 ### Checkpointing
 
