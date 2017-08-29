@@ -15,8 +15,8 @@ As this is an unsteady problem, you will also need to specify your
 ## Forward-in-time
 
 \begin{aligned}
-\underbrace{\mathbf{I} - \frac{\Delta t}{2} \underbrace{\frac{\partial R\left(u^{i+1}\right)}{\partial u^{i+1}}}_{\text{jac from physicsJac}} \
-}_{\text{cnJac}} \
+\underbrace{\left( \mathbf{I} - \frac{\Delta t}{2} \underbrace{\frac{\partial R\left(u^{i+1}\right)}{\partial u^{i+1}}}_{\text{jac from physicsJac}} \
+\right)}_{\text{cnJac}} \Delta u\
 = \\
 \underbrace{- \left( \
   \underbrace{u^{i+1}}_{\text{eqn\_nextstep.q\_vec}} - \ 
@@ -53,17 +53,18 @@ $\boldsymbol{R(\boldsymbol{u})} = \begin{bmatrix} u_1 - u_0 - \frac{\Delta t}{2}
 
 The global-in-time adjoint vector is:
 
-$\boldsymbol{\psi}^T = [\psi_1, \psi_2, \dots, \psi_i, \psi_{i+1}, \dots, \psi_n]$
+$\boldsymbol{\psi}^T = [\psi_1^T, \psi_2^T, \dots, \psi_i^T, \psi_{i+1}^T, \dots, \psi_n^T]$
 
+Note that each time step's adjoint variable is a vector of length equal to the number of degrees of freedom in the mesh.
 And finally, the global-in-time objective function vector is:
 
 $\boldsymbol{J}^T = [J_1, J_2, \dots, J_i, J_{i+1}, \dots, J_n]$
 
 Therefore, the full discrete Lagrangian is:
 
-$\boldsymbol{\mathcal{L}}(\boldsymbol{u}, \boldsymbol{\psi}) = \boldsymbol{\psi}^T \boldsymbol{R(\boldsymbol{u})} + \boldsymbol{J}(\boldsymbol{u}) = \begin{bmatrix} \psi_1 \left( u_1 - u_0 - \frac{\Delta t}{2} R(u_1) - \frac{\Delta t}{2} R(u_0) \right) \\ \psi_2 \left( u_2 - u_1 - \frac{\Delta t}{2} R(u_2) - \frac{\Delta t}{2} R(u_1) \right) \\ \vdots \\ \psi_i \left( u_i - u_{i-1} - \frac{\Delta t}{2} R(u_i) - \frac{\Delta t}{2} R(u_{i-1}) \right) \\ \psi_{i+1} \left( u_{i+1} - u_{i} - \frac{\Delta t}{2} R(u_{i+1}) - \frac{\Delta t}{2} R(u_{i}) \right) \\ \vdots \\ \psi_n \left( u_n - u_{n-1} - \frac{\Delta t}{2} R(u_n) - \frac{\Delta t}{2} R(u_{n-1}) \right) \end{bmatrix} + \begin{bmatrix} J(u_1) \\ J(u_2) \\ \vdots \\ J(u_i) \\ J(u_{i+1}) \\ \vdots \\ J(u_n) \end{bmatrix}$
+$\boldsymbol{\mathcal{L}}(\boldsymbol{u}, \boldsymbol{\psi}) = \boldsymbol{\psi}^T \boldsymbol{R(\boldsymbol{u})} + \boldsymbol{J}(\boldsymbol{u}) = \begin{bmatrix} \psi_1^T \left( u_1 - u_0 - \frac{\Delta t}{2} R(u_1) - \frac{\Delta t}{2} R(u_0) \right) \\ \psi_2^T \left( u_2 - u_1 - \frac{\Delta t}{2} R(u_2) - \frac{\Delta t}{2} R(u_1) \right) \\ \vdots \\ \psi_i^T \left( u_i - u_{i-1} - \frac{\Delta t}{2} R(u_i) - \frac{\Delta t}{2} R(u_{i-1}) \right) \\ \psi_{i+1}^T \left( u_{i+1} - u_{i} - \frac{\Delta t}{2} R(u_{i+1}) - \frac{\Delta t}{2} R(u_{i}) \right) \\ \vdots \\ \psi_n^T \left( u_n - u_{n-1} - \frac{\Delta t}{2} R(u_n) - \frac{\Delta t}{2} R(u_{n-1}) \right) \end{bmatrix} + \begin{bmatrix} J(u_1) \\ J(u_2) \\ \vdots \\ J(u_i) \\ J(u_{i+1}) \\ \vdots \\ J(u_n) \end{bmatrix}$
 
-Taking the derivative of the Lagrangian with respect to the state at step $i$ yields:
+Taking the derivative of the Lagrangian with respect to the state at step $i$ yields, for values of i not equal to 0 or n:
 
 $\frac{\partial \boldsymbol{L}}{\partial u_i} = \underbrace{\psi_i^T - \psi_i^T \frac{\Delta t}{2} \frac{\partial R(u_i)}{\partial u_i}}_{\text{contribution from }\boldsymbol{R}(u_i)} - \underbrace{\psi_{i+1}^T - \psi_{i+1}^T \frac{\Delta t}{2} \frac{\partial R(u_i)}{\partial u}}_{\text{contribution from }\boldsymbol{R}(u_{i+1})} + \frac{\partial J(u_i)}{\partial u_i}= 0^T$
 
