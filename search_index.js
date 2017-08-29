@@ -2437,7 +2437,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
+    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
 },
 
 {
@@ -2445,7 +2445,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
+    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
 },
 
 {
@@ -2893,7 +2893,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Crank-Nicolson",
     "title": "Direct Solve",
     "category": "section",
-    "text": "The method of performing a direct solve to advance the CN reverse sweep (as opposed to using Newton's method to converge each time step) starts with the restatement of the derivative of the Lagrangian at time step i:fracpartial boldsymbolLpartial u_i = underbracepsi_i^T - psi_i^T fracDelta t2 fracpartial R(u_i)partial u_i_textcontribution from boldsymbolR(u_i) - underbracepsi_i+1^T - psi_i+1^T fracDelta t2 fracpartial R(u_i)partial u_textcontribution from boldsymbolR(u_i+1) + fracpartial J(u_i)partial u_i= 0^TRearranging:left psi_i - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i right - left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right + fracpartial J(u_i)partial u_i = 0Grouping terms to isolate psi_i:left I - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T right psi_i = left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right - fracpartial J(u_i)partial u_iSolving for psi_i:psi_i = left I - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T right^-1 left( left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right - fracpartial J(u_i)partial u_i right)"
+    "text": "The method of performing a direct solve to advance the CN reverse sweep (as opposed to using Newton's method to converge each time step) starts with the restatement of the derivative of the Lagrangian at time step i:fracpartial boldsymbolLpartial u_i = underbracepsi_i^T - psi_i^T fracDelta t2 fracpartial R(u_i)partial u_i_textcontribution from boldsymbolR(u_i) - underbracepsi_i+1^T - psi_i+1^T fracDelta t2 fracpartial R(u_i)partial u_textcontribution from boldsymbolR(u_i+1) + fracpartial J(u_i)partial u_i= 0^TRearranging:left psi_i - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i right - left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right + fracpartial J(u_i)partial u_i = 0Grouping terms to isolate psi_i:left I - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T right psi_i = left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right - fracpartial J(u_i)partial u_iSolving for psi_i:psi_i = left I - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T right^-1 left( left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right - fracpartial J(u_i)partial u_i right)Therefore, psi_i is a function of 1) the Jacobian of the primal solution at step i, which is loaded from checkpointed data, 2) the derivative of the objective function with respect to the state, at step i, and 3) the adjoint solution at time step i+1.  The adjoint solution sweep is thus stepped backwards in time, starting at time step n."
 },
 
 {
@@ -2909,7 +2909,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Crank-Nicolson",
     "title": "Global-in-time Jacobian",
     "category": "section",
-    "text": "For reference, the structure of the global-in-time Jacobian is shown here. It should never be formed except in the course of debugging very simple use cases,    but it can be helpful for visualizing the matrix form of CN for all space and time."
+    "text": "For reference, the structure of the global-in-time Jacobian is shown here. It should never be formed except in the course of debugging very simple use cases,    but it can be helpful for visualizing the matrix form of CN for all space and time.(Work in progress)"
 },
 
 {
