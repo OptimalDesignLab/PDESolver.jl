@@ -117,6 +117,7 @@ For reference, the structure of the global-in-time Jacobian is shown here.
 It should never be formed except in the course of debugging very simple use cases, 
   but it can be helpful for visualizing the matrix form of CN for all space and time.
 
+(Work in progress)
 
 
 
