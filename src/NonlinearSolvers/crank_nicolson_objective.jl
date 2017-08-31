@@ -219,11 +219,28 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   end   # end of loop: itr = 1:length(functional_edges)
 
+  # 20170830 NOTE NOTE: this section is for setting the objective function to a constant (and dJdu to 0)
+  #   the result of this is that the adjoint should be zero.
+  #   Verified that the adjoint is zero when this is done. I'm leaving it commented out here for posterity,
+  #   until the full adjoint works.
+  #=
+  if isDeriv == false
+    println("type of J: ", typeof(J))
+    println("size of J: ", size(J))
+    J = 4.0
+    return J
+  else
+    dJdu = zeros(dJdu)
+    return dJdu
+  end
+  =#
+
   if isDeriv == false
     return J
   else
     return dJdu
   end
+
 
 end
 
