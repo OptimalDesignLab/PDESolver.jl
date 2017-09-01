@@ -34,7 +34,8 @@ makedocs(
               "Frontend" => Any[
                     "Introduction" => "pdesolver.md"
                     "PDESolver User Interface" => "pdesolver_user.md"
-                    "PDESolver PhysicsInterface" => "pdesolver_physics.md"
+                    "PDESolver Physics Interface" => "pdesolver_physics.md"
+                    "PDESolver Structure" => "pdesolver_structure.md"
                    ]
               "Invocation" => Any[
                     "Calling PDESolver" => "invocation/calling.md"
@@ -81,6 +82,7 @@ makedocs(
                  ]  # end Solver
               "Input" => Any[
                   "Introduction" => "input/input.md"
+                  "Important Keys" => "input/keys.md"
                  ]
               "NonlinearSolvers" => Any[
                   "Introduction" => "NonlinearSolvers/nonlinearsolvers.md"

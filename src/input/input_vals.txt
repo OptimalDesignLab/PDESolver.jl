@@ -5,9 +5,10 @@ julia /path/to/startup.jl "input_file_name.jl"
 
 where input_file_name.jl is in your current directory.
 
-# TODO: a required keys section
 
-# The following keys are used for the options dictionary in the input file
+# The following keys are used for the options dictionary in the input file,
+  and do not have default values, so the user must specify them if needed
+
 "physics" : which physics to run, ASCIIString, must match the name each
             physics module uses to register itself with the PDESolver module
 
@@ -29,7 +30,6 @@ where input_file_name.jl is in your current directory.
              "smb_name", default ".null"
 
 "IC_name" : initial condition function name (string)
-"use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false
 
 "operator_type" : name of discretization operator to use for DG, currently 
                   either SBPOmega or SBPGamma , (String), default SBPOmega
@@ -37,7 +37,6 @@ where input_file_name.jl is in your current directory.
 "operator_type2": like "operator_type", but for the staggered grid, (String),
                   default "SBPNone"
 
-"use_Minv" : apply the inverse mass matrix to the residual within the physics module
 
 # time stepping options
 "real_time" : have time marching scheme advance real time instead of pseudo-time,
@@ -102,6 +101,7 @@ where input_file_name.jl is in your current directory.
                           (Bool), default true
 "precompute_boundary_flux": precompute the boundary flux or calculate it as 
                             needed, (Bool), default true
+"use_Minv" : apply the inverse mass matrix to the residual within the physics module
 
 # boundary condition specification
 "numBC" : number of boundary condtions used
@@ -300,6 +300,7 @@ Note that any values associated with these options are shared with the regular
 "cleansheet_CN_newton" : use the Newton's method internal to CN. Only for debugging - it supports dense FD Jacs only
 
 # Newton's Method options
+"use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false
 "jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)
 "epsilon"  : perturbation size when calculation Jacobian, (Float64), default 1e-6 for finite difference, 1e-20 to complex step
 "newton_globalize_euler"  : use the Pseudo-Transient Continuation 

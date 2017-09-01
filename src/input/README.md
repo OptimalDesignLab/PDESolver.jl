@@ -20,7 +20,7 @@ log important quantities to files.  Such logging should be controlled by
 two keys, `"write_outname"` where `outname` is the name of the quantity, which
 has a boolean value, and `"write_outname_fname"` that has a string value
 containing the name of the file to write (including extension).  Examples
-out things that can be logged are entropy and kinetic energy.  Both these keys
+of things that can be logged are entropy and kinetic energy.  Both these keys
 should have default values, and users should generally not need to modify the
 second one.
 
@@ -29,9 +29,13 @@ After supplying default values, PDESolver checks that all keys in the dictonary
 are recognized keys.  It does this by comparing against the list of keys
 documented in the [input_vals.txt](https://github.com/OptimalDesignLab/PDESolver.jl/blob/work/src/input/input_vals.txt) file.  A warning of is printed to STDERR if
 an unrecognized key is found.
+There is a second file, [input_vals_internal.txt](https://github.com/OptimalDesignLab/PDESolver.jl/blob/work/src/input/input_vals_internal.txt), which
+lists keys that the user should *never* specify.
+These keys are completely dependent on other keys from `input_vals.txt`, and
+specifying them inconsistently can make the solver seriously misbehave.
 
 The mechanics of the key validation are as follows.  The `extract_keys.jl`
-script reads the [input_vals.txt](https://github.com/OptimalDesignLab/PDESolver.jl/blob/work/src/input/input_vals.txt) file (and the input_vals_internal.txt),
+script reads the [input_vals.txt](https://github.com/OptimalDesignLab/PDESolver.jl/blob/work/src/input/input_vals.txt) file (and the `input_vals_internal.txt`),
 looking for any string that is surrounded
 by double quotes and starts in the first character of a line.  All keys are
 written to a dictonary in the file `known_keys.jl`.  This file is included by
