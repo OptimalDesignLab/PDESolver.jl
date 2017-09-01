@@ -170,10 +170,32 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
+    println("--- Adj IC ---")
+    println("size of eqn_fwd.q_vec: ", size(eqn_fwd.q_vec))
+    println("size of dRdu_n: ", size(dRdu_n))
+    println("size of dJdu: ", size(dJdu))
+    println("size of adj.q_vec: ", size(adj.q_vec))
+
+    # note: matrix calculus says that the derivative of a scalar by a vector is a row vector.
+    #   therefore dJdu is a row vector. However, it is implemented in the code as a column vector.
+    #   because of this, the final transpose of psi is not required.
+    #
+    # No! This is wrong. See 08/30/2017 notes for actual rigorous derivation.
+    # I = eye(length(eqn_fwd.q_vec))
+    # B = I - (0.5*h*dRdu_n)
+    # psi = transpose(B\(-dJdu))
+    # psi = B\(-dJdu)
+
+    # 20170831 old, before xpose fix
     I = eye(length(eqn_fwd.q_vec))
     B = (I - (h/2) * (dRdu_n))
     psi = transpose(B)\(-dJdu)
+
+    println("size of psi: ", size(psi))
+    println("size of copy(psi): ", size(copy(psi)))
     adj.q_vec = copy(psi)
+    writedlm("adj_ic.dat", adj.q_vec)
+
     disassembleSolution(mesh, sbp, adj, opts, adj.q, adj.q_vec)
 
   end

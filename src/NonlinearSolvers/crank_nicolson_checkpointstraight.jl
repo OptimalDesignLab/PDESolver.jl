@@ -155,8 +155,11 @@ function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps,
 
   dJdu_i = calcdJdu_CS(mesh, sbp, eqn_dummy, opts, h, t)  # obtain dJdu at time step i
 
-  ### VERIFIED this equation with the derivation.
-  B1 = I - 0.5*h*dRdu_i
+  # 20170831. Looks like there's a transpose missing here on B1. 
+  # See notes, LHS, 08/30/2017, for rigorous explanation.
+  # B1 = I - 0.5*h*dRdu_i
+  # B2 = adj.q_vec + 0.5*h*dRdu_i*adj.q_vec - dJdu_i
+  B1 = transpose(I - 0.5*h*dRdu_i)
   B2 = adj.q_vec + 0.5*h*dRdu_i*adj.q_vec - dJdu_i
 
   nextstep_q_vec = zeros(adj.q_vec)
