@@ -39,7 +39,7 @@ operators first defined in
    pp. A1935-A1958
 ```
 
-See the introductor PDF (to be posted shortly) for an introduction to the
+See the introductory PDF (to be posted shortly) for an introduction to the
 operators.
 
 ## Table of Contents
