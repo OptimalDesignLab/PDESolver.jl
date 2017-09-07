@@ -100,8 +100,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   # TODO: Ideally should be t_steps*h for clarity, issue #92. Should be fixed for RK4 also.
   time_of_final_step = (t_steps-1)*h
 
-  println("=========== t_steps: ", t_steps, " =========")
-
   if neg_time == false    # negative time is for unsteady adjoint
     t = 0.0     # start time at 0.0
   else    
@@ -129,12 +127,18 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # adj_nextstep.res = reshape(adj_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   end
 
-  println("============ Starting CN ============")
+  println("========================= Starting CN =========================")
+  println("   neg_time: ", neg_time)
+  println("   t = ", round(t,3))
+  println("   t_max = ", t_max)
+  println("   t_steps = ", t_steps)
+  println("   eqn.params.alpha_x: ",eqn.params.alpha_x)
+  println("   eqn.params.alpha_y: ",eqn.params.alpha_y)
+
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
   # these jacs are for full CN or CN adj jac
-  println("================== neg_time: ", neg_time, " .... t = ", t, " .... t_max = ", t_max, "  ===================")
   if neg_time == false
     newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
   else
@@ -151,14 +155,21 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     i_fwd = t_steps + 2  # index of the last time step's checkpoint. 
                          #  It was saved after the end of the time stepping loop during the forward sweep
 
+    println("\n--- Adj IC: setting i_fwd. ---")
+    println("     t_steps = ", t_steps)
+    println("     i_fwd = ", i_fwd)
+    println("     t = ", round(t,3))
+    println("     h = ", h)
+
     # load checkpoint to calculate dRdu at this time step
-    println("Setting IC for reverse sweep, i_fwd (forward sweep time step index): ", i_fwd)
+    println(" ")
+    println("  Setting IC for reverse sweep, i_fwd (forward sweep time step index): ", i_fwd)
     eqn_fwd = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
     check_q_qvec_consistency(mesh, sbp, eqn_fwd, opts)
 
     jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_fwd, physics_func, i_fwd, t)
     dRdu_n = jac      # TODO: check transpose
-    println(" size of dRdu: ", size(dRdu_n))
+    # println(" size of dRdu: ", size(dRdu_n))
     #----------------
 
     dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts, h, t)  # obtain dJdu at time step n
@@ -170,11 +181,10 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
-    println("--- Adj IC ---")
-    println("size of eqn_fwd.q_vec: ", size(eqn_fwd.q_vec))
-    println("size of dRdu_n: ", size(dRdu_n))
-    println("size of dJdu: ", size(dJdu))
-    println("size of adj.q_vec: ", size(adj.q_vec))
+    # println("size of eqn_fwd.q_vec: ", size(eqn_fwd.q_vec))
+    # println("size of dRdu_n: ", size(dRdu_n))
+    # println("size of dJdu: ", size(dJdu))
+    # println("size of adj.q_vec: ", size(adj.q_vec))
 
     # note: matrix calculus says that the derivative of a scalar by a vector is a row vector.
     #   therefore dJdu is a row vector. However, it is implemented in the code as a column vector.
@@ -191,12 +201,14 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     B = (I - (h/2) * (dRdu_n))
     psi = transpose(B)\(-dJdu)
 
-    println("size of psi: ", size(psi))
-    println("size of copy(psi): ", size(copy(psi)))
+    # println("size of psi: ", size(psi))
+    # println("size of copy(psi): ", size(copy(psi)))
     adj.q_vec = copy(psi)
     writedlm("adj_ic.dat", adj.q_vec)
 
-    disassembleSolution(mesh, sbp, adj, opts, adj.q, adj.q_vec)
+    disassembleSolution(mesh, sbp, adj, opts, adj.q, adj.q_vec)     # diassembleSolution: q_vec -> q
+
+    println("--- Adj IC: end ---")
 
   end
 
@@ -208,17 +220,18 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   for i = 2:t_steps_end
 
     println(" ")
-    println(" -------------- start of this CN iter. t = $t, i = $i, neg_time = ", neg_time, " --------------")
+    println(" -------------- start of this CN iter. t = ", round(t,3),", i = $i, neg_time = ", neg_time, " --------------")
     @debug1 flush(eqn.params.f)
 
-    println("   eqn.params.alpha_x: ",eqn.params.alpha_x)
-    println("   eqn.params.alpha_y: ",eqn.params.alpha_y)
+    # println("   eqn.params.alpha_x: ",eqn.params.alpha_x)
+    # println("   eqn.params.alpha_y: ",eqn.params.alpha_y)
 
     # Write checkpoint data at start of time step
     if neg_time == false
       # for adjoint_straight option: stores every time step's q to disk
       # Note: cannot store full eqn object without extending one of the julia write methods
       if store_u_to_disk == true
+        println(" >>>>> Writing solution to disk. i = ", i,", t = ", round(t,3))
         filename = string("qvec_for_adj-", i, ".dat")
         writedlm(filename, eqn.q_vec)
         vis_filename = string("solution_storedtodisk_i-", i)
@@ -242,23 +255,23 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     end
 
     if neg_time == false
-      println(" -------------- eqn.q_vec start of this CN iter. t = $t, i = $i --------------")
+      # println(" -------------- eqn.q_vec start of this CN iter. t = $t, i = $i --------------")
       # print_qvec_coords(mesh, sbp, eqn, opts)
-      println(" -------------- J for this eqn.q_vec --------------")
+      # println(" -------------- J for this eqn.q_vec --------------")
       J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
       # println(" -------------- eqn.q_bndry for this eqn.q_vec --------------")
       # print_qvec_coords(mesh, sbp, eqn, opts; bndry=true)
       J = J_arr[1]
-      println("  J: ", J)
+      # println("  J: ", J)
       J_filename = string("J_during_fwd_sweep_i-", i,".dat")
       writedlm(J_filename, J)
-      println(" -------------- Now using eqn.q_vec to compute eqn_nextstep.q_vec --------------")
+      println("   Now using eqn.q_vec to compute eqn_nextstep.q_vec.")
     else
-      println(" -------------- adj.q_vec start of this CN iter. t = $t, i = $i --------------")
+      # println(" -------------- adj.q_vec start of this CN iter. t = $t, i = $i --------------")
       # print_qvec_coords(mesh, sbp, adj, opts)
-      println(" -------------- Now using adj.q_vec to compute adj_nextstep.q_vec --------------")
+      println("   Now using adj.q_vec to compute adj_nextstep.q_vec.")
     end
-    println(" ")
+    # println(" ")
 
     #----------------------------
     # zero out Jac
@@ -300,7 +313,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       filename = string("dJdu_irev-",i,"_analytical.dat")
       writedlm(filename, reshape(dJdu_analytical, (mesh.numDof, 1)))
 
-      println("       checking direct method: size(dJdu): ", size(dJdu))
+      # println("       checking direct method: size(dJdu): ", size(dJdu))
 
       # VV is the algebraic v, which is dudA, calculated for the advection adjoint test
 
@@ -311,7 +324,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       # NOTE 20170712: think I need to be doing t, not t_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
 
       # println("       checking direct method: VV: ", VV)
-      println("       checking direct method: size(VV): ", size(VV))
+      # println("       checking direct method: size(VV): ", size(VV))
       check_directmethod = transpose(dJdu)*VV
       filename = string("check_directmethod_irev-", i, ".dat")
       writedlm(filename, check_directmethod)
@@ -329,16 +342,16 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       #   The adjustment is not just (t_steps - i) because the loop starts at 2 and ends at t_steps + 1.
       i_fwd = (t_steps + 1) - (i - 2)
       # TODO: eventual fix, issue #92, t_steps + 2. needs to be done in RK4 also
-      println(" time step variables-  i: ", i, "  i_fwd: ", i_fwd, "  t_steps: ", t_steps)
+      println("\n   time step variables-  i: ", i, "  i_fwd: ", i_fwd, "  t_steps: ", t_steps)
       ctx_residual = (physics_func, adj, h, newton_data, i_fwd, dJdu)
 
       #-------------------------------------------------
       # Output times & indices
       println(" --- CN times and indices ---")
-      println("  CN: i = $i")
-      println("  CN: i_fwd = $i_fwd")
-      println("  CN: t = $t")
-      println("  CN: t_nextstep = $t_nextstep")
+      println("    CN: i = ", i)
+      println("    CN: i_fwd = ", i_fwd)
+      println("    CN: t = ", round(t,3))
+      println("    CN: t_nextstep = ", round(t_nextstep,3))
       #-------------------------------------------------
 
     end
@@ -500,6 +513,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # for adjoint_straight option: stores every time step's q to disk
     # Note: cannot store full eqn object without extending one of the julia write methods
     if store_u_to_disk == true
+      println(" >>>>> Writing solution to disk. i = ", i,", t = ", t)
       filename = string("qvec_for_adj-", i, ".dat")
       writedlm(filename, eqn.q_vec)
       vis_filename = string("solution_storedtodisk_i-", i)
@@ -525,12 +539,11 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   if neg_time == false
     println(" -------------- eqn.q_vec of last time step. after CN loop. t = $t, i = $i --------------")
     # print_qvec_coords(mesh, sbp, eqn, opts)
-    println(" -------------- End of CN --------------")
   else
     println(" -------------- adj.q_vec of last time step. after CN loop. t = $t, i = $i --------------")
     # print_qvec_coords(mesh, sbp, adj, opts)
-    println(" -------------- End of CN --------------")
   end
+  println("\n========================= End of CN =========================")
   println(" ")
 
 
@@ -595,7 +608,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
 
-  @debug1 println("============= end of CN: t = $t ===============")
+  # @debug1 println("============= end of CN: t = $t ===============")
 
   return t
 

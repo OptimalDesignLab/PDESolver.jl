@@ -48,7 +48,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres, Tdim}(eqn::EulerData_{Tsol, Tres, Tdim},
     if issubtype(fdnm_type, AbstractParamType)
 
       # loop over eqn.params, eqn.params_conservative, or eqn.params_entropy
-      println(" is a subtype of AbstractParamType, fdnm: ", fdnm)
+      # println(" is a subtype of AbstractParamType, fdnm: ", fdnm)
 
       for fdnm_lvl2 in fieldnames(getfield(eqn, fdnm))      # loop over 2nd level fieldnames
 

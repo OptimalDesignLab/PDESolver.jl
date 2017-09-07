@@ -22,13 +22,13 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   # println("in cnAdjLoadChkpt: pointer(eqn_dummy.res_vec): ", pointer(eqn_dummy.res_vec))
 
   qvec_filename = string("qvec_for_adj-", i_fwd, ".dat")
-  println("Calculating Jac using forward sweep data from: ", qvec_filename)
+  println("  Calculating Jac using forward sweep data from: ", qvec_filename)
   q_vec_with_complex = readdlm(qvec_filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # because readdlm gives a field to the zero-valued complex part
   disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
 
   check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
-  println(" -------------- eqn_dummy.q_vec loaded. i_fwd: ", i_fwd, " --------------")
+  println("  eqn_dummy.q_vec loaded. i_fwd: ", i_fwd)
   # print_qvec_coords(mesh, sbp, eqn_dummy, opts)
 
 
@@ -103,15 +103,18 @@ function cnAdjDirect:
   returns psi_i
 """
 function cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps, t, dRdu_global_rev)
-# adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_fwd, t_nextstep)
-
   # Note: t is passed in (instead of t_nextstep), but t_nextstep is calc'd & used below
+  #
+  # Note: adj is not altered in this function. It is only used for passing into cnAdjLoadChkpt for an eqn_deepcopy
+
+# adj_nextstep.q_vec = cnAdjDirect(mesh, sbp, opts, adj_nextstep, jac, i_fwd, t_nextstep)
 
   t_nextstep = t - h
   t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
 
   # Load checkpoint at time t, aka i+1
-  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
+  eqn_dummy = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)   # adj is only used for a eqn_deepcopy within
+                                                                          #   cnAdjLoadCheckpt
   # checked: eqn_dummy is loaded properly
   # Use time t's eqn.q_vec and t_nextstep, aka i, to compute the jac (dRdu) at t_nextstep aka i
   jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t_nextstep)

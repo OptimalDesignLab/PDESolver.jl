@@ -110,11 +110,13 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
   function AdvectionData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
-    println("\nConstruction AdvectionData object")
-    println("  Tsol = ", Tsol)
-    println("  Tres = ", Tres)
-    println("  Tdim = ", Tdim)
-    println("  Tmsh = ", Tmsh)
+
+    # println("\nConstructing AdvectionData object")
+    # println("  Tsol = ", Tsol)
+    # println("  Tres = ", Tres)
+    # println("  Tdim = ", Tdim)
+    # println("  Tmsh = ", Tmsh)
+
     numfacenodes = mesh.numNodesPerFace
 
     eqn = new()  # incomplete initialization

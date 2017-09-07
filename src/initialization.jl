@@ -320,6 +320,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
         # forward sweep
         # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
                                  # mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
+        println(" Calling CN, forward sweep.")
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
                                  mesh, sbp, eqn, opts,
                                  WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
@@ -329,6 +330,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
         # reverse sweep
         # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"], 
                                  # mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
+        println(" Calling CN, reverse sweep.")
         @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
                                  mesh, sbp, eqn, opts,
                                  WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
@@ -415,17 +417,17 @@ end
 
 function initialization_print(mesh, sbp, eqn, opts, pmesh)
 
-  println("====================================")
-  println("           Initialization           ")
-  println("====================================")
-  println(" mesh.numDof: ", mesh.numDof)
-  println(" mesh.numBC: ", mesh.numBC)
+  println("========================================================================")
+  println("                           Initialization           ")
+  println("========================================================================")
+  println("  mesh.numDof: ", mesh.numDof)
+  println("  mesh.numBC: ", mesh.numBC)
   for i = 1:length(mesh.bndry_funcs)
-    println(" mesh.bndry_funcs[", i, "]: ", mesh.bndry_funcs[i])
+    println("  mesh.bndry_funcs[", i, "]: ", mesh.bndry_funcs[i])
   end
-  println("====================================")
-  println("        End of initialization       ")
-  println("====================================")
+  println("========================================================================")
+  println("                           End of initialization       ")
+  println("========================================================================")
   println(" ")
 
 end

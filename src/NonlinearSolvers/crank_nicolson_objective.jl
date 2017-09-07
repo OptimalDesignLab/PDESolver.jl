@@ -248,6 +248,8 @@ end
 calculates v, which is dudA, for the advection adjoint test
 """
 function calcVV(mesh, sbp, eqn, opts, t)
+  # eqn (or adj) is unaltered here. In fact, the only thing used 
+  #   from eqn is eqn.params.omega and eqn.params.sin_amplitude
 
   v = zeros(eqn.q_vec)
 
@@ -279,7 +281,7 @@ calculates dRdA for the advection adjoint test, using complex step
 """
 function calcdRdA_CS(mesh, sbp, eqn, opts, t)
 
-  println(" calculating dRdA using CS")
+  # println(" calculating dRdA using CS")
 
   # complex step perturbation
   pert = complex(0, 1e-20)
@@ -308,7 +310,7 @@ calculates dRdA for the advection adjoint test, using finite difference
 """
 function calcdRdA_FD(mesh, sbp, eqn, opts, t)
 
-  println(" calculating dRdA using FD")
+  # println(" calculating dRdA using FD")
 
   # finite difference perturbation
   pert = 1e-6
@@ -320,7 +322,7 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, t)
   # eqn_temp.params.omega += pert
   # println(" <<< dRdA_FD: eqn_temp.params.sin_amplitude: ", eqn_temp.params.sin_amplitude)
 
-  println(" <<< dRdA_FD: using forward difference")
+  # println(" <<< dRdA_FD: using forward difference")
 
   evalResidual(mesh, sbp, eqn_temp, opts)
   assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
@@ -334,8 +336,8 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, t)
   evalResidual(mesh, sbp, eqn, opts)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
-  println(" <<< dRdA_FD: norm(eqn_temp.res_vec): ", norm(eqn_temp.res_vec))
-  println(" <<< dRdA_FD: norm(eqn.res_vec): ", norm(eqn.res_vec))
+  # println(" <<< dRdA_FD: norm(eqn_temp.res_vec): ", norm(eqn_temp.res_vec))
+  # println(" <<< dRdA_FD: norm(eqn.res_vec): ", norm(eqn.res_vec))
 
   # Ready to finish FD approx.
   #   f(x+h) is eqn_temp.res_vec

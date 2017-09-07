@@ -396,7 +396,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       end
     end
 
-    println(" ::::::::::::: in newtonInner, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
+    println("       :::: in newtonInner, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
 
     # apply globalization
     if globalize_euler
@@ -563,13 +563,14 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       writedlm(fname, eqn.res)
     end
 
+    # note: commented out all successful convergencce stdout outputs 20170906
 
    if res_0_norm < res_abstol || res_0_norm/res_reltol_0 < res_reltol
      @mpi_master if res_0_norm < res_abstol 
-       println(fstdout, "Newton iteration converged with residual norm ", res_0_norm)
+       # println(fstdout, "Newton iteration converged with residual norm ", res_0_norm)
      end
      @mpi_master if res_0_norm/res_reltol_0 < res_reltol
-      println(fstdout, "Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
+      # println(fstdout, "Newton iteration converged with relative residual norm ", res_0_norm/res_reltol_0)
     end
 
      # put residual into rhs_vec
@@ -577,7 +578,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
        rhs_vec[j] = res_0[j]
      end
 
-     @mpi_master println("Iteration count: $i")
+     # @mpi_master println("Iteration count: $i")
      @mpi_master close(fconv)
 
      flush(fstdout)
@@ -589,8 +590,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     end  # end if tolerances satisfied
 
     if (step_norm < step_tol)
-      @mpi_master println(fstdout, "Newton iteration converged with step_norm = ", step_norm)
-      @mpi_master println(fstdout, "Final residual = ", res_0_norm)
+      # @mpi_master println(fstdout, "Newton iteration converged with step_norm = ", step_norm)
+      # @mpi_master println(fstdout, "Final residual = ", res_0_norm)
 
       # put residual into rhs_vec
       for j=1:m
@@ -1203,7 +1204,7 @@ function calcJacobianComplex(newton_data::NewtonData, mesh, sbp, eqn, opts, func
   eqn.q_vec[m] = entry_orig
 
   # println("   in cJC: typeof(jac): ", typeof(jac))
-  println("   in cJC: norm of jac: ", norm(jac))
+  println("       :::: in cJC: norm of jac: ", norm(jac))
 
 
   return nothing
