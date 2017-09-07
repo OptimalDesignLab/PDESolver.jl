@@ -83,6 +83,7 @@ function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
   # checked: cjc args are correct
   # checked: norm of eqn_dummy.q_vec in cJC matches it here
 
+  println("  calculating jac for loaded eqn_dummy. i_fwd = ", i_fwd,", t = ", t)
   calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
   # filename = string("jac_from_cnAdjCalcdRdu-i_fwd-",i_fwd,".dat")

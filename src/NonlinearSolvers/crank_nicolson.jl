@@ -159,6 +159,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     println("     t_steps = ", t_steps)
     println("     i_fwd = ", i_fwd)
     println("     t = ", round(t,3))
+    println("     t_max = ", t_max)
     println("     h = ", h)
 
     # load checkpoint to calculate dRdu at this time step
@@ -167,15 +168,18 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     eqn_fwd = cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
     check_q_qvec_consistency(mesh, sbp, eqn_fwd, opts)
 
-    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_fwd, physics_func, i_fwd, t)
+    # 20170907: t being passed in is the wrong time. 
+    t_ic = t_max
+
+    jac = cnAdjCalcdRdu(mesh, sbp, opts, eqn_fwd, physics_func, i_fwd, t_ic)
     dRdu_n = jac      # TODO: check transpose
     # println(" size of dRdu: ", size(dRdu_n))
     #----------------
 
-    dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts, h, t)  # obtain dJdu at time step n
-    dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts, h, t)  # obtain dJdu at time step n
+    dJdu_CS = calcdJdu_CS(mesh, sbp, eqn_fwd, opts, h, t_ic)  # obtain dJdu at time step n
+    dJdu_FD = calcdJdu_FD(mesh, sbp, eqn_fwd, opts, h, t_ic)  # obtain dJdu at time step n
     dJdu = dJdu_CS
-    dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t, isDeriv=true)
+    dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t_ic, isDeriv=true)
 
     writedlm("dJdu_IC_CS.dat", dJdu_CS)
     writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
