@@ -111,11 +111,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   function AdvectionData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
 
-    # println("\nConstructing AdvectionData object")
-    # println("  Tsol = ", Tsol)
-    # println("  Tres = ", Tres)
-    # println("  Tdim = ", Tdim)
-    # println("  Tmsh = ", Tmsh)
+    println("\nConstructing AdvectionData object")
+    println("  Tsol = ", Tsol)
+    println("  Tres = ", Tres)
+    println("  Tdim = ", Tdim)
+    println("  Tmsh = ", Tmsh)
 
     numfacenodes = mesh.numNodesPerFace
 

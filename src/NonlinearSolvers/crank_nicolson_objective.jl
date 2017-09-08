@@ -286,14 +286,24 @@ function calcdRdA_CS(mesh, sbp, eqn, opts, i, t)
   # complex step perturbation
   pert = complex(0, 1e-20)
 
+  println(" ~~~~~~~~~~~~~~~~~~~~ eltype(mesh.jac): ", eltype(mesh.jac))
+
   # println(" <<< dRdA_CS: eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
 
   eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
+  check_q_qvec_consistency(mesh, sbp, eqn_temp, opts)
+
   eqn_temp.params.sin_amplitude += pert
   # eqn_temp.params.omega += pert
   # println(" <<< dRdA_CS: eqn_temp.params.sin_amplitude: ", eqn_temp.params.sin_amplitude)
 
-  evalResidual(mesh, sbp, eqn_temp, opts)
+  # Somewhere here, we should see that all elements on the inflow should have a non zero imag portion in res.
+  #   because of upwinding, outflow bndry shouldn't have it
+  #   because of normal vector w/ adv vel, top & bot shouldn't have it.
+
+  # But we don't for el 1.
+
+  evalResidual(mesh, sbp, eqn_temp, opts, t)
   assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
   dRdA = imag(eqn_temp.res_vec)/norm(pert)
@@ -317,21 +327,31 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
 
   # println(" <<< dRdA_FD: eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
 
-  filename_eqn = string("dRdA_FD_eqn_i-",i,".dat")
-  filename_eqn_temp = string("dRdA_FD_eqn_temp_i-",i,".dat")
-  writedlm(filename_eqn, eqn.q_vec)
+  # filename_eqn = string("dRdA_FD_eqn_i-",i,".dat")
+  # filename_eqn_temp = string("dRdA_FD_eqn_temp_i-",i,".dat")
+  # writedlm(filename_eqn, eqn.q_vec)
 
   eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
+  check_q_qvec_consistency(mesh, sbp, eqn_temp, opts)
+  # verified: eqn_temp.q_vec & eqn.q_vec values match
+  if norm(eqn_temp.q_vec - eqn.q_vec) > 1e-4
+    error("Problem in calcdRdA_FD's eqn_deepcopy")
+  end
 
-  writedlm(filename_eqn_temp, eqn_temp.q_vec)
-
+  # writedlm(filename_eqn_temp, eqn_temp.q_vec)
+  println("     ~~~~~~~~~~~~~~~ in calcdRdA_FD ~~~~~~~~~~~~~~")
+  println("       eqn_temp.params.sin_amplitude = ", eqn_temp.params.sin_amplitude)
+  println("       eqn.params.sin_amplitude = ", eqn.params.sin_amplitude)
+  println("       ... perturbing eqn_temp.params.sin_amplitude")
   eqn_temp.params.sin_amplitude += pert
+  println("       eqn_temp.params.sin_amplitude = ", eqn_temp.params.sin_amplitude)
+  println("       eqn.params.sin_amplitude = ", eqn.params.sin_amplitude)
   # eqn_temp.params.omega += pert
   # println(" <<< dRdA_FD: eqn_temp.params.sin_amplitude: ", eqn_temp.params.sin_amplitude)
 
   # println(" <<< dRdA_FD: using forward difference")
 
-  evalResidual(mesh, sbp, eqn_temp, opts)
+  evalResidual(mesh, sbp, eqn_temp, opts, t)
   assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
   eqn_temp.params.sin_amplitude -= pert
@@ -342,6 +362,7 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
   #   TODO: why is this required
   evalResidual(mesh, sbp, eqn, opts)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  # TODO TODO 20170908
 
   # println(" <<< dRdA_FD: norm(eqn_temp.res_vec): ", norm(eqn_temp.res_vec))
   # println(" <<< dRdA_FD: norm(eqn.res_vec): ", norm(eqn.res_vec))

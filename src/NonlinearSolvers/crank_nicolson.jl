@@ -346,10 +346,11 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
     # advection adjoint check
     if neg_time == true
-      println("  calculating dRdA for adjoint check. irev = ", i, ", ifwd = ", i_fwd,", t = ", t, ", t-h = ", t-h)
+      println("  calculating dRdA for adjoint check. irev = ", i, ", ifwd = ", i_fwd,", t = ", t)
       dRdA_CS = calcdRdA_CS(mesh, sbp, eqn_fwd, opts, i, t)
       dRdA_FD = calcdRdA_FD(mesh, sbp, eqn_fwd, opts, i, t)
-      dRdA = dRdA_CS
+      # dRdA = dRdA_CS
+      dRdA = dRdA_FD
       filename = string("dRdA_CS_irev-",i,".dat")
       writedlm(filename, dRdA_CS)
       filename = string("dRdA_FD_irev-",i,".dat")
@@ -544,7 +545,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   else
     # save every time step's adjoint to disk. This is for the final time step
     if opts["adjoint_saveall"]
-      filename = string("adj-", i, ".dat")
+      filename = string("adj_irev-", i, ".dat")
       writedlm(filename, adj.q_vec)
 
       vis_filename = string("adj_i-", i)

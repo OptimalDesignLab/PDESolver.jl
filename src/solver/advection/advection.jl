@@ -93,6 +93,10 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   @debug1 flush(params.f)
 #  println(params.f, "----- finished evalResidual -----")
 
+  # println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~++++++++")
+  # println(eqn.res)
+  # println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~++++++++")
+
   return nothing
 end
 
