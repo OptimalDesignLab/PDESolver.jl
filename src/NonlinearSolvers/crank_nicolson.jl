@@ -181,8 +181,12 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     dJdu = dJdu_CS
     dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t_ic, isDeriv=true)
 
-    writedlm("dJdu_IC_CS.dat", dJdu_CS)
-    writedlm("dJdu_IC_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
+    J_ic = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t_ic, isDeriv=false)
+    print_qvec_coords(mesh, sbp, eqn, opts, to_file=true, filename="IC_qvec_coords.dat", other_field=eqn_fwd.q_vec)
+    writedlm("IC_J.dat", J_ic)
+    writedlm("IC_qvec.dat", eqn_fwd.q_vec)
+    writedlm("IC_dJdu_CS.dat", dJdu_CS)
+    writedlm("IC_dJdu_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
     # println("size of eqn_fwd.q_vec: ", size(eqn_fwd.q_vec))

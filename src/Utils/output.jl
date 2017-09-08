@@ -148,9 +148,18 @@ end
 # Assumes you have eqn and mesh properly initialized.
 
 # function print_qvec_coords(mesh, sbp, eqn, opts; bndry=false, other_field=0)
-function print_qvec_coords(mesh, sbp, eqn, opts; other_field=0)
+function print_qvec_coords(mesh, sbp, eqn, opts; to_file=false, filename="null", other_field=0)
 
-  println("x-coord    y-coord    elnum    nodenum  dofnum   val")
+
+  if to_file
+    if filename == "null"
+      error("filename has not been specified but print_qvec_coords has been passed the to_file=true arg.")
+    end
+    fh = open(filename, "w")
+    write(fh,"x-coord    y-coord    elnum    nodenum  dofnum   val\n")
+  else
+    println("x-coord    y-coord    elnum    nodenum  dofnum   val")
+  end
 
   for dof_ix = 1:mesh.numDof
     # st:  subscript_tuple 
@@ -159,6 +168,7 @@ function print_qvec_coords(mesh, sbp, eqn, opts; other_field=0)
     dofnum = st[1]      # dof number in this node
     nodenum = st[2]     # node number in this element
     elnum = st[3]       # element number
+
 
     if getindex(eqn.q, dofnum, nodenum, elnum) != eqn.q_vec[dof_ix]
       error("problem with ind2sub")
@@ -179,8 +189,17 @@ function print_qvec_coords(mesh, sbp, eqn, opts; other_field=0)
       val_this_dof = other_field[dof_ix]      # assuming ordering of other_field is the same as eqn.q_vec
     end
 
-    @printf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
+    if to_file
+      str = @sprintf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
+      write(fh, str)
+    else
+      @printf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
+    end
 
+  end
+
+  if to_file
+    close(fh)
   end
 
 end   # end function print_qvec_coords
