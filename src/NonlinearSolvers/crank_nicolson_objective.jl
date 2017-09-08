@@ -279,7 +279,7 @@ end
 """
 calculates dRdA for the advection adjoint test, using complex step
 """
-function calcdRdA_CS(mesh, sbp, eqn, opts, t)
+function calcdRdA_CS(mesh, sbp, eqn, opts, i, t)
 
   # println(" calculating dRdA using CS")
 
@@ -308,7 +308,7 @@ end
 """
 calculates dRdA for the advection adjoint test, using finite difference
 """
-function calcdRdA_FD(mesh, sbp, eqn, opts, t)
+function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
 
   # println(" calculating dRdA using FD")
 
@@ -317,7 +317,14 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, t)
 
   # println(" <<< dRdA_FD: eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
 
+  filename_eqn = string("dRdA_FD_eqn_i-",i,".dat")
+  filename_eqn_temp = string("dRdA_FD_eqn_temp_i-",i,".dat")
+  writedlm(filename_eqn, eqn.q_vec)
+
   eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
+
+  writedlm(filename_eqn_temp, eqn_temp.q_vec)
+
   eqn_temp.params.sin_amplitude += pert
   # eqn_temp.params.omega += pert
   # println(" <<< dRdA_FD: eqn_temp.params.sin_amplitude: ", eqn_temp.params.sin_amplitude)

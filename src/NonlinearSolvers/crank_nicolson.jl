@@ -98,7 +98,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
   # calculate t_steps, the number of time steps that CN will take
   t_steps = floor(Int, t_max/h)   # this allows t_max to be any value up to h greater the final time step
   # TODO: Ideally should be t_steps*h for clarity, issue #92. Should be fixed for RK4 also.
-  time_of_final_step = (t_steps-1)*h
+  # time_of_final_step = (t_steps-1)*h
+  time_of_final_step = (t_steps)*h
+  # changed from (t_steps-1)*h, 20170908
 
   if neg_time == false    # negative time is for unsteady adjoint
     t = 0.0     # start time at 0.0
@@ -304,6 +306,9 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       t_nextstep = t - h
       t_nextstep = negativeZeroCheck(t_nextstep)   # ensure negative zero is changed to zero
     end
+    
+      # NOTE: The below checks are being done for the 'current' time step. Not 'nextstep'. 
+      #   So the time step needs to be the one before the current ??????????????????????????????????/
 
     #-------------
     # objective function section
@@ -338,6 +343,26 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       writedlm(filename, check_directmethod)
 
     end
+
+    # advection adjoint check
+    if neg_time == true
+      println("  calculating dRdA for adjoint check. irev = ", i, ", ifwd = ", i_fwd,", t = ", t, ", t-h = ", t-h)
+      dRdA_CS = calcdRdA_CS(mesh, sbp, eqn_fwd, opts, i, t)
+      dRdA_FD = calcdRdA_FD(mesh, sbp, eqn_fwd, opts, i, t)
+      dRdA = dRdA_CS
+      filename = string("dRdA_CS_irev-",i,".dat")
+      writedlm(filename, dRdA_CS)
+      filename = string("dRdA_FD_irev-",i,".dat")
+      writedlm(filename, dRdA_FD)
+      println("  writing dRdA file: ", filename)
+      # check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
+      # NOTE 20170712: think I need to be doing adj, not adj_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
+      # check_adjointmethod = transpose(adj.q_vec)*dRdA
+      check_adjointmethod = transpose(adj.q_vec)*(-1.0*dRdA)
+      filename = string("check_adjointmethod_irev-", i, ".dat")
+      writedlm(filename, check_adjointmethod)
+    end
+
 
     if neg_time == false
       ctx_residual = (physics_func, eqn, h, newton_data)
@@ -441,22 +466,6 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
       (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps, t, dRdu_global_rev)
       disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
-    end
-
-    # TODO TODO 20170711: dRdA timing: is this being contracted in the right time step?
-    # advection adjoint check
-    if neg_time == true
-      # dRdA_CS = calcdRdA_CS(mesh, sbp, adj_nextstep, opts, t_nextstep)
-      # dRdA_FD = calcdRdA_FD(mesh, sbp, adj_nextstep, opts, t_nextstep)
-      dRdA_CS = calcdRdA_CS(mesh, sbp, eqn_fwd, opts, t)
-      dRdA_FD = calcdRdA_FD(mesh, sbp, eqn_fwd, opts, t)
-      dRdA = dRdA_CS
-      # check_adjointmethod = transpose(adj_nextstep.q_vec)*dRdA
-      # NOTE 20170712: think I need to be doing adj, not adj_nextstep. this CN rev's i corresponds to eqn_fwd's i_fwd and t
-      # check_adjointmethod = transpose(adj.q_vec)*dRdA
-      check_adjointmethod = transpose(adj.q_vec)*(-1.0*dRdA)
-      filename = string("check_adjointmethod_irev-", i, ".dat")
-      writedlm(filename, check_adjointmethod)
     end
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
