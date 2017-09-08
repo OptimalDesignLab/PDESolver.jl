@@ -13,7 +13,7 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
   for i = 1:length(eqn.q_vec)
     eqn.q_vec[i] += pert
 
-    evalResidual(mesh, sbp, eqn, opts)
+    evalResidual(mesh, sbp, eqn, opts, t)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
@@ -26,7 +26,7 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     eqn.q_vec[i] -= pert
   end
 
-  evalResidual(mesh, sbp, eqn, opts)
+  evalResidual(mesh, sbp, eqn, opts, t)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   return dJdu
@@ -50,7 +50,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
     eqn.q_vec[i] += pert
 
-    evalResidual(mesh, sbp, eqn, opts)
+    evalResidual(mesh, sbp, eqn, opts, t)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
@@ -61,7 +61,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
 
   end
 
-  evalResidual(mesh, sbp, eqn, opts)
+  evalResidual(mesh, sbp, eqn, opts, t)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   return dJdu
@@ -360,7 +360,7 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
   # this is required! without it, eqn.res_vec apparently has stale data.
   #   without this => difference between CS & FD is ~1e10
   #   TODO: why is this required
-  evalResidual(mesh, sbp, eqn, opts)
+  evalResidual(mesh, sbp, eqn, opts, t)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   # TODO TODO 20170908
 

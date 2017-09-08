@@ -188,6 +188,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     writedlm("IC_J.dat", J_ic)
     writedlm("IC_qvec.dat", eqn_fwd.q_vec)
     writedlm("IC_dJdu_CS.dat", dJdu_CS)
+    writedlm("IC_dJdu_FD.dat", dJdu_FD)
     writedlm("IC_dJdu_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
@@ -323,6 +324,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
 
       filename = string("dJdu_irev-",i,"_CS.dat")
       writedlm(filename, dJdu_CS)
+      filename = string("dJdu_irev-",i,"_FD.dat")
+      writedlm(filename, dJdu_FD)
       filename = string("dJdu_irev-",i,"_analytical.dat")
       writedlm(filename, reshape(dJdu_analytical, (mesh.numDof, 1)))
 
