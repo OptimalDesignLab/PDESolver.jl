@@ -76,7 +76,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
-  println("            [[[[]]]]")
+  # println("            [[[[]]]]")
 #  println("entered calcBoundaryFlux DG")
   t = eqn.t
   nfaces = length(bndry_facenums)
@@ -96,9 +96,9 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     end
   end
 
-  println(" bndry_facenums: ", bndry_facenums)
-  println(bndryflux)
-  println("            [[[[]]]]")
+  # println(" bndry_facenums: ", bndry_facenums)
+  # println(bndryflux)
+  # println("            [[[[]]]]")
 
   return nothing
 end
@@ -220,9 +220,9 @@ function call{Tmsh, Tsol}(obj::sinwave_ampl_BC, u::Tsol, params::ParamType2,
               nrm::AbstractArray{Tmsh,1}, t)
 
   u_bc = calc_sinwave_ampl(coords, params, t)
-  println("  u_bc = ", u_bc)
+  # println("  u_bc = ", u_bc)
   bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
-  println("  bndryflux = ", bndryflux)
+  # println("  bndryflux = ", bndryflux)
 
   return bndryflux
 end

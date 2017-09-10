@@ -183,6 +183,35 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     dJdu = dJdu_CS
     dJdu_analytical = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t_ic, isDeriv=true)
 
+    #---------------------------------------------------------------------------------------------
+    # testing calcObjectiveFn
+    eqn_poly = eqn_deepcopy(eqn_fwd, mesh, sbp, opts)
+    for dof_ix = 1:mesh.numDof
+      st = ind2sub((mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl), dof_ix)
+      dofnum = st[1]
+      nodenum = st[2]
+      elnum = st[3]
+      if getindex(eqn_poly.q, dofnum, nodenum, elnum) != eqn_poly.q_vec[dof_ix]
+        error("problem with ind2sub")
+      end
+      coords_this_dof = getindex(mesh.coords, :, nodenum, elnum)
+      x_coord = coords_this_dof[1]
+      y_coord = coords_this_dof[2]
+
+      # u = 2(x+y)
+      eqn_poly.q_vec[dof_ix] = 2*(x_coord+y_coord)
+
+      # u = 3
+      # eqn_poly.q_vec[dof_ix] = 3.0
+    end
+    assembleSolution(mesh, sbp, eqn, opts, eqn_poly.q, eqn_poly.q_vec)
+    vis_filename = string("poly_soln")
+    saveSolutionToMesh(mesh, real(eqn_poly.q_vec))
+    writeVisFiles(mesh, vis_filename)
+    J_poly = calcObjectiveFn(mesh, sbp, eqn_poly, opts, h, t_ic, isDeriv=false)
+    println(";;;;;;;;;;;;;;;;;;;;;;;;;; J_poly = ", J_poly)
+    #---------------------------------------------------------------------------------------------
+
     J_ic = calcObjectiveFn(mesh, sbp, eqn_fwd, opts, h, t_ic, isDeriv=false)
     print_qvec_coords(mesh, sbp, eqn, opts, to_file=true, filename="IC_qvec_coords.dat", other_field=eqn_fwd.q_vec)
     writedlm("IC_J.dat", J_ic)

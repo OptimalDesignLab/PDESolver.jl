@@ -167,6 +167,8 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
           q = eqn.q_bndry[:, j, global_facenum]
 
           integrand[j, i] = q[1]*q[1]
+          # integrand[j, i] = q[1]
+          # println(" ;;;;;;;== q[1]: ", q[1])      # using this, did verify that q[1] = 3 when eqn_poly.q_vec[dof_ix] = 3
 
           # 20170622: need to scale integrand!
           # TODO: double and triple check jac_bndry index order here
