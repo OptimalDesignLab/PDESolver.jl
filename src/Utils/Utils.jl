@@ -44,6 +44,7 @@ export absvalue, absvalue_deriv
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
+export print_qvec_coords
 
 # mass_matrix.jl
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
