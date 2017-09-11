@@ -776,7 +776,7 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
 
   end  # end of jac_method check
 
-  # println(" ::::::::::::: in physicsJac, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
+  println(" ::::::::::::: in physicsJac, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
 
   # TODO: all printing should actually be handled outside of this function
   if print_jacobian_timing

@@ -307,6 +307,8 @@ Note that any values associated with these options are shared with the regular
                      and state saving
 "adjoint_saveall"  : save every time step's adjoint to disk
 "uadj_global" : compute global dRdu
+"use_Minv_override_for_uadj" : override applying use_Minv at the end of evalResidual in advection 
+                               when reverse sweep is underway
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved 

@@ -86,8 +86,12 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   close(f)
 =#
 
-  if opts["use_Minv"]
-    applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
+  if opts["use_Minv"] 
+    if opts["use_Minv_override_for_uadj"]
+      println(" Not applying Minv to evalResidual due to override option.")
+    else
+      applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
+    end
   end
 
   @debug1 flush(params.f)

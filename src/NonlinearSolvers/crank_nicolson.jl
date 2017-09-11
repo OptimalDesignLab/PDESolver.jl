@@ -106,6 +106,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     t = 0.0     # start time at 0.0
   else    
     t = time_of_final_step
+    # opts["use_Minv_override_for_uadj"] = true
   end
 
   # NOTE: WWW, ZZZ, dRdu_global_fwd & rev formed in initialization.jl
@@ -219,6 +220,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     writedlm("IC_dJdu_CS.dat", dJdu_CS)
     writedlm("IC_dJdu_FD.dat", dJdu_FD)
     writedlm("IC_dJdu_analytical.dat", reshape(dJdu_analytical, (mesh.numDof, 1)))
+    writedlm("IC_dRdu_n.dat", real(dRdu_n))
 
     # now that dRdu and dJdu at time step n has been obtained, we can now set the IC for the adjoint eqn
     # println("size of eqn_fwd.q_vec: ", size(eqn_fwd.q_vec))
@@ -235,6 +237,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
     # B = I - (0.5*h*dRdu_n)
     # psi = transpose(B\(-dJdu))
     # psi = B\(-dJdu)
+
+    println(" ::::: in IC, norm(dRdu_n, 1): ", norm(dRdu_n,1))
 
     # 20170831 old, before xpose fix
     I = eye(length(eqn_fwd.q_vec))
@@ -429,6 +433,8 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       else
         @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+        # filename = string("jac_ifwd-", i,".dat")
+        # writedlm(filename, real(jac))
 
         if opts["uadj_global"]
           ### dRdu check: fwd

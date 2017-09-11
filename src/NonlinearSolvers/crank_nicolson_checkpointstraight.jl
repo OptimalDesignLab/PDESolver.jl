@@ -86,6 +86,8 @@ function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
   println("  calculating jac for loaded eqn_dummy. i_fwd = ", i_fwd,", t = ", t)
   calcJacobianComplex(newton_data_discard, mesh, sbp, eqn_dummy, opts, physics_func, pert, jac, t)
 
+  println(" ::::::::::::: in cnAdjCalcdRdu, after calcJacobianComplex, norm(jac): ", norm(jac, 1))
+
   # filename = string("jac_from_cnAdjCalcdRdu-i_fwd-",i_fwd,".dat")
   # writedlm(filename, jac)
 
