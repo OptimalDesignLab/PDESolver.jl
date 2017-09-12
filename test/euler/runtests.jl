@@ -32,6 +32,7 @@ include("../tags.jl")
 global const EulerTests = TestList()
 
 
+include("test_eqn_deepcopy.jl")     # note: eqn gets written random values to it, so anything that 
 include("test_empty.jl")
 include("test_input.jl")
 include("test_complexify.jl")
@@ -52,7 +53,6 @@ include("test_rk4.jl")
 include(joinpath("./convergence/runtests.jl"))
 include("Utils.jl")
 include("test_parallel.jl")
-include("test_eqn_deepcopy.jl")
 include("test_homotopy.jl")
 include("test_staggered.jl")
 

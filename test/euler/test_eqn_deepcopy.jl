@@ -19,7 +19,9 @@
 
 global const test_eqn_copy_inputfile = "input_vals_channel_dg.jl"
 
-function test_eqn_copy(mesh, sbp, eqn, opts)
+function test_eqn_copy()
+
+  mesh, sbp, eqn, opts = run_euler(test_eqn_copy_inputfile)
 
   eqn_copy = eqn_deepcopy(eqn, mesh, sbp, opts)
 
@@ -344,7 +346,7 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
 end   # end of function test_eqn_copy
 
-add_func2!(EulerTests, test_eqn_copy, test_eqn_copy_inputfile, [TAG_LONGTEST])
+add_func1!(EulerTests, test_eqn_copy, [TAG_LONGTEST])
 
 #=
 All fields of Euler's eqn obj, as of 20170522
