@@ -482,6 +482,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     # calculate Jacobian condition number
     if print_cond && ( jac_type == 1 || jac_type == 2)
       println(BSTDOUT, "calculating condition number of jacobian"); flush(BSTDOUT)
+#      singular_vals = svdvals(full(jac))
+#      writedlm("svd_vals.dat", singular_vals)
       cond_j = cond(full(jac))
       println(BSTDOUT, "Condition number of jacobian = ", cond_j); flush(BSTDOUT);
     end

@@ -111,6 +111,14 @@ function calc_x4der{Tmsh}(params::ParamType2, coords::AbstractArray{Tmsh}, t)
   return 4*x.^3 + 3*x.^2 + 2*x + 1
 end
 
+"""
+  calculates and returns a degree 0 polynomial (ie. a constant)
+"""
+function calc_p0{Tmsh}(params::ParamType2, coords::AbstractArray{Tmsh}, t)
+
+  return 1
+end
+
 @doc """
 ### AdvectionEquationMod.calc_p1
 

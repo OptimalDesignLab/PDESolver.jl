@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # run all parallel tests
-
+# $1 describes the stopping behavior.  If not supplied, the script runs to completion.
+# if $1 == 1, the script stopes at the first error
 jj=julia
 
 jflags=$@  # take flags as command line arguments
@@ -35,6 +36,7 @@ tmp=$?
 err=$((err + tmp))
 
 echo "after parallel4 tests err = $err"
+
 
 echo " "
 echo "runtests_fast.sh retval: $err"

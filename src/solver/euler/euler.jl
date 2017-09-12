@@ -341,13 +341,14 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
       # compute w^T * res_vec
       val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
+      val3 = real(contractResEntropyVars2(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
 
       # DEBUGGING: compute the potential flux from q
       #            directly, to verify the boundary terms are the problem
   #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
   #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
 
-      @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
+      @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2, " ", val3)
       #DEBUGGING: flish every time
       @mpi_master flush(f)
     end

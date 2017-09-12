@@ -213,6 +213,26 @@ function ICx4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end # end function exp_xplusy
 
 
+function ICp0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+                    opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+  	for j = 1:mesh.numNodesPerElement
+  	  dofnums_j = sview(mesh.dofs, :, j, i)
+  	  x = mesh.coords[1,j,i]
+  	  y = mesh.coords[2,j,i]
+          alpha_x = eqn.params.alpha_x
+          alpha_y, = eqn.params.alpha_y
+
+  	  u0[dofnums_j] = calc_p0(eqn.params, mesh.coords[:, j, i], eqn.t)
+  	end
+  end
+
+  return nothing
+end # end function exp_xplusy
+
+
 function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
                     opts, u0::AbstractArray{Tsol})
@@ -466,6 +486,7 @@ global const ICDict = Dict{Any, Function}(
 "ICFile" => ICFile,
 "ICmms1" => ICmms1,
 "ICx4" => ICx4,
+"ICp0" => ICp0,
 "ICp1" => ICp1,
 "ICp2" => ICp2,
 "ICp3" => ICp3,

@@ -691,3 +691,91 @@ function calcChannelMMS{Tmsh, Tsol}(params::ParamType2,
 
   return nothing
 end
+
+"""
+  One dimensional square wave, 2D only
+
+  The base flow is uniform, and if  -0.05 < x < 0.05, then it is perturbed
+  by a small amount.
+"""
+function calcSquare1D{Tmsh, Tsol}(params::ParamType2,
+                        coords::AbstractArray{Tmsh,1},
+                        q::AbstractArray{Tsol,1})
+
+  # apply base state
+  q[1] = 1.0
+  q[2] = 0.3
+  q[3] = 0.3
+  q[4] = 5.0
+
+  x = coords[1]
+  if x > -0.05 && x < 0.05
+    # apply pertubration
+    q[1] += 0.1
+    q[2] += 0.1
+    q[3] += 0.1
+    q[4] += 0.1
+  end
+
+  return nothing
+end
+
+"""
+  Two dimensional square wave, 2D only
+
+  The base flow is uniform, and if  -0.05 < x, y < 0.05, then it is perturbed
+  by a small amount.
+"""
+function calcSquare2D{Tmsh, Tsol}(params::ParamType2,
+                        coords::AbstractArray{Tmsh,1},
+                        q::AbstractArray{Tsol,1})
+
+  # apply base state
+  q[1] = 1.0
+  q[2] = 0.3
+  q[3] = 0.3
+  q[4] = 5.0
+
+  x = coords[1]
+  y = coords[2]
+  if x > 7.5 && x < 12.5 && y > -1.25 && y < 1.25
+    # apply pertubration
+    q[1] += 0.1
+    q[2] += 0.1
+    q[3] += 0.1
+    q[4] += 0.1
+  end
+
+  return nothing
+end
+
+"""
+  Sedov explosion, 2D only
+
+  Uniform fluid at rest with energetic region in the circle of radius 
+  0.05 centered at the origin
+
+"""
+function calcSedovExplosion{Tmsh, Tsol}(params::ParamType2,
+                        coords::AbstractArray{Tmsh,1},
+                        q::AbstractArray{Tsol,1})
+
+
+  # parameters
+  E = 1.0 # total amount of energy contained in the blast (not the usual E)
+  nu = 2  # cylindrical blast wave
+  dr = 0.05  # radius of initial blast
+
+  q[1] = 1.0
+  q[2] = 0.0
+  q[3] = 0.0
+  q[4] = 100*(1e-5)/params.gamma_1
+
+  x = coords[1]
+  y = coords[2]
+  if x*x + y*y < dr*dr
+    q[4] = 100*3*params.gamma_1*E/( (nu+1)*Float64(pi)*(dr^nu) )
+  end
+
+  return nothing
+end

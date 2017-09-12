@@ -205,8 +205,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
 
-#  println("----- entered calcLFEntropyPenaltyIntegral -----")
-
   numDofPerNode = size(qL, 1)
 
   # convert qL and qR to entropy variables (only the nodes that will be used)
@@ -266,7 +264,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 #        qR_i[k] += interpR*qR[k, j]
       end
     end
-
 
     #TODO: write getLambdaMaxSimple and getIRA0 in terms of the entropy
     #      variables to avoid the conversion
