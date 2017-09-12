@@ -3,8 +3,8 @@
 @doc """
 ### EulerEquationMod.ParamType
 
-  This type holds the values of any constants or paramters needed during the
-  computation.  These paramters can be specified in the opts dictionary or
+  This type holds the values of any constants or parameters needed during the
+  computation.  These parameters can be specified in the opts dictionary or
   have default values set here.  If there is no reasonable default, values
   are initialized to -1
 
@@ -315,8 +315,8 @@ end  # end type declaration
 @doc """
 ### EulerEquationMod.EulerData_
 
-  This type is an implimentation of the abstract EulerData.  It is
-  paramterized by the residual datatype Tres and the mesh datatype Tmsh
+  This type is an implementation of the abstract EulerData.  It is
+  parameterized by the residual datatype Tres and the mesh datatype Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
   It is also paremterized by var_type, which should be a symbol describing
@@ -325,7 +325,7 @@ end  # end type declaration
   the entropy variables described in 'A New Finite Element Formulation for
   Computational Fluid Dynamics: Part I' by Hughes et al.
 
-  Eventually there will be additional implimentations of EulerData,
+  Eventually there will be additional implementations of EulerData,
   specifically a 3D one.
 
   Static Parameters:
@@ -344,7 +344,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 # hold any constants needed for euler equation, as well as solution and data
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
-# Only the constants are initilized here, the arrays are not.
+# Only the constants are initialized here, the arrays are not.
 
   # this is the ParamType object that uses the same variables as
   # the EulerData_ object

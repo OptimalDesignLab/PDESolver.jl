@@ -31,7 +31,7 @@ export AbstractEulerData, EulerData, EulerData_, run_euler
   This abstract type should be the supertype of *all* solution data objects
   that are related to the Euler equations.
 
-  It should be used for specify the type of a function argument only when
+  It should be used for specifying the type of a function argument only when
   the function does no operations on the solution data object itself, it just
   passes it onto other functions that do the work (thus AbstractEulerData
   should be used for only the highest level functions).
@@ -45,7 +45,7 @@ abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 Use this type to leverage multiple dispatch.
 This type holds any data, including large arrays of solution values,
   that are specific to the equation for the Euler equations.
-  This includes the solutoin variables q, the fluxes in the xi and eta
+  This includes the solution variables q, the fluxes in the xi and eta
   direction, and the result of the calculation the inverse mass matrix is
   stored here as well (not sure if that fits better here or in the mesh object)
   things like the coordinate field, the jacobian etc. are stored
@@ -66,7 +66,7 @@ The uses of aux_vars should mirror that of eqn.q, in that entire columns
 The advantages of macros vs functions for access to variables remains unclear
   if aux_vars is a fixed size.
 If it is variable sized then macros give the advantage of doing location lookup
-  at compile time
+  at compile time.
 =#
 
 #=

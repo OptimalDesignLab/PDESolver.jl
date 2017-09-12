@@ -32,7 +32,7 @@ typealias ParamTypes Union{ParamType2, ParamType3}
 ### SimpleODEMod.SimpleODEData_
 
   This type is an implementation of the abstract SimpleODEData.  It is
-  paramterized by the residual type Tres and the mesh type Tmsh
+  parameterized by the residual type Tres and the mesh type Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 

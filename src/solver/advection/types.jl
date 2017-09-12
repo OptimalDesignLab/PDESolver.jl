@@ -134,7 +134,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     println("  Tmsh = ", Tmsh)
     numfacenodes = mesh.numNodesPerFace
 
-    eqn = new()  # incomplete initilization
+    eqn = new()  # incomplete initialization
     eqn.comm = mesh.comm
     eqn.commsize = mesh.commsize
     eqn.myrank = mesh.myrank

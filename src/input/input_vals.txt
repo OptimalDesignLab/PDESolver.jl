@@ -131,7 +131,7 @@ where input_file_name.jl is in your current directory.
                  a distance-0 coloring, (Bool), default false.
                  This option is dangerous if misused.
 
-# paramters used by boundary and initial condiitions
+# parameters used by boundary and initial condiitions
 "Ma" : free stream Mach number (floating point)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
 "aoa" : angle of attack in degrees (floating point)
@@ -146,7 +146,7 @@ where input_file_name.jl is in your current directory.
                     1.0
 
 
-# Algorithmic Differentiatio Options
+# Algorithmic Differentiation Options
 "use_edge_res" : use the edge based residual (experimental!), (Bool), default
                  false
 

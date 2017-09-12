@@ -127,7 +127,7 @@ get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
-  # the raised cosine filter has no paramters
+  # the raised cosine filter has no parameters
 end
 
 # figure out coloring distances

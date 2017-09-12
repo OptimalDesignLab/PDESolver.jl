@@ -1420,7 +1420,7 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                   opts, res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
-# a non-alias tolerant implimention wold avoid copying q_vals
+# a non-alias tolerant implemention wold avoid copying q_vals
   A0 = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
   res_vals = Array(Tsol, mesh.numDofPerNode)
   q_vals = Array(Tsol, mesh.numDofPerNode)

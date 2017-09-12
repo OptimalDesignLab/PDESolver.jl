@@ -583,7 +583,7 @@ end
 @doc """
 ### EulerEquationMod.calcEdgeStabAlpha
 
-  This function calculates the edge stabilization paramter alpha across the
+  This function calculates the edge stabilization parameter alpha across the
   entire mesh.
 
   This is a mid level function.
@@ -599,7 +599,7 @@ function calcEdgeStabAlpha{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   jac = mesh.jac
 
   # calculating alpha, required by edgestabilize!
-  # this canbe compuated apriori
+  # this can be computed a priori
   for k = 1:numEl
     for i = 1:mesh.numNodesPerElement
       for di1 = 1:Tdim
