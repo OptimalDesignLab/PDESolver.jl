@@ -81,20 +81,22 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
 
   end
-  
-  # Calculate the Jacobian of the residual
-  res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
+
+  # Allocate space for adjoint solve
+  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, evalResidual, alloc_rhs=true)
+
+  # Get the residual jacobian
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
 
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-
   # calculate the derivative of the function w.r.t q_vec
   func_deriv = zeros(Tsol, mesh.numDof)
 
   # 3D array into which func_deriv_arr gets interpolated
   func_deriv_arr = zeros(eqn.q)
-
 
   # Calculate df/dq_bndry on edges where the functional is calculated and put
   # it back in func_deriv_arr
@@ -102,33 +104,21 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Assemble func_deriv
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  func_deriv[:] = -func_deriv[:]
 
-  # Solve for adjoint vector. This depends on whether PETSc is used or not.
-  if opts["jac_type"] == 1 || opts["jac_type"] == 2
-    adjoint_vec[:] = -(res_jac.')\func_deriv
-  elseif opts["jac_type"] == 3
-
+  # Solve for adjoint vector. residual jacobian needs to be transposed first.
+  jac_type = typeof(res_jac)
+  if jac_type <: Array || jac_type <: SparseMatrixCSC
+    res_jac = res_jac.'
+  elseif  jac_type <: PetscMat
     PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
     PetscMatAssemblyEnd(res_jac)
-    res_jac = MatTranspose(res_jac)
-
-    b = PetscVec(eqn.comm)
-    PetscVecSetType(b, VECMPI)
-    PetscVecSetSizes(b, PetscInt(mesh.numDof), PETSC_DECIDE)
-
-    x = PetscVec(eqn.comm)
-    PetscVecSetType(x, VECMPI)
-    PetscVecSetSizes(x, PetscInt(mesh.numDof), PETSC_DECIDE)
-
-    ksp = KSP(eqn.comm)
-    KSPSetFromOptions(ksp)
-    KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
-
-    NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts,
-                     func_deriv, adjoint_vec)
-    adjoint_vec = -adjoint_vec
-
-  end # End how to solve for adjoint_vec
+    res_jac = MatTranspose(res_jac, inplace=true)
+  else
+    error("Unsupported jacobian type")
+  end
+  step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
+                                           adjoint_vec, real(func_deriv), BSTDOUT)
 
   outname = string("adjoint_vec_", mesh.myrank,".dat")
   f = open(outname, "w")
@@ -140,95 +130,6 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   return nothing
 end # End function calcAdjoint
-
-
-@doc """
-###AdvectionEquationMod.calcResidualJacobian
-
-The function calculates the residual for computing the adjoint vector. The
-function allows for jacobian to be computed depending on the jacobian type
-specified in the options dictionary `jac_type`.
-
-**Input**
-
-* `mesh` : Abstract mesh object
-* `sbp`  : Summation-By-parts operator
-* `eqn`  : Euler equation object
-* `opts` : options dictionary
-
-**Output**
-
-* `jac` : Jacobian matrix
-
-"""->
-function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-         sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts)
-
-  jac_type = opts["jac_type"]
-  if jac_type == 4 # For now. Date: 28/11/2016
-    error("jac_type = 4 not yet supported")
-  end
-  jacData = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
-
-  # Initialize shape of Jacobian Matrix
-  if jac_type == 1
-    jac = zeros(Tres, mesh.numDof, mesh.numDof)
-  elseif jac_type == 2
-    if typeof(mesh) <: AbstractCGMesh
-      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tres)
-    else
-      jac = SparseMatrixCSC(mesh, Tres)
-    end
-  elseif jac_type == 3
-    obj_size = PetscInt(mesh.numDof)
-    jac = PetscMat(eqn.comm)
-    PetscMatSetFromOptions(jac)
-    PetscMatSetType(jac, PETSc.MATMPIAIJ)
-    PetscMatSetSizes(jac, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
-    if mesh.isDG
-      MatSetOption(jac, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
-    end
-    # Preallocate matrix jac
-    dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
-    onnz = zeros(PetscInt, mesh.numDof)
-    for i = 1:mesh.numDof
-      dnnz[i] = mesh.sparsity_counts[1, i]
-      onnz[i] = mesh.sparsity_counts[2, i]
-    end
-    PetscMatMPIAIJSetPreallocation(jac, PetscInt(0),  dnnz, PetscInt(0), onnz)
-    MatSetOption(jac, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
-    PetscMatZeroEntries(jac)
-    matinfo = PetscMatGetInfo(jac, Int32(1))
-  end
-
-  # Now function call for calculating Jacobian
-  ctx_residual = (evalResidual,)
-  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, jac, ctx_residual)
-  #=
-  jac_value = zeros(Float64, mesh.numDof, mesh.numDof)
-  if jac_type == 3
-    idx_range = collect(PetscInt, 0:(mesh.numDof-1)) # Array(0:mesh.numDof-1)
-    PetscMatAssemblyBegin(jac)
-    PetscMatAssemblyEnd(jac)
-    PetscMatGetValues(jac, idx_range, idx_range, jac_value)
-    jac_value = jac_value.'
-  elseif jac_type == 2
-    jac_value = full(jac)
-  elseif jac_type == 1
-    jac_value = jac
-  end
-
-  val = string("res_jac_type_",jac_type,".dat" )
-  f = open(val, "w")
-  for i = 1:length(jac_value)
-    println(f, real(jac_value[i]))
-  end
-  close(f)
-  =#
-
-  return jac, jacData
-end
-
 
 @doc """
 ### AdvectionEquationMod.calcFunctionalDeriv

@@ -573,13 +573,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     end
 
     if opts["precompute_q_bndry"]
-      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
+      eqn.q_bndry = zeros(Tsol, mesh.numDofPerNode, numfacenodes,
                                 mesh.numBoundaryFaces)
     else
       eqn.q_bndry = zeros(Tsol, 0, 0, 0)
     end
 
-   
+
     if opts["precompute_q_face"]
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
     else
@@ -589,7 +589,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     #TODO: why are there 2 if mesh.isDG blocks?
     if mesh.isDG
      if opts["precompute_face_flux"]
-        eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes, 
+        eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes,
                                     mesh.numInterfaces)
       else
         eqn.flux_face = zeros(Tres, 0, 0, 0)
@@ -822,4 +822,25 @@ function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
   end
 
   return nothing
+end
+
+@doc """
+### EulerEquationMod.getTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+
+**Output**
+
+* `Tmsh` : Type parameter of the mesh.
+* `Tsol` : Type parameter of the solution array.
+* `Tres` : Type parameter of the residual array.
+"""->
+
+function getTypeParameters{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres})
+  return Tmsh, Tsol, Tres
 end
