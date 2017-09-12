@@ -349,6 +349,16 @@ Note that any values associated with these options are shared with the regular
                  timing_breakdown_names.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
 
+# Unsteady adjoint computation options. CN UADJ CODE DOES NOT RETURN CORRECT RESULTS
+"revolve"      : whether or not to use revolve adjoint checkpointing, default false
+"adjoint_straight" : calculate the unsteady adjoint by saving the state at every timestep
+"adjoint_revolve"  : calculate the unsteady adjoint, but using revolve to handle checkpointing
+                     and state saving
+"adjoint_saveall"  : save every time step's adjoint to disk
+"uadj_global" : compute global dRdu
+"use_Minv_override_for_uadj" : override applying use_Minv at the end of evalResidual in advection
+                               when reverse sweep is underway
+
 # Optimization Dictionary Options
 "objective_function" : name of the objective function being evalueated. There is an implicit assumption
                        a boundary functional has already been specified and that the objective functiom
