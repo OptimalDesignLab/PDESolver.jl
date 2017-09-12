@@ -1,7 +1,7 @@
 # crank_nicolson.jl
 # Crank-Nicolson implicit solver for PDEs
 
-export crank_nicolson, cnResidual, negativeZeroCheck
+export crank_nicolson_uadj, negativeZeroCheck
 
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
@@ -57,7 +57,7 @@ crank_nicolson
 # function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         # mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         # opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
-function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
+function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         opts, 
                         WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
@@ -432,7 +432,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
         # cnNewton: in cnNewton.jl
         cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       else
-        @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, jac, rhs_vec, ctx_residual, t)
+        @time newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs_uadj, cnJac_uadj, jac, rhs_vec, ctx_residual, t)
         # filename = string("jac_ifwd-", i,".dat")
         # writedlm(filename, real(jac))
 
@@ -466,7 +466,7 @@ function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_
           # blk = ones(blksz, blksz)*44     # testing 44
           println(" GLOBAL: size of blk: ", size(blk))
 
-          # this time step's actual portion of the global dRdu is the cnJac. so it has to be I-0.5*h*physicsJac
+          # this time step's actual portion of the global dRdu is the cnJac_uadj. so it has to be I-0.5*h*physicsJac
           jac_filename = string("jac_fwd_cJc_t-",t,".dat")
           writedlm(jac_filename, round(real(blk), 4))
 

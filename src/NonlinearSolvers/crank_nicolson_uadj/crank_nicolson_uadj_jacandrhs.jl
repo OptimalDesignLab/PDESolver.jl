@@ -3,7 +3,7 @@
 # Contains Jacobian and RHS calculation functions,
 #   for both forward sweep CN equation and reverse sweep adjoint CN equation
 #----------------------------------------------------------------------------------
-export cnJac, cnRhs
+export cnJac_uadj, cnRhs_uadj
 export cnAdjJac, cnAdjRhs
 
 function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
@@ -83,7 +83,7 @@ end     # end of function cnAdjJac
 
 
 """
-NonlinearSolvers.cnJac
+NonlinearSolvers.cnJac_uadj
 
   Jac of the CN calculation.
   Effectively a wrapper for physicsJac, because the CN Jac is:
@@ -95,7 +95,7 @@ NonlinearSolvers.cnJac
     h must be the third element
     newton_data must be the fourth element
 """
-function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
+function cnJac_uadj(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
@@ -159,7 +159,7 @@ function cnJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
 
   return nothing
 
-end     # end of function cnJac
+end     # end of function cnJac_uadj
 
 """
 NonlinearSolvers.cnAdjRhs
@@ -228,7 +228,7 @@ function cnAdjRhs(mesh::AbstractMesh, sbp::AbstractSBP, adj_nextstep::AbstractSo
 end     # end of function cnAdjRhs
 
 """
-NonlinearSolvers.cnRhs
+NonlinearSolvers.cnRhs_uadj
 
   RHS of the CN calculation
 
@@ -238,8 +238,8 @@ NonlinearSolvers.cnRhs
     h must be the third element
 
 """
-# function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
-function cnRhs(mesh, sbp, eqn_nextstep, opts, rhs_vec, ctx, t)
+# function cnRhs_uadj(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
+function cnRhs_uadj(mesh, sbp, eqn_nextstep, opts, rhs_vec, ctx, t)
 
   # eqn comes in through ctx_residual, which is set up in CN before the newtonInner call
 
@@ -275,7 +275,7 @@ function cnRhs(mesh, sbp, eqn_nextstep, opts, rhs_vec, ctx, t)
 
   return nothing
 
-end     # end of function cnRhs
+end     # end of function cnRhs_uadj
 
 """
 NonlinearSolvers.pde_pre_func
