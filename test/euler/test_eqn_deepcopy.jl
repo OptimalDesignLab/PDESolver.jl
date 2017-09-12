@@ -56,8 +56,8 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
     @fact (eqn_copy.aux_vars_sharedface == eqn.aux_vars_sharedface) --> true
     @fact (eqn_copy.aux_vars_bndry == eqn.aux_vars_bndry) --> true
     @fact (eqn_copy.flux_parametric == eqn.flux_parametric) --> true
-    @fact (eqn_copy.q_face_send == eqn.q_face_send) --> true
-    @fact (eqn_copy.q_face_recv == eqn.q_face_recv) --> true
+    # note: q_face_send and q_face_recv purposes are now served by eqn.shared_data
+    @fact (eqn_copy.shared_data == eqn.shared_data) --> true
     @fact (eqn_copy.flux_face == eqn.flux_face) --> true
     @fact (eqn_copy.flux_sharedface == eqn.flux_sharedface) --> true
     @fact (eqn_copy.res == eqn.res) --> true
@@ -219,8 +219,8 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
     @fact (pointer(eqn_copy.aux_vars_sharedface) == pointer(eqn.aux_vars_sharedface)) --> false
     @fact (pointer(eqn_copy.aux_vars_bndry) == pointer(eqn.aux_vars_bndry)) --> false
     @fact (pointer(eqn_copy.flux_parametric) == pointer(eqn.flux_parametric)) --> false
-    @fact (pointer(eqn_copy.q_face_send) == pointer(eqn.q_face_send)) --> false
-    @fact (pointer(eqn_copy.q_face_recv) == pointer(eqn.q_face_recv)) --> false
+    # note: q_face_send and q_face_recv purposes are now served by eqn.shared_data
+    @fact (pointer(eqn_copy.shared_data) == pointer(eqn.shared_data)) --> false
     @fact (pointer(eqn_copy.flux_face) == pointer(eqn.flux_face)) --> false
     @fact (pointer(eqn_copy.flux_sharedface) == pointer(eqn.flux_sharedface)) --> false
     @fact (pointer(eqn_copy.res) == pointer(eqn.res)) --> false
@@ -344,7 +344,7 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
 end   # end of function test_eqn_copy
 
-add_func2!(EulerTests, test_eqn_copy, test_eqn_copy_inputfile)
+add_func2!(EulerTests, test_eqn_copy, test_eqn_copy_inputfile, [TAG_LONGTEST])
 
 #=
 All fields of Euler's eqn obj, as of 20170522

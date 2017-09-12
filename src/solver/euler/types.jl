@@ -594,6 +594,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
     end
 
+    # functor defaults. functorThatErrors() is defined in ODLCommonTools
+    eqn.flux_func = functorThatErrors()
+    eqn.flux_func_bar = functorThatErrors_revm()
+
     if opts["need_adjoint"]
       eqn.q_bar = zeros(eqn.q)
       eqn.q_face_bar = zeros(eqn.q_face)

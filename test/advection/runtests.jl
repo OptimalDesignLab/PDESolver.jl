@@ -33,7 +33,7 @@ global const AdvectionTests = TestList()
 
 include("test_frontend.jl")
 include("test_lowlevel.jl")
-include("test_eqn_copy.jl")
+include("test_eqn_deepcopy.jl")
 include("test_3d.jl")
 include("test_utils.jl")
 include("test_gamma.jl")

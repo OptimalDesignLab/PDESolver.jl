@@ -43,7 +43,8 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
     @fact (eqn_copy.params.alpha_x == eqn.params.alpha_x) --> true
     @fact (eqn_copy.params.alpha_y == eqn.params.alpha_y) --> true
     @fact (eqn_copy.params.alpha_z == eqn.params.alpha_z) --> true
-    @fact (eqn_copy.params.sin_amplitude == eqn.params.sin_amplitude) --> true
+    # commented out since this is an artifact of some uadj adv BC code used to test.
+    # @fact (eqn_copy.params.sin_amplitude == eqn.params.sin_amplitude) --> true
     @fact (eqn_copy.params.f == eqn.params.f) --> true
     @fact (eqn_copy.params.time == eqn.params.time) --> true
     @fact (eqn_copy.src_func == eqn.src_func) --> true
@@ -71,11 +72,10 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
     if length(eqn.res_edge) > 0
       @fact (eqn_copy.res_edge[1] == eqn.res_edge[1]) --> true
     end
-    if length(eqn.q_face_send) > 0
-      @fact (eqn_copy.q_face_send[1] == eqn.q_face_send[1]) --> true
-    end
-    if length(eqn.q_face_recv) > 0
-      @fact (eqn_copy.q_face_recv[1] == eqn.q_face_recv[1]) --> true
+    # note: q_face_send and q_face_recv are now in ParallelData, see jcrean for details. 
+    #       Their purpose is now served by eqn.shared_data
+    if length(eqn.shared_data) > 0
+      @fact (eqn_copy.shared_data[1] == eqn.shared_data[1]) --> true
     end
     if length(eqn.flux_sharedface) > 0
       @fact (eqn_copy.flux_sharedface[1] == eqn.flux_sharedface[1]) --> true
@@ -95,8 +95,9 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
     @fact (pointer(eqn_copy.M) == pointer(eqn.M)) --> false
     @fact (pointer(eqn_copy.Minv) == pointer(eqn.Minv)) --> false
     @fact (pointer(eqn_copy.Minv3D) == pointer(eqn.Minv3D)) --> false
-    @fact (pointer(eqn_copy.q_face_send) == pointer(eqn.q_face_send)) --> false
-    @fact (pointer(eqn_copy.q_face_recv) == pointer(eqn.q_face_recv)) --> false
+    # note: q_face_send and q_face_recv are now in ParallelData, see jcrean for details. 
+    #       Their purpose is now served by eqn.shared_data
+    @fact (pointer(eqn_copy.shared_data) == pointer(eqn.shared_data)) --> false
     @fact (pointer(eqn_copy.flux_sharedface) == pointer(eqn.flux_sharedface)) --> false
     @fact (pointer(eqn_copy.q) == pointer(eqn.q)) --> false
     @fact (pointer(eqn_copy.q_vec) == pointer(eqn.q_vec)) --> false
@@ -145,7 +146,7 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
 end   # end of function test_eqn_copy
 
-add_func2!(AdvectionTests, test_eqn_copy, test_eqn_copy_inputfile)
+add_func2!(AdvectionTests, test_eqn_copy, test_eqn_copy_inputfile, [TAG_LONGTEST])
 
 #=
 Fields of advection eqn object:

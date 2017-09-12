@@ -149,6 +149,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.aux_vars = Array(Tsol, 0, 0, 0)
 
     if opts["precompute_volume_flux"]
       eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl,
