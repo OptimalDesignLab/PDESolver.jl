@@ -398,8 +398,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
   Aeta::Array{Tsol,4}               # Flux Jacobian in the eta-direction
   res_edge::Array{Tres, 4}       # edge based residual used for stabilization
-                                  # numdof per node x nnodes per element x
-				  # numEl x num edges per element
+                           # numdof per node x nnodes per element x numEl x num edges per element
 
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
                                   # Tdim x Tdim x nnodesPerElement x numEl
@@ -420,8 +419,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
-                                  # is the coefficient matrix of the time
-				  # derivative
+                                  # is the coefficient matrix of the time derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
   src_func::SRCType  # functor for the source term

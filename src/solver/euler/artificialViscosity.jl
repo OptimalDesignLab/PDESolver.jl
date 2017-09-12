@@ -29,10 +29,10 @@ function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   
   # Populate qbar
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
-  	  q_vals = sview(eqn.q, :, j, i)
-  	  calcArtViscosityFluxComp(eqn.params,q_vals,sview(qbar,:,j,i))
-  	end
+    for j = 1:mesh.numNodesPerElement
+      q_vals = sview(eqn.q, :, j, i)
+      calcArtViscosityFluxComp(eqn.params,q_vals,sview(qbar,:,j,i))
+    end
   end
 
   # We now need to differentiate the above with ξ and η to get the actual
@@ -43,7 +43,7 @@ function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   phi = zeros(Fav) # Intermediate variable
 
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
+    for j = 1:mesh.numNodesPerElement
       phi[:,j,i,1] = qbar[:,j,i] # abs(mesh.dxidx[1,1,j,i])*qbar[:,j,i] # compute dxi/dx*qbar
       phi[:,j,i,2] = qbar[:,j,i] # abs(mesh.dxidx[2,1,j,i])*qbar[:,j,i] # compute deta/dx*qbar
     end

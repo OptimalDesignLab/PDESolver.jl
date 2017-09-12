@@ -44,7 +44,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #        nrm[2] = mesh.dxidx[k, 2, j, i]
         flux = sview(eqn.flux_parametric, :, j, i, k)
 
-      	# this will dispatch to the proper calcEulerFlux
+        # this will dispatch to the proper calcEulerFlux
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
       end
 
@@ -1384,8 +1384,8 @@ function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
     for j=1:mesh.numNodesPerElement
       # copy values into workvec
       for k=1:mesh.numDofPerNode
-	q_vals[k] = eqn.q[k, j, i]
-	res_vals[k] = res_arr[k, j, i]
+        q_vals[k] = eqn.q[k, j, i]
+        res_vals[k] = res_arr[k, j, i]
       end
 
       res_view = sview(res_arr, :, j, i)
@@ -1428,8 +1428,8 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
     for j=1:mesh.numNodesPerElement
       # copy values into workvec
       for k=1:mesh.numDofPerNode
-	q_vals[k] = eqn.q[k, j, i]
-	res_vals[k] = res_arr[k, j, i]
+        q_vals[k] = eqn.q[k, j, i]
+        res_vals[k] = res_arr[k, j, i]
       end
 
       res_view = sview(res_arr, :, j, i)

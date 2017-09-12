@@ -486,7 +486,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl")
 
-			if opts["adjoint_revolve"]
+      if opts["adjoint_revolve"]
         error("adjoint_revolve not fully implemented yet.")
       end
 
@@ -518,7 +518,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
           dRdu_global_fwd = zeros(1,1)
           dRdu_global_rev = zeros(1,1)
           dRdu_global_rev_PM = zeros(1,1)
-        end			# end of if opts["uadj_global"]
+        end      # end of if opts["uadj_global"]
 
         # forward sweep
         # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
@@ -550,12 +550,12 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
           rev_check_number = dot(dRdu_global_rev_ZZZ, WWW)
           filename = "global_dRdu_check_rev.dat"
           writedlm(filename, rev_check_number)
-        end 		# end of if opts["uadj_global"]
+        end     # end of if opts["uadj_global"]
 
       else
         @time t = crank_nicolson_uadj(evalResidual, opts["delta_t"], opts["t_max"],
                                  mesh, sbp, eqn, opts, opts["res_abstol"])
-      end			# end of if opts["adjoint_straight"]
+      end      # end of if opts["adjoint_straight"]
 
       eqn.t = t
 
