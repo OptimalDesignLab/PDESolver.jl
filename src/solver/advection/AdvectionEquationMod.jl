@@ -46,7 +46,6 @@ include("adjoint.jl")
 include("source.jl")
 include("flux.jl")
 include("check_options.jl")
-include("eqn_deepcopy.jl")
 include("startup_func.jl")  # function to invoke the solver
 
 # register this physics module
