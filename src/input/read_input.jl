@@ -360,6 +360,11 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 # Adjoint computation options
 get!(arg_dict, "calc_adjoint", false)
 
+# Unsteady adjoint (CN) computation options --- EXPERIMENTAL, NONWORKING CODE
+get!(arg_dict, "adjoint_revolve", false)
+get!(arg_dict, "adjoint_straight", false)
+get!(arg_dict, "uadj_global", false)
+get!(arg_dict, "use_Minv_override_for_uadj", false)
 
 checkForIllegalOptions_post(arg_dict)
 

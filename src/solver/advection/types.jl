@@ -15,6 +15,8 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   alpha_x::Float64
   alpha_y::Float64
   alpha_z::Float64
+  sin_amplitude::Complex128
+  omega::Complex128
 
   f::BufferedIO
   time::Timings
@@ -52,9 +54,13 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
 #     alpha_y = 0.0
     alpha_z = 1.0
 
+    # needed for the runtype=660 (CN uadj) objective
+    sin_amplitude = 2.0
+    omega = 1.0
 
     t = Timings()
-    return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)
+
+    return new(LFalpha, alpha_x, alpha_y, alpha_z, sin_amplitude, omega, f, t)
   end
 end
 

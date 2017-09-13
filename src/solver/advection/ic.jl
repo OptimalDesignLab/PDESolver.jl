@@ -182,6 +182,19 @@ function ICsinwavexy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+function ICsinwave_ampl{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
+                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+                    opts, u0::AbstractArray{Tsol})
+
+  for i = 1:mesh.numEl
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      u0[dofnums_j] = calc_sinwave_ampl(mesh.coords[:, j, i], eqn.params, eqn.t)
+    end
+  end
+
+  return nothing
+end # end function ICsinwave_ampl
 
 function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
@@ -462,7 +475,7 @@ global const ICDict = Dict{Any, Function}(
 "ICsinwavey" => ICsinwavey,
 "ICsinwavey_pert" => ICsinwavey_pert,
 "ICsinwavexy" => ICsinwavexy,
-"ICFile" => ICFile,
+"ICsinwave_ampl" => ICsinwave_ampl,
 "ICmms1" => ICmms1,
 "ICx4" => ICx4,
 "ICp1" => ICp1,
@@ -478,4 +491,5 @@ global const ICDict = Dict{Any, Function}(
 "ICxplusy" => ICxplusy,
 "ICunsteadymms" => ICunsteadymms,
 "ICunsteadypoly" => ICunsteadypoly,
+"ICFile" => ICFile,
 )

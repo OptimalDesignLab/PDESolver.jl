@@ -63,6 +63,24 @@ function calc_sinwavey_pert{Tmsh}(params::ParamType2, coords::AbstractArray{Tmsh
 end
 
 @doc """
+### AdvectionEquationMod.calc_sinwave_ampl
+
+  Calculates and returns A*sin(-x + omega*t)
+"""->
+function calc_sinwave_ampl{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+
+  x = coords[1]
+  y = coords[2]
+
+  # omega = 1.0
+  # A = 2.0
+  omega = params.omega
+  A = params.sin_amplitude
+
+  return A*sin(-x + omega*t)
+end
+
+@doc """
 ### AdvectionEquationMod.calc_mms1
 
   Calculates and returns the value of the solution for doing Method of 
