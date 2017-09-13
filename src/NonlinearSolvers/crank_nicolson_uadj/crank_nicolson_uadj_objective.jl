@@ -171,9 +171,13 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
           # println(" ;;;;;;;== q[1]: ", q[1])      # using this, did verify that q[1] = 3 when eqn_poly.q_vec[dof_ix] = 3
 
           # 20170622: need to scale integrand!
-          # TODO: double and triple check jac_bndry index order here
           # TODO: get dimensionality in a non BS way
           dimensionality = 2
+          #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          # NOTE as of merge with full code, 20170913:
+          #   mesh.jac_bndry[j, i] no longer works with the new curvilinear code. 
+          #   You need to figure out how to fix it if you want to run this case.
+          #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           scaling_factor = 1/(mesh.jac_bndry[j, i]^*(1/dimensionality))
           integrand[j, i] = integrand[j, i]*scaling_factor
 
@@ -197,9 +201,14 @@ function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
             integrand[j, i] = 2*q[1]
 
             # 20170622: need to scale integrand!
-            # TODO: double and triple check jac_bndry index order here
             # TODO: get dimensionality in a non BS way
             dimensionality = 2
+
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # NOTE as of merge with full code, 20170913:
+            #   mesh.jac_bndry[j, i] no longer works with the new curvilinear code. 
+            #   You need to figure out how to fix it if you want to run this case.
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             scaling_factor = 1/(mesh.jac_bndry[j, i]^*(1/dimensionality))
             integrand[j, i] = integrand[j, i]*scaling_factor
 
