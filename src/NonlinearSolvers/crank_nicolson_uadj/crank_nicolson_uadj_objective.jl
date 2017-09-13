@@ -292,7 +292,7 @@ function calcdRdA_CS(mesh, sbp, eqn, opts, i, t)
 
   # println(" <<< dRdA_CS: eqn.params.sin_amplitude: ", eqn.params.sin_amplitude)
 
-  eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_temp = eqn_deepcopy(mesh, sbp, eqn, opts)
   check_q_qvec_consistency(mesh, sbp, eqn_temp, opts)
 
   eqn_temp.params.sin_amplitude += pert
@@ -333,7 +333,7 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
   # filename_eqn_temp = string("dRdA_FD_eqn_temp_i-",i,".dat")
   # writedlm(filename_eqn, eqn.q_vec)
 
-  eqn_temp = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_temp = eqn_deepcopy(mesh, sbp, eqn, opts)
   check_q_qvec_consistency(mesh, sbp, eqn_temp, opts)
   # verified: eqn_temp.q_vec & eqn.q_vec values match
   if norm(eqn_temp.q_vec - eqn.q_vec) > 1e-4
@@ -379,10 +379,10 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
   #=
   #----------------
   # central difference
-  eqn_temp_fwd = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_temp_fwd = eqn_deepcopy(mesh, sbp, eqn, opts)
   eqn_temp_fwd.params.sin_amplitude += pert
 
-  eqn_temp_bck = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_temp_bck = eqn_deepcopy(mesh, sbp, eqn, opts)
   eqn_temp_bck.params.sin_amplitude -= pert
 
   println(" <<< dRdA_FD: using central difference")

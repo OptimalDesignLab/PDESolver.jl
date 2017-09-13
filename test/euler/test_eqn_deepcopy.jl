@@ -23,7 +23,7 @@ function test_eqn_copy()
 
   mesh, sbp, eqn, opts = run_euler(test_eqn_copy_inputfile)
 
-  eqn_copy = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_copy = eqn_deepcopy(mesh, sbp, eqn, opts)
 
   facts("--- Testing eqn_deepcopy, DG q/q_vec & res/res_vec equality ---") do
 

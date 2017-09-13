@@ -484,7 +484,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                    res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
-      error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
+      # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
 
       if opts["adjoint_revolve"]
         error("adjoint_revolve not fully implemented yet.")

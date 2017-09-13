@@ -85,6 +85,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   # eqn_nextstep = deepcopy(eqn)
   eqn_nextstep = eqn_deepcopy(mesh, sbp, eqn, opts)
+
   # TODO TODO TODO: copyForMultistage does not give correct values.
   #     deepcopy works for now, but uses more memory than copyForMultistage, if it worked
 #   eqn_nextstep = copyForMultistage(eqn)

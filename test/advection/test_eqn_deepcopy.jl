@@ -18,7 +18,7 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
   # should we step through RK4 or CN a few steps before trying eqn_deepcopy?
 
-  eqn_copy = eqn_deepcopy(eqn, mesh, sbp, opts)
+  eqn_copy = eqn_deepcopy(mesh, sbp, eqn, opts)
 
   facts("--- Testing eqn_deepcopy, DG q/q_vec & res/res_vec equality ---") do
 
