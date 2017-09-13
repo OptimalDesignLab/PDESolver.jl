@@ -189,7 +189,7 @@ function ICsinwave_ampl{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      u0[dofnums_j] = calc_sinwave_ampl(mesh.coords[:, j, i], eqn.params, eqn.t)
+      u0[dofnums_j] = calc_sinwave_ampl(eqn.params, mesh.coords[:, j, i], eqn.t)
     end
   end
 

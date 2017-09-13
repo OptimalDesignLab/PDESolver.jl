@@ -1,5 +1,4 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
-
 @doc """
 ### EulerEquationMod.ParamType
 
@@ -796,4 +795,29 @@ Gets the type parameters for mesh and equation objects.
 
 function getTypeParameters{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres})
   return Tmsh, Tsol, Tres
+end
+
+import ODLCommonTools.getAllTypeParams
+
+@doc """
+### EulerEquationMod.getAllTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+* `opts` : Options dictionary
+
+**Output**
+
+* `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
+
+"""->
+function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{Tmsh}, eqn::EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}, opts)
+
+  tuple = (Tsol, Tres, Tdim, Tmsh, var_type)
+
+  return tuple
 end

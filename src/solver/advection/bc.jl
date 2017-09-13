@@ -294,12 +294,11 @@ end
 type sinwave_ampl_BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwave_ampl_BC, u::Tsol, params::ParamType2,
-              coords::AbstractArray{Tmsh,1}, dxidx::AbstractArray{Tmsh, 2},
-              nrm::AbstractArray{Tmsh,1}, t)
+function call{Tmsh, Tsol}(obj::sinwave_ampl_BC, params::ParamType2, u::Tsol, 
+              coords::AbstractArray{Tmsh,1}, nrm_scaled::AbstractArray{Tmsh,1}, t)
 
-  u_bc = calc_sinwave_ampl(coords, params, t)
-  bndryflux = RoeSolver(u, u_bc, params, nrm, dxidx)
+  u_bc = calc_sinwave_ampl(params, coords, t)
+  bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
 
   return bndryflux
 end

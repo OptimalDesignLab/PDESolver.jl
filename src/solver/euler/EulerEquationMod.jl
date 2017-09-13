@@ -204,6 +204,7 @@ include("PressureMod.jl")
 include("entropy_flux.jl")
 include("eigensystem.jl")
 include("check_options.jl")
+include("eqn_deepcopy.jl")
 include("startup_func.jl")  # function for invoking the solver
 include("dataprep_rev.jl")
 include("evaldRdm.jl")

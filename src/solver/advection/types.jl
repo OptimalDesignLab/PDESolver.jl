@@ -1,4 +1,5 @@
 # definitions of concrete subtypes of AbstractParamType and AbstractSolutionData
+
 """
   Subtype of [`AbstractParamType`](@ref).
 
@@ -292,3 +293,28 @@ type QfluxData{Topt} <: AbstractOptimizationData
     return functional
   end
 end # End type OfluxData
+
+import ODLCommonTools.getAllTypeParams
+
+@doc """
+### AdvectionEquationMod.getAllTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+* `opts` : Options dictionary
+
+**Output**
+
+* `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
+
+"""->
+function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tres, Tdim, Tmsh}, opts)
+
+  tuple = (Tsol, Tres, Tdim, Tmsh)
+
+  return tuple
+end

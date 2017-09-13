@@ -67,7 +67,7 @@ end
 
   Calculates and returns A*sin(-x + omega*t)
 """->
-function calc_sinwave_ampl{Tmsh}(coords::AbstractArray{Tmsh}, params::ParamType2, t)
+function calc_sinwave_ampl{Tmsh}(params::ParamType2, coords::AbstractArray{Tmsh}, t)
 
   x = coords[1]
   y = coords[2]
