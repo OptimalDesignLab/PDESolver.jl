@@ -297,7 +297,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   # eqn comes in through ctx_residual, which is set up in CN before the newtonInner call
 
   physics_func = ctx[1]
-  # NOTE: changed to eqn 20161013
   eqn = ctx[2]
   h = ctx[3]
 
