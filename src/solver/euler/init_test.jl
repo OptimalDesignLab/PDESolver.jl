@@ -43,13 +43,13 @@ objective.pressCoeff_obj.targetCp_arr)
 ctr = 0
 for i = 1:length(g_edges)
   for j = 1:size(pressCoeffArrWrite[i],2)
-  	for k = 1:size(pressCoeffArrWrite[i],1)
+    for k = 1:size(pressCoeffArrWrite[i],1)
       err = objective.pressCoeff_obj.targetCp_arr[i][k,j] - pressCoeffArrWrite[i][k,j]
       if abs(err) > 1e-12
         ctr += 1
         println("something is wrong")
       end
-  	end
+    end
   end
 end
 

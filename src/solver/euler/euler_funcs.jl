@@ -44,7 +44,7 @@ function getEulerFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #        nrm[2] = mesh.dxidx[k, 2, j, i]
         flux = sview(eqn.flux_parametric, :, j, i, k)
 
-      	# this will dispatch to the proper calcEulerFlux
+        # this will dispatch to the proper calcEulerFlux
         calcEulerFlux(eqn.params, q_vals, aux_vars, nrm, flux)
       end
 
@@ -1537,8 +1537,8 @@ function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
     for j=1:mesh.numNodesPerElement
       # copy values into workvec
       for k=1:mesh.numDofPerNode
-	q_vals[k] = eqn.q[k, j, i]
-	res_vals[k] = res_arr[k, j, i]
+        q_vals[k] = eqn.q[k, j, i]
+        res_vals[k] = res_arr[k, j, i]
       end
 
       res_view = sview(res_arr, :, j, i)
@@ -1573,7 +1573,7 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
                   opts, res_arr::AbstractArray{Tsol, 3})
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
-# a non-alias tolerant implimention wold avoid copying q_vals
+# a non-alias tolerant implemention wold avoid copying q_vals
   A0 = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
   res_vals = Array(Tsol, mesh.numDofPerNode)
   q_vals = Array(Tsol, mesh.numDofPerNode)
@@ -1581,8 +1581,8 @@ function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
     for j=1:mesh.numNodesPerElement
       # copy values into workvec
       for k=1:mesh.numDofPerNode
-	q_vals[k] = eqn.q[k, j, i]
-	res_vals[k] = res_arr[k, j, i]
+        q_vals[k] = eqn.q[k, j, i]
+        res_vals[k] = res_arr[k, j, i]
       end
 
       res_view = sview(res_arr, :, j, i)

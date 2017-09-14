@@ -32,7 +32,7 @@ typealias ParamTypes Union{ParamType2, ParamType3}
 ### SimpleODEMod.SimpleODEData_
 
   This type is an implementation of the abstract SimpleODEData.  It is
-  paramterized by the residual type Tres and the mesh type Tmsh
+  parameterized by the residual type Tres and the mesh type Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 
@@ -131,3 +131,28 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
 
 end # End type SimpleODEData_
 
+
+import ODLCommonTools.getAllTypeParams
+
+@doc """
+### SimpleODEMod.getAllTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+* `opts` : Options dictionary
+
+**Output**
+
+* `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
+
+"""->
+function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::SimpleODEData_{Tsol, Tres, Tdim, Tmsh}, opts)
+
+  tuple = (Tsol, Tres, Tdim, Tmsh)
+
+  return tuple
+end

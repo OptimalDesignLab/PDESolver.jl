@@ -128,7 +128,7 @@ get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
-  # the raised cosine filter has no paramters
+  # the raised cosine filter has no parameters
 end
 
 # figure out coloring distances
@@ -361,6 +361,11 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 # Adjoint computation options
 get!(arg_dict, "calc_adjoint", false)
 
+# Unsteady adjoint (CN) computation options --- EXPERIMENTAL, NONWORKING CODE
+get!(arg_dict, "adjoint_revolve", false)
+get!(arg_dict, "adjoint_straight", false)
+get!(arg_dict, "uadj_global", false)
+get!(arg_dict, "use_Minv_override_for_uadj", false)
 
 checkForIllegalOptions_post(arg_dict)
 
@@ -423,8 +428,8 @@ vals = arg_dict[key_i]
       println("arg_dict[key_k] = ", arg_dict[key_k])
       index = findfirst(arg_dict[key_k], val_j)
       if index != 0
-	println("Error: cannot apply more than one boundary condition to a model entity")
-	println("  Model entity ", val_j, " from BC", i, " is repeated at index ", index, " of BC", k)
+        println("Error: cannot apply more than one boundary condition to a model entity")
+        println("  Model entity ", val_j, " from BC", i, " is repeated at index ", index, " of BC", k)
       end
     end
   end

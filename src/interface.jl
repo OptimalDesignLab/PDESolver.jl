@@ -21,7 +21,7 @@
   Inputs:
     mesh: an AbstractMesh describing the mesh on which to solve the physics
     sbp: an SBP operator
-    eqn: a subtype of AbstractSolution data, used to store all of the data used          by the physics module
+    eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
     opts: the options dictionary
     t: the current time value, defaults to 0.0
 """
@@ -46,5 +46,4 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 
   return nothing
 end
-
 

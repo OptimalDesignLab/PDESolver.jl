@@ -33,11 +33,11 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode)
   nsd = 2  # number of spatial dimensions
 
   if nnpe == 2
-  	nen = 3 # Number of element nodes
-  	dofs = Array{Int}(numDofPerNode, nen, nel)
+    nen = 3 # Number of element nodes
+    dofs = Array{Int}(numDofPerNode, nen, nel)
     nnp = xnodes*ynodes # number of nodal points
-  	m = 0
-  	for i = 1:2:nel
+    m = 0
+    for i = 1:2:nel
       for j = 1:numDofPerNode
         dofs[j,1,i] = m + j
       end
@@ -51,33 +51,33 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode)
       end
       m += numDofPerNode
       for k = 1:nedy
-      	if i == 2*nedx*k - 1
-      	  m +=numDofPerNode
-      	end
+        if i == 2*nedx*k - 1
+          m +=numDofPerNode
+        end
       end
     end
     m = numDofPerNode
     for i = 2:2:nel
       for j = 1:numDofPerNode
-      	dofs[j,1,i] = m + numDofPerNode*xnodes + j
+        dofs[j,1,i] = m + numDofPerNode*xnodes + j
       end
       for j = 1:numDofPerNode
-      	dofs[j,2,i] = m + numDofPerNode*(xnodes-1) + j
+        dofs[j,2,i] = m + numDofPerNode*(xnodes-1) + j
       end
       for j = 1:numDofPerNode
-      	dofs[j,3,i] = m + j
+        dofs[j,3,i] = m + j
       end
       m += numDofPerNode
       for k = 1:nedy
-      	if i == 2*nedx*k
-      	  m +=numDofPerNode
-      	end
+        if i == 2*nedx*k
+          m +=numDofPerNode
+        end
       end
     end
 
     return dofs, nnp, nel, nen
   elseif nnpe == 3
-  	nen = 7 # Number of element nodes
+    nen = 7 # Number of element nodes
     nnp = xnodes*ynodes + nel;
     dofs = Array{Int}(numDofPerNode, nen, nel)
     m = 0
@@ -129,9 +129,9 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode)
 
     return dofs, nnp, nel, nen
   elseif nnpe == 4
-  	nen = 12 # Number of element nodes
+    nen = 12 # Number of element nodes
     nnp = xnodes*(nedy+1) + (nnpe-2)*nedy*(2*nedx+1) + 3*nel;
-  	dofs = Array{Int}(numDofPerNode, nen, nel)
+    dofs = Array{Int}(numDofPerNode, nen, nel)
     m = 0
     nmen = 2*nedx +1; # Number of midpoint element nodes in a row
     for j = 1:nedy
@@ -197,9 +197,9 @@ function createMesh(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode)
   
   return dofs, nnp, nel, nen
  elseif nnpe == 5
-  	nen = 18 # Number of element nodes
+    nen = 18 # Number of element nodes
     nnp = xnodes*(nedy+1) + (nnpe-2)*nedy*(2*nedx+1) + 6*nel;
-  	dofs = Array{Int}(numDofPerNode, nen, nel)
+    dofs = Array{Int}(numDofPerNode, nen, nel)
     m = 0
     nmen = 2*nedx +1; # Number of midpoint element nodes in a row
     for j = 1:nedy

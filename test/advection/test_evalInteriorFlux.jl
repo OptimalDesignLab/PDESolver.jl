@@ -44,13 +44,13 @@ facts("--- Testing evalInteriorFlux ---") do
     evalInteriorFlux(mesh, sbp, eqn, opts)
     println("eqn.res = \n", eqn.res)
     #=
-  	for j = 1:sbp.numfacenodes
-	  il = mesh.facenodes[j, face.faceL]::Int
-	  println("il = ", il)
-	  ir = mesh.facenodes[nbrnodeindex[j], face.faceR]::Int
-	  println("ir = ", ir)
-  	end
-  	=#
+    for j = 1:sbp.numfacenodes
+    il = mesh.facenodes[j, face.faceL]::Int
+    println("il = ", il)
+    ir = mesh.facenodes[nbrnodeindex[j], face.faceR]::Int
+    println("ir = ", ir)
+    end
+    =#
   end
   
 

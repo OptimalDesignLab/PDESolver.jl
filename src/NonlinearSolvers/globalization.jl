@@ -96,8 +96,8 @@ function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
-	dof = mesh.dofs[k, j, i]
-	tau_vec[dof] = tau/(1 + sqrt(real(mesh.jac[j, i])))
+        dof = mesh.dofs[k, j, i]
+        tau_vec[dof] = tau/(1 + sqrt(real(mesh.jac[j, i])))
 #        tau_vec[dof] = tau
       end
     end
