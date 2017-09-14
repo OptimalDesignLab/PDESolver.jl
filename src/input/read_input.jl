@@ -552,6 +552,7 @@ function checkBCOptions(arg_dict)
   # check for repeated edge numbers
   # this isn't cache friendly
   for i=1:numBC
+  key_i = string("BC", i)
   vals = arg_dict[key_i]
 
     for j=1:length(vals)
