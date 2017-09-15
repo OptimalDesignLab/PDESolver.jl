@@ -87,6 +87,7 @@ makedocs(
                       "Runge-Kutta" => "NonlinearSolvers/unsteady/rk4.md"
                       "LSERK" => "NonlinearSolvers/unsteady/lserk.md"
                       "Crank-Nicolson" => "NonlinearSolvers/unsteady/cn.md"
+                      "Crank-Nicolson: Unsteady Adjoint" => "NonlinearSolvers/unsteady/cn_uadj.md"
                     ]
                   "Newton's Method" => "NonlinearSolvers/newton.md"
                  ]
