@@ -44,6 +44,7 @@ export absvalue, absvalue_deriv
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
+export print_qvec_coords
 
 # mass_matrix.jl
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
@@ -97,8 +98,8 @@ function disassembleSolution{T}(mesh::AbstractCGMesh, sbp,
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       for k=1:size(q_arr, 1)
-	      dofnum_k = mesh.dofs[k, j, i]
-	      q_arr[k, j, i] = q_vec[dofnum_k]
+        dofnum_k = mesh.dofs[k, j, i]
+        q_arr[k, j, i] = q_vec[dofnum_k]
       end
     end
   end

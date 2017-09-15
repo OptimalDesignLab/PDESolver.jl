@@ -25,7 +25,7 @@ Calculates the adjoint vector for a single functional
 """->
 
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-	                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts,
                   functionalData::AbstractOptimizationData,
                   adjoint_vec::Array{Tsol,1}; functional_number::Int=1)
                   #functor, functional_number, adjoint_vec::Array{Tsol, 1})
@@ -115,8 +115,8 @@ mesh nodes.
 """->
 
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
-	                         eqn::EulerData{Tsol}, opts,
-	                         functionalData::AbstractOptimizationData, func_deriv_arr)
+                           eqn::EulerData{Tsol}, opts,
+                           functionalData::AbstractOptimizationData, func_deriv_arr)
 
   integrand = zeros(eqn.q_bndry)
   functional_edges = functionalData.geom_faces_functional
@@ -188,9 +188,9 @@ degrees of freedom at the node.
 
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
-	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                          functionalData::BoundaryForceData{Tsol,:lift})
+                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::BoundaryForceData{Tsol,:lift})
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -209,9 +209,9 @@ end
 
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
-	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                          functionalData::BoundaryForceData{Tsol,:drag})
+                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::BoundaryForceData{Tsol,:drag})
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -229,8 +229,8 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
 end
 #=
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params, q::AbstractArray{Tsol,1},
-	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                          aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
                           functor, functionalData)
 
 

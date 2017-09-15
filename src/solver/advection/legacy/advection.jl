@@ -11,7 +11,7 @@ function evalSCResidual(mesh::AbstractMesh, operator::AbstractSBP, u::AbstractVe
 
 # not clear how to do source term using SBP operators
 
-# initilize
+# initialize
 #println("entered evalResidual")
 #println("u = \n", u)
 #println("u0 =\n", u0)

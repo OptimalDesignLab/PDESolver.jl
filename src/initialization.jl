@@ -164,6 +164,20 @@ function getDataTypes(opts::Dict)
     else
       throw(ErrorException("Illegal or no jac_method specified for CN initialization."))
     end
+  elseif flag == 660 # jac_method needs to be symbol
+    if jac_method == 1 # Crank-Nicolson, unsteady adjoint, FD Jac
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Float64
+      Tres = Float64
+    elseif jac_method == 2 # Crank-Nicolson, unsteady adjoint, CS Jac
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Complex128
+      Tres = Complex128
+    else
+      throw(ErrorException("Illegal or no jac_method specified for CN uadj initialization."))
+    end
   else
     throw(ErrorException("Unrecognized run_type: $flag"))
   end
@@ -489,7 +503,81 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                    step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
                    res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
+    elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
+      # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
 
+      if opts["adjoint_revolve"]
+        error("adjoint_revolve not fully implemented yet.")
+      end
+
+      if opts["adjoint_straight"]
+
+        if opts["uadj_global"]
+
+          println(" GLOBAL: forming WWW, ZZZ")
+          # dof_global = mesh.numDof*t_steps
+          # blksz = 3   # testing 44
+          blksz = mesh.numDof
+          t_steps = 4
+          dof_global = blksz*t_steps
+          WWW = rand(dof_global)
+          ZZZ = rand(dof_global)
+          println(" GLOBAL: forming dRdu")
+          dRdu_global_fwd = zeros(dof_global, dof_global)
+          dRdu_global_rev = zeros(dof_global, dof_global)
+          # PM stands for piecemeal. intended to do it step by step during the adj calc to test bookkeeping
+          dRdu_global_rev_PM = zeros(dof_global, dof_global)
+          println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
+          writedlm("global_www.dat", WWW)
+          writedlm("global_zzz.dat", ZZZ)
+          writedlm("global_dRdu_fwd_initial.dat", dRdu_global_fwd)
+          writedlm("global_dRdu_rev_initial.dat", dRdu_global_rev)
+        else
+          WWW = zeros(1,1)
+          ZZZ = zeros(1,1)
+          dRdu_global_fwd = zeros(1,1)
+          dRdu_global_rev = zeros(1,1)
+          dRdu_global_rev_PM = zeros(1,1)
+        end      # end of if opts["uadj_global"]
+
+        # forward sweep
+        # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                                 # mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
+        println(" Calling CN, forward sweep.")
+        @time t = crank_nicolson_uadj(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts,
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
+                                 opts["res_abstol"],
+                                 store_u_to_disk=true)
+
+        # reverse sweep
+        # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                                 # mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
+        println(" Calling CN, reverse sweep.")
+        @time t = crank_nicolson_uadj(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts,
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
+                                 opts["res_abstol"],
+                                 neg_time=true)
+
+        if opts["uadj_global"]
+          dRdu_global_fwd_WWW = dRdu_global_fwd*WWW
+          fwd_check_number = dot(dRdu_global_fwd_WWW, ZZZ)
+          filename = "global_dRdu_check_fwd.dat"
+          writedlm(filename, fwd_check_number)
+
+          dRdu_global_rev_ZZZ = dRdu_global_rev*ZZZ
+          rev_check_number = dot(dRdu_global_rev_ZZZ, WWW)
+          filename = "global_dRdu_check_rev.dat"
+          writedlm(filename, rev_check_number)
+        end     # end of if opts["uadj_global"]
+
+      else
+        @time t = crank_nicolson_uadj(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts, opts["res_abstol"])
+      end      # end of if opts["adjoint_straight"]
+
+      eqn.t = t
 
     else
        throw(ErrorException("No flag specified: no solve will take place"))

@@ -1,10 +1,9 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
-
 @doc """
 ### EulerEquationMod.ParamType
 
-  This type holds the values of any constants or paramters needed during the
-  computation.  These paramters can be specified in the opts dictionary or
+  This type holds the values of any constants or parameters needed during the
+  computation.  These parameters can be specified in the opts dictionary or
   have default values set here.  If there is no reasonable default, values
   are initialized to -1
 
@@ -357,8 +356,8 @@ end  # end type declaration
 @doc """
 ### EulerEquationMod.EulerData_
 
-  This type is an implimentation of the abstract EulerData.  It is
-  paramterized by the residual datatype Tres and the mesh datatype Tmsh
+  This type is an implementation of the abstract EulerData.  It is
+  parameterized by the residual datatype Tres and the mesh datatype Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
   It is also paremterized by var_type, which should be a symbol describing
@@ -367,7 +366,7 @@ end  # end type declaration
   the entropy variables described in 'A New Finite Element Formulation for
   Computational Fluid Dynamics: Part I' by Hughes et al.
 
-  Eventually there will be additional implimentations of EulerData,
+  Eventually there will be additional implementations of EulerData,
   specifically a 3D one.
 
   Static Parameters:
@@ -386,7 +385,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 # hold any constants needed for euler equation, as well as solution and data
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
-# Only the constants are initilized here, the arrays are not.
+# Only the constants are initialized here, the arrays are not.
 
   # this is the ParamType object that uses the same variables as
   # the EulerData_ object
@@ -443,8 +442,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
   Aeta::Array{Tsol,4}               # Flux Jacobian in the eta-direction
   res_edge::Array{Tres, 4}       # edge based residual used for stabilization
-                                  # numdof per node x nnodes per element x
-				  # numEl x num edges per element
+                           # numdof per node x nnodes per element x numEl x num edges per element
 
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
                                   # Tdim x Tdim x nnodesPerElement x numEl
@@ -465,8 +463,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
-                                  # is the coefficient matrix of the time
-				  # derivative
+                                  # is the coefficient matrix of the time derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
   src_func::SRCType  # functor for the source term
@@ -642,6 +639,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.stabscale = Array(Tres, 0, 0)
       eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
     end
+
+    # functor defaults. functorThatErrors() is defined in ODLCommonTools
+    eqn.flux_func = functorThatErrors()
+    eqn.flux_func_bar = functorThatErrors_revm()
 
     if opts["need_adjoint"]
       eqn.q_bar = zeros(eqn.q)
@@ -843,4 +844,29 @@ Gets the type parameters for mesh and equation objects.
 
 function getTypeParameters{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres})
   return Tmsh, Tsol, Tres
+end
+
+import ODLCommonTools.getAllTypeParams
+
+@doc """
+### EulerEquationMod.getAllTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+* `opts` : Options dictionary
+
+**Output**
+
+* `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
+
+"""->
+function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{Tmsh}, eqn::EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}, opts)
+
+  tuple = (Tsol, Tres, Tdim, Tmsh, var_type)
+
+  return tuple
 end

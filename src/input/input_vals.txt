@@ -131,7 +131,7 @@ where input_file_name.jl is in your current directory.
                  a distance-0 coloring, (Bool), default false.
                  This option is dangerous if misused.
 
-# paramters used by boundary and initial condiitions
+# parameters used by boundary and initial condiitions
 "Ma" : free stream Mach number (floating point)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
 "aoa" : angle of attack in degrees (floating point)
@@ -146,7 +146,7 @@ where input_file_name.jl is in your current directory.
                     1.0
 
 
-# Algorithmic Differentiatio Options
+# Algorithmic Differentiation Options
 "use_edge_res" : use the edge based residual (experimental!), (Bool), default
                  false
 
@@ -348,6 +348,16 @@ Note that any values associated with these options are shared with the regular
                  timing_breakdown.dat, and the name of each time to 
                  timing_breakdown_names.dat, (Bool), default false
 "finalize_mpi" : whether or not to finalize MPI, (Bool), default false
+
+# Unsteady adjoint computation options. CN UADJ CODE DOES NOT RETURN CORRECT RESULTS
+"revolve"      : whether or not to use revolve adjoint checkpointing, default false
+"adjoint_straight" : calculate the unsteady adjoint by saving the state at every timestep
+"adjoint_revolve"  : calculate the unsteady adjoint, but using revolve to handle checkpointing
+                     and state saving
+"adjoint_saveall"  : save every time step's adjoint to disk
+"uadj_global" : compute global dRdu
+"use_Minv_override_for_uadj" : override applying use_Minv at the end of evalResidual in advection
+                               when reverse sweep is underway
 
 # Optimization Dictionary Options
 "objective_function" : name of the objective function being evalueated. There is an implicit assumption

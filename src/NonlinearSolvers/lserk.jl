@@ -1,4 +1,4 @@
-# implimentation of 5 stage, 4th order Low Storage Explicit Runge Kutta
+# implementation of 5 stage, 4th order Low Storage Explicit Runge Kutta
 # from Carpenter and Kennedy's Fourth-Order 2N-Storage Runge Kutta Schemes
 # NASA Technical Memorandum 109112
 

@@ -53,8 +53,6 @@ crank_nicolson
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
-  #----------------------------------------------------------------------
-#   throw(ErrorException("Crank-Nicolson is in development. Exiting."))
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   if myrank == 0
@@ -83,10 +81,12 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t = 0.0
   t_steps = round(Int, t_max/h)
 
-  eqn_nextstep = deepcopy(eqn)
-  # TODO TODO TODO: copyForMultistage does not give correct values.
+  # eqn_nextstep = deepcopy(eqn)
+  eqn_nextstep = eqn_deepcopy(mesh, sbp, eqn, opts)
+
+  # TODO: copyForMultistage does not give correct values.
   #     deepcopy works for now, but uses more memory than copyForMultistage, if it worked
-#   eqn_nextstep = copyForMultistage(eqn)
+  # eqn_nextstep = copyForMultistage(eqn)
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
@@ -94,9 +94,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
-  # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
-  # TODO TODO: f should be the rhs function. this is createPetsc ctx stuff, 20161123
 
   for i = 2:(t_steps + 1)
 
@@ -114,14 +112,12 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: output freq
 
-
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
     # NOTE: eqn_nextstep changed to eqn 20161013
     ctx_residual = (f, eqn, h, newton_data)
 
-    #TODO: unused variable?
     t_nextstep = t + h
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
@@ -301,7 +297,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   # eqn comes in through ctx_residual, which is set up in CN before the newtonInner call
 
   physics_func = ctx[1]
-  # NOTE: changed to eqn 20161013
   eqn = ctx[2]
   h = ctx[3]
 

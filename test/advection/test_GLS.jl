@@ -25,7 +25,7 @@ include("../../src/solver/advection/GLS.jl")
 facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
 
   context("Checking shape function derivatives") do
-  	sbp2 = TriSBP{Float64}()
+    sbp2 = TriSBP{Float64}()
     shapefuncderiv = zeros(Tsol, sbp2.numnodes, sbp2.numnodes, Tdim)
     calcShapefuncDeriv(sbp2, shapefuncderiv)
     @fact shapefuncderiv[:,:,1] --> roughly([-0.5  0.5  0.0
@@ -37,16 +37,16 @@ facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
   end
 
   context("Check calcAxidxi") do
-  	Tdim = 2
-  	alpha_x = ones(Tsol, mesh.numNodesPerElement)
-  	alpha_y = ones(alpha_x)
-  	dxidx = sview(mesh.dxidx,:,:,:,1)
+    Tdim = 2
+    alpha_x = ones(Tsol, mesh.numNodesPerElement)
+    alpha_y = ones(alpha_x)
+    dxidx = sview(mesh.dxidx,:,:,:,1)
     shapefuncderiv = zeros(Tsol, sbp.numnodes, sbp.numnodes, Tdim)
     calcShapefuncDeriv(sbp, shapefuncderiv)
     AxiDxi = calcAxiDxi(mesh, dxidx, alpha_x, alpha_y, shapefuncderiv)
     @fact AxiDxi --> roughly([-0.5 0.25 0.25
-    	                      -0.5 0.25 0.25
-    	                      -0.5 0.25 0.25])
+                            -0.5 0.25 0.25
+                            -0.5 0.25 0.25])
   end
 
   context("Check calcTau") do

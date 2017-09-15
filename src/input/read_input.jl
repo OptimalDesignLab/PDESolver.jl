@@ -169,7 +169,7 @@ get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
-  # the raised cosine filter has no paramters
+  # the raised cosine filter has no parameters
 end
 
 # figure out coloring distances
@@ -402,6 +402,11 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 # Adjoint computation options
 get!(arg_dict, "calc_adjoint", false)
 
+# Unsteady adjoint (CN) computation options --- EXPERIMENTAL, NONWORKING CODE
+get!(arg_dict, "adjoint_revolve", false)
+get!(arg_dict, "adjoint_straight", false)
+get!(arg_dict, "uadj_global", false)
+get!(arg_dict, "use_Minv_override_for_uadj", false)
 
 checkForIllegalOptions_post(arg_dict)
 
@@ -431,11 +436,6 @@ if myrank == 0
 end
 # do some sanity checks here
 
-
-
-# deal with boundary conditions
-# "numBC" must be dictionary key whose value is the number of boundary conditions
-# for each boundary condition there must be keys BCi and BCi_name for i=1:numBC
 
 checkKeys(arg_dict, KNOWN_KEYS)
 
@@ -569,7 +569,7 @@ function checkBCOptions(arg_dict)
     end
   end
 
-  # check fo repeated edge numbers within each array
+  # check for repeated edge numbers within each array
 
   for i=1:numBC
     key_i = string("BC", i)
