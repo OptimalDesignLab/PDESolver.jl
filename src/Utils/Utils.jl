@@ -377,14 +377,15 @@ function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
   jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
   jac_vec = zeros(Tmsh, mesh.numNodes)
   assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
-
   dim = mesh.dim
   # scale by the minimum distance between nodes on a reference element
   # this is a bit of an assumption, because for distorted elements this
   # might not be entirely accurate
-  h_avg = sum(1./(jac_vec.^(1/dim)))/length(jac_vec)
-  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)/mesh.commsize
-  h_avg *= mesh.min_node_dist
+  h_avg = sum(1./(jac_vec.^(1/dim)))
+  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
+  # caution: overflow
+  numnodes = MPI.Allreduce(length(jac_vec), MPI.SUM, mesh.comm)
+  h_avg *= mesh.min_node_dist/numnodes
   return h_avg
 end
 

@@ -231,6 +231,13 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
         sbp = getTetSBPWithDiagE(degree=order, Tsbp=Tsbp)
       end
       shape_type = 5
+    elseif opts["operator_type$suffix"] == "SBPOmega2"
+      shape_type = 6
+      if dim == 2
+        sbp = getTriSBPOmega2(degree=order, Tsbp=Tsbp)
+      else
+        throw(ArgumentError("3D SBPOmega2 not supported"))
+      end
     else
       op_type = opts["operator_type$suffix"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
