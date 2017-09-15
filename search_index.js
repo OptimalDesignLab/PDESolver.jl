@@ -221,7 +221,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractParamType",
     "category": "Type",
-    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
+    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\nStatic Parameters:\n\nTdim: the dimensionality of the equation being solved (2d or 3d usually)\n\n\n\n"
 },
 
 {
@@ -594,15 +594,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "pdesolver_physics.html#",
-    "page": "PDESolver PhysicsInterface",
-    "title": "PDESolver PhysicsInterface",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver Physics Interface",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "pdesolver_physics.html#Documentation-of-the-PDESolver-Physics-Module-Interface-1",
-    "page": "PDESolver PhysicsInterface",
+    "page": "PDESolver Physics Interface",
     "title": "Documentation of the PDESolver Physics Module Interface",
     "category": "section",
     "text": "CurrentModule = PDESolverThe PDESolver Module provides some structure for physics modules to plug into. See Interfaces in PDESolver for details. Each physics module should extend evalResidual with a new method to which takes the AbstractSolutionData defined by the physics module as an argument. This structure allows evalResidual to be visible to the NonlinearSolver module while being defined by the physics modules."
@@ -610,7 +610,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "pdesolver_physics.html#PDESolver.evalResidual",
-    "page": "PDESolver PhysicsInterface",
+    "page": "PDESolver Physics Interface",
     "title": "PDESolver.evalResidual",
     "category": "Function",
     "text": "This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)   at some state q.  The state is stored in eqn.q, and eqn.res is populated with   R(q).  Note that these are 3 dimensional arrays.  The physics modules only   interact with the 3 dimensional arrays, never the vectors eqn.q_vec and   eqn.res_vec.  Each physics module must implement this function for its   own subtype of AbstractSolutionData (ie. with a more specific type for   the eqn argument and equallty specific types for the other arguments).   This is important because evalResidual is common to all physics modules,   so a user or some other part of the code can call evalResidual(mesh, sbp   eqn, opts), and Julia's multiple dispatch will figure out the right method   to call based on the type of the eqn argument.\n\nThe evaluation of the residual R(q) should depend only on the data stored in   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated   every time the function is called.  This function is used as a building block   by other parts of the solver, particularly the NonlinearSolvers.  See   interfaces.md for details\n\nInputs:     mesh: an AbstractMesh describing the mesh on which to solve the physics     sbp: an SBP operator     eqn: a subtype of AbstractSolution data, used to store all of the data used          by the physics module     opts: the options dictionary     t: the current time value, defaults to 0.0\n\n\n\nAdvectionEquationMod.evalResidual\n\nThis function evaluates the Advection equation.\n\nInputs\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nEffectively updates eqn.res – not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec\n\nOutputs\n\n None\n\n\n\nEulerEquationMod.evalResidual\n\nThis function drives the evaluation of the EulerEquations.   It is agnostic to the dimension of the equation. and the types the arguments   are paramaterized on.\n\nThe function calls only high level functions, all of which take the same   four arguments.  Mid level function also take the same arguments.\n\nThe input/output variables are eqn.q and eqn.res, respectively.   eqn.q_vec and eqn.res_vec exist for reusable storage outside the residual   evaluation.  They should never be used inside the residual evaluation.\n\nThe function disassembleSolution takes q_vec and puts it into eqn.q   The function assembleSolution takes eqn.res and puts it into res_vec\n\nArguments:     * mesh  : a mesh object     * sbp   : SBP operator object     * eqn   : an EulerData object     * opts  : options dictionary\n\nThe optional time argument is used for unsteady equations\n\n\n\nSimpleODEMod.evalResidual\n\nThis function evaluates the simple ODE equation.\n\n** Inputs **\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Simple ODE equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nOutputs\n\n None\n\n\n\n"
@@ -618,7 +618,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "pdesolver_physics.html#Evaluating-the-Physics-1",
-    "page": "PDESolver PhysicsInterface",
+    "page": "PDESolver Physics Interface",
     "title": "Evaluating the Physics",
     "category": "section",
     "text": "evalResidual"
@@ -626,7 +626,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "pdesolver_physics.html#PDESolver.register_physics",
-    "page": "PDESolver PhysicsInterface",
+    "page": "PDESolver Physics Interface",
     "title": "PDESolver.register_physics",
     "category": "Function",
     "text": "This function registered a new physics module with the global list of all   known physics modules.  Every physics module should do this as part of   module initialization.  The name, the module, and the startup function must   be unique (ie. they must not already exist in the list).  This function   throws and exception if they are not.\n\nInputs:\n\nmodname:  an ASCIIString name for this entry in the list.  It is used\n          to retrieve the module and startup function in the \n          retrieve_physics function. Typically the name is capitalized.\nmod:  the Module itself\nstartup_func: the function for running the physics.  It must have signature\n              startup_func(fname::ASCIIString), where fname is the name of\n              an input file\n\nOutputs:\n\nnone\n\n\n\n"
@@ -634,7 +634,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "pdesolver_physics.html#PDESolver.retrieve_physics",
-    "page": "PDESolver PhysicsInterface",
+    "page": "PDESolver Physics Interface",
     "title": "PDESolver.retrieve_physics",
     "category": "Function",
     "text": "Retrieves the physics module and function registered using register_physics\n\nInput:\n\nmodname: an ASCIIString containing the name of the module supplied to\n         `register_physics`\n\nOutputs:\n\nmod: the physics Module\nfunc: the function to evaluate the physics\n\n\n\n"
@@ -642,10 +642,138 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "pdesolver_physics.html#Registration-Functions-1",
-    "page": "PDESolver PhysicsInterface",
+    "page": "PDESolver Physics Interface",
     "title": "Registration Functions",
     "category": "section",
     "text": "These function provide the basic API for registering and retrieving physics modules with the PDESolver module.register_physics\nretrieve_physicsSee also registerIC and registerBC."
+},
+
+{
+    "location": "pdesolver_structure.html#",
+    "page": "PDESolver Structure",
+    "title": "PDESolver Structure",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "pdesolver_structure.html#PDESolver.run_solver-Tuple{AbstractString}",
+    "page": "PDESolver Structure",
+    "title": "PDESolver.run_solver",
+    "category": "Method",
+    "text": "This function provides a way to invoke any physics solver based on the   specification of the physics in the input file.   This requires loading the input file twice, once to figure out the physics,   and a second time when the physics-specific startup function is called\n\nThe physics module must have already been registered using register_physics\n\nInputs:\n\ninput_file: an AbstractString specifying the path to the input file\n\nOutputs:\n\nmesh: the AbstractMesh object used during the solve\nsbp: the SBP operator used by the solver\neqn: the AbstractSolutionData object during the solve.  At exit,\n     eqn.q_vec should have the final solution in it\nopts: the options dictionary\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_structure.html#PDESolver.call_nlsolver",
+    "page": "PDESolver Structure",
+    "title": "PDESolver.call_nlsolver",
+    "category": "Function",
+    "text": "This function takes in the 4 principle object, fully initialized, and calls   a nonlinear solver on them, according to the options in the dictionary.   The evalResidual function is passed to the nonlinear solver\n\nInputs:     mesh: a mesh object     sbp: an SBP operator     eqn: an equation object     opts: options dictionary, used to determine which nonlinear solver to call     pmesh: mesh used for calculating preconditioning jacobian in Newton's            method, default to using mesh if not specified\n\nOutputs:     none\n\nAliasing restrictions: none (specificaly, mesh and pmesh can be the same                          object)\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_structure.html#PDESolver.createMeshAndOperator-Tuple{Any,Any}",
+    "page": "PDESolver Structure",
+    "title": "PDESolver.createMeshAndOperator",
+    "category": "Method",
+    "text": "Create a SBP operator and a mesh.  This is used by all physics modules   to create the right type of operator and mesh based on the input options.   It is type unstable, but that is ok.\n\nIf the options dictionary specifies a second SBP operator type, a second   mesh and SBP operator will be created and stored in the mesh2 and sbp2\n\nInputs:     opts: options dictonary     dofpernode: number of degrees of freedom on each node\n\nOutputs     sbp : an AbstractSBP     mesh : an AbstractMesh     pmesh : an AbstractMesh, used for preconditioning, may be same object as             mesh     Tsol : DataType that should be used for eqn.q     Tres : DataType that should be used for eqn.res     Tmsh : DataType of mesh.dxidx and friends     mesh_time : time in seconds for creation of mesh (Float64)\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_structure.html#PDESolver.createMesh-Tuple{Dict{K,V},SummationByParts.AbstractSBP{T<:Number},Any,Any,Any,Any,Any}",
+    "page": "PDESolver Structure",
+    "title": "PDESolver.createMesh",
+    "category": "Method",
+    "text": "This function creates the mesh object and, optionally, a second mesh   used for preconditioning\n\nInputs:     opts: the options dictionary     sbp: an SBP operator     sbpface: an SBP face operator     topo: an ElementTopology describing the SBP reference element.  Only           needed for 3D DG, otherwise can be any value     Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)     dofpernode: number of degrees of freedom on every node\n\nAll arguments except opts are typically provided by    createSBPOperator and getDataTypes\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_structure.html#PDESolver.createSBPOperator-Tuple{Dict{K,V},DataType}",
+    "page": "PDESolver Structure",
+    "title": "PDESolver.createSBPOperator",
+    "category": "Method",
+    "text": "This function constructs the SBP operator and the associated SBP face   operator, as specified by the options dictionary.  It also determines   the shape_type that PumiInterface uses to describe the SBP operator to   Pumi.\n\nInputs:     opts: the options dictionary     Tsbp: the DataType specifying the Tsbp passed to the SBP operator           constructor\n\nOutputs:     sbp: the SBP operator     sbpface: the SBP face operator     shape_type: an integer passed to the mesh constructor to describe the                 operator     topo: in the 3D DG case, an ElementTopology describing the SBP reference           element, otherwise the integer 0.\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_structure.html#PDESolver.getDataTypes-Tuple{Dict{K,V}}",
+    "page": "PDESolver Structure",
+    "title": "PDESolver.getDataTypes",
+    "category": "Method",
+    "text": "This function determines the datatypes of the elements of the arrays of the   mesh quantities, sbp operator, solution variables and residual.\n\nIf the datatypes cannot be determined, an error is thrown.\n\nInputs:     opts: the options dictionary\n\nOutputs     Tmsh     Tsbp     Tsol     Tres\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_structure.html#Starting-a-Simulation-1",
+    "page": "PDESolver Structure",
+    "title": "Starting a Simulation",
+    "category": "section",
+    "text": "  CurrentModule = PDESolverThis page describes functions located in the PDESolver module that tie together the physics modules and the Nonlinear solvers.    Modules = [PDESolver]\n  Pages = [\"src/startup_func.jl\", \"src/initialization.jl\"]"
+},
+
+{
+    "location": "pdesolver_structure.html#Physics-Module-Startup-1",
+    "page": "PDESolver Structure",
+    "title": "Physics Module Startup",
+    "category": "section",
+    "text": "TODO: does this belong here, or in the physics module section?Each physics module is required to do some of the setup work needed to start a simulation. The functions above facilitate doing so. In particular, the physics module mustread the input dictionary\ncreate an \nAbstractMesh\n and \nAbstractSBP\ncreate an \nAbstractSolutionData\nLoad an initial condition\nCalculate various quantities\nInvoke a NonlinearSolver\nDo postprocessing"
+},
+
+{
+    "location": "pdesolver_structure.html#Input-Dictionary-1",
+    "page": "PDESolver Structure",
+    "title": "Input Dictionary",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "pdesolver_structure.html#Creating-Mesh-and-Operator-1",
+    "page": "PDESolver Structure",
+    "title": "Creating Mesh and Operator",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "pdesolver_structure.html#Create-an-Equation-Object-1",
+    "page": "PDESolver Structure",
+    "title": "Create an Equation Object",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "pdesolver_structure.html#Load-an-initial-condition-1",
+    "page": "PDESolver Structure",
+    "title": "Load an initial condition",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "pdesolver_structure.html#Various-calculations-1",
+    "page": "PDESolver Structure",
+    "title": "Various calculations",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "pdesolver_structure.html#Invoke-a-NonlinearSolver-1",
+    "page": "PDESolver Structure",
+    "title": "Invoke a NonlinearSolver",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "pdesolver_structure.html#Do-Postprocessing-1",
+    "page": "PDESolver Structure",
+    "title": "Do Postprocessing",
+    "category": "section",
+    "text": "The functions here should be used by all physics modules to assist in creating the AbstractMesh and AbstractSBP objects and calling a nonlinear solver.TODO: document what the physics module needs to implement for startup"
 },
 
 {
@@ -721,7 +849,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/Readme.html#Overview-of-Physics-Modules-1",
+    "location": "solver/Readme.html#sec:physics_modules-1",
     "page": "Overview of Physics Modules",
     "title": "Overview of Physics Modules",
     "category": "section",
@@ -941,7 +1069,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Assorted Function and Types",
     "title": "Boundaries and Interfaces",
     "category": "section",
-    "text": "All physics modules need to apply boundary conditions and all DG schemes and some CG schemes need to do face integrals. The types and functions described here assist in identifying them:Boundary\nInterface\ngetElementL\ngetFaceL\nshow(::IO, ::Boundary)\nshow(::IO, ::Interface)"
+    "text": "All physics modules need to apply boundary conditions and all DG schemes and some CG schemes need to do face integrals. The types and functions described here assist in identifying them. PDESolver does not track the faces of elements directly, instead it  tracks the element the face belongs to and the local face number, that is, the index of the face in the list of all faces that belong to the element. Using this representation, every interior face has two representations because it is part of two elements.Boundary\nInterface\ngetElementL\ngetFaceL\nshow(::IO, ::Boundary)\nshow(::IO, ::Interface)"
 },
 
 {
@@ -2057,11 +2185,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/euler.html#Euler-Physics-Documentation-1",
+    "location": "solver/euler/euler.html#Euler-Physics-1",
     "page": "Introduction",
-    "title": "Euler Physics Documentation",
+    "title": "Euler Physics",
     "category": "section",
-    "text": "Describe the equation being solved herefracpartial qpartial t = - nabla cdot F(q) + SWhere q are the conservative variables and F is the Euler flux.q = beginbmatrix rho rho u rho v rho w e endbmatrixwhere rho is density, u is the x velocity, v is the y velocity, w is the z velocity and e is the energy.The calloricaly perfect ideal gas law is used to close the system (TODO ref calcPressure)The x-y-z components of the Euler flux are:beginbmatrix rho u  rho v  rho w  rho u^2 + p  rho u v  rho u w  rho u v  rho v^2 + p  rho v w   rho u w  rho v w  rho w^2 + p   (e + p)u  (e + p)v  (e + p)w endbmatrixTODO: describe the physical quantities (include units)  Pages = [ \"advection.md\"\n            \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"conversion.md\"\n            \"flux_functions.md\"\n            \"stabilization.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n            \"misc.md\"\n          ]\n  Depth = 1"
+    "text": "Describe the equation being solved herefracpartial qpartial t = - nabla cdot F(q) + SWhere q are the conservative variables and F is the Euler flux.q = beginbmatrix rho rho u rho v rho w e endbmatrixwhere rho is density, u is the x velocity, v is the y velocity, w is the z velocity and e is the energy.The calloricaly perfect ideal gas law is used to close the system (TODO ref calcPressure)The x-y-z components of the Euler flux are:beginbmatrix rho u  rho v  rho w  rho u^2 + p  rho u v  rho u w  rho u v  rho v^2 + p  rho v w   rho u w  rho v w  rho w^2 + p   (e + p)u  (e + p)v  (e + p)w endbmatrixTODO: describe the physical quantities (include units)"
+},
+
+{
+    "location": "solver/euler/euler.html#Discretizations-1",
+    "page": "Introduction",
+    "title": "Discretizations",
+    "category": "section",
+    "text": "The code currently implements three kinds of discretizations.The first is a standard discontinuous-Galerkin scheme using SBP operators and uses the numerical flux functions in flux functions section.The second scheme is an entropy stable discretization that uses a Hadamard product between the SBP operator matrices and matrices of flux values. The face integrals for the entropy stable scheme are described on the face element integrals page.The third scheme is a staggerd grid approach based on the entropy stable scheme.  It uses all the same mechanics as the entropy stable scheme, but requires interpolating data back and forth between the solution and flux grids. The functions for doing the interpolation are listed on the relevent pages for the volume and face integrals.   Pages = [ \"advection.md\"\n            \"types.md\"\n            \"volume.md\"\n            \"flux.md\"\n            \"faceElementIntegrals.md\"\n            \"bc.md\"\n            \"ic.md\"\n            \"source.md\"\n            \"common.md\"\n            \"conversion.md\"\n            \"flux_functions.md\"\n            \"stabilization.md\"\n            \"adjoint.md\"\n            \"boundary_functional.md\"\n            \"misc.md\"\n          ]\n  Depth = 1"
 },
 
 {
@@ -2233,7 +2369,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/flux.html#Face-Integrals-1",
+    "location": "solver/euler/flux.html#sec:euler_face_integrals-1",
     "page": "Face Integrals",
     "title": "Face Integrals",
     "category": "section",
@@ -2425,11 +2561,203 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/flux.html#Flux-Functors-1",
+    "location": "solver/euler/flux.html#sec:euler_flux_functors-1",
     "page": "Face Integrals",
     "title": "Flux Functors",
     "category": "section",
-    "text": "  Modules = [EulerEquationMod]\n  Order = [:type]\n  Pages = [\"euler/flux.jl\"]"
+    "text": "TODO: move this to another file (both code and docs)  Modules = [EulerEquationMod]\n  Order = [:type]\n  Pages = [\"euler/flux.jl\"]"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#",
+    "page": "Face Element Integrals",
+    "title": "Face Element Integrals",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#sec:euler_face_element_integrals-1",
+    "page": "Face Element Integrals",
+    "title": "Face Element Integrals",
+    "category": "section",
+    "text": "  CurrentModule = EulerEquationModThis page describes the functions that evaluate the face element integrals for a single interface.  The functions that loop over all the interfaces are located on the face integrals page. These integrals require data from all the nodes of the elements rather than the face nodes as with regular face integrals.These integrals are used by the entropy stable scheme, and some of them internally use a numerical flux function.  This flux function must satisfy an entropy property for the resulting scheme to be entropy stable!  The IR flux function is typically used."
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcECFaceIntegral-Tuple{ODLCommonTools.AbstractParamType{Tdim},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},ODLCommonTools.FluxType,AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcECFaceIntegral",
+    "category": "Method",
+    "text": "Calculate the face integrals in an entropy conservative manner for a given   interface.  Unlike standard face integrals, this requires data from   the entirety of both elements, not just data interpolated to the face\n\nresL and resR are updated with the results of the computation for the    left and right elements, respectively.\n\nNote that nrm_xy must contains the normal vector in x-y space at the   face nodes.\n\nAliasing restrictions: none, although its unclear what the meaning of this                          function would be if resL and resR alias\n\nPerformance note: the version in the tests is the same speed as this one                     for p=1 Omega elements and about 10% faster for                      p=4 elements, but would not be able to take advantage of                      the sparsity of R for SBP Gamma elements\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcESLFFaceIntegral-Tuple{ODLCommonTools.AbstractParamType{Tdim},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},ODLCommonTools.FluxType,AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcESLFFaceIntegral",
+    "category": "Method",
+    "text": "Calculate the face integral in an entropy stable manner using Lax-Friedrich   type dissipation.     This uses calcECFaceIntegral and calcLFEntropyPenaltyIntegral internally,    see those functions for details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcESLW2FaceIntegral-Tuple{ODLCommonTools.AbstractParamType{Tdim},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},ODLCommonTools.FluxType,AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcESLW2FaceIntegral",
+    "category": "Method",
+    "text": "Calculate the face integral in an entropy stable manner using   Lax-Wendroff type dissipation.     This uses calcECFaceIntegral and calcLW2EntropyPenaltyIntegral internally,    see those functions for details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcESLWFaceIntegral-Tuple{ODLCommonTools.AbstractParamType{Tdim},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},ODLCommonTools.FluxType,AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcESLWFaceIntegral",
+    "category": "Method",
+    "text": "Calculate the face integral in an entropy stable manner using approximate   Lax-Wendroff type dissipation.     This uses calcECFaceIntegral and calcLWEntropyPenaltyIntegral internally,    see those functions for details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcEntropyFix-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{T,1}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcEntropyFix",
+    "category": "Method",
+    "text": "This function modifies the eigenvalues of the euler flux jacobian such   that if any value is zero, a little dissipation is still added.  The   absolute values of the eigenvalues modified eigenvalues are calculated.\n\nMethods are available for 2 and 3 dimensions\n\nThis function depends on the ordering of the eigenvalues produced by   calcEvals.\n\nInputs:     params: ParamType, used to dispatch to 2 or 3D method\n\nInputs/Outputs:     Lambda: vector of eigenvalues to be modified\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLFEntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcLFEntropyPenaltyIntegral",
+    "category": "Method",
+    "text": "Calculate a term that provably dissipates (mathematical) entropy using a    Lax-Friedrich type of dissipation.     This   requires data from the left and right element volume nodes, rather than   face nodes for a regular face integral.\n\nNote that nrm_face must contain the scaled face normal vector in x-y space   at the face nodes, and qL, qR, resL, and resR are the arrays for the   entire element, not just the face.\n\nAliasing restrictions: params.nrm2, params.A0, w_vals_stencil, w_vals2_stencil\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLW2EntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcLW2EntropyPenaltyIntegral",
+    "category": "Method",
+    "text": "Calculate a term that provably dissipates (mathematical) entropy using a    Lax-Wendroff type of dissipation.     This requires data from the left and right element volume nodes, rather than   face nodes for a regular face integral.\n\nNote nrm_face must contain the scaled normal vector in x-y space   at the face nodes, and qL, qR, resL, and resR are the arrays for the   entire element, not just the face.\n\nImplementation Detail:     Because the scaling does not exist in arbitrary directions for 3D,      the function projects q into n-t coordinates, computes the     eigendecomposition there, and then rotates back\n\nAliasing restrictions: from params the following fields are used:     Y, S2, Lambda, res_vals1, res_vals2,  w_vals_stencil,      w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2, nrm2, P\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLWEntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcLWEntropyPenaltyIntegral",
+    "category": "Method",
+    "text": "Calculate a term that provably dissipates (mathematical) entropy using a    an approximation to Lax-Wendroff type of dissipation.     This requires data from the left and right element volume nodes, rather than   face nodes for a regular face integral.\n\nNote that nrm_face must contain the scaled normal vector in x-y space   at the face nodes, and qL, qR, resL, and resR are the arrays for the   entire element, not just the face.\n\nThe approximation to Lax-Wendroff is the computation of\n\nfor i=1:Tdim     abs(niY_iS2_iLambda_iY_i.')   end\n\nrather than computing the flux jacobian in the normal direction.\n\nAliasing restrictions: from params the following fields are used:     Y, S2, Lambda, res_vals1, res_vals2, res_vals3,  w_vals_stencil,      w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.getFaceElementFunctors-Tuple{Any,Any,EulerEquationMod.AbstractEulerData{Tsol,Tres},Any}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.getFaceElementFunctors",
+    "category": "Method",
+    "text": "Populates the field(s) of the EulerData object with   FaceElementIntegralType functors as specified by the options   dictionary\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an SBP operator\nopts: the options dictionary\n\nInputs/Outputs\n\neqn: the EulerData object\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.getEntropyLFStab-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,N},AbstractArray{Tmsh,N},AbstractArray{Tres,1}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.getEntropyLFStab",
+    "category": "Method",
+    "text": "This function computes the entropy dissipation term using Lax-Friedrich   type dissipation.  The term is evaluated using simple averaging of   qL and qR.  The term is subtracted off of F.\n\nThis function is dimension agnostic, but only works for conservative   variables.\n\nAliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.getEntropyLFStab_inner-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tsol,N},AbstractArray{Tres,N},AbstractArray{Tmsh,N},AbstractArray{Tres,1}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.getEntropyLFStab_inner",
+    "category": "Method",
+    "text": "Updates the vector F with the stabilization term from Carpenter, Fisher,   Nielsen, Frankel, Entrpoy stable spectral collocation schemes for the    Navier-Stokes equatiosn: Discontinuous interfaces.  The term is subtracted   off from F.\n\nThe q_avg vector should some average of qL and qR, but the type of    averaging is left up to the user.\n\nThis function is agnostic to dimension, but only works for conservative   variables.\n\nAliasing: from params the following arrays are used: A0, v_vals               v_vals2.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.getIRA0-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.getIRA0",
+    "category": "Method",
+    "text": "Computes dq/dv, where q are the conservative variables and v are the   IR entropy variables.  This is equiavlent to calcA0 scaled by gamma_1,   but computed from the conservative variables, which is much less expensive.\n\nMethods are available for 2 and 3 dimensions.   A0 is overwritten with the result\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.getLambdaMaxSimple-Tuple{EulerEquationMod.ParamType{Tdim,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tmsh,1}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.getLambdaMaxSimple",
+    "category": "Method",
+    "text": "Calculates the maximum magnitude eigenvalue of the Euler flux    jacobian at the arithmatic average of two states.\n\nThis functions works in both 2D and 3D   Inputs:     params:  ParamType, conservative variable     qL: left state     qR: right state     dir: direction vector (does not have to be unit vector)\n\nOutputs:     lambda_max: eigenvalue of maximum magnitude\n\nAliasing restrictions: params.q_vals3 must be unused\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#Functions-1",
+    "page": "Face Element Integrals",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:function]\n  Pages = [\"euler/faceElementIntegrals.jl\", \"euler/IR_stab.jl\"]"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.ECFaceIntegral",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.ECFaceIntegral",
+    "category": "Type",
+    "text": "Entropy conservative term only\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.ELFPenaltyFaceIntegral",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.ELFPenaltyFaceIntegral",
+    "category": "Type",
+    "text": "Lax-Friedrich entropy penalty term only\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.ELW2PenaltyFaceIntegral",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.ELW2PenaltyFaceIntegral",
+    "category": "Type",
+    "text": "Lax-Wendroff entropy penalty term only\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.ELWPenaltyFaceIntegral",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.ELWPenaltyFaceIntegral",
+    "category": "Type",
+    "text": "Approximate Lax-Wendroff entropy penalty term only\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.ESLFFaceIntegral",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.ESLFFaceIntegral",
+    "category": "Type",
+    "text": "Entropy conservative integral + Lax-Friedrich penalty\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.ESLW2FaceIntegral",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.ESLW2FaceIntegral",
+    "category": "Type",
+    "text": "Entropy conservative integral + Lax-Wendroff penalty\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.ESLWFaceIntegral",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.ESLWFaceIntegral",
+    "category": "Type",
+    "text": "Entropy conservative integral + approximate Lax-Wendroff penalty\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#Flux-Functors-1",
+    "page": "Face Element Integrals",
+    "title": "Flux Functors",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:constant, :type]\n  Pages = [\"euler/faceElementIntegrals.jl\"]"
 },
 
 {
@@ -2445,7 +2773,159 @@ var documenterSearchIndex = {"docs": [
     "page": "Boundary Integrals",
     "title": "Boundary Integrals",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModThis page describes the functions that impose boundarya conditions. The boundary conditions are imposed weakly, using a penalty between the desired state (the boundary condition value) and the current state (the solution)."
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.evalBoundaryIntegrals",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.evalBoundaryIntegrals",
+    "category": "Function",
+    "text": "This function evaluates the boundary integrals in the Euler equations by   calling the appropriate SBP function on eqn.bndryflux, which must be populated   before calling this function.  eqn.res is updated with the result\n\nThis is a mid level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#Entry-Points-1",
+    "page": "Boundary Integrals",
+    "title": "Entry Points",
+    "category": "section",
+    "text": "evalBoundaryIntegrals"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.calcBoundaryFlux-Tuple{ODLCommonTools.AbstractCGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},ODLCommonTools.BCType,UnitRange{T<:Real},AbstractArray{ODLCommonTools.Boundary,1},AbstractArray{Tres,3}}",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.calcBoundaryFlux",
+    "category": "Method",
+    "text": "EulerEquationMod.calcBoundaryFlux\n\nThis function calculates the boundary flux for the portion of the boundary   with a particular boundary condition.  The eqn.q are converted to   conservative variables if needed\n\nInputs:   mesh : AbstractMesh   sbp : AbstractSBP   eqn : EulerEquation   functor : a callable object that calculates the boundary flux at a node   idx_range: the Range describing which Boundaries have the current BC   bndry_facenums:  An array with elements of type Boundary that tell which                    element faces have the boundary condition   Outputs:   bndryflux : the array to store the boundary flux, corresponds to               bndry_facenums\n\nThe functor must have the signature   functor( q, aux_vars, x, nrm_xy, bndryflux_i, eqn.params)   where q are the conservative variables.   where all arguments (except params) are vectors of values at a node.\n\nparams is the ParamType associated with the the EulerEquation object   nrm = mesh.sbpface.normal[:, current_node]\n\nThis is a mid level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.calcBoundaryFlux_nopre-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},ODLCommonTools.BCType,UnitRange{T<:Real},AbstractArray{ODLCommonTools.Boundary,1}}",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.calcBoundaryFlux_nopre",
+    "category": "Method",
+    "text": "Like calcBoundaryFlux, but performs the integration and updates res rather   than storing the flux.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.getBCFluxes-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.getBCFluxes",
+    "category": "Method",
+    "text": "EulerEquationMod.getBCFluxes\n\nThis function calls other functions to calculate the boundary fluxes, passing   them pieces of the array needed.  This populates eqn.bndryflux.  It also   calls writeBoundary() to do any requested output.  If the options dictionary   specifies not to precompute the boundary flux, this function will do the   integration as well and update eqn.res.\n\nThis is a mid level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.getBCFunctors-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.getBCFunctors",
+    "category": "Method",
+    "text": "EulerEquationMod.getBCFunctors\n\nThis function uses the opts dictionary to populate mesh.bndry_funcs with   the the functors\n\nThis is a high level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.interpolateBoundary-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},Any,Any,Any,AbstractArray{T,3},AbstractArray{T,3}}",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.interpolateBoundary",
+    "category": "Method",
+    "text": "EulerEquationMod.interpolateBoundary\n\nInterpolates the solution variables to the exterior boundary of the mesh   and calculates any additional quantities at the boundary of the mesh.   DG only\n\nInputs:     mesh: an AbstractDGMesh     sbp     eqn     opts     q : the 3D array of solution variables for all elements, numdofpernode x         numNodesPerElement x numEl\n\nInputs/Outputs:     q_bndry: the array to be populated with the solution interpolated to              the boundary, numdofpernode x numNodesPerFace x num boundary faces\n\neqn.aux_vars_bndry is also populated\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.writeBoundary-Tuple{Any,Any,Any,Any}",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.writeBoundary",
+    "category": "Method",
+    "text": "EulerEquationMod.writeBoundary\n\nThis function writes information about the boundary faces and fluxes to files.   It is controlled by the input argument writeboundary, of type Bool.\n\nIt generates the files:     * boundaryfaces.dat : writes mesh.bndryfaces, an array with eltype Boundary                           to a file, one element per line     * boundaryflux.dat  : writes the element, local node number and boundary                           flux to a line in a human readable format     * boundaryflux2.dat : writes the real part ofmesh.bndryflux to space                           delimited file\n\nThis is a high level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#Functions-1",
+    "page": "Boundary Integrals",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:function]\n  Pages = [\"euler/bc.jl\"]"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.FreeStreamBC_dAlpha",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.FreeStreamBC_dAlpha",
+    "category": "Type",
+    "text": "EulerEquationMod.FreeStreamBC_dAlpha <: BCTypes\n\nThis functor uses the Roe solver to calculate the flux for a boundary   state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free\n\nThis is a low level functor\n\nArguments\n\n \nobj\n : Object of type BCType used for multiple dispatch. Every new boundary            condition needs to have its own type and entered in BCDict\n \nq\n   : Solution variable\n \naux_vars\n : Auxiliary variables\n \nx\n        : physical coordinates of the SBP node\n \nnrm_xy\n      : scaled normal vector in x-y space\n \nbndryflux\n : Computed flux value at the boundary\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.FreeStreamBC_revm",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.FreeStreamBC_revm",
+    "category": "Type",
+    "text": "###EulerEquationMod.FreeStreamBC_revm\n\nReverse mode for FreeStreamBC.\n\nInputs\n\nobj\n : Type of the Boundary condition being evaluated. Its a subtype of           BCType_revm\nq\n   : Solution variable\naux_vars\n : Auxiliary variables\nx\n     : Node coordinates\nnrm_xy\n   : scaled normal vector in x-y space\nbndryflux_bar\n : Input flux value seed that is used to compute the reverse                     mode derivative.\nparams\n        : equation object parameters\n\nOutput\n\nnrm_bar\n : Derivative of bndryflux_bar w.r.t the mapping jacobian\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.allOnesBC",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.allOnesBC",
+    "category": "Type",
+    "text": "EulerEquationMod.allOnesBC <: BCTypes\n\nThis functor uses the Roe solver to calculate the flux for a boundary   state where all the conservative variables have a value 1.0\n\nThis is a low level functor\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.allZerosBC",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.allZerosBC",
+    "category": "Type",
+    "text": "EulerEquationMod.allZerosBC <: BCTypes\n\nThis functor uses the Roe solver to calculate the flux for a boundary   state where all the conservative variables have a value 0.0\n\nThis is a low level functor\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.isentropicVortexBC",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.isentropicVortexBC",
+    "category": "Type",
+    "text": "EulerEquationMod.isentropicVortexBC <: BCTypes\n\nThis type and the associated call method define a functor to calculate   the flux using the Roe Solver using the exact InsentropicVortex solution   as boundary state.  See calcBoundaryFlux for the arguments all functors   must support.\n\nThis is a low level functor.\n\nArguments\n\n \nobj\n : Object of type BCType used for multiple dispatch. Every new boundary            condition needs to have its own type and entered in BCDict\n \nq\n   : Solution variable\n \naux_vars\n : Auxiliary variables\n \nx\n        : physical coordinates of the SBP node\n \nnrm_xy\n      : sclaed face normal in physical space\n \nbndryflux\n : Computed flux value at the boundary\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.isentropicVortexBC_physical",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.isentropicVortexBC_physical",
+    "category": "Type",
+    "text": "EulerEquationMod.isentropicVortexBC_physical <: BCTypes\n\nThis type and the associated call method define a functor to calculate   the actual Euler flux  using the exact InsentropicVortex solution   as boundary state.  See calcBoundaryFlux for the arguments all functors   must support.\n\nThis is a low level functor.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.isentropicVortexBC_revm",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.isentropicVortexBC_revm",
+    "category": "Type",
+    "text": "###EulerEquationMod.isentropicVortexBC_revm\n\nReverse mode for isentropicVortexBC.\n\nInputs\n\nobj\n : Type of the Boundary condition being evaluated. Its a subtype of           BCType_revm\nq\n   : Solution variable\naux_vars\n : Auxiliary variables\nx\n     : Node coordinates\nnrm\n   : scaled normal vector in x-y space\nbndryflux_bar\n : Input flux value seed that is used to compute the reverse                     mode derivative.\nparams\n        : equation object parameters\n\nOutput\n\nnrm_bar\n : Derivative of flux w.r.t the nrm\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.noPenetrationBC_revm",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.noPenetrationBC_revm",
+    "category": "Type",
+    "text": "###EulerEquationMod.noPenetrationBC_revm\n\nReverse mode for noPenetrationBC.\n\nInput\n\nobj\n : Type of the Boundary condition being evaluated. Its a subtype of           BCType_revm\nq\n   : Solution variable\naux_vars\n : Auxiliary variables\nx\n     : Node coordinates\ndxidx\n : Mapping jacobian matrix for the SBP node\nnrm\n   : sbpface normal vector\nbndryflux_bar\n : Input flux value seed that is used to compute the reverse                     mode derivative.\nparams\n        : equation object parameters\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.unsteadyVortexBC",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.unsteadyVortexBC",
+    "category": "Type",
+    "text": "EulerEquationMod.unsteadyVortexBC <: BCTypes\n\nThis type and the associated call method define a functor to calculate   the flux using the Roe Solver using the exact InsentropicVortex solution   as boundary state.  See calcBoundaryFlux for the arguments all functors   must support.\n\nThis is a low level functor.\n\nArguments\n\n \nobj\n : Object of type BCType used for multiple dispatch. Every new boundary            condition needs to have its own type and entered in BCDict\n \nq\n   : Solution variable\n \naux_vars\n : Auxiliary variables\n \nx\n        : physical coordinates of the SBP node\n \ndxidx\n    : Mapping jacobian matrix for the SBP node\n \nnrm_xy\n      : SBP face normal\n \nbndryflux\n : Computed flux value at the boundary\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#Boundary-Condition-Functors-1",
+    "page": "Boundary Integrals",
+    "title": "Boundary Condition Functors",
+    "category": "section",
+    "text": "Each functor defines a different type of boundary condition. Because the equation is solved in the weak form, the functors compute the flux associated with the penalty that imposes the boundary condition.  Modules = [EulerEquationMod]\n  Order = [:constant, :type]\n  Pages = [\"euler/bc.jl\"]"
 },
 
 {
@@ -2461,7 +2941,151 @@ var documenterSearchIndex = {"docs": [
     "page": "Initial Conditions",
     "title": "Initial Conditions",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModThis page describes the functions that apply initial conditions. The initial condition is loaded into the solution vector (not the 3D array). Users should call the appropriate function if they want to transfer the solution from the vector to the 3D array.It is important to note that the initial conditions functions do depend on the current time t.  In general, an initial condition function is really a function that computes an exact solution at a given time t. Applying an initial condition is a special case of this (because t = 0). Having the initial condition functions depend on time is used to calculate errors at the end of a simulation (for cases where the exact solution is known).Often, the initial condition function will call a function in common funcs to evalute the exact solution at each node on the mesh.Unlike boundary conditions, which are called many times during the execution of the code, initial conditions are called infrequently, so we do not create functors for them."
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICDict",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICDict",
+    "category": "Constant",
+    "text": "Map IC names to functions.  Generally the name is the same as the function   name\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#Accessing-Initial-Conditions-1",
+    "page": "Initial Conditions",
+    "title": "Accessing Initial Conditions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:constant]\n  Pages = [\"euler/ic.jl\"]"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICChannelMMS-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICChannelMMS",
+    "category": "Method",
+    "text": "Initial condition of channel MMS\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICExp-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICExp",
+    "category": "Method",
+    "text": "Assigns exp(kxy*z) as the initial condition, of each node, where k is    the index of the degree of freedom of the node\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICFile-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICFile",
+    "category": "Method",
+    "text": "EulerEquationMod.ICFile\n\nThis function reads a vector from a file on disk and set the solution to it.   The vector must contain the same number of entries as there are degrees of    freedom in the mesh. \n\nThis function is useful for things like restarting from a checkpoint.   In this case, the file should be the output of writedlm(eqn.q).  The degree    of freedom number must be the same for both simulation for this to work (the    file contains no degree of freedom number information).\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICFreeStream-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICFreeStream",
+    "category": "Method",
+    "text": "EulerEquationMod.ICFreeStream\n\nSets all components of the solution to the free stream condition according   to the angle of attack and and Mach number.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICIsentropicVortex-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,N}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICIsentropicVortex",
+    "category": "Method",
+    "text": "EulerEquationMod.ICIsentropicVortex\n\nSets the solution to the steady isentropic vortex solution.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICIsentropicVortexWithNoise-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICIsentropicVortexWithNoise",
+    "category": "Method",
+    "text": "EulerEquationMod.ICIsentropicVortexWithNoise\n\nSets the solution to the steady isentropic vortex solution plus    a small random noise component.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICOnes-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICOnes",
+    "category": "Method",
+    "text": "EulerEquationMod.ICOnes\n\nSets all components of the solution to 1.0\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICPeriodicMMS-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICPeriodicMMS",
+    "category": "Method",
+    "text": "Writes calcPeriodicMMS to the initial condition vector u0\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICRho1E2-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICRho1E2",
+    "category": "Method",
+    "text": "EulerEquationMod.ICRho1E2\n\nSets all density values to 1.0 and energy values to 2.0\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICRho1E2U3-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICRho1E2U3",
+    "category": "Method",
+    "text": "EulerEquationMod.ICRho1E2U3\n\nSets all components density values to 1.0, x and y momenta to 0.35355, and   energy to 2.0\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICTaylorGreen-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICTaylorGreen",
+    "category": "Method",
+    "text": "This function applies the initial condition for the Taylor Green vortex,   using the constants in Gassner, Winters, and Kopriva's Split form Nodal   DG paper\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICUnsteadyVortex-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,N}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICUnsteadyVortex",
+    "category": "Method",
+    "text": "EulerEquationMod.ICUnsteadyVortex\n\nSets the solution to the unsteady vortex problem.  eqn.params.t is used to   determine what time to use for the solution.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICZero-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICZero",
+    "category": "Method",
+    "text": "EulerEquationMod.ICZero\n\nSets all components of the solution to zero\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICsmoothHeaviside-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICsmoothHeaviside",
+    "category": "Method",
+    "text": "EulerEquationMod.ICZero\n\nSets the density to the smooth Heaviside function, all other components to   zero.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICsmoothHeavisideder-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICsmoothHeavisideder",
+    "category": "Method",
+    "text": "EulerEquationMod.ICsmoothHeavisideder\n\nSets the density to the derivative of the smooth Heaviside function, all    other components to zero.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#Initial-Condition-Functions-1",
+    "page": "Initial Conditions",
+    "title": "Initial Condition Functions",
+    "category": "section",
+    "text": "TODO: write  a macro for calling common funcs repeatedly  Modules = [EulerEquationMod]\n  Order = [:function]\n  Pages = [\"euler/ic.jl\"]"
 },
 
 {
@@ -2477,7 +3101,79 @@ var documenterSearchIndex = {"docs": [
     "page": "Source Term",
     "title": "Source Term",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModThis page describes how to apply source terms."
+},
+
+{
+    "location": "solver/euler/source.html#EulerEquationMod.evalSourceTerm",
+    "page": "Source Term",
+    "title": "EulerEquationMod.evalSourceTerm",
+    "category": "Function",
+    "text": "EulerEquationMod.evalSourceTerm\n\nThis function performs all the actions necessary to update eqn.res   with the source term.  The source term is stored in eqn.src_func.  It is   an abstract field, so it cannot be accessed (performantly) directly, so   it is passed to an inner function.\n\nInputs:\n\nmesh : Abstract mesh type\nsbp  : Summation-by-parts operator\neqn  : Euler equation object\nopts : options dictonary\n\nOutputs: none\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/source.html#Entry-Point-1",
+    "page": "Source Term",
+    "title": "Entry Point",
+    "category": "section",
+    "text": "evalSourceTerm"
+},
+
+{
+    "location": "solver/euler/source.html#EulerEquationMod.applySourceTerm-Tuple{Any,Any,Any,Any,ODLCommonTools.SRCType}",
+    "page": "Source Term",
+    "title": "EulerEquationMod.applySourceTerm",
+    "category": "Method",
+    "text": "EulerEquationMod.applySourceTerm\n\nThis function updates eqn.res with the source term.  \n\nInputs:      mesh     sbp     eqn     opts     src_func:  the functor that returns the value of the source term at a node                This functor must have the signature:                src_func(q, coords, params, t)                where coords is a vector of length 2 or 3 containing the x and y                 coordinates of the node, params is the ParamType, t is the                 current time, and q is the vector to be populated with the                 source term values.\n\nOutputs: none\n\nAliasing restrictions: params.q_vals cannot be in use\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/source.html#EulerEquationMod.getSRCFunctors-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Source Term",
+    "title": "EulerEquationMod.getSRCFunctors",
+    "category": "Method",
+    "text": "EulerEquationMod.getSRCFunctors\n\nThis function gets the functor specified by opts[\"SRCname\"] and stores   it to the equation object.  Currently one 1 source functor is allowed.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/source.html#EulerEquationMod.SRCDict",
+    "page": "Source Term",
+    "title": "EulerEquationMod.SRCDict",
+    "category": "Constant",
+    "text": "EulerEquationMod.SRCDict\n\nStores the functors that evaluate source terms at a node.  Every new    functor should be added to this dictonary\n\nAll functors must have the signature:\n\nsrc_func(q, coords, params::ParamType, t)\n\nwhere coords is the vector of length 2 containing the x and y coordinates   of the node, t is the current time, and q is the vector to be populated with   the source term values.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/source.html#Functions-1",
+    "page": "Source Term",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:function, :constant]\n  Pages = [\"euler/source.jl\"]"
+},
+
+{
+    "location": "solver/euler/source.html#EulerEquationMod.SRCExp",
+    "page": "Source Term",
+    "title": "EulerEquationMod.SRCExp",
+    "category": "Type",
+    "text": "AdvectionEquationMod.SRC0\n\nThis is the zero source term.  This is the default of source term   is specified\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/source.html#EulerEquationMod.SRCPeriodicMMS",
+    "page": "Source Term",
+    "title": "EulerEquationMod.SRCPeriodicMMS",
+    "category": "Type",
+    "text": "Functor for source term corresponding to ICPeriodicMMS\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/source.html#Source-Term-Functors-1",
+    "page": "Source Term",
+    "title": "Source Term Functors",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:type]\n  Pages = [\"euler/source.jl\"]"
 },
 
 {
@@ -2489,11 +3185,107 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/common.html#Common-Functions-1",
+    "location": "solver/euler/common.html#EulerEquationMod.calcChannelMMS-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcChannelMMS",
+    "category": "Method",
+    "text": "Manufactured condition for a channel with y in [0, 1].   No source term.  2D only\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcExp-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcExp",
+    "category": "Method",
+    "text": "Calculates a manufactured solution based on exponentials\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcFreeStream-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcFreeStream",
+    "category": "Method",
+    "text": "EulerEquationMod.calcFreeStream\n\nThis function calculates the free stream solution for an airfoil problem   based on the angle of attack and Mach number in nondimensionalized variables.\n\nDensity and energy are set to params.rho_free (usually 1.0) and params.E_free,   (usually 1/(gammagamma_1) + 0.5Ma*Ma), and the x and y momenta as\n\nrhoMacos(angle of attack)  and rhoMasin(angle of attack).\n\nThe angle of attack must be in radians.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcFreeStream_dAlpha-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcFreeStream_dAlpha",
+    "category": "Method",
+    "text": "EulerEquationMod.calcFreeStream_daoa\n\nThis function calculates the free stream solution for an airfoil problem   based on the angle of attack and Mach number in nondimensionalized variables.\n\nDensity and energy are set to params.rho_free (usually 1.0) and params.E_free,   (usually 1/(gammagamma_1) + 0.5Ma*Ma), and the x and y momenta as\n\nrhoMacos(angle of attack)  and rhoMasin(angle of attack).\n\nThe angle of attack must be in radians.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcIsentropicVortex-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcIsentropicVortex",
+    "category": "Method",
+    "text": "EulerEquationMod.calcIsentropicVortex\n\nThis function calculates the isentropic vortex solution to the Euler   equations at a node.  This function uses an inner radius of 1, an inner   radius density of 2, an inner radius Mach number of 0.95, and an inner radius   pressure of 1/gamma.  The denstiy as a function of radius r can be found in,   for example,   \"Output Error Estimates for Summation-by-parts Finite-difference Schemes\",   JE Hicken.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcOnes-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcOnes",
+    "category": "Method",
+    "text": "EulerEquationMod.calcOnes\n\nThis function sets all the solution variables at a node to 1.0\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcPeriodicMMS-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcPeriodicMMS",
+    "category": "Method",
+    "text": "Calculates a manufactured solution from Gassner, Winters, Kopriva: Split   Form Nodal DG Schemes with SBP Propertiy for the Compressible Euler Equations.   This is typically used with a mesh that spans [-1, 1] in all directions\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcRho1Energy2-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcRho1Energy2",
+    "category": "Method",
+    "text": "EulerEquationMod.calcRho1Energy2\n\nThis function sets the density at a node to 1, energy to 2 and the momenta to   zero.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcRho1Energy2U3-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcRho1Energy2U3",
+    "category": "Method",
+    "text": "EulerEquationMod.calcRho1Energy2U3\n\nSets the density values 1.0, momenta to 0.35355, and   energy to 2.0 at a node.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcUnsteadyVortex-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcUnsteadyVortex",
+    "category": "Method",
+    "text": "EulerEquationMod.calcUnsteadyVortex\n\nThis function calculates the unsteady vortex solution to the Euler equations   at time params.t, where the vortex was centered at x = params.vortex_x0 at   time t=0.  The analytical solution can be found in, for example,   K. Mattsson et al./ Computers & Fluxs 36 (2007) 636-649\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcVortex-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcVortex",
+    "category": "Method",
+    "text": "EulerEquationMod.calcVortex\n\nSets the density 1.0, energy to 2.0 at a node.  The momenta are calculated   according to solid body rotation with an angular velocity of 0.5 centered   at x = 0.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcZeros-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcZeros",
+    "category": "Method",
+    "text": "EulerEquationMod.calcZeros\n\nThis function sets all the solution variables at a node to 0.0\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#sec:euler_common_funcs-1",
     "page": "Common Functions",
     "title": "Common Functions",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModThe functions here evaluate some function at a single point.  This is useful for defining manufactured solutions, initial conditions, and boundary conditions.  In fact, is is generally recommended that every initial condition and Dirichlet boundary condition create a function here to compute the state.  For boundary conditions, all the functor need to is call this function to get the state and call a numerical flux function.  Modules = [EulerEquationMod]\n  Pages = [\"euler/common_funcs.jl\"]"
 },
 
 {
@@ -2509,7 +3301,103 @@ var documenterSearchIndex = {"docs": [
     "page": "Conversion",
     "title": "Conversion Between Different Variables",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModIt is possible to write the Euler equations in terms of different sets of variables. The default is to use conservative variables, but there are others as well, such as entropy variables. This page describes how to convert between the different sets of variables. The functions perform conversions back and forth between conservative variables and the \"other\" variables. The code generally does not support conversion directly between two different sets of \"other variables. For example, if we call the conservative variables the q variables, the  first set of \"other\" variables the w1 variables and the second set of \"other\" variables the w2 variables, it is possible to convert between q and w1 as well as q and w2 but not between w1 and w2.The basic set of functions perform the conversion, and these function's names and in an underscore. Layered on top of these functions are a safer method of conversion, which uses the static parameters of the ParamType to determine what variables are stored in eqn.q and performs the appropriate conversion. This is important because if, for example, we are solving the equation using entropy variables, and the function convertToEntropy is called, it will (correctly) not do the conversion, because the variables are already the entropy variables. If convertToConservative is called, it will do the proper conversion from entropy to conservative variables.The function describe here provide one additional bit of functionality. Lets say a function needs to convert it current variables to conservative variables, do some operation, then convert the result back to entropy variables. Converting to conservative variables is easy, that's what convertToConservative does.  The problem is converting back. The code doesn't necessarily know what variables are stored in eqn.q, so it doesn't know what function to call.  Should it call convertToW1 or convertToW2? The solution is convertFromNaturalToWorkingVars, which converts from the conservative variables to whatever the variables stored in eqn.q are (as determined by the static parameters of the ParamType object)."
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertFromNaturalToWorkingVars-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertFromNaturalToWorkingVars",
+    "category": "Method",
+    "text": "EulerEquationMod.convertFromNaturlaToWorkingVars\n\nThis function converts a vector qc from the \"natural\" set of variables to    write the equation to the set of variables the equation is being solved in,    defined by the static parameter var_type of the params.  For the Euler    equations, the \"natural\" variables are the conservative variables.   Every new set of variables must extend this function with a new method.\n\nInputs:     params:  ParamType{Tdim, var_type}     qc: vector of \"natural\" variables\n\nInputs/Outputs:     qe: vector to be populated with the new variables\n\nLow level function.\n\nAliasing restrictions: none (this requires that every method of this function                          support in-place conversion).\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToConservative-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToConservative",
+    "category": "Method",
+    "text": "low level function\n\nConverts conservative variables to conservative variables (ie. it   copies the input to the output).  This method exists to values can be    converted without knowing whether they are conservative or entropy.\n\nAliasing restrictions: none (qc and qe can be the same vector)\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToConservative-Tuple{EulerEquationMod.ParamType{Tdim,:entropy,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToConservative",
+    "category": "Method",
+    "text": "EulerEquationMod.convertToConservative\n\nConverts  the entropy variables at a node to the conservative variables.\n\nInputs:   params  : ParamType{2, :entropy} used to dispatch to the proper method   qe  : vector (of length 4) of entropy variables\n\nInputs/outputs   qc : vector (of length 4) of conservative variables.  Contents of vector are        overwritten\n\nAliasing: none (qc and qe can be the same vector)\n\nThs is a low level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToConservative-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,:entropy},Any,AbstractArray{Tsol,3}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToConservative",
+    "category": "Method",
+    "text": "mid level function\n\nConverts the array (3D form) of entropy variables to conservative variables    in place.  If the array is already in conservative variables this is a no-op.   Other methods exist if q_arr is a vector.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:     q_arr: array of values (3D) to be converted\n\nAliasing: no restrictions\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToConservativeFromIR_-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToConservativeFromIR_",
+    "category": "Method",
+    "text": "EulerEquationMod.convertToConservativeFromIR_\n\nConverts the IR entropy variables at a node to the conservative variables   regardless of the static parameter var_type.\n\nInputs:   params  : ParamType{Tdim} used to dispatch to the proper method   qe  : vector (of length 4 or 5) of entropy variables\n\nInputs/outputs   qc : vector (of length 4 or 5) of conservative variables.  Contents of         vector are overwritten\n\nAliasing: none (qc and qe can be the same vector)\n\nThs is a low level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToConservative_-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToConservative_",
+    "category": "Method",
+    "text": "EulerEquationMod.convertToConservative_\n\nConverts  the entropy variables at a node to the conservative variables   regardless of the static parameter var_type.\n\nInputs:   params  : ParamType{Tdim} used to dispatch to the proper method   qe  : vector (of length 4 or 5) of entropy variables\n\nInputs/outputs   qc : vector (of length 4 or 5) of conservative variables.  Contents of vector are        overwritten\n\nAliasing: none (qc and qe can be the same vector)\n\nThs is a low level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToEntropy-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToEntropy",
+    "category": "Method",
+    "text": "EulerEquationMod.convertToEntropy\n\nConverts the conservative variables at a node to entropy variables\n\nInput:   params : ParamType{s, :conservative}   qc  : vector (of length 4 or 5) of conservative variables\n\nOutputs:   qe : vector (of length 4 or 5) of conservative variables.  Contents of         vector areoverwritten\n\nlow level function\n\nAliasing restrictions: none (qc and qe can be the same vector)\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToEntropy-Tuple{EulerEquationMod.ParamType{Tdim,:entropy,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToEntropy",
+    "category": "Method",
+    "text": "EulerEquationMod.convertToEntropy\n\nConverts the entropy variables to entropy variables (ie. it copies the    input to the output).  This method exists so variables can be converted    to entropy variables without knowing what type they are.\n\nlow level function\n\nAliasing restrictions: none (qc and qe can be the same vector)\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToEntropy-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,:conservative},Any,AbstractArray{Tsol,3}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToEntropy",
+    "category": "Method",
+    "text": "mid level function\n\nConverts the array (3D form) of conservative variables to entropy variables    in place.  If the array is already in entropy variables this is a no-op\n\nMethods also exist for the 1D form.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:     q_arr: array of values (3D) to be converted\n\nAliasing: no restrictions\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToEntropy_-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToEntropy_",
+    "category": "Method",
+    "text": "EulerEquationMod.convertToEntropy_\n\nConverts the conservative variables at a node to the entropy variables   regardless of the static parameter var_type.\n\nInputs:   params  : ParamType{Tdim} used to dispatch to the proper method   qe  : vector (of length 4 or 5) of conservative variables\n\nInputs/outputs   qc : vector (of length 4 or 5) of entropy variables.  Contents of vector are        overwritten\n\nAliasing: none (qc and qe can be the same vector)\n\nThs is a low level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#EulerEquationMod.convertToIR_-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Conversion",
+    "title": "EulerEquationMod.convertToIR_",
+    "category": "Method",
+    "text": "EulerEquationMod.convertToIR_\n\nConverts the conservative variables at a node to the entropy variables   of Ismail and Roe regardless of the static parameter var_type.\n\nInputs:   params  : ParamType{Tdim} used to dispatch to the proper method   qe  : vector (of length 4 or 5) of conservative variables\n\nInputs/outputs   qc : vector (of length 4 or 5) of entropy variables.  Contents of vector are        overwritten\n\nAliasing: none (qc and qe can be the same vector)\n\nThs is a low level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/conversion.html#Functions-1",
+    "page": "Conversion",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Pages = [\"euler/conversion.jl\"]"
 },
 
 {
@@ -2609,7 +3497,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/flux_functions.html#Numerical-Flux-Functions-1",
+    "location": "solver/euler/flux_functions.html#sec:euler_flux_funcs-1",
     "page": "Numerical Flux Functions",
     "title": "Numerical Flux Functions",
     "category": "section",
@@ -2625,11 +3513,195 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/stabilization.html#Stabilization-Documentation-1",
+    "location": "solver/euler/stabilization.html#Stabilization-1",
     "page": "Stabilization",
-    "title": "Stabilization Documentation",
+    "title": "Stabilization",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModThis page describes the stabilization methods used for continuous Galerkin formulations. Not all of these effectively stabilized the discretization, and since the move to discontinuous Galerkin, they may have bitrotted."
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.edgestabilize!-Tuple{SummationByParts.AbstractSBP{T},Array{ODLCommonTools.Interface,N},ODLCommonTools.AbstractMesh{Tmsh},AbstractArray{T,2},AbstractArray{T,3},AbstractArray{T,4},AbstractArray{T,2},AbstractArray{T,4},AbstractArray{Tres,2},AbstractArray{T,2}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.edgestabilize!",
+    "category": "Method",
+    "text": "EulerEquationMod.edgestabilize!\n\nAdds edge-stabilization (see Burman and Hansbo, doi:10.1016/j.cma.2003.12.032) to a given residual.  Different methods are available depending on the rank of u:\n\nFor \nscalar\n fields, it is assumed that \nu\n is a rank-2 array, with the first dimension for the local-node index, and the second dimension for the element index.\nFor \nvector\n fields, \nu\n is a rank-3 array, with the first dimension for the index of the vector field, the second dimension for the local-node index, and the third dimension for the element index.\n\nNaturally, the number of entries in the dimension of u (and res) corresponding to the nodes must be equal to the number of nodes in the SBP operator sbp.\n\nInputs\n\nsbp\n: an SBP operator type\nifaces\n: list of element interfaces stored as an array of \nInterface\ns\nu\n: the array of solution data, numDofPerNode x numNodesPerElement x numEl.        for scalar fields (ie. numDofPerNode), this can be a 2D array.\nx\n: Cartesian coordinates stored in (coord,node,element) format\ndxidx\n: scaled Jacobian of the mapping (as output from \nmappingjacobian!\n)\njac\n: determinant of the Jacobian array, numNodesPerElement x numEl\nalpha\n: array of transformation terms (see below)\nstabscale\n: numfaces x numNodes per face array of scaling parameter\n\nIn/Outs\n\nres\n: where the result of the integration is stored, same shape as u\n\nDetails\n\nThe array alpha is used to compute the directional derivative normal to the faces. For a 2-dimensional problem, it can be computed as follows:\n\n  for k = 1:mesh.numelem\n    for i = 1:sbp.numnodes\n      for di1 = 1:2\n        for di2 = 1:2\n          alpha[di1,di2,i,k] = (dxidx[di1,1,i,k].*dxidx[di2,1,i,k] + \n                            dxidx[di1,2,i,k].*dxidx[di2,2,i,k])*jac[i,k]\n        end\n      end\n    end\n  end\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.stabscale-Tuple{AbstractArray{Tsol,1},AbstractArray{Tmsh,2},AbstractArray{Tmsh,1},EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.stabscale",
+    "category": "Method",
+    "text": "EulerEquationMod.stabscale\n\nThis function calculates the edge stabilization scalaing parameter at a node   and returns it.\n\nInputs:     * q : vector of conservative variables     * dxidx : jacobian of xi wrt x coordinates at the node     * nrm : normal vector in xi space     * params : ParamType{2}\n\nThis is a low level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.stabscale-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.stabscale",
+    "category": "Method",
+    "text": "EulerEquationMod.stabscale\n\nThis function calculate the stabilization scaling parameter across the   entire mesh by calling the low level method.  This populates eqn.stabscale.\n\nThis is a mid level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.GLS-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.GLS",
+    "category": "Method",
+    "text": "EulerEquationMod.GLS\n\nAdd Galerkin Least-Squares stabilization to the weak residual. This implementation is only for steady problems and conservative variables\n\nInputs\n\n \nmesh\n: AbstractMesh type\n \nsbp\n : Summation-by-parts operator\n \neqn\n : Equation object used elsewhere\n\nOutputs\n\nNone\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.SUPG-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.SUPG",
+    "category": "Method",
+    "text": "EulerEquationMod.SUPG\n\nAdd Streamwise Upwind Petrov-Galerkin stabilization to the weak residual. This implementation is only for steady problems\n\nInputs\n\n \nmesh\n: AbstractMesh type\n \nsbp\n : Summation-by-parts operator\n \neqn\n : Equation object used elsewhere\n\nOutputs\n\nNone\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcAxidxi-Tuple{AbstractArray{Tsol,2},AbstractArray{Tsol,3},AbstractArray{Tsol,3},AbstractArray{Tsol,3},Any,Any}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcAxidxi",
+    "category": "Method",
+    "text": "EulerEquationMod.calcAxidxi\n\nCalculates AxiDxi + AetaDeta at the element level\n\nInputs\n\n \nAxidxi\n : Product of flux jacobian with shape function derivative               Axi\nDxi + Aeta\nDeta\n \nshapefuncderiv\n: Shape function derivative (Dxi and Deta above)\n \nAxi\n : Flux jacobian in the xi direction\n \nAeta\n : Flux jacobian in the eta direction\n \nndof\n : Number of degrees of freedom per node\n \nnnpe\n : Number of nodes per element\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcEigenFactorization-Tuple{EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tsol,2}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcEigenFactorization",
+    "category": "Method",
+    "text": "EulerEquationMod.calcEigenFactorization\n\nComputes the eigen value facotrization of the flux jacobian in either xi or eta direction. This is a nodal level function. It is only for 2D conservative  variables.\n\nReference: Efficient Solution Methods for the Navier–Stokes Equations, T.H,            Pulliam, NASA Ames Research Center\n\nInputs\n\n \neqn\n  : Euler equation object\n \nq\n    : Conservative variables at a node\n \ndxidx\n: mapping jacobian vector. It can be either [dξ/dx dξ/dy] or              [dη/dx dη/dy] depending on what Axi or Aeta being factorized.\n \nT\n    : Matrix of eigen vectors.\n \nTinv\n : Inverse of T\n \nLambda\n : Diagonal matrix of eigen values\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcElementArea-Tuple{AbstractArray{Tmsh,2}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcElementArea",
+    "category": "Method",
+    "text": "EulerEquationMod.calcElementArea\n\nCalculates the element area of a 2D triangular element\n\nInputs\n\n \ncoords\n : Vertex coordinates of the element\n\nOutputs\n\n \narea\n : Area of the triangular element\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcFluxJacobian-Tuple{EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},AbstractArray{Tsol,1},AbstractArray{Tsol,2},AbstractArray{Tsol,2}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcFluxJacobian",
+    "category": "Method",
+    "text": "EulerEquationMod.calcFluxJacobian\n\nIt computes the Euler flux Jacobian at the nodal level in te physical space  (X & Y axes). It uses conservative variables.\n\nInputs\n\n \neqn\n  : Equation object\n \nq\n    : Conservative variables at the node\n \nAx\n   : Flux Jacobian at a node in the X-direction\n \nAy\n   : Flux Jacobian at a node in the Y-direction\n\nOutputs\n\n None \n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcStabilizationTerm-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},AbstractArray{Tsol,2}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcStabilizationTerm",
+    "category": "Method",
+    "text": "EulerEquationMod.calcStabilizationTerm\n\nCalculates the stabilization term tau for all the nodes in the mesh\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Equation object within EulerEquationMod\n \ntau\n  : Stabilization term being calculated\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcTau-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},AbstractArray{Tsol,4},Integer}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcTau",
+    "category": "Method",
+    "text": "EulerEquationMod.calcTau\n\nCalculates the stabilization term tau for GLS\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Euler equation object\n \ntau\n  : Stabilization term\n\nOutputs\n\nNone\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.circumcircleDiameter-Tuple{AbstractArray{Tmsh,2}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.circumcircleDiameter",
+    "category": "Method",
+    "text": "EulerEquationMod.circumcircleDiameter\n\nCalculates the circumcircle diameter of a triangular element\n\nInputs\n\n \ncoords\n : Vertex coordinates of the element\n\nOutputs\n\n \ndia\n : Diameter of the circumcircle\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.parametricFluxJacobian-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.parametricFluxJacobian",
+    "category": "Method",
+    "text": "EulerEquationMod.parametricFluxJacobian\n\nClaculates the flux jacobian in the parametric space for all the nodes in the mesh. It uses conservative variables\n\nInputs\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Equation object\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.applyFilter-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,AbstractArray{T,3}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.applyFilter",
+    "category": "Method",
+    "text": "EulerEquationMod.applyFilter\n\nThis function multiplies a filter matrix by the variables at every   node in the mesh.  The filter matrix is stored in eqn.params.filter_mat\n\nInputs:     mesh     sbp     eqn     opts\n\nKeyword Args:     trans=false  : transpose the filter matrix or not.\n\nInputs/Outputs:     arr: 3D array to multiply the filter matrix by\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcFilter-Tuple{SummationByParts.AbstractSBP{T<:Number},ASCIIString,Any}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcFilter",
+    "category": "Method",
+    "text": "EulerEquationMod.calcfilter\n\nThis function calculates the filter used by applyFilter().   The filter is calculated as Vfilter_kernelinv(V), where V is a matrix   that converts the interpolating SBP basis to a modal basis and filter_kernal   is a matrix (typically diagonal) that performs the filtering of the modal   basis coefficients.\n\nInputs:     sbp: SBP operator used to compute the solutions     filter_name: and ASCIIString that matches the name of a filter function.                  This string is used to retrieve the function from a dictionary                  of all supported filter function.     opts:  options dictonary\n\nOutputs:     F_ret: a numNodesPerElement x numNodesPerElement filter operator\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcLowPassFilter-Tuple{SummationByParts.AbstractSBP{T<:Number},Any}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcLowPassFilter",
+    "category": "Method",
+    "text": "EulerEquationMod.calcLowPassFilter\n\nThis function calculates a low pass filter diagonal filter matrix.\n\nInputs:     sbp: SBP operator     opts: options dictonary\n\nOutputs:     filt: numNodesPerElement x numNodesPerElement diagonal filter matrix\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcModalTransformationOp-Tuple{SummationByParts.AbstractSBP{T<:Number}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcModalTransformationOp",
+    "category": "Method",
+    "text": "EulerEquationMod.calcModalTransformationOp\n\nThis function calculates a matrix operator V that transforms from a modal   basis to an interpolating basis for SBP operators.  Because the transformation   itself is rank deficient, V is augmented with the last n vector of its Q   matrix (from the full QR decomposition), where numNodesPerElement - rank(V)   = n\n\nInputs:     sbp:  SBP operator\n\nOutputs:     V_full: a numNodesPerElement x numNodesPerElement generalized             Vandermonde matrix\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcRaisedCosineFilter-Tuple{SummationByParts.AbstractSBP{T<:Number},Any}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcRaisedCosineFilter",
+    "category": "Method",
+    "text": "EulerEquationMod.calcRaisedCosineFilter\n\nThis function constructs a diagonal matrix filt for a 2 dimensional basis   filter, using the raised cosine filter described in Spectral Methods for   the Euler Equations: Part I by Hussaini, Kproiva, Salas, Zang\n\nInputs     sbp: SBP operator     opts: options dictonary\n\nOutputs:     filt: an numNodesPerElement x numNodesPerElement diagonal filter matrix\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.getPascalLevel-Tuple{Integer}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.getPascalLevel",
+    "category": "Method",
+    "text": "EulerEquationMod.getPascalLevel\n\nThis function returns the level of Pascals Triangle a particular node   lies in.\n\nInputs:     node:  node index\n\nOutputs:     level: integer describing level of Pascals triangle.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.applyDissipation-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,AbstractArray{T,3}}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.applyDissipation",
+    "category": "Method",
+    "text": "EulerEquationMod.applyDissipation\n\nThis function multiplies the dissipation matrix operator for each element   by the values in a 3D array (typically eqn.q) for each node of the element    and stores the results in eqn.res.\n\nThe dissipation matrix operators must be stored in   eqn.dissipation_mat, a numNodesPerElement x numNodesPerElement x numEl array.\n\nInputs:     mesh     sbp     eqn     opts     arr: a 3D array to apply the dissipation matrix to\n\nAliasing restrictions: no guarantees what happens if arr is eqn.res\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.calcDissipationOperator-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.AbstractEulerData{Tsol,Tres},Any,ASCIIString}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.calcDissipationOperator",
+    "category": "Method",
+    "text": "EulerEquationMod.calcDissipationOperator\n\nThis function calculates the numNodesPerElement x numNodesPerElement    dissipation matrix operator for each element and returns them in an array   numNodesPerElement x numNodesPerElement x numEl array.\n\nThe dissipation matrix operator is calculated as epsilonfilt.'h_jac*filt,   where filt is a (usually diagonal) filter matrix, h_jac is a scaling term    that incorporates information about the shape of the element.\n\nInputs:     mesh     sbp     eqn     opts     dissipation_name: an ASCIIString of the function name used to retrieve                       the function that generates the matrix filt from a                       dictonary\n\nOutputs:     dissipation_mat: a numNodesPerElement x numNodesPerElement x numEl array\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#EulerEquationMod.getDissipationFilterOperator-Tuple{SummationByParts.TriSBP{T},Function}",
+    "page": "Stabilization",
+    "title": "EulerEquationMod.getDissipationFilterOperator",
+    "category": "Method",
+    "text": "EulerEquatoinMod.getDissipatoinFilterOperator\n\nThis function gets the dissipation filter operator used to construction   the artificial dissipation matrix.\n\nThe filter is calculated as Vfilter_kernelinv(V), where V is a matrix   that converts the interpolating SBP basis to a modal basis and filter_kernal   is a matrix (typically diagonal) that performs the filtering of the modal   basis coefficients.\n\nInputs:     sbp: SBP operator     filter: function to call to calculate the filter kernal\n\nOutputs:     F: a numNodesPerElement x numNodesPerElement filter matrix\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/stabilization.html#Functions-1",
+    "page": "Stabilization",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Pages = [\"euler/stabilization.jl\", \"euler/GLS.jl\", \"euler/filtering.jl\", \"euler/artificial_dissipation.jl\", ]"
 },
 
 {
@@ -2753,11 +3825,459 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/misc.html#EulerEquationMod.calcA0-Tuple{EulerEquationMod.ParamType{2,:entropy,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,2}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcA0",
+    "category": "Method",
+    "text": "EulerEquationMod.calcA0\n\nThis function calculates the A0 (ie. dq/dv, where q are the conservative   and v are the entropy variables) for a node, and stores it A0\n\nThe formation of A0 is given in Hughes\n\nInputs:     params : ParamType{Tdim, :entropy}     q  : vector of entropy variables, length Tdim + 2\n\nInputs/Outputs:   A0 : (Tdim+2)x(Tdim+2) matrix populated with A0.  Overwritten\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcA0-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,2}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcA0",
+    "category": "Method",
+    "text": "EulerEquationMod.calcA0\n\nThis function calculates the A0 (ie. dq/dq, where q are the conservative   variables at a node), and stores it A0.  This function is provided for   compatability purposes\n\nInputs:     params : ParamType{2, :entropy}     q  : vector of conservative variables, length 4\n\nInputs/Outputs:   A0 : 4x4 (or 5x5 in 3D)  matrix populated with A0.  Overwritten\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcA0Inv-Tuple{EulerEquationMod.ParamType{2,:entropy,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,2}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcA0Inv",
+    "category": "Method",
+    "text": "EulerEquationMod.calcA0Inv\n\nCalculates inv(A0), where A0 = dq/dv, where q are the conservative variables   at a node and v are the entropy varaibles at a node, using the entropy   variables.\n\nInputs:     params : ParamType{Tdim, :entropy}     q  : vector (length 4 or 5) of entropy variables at a node\n\nInputs/Outputs:     A0inv : matrix to be populated with inv(A0).  Overwritten.\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcA0Inv-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,2}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcA0Inv",
+    "category": "Method",
+    "text": "EulerEquationMod.calcA0Inv\n\nCalculates inv(A0), where A0 = dq/dq, where q are the conservative variables   at a node.  This function is provided for compatability purposes\n\nInputs:     params : ParamType{2, :entropy}     q  : vector (length Tdim + 2) of conservative variables at a node\n\nInputs/Outputs:     A0inv : matrix to be populated with inv(A0).  Overwritten.\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcA1-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,2}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcA1",
+    "category": "Method",
+    "text": "EulerEquationMod.calcA1\n\nThis function calculates the A1 (ie. dF1/dq, where F1 is the first column of   the Euler flux) for a node, aka the flux   Jacobian of the Euler flux in the x direction.  Methods are available for   both conservative and entropy variables.\n\nThe formation of A1 is given in Hughes paper\n\nInputs:     params : ParamType{2, :entropy}     q  : vector of entropy variables, length 4\n\nInputs/Outputs:   A1 : 4x4 matrix to be populated.  Overwritten\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcA2-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,2}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcA2",
+    "category": "Method",
+    "text": "EulerEquationMod.calcA2\n\nThis function calculates A2 (ie. dF2/dq, where F2 is the second column of the   Euler flux, aka the flux jacobian in the y direction.   Methods are available for both conservative and entropy variables.\n\nThe formation of A2 is given in Hughes\n\nInputs:     params : ParamType{2, :entropy},     q  : vector of entropy variables, length 4   Inputs/Outputs:   A2 : 4x4 matrix to be populated.  Overwritten\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEntropy-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEntropy",
+    "category": "Method",
+    "text": "EulerEquationMod.calcEntropy\n\nThis function calculates the entropy at a node and returns it.  Method are   available for conservative and entropy variables, 2D or 3D\n\nInputs:     params: ParamType{Tdim, var_type}, used to dispatch to the right method.     q: vector of solution variables at a node.\n\nReturns: entropy\n\nThis is a low level function\n\nAliasing Restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEntropyIR-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEntropyIR",
+    "category": "Method",
+    "text": "This function calculates the entropy function U used to define the IR   variablesat a node and returns it.   It does not return the physical entropy   s.  This function is agnostic to the dimension of the equation.\n\nInputs:     params: a ParamType     q: a vector of conservative variables at a node\n\nOutputs:     U: the value of the entropy function\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEulerFlux-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEulerFlux",
+    "category": "Method",
+    "text": "EulerEquationMod.calcEulerFlux\n\nThis function calculates the Euler flux from the conservative variables at    a single node in a particular direction.  2D only.\n\nInputs:    params  : ParamaterType{2, :conservative}    q  : vector of conservative variables    aux_vars : vector of auxiliary variables    dir :  vector in direction to calculate the flux\n\nInputs/Outputs:    F  : vector to populate with the flux\n\nThe Tdim paramater of params determine whether this method or the 3D    version is called.\n\nThis is a low level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEulerFlux-Tuple{EulerEquationMod.ParamType{2,:entropy,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEulerFlux",
+    "category": "Method",
+    "text": "low level function\n\nCalculates the Euler flux from entropy variables\n\nInputs:\nparams : ParameterType{Tdim, :entropy}\nq : vector of entropy variables\naux_vars : vector of auxiliary variables\ndir : vector specifying the direction to caculate the flux\n\nInputs/Outputs:\nF  : vector to populate with the flux\n\nThis is a low level function.  The static parameters of\nthe ParameterType are used to dispatch to the right method for any\ncombination of variable type or equation dimension.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEulerFlux-Tuple{EulerEquationMod.ParamType{3,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEulerFlux",
+    "category": "Method",
+    "text": "EulerEquationMod.calcEulerFlux\n\nThis is the 3D method.  All arguments are same as the 2D version.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEulerFlux_revm-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},Any,AbstractArray{Tmsh,1},AbstractArray{Tres,1},AbstractArray{Tmsh,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEulerFlux_revm",
+    "category": "Method",
+    "text": "###EulerEquationMod.calcEulerFlux_revm\n\nCompute the derivative of the euler flux in reverse mode w.r.t to unit vector flux direction.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEulerFlux_revq-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},Any,AbstractArray{Tmsh,1},AbstractArray{Tres,1},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEulerFlux_revq",
+    "category": "Method",
+    "text": "###EulerEquationMod.calcEulerFlux_revq\n\nCompute the derivative of the Euler flux in reverse mode w.r.t q\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcMaxWaveSpeed-Tuple{Any,Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,:conservative},Any}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcMaxWaveSpeed",
+    "category": "Method",
+    "text": "EulerEquationMod.calcMaxWaveSpeed\n\nThis function calculates the maximum wave speed (ie. acoustic wave speed)   present in the domain and returns it.  Methods are available for conservative   and entropy variables.  This function uses eqn.q_vec, not eqn.q to do the   calculation.\n\nThis is a mid level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcMomentContribution_rev!-Tuple{SummationByParts.AbstractFace{Tsbp},AbstractArray{Tmsh,3},AbstractArray{Tmsh,3},AbstractArray{Tsol,3},AbstractArray{Tsol,3},AbstractArray{Tmsh,1},AbstractArray{Tres,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcMomentContribution_rev!",
+    "category": "Method",
+    "text": "calcMomentContribution_rev!\n\nThis is the reverse differentiated version of calcMomentContribution!.  See docs of calcMomentContribution! for further details of the primal method.  This function is differentiated with respect to the primal version's xsbp and dforce variables.\n\nInputs\n\nsbpface\n: an SBP face operator type\nxsbp\n: SBP-face nodes in physical space; [coord, sbp node, face]\ndforce\n: scaled force at the sbpface nodes; [coord, sbp node, face]\nxyz_about\n: point about which the moment is taken\nmoment_bar\n: left multiplies d(moment)/d(xsbp) and d(moment)/d(dforce)\n\nInOuts\n\nxsbp_bar\n: result of vector Jacobian product; [coord, sbp node, face]\ndforce_bar\n: result of vector Jacobian product; [coord, sbp node, face]\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcPressure-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcPressure",
+    "category": "Method",
+    "text": "EulerEquationMod.calcPressure\n\nThis function calculates the pressure from the conservative variables at a   node in 2D.  It returns a single value.\n\nInputs:     params : ParamType{Tdim, var_type }     q  : vector of conservative variables\n\nThe parameter of params determines whether the 2D or 3D, conservative   or entropy method is dispatched.\n\nThis is a low level function.\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcPressure-Tuple{EulerEquationMod.ParamType{2,:entropy,Tsol,Tres,Tmsh},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcPressure",
+    "category": "Method",
+    "text": "EulerEquationMod.calcPressure\n\nThis function calculates pressure using the entropy variables.\n\nInputs:     params : ParamType{2, :entropy}     q  : vector of entropy varaibles\n\nreturns pressure\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcPressure-Tuple{EulerEquationMod.ParamType{3,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcPressure",
+    "category": "Method",
+    "text": "EulerEquationMod.calcPressure\n\n3D method.  See 2D method documentation\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcPressure_revq-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},Any,Any}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcPressure_revq",
+    "category": "Method",
+    "text": "###EulerEquationMod.calcPressure_revq\n\nCompute the gradient of pressure w.r.t q in the reverse mode\n\nArguments\n\nparams\n : Parameter object\nq\n : Forward sweep solution variable\npress_bar\n : Reverse pressure gradient\nq_bar\n : Reverse mode solution gradient `\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcSpeedofSound-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcSpeedofSound",
+    "category": "Method",
+    "text": "EulerEquationMod.calcSpeedofSound\n\nThis function calculates the speed of sound at a node and returns it.   Methods are available for both conservative and entropy variables.\n\nInputs:     params:  ParamType{Tdim, var_type}     q  vector of solution variables at a node\n\nReturns: speed of sound\n\nThis is a low level function\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcSteadyFluxJacobian-Tuple{Any,Any,Any,Any}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcSteadyFluxJacobian",
+    "category": "Method",
+    "text": "\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcVolumeIntegralsSplitForm-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.FluxType}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcVolumeIntegralsSplitForm",
+    "category": "Method",
+    "text": "Calculate (S .*F)1 where S is the skew symmetric part of sbp.Q and F   is a symmetric numerical flux function.  eqn.res is updated with the result.   Methods are available for curvilinear and non-curvilinear meshes\n\nInputs:     mesh     sbp     eqn     opts     functor: the numerical flux function F, of type FluxType\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcVolumeIntegrals_nopre-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcVolumeIntegrals_nopre",
+    "category": "Method",
+    "text": "Calculates the volume integrals for the weak form, computing the Euler flux   as needed, rather than using eqn.flux_parametric\n\nInputs:     mesh     sbp     eqn: eqn.res is updated with the result     opts\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcVorticity-Tuple{EulerEquationMod.ParamType{3,:conservative,Tsol,Tres,Tmsh},Any,AbstractArray{Tsol,2},AbstractArray{Tmsh,3},AbstractArray{Tmsh,1},AbstractArray{Tres,2}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcVorticity",
+    "category": "Method",
+    "text": "This function calculates the vorticity at every node of an element   (because vorticity requires derivatives of the velocity, it would be   awkward to compute it at a node level).\n\n3D, conservative variables only\n\nInputs:     params: a ParamType     q: numDofPerNode x numNodesPerElement array of conservative variables at        each node     dxidx: the 3 x 3 x numNodesPerElement  scaled  mapping jacobian at the node     jac: numNodesPerElement vector of the mapping jacobian determinant at          each node\n\nInput/Outputs:     vorticity: a 3 x numNodesPerElement array  containing the vorticity in the                x, y, and z directions at each node, overwritten\n\nAliasing restrictions: from params: dxidx_element, velocities, velocity_deriv,                                       velocity_deriv_xy\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.getAuxVars-Tuple{ODLCommonTools.AbstractMesh{Tmsh},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.getAuxVars",
+    "category": "Method",
+    "text": "EulerEquationMod.getAuxVars\n\nThis function calculates any extra variables that are stored across the mesh   using the conservative variables eqn.q.  Currently only calculates pressure.\n\nThi is a mid level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.getEulerFlux-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Misc",
+    "title": "EulerEquationMod.getEulerFlux",
+    "category": "Method",
+    "text": "EulerEquationMod.getEulerFlux\n\nThis function calculates the Euler flux across the entire mesh by passing   pieces of the eqn.q, eqn.aux_vars, eqn.f_xi and eqn.params to a low level   function.  The flux is calculated in the xi and eta directions,   scaled (mulitiplied) by the mapping jacobian (so that when performing the   integral we don't have to explictly divide by the jacobian, it just cancels   out with the jacobian factor introduced here.\n\nCalls writeFlux to do any requested output.\n\nThis is a mid level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.getEulerFlux2-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
+    "page": "Misc",
+    "title": "EulerEquationMod.getEulerFlux2",
+    "category": "Method",
+    "text": "EulerEquationMod.getEulerFlux2\n\nThis function calcules the euler flux over the entire mesh directly (ie.   does not call a low level function.  This function is deprecated, although   useful for benchmarking purposes.  2D only.\n\nThis is a mid level function\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.matVecA0-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,:entropy},Any,AbstractArray{Tsol,3}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.matVecA0",
+    "category": "Method",
+    "text": "EulerEquationMod.matVecA0\n\nThis function is the same as matVecA0inv, except it multiplies by A0 not   A0inv.  See its documention.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.matVecA0inv-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,:entropy},Any,AbstractArray{Tsol,3}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.matVecA0inv",
+    "category": "Method",
+    "text": "EulerEquationMod.matVecA0inv\n\nThis function takes a 3D array and multiplies it in place by the inv(A0)   matrix (calculated at each node), inplace, (where A0 =dq/dv, where q are the   conservative variables and v are some other variables), inplace.   Methods are available for conservative and entropy variables.\n\nFor conservative variables, A0 is the identity matrix and this is a no-op\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:     res_arr: the array to multiply\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.writeFlux-Tuple{Any,Any,Any,Any}",
+    "page": "Misc",
+    "title": "EulerEquationMod.writeFlux",
+    "category": "Method",
+    "text": "EulerEquationMod.writeFlux\n\nThis function writes the real part of Euler flux to a file named Fxi.dat,   space delimited, controlled by the input options 'writeflux', of type Bool.\n\nThis is a high level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcEnstrophy-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,3}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcEnstrophy",
+    "category": "Method",
+    "text": "Calculates ( 1/(2V) )*integral(rho * omega dot omega dV), where V is the   volume of the mesh omega is the vorticity vector, and rho is the density.   3D, conservative variables only.  This should work for CG and DG, but   has only been tested for the latter\n\nInputs:     mesh: an AbstractMesh     sbp: an SBP operator     eqn: an EulerData object     opts: options dictionary     q_arr: a 3D array of conservative variables \n\nOutputs:     val: the value of the integral (over the entire domain, not just the          part owned by this process)\n\nAliasing restrictions: see calcVorticity\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcKineticEnergy-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcKineticEnergy",
+    "category": "Method",
+    "text": "This function calculates ( 1/(2V) )integral(rho * v dot v dV), where   V is the volume of the mesh, v is the velocity vector, and rho is the density.   This is the total kinetic energy normalized by the volume of the domain   Conservative variables only.\n\nThis function contains an MPI blocking collective operation.  It must be   called by all processes at the same time.\n\nThis function relies on the sequential numbering of dofs on the same node\n\nInputs:     mesh: a mesh     sbp: an SBP Operator     eqn: an EulerData object     opts: options dictionary     q_vec: the vector of conservative variables for the entire mesh\n\nOutputs:     val: the value of the integral (over the entire domain, not just teh part          owned by this procss)\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/misc.html#EulerEquationMod.calcKineticEnergydt-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1},AbstractArray{Tres,1}}",
+    "page": "Misc",
+    "title": "EulerEquationMod.calcKineticEnergydt",
+    "category": "Method",
+    "text": "This function calclates the time derivative of calcKineticEnergy.\n\nThe idea is to expand the left hand side of d rho*u/dt = res using the    product rule and solve for du/dt, then use it to compute the integral.   Inputs:     mesh: a mesh     sbp: a SBP operator     eqn: an EulerData     opts: options dictionary     q_vec: vector of conservative variables for the entire mesh     res_vec: residual vector (dq/dt) of entire mesh\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
     "location": "solver/euler/misc.html#Miscellaneous-Function-1",
     "page": "Misc",
     "title": "Miscellaneous Function",
     "category": "section",
-    "text": "A bunch of the things in euler_funcs.jl"
+    "text": "  CurrentModule = EulerEquationModThis page documents a bunch of functions that are useful but don't fit into another catagory.Actually, some of these functions do fit into another catagory and new files should be created to move them into.A bunch of the things in euler_funcs.jl  Modules = [EulerEquationMod]\n  Pages = [\"euler/euler_funcs.jl\", \"euler/entropy_flux.jl\"]"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#",
+    "page": "Eigensystem",
+    "title": "Eigensystem",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/eigensystem.html#Eigensystem-1",
+    "page": "Eigensystem",
+    "title": "Eigensystem",
+    "category": "section",
+    "text": "  CurrentModule = EulerEquationModThe eigenvalues and eigenvectors are important for constructing upwinding schemes.  The funtions describe on this page calculate them"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcA-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,2}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcA",
+    "category": "Method",
+    "text": "This function calculate the Euler flux jacobian in the x direction from    the conservative variables.  Methods are available for 2 and 3 dimensions\n\nNote that this code calculates pressure internally (ie. it does not call   calcPressure).\n\nInputs:     params: a ParamType     q: a vector of conservative variables\n\nInputs/Outputs:     A: matrix to be populated with the flux jacobian (overwritten)\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcB-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,2}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcB",
+    "category": "Method",
+    "text": "Like calcA, but in the y directions.  See that function for details\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcC-Tuple{EulerEquationMod.ParamType{3,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,2}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcC",
+    "category": "Method",
+    "text": "Like calcA, but in the z direction.  See that function for details\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEScalingx-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEScalingx",
+    "category": "Method",
+    "text": "This function calculates the diagonal scaling matrix S^2 such that:     df/dq = (YS)Lambdainv(YS)  and     dq/dw = (YS)(Y*S).'\n\nwhere df/dx is the Euler flux jacobian in the x direction, Y and Lambda are   its eigenvectors and eigenvalues, respective (which can be calculated via    calcEvecsx and calcEvalsx),   and dq/dw is the jacobian of the conservative variables wrt the IR entropy   variables.  Recall that eigenvectors are defined up to a multiplicitive    constant, so Y*S is also a matrix of eigenvectors.\n\nThis scaling was originally reported by Merriam: An Entropy-Based Approach   to Nonlinear Stability (NASA TR).\n\nMethods are available for 2 and 3 dimensions.\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEScalingy-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEScalingy",
+    "category": "Method",
+    "text": "Like calcEScalingx, but in the y direction.  See that function for details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEScalingz-Tuple{EulerEquationMod.ParamType{3,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEScalingz",
+    "category": "Method",
+    "text": "Like calcEScalingx, but in the y direction.  See that function for details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEvalsx-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEvalsx",
+    "category": "Method",
+    "text": "This function calculates the eigenvalues for the Euler flux jacobian in the   x direction corresponding to the eigenvectors from calcEvecsx.\n\nInputs:     params: a ParamType     q: a vector of conservative variables\n\nInputs/Outputs:     Lambda: vector to be populated with the eigenvalues (overwritten)\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEvalsy-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEvalsy",
+    "category": "Method",
+    "text": "Like calcEvalsx, but in the y direction.  See that function for details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEvalsz-Tuple{EulerEquationMod.ParamType{3,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEvalsz",
+    "category": "Method",
+    "text": "Like calcEvalsx, but in the z direction.  See that function for details\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEvecsx-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,2}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEvecsx",
+    "category": "Method",
+    "text": "This function calculates the (right) eigenvectors of the Euler flux jacobian   in the x direction at a given state q.  Methods are available in 2 and 3 dimensions\n\nInputs:     params: a ParamType     q: a vector of conservative variables\n\nInputs/Outputs:     R: Matrix whose columns will be populated with the eigenvectors (overwritten)\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEvecsy-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,2}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEvecsy",
+    "category": "Method",
+    "text": "Like calcEvecsx, but for the y direction.  See that function for details\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#EulerEquationMod.calcEvecsz-Tuple{EulerEquationMod.ParamType{3,:conservative,Tsol,Tres,Tmsh},AbstractArray{T,1},AbstractArray{T,2}}",
+    "page": "Eigensystem",
+    "title": "EulerEquationMod.calcEvecsz",
+    "category": "Method",
+    "text": "Like calcEvecx, but in the z direction.  See that function for details.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/eigensystem.html#Functions-1",
+    "page": "Eigensystem",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Pages = [\"euler/eigensystem.jl\"]"
+},
+
+{
+    "location": "solver/euler/startup.html#",
+    "page": "Startup",
+    "title": "Startup",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/startup.html#Startup-1",
+    "page": "Startup",
+    "title": "Startup",
+    "category": "section",
+    "text": "  CurrentModule = EulerEquationModThis page documents the functions that start the solver."
+},
+
+{
+    "location": "solver/euler/startup.html#EulerEquationMod.run_euler-Tuple{AbstractString}",
+    "page": "Startup",
+    "title": "EulerEquationMod.run_euler",
+    "category": "Method",
+    "text": "This function invokes the solver for the Euler equations, using the   specified input file\n\nInputs:     input_file: a string containing the path to an input file, or just a file                 name.  If it is just a file name, it is taken to be in the                 users pwd.\n\nOutputs:     mesh: an AbstractMesh object     sbp: the SBP operator used in solving the equation     eqn: the AbstractSolutionData object used to solve the equation     opts: the options dictonary\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/startup.html#EulerEquationMod.createObjects-Tuple{AbstractString}",
+    "page": "Startup",
+    "title": "EulerEquationMod.createObjects",
+    "category": "Method",
+    "text": "This function creates and initializes the mesh, sbp, eqn, and opts objects\n\nInputs:     file_name: input file name\n\nOutputs:     mesh: an AbstractMesh.  The concrete type is determined by the options           dictionary     sbp: an AbstractSBP.  The concrete type is determined by the options          dictionary     eqn: an EulerData object     opts: the options dictionary     pmesh: mesh used for preconditioning, can be same object as mesh\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/startup.html#EulerEquationMod.getTypeParameters-Tuple{ODLCommonTools.AbstractMesh{Tmsh},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type}}",
+    "page": "Startup",
+    "title": "EulerEquationMod.getTypeParameters",
+    "category": "Method",
+    "text": "EulerEquationMod.getTypeParameters\n\nGets the type parameters for mesh and equation objects.\n\nInput\n\nmesh\n : Object of abstract meshing type.\neqn\n  : Euler Equation object.\n\nOutput\n\nTmsh\n : Type parameter of the mesh.\nTsol\n : Type parameter of the solution array.\nTres\n : Type parameter of the residual array.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/startup.html#EulerEquationMod.postproc-Tuple{Any,Any,Any,Any}",
+    "page": "Startup",
+    "title": "EulerEquationMod.postproc",
+    "category": "Method",
+    "text": "This function does post processing, if requested by the input options.   Typical post processing includes calculation of errors, norms of important   quantities, writing of files. etc.\n\nInputs:     mesh     sbp     eqn     opts\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/startup.html#EulerEquationMod.solve_euler",
+    "page": "Startup",
+    "title": "EulerEquationMod.solve_euler",
+    "category": "Function",
+    "text": "Given fully initialized mesh, sbp, eqn, opts, this function solves   the Euler equations.  The 4 object should be obtained from createObjects().\n\nSpecifically, it applies an initial condition and invokes a nonlinear   solver according to the options dictionary.\n\nInputs:     mesh: an AbstractMesh     sbp: an AbstractSBP     eqn: an AbstractEulerData     opts: the options dictionary.  This must be the options dictionary returned           by createObjects().  Changing values in the options dictionary after           calling createObjects() results in undefined behavior.     pmesh: mesh used for preconditioning, can be same object as mesh.            default value of mesh\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/startup.html#Functions-1",
+    "page": "Startup",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Pages = [\"euler/startup_func.jl\"]"
 },
 
 {
@@ -2797,7 +4317,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Conventions",
     "category": "section",
-    "text": "Physics modules generally use the majorIterationCallback function to log important quantities to files.  Such logging should be controlled by two keys, \"write_outname\" where outname is the name of the quantity, which has a boolean value, and \"write_outname_fname\" that has a string value containing the name of the file to write (including extension).  Examples out things that can be logged are entropy and kinetic energy.  Both these keys should have default values, and users should generally not need to modify the second one."
+    "text": "Physics modules generally use the majorIterationCallback function to log important quantities to files.  Such logging should be controlled by two keys, \"write_outname\" where outname is the name of the quantity, which has a boolean value, and \"write_outname_fname\" that has a string value containing the name of the file to write (including extension).  Examples of things that can be logged are entropy and kinetic energy.  Both these keys should have default values, and users should generally not need to modify the second one."
 },
 
 {
@@ -2845,7 +4365,23 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Key Validation",
     "category": "section",
-    "text": "After supplying default values, PDESolver checks that all keys in the dictonary are recognized keys.  It does this by comparing against the list of keys documented in the input_vals.txt file.  A warning of is printed to STDERR if an unrecognized key is found.The mechanics of the key validation are as follows.  The extract_keys.jl script reads the input_vals.txt file (and the input_vals_internal.txt), looking for any string that is surrounded by double quotes and starts in the first character of a line.  All keys are written to a dictonary in the file known_keys.jl.  This file is included by PDESolver.The script extract_keys.jl is run as part of PDESolver installation.  If new keys are added it must be run again to silence warnings during key validation.  Modules = [Input]\n  Pages = [\"input/extract_keys.jl\",\n           \"input/Input.jl\",\n           \"input/make_input.jl\",\n           \"input/read_input.jl\"]"
+    "text": "After supplying default values, PDESolver checks that all keys in the dictonary are recognized keys.  It does this by comparing against the list of keys documented in the input_vals.txt file.  A warning of is printed to STDERR if an unrecognized key is found. There is a second file, input_vals_internal.txt, which lists keys that the user should never specify. These keys are completely dependent on other keys from input_vals.txt, and specifying them inconsistently can make the solver seriously misbehave.The mechanics of the key validation are as follows.  The extract_keys.jl script reads the input_vals.txt file (and the input_vals_internal.txt), looking for any string that is surrounded by double quotes and starts in the first character of a line.  All keys are written to a dictonary in the file known_keys.jl.  This file is included by PDESolver.The script extract_keys.jl is run as part of PDESolver installation.  If new keys are added it must be run again to silence warnings during key validation.  Modules = [Input]\n  Pages = [\"input/extract_keys.jl\",\n           \"input/Input.jl\",\n           \"input/make_input.jl\",\n           \"input/read_input.jl\"]"
+},
+
+{
+    "location": "input/keys.html#",
+    "page": "Important Keys",
+    "title": "Important Keys",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "input/keys.html#Important-Keys-1",
+    "page": "Important Keys",
+    "title": "Important Keys",
+    "category": "section",
+    "text": "  CurrentModule = PDESolverThe input dictionary contains many keys.  All possible user supplied keys are listed in input_vals.txt. The purpose of this page is to describe the most important keys and use them to elucidate some of the structure of the code.The most important key is physics which specifies which physics to solve. The name must be the name the physics module registers with the front end described in Registration Functions.The run_type key specifies what kind of solver to use.  There are a variety of options, including explicit and implicit time marching methods for unsteady problems and inexact-Newton methods for steady problems. Many of the time marching methods can also be used for pseudo-time stepping of steady problems. See call_nlsolver for the complete list of values.  Physics modules should never invoke a nonlinear solver directly, they should always use call_nlsolver().The jac_method key is needed if the nonlinear solver computes a Jacobian. PDESolver supports multiple methods of computing derivatives, including finite differences and the complex step method.  The functions in the Nonlinear solvers module are required to support all methods. This key specifies which method to use. Complex step is generally recommended, finite difference are used primarily for verification.The order key specifies the degree of the operator used to discretize the spatial terms. This is analagous to the degree of the polynomial basis functions used for finite elements.smb_name is the name of the mesh file.  This is passed directly to the AbstractMesh constructor.  The mesh should already be partitioned into the correct number of parts (ie. the number of MPI processes PDESolver was launched with).  For Pumi, the partitioned mesh is comprised of many numbered files.  The smb_name should not have the numbers appended to it, and should be the same for all processes.dmg_name is the name of the geometry file associated with the mesh.IC_name is the name of the initial condition.  See Registration Functions for how to add new initial conditions.  Note that initial conditions are physics module specific and that getting an error about an unrecognized initial condition is often the result of specifying the incorrect physics.operator_type: the name of the SBP operator to use.  See createSBPOperator."
 },
 
 {
@@ -2857,11 +4393,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "NonlinearSolvers/nonlinearsolvers.html#NonlinearSolvers-Documentation-1",
+    "location": "NonlinearSolvers/nonlinearsolvers.html#NonlinearSolvers-Introduction-1",
     "page": "Introduction",
-    "title": "NonlinearSolvers Documentation",
+    "title": "NonlinearSolvers Introduction",
     "category": "section",
-    "text": ""
+    "text": "This module contains both the time-stepping methods and the methods for solving steady problems. When solving a CFD problem, these are the functions that drive the code. The purpose of the physics modules is to evaluate the spatial residual.  The purpose of the NonlinearSolvers is to solve the problem. The steady methods and implicit time-marching methods generally use some kind of Newton iteration to solve a nonlinear problem.The first two pages describe the steady and unsteady methods, respectively, and the final pages describe the Newton implementation used by them.  Pages = [ \"steady.md\"\n            \"unsteady.md\"\n            \"newton.md\"\n            \"matrix.md\"\n            \"newton_inner.md\"\n          ]\n  Depth = 1"
 },
 
 {
@@ -3049,35 +4585,75 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "NonlinearSolvers/newton.html#NewtonData-type-1",
+    "location": "NonlinearSolvers/newton.html#Jacobian-calculation-1",
     "page": "Newton's Method",
+    "title": "Jacobian calculation",
+    "category": "section",
+    "text": "Special mention of calcJacobianComplex"
+},
+
+{
+    "location": "NonlinearSolvers/matrix.html#",
+    "page": "Matrix Interface",
+    "title": "Matrix Interface",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/matrix.html#Matrix-Interface-1",
+    "page": "Matrix Interface",
+    "title": "Matrix Interface",
+    "category": "section",
+    "text": "One of the challenged of NonlinearSolvers is supporting several matrix type. The currently supported types areArray (a Julia dense matrix, column major)\nSparseMatrixCSC (a Julia implementation of compressed sparse column format)\nPetscMat (Julia wrappers of the PETSc library)Unfortunatly, these matrix types support somewhat different APIs that have little overlap. This is a problem, because it becomes difficult to write efficient,generic code, ie. code that works on all three  matrix types (without writing specialized code for each one) and performs nearly as well as an implementation specialized for a single implementation.To solve this problem, the Petsc wrappers implement an API that is much smaller than that of Array, but efficiently maps onto the capabilities of the different array types. This API should be used in NonlinearSolvers to ensure all functions support the different matrix types"
+},
+
+{
+    "location": "NonlinearSolvers/matrix.html#API-1",
+    "page": "Matrix Interface",
+    "title": "API",
+    "category": "section",
+    "text": "TODO: when the Petsc docs are finished, document them here"
+},
+
+{
+    "location": "NonlinearSolvers/newton_inner.html#",
+    "page": "Newton Inner",
+    "title": "Newton Inner",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/newton_inner.html#Newton_inner-1",
+    "page": "Newton Inner",
+    "title": "Newton_inner",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/newton_inner.html#NewtonData-type-1",
+    "page": "Newton Inner",
     "title": "NewtonData type",
     "category": "section",
     "text": ""
 },
 
 {
-    "location": "NonlinearSolvers/newton.html#setupNewton-1",
-    "page": "Newton's Method",
+    "location": "NonlinearSolvers/newton_inner.html#setupNewton-1",
+    "page": "Newton Inner",
     "title": "setupNewton",
     "category": "section",
     "text": ""
 },
 
 {
-    "location": "NonlinearSolvers/newton.html#newtonInner-1",
-    "page": "Newton's Method",
+    "location": "NonlinearSolvers/newton_inner.html#newtonInner-1",
+    "page": "Newton Inner",
     "title": "newtonInner",
     "category": "section",
     "text": ""
-},
-
-{
-    "location": "NonlinearSolvers/newton.html#Jacobian-calculation-1",
-    "page": "Newton's Method",
-    "title": "Jacobian calculation",
-    "category": "section",
-    "text": "Special mention of calcJacobianComplex"
 },
 
 {
