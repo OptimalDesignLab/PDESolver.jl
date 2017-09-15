@@ -205,7 +205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractSolutionData",
     "category": "Type",
-    "text": "ODLCommonTools.AbtractSolutionData{Tsol, Tres}\n\nThis abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:     Tsol: datatype of solution variables     Tres: datatype of the mesh variables\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -221,7 +221,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractParamType",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractParamType\n\nThis abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
+    "text": "This abstract type is the supertype for all Param objects, which hold values    needed for the computation in a place that is fast to access.\n\nThe Param type is also useful for dispatching to low level functions which     the AbstractSolutionData might not be passed (depending on the organization     of the physics module.\n\n\n\n"
 },
 
 {
@@ -237,7 +237,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractMesh",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractMesh{Tmsh}\n\nThis abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:     Tmsh: datatype of the mesh data (coordinates, mapping to/from parametric           space, mapping jacobian).\n\nSee the repo_root/doc/interfaces.md for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -841,11 +841,99 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/misc.html#ODLCommonTools.BCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.BCType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.BCType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all boundary condition functors that compute the   reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.SRCType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.SRCType",
+    "category": "Type",
+    "text": "Abstract supertype of all source term functors\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG face   integrals\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.FluxType_revm",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.FluxType_revm",
+    "category": "Type",
+    "text": "Abstract supertype of all numerical flux functions used by standard DG   face integral that compute the reverse mode with respect to the metrics\n\n\n\n"
+},
+
+{
     "location": "solver/misc.html#Abstract-Functor-Types-1",
     "page": "Assorted Function and Types",
     "title": "Abstract Functor Types",
     "category": "section",
     "text": "Abstract types are provided for commonly used Functors:BCType\nBCType_revm\nSRCType\nFluxType\nFluxType_revm"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Boundary",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Boundary",
+    "category": "Type",
+    "text": "ODLCommonTools.Boundary\n\nUsed to identify boundary faces in a finite-element grid.\n\nFields\n\nelement\n : index of the element to which the boundary face belongs\nface\n : the face index of the boundary (local index to the element)\n\nExample\n\nTo mark face 2 of element 7 to be a boundary face, use Boundary(7,2)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.Interface",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.Interface",
+    "category": "Type",
+    "text": "ODLCommonTools.Interface\n\nUsed to identify interfaces between elements in a finite-element grid.\n\nFields\n\nelementL\n : index of the so-called left element in the pair\nelementR\n : index of the so-called right element in the pair\nfaceL\n : the face index of the interface with respect to the left element\nfaceR\n : the face index of the interface with respect to the right element\norient\n : orientation of the 'right' element relative to the 'left'\n\nExample\n\nConsider an interface between elements 2 and 5.  Suppose the interface is on face 1 of element 2 and face 3 of element 5.  Furthermore, suppose element 5 has orientation 1 relative to element 1 (defintion of orientation TBD).  This can be indicated as Interface(2,5,1,3,1)\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getElementL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getElementL",
+    "category": "Function",
+    "text": "This function returns either the element field of a Boundary or the   elementL field of an interface.\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.getFaceL",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.getFaceL",
+    "category": "Function",
+    "text": "This function returns either the face field of a Boundary or the   faceL field of an Interface\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Boundary}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Boundary objects\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Base.show-Tuple{IO,ODLCommonTools.Interface}",
+    "page": "Assorted Function and Types",
+    "title": "Base.show",
+    "category": "Method",
+    "text": "Show method for Interface objects\n\n\n\n"
 },
 
 {
@@ -2873,40 +2961,64 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/cn.html#Backward-in-time-(unsteady-adjoint)-1",
-    "page": "Crank-Nicolson",
-    "title": "Backward-in-time (unsteady adjoint)",
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
+    "title": "Crank-Nicolson: Unsteady Adjoint",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#Crank-Nicolson-Unsteady-Adjoint-–-EXPERIMENTAL,-INCORRECT-CODE-1",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
+    "title": "Crank-Nicolson Unsteady Adjoint – EXPERIMENTAL, INCORRECT CODE",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#Current-status-1",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
+    "title": "Current status",
+    "category": "section",
+    "text": "As of mid-September, 2017, development of PDESolver's unsteady adjoint has been tabled for the time being. The code is preserved, and is accessible with the run_flag of 660. It runs with no errors, and produces a solution that qualititatively demonstrates properties of the correct unsteady adjoint. However, a test sensitivity check does not pass.Notation for this section:R is the residual\nA is the design variable: the amplitude of a sin function that is an exact solution to the advection equation:      \\begin{equation}     u = A \\sin(-x + \\omega t)     \\end{equation}\nJ is the objective function:     \\begin{equation}     J = \\int_{\\Gamma_1} u^2 d\\Gamma_1     \\end{equation}\n\\Gamma_1 is the right domain boundary in a square domainSome notes about current status that may be of assistance to further development or debugging:dRdA makes physical sense, and FD and CS methods match\ndJdu FD, CS, and analytical derivative match\nJ is verified by setting a polynomial solution for which SBP should be exact.\nloaded checkpoints match forward solve\nnorm of Jacobian calculated from loaded checkpoint matches forward solve's\ntime stepping bookkeeping in forward and reverse appears correct \nAdjoint initial condition equation appears to match the below derivation, as far as code-reading can show\nWhile the test sensitivity check is incorrect at all time steps,    the fact that it is incorrect at the adjoint initial condition indicates that the    bug manifests itself before the main reverse-sweep time-stepping loop.The test sensitivity check being performed is the comparison between these two derivatives:\\begin{equation} \\frac{d J}{d A} &= \\frac{\\partial J}{\\partial u} \\frac{\\partial u}{\\partial A} \\\n\\end{equation}\\begin{equation} \\frac{d J}{d A} &= \\psi^T \\left( - \\frac{\\partial R}{\\partial A}\\right) \\end{equation}For the above, note that: \\begin{equation} \\frac{\\partial J}{\\partial A} = 0 \\end{equation}"
+},
+
+{
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#Unsteady-adjoint-derivation-1",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
+    "title": "Unsteady adjoint derivation",
     "category": "section",
     "text": "The unsteady adjoint derivation starts with the generic Lagrangian equation:\\begin{equation} \\mathcal{L}(u, \\psi) = \\psi^T R(u) + J(u) \\end{equation}In the discrete context of CN, all of these variables are global-in-time. That is, the adjoint vector contains the adjoint at time step 1 concatenated with    the adjoint at time step 2, and so on, until time step n. Therefore, in this document we will rewrite the Lagrangian using bolded symbols to indicate    that a vector or matrix is global-in-time, as there will also be corresponding variables   specific to a particular time step:\\begin{equation} \\boldsymbol{\\mathcal{L}}(\\boldsymbol{u}, \\boldsymbol{\\psi}) = \\boldsymbol{\\psi}^T \\boldsymbol{R}(\\boldsymbol{u}) + \\boldsymbol{J}(\\boldsymbol{u}) \\end{equation}The global-in-time residual discretized according to the Crank-Nicolson method is:boldsymbolR(boldsymbolu) = beginbmatrix u_1 - u_0 - fracDelta t2 R(u_1) - fracDelta t2 R(u_0)  u_2 - u_1 - fracDelta t2 R(u_2) - fracDelta t2 R(u_1)  vdots  u_i - u_i-1 - fracDelta t2 R(u_i) - fracDelta t2 R(u_i-1)  u_i+1 - u_i - fracDelta t2 R(u_i+1) - fracDelta t2 R(u_i)  vdots  u_n - u_n-1 - fracDelta t2 R(u_n) - fracDelta t2 R(u_n-1) endbmatrixThe global-in-time adjoint vector is:boldsymbolpsi^T = psi_1^T psi_2^T dots psi_i^T psi_i+1^T dots psi_n^TNote that each time step's adjoint variable is a vector of length equal to the number of degrees of freedom in the mesh. And finally, the global-in-time objective function vector is:boldsymbolJ^T = J_1 J_2 dots J_i J_i+1 dots J_nTherefore, the full discrete Lagrangian is:boldsymbolmathcalL(boldsymbolu boldsymbolpsi) = boldsymbolpsi^T boldsymbolR(boldsymbolu) + boldsymbolJ(boldsymbolu) = beginbmatrix psi_1^T left( u_1 - u_0 - fracDelta t2 R(u_1) - fracDelta t2 R(u_0) right)  psi_2^T left( u_2 - u_1 - fracDelta t2 R(u_2) - fracDelta t2 R(u_1) right)  vdots  psi_i^T left( u_i - u_i-1 - fracDelta t2 R(u_i) - fracDelta t2 R(u_i-1) right)  psi_i+1^T left( u_i+1 - u_i - fracDelta t2 R(u_i+1) - fracDelta t2 R(u_i) right)  vdots  psi_n^T left( u_n - u_n-1 - fracDelta t2 R(u_n) - fracDelta t2 R(u_n-1) right) endbmatrix + beginbmatrix J(u_1)  J(u_2)  vdots  J(u_i)  J(u_i+1)  vdots  J(u_n) endbmatrixTaking the derivative of the Lagrangian with respect to the state at step i yields, for values of i not equal to 0 or n:fracpartial boldsymbolLpartial u_i = underbracepsi_i^T - psi_i^T fracDelta t2 fracpartial R(u_i)partial u_i_textcontribution from boldsymbolR(u_i) - underbracepsi_i+1^T - psi_i+1^T fracDelta t2 fracpartial R(u_i)partial u_textcontribution from boldsymbolR(u_i+1) + fracpartial J(u_i)partial u_i= 0^TOr, rearranging:fracpartial boldsymbolLpartial u_i = (psi_i - psi_i+1) - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T (psi_i + psi_i+1) + fracpartial J(u_i)partial u_i = 0"
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/cn.html#Initial-Condition-1",
-    "page": "Crank-Nicolson",
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#Initial-Condition-1",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
     "title": "Initial Condition",
     "category": "section",
     "text": "The derivative of the Lagrangian with respect to the state at the final step i = n is:fracpartial boldsymbolLpartial u_n = psi_n - fracDelta t2 left( fracpartial R(u_n)partial u_n right)^T psi_n + fracpartial J(u_n)partial u_n = 0Therefore, the value of the adjoint at time step n, which is the initial condition for the reverse sweep, is:psi_n = left( left(I - fracDelta t2 fracpartial R(u_n)partial u_n right)^T right)^-1 left( - fracpartial J(u_n)partial u_n right)^T"
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/cn.html#Direct-Solve-1",
-    "page": "Crank-Nicolson",
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#Direct-Solve-1",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
     "title": "Direct Solve",
     "category": "section",
     "text": "The method of performing a direct solve to advance the CN reverse sweep (as opposed to using Newton's method to converge each time step) starts with the restatement of the derivative of the Lagrangian at time step i:fracpartial boldsymbolLpartial u_i = underbracepsi_i^T - psi_i^T fracDelta t2 fracpartial R(u_i)partial u_i_textcontribution from boldsymbolR(u_i) - underbracepsi_i+1^T - psi_i+1^T fracDelta t2 fracpartial R(u_i)partial u_textcontribution from boldsymbolR(u_i+1) + fracpartial J(u_i)partial u_i= 0^TRearranging:left psi_i - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i right - left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right + fracpartial J(u_i)partial u_i = 0Grouping terms to isolate psi_i:left I - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T right psi_i = left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right - fracpartial J(u_i)partial u_iSolving for psi_i:psi_i = left I - fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T right^-1 left( left psi_i+1 + fracDelta t2 left( fracpartial R(u_i)partial u_i right)^T psi_i+1 right - fracpartial J(u_i)partial u_i right)Therefore, psi_i is a function of 1) the Jacobian of the primal solution at step i, which is loaded from checkpointed data, 2) the derivative of the objective function with respect to the state, at step i, and 3) the adjoint solution at time step i+1.  The adjoint solution sweep is thus stepped backwards in time, starting at time step n."
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/cn.html#Checkpointing-1",
-    "page": "Crank-Nicolson",
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#Checkpointing-1",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
     "title": "Checkpointing",
     "category": "section",
     "text": "Currently, all time steps are checkpointed.  Eventually, Revolve will be implemented, for which a separate Julia package has been developed.  See here for the publication discussing the Revolve algorithm."
 },
 
 {
-    "location": "NonlinearSolvers/unsteady/cn.html#Global-in-time-Jacobian-1",
-    "page": "Crank-Nicolson",
+    "location": "NonlinearSolvers/unsteady/cn_uadj.html#Global-in-time-Jacobian-1",
+    "page": "Crank-Nicolson: Unsteady Adjoint",
     "title": "Global-in-time Jacobian",
     "category": "section",
     "text": "For reference, the structure of the global-in-time Jacobian is shown here. It should never be formed except in the course of debugging very simple use cases,    but it can be helpful for visualizing the matrix form of CN for all space and time.(Work in progress)"
@@ -2925,7 +3037,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton's Method",
     "title": "Newton's method",
     "category": "section",
-    "text": ""
+    "text": "Newton's method is intended to compute updates to some q by solving the following equation.\\begin{equation} \\frac{\\partial f(q)}{\\partial q} \\Delta q = -f(q) \\end{equation}In the most basic implementation of Newton's method in PDESolver, q corresponds to the solution,    and f(q) corresponds to the residual evaluation of the currently selected physics module.An example of a more sophisticated use of Newton's method is within the Crank-Nicolson timestepper,    which adds another layer on top of the physics residual:\\begin{equation} \\frac{\\partial g(f(q)}{\\partial q} \\Delta q = -g(f(q)) \\end{equation}"
 },
 
 {
@@ -2933,7 +3045,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton's Method",
     "title": "Features",
     "category": "section",
-    "text": "CS FDDense Julia sparse PETSc sparse Matrix-free"
+    "text": "PDESolver's Newton's method has a wide variety of features.  It contains the Jacobian calculation routines, which can be performed currently using: * finite-differencing  * complex-stepThe Jacobian functions can act upon any arbitrary residual.Additionally, the following matrix forms are supported: * Julia dense * Julia sparse * PETSc sparse * Matrix-free"
 },
 
 {
