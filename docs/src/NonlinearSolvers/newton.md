@@ -31,13 +31,6 @@ Additionally, the following matrix forms are supported:
 * PETSc sparse
 * Matrix-free
 
-## NewtonData type
-
-
-## setupNewton
-
-## newtonInner
-
 ## Jacobian calculation
 
 Special mention of calcJacobianComplex

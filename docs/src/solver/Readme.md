@@ -1,4 +1,4 @@
-# Overview of Physics Modules
+# [Overview of Physics Modules](@id sec:physics_modules)
 
 ## `AbstractSolutionData` and Physics Module Implementation
 

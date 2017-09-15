@@ -94,6 +94,8 @@ makedocs(
                       "Crank-Nicolson" => "NonlinearSolvers/unsteady/cn.md"
                     ]
                   "Newton's Method" => "NonlinearSolvers/newton.md"
+                  "Matrix Interface" => "NonlinearSolvers/matrix.md"
+                  "Newton Inner" => "NonlinearSolvers/newton_inner.md"
                  ]
               "Utils" => Any[
                   "Main" => "Utils/Utils.md"
