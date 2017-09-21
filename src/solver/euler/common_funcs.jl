@@ -469,6 +469,8 @@ end  # end function calcZeros
   Sets the density values 1.0, x momentum to 1.0, 
   v & w momenta to 0.0, and energy to 2.0 at a node.
 
+  It should work for 2D and 3D meshes.
+
   This function uses conservative variables regardless of the static parameter
   of params.
 

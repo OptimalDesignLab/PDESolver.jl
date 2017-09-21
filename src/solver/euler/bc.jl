@@ -846,11 +846,11 @@ end # ends the function unsteadyVortex BC
 *  `bndryflux` : Computed flux value at the boundary
 
 """
-type Rho1E2U1V0W0BC <: BCType
+type Rho1E2U1VW0BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2BC, params::ParamType,
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U1VW0BC, params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
