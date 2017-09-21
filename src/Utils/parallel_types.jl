@@ -45,7 +45,7 @@
                 mesh.shared_interfaces field, before using this field
 
 """
-type SharedFaceData{T}
+type SharedFaceData{T} <: AbstractSharedFaceData{T}
   peernum::Int
   peeridx::Int
   myrank::Int
