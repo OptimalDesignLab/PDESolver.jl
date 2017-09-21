@@ -391,6 +391,20 @@ function calcRho1Energy2{Tmsh, Tsol}(params::ParamType2,
 
   return nothing
 end
+function calcRho1Energy2{Tmsh, Tsol}(params::ParamType3,
+                         coords::AbstractArray{Tmsh, 1},
+                         sol::AbstractArray{Tsol,1})
+  # for square test case with rho = 1, everything else  = 0
+
+  sol[1] = 1.0
+  sol[2] = 0.0
+  sol[3] = 0.0
+  sol[4] = 0.0
+  sol[5] = 2.0
+
+  return nothing
+end
+
 
 
 @doc """
@@ -448,6 +462,52 @@ function calcZeros{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end  # end function calcZeros
 
+
+@doc """
+### EulerEquationMod.calcRho1Energy2U1VW0
+
+  Sets the density values 1.0, x momentum to 1.0, 
+  v & w momenta to 0.0, and energy to 2.0 at a node.
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcRho1Energy2U1VW0{Tmsh, Tsol}(params::ParamType2,
+                           coords::AbstractArray{Tmsh},
+                           sol::AbstractArray{Tsol, 1})
+  # for square test case with rho = 1, digonal momentum, energy
+
+  sol[1] = 1.0
+  sol[2] = 1.0
+  sol[3] = 0.0
+  sol[4] = 2.0
+
+  return nothing
+end
+
+function calcRho1Energy2U1VW0{Tmsh, Tsol}(params::ParamType3,
+                           coords::AbstractArray{Tmsh},
+                           sol::AbstractArray{Tsol, 1})
+  # for square test case with rho = 1, digonal momentum, energy
+
+  sol[1] = 1.0
+  sol[2] = 1.0
+  sol[3] = 0.0
+  sol[4] = 0.0
+  sol[5] = 2.0
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod.calcRho1Energy2U3
