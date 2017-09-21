@@ -537,6 +537,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
     if opts["use_staggered_grid"]
       eqn.q_flux = zeros(Tsol, mesh.numDofPerNode, mesh.mesh2.numNodesPerElement, mesh.numEl)
+    else
+      eqn.q_flux = zeros(Tsol, 0, 0, 0)
     end
 
     #TODO: don't store these, recalculate as needed
