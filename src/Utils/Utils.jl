@@ -22,6 +22,7 @@ include("complexify.jl")
 include("mass_matrix.jl")
 include("curvilinear.jl")
 include("area.jl")
+include("checkpoint.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH, calcEuclidianNorm
@@ -65,6 +66,12 @@ export SharedFaceData, getSharedFaceData
 # parallel.jl
 export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master, 
        @time_all, print_time_all, verifyReceiveCommunication
+
+# checkpoint.jl
+export Checkpointer, AbstractCheckpointData, readCheckpointData,
+       saveNextFreeCheckpoint, loadLastCheckpoint, countFreeCheckpoints,
+       getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
+       freeCheckpoint
 
 @doc """
 ### Utils.disassembleSolution

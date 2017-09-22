@@ -16,9 +16,6 @@ global const Input_fname = "arg_dict_output"
 # file name step for user checkpoint data
 global const CheckpointData_fname = "checkpointdata"
 
-type MyCheckpointData
-
-
 """
   Every function that wants to checkpoint must implement an
   AbstractCheckpointData containing all the data that needs to be loaded
@@ -123,7 +120,7 @@ function Checkpointer(ncheckpoints=2, prefix="")
 
   end
 
-  checkpointer = new(ncheckpoints, paths, status, history)
+  checkpointer = Checkpointer(ncheckpoints, paths, status, history)
 
   # make sure the flag files don't exist (perhaps left over from a previous
   # run)
@@ -198,6 +195,43 @@ function Checkpointer(opts)
   return checkpointer::Checkpointer, checkpoint
 end
 
+import Base.copy, Base.copy!
+
+"""
+  Recursively copies all fields to make a new Checkpointer object.
+  Note that changes to one Checkpointer object will not affect the other
+  (ie. the record of which checkpoints are used and which are not).
+  This could easily lead to corrupting a checkpoint.
+  For this reason, this function should rarely be used
+"""
+function copy(chkpointer::Checkpointer)
+
+  ncheckpoints = chkpointer.ncheckpoints
+  paths = copy(chkpointer.paths)
+  for i=1:ncheckpoints
+    paths[i] = copy(chkpointer.paths[i])
+  end
+  status = copy(checkpointer.status)
+  history = copy(checkpointer.history)
+
+  return Checkpointer(ncheckpoints, paths, status, history)
+end
+
+"""
+  2 argument version of copy().  See that function for details
+"""
+function copy!(dest::Checkpointer, src::Checkpointer)
+
+  dest.ncheckpoints = src.ncheckpoints
+  dest.paths = copy(src.paths)
+  for i=1:dest.ncheckpoints
+    dest.paths[i] = copy(src.paths[i])
+  end
+  dest.status = copy(src.status)
+  dest.history = copy(src.history)
+
+  return nothing
+end
 #------------------------------------------------------------------------------
 # Internal functions
 
@@ -253,8 +287,8 @@ end
   is really finished.
 """
 function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
-                         mesh::AbstractMesh
-                         sbp::AbstractSBP, eqn::AbstractSolutionData
+                         mesh::AbstractMesh,
+                         sbp::AbstractSBP, eqn::AbstractSolutionData,
                          opts, checkpoint_data::AbstractCheckpointData)
 
   @assert checkpoint > 0
@@ -272,9 +306,7 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
   # record the state change now, because we have started to overwrite things
   # the options dictionary handles the case of the program getting killed
   # while the checkpoint is being written
-  checkpointer.status[checkpoint] = CheckpointUsed
-  checkpointer.last = checkpoint
-
+  markCheckpointUsed(checkpointer, checkpoint)
 
   # record which checkpoint to restart from
   opts["writing_checkpoint"] = checkpoint
@@ -359,8 +391,8 @@ end
    * eqn: an AbstractSolutionData, eqn.q_vec is overwritten
 """
 function loadCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
-                        mesh::AbstractMesh
-                        sbp::AbstractSBP, eqn::AbstractSolutionData
+                        mesh::AbstractMesh,
+                        sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts)
 
   @assert checkpoint > 0
@@ -591,8 +623,8 @@ end
    * checkpoint: the index of the checkpoint saved.
 """
 function saveNextFreeCheckpoint(checkpointer::Checkpointer,
-                                mesh::AbstractMesh
-                                sbp::AbstractSBP, eqn::AbstractSolutionData
+                                mesh::AbstractMesh,
+                                sbp::AbstractSBP, eqn::AbstractSolutionData,
                                 opts, checkpoint_data::AbstractCheckpointData)
 
   checkpoint = getNextFreeCheckpoint(checkpointer)
@@ -621,8 +653,8 @@ end
    * the checkpoint index that was loaded
 """
 function loadLastCheckpoint(checkpointer::Checkpointer,
-                            mesh::AbstractMesh
-                            sbp::AbstractSBP, eqn::AbstractSolutionData
+                            mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts)
 
   checkpoint = getLastCheckpoint(checkpointer)

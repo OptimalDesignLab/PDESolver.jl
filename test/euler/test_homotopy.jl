@@ -1,6 +1,7 @@
 # tests for homotopy.jl
 
-const test_homotopy_inputfile = "input_vals_channel.jl"
+const test_homotopy_inputfile = "input_vals_channel_dg.jl"
+#=
 const test_homotopy_moddict = Dict{ASCIIString, Any}(
   "Flux_name" => "RoeFlux", 
   "use_DG" => true, 
@@ -9,7 +10,7 @@ const test_homotopy_moddict = Dict{ASCIIString, Any}(
   "jac_type" => 1,
   "jac_method" => 2,
   "new_fname" => "input_vals_channel_dg")
-
+=#
 
 function test_homotopy(mesh, sbp, eqn, opts)
 
@@ -65,7 +66,7 @@ function test_homotopy(mesh, sbp, eqn, opts)
   return nothing
 end
 
-add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST])
+add_func2!(EulerTests, test_homotopy, test_homotopy_inputfile, [TAG_HOMOTOPY, TAG_SHORTTEST])
 
 function test_homotopy_convergence()
 

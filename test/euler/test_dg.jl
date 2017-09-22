@@ -5,11 +5,12 @@ const test_dg_inputfile = "input_vals_channel.jl"
 const test_dg_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
 
 """
-  This functino tests tests calculating fluxes as used for the DG face
+  This function tests tests calculating fluxes as used for the DG face
   integrals.
 """
 function test_dg_flux(mesh, sbp, eqn, opts)
   facts("----- Testing DG flux -----") do
+    println("typeof(eqn) = ", typeof(eqn))
 
     # test the Roe Flux
     uL = [1.0, 2.0, 3.0, 7.0]
@@ -62,7 +63,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_dg_flux(mesh, sbp, eqn, opts)
-add_func3!(EulerTests, test_dg_flux, test_dg_inputfile, test_dg_moddict, [TAG_FLUX, TAG_SHORTTEST])
+add_func2!(EulerTests, test_dg_flux, test_dg_inputfile, [TAG_FLUX, TAG_SHORTTEST])
 
 """
   This function tests DG boundary integrals, including interpolation to
@@ -131,4 +132,4 @@ function test_dg_uniform(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_dg_uniform(mesh, sbp, eqn, opts)
-add_func3!(EulerTests, test_dg_uniform, test_dg_inputfile, test_dg_moddict, [TAG_SHORTTEST])
+add_func2!(EulerTests, test_dg_uniform, test_dg_inputfile, [TAG_SHORTTEST])
