@@ -95,7 +95,7 @@ end
 
    * a Checkpointer object, fully initialized
 """
-function Checkpointer(ncheckpoints=2, prefix="")
+function Checkpointer(ncheckpoints::Integer=2, prefix::ASCIIString="")
 
   paths = Array(ASCIIString, ncheckpoints)
   status = Array(Int, ncheckpoints)
@@ -111,8 +111,8 @@ function Checkpointer(ncheckpoints=2, prefix="")
 
     # create an absolute path in case the user calls cd() somewhere else in
     # the code
-    paths = joinpath(pwd(), "$(prefix)checkpoint$i")
-    status[i] = checkpointFree
+    paths[i] = joinpath_ascii(pwd(), "$(prefix)checkpoint$i")
+    status[i] = CheckpointFree
 
     if !isdir(paths[i])
       mkdir(paths[i])
@@ -149,11 +149,12 @@ end
 
    * a Checkpointer object, fully initialized and aware of which checkpoints
      are in use and which are free
-   * the index of the checkpoint that was loaded. 
 
   This function only loads the Checkpointer from the checkpoint.
   See [`loadLastCheckpoint`](@ref) and [`readCheckpointData`](@ref) to
   load the rest of checkpoint data.
+  The checkpoint that was loaded can be accessed via [`getLastCheckpoint`](@ref)
+
 
   Implementation notes:
 
@@ -170,7 +171,7 @@ end
 
     The Checkpointer object is the same on all processes.
 """
-function Checkpointer(opts)
+function Checkpointer(opts::Dict)
 
   # figure out whether checkpoint that was in the process of being written
   # finished.
@@ -179,7 +180,7 @@ function Checkpointer(opts)
   checkpoint2_path = opts["most_recent_checkpoint_path"]
 
   if checkFlagFile(checkpoint1_path)
-    checkpoint = opts["writing_checking"]
+    checkpoint = opts["writing_checkpoint"]
     checkpoint_path = checkpoint1_path
   else
     @assert checkFlagFile(checkpoint2_path)
@@ -187,12 +188,12 @@ function Checkpointer(opts)
     checkpoint_path = checkpoint2_path
   end
 
-  fname = joinpath(checkpoint_path, Checkpointer_fname)
+  fname = joinpath_ascii(checkpoint_path, Checkpointer_fname)
   f = open(fname, "r")
   checkpointer = deserialize(f)
   close(f)
 
-  return checkpointer::Checkpointer, checkpoint
+  return checkpointer::Checkpointer
 end
 
 import Base.copy, Base.copy!
@@ -245,7 +246,7 @@ end
 """
 function writeCheckpointer(chkpointer::Checkpointer, checkpoint::Int)
 
-  fname = joinpath(chkpointer.paths[checkpoint], Checkpointer_fname)
+  fname = joinpath_ascii(chkpointer.paths[checkpoint], Checkpointer_fname)
   f = open(fname, "w")
   serialize(f, chkpointer)
   close(f)
@@ -314,7 +315,7 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
 
   # write the solution to the file
   # note: the residual is not saved
-  solution_fname = joinpath(checkpointer.paths[checkpoint], Solution_fname)
+  solution_fname = joinpath_ascii(checkpointer.paths[checkpoint], Solution_fname)
   writeSolutionFiles(mesh, sbp, eqn, opts, solution_fname)
 
  
@@ -332,7 +333,7 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
     opts_restart["is_restart"] = true  # general flag that all parts of
                                        # the code will have to look for
 
-    opts_fname = joinpath(checkpointer.paths[checkpoint], Input_fname)
+    opts_fname = joinpath_ascii(checkpointer.paths[checkpoint], Input_fname)
     make_input(opts_restart, opts_fname)
 
     #TODO: deal with mesh adaptation
@@ -357,7 +358,7 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
 
   # write flag file
   if mesh.myrank == 0
-    writeFlagfile(checkpointer, checkpoint)
+    writeFlagFile(checkpointer, checkpoint)
   end
   opts["most_recent_checkpoint"] = checkpoint
   opts["most_recent_checkpoint_path"] = checkpointer.paths[checkpoint]
@@ -403,31 +404,12 @@ function loadCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
   end
 
 
-  solution_fname = joinpath(checkpointer.paths[checkpoint], Solution_fname)
+  solution_fname = joinpath_ascii(checkpointer.paths[checkpoint], Solution_fname)
   readSolutionFiles(mesh, sbp, eqn, opts, solution_fname)
   
   # we can't load the AbstractCheckpointData here in a type stable way
 
   return nothing
-end
-
-"""
-  This function returns the index of the next free checkpoint,  or 0 if
-  there are no free checkpoints
-
-  **Input**
-
-   * checkpointer: a Checkpointer
-"""
-function getNextFreeCheckpoint(checkpointer::Checkpointer)
-
-  for i=1:checkpointer.ncheckpoints
-    if checkpointer.status[i] == CheckpointFree
-      return i
-    end
-  end
-
-  return 0  # no free checkpoints
 end
 
 # file name of flag file
@@ -447,7 +429,7 @@ global const FlagFile_val = Int64(42)
 """
 function writeFlagFile(checkpointer::Checkpointer, checkpoint::Integer)
 
-  fpath = joinpath(checkpointer.paths[checkpoint], FlagFile_fname)
+  fpath = joinpath_ascii(checkpointer.paths[checkpoint], FlagFile_fname)
   f = open(fpath, "w")
   write(f, FlagFile_val)
   close(f)
@@ -480,13 +462,13 @@ end
 """
 function checkFlagFile(fpath::AbstractString)
 
-  fpath = joinpath(fpath, FlagFile_fname)
+  fpath = joinpath_ascii(fpath, FlagFile_fname)
   if !isfile(fpath)
     return false
   end
 
   f = open(fpath, "r")
-  val = write(f, typeof(FlagFile_val))
+  val = read(f, typeof(FlagFile_val))
   close(f)
 
   if val == FlagFile_val
@@ -508,7 +490,7 @@ end
 """
 function deleteFlagFile(checkpointer::Checkpointer, checkpoint::Integer)
 
-  fpath = joinpath(checkpointer.paths[checkpoint], FlagFile_fname)
+  fpath = joinpath_ascii(checkpointer.paths[checkpoint], FlagFile_fname)
   if isfile(fpath)
     rm(fpath)
   end
@@ -531,7 +513,7 @@ function writeCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
                              obj::AbstractCheckpointData, comm_rank::Integer)
 
   fname = string(get_parallel_fname(CheckpointData_fname, comm_rank), ".dat")
-  fpath = joinpath(chkpointer.paths[chkpoint], fname)
+  fpath = joinpath_ascii(chkpointer.paths[chkpoint], fname)
 
   f = open(fname, "w")
   serialize(f, obj)
@@ -550,20 +532,23 @@ end
 """
 function markCheckpointUsed(chkpointer::Checkpointer, chkpoint::Integer)
 
-  @assert chkpointer.status[i] == CheckpointFree
+  @assert chkpointer.status[chkpoint] == CheckpointFree
 
-  chkpointer.status[i] = CheckpointUsed
+  chkpointer.status[chkpoint] = CheckpointUsed
 
   # shift everything right by one
   @assert chkpointer.history[end] == -1  # there has to be at least one unused
   last_idx = 0
   for i=1:chkpointer.ncheckpoints
     if chkpointer.history[i] == -1
-      last_idx = -1
+      last_idx = i
+      break
     end
   end
+ 
 
-  for i=last_idx:-1:1
+
+  for i=(last_idx-1):-1:1
     chkpointer.history[i+1] = chkpointer.history[i]
   end
 
@@ -593,10 +578,10 @@ function readCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
                             comm_rank::Integer)
 
   fname = string(get_parallel_fname(CheckpointData_fname, comm_rank), ".dat")
-  fpath = joinpath(chkpointer.paths[chkpoint], fname)
+  fpath = joinpath_ascii(chkpointer.paths[chkpoint], fname)
 
   f = open(fname, "r")
-  obj = deserialize(f, obj)
+  obj = deserialize(f)
   close(f)
 
   return obj
@@ -683,6 +668,26 @@ function countFreeCheckpoints(checkpointer::Checkpointer)
 end
 
 """
+  This function returns the index of the next free checkpoint,  or 0 if
+  there are no free checkpoints
+
+  **Input**
+
+   * checkpointer: a Checkpointer
+"""
+function getNextFreeCheckpoint(checkpointer::Checkpointer)
+
+  for i=1:checkpointer.ncheckpoints
+    if checkpointer.status[i] == CheckpointFree
+      return i
+    end
+  end
+
+  return 0  # no free checkpoints
+end
+
+
+"""
   This function returns the index of the most recently written checkpoint
 
   **Inputs**
@@ -712,8 +717,8 @@ end
 function getOldestCheckpoint(checkpointer::Checkpointer)
 
   last_idx = checkpointer.ncheckpoints
-  for i=1:checkpointer.ncheckpoints
-    if checkpointer.history[i] == -1
+  for i=checkpointer.ncheckpoints:-1:1
+    if checkpointer.history[i] != -1
       last_idx = i
       break
     end
@@ -728,13 +733,17 @@ end
   **Inputs**
 
    * checkpointer: the Checkpointer
+
+  **Outputs**
+
+   * returns the checkpoint freed
 """
 function freeOldestCheckpoint(checkpointer::Checkpointer)
 
   checkpoint = getOldestCheckpoint(checkpointer)
   freeCheckpoint(checkpointer, checkpoint)
 
-  return nothing
+  return checkpoint
 end
 
 """
@@ -750,6 +759,7 @@ end
 """
 function freeCheckpoint(checkpointer::Checkpointer, checkpoint::Integer)
 
+  println("freeing checkpoint ", checkpoint)
   @assert checkpoint > 0
   @assert checkpoint <= checkpointer.ncheckpoints
 
@@ -767,21 +777,26 @@ function freeCheckpoint(checkpointer::Checkpointer, checkpoint::Integer)
     end
   end
 
+  println("checkpoint_idx = ", checkpoint_idx)
+
   last_idx = 0
   for i=1:checkpointer.ncheckpoints
     if checkpointer.history[i] == -1
-      last_idx = i
+      last_idx = i - 1
       break
     end
   end
+
+  println("last_idx = ", last_idx)
 
   # shift all entries after the checkpoint to be removed left by one
   for i=checkpoint_idx:last_idx
     checkpointer.history[i] = checkpointer.history[i+1]
   end
 
-  checkpointer.histor[last_idx] = -1  # the last one is now unused
-  checkpointer.status[checkpoint] == CheckpointFree
+  println("finished shifting history")
+  checkpointer.history[last_idx] = -1  # the last one is now unused
+  checkpointer.status[checkpoint] = CheckpointFree
 
   return nothing
 end

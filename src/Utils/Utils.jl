@@ -11,6 +11,7 @@ using ArrayViews
 using MPI
 using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
+using Input
 
 include("output.jl")
 include("parallel_types.jl")
@@ -71,7 +72,7 @@ export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master,
 export Checkpointer, AbstractCheckpointData, readCheckpointData,
        saveNextFreeCheckpoint, loadLastCheckpoint, countFreeCheckpoints,
        getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
-       freeCheckpoint
+       freeCheckpoint, getNextFreeCheckpoint
 
 @doc """
 ### Utils.disassembleSolution
