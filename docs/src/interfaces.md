@@ -247,7 +247,7 @@ the mesh variable in the future.
   interfaces::AbstractArray{Interface, 1}
 
   # degree of freedom number data
-  dofs::AbstractArray{Integer, 2}
+  dofs::AbstractArray{Integer, 3}
   dof_offset::Int
   sparsity_bnds::AbstractArray{Integer, 2}
   sparsity_nodebnds::AbstractArray{Integer, 2}
@@ -267,6 +267,9 @@ the mesh variable in the future.
   local_element_lists::Array{Array{Int, 1}, 1}
 
 ```
+
+TODO: update with vert_coords etc
+
 #### Counts
 
 `numVert`:  number of vertices in the mesh

@@ -408,6 +408,14 @@ get!(arg_dict, "adjoint_straight", false)
 get!(arg_dict, "uadj_global", false)
 get!(arg_dict, "use_Minv_override_for_uadj", false)
 
+
+# checkpointing/restart options
+get!(arg_dict, "most_recent_checkpoint", -1)
+get!(arg_dict, "most_recent_checkpoint_path", "")
+get!(arg_dict, "writing_checkpoint", -1)
+get!(arg_dict, "writing_checkpoint_path", "")
+get!(arg_dict, "is_restart", false)
+
 checkForIllegalOptions_post(arg_dict)
 
 # write complete dictionary to file

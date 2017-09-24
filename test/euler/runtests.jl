@@ -55,6 +55,7 @@ include("Utils.jl")
 include("test_parallel.jl")
 include("test_homotopy.jl")
 include("test_staggered.jl")
+include("test_checkpoint.jl")
 
 #------------------------------------------------------------------------------
 # run tests
