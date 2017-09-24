@@ -327,9 +327,6 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
   if mesh.myrank == 0
     # create a file suitable for restarting
     opts_restart = copy(opts)
-    #TODO: will the IC even be used if we are restarting?
-    opts_restart["IC_name"] = "ICFile"  
-    opts_restart["ICfname"] = solution_fname
     opts_restart["is_restart"] = true  # general flag that all parts of
                                        # the code will have to look for
 
@@ -759,7 +756,6 @@ end
 """
 function freeCheckpoint(checkpointer::Checkpointer, checkpoint::Integer)
 
-  println("freeing checkpoint ", checkpoint)
   @assert checkpoint > 0
   @assert checkpoint <= checkpointer.ncheckpoints
 
@@ -777,8 +773,6 @@ function freeCheckpoint(checkpointer::Checkpointer, checkpoint::Integer)
     end
   end
 
-  println("checkpoint_idx = ", checkpoint_idx)
-
   last_idx = 0
   for i=1:checkpointer.ncheckpoints
     if checkpointer.history[i] == -1
@@ -787,14 +781,11 @@ function freeCheckpoint(checkpointer::Checkpointer, checkpoint::Integer)
     end
   end
 
-  println("last_idx = ", last_idx)
-
   # shift all entries after the checkpoint to be removed left by one
   for i=checkpoint_idx:last_idx
     checkpointer.history[i] = checkpointer.history[i+1]
   end
 
-  println("finished shifting history")
   checkpointer.history[last_idx] = -1  # the last one is now unused
   checkpointer.status[checkpoint] = CheckpointFree
 
