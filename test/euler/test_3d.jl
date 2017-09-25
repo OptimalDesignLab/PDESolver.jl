@@ -486,6 +486,7 @@ add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST])
 function test_3d_bc(mesh, sbp, eqn, opts)
   facts("----- Testing BC Solvers -----") do
 
+    params = eqn.params
     q = [1., 2, 3, 4, 15]
     F = zeros(q)
     F2 = zeros(q)
@@ -496,11 +497,33 @@ function test_3d_bc(mesh, sbp, eqn, opts)
     dxidx = mesh.dxidx[:, :, 1, 1]
     nrm_xy = zeros(mesh.dim)
 
-    calcBCNormal(eqn.params, dxidx, nrm, nrm_xy)
-    EulerEquationMod.RoeSolver(eqn.params, q, q, aux_vars, nrm_xy, F2)
-    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
+    calcBCNormal(params, dxidx, nrm, nrm_xy)
+    EulerEquationMod.RoeSolver(params, q, q, aux_vars, nrm_xy, F2)
+    EulerEquationMod.calcEulerFlux(params, q, aux_vars, dir, F)
 
     @fact F2 --> roughly(F, atol=1e-13)
+
+    func1 = EulerEquationMod.noPenetrationESBC()
+    # make velocity parallel to the boundary
+    nrm = mesh.nrm_bndry[:, 1, 1]
+    tngt = mesh.coords_bndry[:, 2, 1] - mesh.coords_bndry[:, 1, 1]
+    tngt = tngt./norm(tngt)
+    vval = 3
+    q = [1., vval*tngt[1], vval*tngt[2], vval*tngt[3], 15]
+    aux_vars = eqn.aux_vars[:, 1, 1]
+    coords = mesh.coords_bndry[:, 1, 1]
+
+
+    func1(params, q, aux_vars, coords, nrm, F2)
+    EulerEquationMod.calcEulerFlux(params, q, aux_vars, nrm, F)
+
+    @fact F2 --> roughly(F, atol=1e-13)
+
+    func1 = EulerEquationMod.noPenetrationBC()
+    func1(params, q, aux_vars, coords, nrm, F2)
+
+    @fact F2 --> roughly(F, atol=1e-13)
+
   end  # end facts block
 
   return nothing

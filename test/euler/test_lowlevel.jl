@@ -548,12 +548,18 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
     nrm2 = [dxidx[2,1], dxidx[2,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
-
+   
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
     @fact F_roe --> roughly(F) 
+
+    # test the entropy stable BC
+    func2 = EulerEquationMod.noPenetrationESBC()
+    func2(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
+
+    @fact F_roe --> roughly(F)
 
     EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, q)
     func1 = EulerEquationMod.Rho1E2U3BC()

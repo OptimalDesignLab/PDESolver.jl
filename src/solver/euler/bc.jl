@@ -587,6 +587,86 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
   return nothing
 end
 
+type noPenetrationESBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+# a clever optimizing compiler will clean this up
+# there might be a way to do this with fewer flops using the tangent vector
+
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+#  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+#  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  # Get the normal momentum
+  Unrm = nx*q[2] + ny*q[3]
+
+  # this is equivalent to:
+  #   1. computing the normal and tangential components
+  #   2. negating the normal component
+  #   3. combining the negative normal and non-negated tangent component
+  qg = params.qg
+  qg[1] = q[1]
+  qg[2] = -2*Unrm*nx + q[2]
+  qg[3] = -2*Unrm*ny + q[3]
+  qg[4] = q[4]
+
+  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+
+  return nothing
+end
+
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType3,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+# a clever optimizing compiler will clean this up
+# there might be a way to do this with fewer flops using the tangent vector
+
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  nz = nrm_xy[3]
+#  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+#  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+#  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
+  # normalize normal vector
+  nx = nx*fac
+  ny = ny*fac
+  nz = nz*fac
+
+  # this is momentum, not velocity?
+  Unrm = nx*q[2] + ny*q[3] + nz*q[4]
+
+  qg = params.qg
+  qg[1] = q[1]
+  qg[2] = -2*Unrm*nx + q[2]
+  qg[3] = -2*Unrm*ny + q[3]
+  qg[4] = -2*Unrm*nz + q[4]
+  qg[5] = q[5]
+
+  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+
+  return nothing
+end
+
+
+
 @doc """
 ###EulerEquationMod.noPenetrationBC_revm
 
@@ -1140,6 +1220,7 @@ end
 global const BCDict = Dict{ASCIIString, BCType}(
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
+"noPenetrationESBC" => noPenetrationESBC(),
 "Rho1E2U3BC" => Rho1E2U3BC(),
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),

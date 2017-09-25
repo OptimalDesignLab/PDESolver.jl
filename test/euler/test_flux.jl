@@ -18,14 +18,18 @@ end
 """
   Test that a flux is symmetric.  This is not a test function itself, but it
   is called by test functions
+
+  if test_symmetry = false, then only consistency is tested
 """
-function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler; test_symmetry=true)
 
   # test symmetry
-  functor(params, qL, qR, aux_vars, nrm, F_num)
-  functor(params, qR, qL, aux_vars, nrm, F_num2)
-  for i=1:length(F_num)
-    @fact F_num[i] --> roughly(F_num2[i], atol=1e-12)
+  if test_symmetry
+    functor(params, qL, qR, aux_vars, nrm, F_num)
+    functor(params, qR, qL, aux_vars, nrm, F_num2)
+    for i=1:length(F_num)
+      @fact F_num[i] --> roughly(F_num2[i], atol=1e-12)
+    end
   end
 
   # test consistency
@@ -127,6 +131,9 @@ function test_flux_2d()
 
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    
+    functor = EulerEquationMod.FluxDict["LFFlux"]
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler, test_symmetry=false)
 
     functor = EulerEquationMod.FluxDict["IRFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)

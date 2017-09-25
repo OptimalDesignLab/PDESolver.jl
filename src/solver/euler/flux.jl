@@ -820,6 +820,21 @@ function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType,
   return nothing
 end
 
+type LFFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::LFFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F::AbstractVector{Tres})
+
+  calcLFFlux(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
+
+
 type StandardFlux <: FluxType
 end
 
@@ -899,6 +914,7 @@ end
 global const FluxDict = Dict{ASCIIString, FluxType}(
 "IdentityFlux" => IdentityFlux(),
 "RoeFlux" => RoeFlux(),
+"LFFlux" => LFFlux(),
 "StandardFlux" => StandardFlux(),
 "DucrosFlux" => DucrosFlux(),
 "IRFlux" => IRFlux(),
