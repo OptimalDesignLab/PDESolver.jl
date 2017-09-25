@@ -1026,6 +1026,29 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
   return nothing
 end
 
+"""
+  Calculates the Lax-Friedrich flux function on the conservative variables
+"""
+function calcLFFlux{Tmsh, Tsol, Tres, Tdim}(
+                      params::ParamType{Tdim, :conservative},
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tsol, 1},
+                      dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1})
+
+  # compute Euler flux of left and right states
+  fluxL = params.flux_vals1
+  fluxR = params.flux_vals2
+  calcEulerFlux(params, qL, aux_vars, dir, fluxL)
+  calcEulerFlux(params, qR, aux_vars, dir, fluxR)
+  lambda_max = getLambdaMaxSimple(params, qL, qR, dir)
+
+  for i=1:length(F)
+    F[i] = 0.5*(fluxL[i] + fluxR[i] - lambda_max*(qR[i] - qL[i]))
+  end
+
+  return nothing
+end
+
 #=
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
