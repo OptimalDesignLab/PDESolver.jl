@@ -1613,7 +1613,7 @@ function calcEulerFlux_IRSLW{Tmsh, Tsol, Tres}(params::ParamType,
                       aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
                       nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
-
+  #TODO: remove this method
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
   calcEulerFlux_IRSLW(params, qL, qR, aux_vars, nrm2, F)

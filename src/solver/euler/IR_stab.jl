@@ -221,6 +221,7 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
     dA += dir[i]*dir[i]
   end
   dA = sqrt(dA)
+  lambda_max = absvalue(Un) + dA*a
 #=
   println("qL = \n", qL)
   println("qR = \n", qR)
@@ -231,7 +232,7 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
   # the sign of Un, the maximum is abs(Un) + dA*a
 #  lambda_max1 = absvalue(Un) + dA*a
 #  println("lambda_max1 = ", lambda_max1)
-
+#=
   # use the Roe solver code
   rhoA = absvalue(Un) + dA*a
   lambda1 = Un + dA*a
@@ -253,7 +254,7 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
 #  lambda_max2 = getLambdaMax(params, qL, qR, dir)
 #  println("lambda_max1 = ", lambda_max1, ", lambda_max2 = ", lambda_max2)
   lambda_max = lambda_max1
-
+=#
 #  println("lambda_max = ", lambda_max)
   fac = 1
   for i=1:length(vR)

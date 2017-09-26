@@ -24,6 +24,8 @@ include("IR_stab.jl")  # stabilization for the IR flux
   Note that nrm_xy must contains the normal vector in x-y space at the
   face nodes.
 
+  The flux function must be symmetric!
+
   Aliasing restrictions: none, although its unclear what the meaning of this
                          function would be if resL and resR alias
 
