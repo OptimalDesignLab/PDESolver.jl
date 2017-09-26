@@ -3,20 +3,27 @@
 @doc """
 ### EulerEquationMod.calcAdjoint
 
-Calculates the adjoint vector for a single functional
+Calculates the adjoint vector, ψ, for a single functional. The user must always
+call this function in order to compute the adjoint vector. Currently only DG meshes
+are supported. The function performs a direct solve using Julia's  `\\` operator.
+For parallel meshes, a PETSc solve is done using ILU factorization.
 
 **Inputs**
 
 *  `mesh` : Abstract DG mesh type
 *  `sbp`  : Summation-By-parts operator
 *  `eqn`  : Euler equation object
-*  `functor` : functional to be evaluated
-*  `functional_number` : Numerical identifier to obtain geometric edges on
-                         which a functional acts
-*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint
-                   vector has the same size as eqn.q_vec, i.e. every rank has its
+*  `opts` : Options dictionary
+*  `functionalData` : Object corresponding the boundary functional being
+                      computed. It must be a subtype of `AbstractOptimizationData`
+*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint  
+                   vector is distributed over the processors similar to
+                   eqn.q_vec i.e. every rank has its
                    share of the adjoint vector corresponding to the dofs on the
                    rank.
+
+*  `functional_number` : Numerical identifier to obtain geometric edges on
+                         which a functional acts
 
 **Outputs**
 
@@ -86,6 +93,74 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   writeVisFiles(mesh, fname)
 
   return nothing
+end
+
+@doc """
+###EulerEquationMod.calcResidualJacobian
+
+The function calculates the residual for computing the adjoint vector. The
+function allows for jacobian to be computed depending on the jacobian type
+specified in the options dictionary `jac_type`.
+
+**Input**
+
+* `mesh` : Abstract mesh object
+* `sbp`  : Summation-By-parts operator
+* `eqn`  : Euler equation object
+* `opts` : Options dictionary
+
+**Output**
+
+* `jac` : Jacobian matrix
+
+"""->
+
+function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+         sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+
+  jac_type = opts["jac_type"]
+  Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
+  if jac_type == 4 # For now. Date: 28/11/2016
+    error("jac_type = 4 not yet supported")
+  end
+  jacData = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
+
+  # Initialize shape of Jacobian Matrix
+  if jac_type == 1
+    jac = zeros(Tjac, mesh.numDof, mesh.numDof)
+  elseif jac_type == 2
+    if typeof(mesh) <: AbstractCGMesh
+      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tjac)
+    else
+      jac = SparseMatrixCSC(mesh, Tjac)
+    end
+  elseif jac_type == 3
+    obj_size = PetscInt(mesh.numDof)
+    jac = PetscMat(eqn.comm)
+    PetscMatSetFromOptions(jac)
+    PetscMatSetType(jac, PETSc.MATMPIAIJ)
+    PetscMatSetSizes(jac, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
+    if mesh.isDG
+      MatSetOption(jac, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
+    end
+    # Preallocate matrix jac
+    dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
+    onnz = zeros(PetscInt, mesh.numDof)
+    for i = 1:mesh.numDof
+      dnnz[i] = mesh.sparsity_counts[1, i]
+      onnz[i] = mesh.sparsity_counts[2, i]
+    end
+    PetscMatMPIAIJSetPreallocation(jac, PetscInt(0),  dnnz, PetscInt(0), onnz)
+    MatSetOption(jac, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+    PetscMatZeroEntries(jac)
+    matinfo = PetscMatGetInfo(jac, Int32(1))
+  end
+
+  # Now function call for calculating Jacobian
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, jac, ctx_residual)
+
+  return jac, jacData
 end
 
 @doc """

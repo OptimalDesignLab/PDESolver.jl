@@ -1256,7 +1256,24 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(
 end
 =#
 
+"""
+  Calculates the numerical flux function associated with the Ducros flux
+  splitting.  Methods are available for 2D and 3D.
 
+  **Inputs**:
+
+   * params:
+   * qL: the left state
+   * qR: the right state
+   * aux_vars: the aux vars for the left state
+   * dir: the direction vector
+
+
+  **Inputs/Outputs**:
+
+   * F: vector to be populated with the flux
+
+"""
 function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
@@ -1337,15 +1354,17 @@ end
   This function calculates the Ismail-Roe numerical flux at a node in a
   specified direction
 
-  Inputs:
-    params: ParamType
-    qL: left state vector
-    qR: right state vector
-    aux_vars: auxiliary variable vector for qL
-    dir: a direction vector of length Tdim
+  **Inputs**:
 
-  Inputs/Outputs:
-    F: a numDofPerNode x Tdim matrix where each column will be populated with
+   * params: ParamType
+   * qL: left state vector
+   * qR: right state vector
+   * aux_vars: auxiliary variable vector for qL
+   * dir: a direction vector of length Tdim
+
+  **Inputs/Outputs**:
+
+   * F: a numDofPerNode x Tdim matrix where each column will be populated with
        the flux in the direction specified by the corresponding column of nrm
 
   Aliasing Restrictions: none
@@ -1392,15 +1411,17 @@ end
   Than calling the single direction method Tdim times.  Methods are available
   for 2 and 3 dimensions.
 
-  Inputs:
-    params: ParamType
-    qL: left state vector
-    qR: right state vector
-    aux_vars: auxiliary variable vector for qL
-    dir: a Tdim x Tdim matrix with each column containing a normal vector
+  **Inputs**:
 
-  Inputs/Outputs:
-    F: a numDofPerNode x Tdim matrix where each column will be populated with
+   * params: ParamType
+   * qL: left state vector
+   * qR: right state vector
+   * aux_vars: auxiliary variable vector for qL
+   * dir: a Tdim x Tdim matrix with each column containing a normal vector
+
+  **Inputs/Outputs**:
+
+   * F: a numDofPerNode x Tdim matrix where each column will be populated with
        the flux in the direction specified by the corresponding column of nrm
 
   Aliasing restrictions: none

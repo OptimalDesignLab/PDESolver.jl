@@ -5,9 +5,9 @@ export evalFunctional, calcBndryfunctional, getFunctionalName
 ### AdvectionEquationMod.evalFunctional
 
 Hight level function that evaluates functionals specified in the options
-dictionary. This function is agnostic which type of a functional is being
-computed and calls a mid level type specific function for the actual functional
-evaluation.
+dictionary. The user must call this function for functional evaluation.This
+function is agnostic which type of a functional is being computed and calls a
+mid level type specific function for the actual functional evaluation.
 
 **Arguments**
 
@@ -18,7 +18,7 @@ evaluation.
 *  `functionalData` : Object of the functional being computed.
 *  `functional_number` : Optional argument. This needs to be specified for all
                          non-objective functionals being computed, if there are
-                         more than 1 of them.
+                         more than 1 of them. Default = 1
 
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},

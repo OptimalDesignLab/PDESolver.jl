@@ -8,9 +8,13 @@ include("bc_solvers.jl")  # Roe solvers and related things
 
   This function calls other functions to calculate the boundary fluxes, passing
   them pieces of the array needed.  This populates eqn.bndryflux.  It also
-  calls writeBoundary() to do any requested output.
+  calls writeBoundary() to do any requested output.  If the options dictionary
+  specifies not to precompute the boundary flux, this function will do the
+  integration as well and update `eqn.res`.
 
-  This is a mid level function
+  This is a mid level function.
+
+  
 """->
 # this is a mid level function
 function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)

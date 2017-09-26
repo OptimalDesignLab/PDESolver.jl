@@ -10,20 +10,22 @@
 
   Conservative variables only!
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    functor: the functor that calculates the flux at a node
-    interfaces: an array of type Interface that specifies which interfaces
+  **Inputs**:
+
+   * mesh
+   * sbp
+   * eqn
+   * functor: the functor that calculates the flux at a node
+   * interfaces: an array of type Interface that specifies which interfaces
                 to calculate the flux for
 
-  Inputs/Outputs:
-    face_flux: array to store the flux in, numDofPerNode x nnodesPerFace
+  **Inputs/Outputs**:
+   * face_flux: array to store the flux in, numDofPerNode x nnodesPerFace
                x length(interfaces)
 
   The functor must have the signature:
-  func( uL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params
+
+  `func( uL, qR, aux_vars, dxidx, nrm, flux_j, eqn.params)`
 
   where uL and uR are the solution values for a node on the left and right
   elements, aux_vars are the auxiliary variables for the node,
@@ -60,6 +62,19 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+"""
+  Like [`calcFaceFlux`](@ref), but computes the flux for a single element and
+  then integrates it immediately, updating eqn.res
+
+  **Inputs**:
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functor: a FluxType that evalutes the flux
+   * interfaces: the vector of [`Interface`](@ref)s to compute the integrals for
+
+"""
 function calcFaceIntegral_nopre{Tmsh, Tsol, Tres, Tdim}(
                                 mesh::AbstractDGMesh{Tmsh},
                                 sbp::AbstractSBP,
@@ -109,8 +124,8 @@ end
 
 """
   This function loops over interfaces and computes a face integral that
-  uses data from all volume nodes. See FaceElementIntegralType for details on
-  the integral performed.
+  uses data from all volume nodes. See [`FaceElementIntegralType`](@ref)
+  for details on the integral performed.
 """
 function getFaceElementIntegral{Tmsh, Tsol, Tres, Tdim}(
                            mesh::AbstractDGMesh{Tmsh},
@@ -223,8 +238,9 @@ end
                          
 """
   This function is a thin wrapper around
-  getShareFaceElementIntegral_element_inner, presenting the interface needed
-  by finishExchangeData.  See that function for the interface details.
+  [`calcSharedFaceElementIntegrals_element_inner`](@ref),
+  presenting the interface needed by [`finishExchangeData`](@ref).
+  See that function for the interface details.
 """
 function calcSharedFaceElementIntegrals_element{Tmsh, Tsol, Tres}(
                             mesh::AbstractDGMesh{Tmsh},
@@ -247,17 +263,19 @@ end
 """
   This function loops over given set of shared faces and computes a face
   integral that
-  uses data from all volume nodes.  See FaceElementIntegralType for details on
-  the integral performed.
+  uses data from all volume nodes.  See [`FaceElementIntegralType`](@ref)
+  for details on the integral performed.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-    data: a SharedFaceData specifying which shared faces to compute
-    face_integral_functor
-    flux_functor
+  **Inputs**:
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data: a SharedFaceData specifying which shared faces to compute
+   * face_integral_functor
+   * flux_functor
+
 """
 function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
                             mesh::AbstractDGMesh{Tmsh},
@@ -395,7 +413,7 @@ end
 
 """
   This function is a thin wrapper around calcSharedFaceIntegrals_inner.
-  It present the interface needed by finishExchangeData.
+  It present the interface needed by [`finishExchangeData`](@ref).
 """
 function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
@@ -417,13 +435,14 @@ end
   This function calculates the shared face integrals over a given set of
   faces.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-    data: the SharedFaceData specifying which faces to compute
-    functor: the FluxType to use for the face flux
+  **Inputs**:
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data: the SharedFaceData specifying which faces to compute
+   * functor: the FluxType to use for the face flux
 
 """->
 function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
@@ -473,7 +492,7 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
 end
 
 """
-  Like calcSharedFaceIntegrals_inner, but performs the integration and
+  Like [`calcSharedFaceIntegrals_inner`](@ref), but performs the integration and
   updates eqn.res rather than computing the flux and storing it in
   eqn.flux_sharedface
 """
@@ -525,8 +544,9 @@ function calcSharedFaceIntegrals_nopre_inner{Tmsh, Tsol, Tres}(
 end
  
 """
-  This function is a thin wrapper around calcSharedFaceIntegrals_element_inner.
-  It presents the interface required by finishExhcangeData
+  This function is a thin wrapper around
+  [`calcSharedFaceIntegrals_element_inner`](@ref).
+  It presents the interface required by [`finishExchangeData`](@ref)
 """
 function calcSharedFaceIntegrals_element{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
@@ -550,13 +570,15 @@ end
   elements on the boundary (rather than the data on the faces).  This
   enables calculating a sparse jacobian with minimal parallel communication.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-    data: a SharedFaceData specifying the faces to calculate
-    functor: the flux functor
+  **Inputs**:
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data: a SharedFaceData specifying the faces to calculate
+   * functor: the flux functor
+
 """
 function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
                             mesh::AbstractDGMesh{Tmsh},
@@ -630,7 +652,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 end
 
 """
-  Like calcSharedFaceIntegrals_element_inner, but performs the integration and
+  Like [`calcSharedFaceIntegrals_element_inner`](@ref), but performs the integration and
   updates eqn.res rather than computing the flux only and storing it in
   eqn.flux_sharedface
 """
@@ -715,21 +737,23 @@ end
   This function interpolates the solution values from the internal nodes
   to the face flux points of the elements
 
-  Inputs:
-    mesh: an AbstractDGMesh
-    sbp
-    eqn
-    opts
-    q: a 3D array of solution values at the nodes, numDofPerNode x
+  **Inputs**:
+
+   * mesh: an AbstractDGMesh
+   * sbp
+   * eqn
+   * opts
+   * q: a 3D array of solution values at the nodes, numDofPerNode x
        numNodesPerElement x numEl
 
-  Inputs/Outputs:
-    q_face: a 4D array of solution values at each interface,
+  **Inputs/Outputs**:
+
+   * q_face: a 4D array of solution values at each interface,
             numDofPerNode x 2 x numfacenodes x numInterface
             q_face[:, 1, j, i] stores the q values for elementL of interface
             i node j and q_face[:, 2, j, i] stores the values for elementR
 
-    eqn.aux_vars_face is also populated
+  eqn.aux_vars_face is also populated
 """->
 function interpolateFace{Tsol}(mesh::AbstractDGMesh, sbp, eqn, opts,
                          q::Abstract3DArray, q_face::AbstractArray{Tsol, 4})
@@ -806,6 +830,10 @@ end
 
 
 
+"""
+  Calls the [`RoeSolver`](@ref)
+"""
+
 type RoeFlux <: FluxType
 end
 
@@ -820,6 +848,9 @@ function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType,
   return nothing
 end
 
+"""
+  Calls [`calcEulerFlux_standard`](@ref)
+"""
 type LFFlux <: FluxType
 end
 
@@ -849,7 +880,9 @@ function call{Tsol, Tres}(obj::StandardFlux, params::ParamType,
   return nothing
 end
 
-
+"""
+  Calls [`calcEulerFlux_Ducros`](@ref)
+"""
 type DucrosFlux <: FluxType
 end
 
@@ -864,6 +897,9 @@ function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType,
   return nothing
 end
 
+"""
+  Calls [`calcEulerFlux_IR`](@ref)
+"""
 type IRFlux <: FluxType
 end
 
@@ -879,6 +915,9 @@ function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
   return nothing
 end
 
+"""
+  Calls [`calcEulerFlux_IRSLF`](@ref)
+"""
 type IRSLFFlux <: FluxType
 end
 
@@ -909,6 +948,8 @@ end
 
   In general, these functors call similarly-named function in bc_solvers.jl.
   It is recommened to look at the documentation for those functions.
+
+  TODO: document signature of the functors here
 
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(

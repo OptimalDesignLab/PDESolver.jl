@@ -786,7 +786,10 @@ end
 
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
-
+"""
+  Map IC names to functions.  Generally the name is the same as the function
+  name
+"""
 global const ICDict = Dict{Any, Function}(
 "ICZero" => ICZero,
 "ICOnes" => ICOnes,

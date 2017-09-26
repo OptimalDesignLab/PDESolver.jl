@@ -150,7 +150,8 @@ If it is variable sized then macros give the advantage of doing location lookup
   conservative variables q, and Tdim, the dimension of the equation
 
   It should have the following fields:
-   * res_type : datatype of residual (depreciated)
+
+    * res_type : datatype of residual (depreciated)
     * q  : 3D array holding conservative variables
     * q_vec  : vector to assemble q into
     * aux_vars : 3D array holding auxiliary variables
@@ -210,7 +211,11 @@ include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")
 
+"""
+  This physics is named `Euler`
+"""
 global const PhysicsName = "Euler"
+
 register_physics(PhysicsName, EulerEquationMod, run_euler)
 
 @doc """

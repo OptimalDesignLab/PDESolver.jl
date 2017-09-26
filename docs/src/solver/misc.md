@@ -23,7 +23,12 @@ FluxType_revm
 
 All physics modules need to apply boundary conditions and all DG schemes
 and some CG schemes need to do face integrals.
-The types and functions described here assist in identifying them:
+The types and functions described here assist in identifying them.
+PDESolver does not track the faces of elements directly, instead it 
+tracks the element the face belongs to and the local face number, that is,
+the index of the face in the list of all faces that belong to the element.
+Using this representation, every interior face has two representations because
+it is part of two elements.
 
 ```@docs
 Boundary

@@ -3,10 +3,11 @@
 """
   Subtype of [`AbstractParamType`](@ref).
 
-  Static Parameters:
-    Tsol
-    Tres
-    Tdim
+  **Static Parameters**:
+
+   * Tsol
+   * Tres
+   *  Tdim
 
   This is a container passed to all low level function, useful for storing
   miscellaneous parameters or constants

@@ -2,7 +2,10 @@
 @doc """
 ### AdvectionEquationMod.calcAdjoint
 
-Calcualtes the adjoint vector for a single functional
+Calculates the adjoint vector, ψ, for a single functional. Currently only DG meshes
+are supported. The function performs a direct solve using Julia's  `\\` operator.
+For parallel meshes, a PETSc solve is done using ILU factorization. The user
+always call this function in order to compute the adjoint.
 
 **Inputs**
 
@@ -14,8 +17,10 @@ Calcualtes the adjoint vector for a single functional
                       associated with the adjoint of the functional being
                       computed and holds all the necessary data.
 *  `adjoint_vec` : Adjoint vector corresponding to the particular functional
-                         computed
-*  `functional_number` : The functional for which the adjoint vector is being
+                   computed. If called in parallel, the vector should be
+                   distributed across `eqn.comm`, just like `eqn.q_vec`
+*  `functional_number` : The functional for which the adjoint vector is being,
+                         default = 1
 
 **Outputs**
 

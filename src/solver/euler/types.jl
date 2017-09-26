@@ -6,6 +6,12 @@
   computation.  These parameters can be specified in the opts dictionary or
   have default values set here.  If there is no reasonable default, values
   are initialized to -1
+  
+  There are also a bunch of arrays that are used as temporaries by low
+  level functions (to avoid having to allocate arrays themselves, which is
+  a performance trap).  In general, this Type is used as a container to pass
+  around values.
+
 
   gamma and R are the independent themodynamic variables
 
@@ -14,24 +20,27 @@
   This type is paramaterized on the dimension of the equation for purposes
   of multiple dispatch
 
-  Static Parameters:
-  Tdim : dimensionality of the equation, integer, (used for dispatch)
-  var_type : type of variables used used in the weak form, symbol, (used for
-             dispatch), currently supported values: :conservative, :entropy
-  Tsol : datatype of solution variables q
-  Tres : datatype of residual
-  Tmsh : datatype of mesh related quantities (mapping jacobian etc.)
+  **Static Parameters**:
 
-  **Fields**
-    # these fields have defaults:
-    * cv  : specific heat constant
-    * R : specific gas constant (J/(Kg*K))
-    * gamma : ratio of specific heats
-    * gamma_1 : gamma - 1
-    # these fields do not have defaults:
-    * Ma  : free stream Mach number
-    * Re  : free stream Reynolds number
-    * aoa : angle of attack (radians)
+   * Tdim : dimensionality of the equation, integer, (used for dispatch)
+   * var_type : type of variables used used in the weak form, symbol, (used for
+             dispatch), currently supported values: :conservative, :entropy
+   * Tsol : datatype of solution variables q
+   * Tres : datatype of residual
+   * Tmsh : datatype of mesh related quantities (mapping jacobian etc.)
+
+  **Fields (with default values)**:
+
+   * cv  : specific heat constant
+   * R : specific gas constant (J/(Kg*K))
+   * gamma : ratio of specific heats
+   * gamma_1 : gamma - 1
+
+  **Fields (without default values)**:
+
+   * Ma  : free stream Mach number
+   * Re  : free stream Reynolds number
+   * aoa : angle of attack (radians)
 
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
@@ -363,20 +372,23 @@ end  # end type declaration
   It is also paremterized by var_type, which should be a symbol describing
   the set of variables stored in eqn.q.  Currently supported values are
   :conservative and :entropy, which indicate the conservative variables and
-  the entropy variables described in 'A New Finite Element Formulation for
-  Computational Fluid Dynamics: Part I' by Hughes et al.
+  the entropy variables described in:
+  
+  'A New Finite Element Formulation for
+  Computational Fluid Dynamics: Part I' by Hughes et al.`
 
   Eventually there will be additional implementations of EulerData,
   specifically a 3D one.
 
-  Static Parameters:
-    Tsol : datatype of variables solution variables, ie. the
+  **Static Parameters**:
+
+   * Tsol : datatype of variables solution variables, ie. the
            q vector and array
-    Tres : datatype of residual. ie. eltype(res_vec)
-    Tdim : dimensionality of equation, integer, (2 or 3, currently only 2 is
+   * Tres : datatype of residual. ie. eltype(res_vec)
+   * Tdim : dimensionality of equation, integer, (2 or 3, currently only 2 is
            supported).
-    Tmsh : datatype of mesh related quantities
-    var_type : symbol describing variables used in weak form, (:conservative
+   * Tmsh : datatype of mesh related quantities
+   * var_type : symbol describing variables used in weak form, (:conservative
                or :entropy)
 
 
@@ -758,13 +770,15 @@ end
   This function contains a list of all possible log files.  Every new
   log file must be added to the list
 
-  Inputs:
-    mesh: an AbstractMesh (needed for MPI Communicator)
-    opts: options dictionary
+  **Inputs**:
 
-  Outputs:
-    file_dict: dictionary mapping names of files to the file object
-               ie. opts["write_entropy_fname"] => f
+   * mesh: an AbstractMesh (needed for MPI Communicator)
+   * opts: options dictionary
+
+  **Outputs**:
+
+   * file_dict: dictionary mapping names of files to the file object
+                 ie. opts["write_entropy_fname"] => f
 
   Exceptions: this function will throw an exception if any two file names
               are the same
@@ -811,11 +825,12 @@ end
   function returns.  The mesh, sbp, eqn, opts are returned by run_physics()
   so there is not much cleanup that needs to be done, mostly closing files.
 
-  Inputs/Outputs:
-    mesh: an AbstractMesh object
-    sbp: an SBP operator
-    eqn: the EulerData object
-    opts: the options dictionary
+  **Inputs/Outputs**:
+
+   * mesh: an AbstractMesh object
+   * sbp: an SBP operator
+   * eqn: the EulerData object
+   * opts: the options dictionary
 
 """
 function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)

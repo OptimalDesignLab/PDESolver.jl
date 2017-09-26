@@ -1,5 +1,7 @@
 # file for homotopy functions
 # TODO: add mechanism for selecting which homotopy function to use
+# TODO: better idea: move the homotopy function to NLSolver, because it is
+#                    physics agnostic
 
 import PDESolver.evalHomotopy
 
