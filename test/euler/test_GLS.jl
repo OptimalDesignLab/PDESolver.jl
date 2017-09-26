@@ -58,12 +58,12 @@ facts("\nCheck flux jacobian for conservative variables") do
                                        0.24023510949074675 0.0225625 0.71525 -0.2351130047445268])
   
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
+    for j = 1:mesh.numNodesPerElement
       Flux_xi = eqn.Axi[:,:,j,i]*eqn.q[:,j,i]
       Flux_eta = eqn.Aeta[:,:,j,i]*eqn.q[:,j,i]
       @fact Flux_xi --> roughly(eqn.flux_parametric[:,j,i,1]) "Xi mismatch at Node $j element $i"
       @fact Flux_eta --> roughly(eqn.flux_parametric[:,j,i,2]) "Eta mismatch at Node $j element $i"
-  	end
+    end
   end
 end
 

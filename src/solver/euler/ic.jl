@@ -553,12 +553,12 @@ function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
-println("entered ICUnsteadyVortex")
-
 numEl = mesh.numEl
 nnodes = operator.numnodes
 dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, 4)
+sol = zeros(Tsol, mesh.numDofPerNode)
+
+
 for i=1:numEl
   for j=1:nnodes
       dofnums_j = sview(mesh.dofs, :, j, i)
@@ -719,7 +719,68 @@ function ICChannelMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData
   return nothing
 end
 
-    
+"""
+  Initial for square wave in 1D
+"""
+function ICSquare1D{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      calcSquare1D(eqn.params, coords, q)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
+
+  return nothing
+end
+
+ """
+  Initial for square wave in 2D
+"""
+function ICSquare2D{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      calcSquare2D(eqn.params, coords, q)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
+
+  return nothing
+end
+
+ """
+  Initial for square wave in 2D
+"""
+function ICSedovExplosion{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp,
+                          eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+
+  q = eqn.params.q_vals
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofs = sview(mesh.dofs, :, j, i)
+      coords = sview(mesh.coords, :, j, i)
+      calcSedovExplosion(eqn.params, coords, q)
+      for k=1:mesh.numDofPerNode
+        u0[dofs[k]] = q[k]
+      end
+    end
+  end
+
+  return nothing
+end
+
+ 
 
 
 
@@ -746,7 +807,10 @@ global const ICDict = Dict{Any, Function}(
 "ICExp" => ICExp,
 "ICPeriodicMMS" => ICPeriodicMMS,
 "ICTaylorGreen" => ICTaylorGreen,
-"ICChannelMMS" => ICChannelMMS
+"ICChannelMMS" => ICChannelMMS,
+"ICSquare1D" => ICSquare1D,
+"ICSquare2D" => ICSquare2D,
+"ICSedovExplosion" => ICSedovExplosion,
 )
 
 

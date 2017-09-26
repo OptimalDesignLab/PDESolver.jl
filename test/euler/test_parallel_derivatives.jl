@@ -11,6 +11,20 @@ function test_parallel_derivatives()
     objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
+    context("Checking functional J and ∂J/∂aoa in parallel") do
+
+      serial_vals = readdlm("BoundaryForceData_values.dat")
+      @fact objective.lift_val --> roughly(serial_vals[1], atol = 1e-14)
+      @fact objective.drag_val --> roughly(serial_vals[2], atol = 1e-14)
+      @fact objective.dLiftdaoa --> roughly(serial_vals[3], atol = 1e-14)
+      @fact objective.dDragdaoa --> roughly(serial_vals[4], atol = 1e-14)
+
+      # @fact objective.lift_val --> roughly(0.008165584931809718, atol = 1e-14)
+      # @fact objective.drag_val --> roughly(-0.0005471055309820266, atol = 1e-14)
+      # @fact objective.dLiftdaoa --> roughly(0.0005471055309820266, atol = 1e-14)
+      # @fact objective.dDragdaoa --> roughly(0.008165584931809718, atol = 1e-14)
+    end # End context("Checking ∂J/∂aoa")
+
     lift = objective.lift_val
     adjoint_vec = zeros(Complex128, mesh.numDof)
     EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
@@ -26,13 +40,6 @@ function test_parallel_derivatives()
     eqn.params.aoa -= pert
 
     dJdaoa_fd = (lift_pert - lift)/pert
-
-    context("Checking functional J and ∂J/∂aoa in parallel") do
-      @fact objective.lift_val --> roughly(0.008165584931809718, atol = 1e-14)
-      @fact objective.drag_val --> roughly(-0.0005471055309820266, atol = 1e-14)
-      @fact objective.dLiftdaoa --> roughly(0.0005471055309820266, atol = 1e-14)
-      @fact objective.dDragdaoa --> roughly(0.008165584931809718, atol = 1e-14)
-    end # End context("Checking ∂J/∂aoa")
 
     context("Check complete derivative dJ/daoa") do
       deriv_err = norm(dJdaoa_fd - dJdaoa, 2)

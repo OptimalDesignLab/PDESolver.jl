@@ -7,6 +7,7 @@ function test_parallel()
   start_dir = pwd()
   ARGS[1] = "input_vals_vortex3.jl"
 
+  # rk4
   cd("./rk4/serial")
   mesh, sbp, eqn, opts = run_euler(ARGS[1])
   cd("../parallel")
@@ -14,6 +15,15 @@ function test_parallel()
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
   make_input(opts, "input_vals_parallel")
 
+  # staggered grid
+  cd("../staggered_serial")
+  mesh, sbp, eqn, opts = run_euler(ARGS[1])
+
+  cd("../staggered_parallel")
+  opts["smb_name"] = "SRCMESHES/psquare2.smb"
+  make_input(opts, "input_vals_parallel")
+
+  # newton
   cd("../../newton/serial")
   ARGS[1] = "input_vals_vortex3.jl"
   mesh, sbp, eqn, opts = run_euler(ARGS[1])
@@ -29,4 +39,4 @@ function test_parallel()
 end
 
 #test_parallel()
-add_func1!(EulerTests, test_parallel, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_parallel, [TAG_PARALLEL, TAG_SHORTTEST])

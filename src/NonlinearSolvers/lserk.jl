@@ -1,4 +1,4 @@
-# implimentation of 5 stage, 4th order Low Storage Explicit Runge Kutta
+# implementation of 5 stage, 4th order Low Storage Explicit Runge Kutta
 # from Carpenter and Kennedy's Fourth-Order 2N-Storage Runge Kutta Schemes
 # NASA Technical Memorandum 109112
 
@@ -57,8 +57,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                     2526269341429/6820363962896; 
                     2006345519317/3224310063776; 
                     2802321613138/2924317926251]
-
-  println("c_coeffs = \n", c_coeffs)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 #  MPI.Barrier(MPI.COMM_WORLD)
@@ -198,13 +196,16 @@ end  # end lserk54
   See rk4 method with same signature
 """
 function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
+             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts,
+             timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
-        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
-        majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+              q_vec::AbstractVector, res_vec::AbstractVector,
+              pde_pre_func, pde_post_func, ctx, opts, timing; 
+              majorIterationCallback=majorIterationCallback, res_tol=res_tol,
+              real_time=real_time)
 
         return t
 end

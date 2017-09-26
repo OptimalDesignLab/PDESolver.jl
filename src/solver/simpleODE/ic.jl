@@ -37,13 +37,13 @@ function ICx2plust4{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   t = 0.0
 
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
-  	  dofnums_j = sview(mesh.dofs, :, j, i)
-#   	  x = mesh.coords[1, j, i]
-#   	  y = mesh.coords[2, j, i]
-#   	  u0[dofnums_j] = x^2 + t^2
-  	  u0[dofnums_j] = calc_x2_4t3(mesh.coords[:, j, i], eqn.params, t)
-  	end
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+#       x = mesh.coords[1, j, i]
+#       y = mesh.coords[2, j, i]
+#       u0[dofnums_j] = x^2 + t^2
+      u0[dofnums_j] = calc_x2_4t3(mesh.coords[:, j, i], eqn.params, t)
+    end
   end
 
   return nothing
@@ -75,13 +75,13 @@ function ICx2plust3{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   t = 0.0
 
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
-  	  dofnums_j = sview(mesh.dofs, :, j, i)
-#   	  x = mesh.coords[1, j, i]
-#   	  y = mesh.coords[2, j, i]
-#   	  u0[dofnums_j] = x^2 + t^2
-  	  u0[dofnums_j] = calc_x2_3t2(mesh.coords[:, j, i], eqn.params, t)
-  	end
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+#       x = mesh.coords[1, j, i]
+#       y = mesh.coords[2, j, i]
+#       u0[dofnums_j] = x^2 + t^2
+      u0[dofnums_j] = calc_x2_3t2(mesh.coords[:, j, i], eqn.params, t)
+    end
   end
 
   return nothing
@@ -114,13 +114,13 @@ function ICx2plust2{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   t = 0.0
 
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
-  	  dofnums_j = sview(mesh.dofs, :, j, i)
-#   	  x = mesh.coords[1, j, i]
-#   	  y = mesh.coords[2, j, i]
-#   	  u0[dofnums_j] = x^2 + t^2
-  	  u0[dofnums_j] = calc_x2_t2(mesh.coords[:, j, i], eqn.params, t)
-  	end
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+#       x = mesh.coords[1, j, i]
+#       y = mesh.coords[2, j, i]
+#       u0[dofnums_j] = x^2 + t^2
+      u0[dofnums_j] = calc_x2_t2(mesh.coords[:, j, i], eqn.params, t)
+    end
   end
 
   return nothing
@@ -152,13 +152,13 @@ function ICallzero{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   t = 0.0
 
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
-  	  dofnums_j = sview(mesh.dofs, :, j, i)
-#   	  x = mesh.coords[1, j, i]
-#   	  y = mesh.coords[2, j, i]
-#   	  u0[dofnums_j] = x^2 + t^2
-  	  u0[dofnums_j] = 0.0
-  	end
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+#       x = mesh.coords[1, j, i]
+#       y = mesh.coords[2, j, i]
+#       u0[dofnums_j] = x^2 + t^2
+      u0[dofnums_j] = 0.0
+    end
   end
 
   return nothing
@@ -170,13 +170,13 @@ function ICallOnes{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   t = 0.0
 
   for i = 1:mesh.numEl
-  	for j = 1:mesh.numNodesPerElement
-  	  dofnums_j = sview(mesh.dofs, :, j, i)
-#   	  x = mesh.coords[1, j, i]
-#   	  y = mesh.coords[2, j, i]
-#   	  u0[dofnums_j] = x^2 + t^2
-  	  u0[dofnums_j] = 1.0
-  	end
+    for j = 1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+#       x = mesh.coords[1, j, i]
+#       y = mesh.coords[2, j, i]
+#       u0[dofnums_j] = x^2 + t^2
+      u0[dofnums_j] = 1.0
+    end
   end
 
   return nothing

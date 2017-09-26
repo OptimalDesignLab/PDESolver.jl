@@ -36,7 +36,7 @@ type ArtificialViscosityType{Tsol, Tres, Tdim, Tmsh} <: AbstractSolutionData{Tso
   Minv::Array{Float64, 1}           # inverse mass matrix
 
   function ArtificialViscosityType(mesh::AbstractMesh, sbp::AbstractSBP, opts)
-    eqn = new()  # incomplete initilization
+    eqn = new()  # incomplete initialization
     eqn.params = ParamType{Tdim}(opts)
   end
 

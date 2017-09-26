@@ -548,12 +548,18 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
     nrm2 = [dxidx[2,1], dxidx[2,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
-
+   
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
     @fact F_roe --> roughly(F) 
+
+    # test the entropy stable BC
+    func2 = EulerEquationMod.noPenetrationESBC()
+    func2(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
+
+    @fact F_roe --> roughly(F)
 
     EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, q)
     func1 = EulerEquationMod.Rho1E2U3BC()
@@ -730,12 +736,12 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
     el1_res = [-0.35355  0  0.35355;
                 -0.874999  0.750001  0.124998;
-		-0.124998  -0.750001  0.874999;
-		-0.972263  0  0.972263]
+    -0.124998  -0.750001  0.874999;
+    -0.972263  0  0.972263]
     el2_res = [-0.35355  0.35355 0;
                 -0.124998  0.874999 -0.75001;
-		-0.874999 0.124998 0.75001;
-		-0.972263  0.972263 0]
+    -0.874999 0.124998 0.75001;
+    -0.972263  0.972263 0]
  
     @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-4)
     @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-4)
@@ -750,12 +756,12 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
     el1_res = [0.35355 0 -0.35355;
                0.124998 -0.750001 -0.874999;
-	       0.874999 0.750001 -0.124998;
-	       0.972263  0  -0.972263]
+         0.874999 0.750001 -0.124998;
+         0.972263  0  -0.972263]
     el2_res = [0.35355 -0.35355 0;
                0.874999 -0.124998 0.750001;
-	       0.124998  -0.874999  -0.750001;
-	       0.972263  -0.972263  0]
+         0.124998  -0.874999  -0.750001;
+         0.972263  -0.972263  0]
 
     @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-5)
     @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-5)

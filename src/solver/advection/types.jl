@@ -1,4 +1,5 @@
 # definitions of concrete subtypes of AbstractParamType and AbstractSolutionData
+
 """
   Subtype of [`AbstractParamType`](@ref).
 
@@ -16,7 +17,17 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   alpha_x::Float64
   alpha_y::Float64
   alpha_z::Float64
+  sin_amplitude::Complex128
+  omega::Complex128
 
+  qL_s::Array{Tsol, 1}  # solution vector for a solution grid element
+  qR_s::Array{Tsol, 1}  # solution vector for a solution grid element
+  qL_f::Array{Tsol, 1}  # solution vector for flux grid element
+  qR_f::Array{Tsol, 1}  # solution vector for flux grid element
+  resL_s::Array{Tres, 1}  # residual for solution grid element
+  resR_s::Array{Tres, 1}  # residual for solution grid element
+  resL_f::Array{Tsol, 1}  # residual for a flux grid element
+  resR_f::Array{Tsol, 1}  
   f::BufferedIO
   time::Timings
   #=
@@ -53,9 +64,33 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
 #     alpha_y = 0.0
     alpha_z = 1.0
 
+    numNodesPerElement_s = mesh.numNodesPerElement
+    if opts["use_staggered_grid"]
+      numNodesPerElement_f = mesh.mesh2.numNodesPerElement
+    else
+      numNodesPerElement_f = numNodesPerElement_s
+    end
+
+    qL_s = Array(Tsol, numNodesPerElement_s)
+    qR_s = Array(Tsol, numNodesPerElement_s)
+    qL_f = Array(Tsol, numNodesPerElement_f)
+    qR_f = Array(Tsol, numNodesPerElement_f)
+
+    resL_s = Array(Tsol, numNodesPerElement_s)
+    resR_s = Array(Tsol, numNodesPerElement_s)
+    resL_f = Array(Tsol, numNodesPerElement_f)
+    resR_f = Array(Tsol, numNodesPerElement_f)
+
+    # needed for the runtype=660 (CN uadj) objective
+    sin_amplitude = 2.0
+    omega = 1.0
 
     t = Timings()
-    return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)
+
+    return new(LFalpha, alpha_x, alpha_y, alpha_z,
+               sin_amplitude, omega,
+               qL_s, qR_s, qL_f, qR_f, resL_s, resR_s, resL_f, resR_f,
+               f, t)
   end
 end
 
@@ -135,7 +170,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     println("  Tmsh = ", Tmsh)
     numfacenodes = mesh.numNodesPerFace
 
-    eqn = new()  # incomplete initilization
+    eqn = new()  # incomplete initialization
     eqn.comm = mesh.comm
     eqn.commsize = mesh.commsize
     eqn.myrank = mesh.myrank
@@ -150,6 +185,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.aux_vars = Array(Tsol, 0, 0, 0)
 
     if opts["precompute_volume_flux"]
       eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl,
@@ -286,3 +322,28 @@ type QfluxData{Topt} <: AbstractOptimizationData
     return functional
   end
 end # End type OfluxData
+
+import ODLCommonTools.getAllTypeParams
+
+@doc """
+### AdvectionEquationMod.getAllTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+* `opts` : Options dictionary
+
+**Output**
+
+* `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
+
+"""->
+function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tres, Tdim, Tmsh}, opts)
+
+  tuple = (Tsol, Tres, Tdim, Tmsh)
+
+  return tuple
+end

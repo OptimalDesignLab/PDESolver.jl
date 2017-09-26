@@ -41,7 +41,7 @@ function extractKeys(fin::ASCIIString, fout::ASCIIString; header=true, footer=tr
     # write the dictonary declaration to the file
     write(fw, "# this file declares a dictonary of all known keys in the
                # options dictonary\n")
-    write(fw, "known_keys = Dict{Any, Any}(\n")
+    write(fw, "global const KNOWN_KEYS = Dict{Any, Any}(\n")
   end
 
   cntr = 1

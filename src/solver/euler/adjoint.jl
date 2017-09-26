@@ -16,11 +16,14 @@ For parallel meshes, a PETSc solve is done using ILU factorization.
 *  `opts` : Options dictionary
 *  `functionalData` : Object corresponding the boundary functional being
                       computed. It must be a subtype of `AbstractOptimizationData`
-*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint
-                   vector is distributed over the processors similar to eqn.q_vec
+*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint  
+                   vector is distributed over the processors similar to
+                   eqn.q_vec i.e. every rank has its
+                   share of the adjoint vector corresponding to the dofs on the
+                   rank.
+
 *  `functional_number` : Numerical identifier to obtain geometric edges on
                          which a functional acts
-
 
 **Outputs**
 
@@ -29,7 +32,7 @@ For parallel meshes, a PETSc solve is done using ILU factorization.
 """->
 
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-	                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts,
                   functionalData::AbstractOptimizationData,
                   adjoint_vec::Array{Tsol,1}; functional_number::Int=1)
                   #functor, functional_number, adjoint_vec::Array{Tsol, 1})
@@ -46,56 +49,44 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
-  # Calculate the Jacobian of the residual
-  res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
+  # Allocate space for adjoint solve
+  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn,
+                                             opts, evalResidual, alloc_rhs=true)
+
+  # Get the residual jacobian
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
 
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-
   # calculate the derivative of the function w.r.t q_vec
   func_deriv = zeros(Tsol, mesh.numDof)
 
   # 3D array into which func_deriv_arr gets interpolated
   func_deriv_arr = zeros(eqn.q)
 
-
   # Calculate df/dq_bndry on edges where the functional is calculated and put
   # it back in func_deriv_arr
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)  # populate df_dq_bndry
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
 
   # Assemble func_deriv
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  func_deriv[:] = -func_deriv[:]
 
-  # Solve for adjoint vector. This depends on whether PETSc is used or not.
-
-  # TODO: The following operation creates a temporary copy of adjoint_vec, does
-  #       the '\' computation and then puts it back into adjoint_vec. This
-  #       needs to change.
-
-  if opts["jac_type"] == 1 || opts["jac_type"] == 2
-    adjoint_vec[:] = -(res_jac.')\func_deriv
-
-  elseif opts["jac_type"] == 3
-
+  # Solve for adjoint vector. residual jacobian needs to be transposed first.
+  jac_type = typeof(res_jac)
+  if jac_type <: Array || jac_type <: SparseMatrixCSC
+    res_jac = res_jac.'
+  elseif  jac_type <: PetscMat
     PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
     PetscMatAssemblyEnd(res_jac)
     res_jac = MatTranspose(res_jac, inplace=true)
-
-    b = PetscVec(eqn.comm)
-    PetscVecSetType(b, VECMPI)
-    PetscVecSetSizes(b, PetscInt(mesh.numDof), PETSC_DECIDE)
-    x = PetscVec(eqn.comm)
-    PetscVecSetType(x, VECMPI)
-    PetscVecSetSizes(x, PetscInt(mesh.numDof), PETSC_DECIDE)
-    ksp = KSP(eqn.comm)
-    KSPSetFromOptions(ksp)
-    KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
-    NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts,
-                     -func_deriv, adjoint_vec)
-    # adjoint_vec = -adjoint_vec
-  end # End how to solve for adjoint_vec
-
+  else
+    error("Unsupported jacobian type")
+  end
+  step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
+                                         adjoint_vec, real(func_deriv), BSTDOUT)
 
   saveSolutionToMesh(mesh, adjoint_vec)
   fname = "adjoint_field"
@@ -199,8 +190,8 @@ mesh nodes.
 """->
 
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
-	                         eqn::EulerData{Tsol}, opts,
-	                         functionalData::AbstractOptimizationData, func_deriv_arr)
+                           eqn::EulerData{Tsol}, opts,
+                           functionalData::AbstractOptimizationData, func_deriv_arr)
 
   integrand = zeros(eqn.q_bndry)
   functional_edges = functionalData.geom_faces_functional
@@ -235,8 +226,6 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
         node_info = Int[itr,j,i]
         integrand_i = sview(integrand, :, j, global_facenum)
 
-        # calcIntegrandDeriv(opts, eqn.params, q2, aux_vars, [nx, ny], integrand_i,
-        #                    node_info, functor, functionalData)
         calcIntegrandDeriv(opts, eqn.params, q2, aux_vars, nrm, integrand_i, node_info,
                            functionalData)
       end  # End for j = 1:mesh.sbpface.numnodes
@@ -274,9 +263,9 @@ degrees of freedom at the node.
 
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
-	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                          functionalData::BoundaryForceData{Tsol,:lift})
+                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::BoundaryForceData{Tsol,:lift})
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -295,9 +284,9 @@ end
 
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
-	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                          functionalData::BoundaryForceData{Tsol,:drag})
+                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::BoundaryForceData{Tsol,:drag})
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -315,8 +304,8 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
 end
 #=
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params, q::AbstractArray{Tsol,1},
-	                        aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-	                        integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                          aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
                           functor, functionalData)
 
 

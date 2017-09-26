@@ -191,6 +191,43 @@ function contractResEntropyVars{Tsol, Tres, Tmsh, Tdim}(
   return val
 end
 
+"""
+  Like contractResEntropyVars, but uses a special summation technique
+"""
+function contractResEntropyVars2{Tsol, Tres, Tmsh, Tdim}(
+             mesh::AbstractDGMesh{Tmsh}, 
+             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector,
+             res_vec::AbstractVector)
+
+  vals = zeros(Tres, mesh.numNodes)
+  w_vals = eqn.params.v_vals
+  idx = 1
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    q_vals_i = ro_sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
+    convertToEntropy(eqn.params, q_vals_i, w_vals)
+    scale!(w_vals, 1./eqn.params.gamma_1)  # the IR entropy variables are
+                                           # scaled by 1/gamma compared to
+                                           # Hugh's
+    res_vals = sview(res_vec, i:(i+mesh.numDofPerNode - 1))
+    for p=1:mesh.numDofPerNode
+      vals[idx] += w_vals[p]*res_vals[p]
+    end
+    idx += 1
+  end
+
+  # now do the sum in the order of decreasing absolute value
+  pvec = sortperm(abs(vals))
+  val = zero(Tres)
+  for i=mesh.numNodes:-1:1  # decreasing absolute value
+    val += vals[pvec[i]]
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+  return val
+end
+
+
+
 @doc """
   Compute the SBP approximation to integral q dOmega, ie. the mass matrix
   times the vector of conservative variables at each node in the mesh.  
@@ -215,9 +252,6 @@ function integrateQ{Tsol, Tres, Tmsh, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
   return vals2
 end
-
-
-
 
 @doc """
   Computes the net potential flux integral over all interfaces, where the 

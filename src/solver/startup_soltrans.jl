@@ -53,7 +53,7 @@ runAnisoAdapt(mesh.m_ptr)
 
 writeVtkFiles("output_post", mesh.m_ptr)
 
-# reinitilize mesh 
+# reinitialize mesh 
 reinitPumiMesh2(mesh)
 u =zeros(mesh.numDof)
 retrieveSolutionFromMesh(mesh, u);

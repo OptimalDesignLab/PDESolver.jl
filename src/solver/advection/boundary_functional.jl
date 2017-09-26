@@ -96,8 +96,8 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
     boundary_functional = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
 
     for i = 1:nfaces
-    	bndry_i = bndry_facenums[i]
-    	for j = 1:mesh.numNodesPerFace
+      bndry_i = bndry_facenums[i]
+      for j = 1:mesh.numNodesPerFace
         k = mesh.facenodes[j, bndry_i.face]
         q = eqn.q[1,k,bndry_i.element]
         x = ro_sview(mesh.coords, :, k, bndry_i.element)
@@ -106,7 +106,7 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
-    	end
+      end
     end
 
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)

@@ -11,6 +11,7 @@ using ArrayViews
 using MPI
 using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
+using Input
 
 include("output.jl")
 include("parallel_types.jl")
@@ -22,6 +23,7 @@ include("complexify.jl")
 include("mass_matrix.jl")
 include("curvilinear.jl")
 include("area.jl")
+include("checkpoint.jl")
 
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH, calcEuclidianNorm
@@ -44,6 +46,7 @@ export absvalue, absvalue_deriv
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
+export print_qvec_coords
 
 # mass_matrix.jl
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
@@ -64,6 +67,12 @@ export SharedFaceData, getSharedFaceData
 # parallel.jl
 export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master, 
        @time_all, print_time_all, verifyReceiveCommunication
+
+# checkpoint.jl
+export Checkpointer, AbstractCheckpointData, readCheckpointData,
+       saveNextFreeCheckpoint, loadLastCheckpoint, countFreeCheckpoints,
+       getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
+       freeCheckpoint, getNextFreeCheckpoint
 
 @doc """
 ### Utils.disassembleSolution
@@ -97,8 +106,8 @@ function disassembleSolution{T}(mesh::AbstractCGMesh, sbp,
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
       for k=1:size(q_arr, 1)
-	      dofnum_k = mesh.dofs[k, j, i]
-	      q_arr[k, j, i] = q_vec[dofnum_k]
+        dofnum_k = mesh.dofs[k, j, i]
+        q_arr[k, j, i] = q_vec[dofnum_k]
       end
     end
   end
@@ -377,14 +386,15 @@ function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
   jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
   jac_vec = zeros(Tmsh, mesh.numNodes)
   assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
-
   dim = mesh.dim
   # scale by the minimum distance between nodes on a reference element
   # this is a bit of an assumption, because for distorted elements this
   # might not be entirely accurate
-  h_avg = sum(1./(jac_vec.^(1/dim)))/length(jac_vec)
-  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)/mesh.commsize
-  h_avg *= mesh.min_node_dist
+  h_avg = sum(1./(jac_vec.^(1/dim)))
+  h_avg = MPI.Allreduce(h_avg, MPI.SUM, mesh.comm)
+  # caution: overflow
+  numnodes = MPI.Allreduce(length(jac_vec), MPI.SUM, mesh.comm)
+  h_avg *= mesh.min_node_dist/numnodes
   return h_avg
 end
 
@@ -423,6 +433,7 @@ type Timings
   t_newton::Float64  # time spent in newton loop
   t_timemarch::Float64 # time spent in time marching loop
   t_callback::Float64  # time spent performing callbacks
+  t_nlsolve::Float64  # time spent in the nonlinear solver
   t_barrier::Float64  # time spent in MPI_Barrier
   t_barrier2::Float64
   t_barrier3::Float64
@@ -431,7 +442,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 

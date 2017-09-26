@@ -336,8 +336,8 @@ end
 @doc """
 ### AdvectionEquationMod.SRCDict
 
-  It stores all the possible boundary condition dictionary options. Whenever a 
-  new boundary condition is created, it should get added to BCDict.
+  It stores all the possible source term dictionary options. Whenever a 
+  new source is created, it should get added to SRCDict.
 
   All functors must have the signature:
 
@@ -354,6 +354,7 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCx" => SRCx(),
 "SRCmms1" => SRCmms1(),
 "SRCx4" => SRCx4(),
+"SRCp0" => SRC0(),  # this *should* avoid calculating teh source term?
 "SRCp1" => SRCp1(),
 "SRCp2" => SRCp2(),
 "SRCp3" => SRCp3(),

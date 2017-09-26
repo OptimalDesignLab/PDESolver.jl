@@ -457,6 +457,32 @@ function test_reversemode()
 
     end # End context("Checking reverse mode for isentropicVortexBC")
 
+    context("Checking reverse mode for ExpBC") do
+      functor_rev = EulerEquationMod.ExpBC_revm()
+      functor = EulerEquationMod.ExpBC()
+      q = ro_sview(eqn.q_bndry, :, 1, 1)
+      aux_vars = ro_sview(eqn.aux_vars_bndry, :, 1, 1)
+      coords = ro_sview(mesh.coords_bndry, :, 1, 1)
+      nrm = sview(mesh.nrm_bndry, :, 1, 1)
+      bndryflux_bar = sview(eqn.bndryflux_bar, :, 1, 1)
+      nrm_bar = zeros(Complex128, mesh.numDofPerNode)
+      functor_rev(eqn.params, q, aux_vars, coords, nrm, nrm_bar, bndryflux_bar)
+
+      # Check against complex step
+      tmpflux = zeros(Complex128, 4)
+      pert = complex(0, 1e-20) # Complex step perturbation
+      for k = 1:length(nrm)
+        nrm[k] += pert
+        functor(eqn.params, q, aux_vars, coords, nrm, tmpflux)
+        tmpflux[:] = imag(tmpflux[:])/imag(pert)
+        dot_product = dot(real(bndryflux_bar), real(tmpflux))
+        error = norm(nrm_bar[k] - dot_product, 2)
+        @fact error --> roughly(0.0, atol = 1e-12)
+        nrm[k] -= pert
+      end
+
+    end # End context("Checking reverse mode for ExpBC")
+
   end # Endfacts("--- Testing reverse mode for BC functors ---")
 
   facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---") do

@@ -35,26 +35,27 @@
 # fields directly (they can pass those fields to other functions however
 # This leads directly to a two level structure for the code: high level function
 # that take in composite types and low level function that take in arrays and
-# perform calculations on them
+# perform calculations on them.
 
-# the reason for this is that the compiler does not compile new version of the
-# function based
-# on the types of the fields of a composite type. Passing the fields of the typ
-# e to other functions fixes this problem because the fields are now arguments,
-# so the compiler can specialize the code
+# The reason for this is that the compiler does not compile new version of the 
+#   function based on the types of the fields of a composite type. Passing the 
+#   fields of the type to other functions fixes this problem because the fields 
+#   are now arguments, so the compiler can specialize the code.
 
 # 2.  Arrays should not be returned from functions.  The caller should allocate
-# and array and pass it into the function
+# and array and pass it into the function.
 
-# this allows reusing the same array during a loop (rather than
-# allocating a new array)
+# This allows reusing the same array during a loop (rather than 
+#   allocating a new array).
 
 @doc """
 ### EulerEquationMod General Description
 This module is organized into 3 levels of functions: high, middle, and low.
 
-The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, and opts (options dictionary), They do not know the types their
-arguments are paramaterized on. There is only one method for each high level function.  All they do is call mid level functions.
+The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, 
+and opts (options dictionary), They do not know the types their
+arguments are paramaterized on. There is only one method for each high level function.  
+All they do is call mid level functions.
 
 Mid level functions take the same arguments as high level functions but know
 the types they are paramaterized on and do the right thing for all parameters.
@@ -210,7 +211,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
 
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     mesh2 = mesh.mesh2
     sbp2 = mesh.sbp2
     
@@ -341,6 +342,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
       # compute w^T * res_vec
       val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
+#      val3 = real(contractResEntropyVars2(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
 
       # DEBUGGING: compute the potential flux from q
       #            directly, to verify the boundary terms are the problem
@@ -470,6 +472,15 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # calculate fluxes
+
+  if opts["use_staggered_grid"]
+    aux_vars = zeros(Tres, 1, mesh.mesh2.numNodesPerElement)
+    for i=1:mesh.numEl
+      qs = ro_sview(eqn.q, :, :, i)
+      qf = sview(eqn.q_flux, :, :, i)
+      interpolateElementStaggered(eqn.params, mesh, qs, aux_vars, qf)
+    end
+  end
 
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
@@ -746,8 +757,15 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   elseif face_integral_type == 2
 #    println("calculating ESS face integrals")
-    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,
-                           eqn.flux_func, mesh.sbpface, mesh.interfaces)
+    if opts["use_staggered_grid"]
+      getFaceElementIntegral(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn,
+                             eqn.face_element_integral_func,  
+                             eqn.flux_func, mesh.mesh2.sbpface, mesh.interfaces)
+ 
+    else
+      getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+                             eqn.flux_func, mesh.sbpface, mesh.interfaces)
+    end
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))

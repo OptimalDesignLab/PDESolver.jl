@@ -46,3 +46,21 @@
 
 "precompute_q_bndry": whether or not to use eqn.q_bndyr, (Bool), determined from
                       "precompute_bndry_flux" and other things
+
+"use_staggered_grid": whether or not the staggered grid algorithm is used,
+                      (Bool), determined from "operator_ type2".
+
+"most_recent_checkpoint": index of most recently written checkpoint that is
+                          definitely complete, (Integer), default -1
+
+"most_recent_checkpoint_path": path to directory where the most recent
+                               checkpoint is stored, (ASCIIString), default ""
+
+"writing_checkpoint": index of most recently written checkpoint that might not
+                      be complete, (Integer), default -1
+
+"writing_checkpoint_path": path to the directory where the checkpoint is stored,
+                           (ASCIIString), default ""
+
+"is_restart": if this input file is restarting a run from a checkpont, (Bool),
+              default false

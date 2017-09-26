@@ -40,34 +40,37 @@ function createMeshAndOperator(opts, dofpernode)
   # when the second mesh is created
 
   mesh_time = 0.0
-  if opts["operator_type2"] != "SBPNone"
-    op_type_orig = opts["operator_type"]
-    op_type_2 = opts["operator_type2"]
+  if opts["use_staggered_grid"]
+    println("constructing flux grid")
 
-    opts["operator_type"] = op_type_2
+    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp, 2)
 
-    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
     mesh_time = @elapsed mesh2, pmesh2 = createMesh(opts, sbp2, sbpface, 
                                                   shape_type, topo, Tmsh,
-                                                  dofpernode)
+                                                  dofpernode, 2)
     if !(mesh2 === pmesh2)
-      throw(ErrorException("preconditioning mesh not supported with staggered girds"))
+      throw(ErrorException("preconditioning mesh not supported with staggered grids"))
     end
 
-    # reset the options dictionary
-    opts["operator_type"] = op_type_orig
-    opts["operator_type2"] = op_type_2
   end
 
+  println("constructing solution grid")
   sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
  
   mesh_time += @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
                                                 topo, Tmsh, dofpernode)
 
   # store the second mesh and SBP operator inside the first mesh
-  if opts["operator_type2"] != "SBPNone"
+  if opts["use_staggered_grid"]
     mesh.mesh2 = mesh2
     mesh.sbp2 = sbp2
+
+    # build the interpolation operators
+    I_S2F, I_F2S = buildinterpolation(sbp, sbp2)
+    mesh.I_S2F = I_S2F
+    mesh.I_S2FT = I_S2F.'
+    mesh.I_F2S = I_F2S
+    mesh.I_F2ST = I_F2S.'
   end
 
   return sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time
@@ -161,6 +164,20 @@ function getDataTypes(opts::Dict)
     else
       throw(ErrorException("Illegal or no jac_method specified for CN initialization."))
     end
+  elseif flag == 660 # jac_method needs to be symbol
+    if jac_method == 1 # Crank-Nicolson, unsteady adjoint, FD Jac
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Float64
+      Tres = Float64
+    elseif jac_method == 2 # Crank-Nicolson, unsteady adjoint, CS Jac
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Complex128
+      Tres = Complex128
+    else
+      throw(ErrorException("Illegal or no jac_method specified for CN uadj initialization."))
+    end
   else
     throw(ErrorException("Unrecognized run_type: $flag"))
   end
@@ -178,6 +195,11 @@ end
     opts: the options dictionary
     Tsbp: the DataType specifying the Tsbp passed to the SBP operator
           constructor
+    suffix: this suffix is added to all keys accessed in the options dictionary.
+            Usually the suffix is either the empty string or an integer.  This
+            provides a convenient way for the input file to specify several
+            different SBP operator and have this operator construct them.
+            Default value is the empty string.
 
   Outputs:
     sbp: the SBP operator
@@ -187,50 +209,57 @@ end
     topo: in the 3D DG case, an ElementTopology describing the SBP reference
           element, otherwise the integer 0.
 """
-function createSBPOperator(opts::Dict, Tsbp::DataType)
+function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
   # construct SBP operator and figure out shape_type needed by Pumi
-  order = opts["order"]  # order of accuracy
+  order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
-  println("\nConstructing SBP Operator")
+  println("\nConstructing SBP Operator $suffix")
   topo = 0  # generally not needed, so return a default value
   if opts["use_DG"]
-    if opts["operator_type"] == "SBPOmega"
+    if opts["operator_type$suffix"] == "SBPOmega"
       if dim == 2
         sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
       else
         sbp = getTetSBPOmega(degree=order, Tsbp=Tsbp)
       end
       shape_type = 2
-    elseif opts["operator_type"] == "SBPGamma"
+    elseif opts["operator_type$suffix"] == "SBPGamma"
       if dim == 2
         sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
       else
         sbp = getTetSBPGamma(degree=order, Tsbp=Tsbp)
       end
       shape_type = 3
-    elseif opts["operator_type"] == "SBPDiagonalE"
+    elseif opts["operator_type$suffix"] == "SBPDiagonalE"
       if dim == 2
         sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp)
       else
         throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
       end
       shape_type = 4
-    elseif opts["operator_type"] == "SBPDiagonalE2"  # no vert nodes
+    elseif opts["operator_type$suffix"] == "SBPDiagonalE2"  # no vert nodes
       if dim == 2
         sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp, vertices=false)
       else
         sbp = getTetSBPWithDiagE(degree=order, Tsbp=Tsbp)
       end
       shape_type = 5
+    elseif opts["operator_type$suffix"] == "SBPOmega2"
+      shape_type = 6
+      if dim == 2
+        sbp = getTriSBPOmega2(degree=order, Tsbp=Tsbp)
+      else
+        throw(ArgumentError("3D SBPOmega2 not supported"))
+      end
     else
-      op_type = opts["operator_type"]
+      op_type = opts["operator_type$suffix"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
     end
   else  # CG mesh
     # the CG varient of SBP gamma is the only option
-    if opts["operator_type"] != "SBPGamma"
-      op_type = opts["operator_type"]
+    if opts["operator_type$suffix"] != "SBPGamma"
+      op_type = opts["operator_type$suffix"]
       throw(ArgumentError("invalid operator type $op_type for CG"))
     end
     sbp = getTriSBPGamma(degree=order, Tsbp=Tsbp)
@@ -242,28 +271,31 @@ function createSBPOperator(opts::Dict, Tsbp::DataType)
     if dim == 2
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
-      if opts["operator_type"] == "SBPDiagonalE"
+      if opts["operator_type$suffix"] == "SBPDiagonalE"
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
-      elseif opts["operator_type"] == "SBPDiagonalE2"
+      elseif opts["operator_type$suffix"] == "SBPDiagonalE2"
         println("getting TriFaceForDiagE2")
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.', vertices=false)
       else
-        sbpface = TriFace{Float64}(order, sbp.cub, ref_verts.')
+        sbpface = TriFace{Tsbp}(order, sbp.cub, ref_verts.')
       end
     else  # dim == 3
       ref_verts = sbp.vtx
       face_verts = SummationByParts.SymCubatures.getfacevertexindices(sbp.cub)
-      topo = ElementTopology{3}(face_verts)
+      edge_verts = [1 2 1 1 2 3;  # TODO: SBP should provide this
+                    2 3 3 4 4 4]
+      topo2 = ElementTopology2()   #TODO: make this the correct one for SBP
+      topo = ElementTopology{3}(face_verts, edge_verts, topo2=topo2)
 
-      if opts["operator_type"] == "SBPDiagonalE2"
+      if opts["operator_type$suffix"] == "SBPDiagonalE2"
         sbpface = getTetFaceForDiagE(order, sbp.cub, ref_verts)
       else
-        sbpface = TetFace{Float64}(order, sbp.cub, ref_verts)
+        sbpface = TetFace{Tsbp}(order, sbp.cub, ref_verts)
       end
     end  # end if dim == 2
   else   # CG
     if dim == 2
-      sbpface = TriFace{Float64}(order, sbp.cub, sbp.vtx)
+      sbpface = TriFace{Tsbp}(order, sbp.cub, sbp.vtx)
     else
       throw(ErrorException("3D CG not supported"))
     end
@@ -284,16 +316,18 @@ end
           needed for 3D DG, otherwise can be any value
     Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)
     dofpernode: number of degrees of freedom on every node
+    suffix: suffix added to options dictionary keys that describe the SBP
+            operator.  See [`createSBPOperator`](@ref)
 
   All arguments except opts are typically provided by 
   [`createSBPOperator`](@ref) and [`getDataTypes`](@ref)
 """
 function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
-                    Tmsh, dofpernode)
+                    Tmsh, dofpernode, suffix="")
 
   dmg_name = opts["dmg_name"]
   smb_name = opts["smb_name"]
-  order = opts["order"]  # order of accuracy
+  order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
 
@@ -372,7 +406,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
            # stepper returns a new t value
   if opts["solve"]
 
-    solve_time = @elapsed if flag == 1 # normal run
+    t_nlsolve = @elapsed if flag == 1 # normal run
       # RK4 solver
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
@@ -469,7 +503,81 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                    step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
                    res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
 
+    elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
+      # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
 
+      if opts["adjoint_revolve"]
+        error("adjoint_revolve not fully implemented yet.")
+      end
+
+      if opts["adjoint_straight"]
+
+        if opts["uadj_global"]
+
+          println(" GLOBAL: forming WWW, ZZZ")
+          # dof_global = mesh.numDof*t_steps
+          # blksz = 3   # testing 44
+          blksz = mesh.numDof
+          t_steps = 4
+          dof_global = blksz*t_steps
+          WWW = rand(dof_global)
+          ZZZ = rand(dof_global)
+          println(" GLOBAL: forming dRdu")
+          dRdu_global_fwd = zeros(dof_global, dof_global)
+          dRdu_global_rev = zeros(dof_global, dof_global)
+          # PM stands for piecemeal. intended to do it step by step during the adj calc to test bookkeeping
+          dRdu_global_rev_PM = zeros(dof_global, dof_global)
+          println(" GLOBAL: size(dRdu_global_fwd): ", size(dRdu_global_fwd))
+          writedlm("global_www.dat", WWW)
+          writedlm("global_zzz.dat", ZZZ)
+          writedlm("global_dRdu_fwd_initial.dat", dRdu_global_fwd)
+          writedlm("global_dRdu_rev_initial.dat", dRdu_global_rev)
+        else
+          WWW = zeros(1,1)
+          ZZZ = zeros(1,1)
+          dRdu_global_fwd = zeros(1,1)
+          dRdu_global_rev = zeros(1,1)
+          dRdu_global_rev_PM = zeros(1,1)
+        end      # end of if opts["uadj_global"]
+
+        # forward sweep
+        # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                                 # mesh, sbp, eqn, opts, opts["res_abstol"], store_u_to_disk=true)
+        println(" Calling CN, forward sweep.")
+        @time t = crank_nicolson_uadj(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts,
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
+                                 opts["res_abstol"],
+                                 store_u_to_disk=true)
+
+        # reverse sweep
+        # @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                                 # mesh, sbp, eqn, opts, opts["res_abstol"], neg_time=true)
+        println(" Calling CN, reverse sweep.")
+        @time t = crank_nicolson_uadj(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts,
+                                 WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
+                                 opts["res_abstol"],
+                                 neg_time=true)
+
+        if opts["uadj_global"]
+          dRdu_global_fwd_WWW = dRdu_global_fwd*WWW
+          fwd_check_number = dot(dRdu_global_fwd_WWW, ZZZ)
+          filename = "global_dRdu_check_fwd.dat"
+          writedlm(filename, fwd_check_number)
+
+          dRdu_global_rev_ZZZ = dRdu_global_rev*ZZZ
+          rev_check_number = dot(dRdu_global_rev_ZZZ, WWW)
+          filename = "global_dRdu_check_rev.dat"
+          writedlm(filename, rev_check_number)
+        end     # end of if opts["uadj_global"]
+
+      else
+        @time t = crank_nicolson_uadj(evalResidual, opts["delta_t"], opts["t_max"],
+                                 mesh, sbp, eqn, opts, opts["res_abstol"])
+      end      # end of if opts["adjoint_straight"]
+
+      eqn.t = t
 
     else
        throw(ErrorException("No flag specified: no solve will take place"))
@@ -478,6 +586,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     println("total solution time printed above")
     params = eqn.params
+    params.time.t_nlsolve += t_nlsolve
     myrank = mesh.myrank
 
     if opts["write_timing"]

@@ -591,6 +591,86 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
   return nothing
 end
 
+type noPenetrationESBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+# a clever optimizing compiler will clean this up
+# there might be a way to do this with fewer flops using the tangent vector
+
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+#  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
+#  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  # Get the normal momentum
+  Unrm = nx*q[2] + ny*q[3]
+
+  # this is equivalent to:
+  #   1. computing the normal and tangential components
+  #   2. negating the normal component
+  #   3. combining the negative normal and non-negated tangent component
+  qg = params.qg
+  qg[1] = q[1]
+  qg[2] = -2*Unrm*nx + q[2]
+  qg[3] = -2*Unrm*ny + q[3]
+  qg[4] = q[4]
+
+  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+
+  return nothing
+end
+
+function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType3,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+# a clever optimizing compiler will clean this up
+# there might be a way to do this with fewer flops using the tangent vector
+
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  nz = nrm_xy[3]
+#  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
+#  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
+#  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
+  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
+  # normalize normal vector
+  nx = nx*fac
+  ny = ny*fac
+  nz = nz*fac
+
+  # this is momentum, not velocity?
+  Unrm = nx*q[2] + ny*q[3] + nz*q[4]
+
+  qg = params.qg
+  qg[1] = q[1]
+  qg[2] = -2*Unrm*nx + q[2]
+  qg[3] = -2*Unrm*ny + q[3]
+  qg[4] = -2*Unrm*nz + q[4]
+  qg[5] = q[5]
+
+  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+
+  return nothing
+end
+
+
+
 @doc """
 ###EulerEquationMod.noPenetrationBC_revm
 
@@ -808,7 +888,7 @@ type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType2,
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1065,19 +1145,20 @@ end # end function call
 type ExpBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  x::AbstractArray{Tmsh,1},
-              dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
-              nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
-              params::ParamType)
+function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1})
 
   # Forward Sweep
   qg = params.qg
-  calcExp(x, params, qg)
-  # RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  calcExp(params, coords, qg)
 
   # Reverse Sweep
-  RoeSolver_revm(params, q, qg, aux_vars, dxidx, nrm, bndryflux_bar, dxidx_bar)
+
+  # RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
 
   return nothing
 end
@@ -1143,6 +1224,7 @@ end
 global const BCDict = Dict{ASCIIString, BCType}(
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
+"noPenetrationESBC" => noPenetrationESBC(),
 "Rho1E2U3BC" => Rho1E2U3BC(),
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),

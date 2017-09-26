@@ -5,8 +5,9 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any}(
-"run_type" => 1,
+"run_type" => 5,
 "jac_type" => 3,
+"jac_method" => 2,
 "newton_globalize_euler" => true,
 "order" => 1,
 "real_time" => true,
@@ -39,11 +40,9 @@ arg_dict = Dict{Any, Any}(
 "itermax" => 30,
 "calc_functional" => true,
 "num_functionals" => 1,
-"functional_name1" => "qflux",
-"functional_error" => true,
-"geom_edges_functional1" => [1,2],
+"objective_function" => "qflux",
+"geom_faces_objective" => [1,2],
 "analytical_functional_val" => 2*(exp(1) - 1),
-"calc_adjoint" => false,
 "writeq" => false,
 "write_edge_vertnums" => false,
 "write_qic" => false,

@@ -27,7 +27,7 @@ mesh = PumiMesh2(dmg_name, smb_name, order; dofpernode=1)
 
 u_i = zeros(mesh.numDof)  # create u vector (current timestep)
 u_i_1 = zeros(mesh.numDof) # u at next timestep
-# initilize u
+# initialize u
 for i=1:mesh.numEl
   coords = getElementVertCoords(mesh, [i])
 
@@ -39,7 +39,7 @@ for i=1:mesh.numEl
     u_i[dofnum] = u_j
   end
 end
-println("finished initilizing u")
+println("finished initializing u")
 println("u = \n", u_i)
 
 printEdgeVertNumbers(getEdgeNumbering(), getVertNumbering())
