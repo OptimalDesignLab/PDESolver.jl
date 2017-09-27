@@ -88,6 +88,13 @@ The required fields of an `AbstractSolutionData` are:
   params{Tsol..., Tdim}::AbstractParamType{Tdim}
 ```
 
+### Optional Fields
+```
+  file_dict::ASCIIString, IO}
+```
+
+### Field Meanings
+
 The purpose of these fields are:
 
 `q`: to hold the solution variables in an element-based array.
@@ -169,6 +176,11 @@ The only required fields are:
 * `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
 *  `time::Timings`: an object to record how long different parts of the code take,
   defined in the Utils module.
+
+`file_dict`: dictionary that maps from the file name to a file handle.  This
+             field is not required, but if it is present, all copies of the
+             equation object must share the same dictionary (to avoid problems
+             with buffering).
 
 ## AbstractMesh
 

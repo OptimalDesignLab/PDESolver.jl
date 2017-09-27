@@ -491,7 +491,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
 
   # inner constructor
-  function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+  function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true)
 
     println("\nConstruction EulerData object")
     println("  Tsol = ", Tsol)
@@ -703,7 +703,12 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
-   eqn.file_dict = openLoggingFiles(mesh, opts)
+
+   if open_files
+     eqn.file_dict = openLoggingFiles(mesh, opts)
+   else
+     eqn.file_dict = Dict{ASCIIString, IO}()
+   end
 
     return eqn
 
