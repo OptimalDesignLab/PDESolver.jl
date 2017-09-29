@@ -114,9 +114,9 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
   if neg_time == false
     # make a copy of the eqn object for storage of t_(n+1) information
     eqn_nextstep = eqn_deepcopy(mesh, sbp, eqn, opts)
-    # TODO: copyForMultistage does not give correct values.
-    #     deepcopy works for now, but uses more memory than copyForMultistage, if it worked
-    # eqn_nextstep = copyForMultistage(eqn)
+    # TODO: copyForMultistage! does not give correct values.
+    #     deepcopy works for now, but uses more memory than copyForMultistage!, if it worked
+    # eqn_nextstep = copyForMultistage!(eqn)
     # eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
     # eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   else
@@ -635,13 +635,13 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
   end
 
   # depending on how many timesteps we do, this may or may not be necessary
-  #   usage: copy!(dest, src)   
-  # this copy! is defined in ODLCommonTools
+  #   usage: copyForMultistage!(dest, src)   
+  # this copyForMultistage! is defined in ODLCommonTools
   if neg_time == false
-    copy!(eqn, eqn_nextstep)      # copying eqn_nextstep to eqn
+    copyForMultistage!(eqn, eqn_nextstep)      # copying eqn_nextstep to eqn
     writedlm("solution_final_inCN.dat", real(eqn.q_vec))
   else
-    copy!(adj, adj_nextstep)      # copying adj_nextstep to eqn
+    copyForMultistage!(adj, adj_nextstep)      # copying adj_nextstep to eqn
     writedlm("adjoint_final_inCN.dat", real(adj.q_vec))
   end
 

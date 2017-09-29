@@ -350,8 +350,6 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
 
       @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
-      #DEBUGGING: flish every time
-      @mpi_master flush(f)
     end
 
     @mpi_master if (itr % output_freq) == 0

@@ -577,6 +577,40 @@ return nothing
 
 end  # end function
 
+"""
+  Vortex travelling at an angle
+"""
+function ICUnsteadyVortex2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                          operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+                          opts, u0::AbstractArray{Tsol})
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+numEl = mesh.numEl
+nnodes = operator.numnodes
+dofpernode = mesh.numDofPerNode
+sol = zeros(Tsol, mesh.numDofPerNode)
+
+
+for i=1:numEl
+  for j=1:nnodes
+      dofnums_j = sview(mesh.dofs, :, j, i)
+ 
+      coords_j = sview(mesh.coords, :, j, i)
+      calcUnsteadyVortex2(eqn.params, coords_j, sol)
+
+      for k=1:dofpernode
+        u0[dofnums_j[k]] = sol[k]
+      end
+
+  end
+end
+
+return nothing
+
+end  # end function
+
+
 
 @doc """
 ### EulerEquationMod.ICFile
@@ -802,6 +836,7 @@ global const ICDict = Dict{Any, Function}(
 "ICsmoothHeaviside" => ICsmoothHeaviside,
 "ICIsentropicVortex" => ICIsentropicVortex,
 "ICUnsteadyVortex" => ICUnsteadyVortex,
+"ICUnsteadyVortex2" => ICUnsteadyVortex2,
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
 "ICFile" => ICFile,
 "ICExp" => ICExp,

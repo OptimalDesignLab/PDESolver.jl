@@ -907,6 +907,30 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType,
 
 end # ends the function unsteadyVortex BC
 
+type unsteadyVortex2BC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::unsteadyVortex2BC, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+
+#  println("entered isentropicOvrtexBC (low level)")
+#  println("Tsol = ", Tsol)
+  # getting qg
+  qg = params.qg
+  calcUnsteadyVortex2(params, coords, qg)
+
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+
+end # ends the function unsteadyVortex BC
+
+
 @doc """
 ### EulerEquationMod.Rho1E2U3BC <: BCTypes
 
@@ -1230,6 +1254,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "FreeStreamBC" => FreeStreamBC(),
 "allOnesBC" => allOnesBC(),
 "unsteadyVortexBC" => unsteadyVortexBC(),
+"unsteadyVortex2BC" => unsteadyVortex2BC(),
 "ExpBC" => ExpBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
 "ChannelMMSBC" => ChannelMMSBC(),
