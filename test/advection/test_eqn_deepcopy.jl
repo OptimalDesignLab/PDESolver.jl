@@ -146,7 +146,7 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
 
 end   # end of function test_eqn_copy
 
-add_func2!(AdvectionTests, test_eqn_copy, test_eqn_copy_inputfile, [TAG_LONGTEST])
+add_func2!(AdvectionTests, test_eqn_copy, test_eqn_copy_inputfile, [TAG_SHORTTEST])
 
 #=
 Fields of advection eqn object:

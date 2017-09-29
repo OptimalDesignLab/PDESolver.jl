@@ -35,8 +35,7 @@ function eqn_deepcopy{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Adve
   param_tuple = getAllTypeParams(mesh, eqn, opts)
 
   eqn_copy = AdvectionData_{param_tuple...}(mesh, sbp, opts)
-
-  eqn_copy = eqn_deepcopy_fields(mesh, sbp, eqn, eqn_copy, opts)
+  copy!(eqn_copy, eqn)
 
   return eqn_copy
 

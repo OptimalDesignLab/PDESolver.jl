@@ -84,9 +84,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # eqn_nextstep = deepcopy(eqn)
   eqn_nextstep = eqn_deepcopy(mesh, sbp, eqn, opts)
 
-  # TODO: copyForMultistage does not give correct values.
-  #     deepcopy works for now, but uses more memory than copyForMultistage, if it worked
-  # eqn_nextstep = copyForMultistage(eqn)
+  # TODO: copyForMultistage! does not give correct values.
+  #     deepcopy works for now, but uses more memory than copyForMultistage!, if it worked
+  # eqn_nextstep = copyForMultistage!(eqn)
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
@@ -184,8 +184,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end   # end of t step loop
 
   # depending on how many timesteps we do, this may or may not be necessary
-  #   usage: copy!(dest, src)
-  copy!(eqn, eqn_nextstep)
+  #   usage: copyForMultistage!(dest, src)
+  copyForMultistage!(eqn, eqn_nextstep)
 
 
   if jac_type == 3
