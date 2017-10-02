@@ -87,7 +87,7 @@ end
                    which the old checkpoint has been partially overwritten but
                    the new checkpoint is not complete yet)
 
-    * prefix: added to directory names (with an underscore added in-between).
+   * prefix: added to directory names (with an underscore added in-between).
               Defaults to empty string. This is useful if there are multiple
               sets of checkpoints (and therefore multiple Checkpointer objects).
 
@@ -203,7 +203,7 @@ import Base.copy, Base.copy!
   Note that changes to one Checkpointer object will not affect the other
   (ie. the record of which checkpoints are used and which are not).
   This could easily lead to corrupting a checkpoint.
-  For this reason, this function should rarely be used
+  For this reason, this function should rarely be used.
 """
 function copy(chkpointer::Checkpointer)
 
@@ -219,7 +219,7 @@ function copy(chkpointer::Checkpointer)
 end
 
 """
-  2 argument version of copy().  See that function for details
+  2 argument version of copy().  See that function for details.
 """
 function copy!(dest::Checkpointer, src::Checkpointer)
 
@@ -559,7 +559,7 @@ end
 # API
 
 """
-  This function reads an object of type AbstractSolutionData from a file
+  This function reads an object of type AbstractCheckpointData from a file
   and reuturns the object.  This is type unstable, so every AbstractSolutionData
   implementation should create a constructor that calls this function and
   uses a type assertion to specify that the object must be of their concrete
@@ -570,6 +570,10 @@ end
    * chkpointer: a Checkpointer
    * chkpoint: the index of hte checkpoint
    * comm_rank: the MPI rank of this process
+
+  **Outputs**
+
+   * the [`AbstractCheckpointData`](@ref) loaded from the checkpoint
 """
 function readCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
                             comm_rank::Integer)

@@ -289,7 +289,7 @@ function calcVolumeIntegralsSplitFormLinear{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end
 
-@doc """
+"""
   Calculate (S .* F)1, where S is the skew-symmetric part of sbp.Q
   and F is a symmetric numerical flux function.  eqn.res is updated
   with the result.  This function is used for curvilinear meshes.
