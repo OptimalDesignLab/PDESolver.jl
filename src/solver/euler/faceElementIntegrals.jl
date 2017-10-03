@@ -153,7 +153,7 @@ end
 """
 function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::DenseFace, 
+                             sbpface::AbstractFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
@@ -179,7 +179,7 @@ end
 """
 function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::DenseFace, 
+                             sbpface::AbstractFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
@@ -205,7 +205,7 @@ end
 """
 function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::DenseFace, 
+                             sbpface::AbstractFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
