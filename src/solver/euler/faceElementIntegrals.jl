@@ -675,12 +675,8 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     calcEvalsx(params, qR_i, Lambda)
     calcEScalingx(params, qR_i, S2)
 
-    calcEntropyFix(params, Lambda)
+#    calcEntropyFix(params, Lambda)
  
-    #DEBUGGING: make this into LF
-#    fill!(Lambda, maximum(abs(Lambda)))
-#    lambda_max_scaled = len_fac*maximum(abs(Lambda))
-
     # compute LF term in n-t coordinates, then rotate back to x-y
     projectToNT(params, P, wL_i, tmp1)
     smallmatTvec!(Y, tmp1, tmp2)
@@ -708,6 +704,104 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   return nothing
 end
+
+"""
+  Method for sparse faces.  See other method for details
+
+  Aliasing restrictions: params: v_vals, v_vals2, q_vals, q_vals2, A0, res_vals1, res_vals2
+                         A0, S2, Lambda, nrm2, P
+"""
+function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::SparseFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+  numDofPerNode = size(qL, 1)
+
+  # convert qL and qR to entropy variables (only the nodes that will be used)
+#  wL = params.w_vals_stencil
+#  wR = params.w_vals2_stencil
+  wL_i = params.v_vals
+  wR_i = params.v_vals2
+  q_avg = params.q_vals
+  qprime = params.q_vals2
+  res_vals = params.res_vals1
+  res_vals2 = params.res_vals2
+  A0 = params.A0
+  fastzero!(A0)
+
+  Y = params.A0  # eigenvectors of flux jacobian
+  S2 = params.S2  # diagonal scaling matrix squared
+                       # S is defined s.t. (YS)*(YS).' = A0
+  Lambda = params.Lambda  # diagonal matrix of eigenvalues
+  nrm = params.nrm2
+  P = params.P  # projection matrix
+
+
+  @simd for i=1:sbpface.numnodes
+    # convert to entropy variables at the nodes
+    p_iL = sbpface.perm[i, iface.faceL]
+    pnbr = sbpface.nbrperm[i, iface.orient]
+    p_iR = sbpface.perm[pnbr, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_i = ro_sview(qL, :, p_iL)
+    qR_i = ro_sview(qR, :, p_iR)
+    convertToIR(params, qL_i, wL_i)
+    convertToIR(params, qR_i, wR_i)
+
+    # compute average qL
+    # also delta w (used later)
+    @simd for j=1:numDofPerNode
+      q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
+      res_vals[j] = sbpface.wface[i]*(wL_i[j] - wR_i[j])
+    end
+
+    # get the normal vector (scaled)
+    for dim=1:Tdim
+      nrm[dim] = nrm_face[dim, i]
+    end
+    # normalize direction vector
+    len_fac = calcLength(params, nrm)
+    for dim=1:Tdim
+      nrm[dim] = nrm[dim]/len_fac
+    end
+
+    # project q into n-t coordinate system
+    getProjectionMatrix(params, nrm, P)
+    projectToNT(params, P, q_avg, qprime)
+
+    # get eigensystem in the normal direction, which is equivalent to
+    # the x direction now that q has been rotated
+    calcEvecsx(params, qprime, Y)
+    calcEvalsx(params, qprime, Lambda)
+    calcEScalingx(params, qprime, S2)
+
+#    calcEntropyFix(params, Lambda)
+ 
+    # compute LF term in n-t coordinates, then rotate back to x-y
+    projectToNT(params, P, res_vals, res_vals2)
+    smallmatTvec!(Y, res_vals2, res_vals)
+    # multiply by diagonal Lambda and S2, also include the scalar
+    # wface and len_fac components
+    for j=1:length(res_vals)
+      res_vals[j] *= len_fac*absvalue(Lambda[j])*S2[j]
+    end
+    smallmatvec!(Y, res_vals, res_vals2)
+    projectToXY(params, P, res_vals2, res_vals)
+
+    @simd for p=1:numDofPerNode
+      resL[p, p_iL] -= res_vals[p]
+      resR[p, p_iR] += res_vals[p]
+    end
+  end  # end loop i
+
+  return nothing
+end
+
+
 
 """
   This function modifies the eigenvalues of the euler flux jacobian such
