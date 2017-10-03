@@ -235,7 +235,8 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
       if dim == 2
         sbp = getTriSBPDiagE(degree=order, Tsbp=Tsbp)
       else
-        throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
+        sbp = getTetSBPDiagE(degree=order, Tsbp=Tsbp)
+#        throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
       end
       shape_type = 4
     elseif opts["operator_type$suffix"] == "SBPDiagonalE2"  # no vert nodes
@@ -287,7 +288,7 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
       topo2 = ElementTopology2()   #TODO: make this the correct one for SBP
       topo = ElementTopology{3}(face_verts, edge_verts, topo2=topo2)
 
-      if opts["operator_type$suffix"] == "SBPDiagonalE2"
+      if opts["operator_type$suffix"] == "SBPDiagonalE"
         sbpface = getTetFaceForDiagE(order, sbp.cub, ref_verts)
       else
         sbpface = TetFace{Tsbp}(order, sbp.cub, ref_verts)

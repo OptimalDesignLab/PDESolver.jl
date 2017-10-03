@@ -36,7 +36,7 @@ include("IR_stab.jl")  # stabilization for the IR flux
 """
 function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
+                             sbpface::DenseFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
@@ -153,7 +153,7 @@ end
 """
 function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
+                             sbpface::DenseFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
@@ -179,7 +179,7 @@ end
 """
 function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
+                             sbpface::DenseFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
@@ -205,7 +205,7 @@ end
 """
 function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
+                             sbpface::DenseFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
@@ -242,7 +242,7 @@ end
 """
 function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::AbstractFace, iface::Interface, 
+             sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
@@ -421,7 +421,7 @@ end
 """
 function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::AbstractFace, iface::Interface, 
+             sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
@@ -585,7 +585,7 @@ end
 """
 function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::AbstractFace, iface::Interface, 
+             sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})

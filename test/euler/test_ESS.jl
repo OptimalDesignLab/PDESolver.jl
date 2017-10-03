@@ -236,6 +236,8 @@ function getEface(iface, sbpface, nrm_face, dir::Integer)
   return EL, ER
 end
 
+import EulerEquationMod.reduceEface
+#=
 """
   Compute E for the current face (specified by dir) times psiL and psiR
 """
@@ -262,7 +264,7 @@ function reduceEface(iface, sbpface, nrm_face::AbstractMatrix, dir::Integer, psi
 
   return RHS1 + RHS2
 end
-
+=#
 
   
 function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
@@ -465,6 +467,8 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     nrm = zeros(mesh.dim)
 
     # calculate the integral of entropy flux from q
+    rhs = reduceEface(eqn.params, iface, mesh.sbpface, nrm_face, qL, qR)
+#=
     rhs = 0.0
     for dir=1:mesh.dim
       fill!(nrm, 0.0)
@@ -472,7 +476,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
       psiL, psiR = getPsi(eqn.params, qL, qR, nrm)
       rhs += reduceEface(iface, mesh.sbpface, nrm_face, dir, psiL, psiR)
     end
-
+=#
 
     @fact -(lhsL + lhsR) --> roughly(rhs, atol=1e-12)
     total_potentialflux -= lhsL + lhsR
@@ -978,6 +982,26 @@ function test_ESS()
 
       end  # end loop over p
     end  # end loop over dim
+
+    println("\nTesting diagonal E")
+    # test a diagonal E operator
+    dim = 3
+    p = 2
+    meshname = "SRCMESHES/tet8cubep.smb"
+    println("testing p = ", p)
+    opts["dimensions"] = dim
+    opts["smb_name"] = meshname
+    opts["operator_type"] = "SBPDiagonalE"
+    opts["order"] = p
+    opts["numBC"] = 0
+    fname = "input_vals_ESS_test2"
+    make_input(opts, fname)
+    ARGS[1] = fname*".jl"
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+   
+
+    runECTest(mesh, sbp, eqn, opts, test_ref=false)
+
 
   end  # end facts block
 
