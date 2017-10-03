@@ -219,7 +219,7 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
   if opts["use_DG"]
     if opts["operator_type$suffix"] == "SBPOmega"
       if dim == 2
-        sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
+        sbp = getTriSBPOmega0(degree=order, Tsbp=Tsbp)
       else
         sbp = getTetSBPOmega(degree=order, Tsbp=Tsbp)
       end
@@ -233,16 +233,16 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
       shape_type = 3
     elseif opts["operator_type$suffix"] == "SBPDiagonalE"
       if dim == 2
-        sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp)
+        sbp = getTriSBPDiagE(degree=order, Tsbp=Tsbp)
       else
         throw(ArgumentError("3 dimensional SBPDiagonalE no supported"))
       end
       shape_type = 4
     elseif opts["operator_type$suffix"] == "SBPDiagonalE2"  # no vert nodes
       if dim == 2
-        sbp = getTriSBPWithDiagE(degree=order, Tsbp=Tsbp, vertices=false)
+        sbp = getTriSBPDiagE(degree=order, Tsbp=Tsbp, vertices=false)
       else
-        sbp = getTetSBPWithDiagE(degree=order, Tsbp=Tsbp)
+        sbp = getTetSBPDiagE(degree=order, Tsbp=Tsbp)
       end
       shape_type = 5
     elseif opts["operator_type$suffix"] == "SBPOmega2"
@@ -334,12 +334,12 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
   if opts["use_DG"]
     println("constructing DG mesh")
     if dim == 2
-      mesh = PumiMeshDG2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface; 
+      mesh = PumiMeshDG2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface; 
                                dofpernode=dofpernode, 
                                coloring_distance=opts["coloring_distance"],
                                shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface,
+      mesh = PumiMeshDG3{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface,
                                topo; dofpernode=dofpernode,
                                coloring_distance=opts["coloring_distance"],
                                shape_type=shape_type)
@@ -358,7 +358,7 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
     if dim == 2
 
       println("constructing CG mesh")
-      mesh = PumiMesh2{Tmsh}(dmg_name, smb_name, order, sbp, opts, sbpface;
+      mesh = PumiMesh2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface;
                              dofpernode=dofpernode,
                              coloring_distance=opts["coloring_distance"],
                              shape_type=shape_type)

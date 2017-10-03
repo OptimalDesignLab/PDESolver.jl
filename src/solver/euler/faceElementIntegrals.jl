@@ -74,12 +74,6 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
       functor(params, qi, qj, aux_vars_i, nrmD, fluxD)
 
       @simd for dim = 1:Tdim  # move this inside the j loop, at least
-#        for d=1:Tdim
-#          nrm[d] = 0
-#        end
-#        fill!(nrm, 0.0)
-#        nrm[dim] = 1
-
         # accumulate entry p_i, p_j of E
         Eij = zero(Tres)  # should be Tres
         @simd for k = 1:sbpface.numnodes
@@ -103,6 +97,52 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   return nothing
 end
+
+"""
+  Method for sparse faces.  See other method for details
+
+  Aliasing restrictions: params.flux_vals1 must not be in use
+"""
+function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+                             params::AbstractParamType{Tdim}, 
+                             sbpface::SparseFace, 
+                             iface::Interface,
+                             qL::AbstractMatrix{Tsol}, 
+                             qR::AbstractMatrix{Tsol}, 
+                             aux_vars::AbstractMatrix{Tres}, 
+                             nrm_xy::AbstractMatrix{Tmsh},
+                             functor::FluxType, 
+                             resL::AbstractMatrix{Tres}, 
+                             resR::AbstractMatrix{Tres})
+
+  flux_tmp = params.flux_vals1
+
+  for i=1:sbpface.numnodes
+    p_i = sbpface.perm[i, iface.faceL]
+    q_i = ro_sview(qL, :, p_i)
+    aux_vars_i = ro_sview(aux_vars, :, p_i)
+
+    # get the corresponding node on faceR
+    pnbr = sbpface.nbrperm[i, iface.orient]
+    p_j = sbpface.perm[pnbr, iface.faceR]
+#    p_j = sbpface.nbrperm[sbpface.perm[i, iface.faceR], iface.orient]
+    q_j = ro_sview(qR, :, p_j)
+
+    # compute flux in face normal direction
+    nrm_i = ro_sview(nrm_xy, :, i)
+    functor(params, q_i, q_j, aux_vars_i, nrm_i, flux_tmp)
+
+    w_i = sbpface.wface[i]
+    for p=1:size(resL, 1)
+      resL[p, p_i] -= w_i*flux_tmp[p]
+      resR[p, p_j] += w_i*flux_tmp[p]
+    end
+
+  end  # end loop i
+
+  return nothing
+end
+
 
 
 """
@@ -212,8 +252,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   # convert qL and qR to entropy variables (only the nodes that will be used)
   wL = params.w_vals_stencil
   wR = params.w_vals2_stencil
-#  wL = zeros(Tsol, numDofPerNode, sbpface.stencilsize)
-#  wR = zeros(wL)
 
   for i=1:sbpface.stencilsize
     # apply sbpface.perm here
@@ -237,12 +275,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   qL_i = params.q_vals
   qR_i = params.q_vals2
 
-#  wL_i = zeros(Tsol, numDofPerNode)
-#  wR_i = zeros(Tsol, numDofPerNode)
-  # convert wL at the node back to qL
-#  qL_i = zeros(Tsol, numDofPerNode)
-#  qR_i = zeros(Tsol, numDofPerNode)
-#  dir = params.nrm2
   A0 = params.A0
   fastzero!(A0)
 
@@ -251,8 +283,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     dir = ro_sview(nrm_face, :, i)
     fastzero!(wL_i)
     fastzero!(wR_i)
-#    fastzero!(qL_i)
-#    fastzero!(qR_i)
 
     # interpolate wL and wR to this node
     @simd for j=1:sbpface.stencilsize
@@ -262,8 +292,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
       @simd for k=1:numDofPerNode
         wL_i[k] += interpL*wL[k, j]
         wR_i[k] += interpR*wR[k, j]
-#        qL_i[k] += interpL*qL[k, j]
-#        qR_i[k] += interpR*qR[k, j]
       end
     end
 
@@ -273,13 +301,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
     lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
-#    @assert lambda_max > 0
-#    lambda_max *= sqrt(params.h)
-    # poor mans entropy fix
-#    lambda_max *= 0.1
-#    lambda_max += 0.25
-#    lambda_max *= 2
-#    lambda_max = 3.0
     
     # compute average qL
     # also delta w (used later)
@@ -289,16 +310,10 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     end
 
     getIRA0(params, qL_i, A0)
-#    for j=1:numDofPerNode
-#      A0[j, j] = 1
-#    end
 
     # wface[i] * lambda_max * A0 * delta w
     smallmatvec!(A0, wL_i, wR_i)
     fastscale!(wR_i, sbpface.wface[i]*lambda_max)
-
-#    middle_term = scale(A0, sbpface.wface[i]*lambda_max)
-#    println("middle_term = \n", middle_term)
 
     # interpolate back to volume nodes
     @simd for j=1:sbpface.stencilsize
@@ -306,7 +321,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
       j_pR = sbpface.perm[j, iface.faceR]
 
       @simd for p=1:numDofPerNode
-        res_old = resL[p, j_pL]  # DEBUGGING
         resL[p, j_pL] -= sbpface.interp[j, i]*wR_i[p]
         resR[p, j_pR] += sbpface.interp[j, ni]*wR_i[p]
       end
@@ -316,6 +330,72 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   return nothing
 end
+
+"""
+  Method for sparse faces.  See other method for details
+
+  Aliasing restrictions: params: v_vals, v_vals2, q_vals, A0, res_vals1, res_vals2
+"""
+function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::SparseFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+  numDofPerNode = size(qL, 1)
+
+  # convert qL and qR to entropy variables (only the nodes that will be used)
+#  wL = params.w_vals_stencil
+#  wR = params.w_vals2_stencil
+  wL_i = params.v_vals
+  wR_i = params.v_vals2
+  q_avg = params.q_vals
+  res_vals = params.res_vals1
+  res_vals2 = params.res_vals2
+  A0 = params.A0
+  fastzero!(A0)
+
+
+  @simd for i=1:sbpface.numnodes
+    # convert to entropy variables at the nodes
+    p_iL = sbpface.perm[i, iface.faceL]
+    pnbr = sbpface.nbrperm[i, iface.orient]
+    p_iR = sbpface.perm[pnbr, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_i = ro_sview(qL, :, p_iL)
+    qR_i = ro_sview(qR, :, p_iR)
+    convertToIR(params, qL_i, wL_i)
+    convertToIR(params, qR_i, wR_i)
+
+    dir = ro_sview(nrm_face, :, i)
+
+    # get lambda * IRA0
+    lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
+ 
+    # compute average qL
+    # also delta w (used later)
+    @simd for j=1:numDofPerNode
+      q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
+      res_vals[j] = sbpface.wface[i]*lambda_max*(wL_i[j] - wR_i[j])
+    end
+
+    getIRA0(params, qL_i, A0)
+
+    # wface[i] * lambda_max * A0 * delta w
+    smallmatvec!(A0, res_vals, res_vals2)
+#    fastscale!(wR_i, sbpface.wface[i]*lambda_max)
+
+    @simd for p=1:numDofPerNode
+      resL[p, p_iL] -= res_vals2[p]
+      resR[p, p_iR] += res_vals2[p]
+    end
+  end  # end loop i
+
+  return nothing
+end
+
 
 """
   Calculate a term that provably dissipates (mathematical) entropy using a 
