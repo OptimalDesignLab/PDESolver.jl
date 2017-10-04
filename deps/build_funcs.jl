@@ -35,6 +35,16 @@ function is_commit(pkg_dir::AbstractString, hash::AbstractString)
   return iscommit
 end
 
+"""
+  Checks out a git object of some kind.  If the object is a tag or a branch,
+  it is checkout out as normal.  If it is a commit, a new branch is created
+  called detatched_from_commit, where commit is the commit hash
+
+  **Inputs**
+
+   * pkg_dir: directory where the git repo is located
+   * hash: git object identifier
+"""
 function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 # this function checks out a particular git hash of a particular package
 

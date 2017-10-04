@@ -1,6 +1,35 @@
 # download and build all non metadata dependences
 include("build_funcs.jl")
 
+"""
+  This function install all of PDESolvers dependencies (currently PDESolver
+  itself does not need to be built).
+
+  Environmental variables:
+    PDESOLVER_INSTALL_DEPS_MANUAL: install all dependencies manually (ie. using 
+                                   the particular commit stored in this file.
+                                   Note that if the package is already
+                                   installed, this does not do anything
+
+    PDESOLVER_FORCE_DEP_INSTALL_ALL: download and install all dependencies,
+          checking out the version stored in this file, even if the package
+          is already installed
+
+    PDESOLVER_FORCE_DEP_INSTALL_pkg_name: where pkg_name is replaced with the
+          name of a dependency, forces the installation of only that dependency.
+
+    PDESOLVER_BUNDLE_DEPS: download packages to a specified directory, do not
+                           install
+
+    PDESOLVER_PKGDIR: the specified directory for PDESOLVER_BUNDLE_DEPS
+
+    PDESOLVER_UNBUNDLE_DEPS: install PDESolver, using the packages in
+                             PDESOLVER_PKGDIR rather than downloading from the
+                             internet
+
+    TODO: add a bundling mode that copies the currently installed packages to
+          a directory, rather than downloading them from the internet
+"""
 function installPDESolver()
 
   f = open("install.log", "w")
