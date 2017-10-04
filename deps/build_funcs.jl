@@ -31,13 +31,14 @@ function is_commit(pkg_dir::AbstractString, hash::AbstractString)
     iscommit = true
   end
 
+  cd(start_dir)
   return iscommit
 end
 
 function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 # this function checks out a particular git hash of a particular package
 
-  new_branchname = "pdesolver_version"
+  new_branchname = "detached_from_$hash"
 
   start_dir = pwd()
   cd(pkg_dir)
@@ -45,8 +46,12 @@ function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 #  if branch_name[1:end-1] != new_branchname
 #    run(`git checkout -b pdesolver_version $hash`)
 #  end
+  iscommit = is_commit(pkg_dir, hash)
   run(`git checkout $hash`)
-  run(`git checkout -b pdesolver_version HEAD`)
+
+  if iscommit
+    run(`git checkout -b $new_branchname HEAD`)
+  end
   cd(start_dir)
 
 end
@@ -86,7 +91,6 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
         run(`git clone $git_url`)
         name_ext = string(pkg_name, ".jl")
         run(`mv -v ./$name_ext ./$pkg_name`)
-        println(f, "is commit = ", is_commit(pkg_path, git_commit))
         set_hash(pkg_path, git_commit)
         cd(start_dir)
       end
