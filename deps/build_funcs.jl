@@ -1,4 +1,39 @@
 
+"""
+  This function determines if a git identifier is a commit or something else
+  (ie. a branch or tag)
+
+  **Inputs**
+
+   * pkg_dir: path to directory containing the repo
+   * hash: git object identifier
+
+  **Outputs**
+
+   * bool, true if hash represents a commit, false otherwise
+"""
+function is_commit(pkg_dir::AbstractString, hash::AbstractString)
+
+  start_dir = pwd()
+  cd(pkg_dir)
+  
+  iscommit = false
+  try
+    vals = readall(`git show-ref | grep $hash`)
+    # make sure this is an exact match
+    name = split(vals, '/')[end]
+    if name[1:end-1] == hash
+      iscommit = false
+    else
+      iscommit = true
+    end
+  catch x
+    iscommit = true
+  end
+
+  return iscommit
+end
+
 function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 # this function checks out a particular git hash of a particular package
 
@@ -51,6 +86,7 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
         run(`git clone $git_url`)
         name_ext = string(pkg_name, ".jl")
         run(`mv -v ./$name_ext ./$pkg_name`)
+        println(f, "is commit = ", is_commit(pkg_path, git_commit))
         set_hash(pkg_path, git_commit)
         cd(start_dir)
       end
