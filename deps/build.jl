@@ -3,7 +3,7 @@ include("build_funcs.jl")
 
 function installPDESolver()
 
-  f = open("install.log", "a+")
+  f = open("install.log", "w")
   #------------------------------------------------------------------------------
   # these packages are always installed manually
   #-----------------------------------------------------------------------------

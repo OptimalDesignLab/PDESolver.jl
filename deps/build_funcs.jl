@@ -62,9 +62,7 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
       println(f, "Building package")
       println(f, "  Note: if this step fails, there is no way to report it in this log")
       Pkg.build(pkg_name)
-      println(f, "pinning package")
-      Pkg.pin(pkg_name)  # experimental
-      flush_cstdio()
+      Libc.flush_cstdio()
       println(f, "  Installation appears to have completed sucessfully")
     catch x
       flush_cstdio()
