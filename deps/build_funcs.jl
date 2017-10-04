@@ -16,6 +16,21 @@ function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 
 end
 
+"""
+  This function installs a specified package.  Unless overridded, if the package is
+  already installed, it will not be modified.
+
+  **Inputs**
+
+  * dir: directory in which to install package
+  * pkg_name: name of the package (not including .jl)
+  * git_url: URL of git repository
+  * git_commit: anything that git checkout can use to identify what to check out
+  * pkg_dict: dictionary of installed package
+  * f: an IO object to write info to
+  * force: force package to install even if already present, (keyword arg), default
+           false
+"""
 function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::AbstractString, git_commit::AbstractString, pkg_dict, f; force=false)
 # pkg_name = name of package
 # git_url: value to be passed to Pkg.clone()
@@ -42,10 +57,17 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
 #      else
 #        reset_repo(pkg_name)
 #      end
-       Pkg.resolve()
+      println(f, "Resolving dependencies")
+      Pkg.resolve()
+      println(f, "Building package")
+      println(f, "  Note: if this step fails, there is no way to report it in this log")
       Pkg.build(pkg_name)
+      println(f, "pinning package")
+      Pkg.pin(pkg_name)  # experimental
+      flush_cstdio()
       println(f, "  Installation appears to have completed sucessfully")
     catch x
+      flush_cstdio()
       println(f, "Error installing package $pkg_name")
       println(f, "Error is $x")
     end
