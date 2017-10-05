@@ -130,7 +130,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     # check stopping conditions
-    if (sol_norm < res_tol)
+    if (sol_norm < res_tol) && !real_time
       if myrank == 0
         println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)

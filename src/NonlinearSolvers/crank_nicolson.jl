@@ -331,53 +331,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
 end     # end of function cnRhs
 
-@doc """
-### NonlinearSolvers.pde_pre_func
-
-  The pre-function for solving partial differential equations with a physics
-  module.  The only operation it performs is disassembling eqn.q_vec into
-  eqn.q
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-"""->
-function pde_pre_func(mesh, sbp, eqn, opts)
-  
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-end
-
-
-@doc """
-### NonlinearSolvers.pde_post_func
-
-  The post-function for solving partial differential equations with a physics
-  module.  This function multiplies by A0inv, assembles eqn.res into
-  eqn.res_vec, multiplies by the inverse mass matrix, and calculates
-  the SBP approximation to the integral L2 norm
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-"""->
-function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
-  eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
-  if calc_norm
-    local_norm = calcNorm(eqn, eqn.res_vec)
-    eqn.params.time.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
-    return sqrt(global_norm)
-  end
-
-   return nothing
-end
-
 # the goal is to replace newton.jl.
 # this will go into CN in the time-stepping loop
 function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)

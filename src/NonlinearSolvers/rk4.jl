@@ -61,6 +61,11 @@ rk4
    the values in res and put them in res_vec.  Thus pre_func and post_func
    provide the link between the way the rk4 represents the data and the 
    way the physics modules represent the data.
+
+   Options Keys
+
+   Implementation Notes
+     sol_norm check is only performed in real_time mode
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
@@ -85,8 +90,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/h)
-  println(BSTDOUT, "t_steps: ",t_steps)
-  println(BSTDOUT, "delta_t = ", h)
+  @mpi_master println(BSTDOUT, "t_steps: ",t_steps)
+  @mpi_master println(BSTDOUT, "delta_t = ", h)
 
   (m,) = size(q_vec)
 
@@ -142,7 +147,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     # check stopping conditions
-    if (sol_norm < res_tol)
+    if (sol_norm < res_tol) && !real_time
       if myrank == 0
         println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
