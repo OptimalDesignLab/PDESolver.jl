@@ -20,22 +20,22 @@ Aliasing restrictions: none.
 
 """->
 
-function ICTrigWall{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                      operator::AbstractSBP{Tsbp}, 
-                                      eqn::EulerData{Tsol}, 
-                                      opts, 
-                                      u0::AbstractVector{Tsol})
-  # populate u0 with initial values
-  # this is a template for all other initial conditions
+function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                                        sbp::AbstractSBP{Tsbp}, 
+                                        eqn::EulerData{Tsol, Tsol, 3}, 
+                                        opts, 
+                                        u0::AbstractVector{Tsol})
   sigma = 0.01
-  pi = 3.14159265358979323846264338
-  gamma = 1.4
-  gamma_1 = gamma - 1.0
-  aoa = eqn.params.aoa
-  rhoInf = 1.0
-  uInf = eqn.params.Ma*cos(aoa)
-  vInf = eqn.params.Ma*sin(aoa)
-  TInf = 1.0
+  gamma = params.gamma
+	gamma_1 = params.gamma_1
+	aoa = params.aoa
+  beta = eqn.params.sideslip_angle
+	rhoInf = 1.0
+  velInt = zeros(Tsol, 3)
+  uInf = eqn.params.Ma * cos(beta) * cos(aoa)
+  vInf = eqn.params.Ma * sin(beta) * -1
+  wInf = eqn.params.Ma * cos(beta) * sin(aoa)
+	TInf = 1.0
 
   numEl = mesh.numEl
   nnodes = mesh.numNodesPerElement
@@ -46,42 +46,37 @@ function ICTrigWall{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
     for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
-
-      # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
-
       x = coords_j[1]
       y = coords_j[2]
+      z = coords_j[3]
 
-      calcFreeStream(coords_j, eqn.params, sol)
-      E = sol[4]/sol[1]
-      V2 = (sol[2]*sol[2] + sol[3]*sol[3]) / (sol[1]*sol[1])
-
-      rho = rhoInf * ( 1.0 + sigma*exp(x)*exp(y) )
-      u   = uInf * (sin(2*pi*x) * sin(2*pi*y)) 
-      v   = vInf * (sin(2*pi*x) * sin(2*pi*y)) 
-      T   = TInf 
+      rho = (x-x*x)*(y-y*y)* (z - z*z)
+      u   = (x-x*x)*(y-y*y)* (z - z*z)
+      v   = (x-x*x)*(y-y*y)* (z - z*z)
+      w   = (x-x*x)*(y-y*y)* (z - z*z)
+      T   = (x-x*x)*(y-y*y)* (z - z*z)
+      rho = (sigma*rho + 1.0)*rhoInf 
+      u   = (sigma*u + 1.0)*uInf
+      v   = (sigma*v + 1.0)*vInf
+      w   = (sigma*w + 1.0)*wInf
+      T   = (sigma*T + 1.0)*TInf
+      p   = rho*T/gamma
+      E   = T/(gamma*gamma_1) + 0.5*(u*u + v*v + w*w)
 
       u0[dofnums_j[1]] = rho
       u0[dofnums_j[2]] = rho*u
       u0[dofnums_j[3]] = rho*v
-      u0[dofnums_j[4]] = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
-      u0[dofnums_j[4]] *= rho
+      u0[dofnums_j[4]] = rho*v
+      u0[dofnums_j[5]] = T/(gamma*gamma_1) + 0.5*(u*u + v*v + w*w)
+      u0[dofnums_j[5]] *= rho
     end
   end
-
-  return nothing
-
-end  # end function
-
-function ICDoubleSquareC0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                          operator::AbstractSBP{Tsbp}, 
-                                          eqn::EulerData{Tsol}, 
-                                          opts, 
-                                          u0::AbstractVector{Tsol})
+end
+function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                                     operator::AbstractSBP{Tsbp}, 
+                                     eqn::EulerData{Tsol, Tsol, 2}, 
+                                     opts, 
+                                     u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
   sigma = 0.01
@@ -99,12 +94,6 @@ function ICDoubleSquareC0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   dofpernode = mesh.numDofPerNode
   sol = zeros(Tsol, 4)
 
-  si = [0.5, 1.5]
-  a = [-2.375, 16.875, -45.0, 55.0, -30.0, 6.0]
-  # si = [0.5, 2.5]
-  # a = [-0.220703125,1.46484375,-3.515625,3.59375,-1.40625,0.1875]
-  # si = [0.5, 5.0]
-  # a = [-0.01610526850581724,0.10161052685058161,-0.2235431590712794,0.19102779047909357,-0.04470863181425595,0.003251536859218615]
   for i=1:numEl
     for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
@@ -120,35 +109,21 @@ function ICDoubleSquareC0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
       y = coords_j[2]
 
       calcFreeStream(coords_j, eqn.params, sol)
-      E = sol[4]/sol[1]
-      V2 = (sol[2]*sol[2] + sol[3]*sol[3]) / (sol[1]*sol[1])
-
-      gx = 0.0
-      gy = 0.0
-      if x >= si[1] && x < si[2]
-        gx = sin(0.5*pi*x - 0.25*pi) 
-      elseif x >= si[2] 
-        gx = 1.0
-      elseif x <= -si[1] && x > -si[2]
-        gx = sin(-0.5*pi*x - 0.25*pi) 
-      elseif x <= -si[2]
-        gx = 1.0
-      end  
-
-      if y >= si[1] && y < si[2]
-        gy = sin(0.5*pi*y - 0.25*pi) 
-      elseif y >= si[2] 
-        gy = 1.0
-      elseif y <= -si[1] && y > -si[2]
-        gy = sin(-0.5*pi*y - 0.25*pi) 
-      elseif y <= -si[2] 
-        gy = 1.0
-      end  
 
       rho = rhoInf
-      u   = uInf * (gx + gy - gx*gy) 
-      v   = vInf * (gx + gy - gx*gy) 
-      T   = TInf 
+      # rho = rhoInf * (0.1*sin(2*pi*x) + 0.1*y +  1.0)
+      # u   = uInf * (-4.0 * y * (y-1.0)) + 0.1*uInf
+      # u   = uInf * (-4.0 * y * (y-1.0)) 
+      ux = (0.1*sin(2*pi*x) + 0.2) * uInf
+      uy = sin(pi*y) 
+      # uy = -4.0 * y * (y-1.0)
+      u  = ux * uy
+      v  = vInf 
+      T  = TInf 
+
+      if !eqn.params.isViscous
+        u += 0.2 * uInf
+      end
 
       u0[dofnums_j[1]] = rho
       u0[dofnums_j[2]] = rho*u
@@ -161,9 +136,10 @@ function ICDoubleSquareC0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 
 end  # end function
+
 function ICDoubleSquare{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                                           operator::AbstractSBP{Tsbp}, 
-                                          eqn::EulerData{Tsol}, 
+                                          eqn::EulerData{Tsol, Tsol, 2}, 
                                           opts, 
                                           u0::AbstractVector{Tsol})
   # populate u0 with initial values
@@ -193,12 +169,6 @@ function ICDoubleSquare{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
     for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
-
-      # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
 
       x = coords_j[1]
       y = coords_j[2]
@@ -245,9 +215,10 @@ function ICDoubleSquare{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 
 end  # end function
+
 function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                                            operator::AbstractSBP{Tsbp}, 
-                                           eqn::EulerData{Tsol}, 
+                                           eqn::EulerData{Tsol, Tsol, 2}, 
                                            opts, 
                                            u0::AbstractVector{Tsol})
   # populate u0 with initial values
@@ -270,12 +241,6 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
     for j=1:nnodes
       coords_j = sview(mesh.coords, :, j, i)
       dofnums_j = sview(mesh.dofs, :, j, i)
-
-      # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
 
       x = coords_j[1]
       y = coords_j[2]
@@ -318,6 +283,72 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end  # end function
 
+function ICTrigonometric{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+                                                 operator::AbstractSBP{Tsbp}, 
+                                                 eqn::EulerData{Tsol, Tres, 3}, 
+                                                 opts, 
+                                                 u0::AbstractVector{Tsol})
+  # populate u0 with initial values
+  # this is a template for all other initial conditions
+  sigma = 0.01
+  pi = 3.14159265358979323846264338
+  gamma = 1.4
+  gamma_1 = gamma - 1.0
+  aoa = eqn.params.aoa
+  beta = eqn.params.sideslip_angle
+  rhoInf = 1.0
+  uInf = eqn.params.Ma * cos(beta) * cos(aoa)
+  vInf = eqn.params.Ma * sin(beta) * -1
+  wInf = eqn.params.Ma * cos(beta) * sin(aoa)
+  TInf = 1.0
+
+  numEl = mesh.numEl
+  nnodes = mesh.numNodesPerElement
+  dofpernode = mesh.numDofPerNode
+  sol = zeros(Tsol, 4)
+  for i=1:numEl
+    for j=1:nnodes
+      xyz = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+
+      calcFreeStream(coords_j, eqn.params, sol)
+
+      xyz2 = 2 * pi * xyz
+      xyz4 = 4 * pi * xyz
+      sin_val_1 = sin.(xyz)
+      cos_val_1 = cos.(xyz)
+      sin_val_2 = sin.(xyz2)
+      cos_val_2 = cos.(xyz2)
+      sin_val_4 = sin.(xyz4)
+      cos_val_4 = cos.(xyz4)
+      #
+      # Exact solution in form of primitive variables
+      #
+      rho = 0.125 * sin_val_2[1] * sin_val_2[2] * sin_val_2[3] 
+      u   = 0.125 * sin_val_4[1] * sin_val_4[2] * sin_val_4[3]
+      v   = 0.125 * sin_val_2[1] * sin_val_2[2] * sin_val_2[3]
+      w   = 0.125 * sin_val_1[1] * sin_val_1[2] * sin_val_1[3] 
+      T   = 0.125 * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[2]) * (1.0 - cos_val_4[3])
+
+      rho = (sigma*rho + 1.0)*rhoInf 
+      u = (sigma*u + 1.0) * uInf
+      v = (sigma*v + 1.0) * vInf
+      w = (sigma*w + 1.0) * wInf
+      T = (sigma*T + 1.0) * TInf
+      vel2 = u*u + v*v + w*w
+
+      u0[dofnums_j[1]] = rho
+      u0[dofnums_j[2]] = rho*u
+      u0[dofnums_j[3]] = rho*v
+      u0[dofnums_j[4]] = rho*w
+      u0[dofnums_j[5]] = rho*(T/(gamma*gamma_1) + 0.5*vel2)
+    end
+  end
+
+  return nothing
+
+end  # end function
+
 @doc """
 ### EulerEquationMod.ICZero
 
@@ -336,7 +367,9 @@ Aliasing restrictions: none.
 
 """->
 function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                                  operator::AbstractSBP{Tsbp}, 
+                                  eqn::EulerData{Tsol, Tsol, 2}, 
+                                  opts,
                                   u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
@@ -391,7 +424,9 @@ Aliasing restrictions: none.
 """->
 
 function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts,
+                                  operator::AbstractSBP{Tsbp}, 
+                                  eqn::EulerData{Tsol}, 
+                                  opts,
                                   u0::AbstractVector{Tsol})
 
   numEl = mesh.numEl
@@ -445,7 +480,9 @@ Aliasing restrictions: none.
 
 
 function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                                    operator::AbstractSBP{Tsbp}, 
+                                    eqn::EulerData{Tsol, Tsol, 2}, 
+                                    opts, 
                                     u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
@@ -500,8 +537,10 @@ Aliasing restrictions: none.
 
 
 function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                      operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-                                      opts, u0::AbstractVector{Tsol})
+                                      operator::AbstractSBP{Tsbp}, 
+                                      eqn::EulerData{Tsol, Tsol, 2}, 
+                                      opts, 
+                                      u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
 
@@ -548,7 +587,9 @@ Aliasing restrictions: none.
 
 """->
 function ICFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                        operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                                        operator::AbstractSBP{Tsbp}, 
+                                        eqn::EulerData{Tsol}, 
+                                        opts, 
                                         u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
@@ -1096,9 +1137,9 @@ global const ICDict = Dict{Any, Function}(
   "ICFreeStream" => ICFreeStream,
   "ICPerturbedFreeStream" => ICPerturbedFreeStream,
   "ICTrigonometric" => ICTrigonometric,
-  "ICTrigWall" => ICTrigWall,
+  "ICPolynomial" => ICPolynomial,
+  "ICChannel" => ICChannel,
   "ICDoubleSquare" => ICDoubleSquare,
-  "ICDoubleSquareC0" => ICDoubleSquareC0,
   "ICVortex" => ICVortex,
   #"ICLinear" => ICLinear,
   "ICsmoothHeavisideder" => ICsmoothHeavisideder,

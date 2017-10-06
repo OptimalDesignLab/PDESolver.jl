@@ -6,18 +6,18 @@ the largest eigenvalue of
 B^{1/2} R H^{-1} R^{T} B^{1/2}
 
 Input:
-sbp
+  sbp
 Output:
-cont_tii
+  cont_tii
 """->
+
 function calcTraceInverseInequalityConst{Tsbp}(sbp::AbstractSBP{Tsbp},
                                                sbpface::AbstractFace{Tsbp})
   R = sview(sbpface.interp, :,:)
-  perm = Array(Tsbp, sbp.numnodes, sbpface.stencilsize)
-  Hinv = Array(Tsbp, sbp.numnodes, sbp.numnodes)
-  Bsqrt = Array(Tsbp, sbpface.numnodes, sbpface.numnodes)
-  HRBRH = Array(Tsbp, sbpface.numnodes, sbp.numnodes)
   BsqrtRHinvRtBsqrt = Array(Tsbp, sbpface.numnodes, sbpface.numnodes)
+  perm = zeros(Tsbp, sbp.numnodes, sbpface.stencilsize)
+  Hinv = zeros(Tsbp, sbp.numnodes, sbp.numnodes)
+  Bsqrt = zeros(Tsbp, sbpface.numnodes, sbpface.numnodes)
   for s = 1:sbpface.stencilsize
     perm[sbpface.perm[s, 1], s] = 1.0
   end
@@ -30,22 +30,24 @@ function calcTraceInverseInequalityConst{Tsbp}(sbp::AbstractSBP{Tsbp},
 
   BsqrtRHinvRtBsqrt = Bsqrt*R.'*perm.'*Hinv*perm*R*Bsqrt 
   const_tii = eigmax(BsqrtRHinvRtBsqrt)
+
   return const_tii
+
 end
 
 
 @doc """
 
-Calculate fluxes at edge cubature points using face-based form
+Calculate fluxes at edge cubature points using face-based form.
+eqn.flux_face, eqn.xflux, eqn.yflux will be updated.
 
 Input:
-mesh :
-sbp  :
-eqn  :
-opts :
+  mesh :
+  sbp  :
+  eqn  :
+  opts :
 Output:
 
-update eqn.flux_face, eqn.xflux, eqn.yflux
 # """->
 function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                                                           sbp::AbstractSBP,
@@ -75,11 +77,14 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   vecfluxL = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
   vecfluxR = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
 
+  sbpface = mesh.sbpface
   sat_type = opts["SAT_type"]
+  # this one is Harmann's definition
   const_tii = (p + 1.0)*(p + Tdim)/(2.0*Tdim)
+  const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
   area_sum = sview(eqn.area_sum, :)
 
-  sbpface = mesh.sbpface
+  params = eqn.params
   # sigma = calcTraceInverseInequalityConst(sbp, sbpface)
   # println("rho_max = ", sigma)
 
@@ -100,14 +105,25 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
       # norm vector in reference element
       nrm_xi = sview(sbpface.normal, :, faceL)
-      nrm[1,n] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-      nrm[2,n] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+      # nrm[1,n] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+      # nrm[2,n] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
 
-      area[n] = sqrt(nrm[1,n]*nrm[1,n] + nrm[2,n]*nrm[2,n])
+      for i = 1 : Tdim
+        nrm[i,n] = 0.0
+        for j = 1 : Tdim
+          nrm[i,n] += dxidx[i,j] * nrm_xi[i]
+        end
+      end
+
+      # area[n] = sqrt(nrm[1,n]*nrm[1,n] + nrm[2,n]*nrm[2,n])
+      area[n] = norm(view(nrm, :, n))
 
       # norm vector in physical domain without any scale, ie, |nrm| = 1
-      nrm0[1,n] = nrm[1,n]/area[n]
-      nrm0[2,n] = nrm[2,n]/area[n]
+      # nrm0[1,n] = nrm[1,n]/area[n]
+      # nrm0[2,n] = nrm[2,n]/area[n]
+      for i = 1 : Tdim
+        nrm0[i,n] = nrm[i,n] / area[n]
+      end
     end
 
     # Compute the size of element and face, and then meas(face)/meas(elem)
@@ -142,8 +158,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     q_faceR = slice(eqn.q_face, :, 2, :, f)
     q_elemL = sview(eqn.q, :, :, elemL)
     q_elemR = sview(eqn.q, :, :, elemR)
-    calcDiffusionTensor(q_faceL, GtL)
-    calcDiffusionTensor(q_faceR, GtR)
+    calcDiffusionTensor(eqn.params, q_faceL, GtL)
+    calcDiffusionTensor(eqn.params, q_faceR, GtR)
 
     # one way to compute Fv_face 
     # calcFvis_interiorFace(mesh, sbp, f, q_elemL, q_elemR, Fv_face)    
@@ -166,8 +182,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # Now both G and dqdx are avaiable at face nodes  
     dqdx_faceL = slice(dqdx_face, :, :, 1, :)
     dqdx_faceR = slice(dqdx_face, :, :, 2, :)
-    calcFvis(GtL, dqdx_faceL, Fv_faceL)
-    calcFvis(GtR, dqdx_faceR, Fv_faceR)
+    calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
+    calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
 
     # First compute penalty
     if sat_type ==  "SAT-SIPG"
@@ -186,64 +202,67 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       #
       # Compute n_i G_{ij} n_j
       #
+      factor = opts["Cip"]
       for n = 1 : mesh.numNodesPerFace
-        # for iDof = 1:mesh.numDofPerNode
-        # for jDof = 1:mesh.numDofPerNode
-        # penalty[iDof,jDof,n] =  nrm0[1,n]*nrm0[1,n] * (GtL[iDof,jDof,1,1,n] + GtR[iDof,jDof,1,1,n])
-        # penalty[iDof,jDof,n] +=  nrm0[1,n]*nrm0[2,n] * (GtL[iDof,jDof,1,2,n] + GtR[iDof,jDof,1,2,n])
-        # penalty[iDof,jDof,n] +=  nrm0[2,n]*nrm0[1,n] * (GtL[iDof,jDof,2,1,n] + GtR[iDof,jDof,2,1,n])
-        # penalty[iDof,jDof,n] +=  nrm0[2,n]*nrm0[2,n] * (GtL[iDof,jDof,2,2,n] + GtR[iDof,jDof,2,2,n])
-        # penalty[iDof,jDof,n] *=  0.5*const_tii * area[n] / he
-        # end
-        # end
-
-        penalty[2,1,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[2,1,1,1,n] + GtR[2,1,1,1,n])
-                         + nrm0[1,n]*nrm0[2,n] * (GtL[2,1,1,2,n] + GtR[2,1,1,2,n])
-                         + nrm0[2,n]*nrm0[1,n] * (GtL[2,1,2,1,n] + GtR[2,1,2,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[2,1,2,2,n] + GtR[2,1,2,2,n]) )
-
-        penalty[2,2,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[2,2,1,1,n] + GtR[2,2,1,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[2,2,2,2,n] + GtR[2,2,2,2,n]) )
-
-        penalty[2,3,n] = ( nrm0[1,n]*nrm0[2,n] * (GtL[2,3,1,2,n] + GtR[2,3,1,2,n])
-                         + nrm0[2,n]*nrm0[1,n] * (GtL[2,3,2,1,n] + GtR[2,3,2,1,n]) ) 
-
-        penalty[3,1,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[3,1,1,1,n] + GtR[3,1,1,1,n])
-                         + nrm0[1,n]*nrm0[2,n] * (GtL[3,1,1,2,n] + GtR[3,1,1,2,n])
-                         + nrm0[2,n]*nrm0[1,n] * (GtL[3,1,2,1,n] + GtR[3,1,2,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[3,1,2,2,n] + GtR[3,1,2,2,n]) ) 
-
-        penalty[3,2,n] = ( nrm0[1,n]*nrm0[2,n] * (GtL[3,2,1,2,n] + GtR[3,2,1,2,n])
-                         + nrm0[2,n]*nrm0[1,n] * (GtL[3,2,2,1,n] + GtR[3,2,2,1,n]) ) 
-
-        penalty[3,3,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[3,3,1,1,n] + GtR[3,3,1,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[3,3,2,2,n] + GtR[3,3,2,2,n]) )
-
-        penalty[4,1,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,1,1,1,n] + GtR[4,1,1,1,n])
-                         + nrm0[1,n]*nrm0[2,n] * (GtL[4,1,1,2,n] + GtR[4,1,1,2,n])
-                         + nrm0[2,n]*nrm0[1,n] * (GtL[4,1,2,1,n] + GtR[4,1,2,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[4,1,2,2,n] + GtR[4,1,2,2,n]) )
-
-        penalty[4,2,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,2,1,1,n] + GtR[4,2,1,1,n])
-                         + nrm0[1,n]*nrm0[2,n] * (GtL[4,2,1,2,n] + GtR[4,2,1,2,n])
-                         + nrm0[2,n]*nrm0[1,n] * (GtL[4,2,2,1,n] + GtR[4,2,2,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[4,2,2,2,n] + GtR[4,2,2,2,n]) )
-
-        penalty[4,3,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,3,1,1,n] + GtR[4,3,1,1,n])
-                         + nrm0[1,n]*nrm0[2,n] * (GtL[4,3,1,2,n] + GtR[4,3,1,2,n])
-                         + nrm0[2,n]*nrm0[1,n] * (GtL[4,3,2,1,n] + GtR[4,3,2,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[4,3,2,2,n] + GtR[4,3,2,2,n]) ) 
-
-        penalty[4,4,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,4,1,1,n] + GtR[4,4,1,1,n])
-                         + nrm0[2,n]*nrm0[2,n] * (GtL[4,4,2,2,n] + GtR[4,4,2,2,n]) ) 
-
-        # in order to enhance stability, we try this factor on penalty terms
-        factor = opts["Cip"]
-        for iDof = 2 : 4
-          for jDof = 1 : 4
+        for iDof = 1:mesh.numDofPerNode
+          for jDof = 1:mesh.numDofPerNode
+            penalty[iDof, jDof, n] = 0.0
+            for jDim = 1 : Tdim
+              for iDim = 1 : Tdim
+                penalty[iDof,jDof,n] +=  nrm0[iDim,n]*nrm0[jDim,n] * (GtL[iDof,jDof,iDim,jDim,n] + GtR[iDof,jDof,iDim,jDim,n])
+              end
+            end
             penalty[iDof,jDof,n] *=  0.5*const_tii * area[n] / he * factor
           end
+
         end
+        # penalty[2,1,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[2,1,1,1,n] + GtR[2,1,1,1,n])
+        # + nrm0[1,n]*nrm0[2,n] * (GtL[2,1,1,2,n] + GtR[2,1,1,2,n])
+        # + nrm0[2,n]*nrm0[1,n] * (GtL[2,1,2,1,n] + GtR[2,1,2,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[2,1,2,2,n] + GtR[2,1,2,2,n]) )
+
+        # penalty[2,2,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[2,2,1,1,n] + GtR[2,2,1,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[2,2,2,2,n] + GtR[2,2,2,2,n]) )
+
+        # penalty[2,3,n] = ( nrm0[1,n]*nrm0[2,n] * (GtL[2,3,1,2,n] + GtR[2,3,1,2,n])
+        # + nrm0[2,n]*nrm0[1,n] * (GtL[2,3,2,1,n] + GtR[2,3,2,1,n]) ) 
+
+        # penalty[3,1,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[3,1,1,1,n] + GtR[3,1,1,1,n])
+        # + nrm0[1,n]*nrm0[2,n] * (GtL[3,1,1,2,n] + GtR[3,1,1,2,n])
+        # + nrm0[2,n]*nrm0[1,n] * (GtL[3,1,2,1,n] + GtR[3,1,2,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[3,1,2,2,n] + GtR[3,1,2,2,n]) ) 
+
+        # penalty[3,2,n] = ( nrm0[1,n]*nrm0[2,n] * (GtL[3,2,1,2,n] + GtR[3,2,1,2,n])
+        # + nrm0[2,n]*nrm0[1,n] * (GtL[3,2,2,1,n] + GtR[3,2,2,1,n]) ) 
+
+        # penalty[3,3,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[3,3,1,1,n] + GtR[3,3,1,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[3,3,2,2,n] + GtR[3,3,2,2,n]) )
+
+        # penalty[4,1,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,1,1,1,n] + GtR[4,1,1,1,n])
+        # + nrm0[1,n]*nrm0[2,n] * (GtL[4,1,1,2,n] + GtR[4,1,1,2,n])
+        # + nrm0[2,n]*nrm0[1,n] * (GtL[4,1,2,1,n] + GtR[4,1,2,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[4,1,2,2,n] + GtR[4,1,2,2,n]) )
+
+        # penalty[4,2,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,2,1,1,n] + GtR[4,2,1,1,n])
+        # + nrm0[1,n]*nrm0[2,n] * (GtL[4,2,1,2,n] + GtR[4,2,1,2,n])
+        # + nrm0[2,n]*nrm0[1,n] * (GtL[4,2,2,1,n] + GtR[4,2,2,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[4,2,2,2,n] + GtR[4,2,2,2,n]) )
+
+        # penalty[4,3,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,3,1,1,n] + GtR[4,3,1,1,n])
+        # + nrm0[1,n]*nrm0[2,n] * (GtL[4,3,1,2,n] + GtR[4,3,1,2,n])
+        # + nrm0[2,n]*nrm0[1,n] * (GtL[4,3,2,1,n] + GtR[4,3,2,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[4,3,2,2,n] + GtR[4,3,2,2,n]) ) 
+
+        # penalty[4,4,n] = ( nrm0[1,n]*nrm0[1,n] * (GtL[4,4,1,1,n] + GtR[4,4,1,1,n])
+        # + nrm0[2,n]*nrm0[2,n] * (GtL[4,4,2,2,n] + GtR[4,4,2,2,n]) ) 
+
+        # in order to enhance stability, we try this factor on penalty terms
+        # factor = opts["Cip"]
+        # for iDof = 2 : 4
+        # for jDof = 1 : 4
+        # penalty[iDof,jDof,n] *=  0.5*const_tii * area[n] / he * factor
+        # end
+        # end
       end
     end
 
@@ -283,19 +302,35 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         #
         # sum up columns of each row
         #
-        vecfluxL[1,iDof,n] = ((GtL[iDof,1,1,1,n] + GtL[iDof,2,1,1,n] + GtL[iDof,3,1,1,n]+ GtL[iDof,4,1,1,n]) * nrm[1,n] 
-                           + (GtL[iDof,1,1,2,n] + GtL[iDof,2,1,2,n] + GtL[iDof,3,1,2,n]+ GtL[iDof,4,1,2,n]) * nrm[2,n] )
-        vecfluxL[2,iDof,n] = ((GtL[iDof,1,2,1,n] + GtL[iDof,2,2,1,n] + GtL[iDof,3,2,1,n]+ GtL[iDof,4,2,1,n]) * nrm[1,n] 
-                           + (GtL[iDof,1,2,2,n] + GtL[iDof,2,2,2,n] + GtL[iDof,3,2,2,n]+ GtL[iDof,4,2,2,n]) * nrm[2,n] )
-        vecfluxL[1,iDof,n] *=  dq[iDof,n]
-        vecfluxL[2,iDof,n] *=  dq[iDof,n]
+        for iDim = 1 : Tdim
+          vecfluxL[iDim, iDof, n] = 0.0
+          for jDim = 1 : Tdim
+            tmpL = 0.0
+            tmpR = 0.0
+            for jDof = 1 : mesh.numDofPerNode
+              tmpL += GtL[iDof, jDof, iDim, jDim]
+              tmpR += GtR[iDof, jDof, iDim, jDim]
+            end
+            vecfluxL[iDim, iDof, n] += tmpL * nrm[jDim, n]
+            vecfluxR[iDim, iDof, n] += tmpR * nrm[jDim, n]
+          end
+          vecfluxL[iDim,iDof,n] *=  dq[iDof,n]
+          vecfluxR[iDim,iDof,n] *=  dq[iDof,n]
+        end
 
-        vecfluxR[1,iDof,n] = ((GtR[iDof,1,1,1,n] + GtR[iDof,2,1,1,n] + GtR[iDof,3,1,1,n]+ GtR[iDof,4,1,1,n]) * nrm[1,n] 
-                           + (GtR[iDof,1,1,2,n] + GtR[iDof,2,1,2,n] + GtR[iDof,3,1,2,n]+ GtR[iDof,4,1,2,n]) * nrm[2,n] )
-        vecfluxR[2,iDof,n] = ((GtR[iDof,1,2,1,n] + GtR[iDof,2,2,1,n] + GtR[iDof,3,2,1,n]+ GtR[iDof,4,2,1,n]) * nrm[1,n] 
-                           + (GtR[iDof,1,2,2,n] + GtR[iDof,2,2,2,n] + GtR[iDof,3,2,2,n]+ GtR[iDof,4,2,2,n]) * nrm[2,n] )
-        vecfluxR[1,iDof,n] *=  dq[iDof,n]
-        vecfluxR[2,iDof,n] *=  dq[iDof,n]
+        # vecfluxL[1,iDof,n] = ((GtL[iDof,1,1,1,n] + GtL[iDof,2,1,1,n] + GtL[iDof,3,1,1,n]+ GtL[iDof,4,1,1,n]) * nrm[1,n] 
+        # + (GtL[iDof,1,1,2,n] + GtL[iDof,2,1,2,n] + GtL[iDof,3,1,2,n]+ GtL[iDof,4,1,2,n]) * nrm[2,n] )
+        # vecfluxL[2,iDof,n] = ((GtL[iDof,1,2,1,n] + GtL[iDof,2,2,1,n] + GtL[iDof,3,2,1,n]+ GtL[iDof,4,2,1,n]) * nrm[1,n] 
+        # + (GtL[iDof,1,2,2,n] + GtL[iDof,2,2,2,n] + GtL[iDof,3,2,2,n]+ GtL[iDof,4,2,2,n]) * nrm[2,n] )
+        # vecfluxL[1,iDof,n] *=  dq[iDof,n]
+        # vecfluxL[2,iDof,n] *=  dq[iDof,n]
+
+        # vecfluxR[1,iDof,n] = ((GtR[iDof,1,1,1,n] + GtR[iDof,2,1,1,n] + GtR[iDof,3,1,1,n]+ GtR[iDof,4,1,1,n]) * nrm[1,n] 
+        # + (GtR[iDof,1,1,2,n] + GtR[iDof,2,1,2,n] + GtR[iDof,3,1,2,n]+ GtR[iDof,4,1,2,n]) * nrm[2,n] )
+        # vecfluxR[2,iDof,n] = ((GtR[iDof,1,2,1,n] + GtR[iDof,2,2,1,n] + GtR[iDof,3,2,1,n]+ GtR[iDof,4,2,1,n]) * nrm[1,n] 
+        # + (GtR[iDof,1,2,2,n] + GtR[iDof,2,2,2,n] + GtR[iDof,3,2,2,n]+ GtR[iDof,4,2,2,n]) * nrm[2,n] )
+        # vecfluxR[1,iDof,n] *=  dq[iDof,n]
+        # vecfluxR[2,iDof,n] *=  dq[iDof,n]
       end
     end
 
@@ -315,11 +350,13 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         end
       end
     end
-    
+
     # {Fv}⋅n, contributing to {Fv}⋅[ϕ]
     for n = 1:mesh.numNodesPerFace
       for iDof = 2 : mesh.numDofPerNode
-        flux[iDof, n]  -=  Fv_avg[1, iDof, n]*nrm[1,n] + Fv_avg[2, iDof, n]*nrm[2,n]
+        for iDim = 1 : Tdim
+          flux[iDof, n]  -=  Fv_avg[iDim, iDof, n]*nrm[iDim,n] 
+        end
       end
     end
     # accumulate fluxes
@@ -327,10 +364,14 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       for iDof = 1 : Tdim+2
         # eqn.vecflux_face[1, iDof, n, f] -=  dqn[1, iDof, n]*coef_nondim
         # eqn.vecflux_face[2, iDof, n, f] -=  dqn[2, iDof, n]*coef_nondim
-        eqn.vecflux_faceL[1, iDof, n, f] -=  vecfluxL[1, iDof, n]*coef_nondim
-        eqn.vecflux_faceL[2, iDof, n, f] -=  vecfluxL[2, iDof, n]*coef_nondim
-        eqn.vecflux_faceR[1, iDof, n, f] -=  vecfluxR[1, iDof, n]*coef_nondim
-        eqn.vecflux_faceR[2, iDof, n, f] -=  vecfluxR[2, iDof, n]*coef_nondim
+        for iDim = 1 : Tdim
+          eqn.vecflux_faceL[iDim, iDof, n, f] -=  vecfluxL[iDim, iDof, n]*coef_nondim
+          eqn.vecflux_faceR[iDim, iDof, n, f] -=  vecfluxR[iDim, iDof, n]*coef_nondim
+          # eqn.vecflux_faceL[1, iDof, n, f] -=  vecfluxL[1, iDof, n]*coef_nondim
+          # eqn.vecflux_faceL[2, iDof, n, f] -=  vecfluxL[2, iDof, n]*coef_nondim
+          # eqn.vecflux_faceR[1, iDof, n, f] -=  vecfluxR[1, iDof, n]*coef_nondim
+          # eqn.vecflux_faceR[2, iDof, n, f] -=  vecfluxR[2, iDof, n]*coef_nondim
+        end
         eqn.flux_face[iDof, n, f]  +=   flux[iDof, n]*coef_nondim
       end
     end
@@ -387,7 +428,10 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
     if "FreeStreamBC" ==  val
       bnd_functor = Farfield()
       calcGt_functor = calcDiffusionTensor
-    elseif "nonslipBC" ==  val
+    elseif "ExactChannelBC" ==  val
+      bnd_functor = ExactChannel()
+      calcGt_functor = calcDiffusionTensor
+    elseif "NonslipBC" == val
       bnd_functor = AdiabaticWall()
       calcGt_functor = calcDiffusionTensor_adiabaticWall
     elseif "noPenetrationBC" ==  val
@@ -408,16 +452,26 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       elem = bndry.element
       face = bndry.face
       perm = sview(sbpface.perm, :, face)
+      xy = sview(mesh.coords_bndry, :, :, f)
 
       # Compute geometric info on face
       for n = 1 : mesh.numNodesPerFace
         dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
         nrm_xi = sview(sbpface.normal, :, bndry.face)
-        nrm[1,n] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-        nrm[2,n] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+        # nrm[1,n] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+        # nrm[2,n] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+        for i = 1 : Tdim
+          nrm[i,n] = 0.0
+          for j = 1 : Tdim
+            nrm[i,n] += dxidx[i,j] * nrm_xi[i]
+          end
+        end
         area[n] = sqrt(nrm[1,n]*nrm[1,n] + nrm[2,n]*nrm[2,n])
-        nrm0[1,n] = nrm[1,n]/area[n]
-        nrm0[2,n] = nrm[2,n]/area[n]
+        # nrm0[1,n] = nrm[1,n]/area[n]
+        # nrm0[2,n] = nrm[2,n]/area[n]
+        for i = 1 : Tdim
+          nrm0[i,n] = nrm[i,n] / area[n]
+        end
       end
 
       # compute element size `he` and face size
@@ -445,10 +499,10 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       # Compute boundary viscous flux, F(q_b, ∇q) = G(q_b)∇q.
       # so we need viscousity tensor G, and derivative of q.
       q_face = sview(eqn.q_bndry, :, :, f)
-      bnd_functor(q_face, nrm0, eqn.params, q_bnd)
+      bnd_functor(q_face, xy, nrm0, eqn.params, q_bnd)
 
       # diffusion matrix used in penalty term should be computed from q_face rather than q_bnd
-      calcGt_functor(q_bnd, Gt)
+      calcGt_functor(eqn.params, q_bnd, Gt)
       q_elem = sview(eqn.q, :, :, elem)
       calcGradient(mesh, sbp, elem, q_elem, dqdx_elem)
 
@@ -458,9 +512,10 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
       end
 
-      calcFvis(Gt, dqdx_face, Fv_face)
+      calcFvis(eqn.params, Gt, dqdx_face, Fv_face)
 
       # First compute penalty
+      factor = opts["Cip"]
       if sat_type ==  "SAT-SIPG"
         Cip = 2*opts["Cip"]*p*p
         for n = 2:mesh.numNodesPerFace
@@ -468,63 +523,70 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         end
       else
         for n = 1:mesh.numNodesPerFace
-          # for iDof = 1:mesh.numDofPerNode
-          # for jDof = 1:mesh.numDofPerNode
-          # penalty[iDof,jDof,n] =  nrm0[1,n]*nrm0[1,n] * Gt[iDof,jDof,1,1,n]
-          # penalty[iDof,jDof,n] +=  nrm0[1,n]*nrm0[2,n] * Gt[iDof,jDof,1,2,n]
-          # penalty[iDof,jDof,n] +=  nrm0[2,n]*nrm0[1,n] * Gt[iDof,jDof,2,1,n]
-          # penalty[iDof,jDof,n] +=  nrm0[2,n]*nrm0[2,n] * Gt[iDof,jDof,2,2,n]
-          # penalty[iDof,jDof,n] *=  const_tii * area[n] / he
-          # end
-          # end
-          penalty[2,1,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[2,1,1,1,n]
-                            + nrm0[1,n]*nrm0[2,n] * Gt[2,1,1,2,n] 
-                            + nrm0[2,n]*nrm0[1,n] * Gt[2,1,2,1,n]
-                            + nrm0[2,n]*nrm0[2,n] * Gt[2,1,2,2,n] )
-
-          penalty[2,2,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[2,2,1,1,n]
-                            + nrm0[2,n]*nrm0[2,n] * Gt[2,2,2,2,n] )
-
-          penalty[2,3,n]  = ( nrm0[1,n]*nrm0[2,n] * Gt[2,3,1,2,n]
-                            + nrm0[2,n]*nrm0[1,n] * Gt[2,3,2,1,n] )
-
-          penalty[3,1,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[3,1,1,1,n]
-                            + nrm0[1,n]*nrm0[2,n] * Gt[3,1,1,2,n]
-                            + nrm0[2,n]*nrm0[1,n] * Gt[3,1,2,1,n]
-                            + nrm0[2,n]*nrm0[2,n] * Gt[3,1,2,2,n] )
-
-          penalty[3,2,n]  = ( nrm0[1,n]*nrm0[2,n] * Gt[3,2,1,2,n]
-                            + nrm0[2,n]*nrm0[1,n] * Gt[3,2,2,1,n] )
-
-          penalty[3,3,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[3,3,1,1,n]
-                            + nrm0[2,n]*nrm0[2,n] * Gt[3,3,2,2,n] )
-
-          penalty[4,1,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,1,1,1,n] 
-                            + nrm0[1,n]*nrm0[2,n] * Gt[4,1,1,2,n]
-                            + nrm0[2,n]*nrm0[1,n] * Gt[4,1,2,1,n]
-                            + nrm0[2,n]*nrm0[2,n] * Gt[4,1,2,2,n] )
-
-          penalty[4,2,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,2,1,1,n]
-                            + nrm0[1,n]*nrm0[2,n] * Gt[4,2,1,2,n]
-                            + nrm0[2,n]*nrm0[1,n] * Gt[4,2,2,1,n]
-                            + nrm0[2,n]*nrm0[2,n] * Gt[4,2,2,2,n] )
-
-          penalty[4,3,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,3,1,1,n]
-                            + nrm0[1,n]*nrm0[2,n] * Gt[4,3,1,2,n]
-                            + nrm0[2,n]*nrm0[1,n] * Gt[4,3,2,1,n]
-                            + nrm0[2,n]*nrm0[2,n] * Gt[4,3,2,2,n] )
-
-          penalty[4,4,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,4,1,1,n] 
-                            + nrm0[2,n]*nrm0[2,n] * Gt[4,4,2,2,n] )
-
-          # in order to enhance the stablity, we try this relaxation factor 
-          # on penalty terms
-          factor = opts["Cip"]
-          for iDof = 2 : 4
-            for jDof = 1 : 4
-              penalty[iDof,jDof,n] *=  const_tii * area[n] / he * factor
+          for iDof = 1:mesh.numDofPerNode
+            for jDof = 1:mesh.numDofPerNode
+              # penalty[iDof,jDof,n]  =  nrm0[1,n]*nrm0[1,n] * Gt[iDof,jDof,1,1,n]
+              # penalty[iDof,jDof,n] +=  nrm0[1,n]*nrm0[2,n] * Gt[iDof,jDof,1,2,n]
+              # penalty[iDof,jDof,n] +=  nrm0[2,n]*nrm0[1,n] * Gt[iDof,jDof,2,1,n]
+              # penalty[iDof,jDof,n] +=  nrm0[2,n]*nrm0[2,n] * Gt[iDof,jDof,2,2,n]
+              # penalty[iDof,jDof,n] *=  const_tii * area[n] / he * factor
+              penalty[iDof, jDof, n] = 0.0
+              for jDim = 1 : Tdim
+                for iDim = 1 : Tdim
+                  penalty[iDof,jDof,n] +=  nrm0[iDim,n]*nrm0[jDim,n] * Gt[iDof,jDof,iDim,jDim,n]
+                end
+              end
+              penalty[iDof,jDof,n] *=  0.5*const_tii * area[n] / he * factor
             end
           end
+          # penalty[2,1,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[2,1,1,1,n]
+          # + nrm0[1,n]*nrm0[2,n] * Gt[2,1,1,2,n] 
+          # + nrm0[2,n]*nrm0[1,n] * Gt[2,1,2,1,n]
+          # + nrm0[2,n]*nrm0[2,n] * Gt[2,1,2,2,n] )
+
+          # penalty[2,2,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[2,2,1,1,n]
+          # + nrm0[2,n]*nrm0[2,n] * Gt[2,2,2,2,n] )
+
+          # penalty[2,3,n]  = ( nrm0[1,n]*nrm0[2,n] * Gt[2,3,1,2,n]
+          # + nrm0[2,n]*nrm0[1,n] * Gt[2,3,2,1,n] )
+
+          # penalty[3,1,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[3,1,1,1,n]
+          # + nrm0[1,n]*nrm0[2,n] * Gt[3,1,1,2,n]
+          # + nrm0[2,n]*nrm0[1,n] * Gt[3,1,2,1,n]
+          # + nrm0[2,n]*nrm0[2,n] * Gt[3,1,2,2,n] )
+
+          # penalty[3,2,n]  = ( nrm0[1,n]*nrm0[2,n] * Gt[3,2,1,2,n]
+          # + nrm0[2,n]*nrm0[1,n] * Gt[3,2,2,1,n] )
+
+          # penalty[3,3,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[3,3,1,1,n]
+          # + nrm0[2,n]*nrm0[2,n] * Gt[3,3,2,2,n] )
+
+          # penalty[4,1,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,1,1,1,n] 
+          # + nrm0[1,n]*nrm0[2,n] * Gt[4,1,1,2,n]
+          # + nrm0[2,n]*nrm0[1,n] * Gt[4,1,2,1,n]
+          # + nrm0[2,n]*nrm0[2,n] * Gt[4,1,2,2,n] )
+
+          # penalty[4,2,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,2,1,1,n]
+          # + nrm0[1,n]*nrm0[2,n] * Gt[4,2,1,2,n]
+          # + nrm0[2,n]*nrm0[1,n] * Gt[4,2,2,1,n]
+          # + nrm0[2,n]*nrm0[2,n] * Gt[4,2,2,2,n] )
+
+          # penalty[4,3,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,3,1,1,n]
+          # + nrm0[1,n]*nrm0[2,n] * Gt[4,3,1,2,n]
+          # + nrm0[2,n]*nrm0[1,n] * Gt[4,3,2,1,n]
+          # + nrm0[2,n]*nrm0[2,n] * Gt[4,3,2,2,n] )
+
+          # penalty[4,4,n]  = ( nrm0[1,n]*nrm0[1,n] * Gt[4,4,1,1,n] 
+          # + nrm0[2,n]*nrm0[2,n] * Gt[4,4,2,2,n] )
+
+          # # in order to enhance the stablity, we try this relaxation factor 
+          # # on penalty terms
+          # factor = opts["Cip"]
+          # for iDof = 2 : 4
+          # for jDof = 1 : 4
+          # penalty[iDof,jDof,n] *=  const_tii * area[n] / he * factor
+          # end
+          # end
         end 
       end
 
@@ -540,29 +602,43 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         end
       end
 
-
+      # -----------------------------------------------
       # This part computes the contribution of
       # ∫ {G^T∇ϕ}:[q] dΓ = ∫ ∇ϕ⋅F dΓ , 
       # where 
       # [q] = (q+ - q-) ⊗ n, 
       # G = G(q_b) depends on boudanry value.
       # Then we can consider Δq⊗n as ∇q and F as viscous flux.
+      # -----------------------------------------------
 
       # calcFvis(Gt, dqn, vecflux)
       for n = 1 : mesh.numNodesPerFace
         for iDof = 1 : mesh.numDofPerNode
-          vecflux[1,iDof,n] = ( (Gt[iDof,1,1,1,n] + Gt[iDof,2,1,1,n] + Gt[iDof,3,1,1,n]+ Gt[iDof,4,1,1,n])*nrm[1,n] 
-                            +   (Gt[iDof,1,1,2,n] + Gt[iDof,2,1,2,n] + Gt[iDof,3,1,2,n]+ Gt[iDof,4,1,2,n])*nrm[2,n] )
-          vecflux[2,iDof,n] = ( (Gt[iDof,1,2,1,n] + Gt[iDof,2,2,1,n] + Gt[iDof,3,2,1,n]+ Gt[iDof,4,2,1,n])*nrm[1,n] 
-                            +   (Gt[iDof,1,2,2,n] + Gt[iDof,2,2,2,n] + Gt[iDof,3,2,2,n]+ Gt[iDof,4,2,2,n])*nrm[2,n] )
+          # vecflux[1,iDof,n] = ( (Gt[iDof,1,1,1,n] + Gt[iDof,2,1,1,n] + Gt[iDof,3,1,1,n]+ Gt[iDof,4,1,1,n])*nrm[1,n] 
+          # +   (Gt[iDof,1,1,2,n] + Gt[iDof,2,1,2,n] + Gt[iDof,3,1,2,n]+ Gt[iDof,4,1,2,n])*nrm[2,n] )
+          # vecflux[2,iDof,n] = ( (Gt[iDof,1,2,1,n] + Gt[iDof,2,2,1,n] + Gt[iDof,3,2,1,n]+ Gt[iDof,4,2,1,n])*nrm[1,n] 
+          # +   (Gt[iDof,1,2,2,n] + Gt[iDof,2,2,2,n] + Gt[iDof,3,2,2,n]+ Gt[iDof,4,2,2,n])*nrm[2,n] )
           vecflux[1,iDof,n] *=  dq[iDof,n]
           vecflux[2,iDof,n] *=  dq[iDof,n]
+          for iDim = 1 : Tdim
+            vecflux[iDim, iDof, n] = 0.0
+            for jDim = 1 : Tdim
+              tmp = 0.0
+              for jDof = 1 : mesh.numDofPerNode
+                tmp += Gt[iDof, jDof, iDim, jDim]
+              end
+              vecflux[iDim, iDof, n] += tmp * nrm[jDim, n]
+            end
+            vecflux[iDim,iDof,n] *=  dq[iDof,n]
+          end
         end
       end
 
       for n = 1 : mesh.numNodesPerFace
         for iDof = 1 : mesh.numDofPerNode
-          flux[iDof, n] -=  ( Fv_face[1, iDof, n]*nrm[1,n] + Fv_face[2, iDof, n]*nrm[2,n] )
+          for iDim = 1 : Tdim
+            flux[iDof, n] -= Fv_face[iDim, iDof, n]*nrm[iDim,n] 
+          end
         end
       end
       if sat_type ==  "SAT-SIPG"
@@ -584,10 +660,13 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       # accumulate fluxes
       for n = 1:mesh.numNodesPerFace
         for iDof = 1 : Tdim+2
-          # eqn.vecflux_bndry[1, iDof, n, f] -=  dqn[1, iDof, n]*coef_nondim
-          # eqn.vecflux_bndry[2, iDof, n, f] -=  dqn[2, iDof, n]*coef_nondim
-          eqn.vecflux_bndry[1, iDof, n, f] -=  vecflux[1, iDof, n]*coef_nondim
-          eqn.vecflux_bndry[2, iDof, n, f] -=  vecflux[2, iDof, n]*coef_nondim
+          # # eqn.vecflux_bndry[1, iDof, n, f] -=  dqn[1, iDof, n]*coef_nondim
+          # # eqn.vecflux_bndry[2, iDof, n, f] -=  dqn[2, iDof, n]*coef_nondim
+          # eqn.vecflux_bndry[1, iDof, n, f] -=  vecflux[1, iDof, n]*coef_nondim
+          # eqn.vecflux_bndry[2, iDof, n, f] -=  vecflux[2, iDof, n]*coef_nondim
+          for iDim = 1 : Tdim
+            eqn.vecflux_bndry[iDim, iDof, n, f] -=  vecflux[iDim, iDof, n]*coef_nondim
+          end
           eqn.bndryflux[iDof, n, f] += flux[iDof, n]*coef_nondim
         end
       end
@@ -730,10 +809,18 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     for i = 1 : numNodes_elem
       for j = 1 : numNodes_face
         for iDof = 2 : mesh.numDofPerNode
-          res[iDof, i, elemL] +=  ( RDxL[j, i, 1] * vecfluxL[1, iDof, j] 
-                                  + RDxL[j, i, 2] * vecfluxL[2, iDof, j] ) * w[j] 
-          res[iDof, i, elemR] +=  ( RDxR[j, i, 1] * vecfluxR[1, iDof, j]
-                                  + RDxR[j, i, 2] * vecfluxR[2, iDof, j] ) * w[j] 
+          # res[iDof, i, elemL] +=  ( RDxL[j, i, 1] * vecfluxL[1, iDof, j] 
+          # + RDxL[j, i, 2] * vecfluxL[2, iDof, j] ) * w[j] 
+          # res[iDof, i, elemR] +=  ( RDxR[j, i, 1] * vecfluxR[1, iDof, j]
+          # + RDxR[j, i, 2] * vecfluxR[2, iDof, j] ) * w[j] 
+          tmpL = 0.0
+          tmpR = 0.0
+          for iDim = 1 : Tdim
+            tmpL += RDxL[j, i, iDim] * vecfluxL[iDim, iDof, j]
+            tmpR += RDxR[j, i, iDim] * vecfluxR[iDim, iDof, j]
+          end
+          res[iDof, i, elemL] += tmpL * w[j]
+          res[iDof, i, elemR] += tmpR * w[j]
         end
       end
     end
@@ -746,13 +833,13 @@ end
 
 @doc """
 Now actually we are integrating 
-  ∫ G∇ϕ:[q] dΓ
+∫ G∇ϕ:[q] dΓ
 
 Input: 
-  mesh
-  sbp
-  eqn
-  opts
+mesh
+sbp
+eqn
+opts
 Output:
 
 """->
@@ -789,15 +876,15 @@ function evalBoundaryIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh
     # key_i = string("BC", bc, "_name")
     # val = opts[key_i]
     # if "FreeStreamBC" ==  val
-      # bnd_functor = Farfield()
+    # bnd_functor = Farfield()
     # elseif "nonslipBC" ==  val
-      # bnd_functor = AdiabaticWall()
+    # bnd_functor = AdiabaticWall()
     # elseif "noPenetrationBC" ==  val
-      # continue
+    # continue
     # elseif "zeroPressGradientBC" ==  val
-      # bnd_functor = Farfield()
+    # bnd_functor = Farfield()
     # else
-      # error("iBC = ", bc, ", Only 'FreeStreamBC' and 'nonslipBC' available")
+    # error("iBC = ", bc, ", Only 'FreeStreamBC' and 'nonslipBC' available")
     # end
 
     for f = indx0:indx1
@@ -873,8 +960,13 @@ function evalBoundaryIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh
       for i = 1 : numNodes_elem
         for j = 1 : numNodes_face
           for iDof = 2 : mesh.numDofPerNode
-            res[iDof, i, elem] +=  ( RDx[j, i, 1] * vecflux[1, iDof, j] 
-                                   + RDx[j, i, 2] * vecflux[2, iDof, j] ) * w[j]
+            # res[iDof, i, elem] +=  ( RDx[j, i, 1] * vecflux[1, iDof, j] 
+            # + RDx[j, i, 2] * vecflux[2, iDof, j] ) * w[j]
+            tmp = 0.0
+            for iDim = 1 : Tdim
+              tmp += RDx[j, i, iDim] * vecflux[iDim, iDof, j]
+            end
+            res[iDof, i, elem] += tmp * w[j]
           end
         end
       end
@@ -926,7 +1018,7 @@ function weakdifferentiate2!{Tmsh, Tsbp, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
     dxidx = sview(mesh.dxidx, :,:,:,elem)
     jac      = sview(mesh.jac, :, elem)
 
-    calcFvis_elem(sbp, q, dxidx, jac, Fv)
+    calcFvis_elem(eqn.params, sbp, q, dxidx, jac, Fv)
 
     calcQx(mesh, sbp, elem, Qx)
 

@@ -110,70 +110,42 @@ using Debug
 @debug function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
-#  println("----- entered evalResidual -----")
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-#  println("entered evalResidual")
-#  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
     startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
-    #  println(" startDataExchange @time printed above")
   end
 
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
-#    println("volume integral @time printed above")
   end
-  # delete this if unneeded or put it in a function.  It doesn't belong here,
-  # in a high level function.
-  #----------------------------------------------------------------------------
-  #=
-  bndryfluxPhysical = zeros(eqn.bndryflux)
-  getPhysBCFluxes(mesh, sbp, eqn, opts, bndryfluxPhysical)
-  #println("bndryfluxPhysical = \n", bndryfluxPhysical)
-  #println("eqn.bndryflux = \n", eqn.bndryflux)
-  bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
-  =#
 
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
 
-  #=
-  bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
-  =#
-  #----------------------------------------------------------------------------
-
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
    evalBoundaryIntegrals(mesh, sbp, eqn)
-   #println("boundary integral @time printed above")
   end
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
-#    println("stabilizing @time printed above")
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("face integral @time printed above")
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-    #println("evalSharedFaceIntegrals @time printed above")
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-  #println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -188,7 +160,9 @@ using Debug
   # eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec) 
   # saveSolutionToMesh(mesh, sview(abs(real(eqn.res_vec))))
   # writeVisFiles(mesh,"residual")
+  # println("L_inf(res) = ", maximum(abs(real(eqn.res))))
   # @bp
+
   return nothing
 end  # end evalResidual
 
@@ -685,11 +659,8 @@ end  # end evalBoundaryIntegrals
 function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
-#  println("==== start of addStabilization ====")
-
   # ----- Edge Stabilization -----#
   if eqn.params.use_edgestab
-#    println("applying edge stabilization")
     if opts["use_edge_res"]
       edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords,
                      mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale,
@@ -702,24 +673,16 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
 
   # ----- Filtering -----
   if eqn.params.use_res_filter
-#    println("applying residual filter")
     applyFilter(mesh, sbp, eqn, eqn.res, opts, trans=true)
   end
 
-  # ----- Artificial Dissipation -----
   if eqn.params.use_dissipation
-#    println("applying artificial dissipation")
     applyDissipation(mesh, sbp, eqn, opts, eqn.q)
   end
 
   if opts["use_GLS2"]
      applyGLS3(mesh, sbp, eqn, opts)
-#    test_GLS(mesh, sbp, eqn, opts)
   end
-
-#  println("==== end of addStabilization ====")
-
-
 
   return nothing
 

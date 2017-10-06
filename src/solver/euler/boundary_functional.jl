@@ -132,10 +132,12 @@ function calcForceCoef_inviscid{Tsol, Tmsh}(mesh::AbstractDGMesh{Tmsh},
     Cy[j] = Finv[3]
   end
   # Ma = eqn.params.Ma
-  # face_integrand /= Ma*Ma
   aoa = eqn.params.aoa
   force[1, :] = -Cx[:] * sin(aoa) + Cy[:] * cos(aoa)
   force[2, :] =  Cx[:] * cos(aoa) + Cy[:] * sin(aoa)
+  # Ma = eqn.params.Ma
+  # force[1, :] /= Ma*Ma 
+  # force[2, :] /= Ma*Ma 
   return nothing
 end
 
@@ -155,6 +157,7 @@ function calcForceCoef_viscous{Tsol, Tmsh}(mesh::AbstractDGMesh{Tmsh},
   bndry = mesh.bndryfaces[bndry_indx]
   sbpface = mesh.sbpface
   x       = Array(Tmsh, 2)
+  xy = sview(mesh.coords_bndry, :, :, bndry_indx)
   Finv    = Array(Tsol, num_dof)
   nrm_xi  = sview(sbpface.normal, :, bndry.face)
 
@@ -173,7 +176,7 @@ function calcForceCoef_viscous{Tsol, Tmsh}(mesh::AbstractDGMesh{Tmsh},
     aux_vars = sview(eqn.aux_vars_bndry, :, j, bndry_indx)
     dxidx = sview(mesh.dxidx_bndry, :, :, j, bndry_indx)
 
-    flux_func = nonslipBC()
+    flux_func = NonslipBC()
     flux_func(q, aux_vars, x, dxidx, nrm_xi, Finv, eqn.params)
     Cx[j] = Finv[2]
     Cy[j] = Finv[3]
@@ -230,10 +233,10 @@ function calcForceCoef_viscous{Tsol, Tmsh}(mesh::AbstractDGMesh{Tmsh},
 
   # compute boundary value
   bndry_val_functor = AdiabaticWall()
-  bndry_val_functor(q_face, nrm1, eqn.params, q_bnd)
+  bndry_val_functor(q_face, xy, nrm1, eqn.params, q_bnd)
   # using boundary value to compute diffusion tensor and viscousl flux
-  calcDiffusionTensor_adiabaticWall(q_bnd, Gt)
-  calcFvis(Gt, dqdx_face, Fvis)
+  calcDiffusionTensor_adiabaticWall(eqn.params, q_bnd, Gt)
+  calcFvis(eqn.params, Gt, dqdx_face, Fvis)
   
   p = opts["order"]
   Cip = opts["Cip"]
@@ -268,7 +271,8 @@ function calcForceCoef_viscous{Tsol, Tmsh}(mesh::AbstractDGMesh{Tmsh},
   force[2, :] =  Cx[:] * cos(aoa) + Cy[:] * sin(aoa)
 
   # Ma = eqn.params.Ma
-  # face_integrand /= Ma*Ma
+  # force[1, :] /= Ma*Ma 
+  # force[2, :] /= Ma*Ma 
   return nothing
 end
 

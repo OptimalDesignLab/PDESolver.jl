@@ -241,10 +241,10 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
 end
 
 
-type nonslipBC <: BCType
+type NonslipBC <: BCType
 end
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::nonslipBC, 
+function call{Tmsh, Tsol, Tres}(obj::NonslipBC, 
                                 q::AbstractArray{Tsol,1},  
                                 aux_vars::AbstractArray{Tres, 1},  
                                 x::AbstractArray{Tmsh,1}, 
@@ -285,6 +285,58 @@ function call{Tmsh, Tsol, Tres}(obj::nonslipBC,
 	# this is a problem: q is in conservative variables even if
 	# params says we are using entropy variables
 	calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+
+	return nothing
+end
+
+type ExactChannelBC <: BCType
+end
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC, 
+                                q::AbstractArray{Tsol,1},  
+                                aux_vars::AbstractArray{Tres, 1},  
+                                x::AbstractArray{Tmsh,1}, 
+                                dxidx::AbstractArray{Tmsh,2}, 
+                                nrm::AbstractArray{Tmsh,1}, 
+                                bndryflux::AbstractArray{Tres, 1}, 
+                                params::ParamType{2})
+
+  pi = 3.14159265358979323846264338
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  qInf = Array(Tsol, 4)
+  calcFreeStream(x, params, qInf)
+  rhoInf = 1.0
+  uInf = qInf[2] / qInf[1]
+  vInf = qInf[3] / qInf[1]
+  TInf = 1.0
+  rho = rhoInf
+  # rho = rhoInf * (0.1*sin(2*pi*x[1]) + 0.1*x[2] +  1.0)
+  # u   = uInf * (-4.0 * y * (y-1.0)) + 0.1*uInf
+  # u   = uInf * (-4.0 * y * (y-1.0)) 
+  ux = (0.1*sin(2*pi*x[1]) + 0.2) * uInf
+  # uy = -4.0 * x[2] * (x[2]-1.0)
+  uy = sin(pi*x[2]) 
+  u  = ux * uy
+  v  = vInf 
+  T  = TInf 
+  if !params.isViscous
+    u += 0.2 * uInf
+  end
+
+  qg = Array(Tsol, 4)
+	qg[1] = rho
+	qg[2] = rho*u
+	qg[3] = rho*v
+  qg[4] = T/(gamma * gamma_1) + 0.5 * (u*u + v*v)
+  qg[4] *= rho
+
+	v_vals = params.v_vals
+	convertFromNaturalToWorkingVars(params, qg, v_vals)
+	# this is a problem: q is in conservative variables even if
+	# params says we are using entropy variables
+	# calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
+  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
 
 	return nothing
 end
@@ -1088,7 +1140,8 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "unsteadyVortexBC" => unsteadyVortexBC(),
 "ExpBC" => ExpBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
-"nonslipBC" => nonslipBC(),
+"NonslipBC" => NonslipBC(),
+"ExactChannelBC" => ExactChannelBC(),
 "zeroPressGradientBC" => zeroPressGradientBC(),
 )
 
