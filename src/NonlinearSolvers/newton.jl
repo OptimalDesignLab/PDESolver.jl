@@ -1,7 +1,8 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
 # includes residual_evaluation.jl and petsc_funcs.jl
 
-export newton
+export newton, setupNewton, physicsJac, newtonInner
+export NewtonData, calcJacobianSparse
 global const insert_freq = 1
 @doc """
   This type holds all the data the might be needed for Newton's method,
@@ -548,10 +549,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     # calculate Newton step
     flush(fstdout)
     step_norm = matrixSolve(newton_data, eqn, mesh, opts, jac, delta_q_vec, res_0, fstdout, verbose=verbose)
-    if jac_type == 1 || jac_type == 2
-      fill!(jac, 0.0)
-    end
-    
+
     # perform Newton update
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
@@ -736,8 +734,7 @@ end               # end of function newton()
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
-#   DEBUG = false
-  DEBUG = true
+  # TOOD: we need to change it when we implement the restart
   verbose = opts["newton_verbosity"]::Int
 
   fstdout = BufferedIO(STDOUT)
@@ -764,6 +761,9 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
   recalc_prec_freq = opts["recalc_prec_freq"]::Int
   use_jac_precond = opts["use_jac_precond"]::Bool
 
+  if jac_type == 1 || jac_type == 2
+    fill!(jac, 0.0)
+  end
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step

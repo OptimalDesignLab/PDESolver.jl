@@ -6,38 +6,38 @@
 # the classical rk4 file
 
 """
-  This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
-  Carpenter and Kennedy
+This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
+Carpenter and Kennedy
 
-  Arguments:
-    f: a function that evalutes du/dt = f(q, t)
-    delta_t: the time step
-    t_max: the maximum time value
-    q_vec: vector (of length numDof) containing initial solution.  Will contain final solution 
-           at exit
-    res_vec: vector to store the residual in during evaluation of f.  The contents of this vector
-             at exit is undefined
-    pre_func: function to call after new values are written into q_vec but before f is called
-    post_func: function to call after f is called but before res_vec is accessed
-    ctx: tuple arguments of f (ie. f = f(ctx...))
-    opts: options dictionary
-    timing: a Timings object
-    
-  Keyword Arguments:
-    majorIterationCallback: function to call after first function evaluation of each time step, ie. 
-                            when q_vec and res_vec have been updated.  Useful for logging.  Defaults
-                            to no-op
-    res_tol: stopping tolerance for residual (useful for pseudo-timestepping), default -1.0
-    real_time: whether or not to advance time (ie. pseudo timestepping or not) default faulse
+Arguments:
+f: a function that evalutes du/dt = f(q, t)
+delta_t: the time step
+t_max: the maximum time value
+q_vec: vector (of length numDof) containing initial solution.  Will contain final solution 
+at exit
+res_vec: vector to store the residual in during evaluation of f.  The contents of this vector
+at exit is undefined
+pre_func: function to call after new values are written into q_vec but before f is called
+post_func: function to call after f is called but before res_vec is accessed
+ctx: tuple arguments of f (ie. f = f(ctx...))
+opts: options dictionary
+timing: a Timings object
 
-  See the documentation for rk4.
+Keyword Arguments:
+majorIterationCallback: function to call after first function evaluation of each time step, ie. 
+when q_vec and res_vec have been updated.  Useful for logging.  Defaults
+to no-op
+res_tol: stopping tolerance for residual (useful for pseudo-timestepping), default -1.0
+real_time: whether or not to advance time (ie. pseudo timestepping or not) default faulse
+
+See the documentation for rk4.
 """
 
 function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
-             q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-             post_func, ctx, opts, timing::Timings=Timings(); 
-             majorIterationCallback=((a...) -> (a...)), 
-             res_tol = -1.0, real_time=false)
+                 q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+                 post_func, ctx, opts, timing::Timings=Timings(); 
+                 majorIterationCallback=((a...) -> (a...)), 
+  res_tol = -1.0, real_time=false)
 
   # LSERK coefficients
   const a_coeffs = [0; 
@@ -61,15 +61,16 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   println("c_coeffs = \n", c_coeffs)
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-  fstdout = BufferedIO(STDOUT)
-#  MPI.Barrier(MPI.COMM_WORLD)
+  #  MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0
-    println(fstdout, "\nEntered lserk54")
-    println(fstdout, "res_tol = ", res_tol)
+    # println(STDOUT, "\nEntered lserk54")
+    # println(STDOUT, "res_tol = ", res_tol)
+    println(STDOUT, "\nEntered lserk54")
+    println(STDOUT, "res_tol = ", res_tol)
   end
-#  flush(fstdout)
-#  MPI.Barrier(MPI.COMM_WORLD)
-# res_tol is alternative stopping criteria
+  #  flush(STDOUT)
+  #  MPI.Barrier(MPI.COMM_WORLD)
+  # res_tol is alternative stopping criteria
 
 
   # unpack options
@@ -82,8 +83,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/delta_t)
-  println(fstdout, "t_steps: ",t_steps)
-  println(fstdout, "delta_t = ", delta_t)
+  println(STDOUT, "t_steps: ",t_steps)
+  println(STDOUT, "delta_t = ", delta_t)
 
   (m,) = size(q_vec)
 
@@ -95,58 +96,65 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   if myrank == 0
     _f1 = open("convergence.dat", "a+")
     f1 = BufferedIO(_f1)
+    _f2 = open("unsteady_error.dat", "a+")
+    f2 = BufferedIO(_f2)
   end
 
-  flush(fstdout)
+  flush(STDOUT)
   #-----------------------------------------------------
   # Main timestepping loop
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
     @mpi_master if i % output_freq == 0
-       println(fstdout, "\ntimestep ",i)
-       if i % output_freq == 0
-         flush(fstdout)
-       end
+      println(STDOUT, "\ntimestep ",i)
+      if i % output_freq == 0
+        flush(STDOUT)
+      end
     end
 
     #--------------------------------------------------------------------------
     # stage 1
-#    f(params, u, F_vals, t_i)
+    #    f(params, u, F_vals, t_i)
 
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)
     sol_norm = post_func(ctx..., opts)
- 
+    l2norm = my_post_func(ctx...,opts, treal)
+    if myrank == 0
+      println(f2, treal, " ", real(l2norm))
+      flush(f2)
+    end
+
     #--------------------------------------------------------------------------
     # callback and logging
-    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
+    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, STDOUT)
 
     # logging
     @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
     end
-    
+
     @mpi_master if i % output_freq == 0
-      println(fstdout, "flushing convergence.dat to disk")
+      println(STDOUT, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
     if (sol_norm < res_tol)
       if myrank == 0
-        println(fstdout, "breaking due to res_tol, res norm = $sol_norm")
+        println(STDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
-        flush(fstdout)
+        flush(STDOUT)
       end
       break
     end
 
     if use_itermax && i > itermax
       if myrank == 0
-        println(fstdout, "breaking due to itermax")
+        println(STDOUT, "breaking due to itermax")
         close(f1)
-        flush(fstdout)
+        flush(STDOUT)
       end
       break
     end
@@ -190,21 +198,48 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     close(f1)
   end
 
-
-  return t
+  flush(STDOUT)
+return t
 end  # end lserk54
 
 """
-  See rk4 method with same signature
+See rk4 method with same signature
 """
 function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
-             majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
-             real_time=false)
+                 q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
+                 majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
+  real_time=false)
 
   t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
-        res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
-        majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
+              res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
+              majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
-        return t
+  return t
+end
+function my_post_func(mesh, sbp, eqn, opts, t=0.0; calc_norm=true)
+
+  if haskey(opts, "exactSolution")
+    t = eqn.params.t
+    l2norm::Float64 = 0.
+    lInfnorm::Float64 = 0.
+    qe = Array(Float64, mesh.numDofPerNode)
+    # exactFunc = ExactDict[opts["exactSolution"]]
+    exactFunc = eqn.ExactFunc
+
+    for el = 1 : mesh.numEl
+      for n = 1 : mesh.numNodesPerElement
+        xy = sview(mesh.coords, :, n, el)
+        exactFunc(xy, qe, t)
+        q = sview(eqn.q, :, n, el)
+        jac = mesh.jac[n, el]
+        for v = 1:mesh.numDofPerNode
+          dq = real(q[v] - qe[v])
+          # dq = Float64(q[v] - qe[v])
+          l2norm += dq*dq*sbp.w[n]/jac
+        end
+      end
+    end
+  end
+
+  return l2norm
 end

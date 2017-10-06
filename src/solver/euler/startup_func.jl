@@ -20,8 +20,8 @@ function run_euler(input_file::AbstractString)
 
   mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
   solve_euler(mesh, sbp, eqn, opts, pmesh)
-
   return mesh, sbp, eqn, opts
+
 end
 
 
@@ -216,6 +216,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     opts["delta_t"] = delta_t
   end
 
+  println("numColors = ", mesh.numColors)
+  println("maxColors = ", mesh.maxColors)
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
@@ -306,8 +308,10 @@ function postproc(mesh, sbp, eqn, opts)
       @mpi_master println("solution error norm = ", diff_norm)
       for dof = 1 : mesh.numDofPerNode
         q_error[dof] = sqrt(q_error[dof])
-        @mpi_master println("solt_error[", dof, "] = ", q_error[dof])
+        @mpi_master println("soln_error[", dof, "] = ", q_error[dof])
       end
+      file_soln_err = open("soln_error.dat", "w")
+      println(file_soln_err, q_error[1:mesh.numDofPerNode])
       # TODO: make this mesh.min_el_size?
       h_avg = calcMeshH(mesh, sbp, eqn, opts)
 
@@ -346,7 +350,8 @@ function postproc(mesh, sbp, eqn, opts)
 
     println("\nNumerical functional value on geometric edges ", 
             functional_edges, " = ", real(force))
-
+    file_force = open("cl_cd.dat", "w")
+    println(file_force, real(force[1]), " ", real(force[2]))
     # if haskey(opts, "analytical_functional_val")
       # analytical_functional_val = opts["analytical_functional_val"]
       # println("analytical_functional_val = ", analytical_functional_val)
