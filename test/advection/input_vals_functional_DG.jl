@@ -4,31 +4,31 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 
-arg_dict = Dict{ASCIIString, Any}(
-"physics" => "Advection",
+arg_dict = Dict{Any, Any}(
 "run_type" => 5,
+# "jac_type" => 1,
 "jac_method" => 2,
 "order" => 1,
 "real_time" => true,
-"IC_name" => "ICexp_xy",
+"IC_name" => "ICxplusy",
 "numBC" => 4,
 "BC1" => [0],
-"BC1_name" => "exp_xyBC",
+"BC1_name" => "xplusyBC",
 "BC2" => [1],
-"BC2_name" => "exp_xyBC",
+"BC2_name" => "xplusyBC",
 "BC3" => [2],
-"BC3_name" => "exp_xyBC",
+"BC3_name" => "xplusyBC",
 "BC4" => [3],
-"BC4_name" => "exp_xyBC",
+"BC4_name" => "xplusyBC",
 "use_src_term" => true,
-"SRCname" => "SRCexp_xy",
+"SRCname" => "SRCxplusy",  # "SRC2",
 "delta_t" => 0.002,
 "t_max" => 2.0,
-"smb_name" => "SRCMESHES/gsquare2.smb",
+"smb_name" => "SRCMESHES/gsquare2.smb", # For the latest version of adjoint_capability
 "dmg_name" => ".null",
 "use_DG" => true,
 "Flux_name" => "LFFlux",
-"res_abstol" => 1e-10,
+"res_tol" => 1e-10,
 # "step_tol" => 1e-6,
 "itermax" => 20,
 "res_abstol" => 1e-10,
@@ -37,12 +37,21 @@ arg_dict = Dict{ASCIIString, Any}(
 "itermax" => 30,
 "writeq" => false,
 "itermax" => 30,
-"calc_functional" => true,
+
+# Compute functional value
+# "calc_functional" => true,
 "num_functionals" => 1,
 "functional_name1" => "qflux",
-"geom_edges_functional1" => [2,3],
-"analytical_functional_val" => 2*(exp(1) - 1),
-"calc_adjoint" => true,
+# "functional_error" => true,
+"geom_faces_functional1" => [1,2], # 0 based indexing for mesh edges
+# "analytical_functional_val" => 3.0,
+
+# Compute the objective function
+"objective_function" => "qflux",
+"geom_faces_objective" => [1,2],
+
+# Compute adjoint vector
+"calc_adjoint" => false,
 "writeq" => false,
 "write_edge_vertnums" => false,
 "write_qic" => false,
@@ -54,6 +63,6 @@ arg_dict = Dict{ASCIIString, Any}(
 "output_freq" => 100,
 "solve" => true,
 "do_postproc" => true,
-"exact_soln_func" => "ICexp_xy",
+"exact_soln_func" => "ICxplusy",
 "write_face_vertnums" => false
 )

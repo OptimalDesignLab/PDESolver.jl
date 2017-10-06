@@ -36,7 +36,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     end
     alpha_x = 1.0
 #     alpha_x = 0.0
-    # Note: alpha_y = 0.0 might be useful for testing out new methods, 
+    # Note: alpha_y = 0.0 might be useful for testing out new methods,
     #    but the CI tests will fail unless set to 1.0
     alpha_y = 1.0
 #     alpha_y = 0.0
@@ -74,14 +74,14 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   res_type::DataType  # type of res
   q::Array{Tsol, 3}
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
-  aux_vars::Array{Tres, 3}  # storage for auxiliary variables 
+  aux_vars::Array{Tres, 3}  # storage for auxiliary variables
   flux_parametric::Array{Tsol,4}  # flux in xi direction
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   res::Array{Tres, 3}      # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
   res_edge::Array{Tres, 4} # edge based residual storage
   q_vec::Array{Tres,1}     # initial condition in vector form
-  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
+  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
                           # the boundaries with boundary conditions
   q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
@@ -94,7 +94,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   disassembleSolution::Function # function u_vec -> eqn.q
   assembleSolution::Function    # function : eqn.res -> res_vec
   multiplyA0inv::Function       # multiply an array by inv(A0), where A0
-                                # is the coefficient matrix of the time 
+                                # is the coefficient matrix of the time
                                 # derivative
   src_func::SRCType  # functor for source term
   flux_func::FluxType  # functor for the face flux
@@ -143,7 +143,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
 
       for i=1:mesh.npeers
-        eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes, 
+        eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes,
                                        mesh.peer_face_counts[i])
       end
     else
@@ -170,9 +170,9 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
         throw(ErrorException("Unsupported parallel type requested: $ptype"))
       end
     end
-        
+
     for i=1:mesh.npeers
-      eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
+      eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2,
                                        dim3_send[i])
       eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
                                       dim3_recv[i])
@@ -183,4 +183,45 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
 end # End type AdvectionData_
 
+@doc """
+###AdvectionEquationMod.QfluxData
 
+Data type for storing relevant information pertaining to an a functional or an
+objective function.
+
+**Members**
+
+*  `is_objective_fn` : Bool whether the functional object is an objective
+                       function or not.
+*  `geom_faces_functional` : Geometric faces on which the functional is to be
+                             computed.
+*  `val` : Computed value of the functional
+*  `target_qFlux` : Target value for the functional qFlux
+
+The object is constructed using an inner constructor with the following 
+
+**Arguments**
+
+*  `mesh` : Abstract mesh type
+*  `sbp`  : Summation-By-Parts operator
+*  `eqn`  : Advection equation object
+*  `geom_faces_functional` : Geometric faces on which the functional is to be 
+                             computed
+
+"""->
+
+type QfluxData{Topt} <: AbstractOptimizationData
+  is_objective_fn::Bool
+  geom_faces_functional::AbstractArray{Int,1}
+  val::Topt
+  target_qflux::Topt
+  function QfluxData(mesh, sbp, eqn, opts, geom_faces_functional)
+
+    functional = new()
+    functional.is_objective_fn = false
+    functional.geom_faces_functional = geom_faces_functional
+    functional.val = zero(Topt)
+    functional.target_qflux = zero(Topt)
+    return functional
+  end
+end # End type OfluxData

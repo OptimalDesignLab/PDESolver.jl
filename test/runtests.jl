@@ -3,11 +3,10 @@
 args_orig = copy(ARGS)
 
 TestFinalizeMPI = false
-cd("./advection")
 
+cd("./advection")
 include(joinpath(pwd(), "runtests.jl"))
 println("after advection tests, pwd = ", pwd())
-
 
 cd("../euler")
 resize!(ARGS, length(args_orig))  # reset to default

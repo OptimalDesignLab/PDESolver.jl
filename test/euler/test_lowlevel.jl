@@ -718,6 +718,9 @@ add_func2!(EulerTests, test_lowlevel_dataprep, "input_vals_channel.jl", [TAG_FLU
 """
 function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
+  EulerEquationMod.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+
   facts("--- Testing evalVolumeIntegrals ---")  do
 
     EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)

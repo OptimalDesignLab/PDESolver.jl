@@ -1,7 +1,8 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
 # includes residual_evaluation.jl and petsc_funcs.jl
 
-export newton
+export newton, setupNewton, physicsJac, newtonInner
+export NewtonData, calcJacobianSparse
 global const insert_freq = 1
 @doc """
   This type holds all the data the might be needed for Newton's method,
@@ -214,17 +215,67 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::Abstr
   newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual, t,
                 itermax=itermax, step_tol=step_tol, res_abstol=res_abstol, res_reltol=res_reltol, res_reltol0=res_reltol0)
 
+  #TODO; create a general destructor for newtonInnter, the complement of 
+  #      setupNewton
   if jac_type == 3
     NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
   end
 
 end
 
+"""
+  This function contains the algorithm for Newton's method.  The function newton()
+  is one front end for newtonInner() for solving steady problems.
+  newtonInner() is meant to be incorporated into other functions as one part of 
+  more complicated algorithms.
+
+  For reference, Newton's method solves the problem f(q) = 0 using
+    df/dq delta q = -f(q)
+
+
+  Inputs:
+    newton_data: NewtonData object, typically obtained from setupNewton
+    mesh: a mesh object
+    sbp: an SBP operator
+    eqn: a solution data object
+    opts: options dictionary
+    rhs_func: function to evaluate f(q)
+    jac_func: function to compute the Jacobian df/dq
+    rhs_vec: vector to store f(q) in
+    ctx_residual: extra arguments required by rhs_func
+
+  See the second method of calcResidual for an explanation of rhs_func
+  and ctx_residual.  For solving a physics, rhs_func should be physicsRhs
+  and ctx_residual should be (evalResidual,)
+
+  jac_func must have the signature:
+
+    jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t).
+
+  For solving a physics, jac_func should be physicsJac.  See that function for 
+  documentation of what a jac_func needs to do.  physicsJac is also useful
+  as a building block for writing your own jac_func.
+
+  Note that ctx_residual is shared by rhs_func and jac_func (TODO: stop that).
+
+
+  #TODO: supply default values for rhs_func, jac_func, ctx_residual
+         corresponding to solving a steady problem with a regular physics
+
+  On entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec
+  will contain the solution to f(q) = 0.  eqn.q will also be consistent with
+  eqn.q_vec, as will eqn.q_face_send and eqn.q_face_recv.
+
+  Aliasing restrictions: None.  In particular, rhs_vec *can* alias eqn.res_vec, and this
+                         leads so some efficiency because it avoids needlessly copying
+                         data.
+
+"""
 function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                      opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual=(), t=0.0;
                      itermax=10, step_tol=1e-6, res_abstol=1e-6, res_reltol=1e-6, res_reltol0=-1.0 )
 
-  # 4 = when newtonInner is used as an inner method for time marching or something
+  # verbose 4 = when newtonInner is used as an inner method for time marching or something
 
 
   # this function drives the non-linear residual to some specified tolerance
@@ -264,6 +315,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   use_jac_precond = opts["use_jac_precond"]::Bool
   verbose = opts["newton_verbosity"]::Int
 
+  @assert opts["parallel_type"] == 2
 
   @verbose5 @mpi_master println(fstdout, "\nEntered Newtons Method")
   @verbose5 @mpi_master begin
@@ -318,6 +370,16 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   @verbose5 @mpi_master println(fstdout, "evaluating residual at initial condition"); flush(fstdout)
   res_0_norm = newton_data.res_norm_i = calcResidual(mesh, sbp, eqn, opts, rhs_func, rhs_vec, ctx_residual, t)
   @verbose5 @mpi_master println(fstdout, "res_0_norm = ", res_0_norm); flush(fstdout)
+
+  saveSolutionToMesh(mesh, eqn.q_vec)
+  writeVisFiles(mesh, "newton_0")
+  #=
+  elnums_extract = [2469, 2467, 2187, 2186]
+  for i in elnums_extract
+    println("q[:, :, $i] = \n", real(eqn.q[:, :, i]))
+    println("res[:, :, $i] = \n", real(eqn.res[:, :, i]))
+  end
+  =#
 
   @verbose5 eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, fstdout)
 
@@ -388,7 +450,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
   # Start of newton iteration loop
   eqn.params.time.t_newton += @elapsed for i=1:itermax
 
-    @mpi_master println(fstdout, "===== newton iteration: $i")
+    @verbose5 @mpi_master println(fstdout, "===== newton iteration: $i")
 
     # Calculate Jacobian here
     jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual, t)
@@ -452,7 +514,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
       flush(fstdout)
 
       if write_eigs
-        writedlm("eigs$i.dat", eigs_i)
+        writedlm("eigs_real$i.dat", real(eigs_i))
+        writedlm("eigs_imag$i.dat", imag(eigs_i))
       end
 
     end
@@ -485,35 +548,24 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
     # calculate Newton step
     flush(fstdout)
-    if jac_type == 1 || jac_type == 2  # julia jacobian
-      tmp, t_solve, t_gc, alloc = @time_all begin
-        jac_f = factorize(jac)
-        # Note: reason for the colon: this is attempting to 
-        #       access the existing delta_q_vec so excessive copies aren't required
-        delta_q_vec[:] = jac_f\(res_0)  #  calculate Newton update
-      end
-      fill!(jac, 0.0)
-#    @time solveMUMPS!(jac, res_0, delta_q_vec)
-    elseif jac_type == 3 || jac_type == 4  # petsc jacobian
-      # contents of ctx: (jacp, x, b, ksp)
-      tmp, t_solve, t_gc, alloc = @time_all petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, 
-                                                       res_0, delta_q_vec, mesh.dof_offset)
-    end
-
-    eqn.params.time.t_solve += t_solve
-    @verbose5 @mpi_master print(fstdout, "matrix solve: ")
-    @verbose5 @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
-    step_norm = norm(delta_q_vec)
-    #TODO: make this a regular reduce?
-    step_norm = sqrt(MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm))
-    @verbose5 @mpi_master println(fstdout, "step_norm = ", step_norm)
-    flush(fstdout)
+    step_norm = matrixSolve(newton_data, eqn, mesh, opts, jac, delta_q_vec, res_0, fstdout, verbose=verbose)
 
     # perform Newton update
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
     end
-    
+   
+    saveSolutionToMesh(mesh, eqn.q_vec)
+    writeVisFiles(mesh, "newton_$i")
+    #=
+    for i in elnums_extract
+      println("q[:, :, $i] = \n", real(eqn.q[:, :, i]))
+      println("res[:, :, $i] = \n", real(eqn.res[:, :, i]))
+      println("mesh.coords[:, :, $i] = \n", mesh.coords[:, :, i])
+    end
+    =#
+
+
     @verbose5 eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, fstdout)
 
 
@@ -536,7 +588,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     end
 
 
-    @verbose5 @mpi_master begin
+    @verbose4 @mpi_master begin
       println(fstdout, "residual norm = ", res_0_norm)
       println(fstdout, "relative residual ", res_0_norm/res_reltol_0)
     end
@@ -657,22 +709,32 @@ end               # end of function newton()
 @doc """
 ###NonlinearSolver.physicsJac
   
-  Jacobian (of the physics) calculation, separate from the Newton function
+  Calculates Jacobian (of the physics), separate from the Newton function
 
-  ctx_residual: func must be the first element. func is the residual evaluation function, i.e. evalEuler
-  t:            simulation time
+  Inputs:
+    newton_data: a NewtonData object (TODO: see if this can be removed?)
+    mesh: an AbstractMesh
+    sbp: an SBP operator
+    eqn: an AbstractSolutionData
+    opts: options dictonary
+    jac: the Jacobian, can be an Array, SparseMatrixCSC, or PetscMat
+    ctx_residual: func must be the first element. func is the residual evaluation 
+                  function, typically evalResidual.
+                  It must have the signature func(mesh, sbp, eqn, opts, t)
+    t:            simulation time
 
-  For solving steady problems, this function can be used directly by newtonInner 
+  
+    For solving steady problems, this function can be used directly by newtonInner 
     for the Jac calculation.
 
   For solving unsteady problems, this function can be used as a building block 
     for the calculation of the time-marching Jac.
 
+  TODO: stop using ctx_residual an take the function as an argument directly?
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
-#   DEBUG = false
-  DEBUG = true
+  # TOOD: we need to change it when we implement the restart
   verbose = opts["newton_verbosity"]::Int
 
   fstdout = BufferedIO(STDOUT)
@@ -699,6 +761,9 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
   recalc_prec_freq = opts["recalc_prec_freq"]::Int
   use_jac_precond = opts["use_jac_precond"]::Bool
 
+  if jac_type == 1 || jac_type == 2
+    fill!(jac, 0.0)
+  end
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
@@ -1163,7 +1228,9 @@ end
 
  
 """->
-function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func, res_0::Abstract3DArray, pert, jac::Union{SparseMatrixCSC, PetscMat}, t=0.0)
+function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
+                            res_0::Abstract3DArray, pert, 
+                            jac::Union{SparseMatrixCSC, PetscMat}, t=0.0)
 # res_0 is 3d array of unperturbed residual, only needed for finite difference
 # pert is perturbation to apply
 # this function is independent of perturbation type
@@ -1176,14 +1243,15 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
   myrank = mesh.myrank
   f = eqn.params.f
   time = eqn.params.time
-  time.t_color += @elapsed for color=1:mesh.maxColors  # loop over max colors, only do calculation for numColors
+  time.t_color += @elapsed for color=1:mesh.maxColors  # loop over max colors, 
+                                                       # only do calculation for numColors
     for j=1:mesh.numNodesPerElement  # loop over nodes 
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
-	# apply perturbation to q
+      	# apply perturbation to q
         if color <= mesh.numColors
           applyPerturbation(mesh, eqn.q, eqn.q_face_recv, color, pert, i, j,f)
-  	  # evaluate residual
+      	  # evaluate residual
           time.t_func += @elapsed func(mesh, sbp, eqn, opts, t)
         end
 
@@ -1191,7 +1259,7 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
           PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
         end
 
-	# assemble res into jac
+      	# assemble res into jac
         if color <= mesh.numColors
           time.t_insert += @elapsed for k=1:mesh.numEl  # loop over elements in residual
             el_pert = mesh.pertNeighborEls[k, color] # get perturbed element
@@ -1201,7 +1269,8 @@ function calcJacobianSparse(newton_data::NewtonData, mesh, sbp, eqn, opts, func,
 
               col_idx = mesh.dofs[i, j, el_pert]  # = dof_pert
               #TODO: make an immutable type to hold the bookeeping info
-              assembleElement(newton_data, mesh, eqn, eqn.res, res_0, k, el_pert, col_idx, epsilon, jac)
+              assembleElement(newton_data, mesh, eqn, eqn.res, res_0, k, el_pert,
+                              col_idx, epsilon, jac)
             end  # end if el_pert != 0
           end  # end loop over k
 
@@ -1566,3 +1635,57 @@ function calcJacCol{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
   return nothing
 
 end
+
+
+"""
+  This function performs a matrix solve x = inv(A)*b.  A can be a dense
+  matrix, a SparseMatrixCSC, or a PetscMatrix.
+
+  This function should be used anywhere a matrix solve is needed that
+  should work with any type of matrix
+
+  Inputs:
+    newton_data: a NewtonData object
+    eqn: an AbstractSolutionData object (only eqn.params is really needed)
+    jac: should be the matrix corresponding to the newton_data object
+    b: the right hand side vector
+    
+  Inputs/Outputs:
+    x: the output vector
+
+  Aliasing restrictions: x and b cannot alias
+"""
+function matrixSolve(newton_data::NewtonData, eqn::AbstractSolutionData, 
+                     mesh::AbstractDGMesh, opts,
+                     jac::AbstractMatrix, x::AbstractVector, b::AbstractVector,                      fstdout::IO;
+                     verbose=5)
+
+  jac_type = typeof(jac)
+  myrank = mesh.myrank
+  tmp, t_solve, t_gc, alloc = @time_all if jac_type <: Array || jac_type <: SparseMatrixCSC
+      jac_f = factorize(jac)
+      tmp2 = jac_f\b
+
+      copy!(x, tmp2)
+
+  elseif  jac_type <: PetscMat
+    petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, b, x, 
+               mesh.dof_offset)
+
+  else
+    throw(ErrorException("Unsupported jac_type $jac_type"))
+  end
+
+  eqn.params.time.t_solve += t_solve
+
+  @verbose5 @mpi_master print(fstdout, "matrix solve: ")
+  @verbose5 @mpi_master print_time_all(fstdout, t_solve, t_gc, alloc)
+  step_norm = norm(x)
+  step_norm = sqrt(MPI.Allreduce(step_norm*step_norm, MPI.SUM, mesh.comm))
+  @verbose5 @mpi_master println(fstdout, "step_norm = ", step_norm)
+  flush(fstdout)
+
+  return step_norm
+end
+
+

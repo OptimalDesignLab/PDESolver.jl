@@ -5,13 +5,13 @@ abstract AbstractBoundaryValueType
 Compute derivative operators
 
 Input:
-mesh
-sbp
-dxidx : derivatives of mapping, i.e., Jacobian matrix
-jac   : determinant of Jacobian
+  mesh
+  sbp
+  dxidx : derivatives of mapping, i.e., Jacobian matrix
+  jac   : determinant of Jacobian
 
-Output:
-Dx    : (in/out)derivative operators in physical domain, incling Dx, Dy
+Input/Output:
+  Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
 function calcDx{Tmsh}(sbp::AbstractSBP,
                       dxidx::AbstractArray{Tmsh, 3},
@@ -53,12 +53,12 @@ end
 Compute derivative operators
 
 Input:
-mesh
-sbp
-elem    : index of element of which we are computing the derivatives
+  mesh
+  sbp
+  elem    : index of element of which we are computing the derivatives
 
-Output:
-Dx        : (in/out) derivative operators in physical domain, incling Dx, Dy
+Input/Output:
+  Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
 function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
                       sbp::AbstractSBP,
@@ -130,13 +130,13 @@ end
 Given variables q at element nodes, compute corresponding gradients
 
 Input:
-sbp        : sbp operator
-dxidx    : derivatives of mapping, i.e., jacobian matrix
-jac        : determinant of jacobian
-q        : element node value
-q_grad    : gradient of q
+  sbp      : sbp operator
+  dxidx    : derivatives of mapping, i.e., jacobian matrix
+  jac      : determinant of jacobian
+  q        : element node value
+  q_grad   : gradient of q
 Output:
-nothing
+  nothing
 """->
 function calcGradient{Tmsh, Tsol, Tsbp}(sbp::AbstractSBP{Tsbp},
                                         dxidx::AbstractArray{Tmsh, 3},
@@ -180,12 +180,12 @@ end
 Given variables q at element nodes, compute corresponding gradients
 
 Input:
-mesh:
-sbp:
-q      : element node value
-elem   : index of element
+	mesh:
+	sbp:
+	q      : element node value
+	elem   : index of element
 Output :
-q_grad : (in/out) gradient of q
+	q_grad : (in/out) gradient of q
 """->
 function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},
                                         sbp::AbstractSBP{Tsbp},
@@ -228,12 +228,12 @@ Another(single face) version of interiorfaceintegrate.
 Given Q on element L and element R, interpolate Q to interface shared by L and R
 
 Input:
-sbpface        : face SBP operator
-face        : the interface which we are interpolating Q onto
-qvolL        : Q at nodes in element L, qvolL(idof, iNode)    
-qvolR        : Q at nodes in element R    
+  sbpface     : face SBP operator
+  face        : the interface which we are interpolating Q onto
+  qvolL       : Q at nodes in element L, qvolL(idof, iNode)    
+  qvolR       : Q at nodes in element R    
 Output:
-qface        : Q at nodes on interface, qface(idof, L/R, ifacenode)
+  qface       : Q at nodes on interface, qface(idof, L/R, ifacenode)
 
 function call examples
 """->
@@ -278,11 +278,11 @@ Another version of boundaryinterpolate.
 Given Q on the parent element, interpolate Q to boundary face owned by parent element
 
 Input:
-sbpface        : face SBP operator
-bndface        : the interface which we are interpolating Q onto
-qvol        : Q at nodes in element L, qvolL(idof, iNode)    
+  sbpface     : face SBP operator
+  bndface     : the interface which we are interpolating Q onto
+  qvol        : Q at nodes in element L, qvolL(idof, iNode)    
 Output:
-qface        : Q at nodes on interface, qface(idof, L/R, ifacenode)
+  qface       : Q at nodes on interface, qface(idof, L/R, ifacenode)
 
 """->
 function boundaryinterpolate{Tsbp, Tsol}(sbpface::AbstractFace{Tsbp},
@@ -316,9 +316,9 @@ end
 Compute dynamic viscousity for an element using Sutherland's Law
 
 Input:
-temp        : temperature
+  temp        : temperature
 Output:
-rmu            : dynamic viscousity
+  rmu         : dynamic viscousity
 
 """->
 function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
@@ -333,14 +333,14 @@ function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
 
   return nothing
 end
-@doc """
 
+@doc """
 Compute dynamic viscousity for an element using Sutherland's Law
 
 Input:
-temp        : temperature
+  temp        : temperature
 Output:
-rmu            : dynamic viscousity
+  rmu         : dynamic viscousity
 
 """->
 function getMuK{Tsol}(temp::AbstractArray{Tsol, 1}, rMuK::AbstractArray{Tsol, 2})
@@ -362,17 +362,17 @@ end
 
 # @doc """
 
-# Compute the viscous flux if we don't have derivatives yet
+# Compute the viscous flux if we don't have derivatives yet.
 # Only work for 2D.
 # Since derivatives are involved, it's difficult (or should say, expensive)
 # to define node-based version.
 
 # Input: 
-# q        : conservative variable for a element
-# dxidx    : derivatives of mapping
-# jac        : determinant of mapping
+#   q        : conservative variable for a element
+#   dxidx    : derivatives of mapping
+#   jac      : determinant of mapping
 # Output
-# Fv        : viscous flux
+#   Fv       : viscous flux
 # """->
 #
 function calcFvis_elem_1{Tsol, Tmsh}(sbp::AbstractSBP,
@@ -466,26 +466,26 @@ end
 # Since    ∇q is available, we compute G(q) then do the multiplication
 
 # Input:
-# q        : conservative variable
-# dqdx    : gradient of conservative variable
+#   q       : conservative variable
+#   dqdx    : gradient of conservative variable
 # Output:
-# Fv    : viscous flux
+#   Fv    : viscous flux
 # """->
-function calcFvis{Tsol}(q::AbstractArray{Tsol, 2},
-                        dqdx::AbstractArray{Tsol, 3},
-                        Fv::AbstractArray{Tsol, 3})
+function calcFvis{Tsol, Tdim}(params::ParamType{Tdim, :conservative},
+                              q::AbstractArray{Tsol, 2},
+                              dqdx::AbstractArray{Tsol, 3},
+                              Fv::AbstractArray{Tsol, 3})
 
   @assert(size(q, 2) == size(dqdx, 3)) # number of nodes per element
   @assert(size(q, 1) == size(dqdx, 2)) # number of dof per node
-  @assert(size(dqdx, 1) == 2)
+  @assert(size(dqdx, 1) == Tdim)
 
-  dim      = size(dqdx, 1)
   numDofs  = size(q, 1)
   numNodes = size(q, 2)
-  Gv = zeros(Tsol,  numDofs, numDofs, dim, dim, numNodes)
+  Gv = zeros(Tsol,  numDofs, numDofs, Tdim, Tdim, numNodes)
 
-  calcDiffusionTensor(q, Gv)
-  calcFvis(Gv, dqdx, Fv)
+  calcDiffusionTensor(params, q, Gv)
+  calcFvis(params, Gv, dqdx, Fv)
 
   return nothing
 end
@@ -498,13 +498,14 @@ end
 # is just the multiplication
 
 # Input:
-# sbp        : sbp operator
-# q        : viscousity tensor
-# dqdx    : gradient of conservative variable
+#   sbp     : sbp operator
+#   q       : viscousity tensor
+#   dqdx    : gradient of conservative variable
 # Output:
-# Fv        : viscous flux
+#   Fv      : viscous flux
 # """->
-function calcFvis{Tsol}(Gv::AbstractArray{Tsol, 5},
+function calcFvis{Tsol}(params::ParamType{2, :conservative},
+                        Gv::AbstractArray{Tsol, 5},
                         dqdx::AbstractArray{Tsol, 3},
                         Fv::AbstractArray{Tsol, 3})
 
@@ -532,28 +533,110 @@ function calcFvis{Tsol}(Gv::AbstractArray{Tsol, 5},
 
     Fv[1, 1, n] = 0.0
     Fv[1, 2, n] = (Gv[2, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[2, 2, 1, 1,n]*dqdx[1, 2, n]
-                   + Gv[2, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[2, 3, 1, 2,n]*dqdx[2, 3, n] )
+                 + Gv[2, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[2, 3, 1, 2,n]*dqdx[2, 3, n] )
     Fv[1, 3, n] = (Gv[3, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[3, 3, 1, 1,n]*dqdx[1, 3, n]
-                   + Gv[3, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[3, 2, 1, 2,n]*dqdx[2, 2, n] )
+                 + Gv[3, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[3, 2, 1, 2,n]*dqdx[2, 2, n] )
     Fv[1, 4, n] = (Gv[4, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[4, 2, 1, 1,n]*dqdx[1, 2, n]
-                   + Gv[4, 3, 1, 1,n]*dqdx[1, 3, n] + Gv[4, 4, 1, 1,n]*dqdx[1, 4, n] 
-                   + Gv[4, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[4, 2, 1, 2,n]*dqdx[2, 2, n] 
-                   + Gv[4, 3, 1, 2,n]*dqdx[2, 3, n] )
+                 + Gv[4, 3, 1, 1,n]*dqdx[1, 3, n] + Gv[4, 4, 1, 1,n]*dqdx[1, 4, n] 
+                 + Gv[4, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[4, 2, 1, 2,n]*dqdx[2, 2, n] 
+                 + Gv[4, 3, 1, 2,n]*dqdx[2, 3, n] )
 
     Fv[2, 1, n] = 0.0
     Fv[2, 2, n] = (Gv[2, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[2, 3, 2, 1,n]*dqdx[1, 3, n]
-                   + Gv[2, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[2, 2, 2, 2,n]*dqdx[2, 2, n] )
+                 + Gv[2, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[2, 2, 2, 2,n]*dqdx[2, 2, n] )
     Fv[2, 3, n] = (Gv[3, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[3, 2, 2, 1,n]*dqdx[1, 2, n]
-                   + Gv[3, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[3, 3, 2, 2,n]*dqdx[2, 3, n] )
+                 + Gv[3, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[3, 3, 2, 2,n]*dqdx[2, 3, n] )
     Fv[2, 4, n] = (Gv[4, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[4, 2, 2, 1,n]*dqdx[1, 2, n]
-                   + Gv[4, 3, 2, 1,n]*dqdx[1, 3, n] 
-                   + Gv[4, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[4, 2, 2, 2,n]*dqdx[2, 2, n] 
-                   + Gv[4, 3, 2, 2,n]*dqdx[2, 3, n] + Gv[4, 4, 2, 2,n]*dqdx[2, 4, n] )
+                 + Gv[4, 3, 2, 1,n]*dqdx[1, 3, n] 
+                 + Gv[4, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[4, 2, 2, 2,n]*dqdx[2, 2, n] 
+                 + Gv[4, 3, 2, 2,n]*dqdx[2, 3, n] + Gv[4, 4, 2, 2,n]*dqdx[2, 4, n] )
   end
 
   return nothing
 end
 
+function calcFvis{Tsol}(params::ParamType{3, :conservative},
+                        Gv::AbstractArray{Tsol, 5},
+                        dqdx::AbstractArray{Tsol, 3},
+                        Fv::AbstractArray{Tsol, 3})
+
+  @assert(size(Gv, 5) == size(dqdx, 3)) # number of nodes per element
+  @assert(size(Gv, 4) == size(dqdx, 1)) # spatial dimention 
+  @assert(size(Gv, 3) == size(dqdx, 1)) # spatial dimention 
+  @assert(size(Gv, 2) == size(dqdx, 2)) # number of dofs per element
+  @assert(size(Gv, 1) == size(dqdx, 2)) # number of dofs per element
+
+  dim      = size(dqdx, 1)
+  numDofs  = size(Gv, 1)
+  numNodes = size(Gv, 5)
+
+  for n = 1 : numNodes
+    # brutal loop
+    # for d = 1 : dim
+    # for d2 = 1 : dim
+    # for row = 1 : numDofs
+    # for col = 1 : numDofs
+    # Fv[d, row, n] += Gv[row, col, d, d2, n]*dqdx[d2, col, n]
+    # end
+    # end
+    # end
+    # end
+
+    Fv[1, 1, n] = 0.0
+
+    Fv[1, 2, n] = (Gv[2, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[2, 2, 1, 1,n]*dqdx[1, 2, n]
+                 + Gv[2, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[2, 3, 1, 2,n]*dqdx[2, 3, n]
+                 + Gv[2, 1, 1, 3,n]*dqdx[3, 1, n] + Gv[2, 4, 1, 3,n]*dqdx[3, 4, n] )
+
+    Fv[1, 3, n] = (Gv[3, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[3, 3, 1, 1,n]*dqdx[1, 3, n]
+                 + Gv[3, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[3, 2, 1, 2,n]*dqdx[2, 2, n] )
+
+    Fv[1, 4, n] = (Gv[4, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[4, 4, 1, 1,n]*dqdx[1, 4, n]
+                 + Gv[4, 1, 1, 3,n]*dqdx[3, 1, n] + Gv[4, 2, 1, 3,n]*dqdx[3, 2, n] )
+
+
+    Fv[1, 5, n] = (Gv[5, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[5, 2, 1, 1,n]*dqdx[1, 2, n]
+                 + Gv[5, 3, 1, 1,n]*dqdx[1, 3, n] + Gv[5, 4, 1, 1,n]*dqdx[1, 4, n] + Gv[5, 5, 1, 1,n]*dqdx[1, 5, n]
+                 + Gv[5, 1, 1, 2,n]*dqdx[2, 1, n] + Gv[5, 2, 1, 2,n]*dqdx[2, 2, n] + Gv[5, 3, 1, 2,n]*dqdx[2, 3, n]
+                 + Gv[5, 1, 1, 3,n]*dqdx[3, 1, n] + Gv[5, 2, 1, 3,n]*dqdx[3, 2, n] + Gv[5, 4, 1, 3,n]*dqdx[3, 4, n] )
+
+    Fv[2, 1, n] = 0.0
+
+    Fv[2, 2, n] = (Gv[2, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[2, 3, 2, 1,n]*dqdx[1, 3, n]
+                 + Gv[2, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[2, 2, 2, 2,n]*dqdx[2, 2, n] )
+
+    Fv[2, 3, n] = (Gv[3, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[3, 2, 2, 1,n]*dqdx[1, 2, n]
+                 + Gv[3, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[3, 3, 2, 2,n]*dqdx[2, 3, n] 
+                 + Gv[3, 1, 2, 3,n]*dqdx[3, 1, n] + Gv[3, 4, 2, 3,n]*dqdx[3, 4, n] )
+
+    Fv[2, 4, n] = (Gv[4, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[4, 4, 2, 2,n]*dqdx[2, 4, n] 
+                 + Gv[4, 1, 2, 3,n]*dqdx[3, 1, n] + Gv[4, 3, 2, 3,n]*dqdx[3, 3, n] )
+
+    Fv[2, 5, n] = (Gv[5, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[5, 2, 2, 1,n]*dqdx[1, 2, n] + Gv[5, 3, 2, 1,n]*dqdx[1, 3, n] 
+                 + Gv[5, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[5, 2, 2, 2,n]*dqdx[2, 2, n] 
+                 + Gv[5, 3, 2, 2,n]*dqdx[2, 3, n] + Gv[5, 4, 2, 2,n]*dqdx[2, 4, n] + Gv[5, 5, 2, 2,n]*dqdx[2, 5, n]
+                 + Gv[5, 1, 2, 3,n]*dqdx[3, 1, n] + Gv[5, 3, 2, 3,n]*dqdx[3, 3, n] + Gv[5, 4, 2, 3,n]*dqdx[3, 4, n] )
+
+    Fv[3, 1, n] = 0.0
+
+    Fv[3, 2, n] = (Gv[2, 1, 3, 1,n]*dqdx[1, 1, n] + Gv[2, 4, 3, 1,n]*dqdx[1, 4, n]
+                 + Gv[2, 1, 3, 3,n]*dqdx[3, 1, n] + Gv[2, 2, 3, 3,n]*dqdx[3, 2, n] )
+
+    Fv[3, 3, n] = (Gv[3, 1, 3, 2,n]*dqdx[2, 1, n] + Gv[3, 4, 3, 2,n]*dqdx[2, 4, n] 
+                 + Gv[3, 1, 3, 3,n]*dqdx[3, 1, n] + Gv[3, 3, 3, 3,n]*dqdx[3, 3, n] )
+
+    Fv[3, 4, n] = (Gv[4, 1, 3, 1,n]*dqdx[1, 1, n] + Gv[4, 2, 3, 1,n]*dqdx[1, 2, n] 
+                 + Gv[4, 1, 3, 2,n]*dqdx[2, 1, n] + Gv[4, 3, 3, 2,n]*dqdx[2, 3, n] 
+                 + Gv[4, 1, 3, 3,n]*dqdx[3, 1, n] + Gv[4, 4, 3, 3,n]*dqdx[3, 4, n] )
+
+    Fv[3, 5, n] = (Gv[5, 1, 3, 1,n]*dqdx[1, 1, n] + Gv[5, 2, 3, 1,n]*dqdx[1, 2, n] + Gv[5, 4, 3, 1,n]*dqdx[1, 4, n] 
+                 + Gv[5, 1, 3, 2,n]*dqdx[2, 1, n] + Gv[5, 3, 3, 2,n]*dqdx[2, 3, n] + Gv[5, 4, 3, 2,n]*dqdx[2, 4, n]
+                 + Gv[5, 1, 3, 3,n]*dqdx[3, 1, n] + Gv[5, 2, 3, 3,n]*dqdx[3, 2, n] + Gv[5, 3, 3, 3,n]*dqdx[3, 3, n] 
+                 + Gv[5, 4, 3, 3,n]*dqdx[3, 4, n] + Gv[5, 5, 3, 3,n]*dqdx[3, 5, n]  )
+  end
+
+  return nothing
+end
 
 
 @doc """
@@ -561,15 +644,16 @@ end
 Compute the viscous flux. This is an element level function.
 
 Input: 
-sbp :
-q : conservative variable at all element node
-dxidx:
-jac:
-Fv : viscous flux
+  sbp   :
+  q     : conservative variable at all element node
+  dxidx :
+  jac   :
+  Fv    : viscous flux
 Output
-jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
+  jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcFvis_elem{Tsol, Tmsh}(sbp::AbstractSBP,
+function calcFvis_elem{Tsol, Tmsh}(params::ParamType,
+                                   sbp::AbstractSBP,
                                    q::AbstractArray{Tsol, 2},
                                    dxidx::AbstractArray{Tmsh, 3},
                                    jac::AbstractArray{Tmsh, 1},
@@ -590,7 +674,7 @@ function calcFvis_elem{Tsol, Tmsh}(sbp::AbstractSBP,
 
   calcGradient(sbp, dxidx, jac, q, dqdx)
 
-  calcFvis(q, dqdx, Fv)
+  calcFvis(params, q, dqdx, Fv)
 
   return nothing
 end
@@ -604,7 +688,8 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor{Tsol}(q::AbstractArray{Tsol, 2},
+function calcDiffusionTensor{Tsol}(params::ParamType{2, :conservative},
+                                   q::AbstractArray{Tsol, 2},
                                    Gv::AbstractArray{Tsol, 5})
   @assert(size(q, 2) == size(Gv, 5))
   @assert(size(Gv, 4) == 2)
@@ -738,6 +823,7 @@ function calcDiffusionTensor{Tsol}(q::AbstractArray{Tsol, 2},
   end
   return nothing
 end
+
 @doc """
 
 Compute the viscous diffusion matrix, only work for 2D
@@ -747,7 +833,365 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor_adiabaticWall{Tsol}(q::AbstractArray{Tsol, 2},
+function calcDiffusionTensor{Tsol}(params::ParamType{3, :conservative},
+                                   q::AbstractArray{Tsol, 2},
+                                   Gv::AbstractArray{Tsol, 5})
+  @assert(size(q, 2) == size(Gv, 5))
+  @assert(size(Gv, 4) == 3)
+  @assert(size(Gv, 3) == 3)
+  @assert(size(Gv, 2) == 3+2)
+  @assert(size(Gv, 1) == 3+2)
+  numNodes = size(q, 2)
+  gamma = 1.4
+  gamma_1 = gamma - 1.0
+  Pr = 0.72
+  gamma_pr = gamma/Pr
+  one3rd = 1.0/3.0
+  two3rd = 2.0/3.0
+  four3rd = 4.0/3.0
+  E    = Array(Tsol, numNodes)
+  T    = Array(Tsol, numNodes)
+  v2   = Array(Tsol, numNodes)
+  v1v2 = Array(Tsol, numNodes)
+  v    = Array(Tsol, 3, numNodes)
+  rmuk = Array(Tsol, 3, numNodes)
+
+  for n = 1 : numNodes
+    v[1, n] = q[2,n]/q[1,n]
+    v[2, n] = q[3,n]/q[1,n]
+    v[3, n] = q[4,n]/q[1,n]
+    v2[n]   = v[1,n]*v[1,n] + v[2,n]*v[2,n] + v[3,n]*v[3,n]
+    v1v2[n] = v[1,n]*v[2,n]
+    v2v3[n] = v[2,n]*v[3,n]
+    v1v3[n] = v[1,n]*v[3,n]
+    E[n]    = q[5,n]/q[1,n]
+    T[n]    = gamma*gamma_1 * (E[n] - 0.5*v2[n] )
+  end
+
+  getMuK(T, rmuk)
+
+  for n = 1 : numNodes
+    Gv[1,1,1,1,n] = 0.0
+    Gv[1,2,1,1,n] = 0.0
+    Gv[1,3,1,1,n] = 0.0
+    Gv[1,4,1,1,n] = 0.0
+    Gv[1,5,1,1,n] = 0.0
+
+    Gv[2,1,1,1,n] = -four3rd*v[1,n]
+    Gv[2,2,1,1,n] = four3rd 
+    Gv[2,3,1,1,n] = 0.0
+    Gv[2,4,1,1,n] = 0.0
+    Gv[2,5,1,1,n] = 0.0
+
+    Gv[3,1,1,1,n] = -v[2,n]
+    Gv[3,2,1,1,n] = 0.0
+    Gv[3,3,1,1,n] = 1.0
+    Gv[3,4,1,1,n] = 0.0
+    Gv[3,5,1,1,n] = 0.0
+
+    Gv[4,1,1,1,n] = -v[3,n]
+    Gv[4,2,1,1,n] = 0.0
+    Gv[4,3,1,1,n] = 0.0
+    Gv[4,4,1,1,n] = 1.0
+    Gv[4,5,1,1,n] = 0.0
+
+    Gv[5,1,1,1,n] = -(one3rd*v[1,n]*v[1,n] + v2[n] + gamma_pr*(E[n] - v2[n]))
+    Gv[5,2,1,1,n] = (four3rd - gamma_pr)*v[1,n]
+    Gv[5,3,1,1,n] = (1.0 - gamma_pr)*v[2,n]
+    Gv[5,4,1,1,n] = (1.0 - gamma_pr)*v[3,n]
+    Gv[5,5,1,1,n] = gamma_pr
+
+    #
+    # G12
+    #
+    Gv[1,1,1,2,n] = 0.0
+    Gv[1,2,1,2,n] = 0.0
+    Gv[1,3,1,2,n] = 0.0
+    Gv[1,4,1,2,n] = 0.0
+    Gv[1,5,1,2,n] = 0.0
+
+    Gv[2,1,1,2,n] = two3rd*v[2,n]
+    Gv[2,2,1,2,n] = 0.0 
+    Gv[2,3,1,2,n] = -two3rd
+    Gv[2,4,1,2,n] = 0.0
+    Gv[2,5,1,2,n] = 0.0
+
+    Gv[3,1,1,2,n] = -v[1,n]
+    Gv[3,2,1,2,n] = 1.0
+    Gv[3,3,1,2,n] = 0.0
+    Gv[3,4,1,2,n] = 0.0
+    Gv[3,5,1,2,n] = 0.0
+
+    Gv[4,1,1,2,n] = 0.0
+    Gv[4,2,1,2,n] = 0.0
+    Gv[4,3,1,2,n] = 0.0
+    Gv[4,4,1,2,n] = 0.0
+    Gv[4,5,1,2,n] = 0.0
+
+    Gv[5,1,1,2,n] = -one3rd*v1v2[n]
+    Gv[5,2,1,2,n] = v[2,n]
+    Gv[5,3,1,2,n] = -two3rd*v[1,n] 
+    Gv[5,4,1,2,n] = 0.0
+    Gv[5,5,1,2,n] = 0.0
+
+    #
+    # G13
+    #
+    Gv[1,1,1,3,n] = 0.0
+    Gv[1,2,1,3,n] = 0.0
+    Gv[1,3,1,3,n] = 0.0
+    Gv[1,4,1,3,n] = 0.0
+    Gv[1,5,1,3,n] = 0.0
+
+    Gv[2,1,1,3,n] = two3rd*v[3,n]
+    Gv[2,2,1,3,n] = 0.0 
+    Gv[2,3,1,3,n] = 0.0
+    Gv[2,4,1,3,n] = -two3rd
+    Gv[2,5,1,3,n] = 0.0
+
+    Gv[3,1,1,3,n] = 0.0
+    Gv[3,2,1,3,n] = 0.0
+    Gv[3,3,1,3,n] = 0.0
+    Gv[3,4,1,3,n] = 0.0
+    Gv[3,5,1,3,n] = 0.0
+
+    Gv[4,1,1,3,n] = -v[1,n]
+    Gv[4,2,1,3,n] = 1.0
+    Gv[4,3,1,3,n] = 0.0
+    Gv[4,4,1,3,n] = 0.0
+    Gv[4,5,1,3,n] = 0.0
+
+
+    Gv[5,1,1,3,n] = -one3rd*v1v3[n]
+    Gv[5,2,1,3,n] = v[3,n]
+    Gv[5,3,1,3,n] = 0.0
+    Gv[5,4,1,3,n] = -two3rd*v[1,n] 
+    Gv[5,5,1,3,n] = 0.0
+
+    #
+    # G21
+    #
+    Gv[1,1,2,1,n] = 0.0
+    Gv[1,2,2,1,n] = 0.0
+    Gv[1,3,2,1,n] = 0.0
+    Gv[1,4,2,1,n] = 0.0
+    Gv[1,5,2,1,n] = 0.0
+
+    Gv[2,1,2,1,n] = -v[2,n]
+    Gv[2,2,2,1,n] = 0.0 
+    Gv[2,3,2,1,n] = 1.0
+    Gv[2,4,2,1,n] = 0.0
+    Gv[2,5,2,1,n] = 0.0
+
+    Gv[3,1,2,1,n] = two3rd*v[1,n]
+    Gv[3,2,2,1,n] = -two3rd
+    Gv[3,3,2,1,n] = 0.0
+    Gv[3,4,2,1,n] = 0.0
+    Gv[3,5,2,1,n] = 0.0
+
+    Gv[4,1,2,1,n] = 0.0
+    Gv[4,2,2,1,n] = 0.0
+    Gv[4,3,2,1,n] = 0.0
+    Gv[4,4,2,1,n] = 0.0
+    Gv[4,5,2,1,n] = 0.0
+
+    Gv[5,1,2,1,n] = -one3rd*v1v2[n]
+    Gv[5,2,2,1,n] = -two3rd*v[2,n]
+    Gv[5,3,2,1,n] = v[1,n] 
+    Gv[4,4,2,1,n] = 0.0
+    Gv[5,5,2,1,n] = 0.0
+    
+    #
+    # G22
+    #
+    Gv[1,1,2,2,n] = 0.0
+    Gv[1,2,2,2,n] = 0.0
+    Gv[1,3,2,2,n] = 0.0
+    Gv[1,4,2,2,n] = 0.0
+    Gv[1,5,2,2,n] = 0.0
+
+    Gv[2,1,2,2,n] = -v[1,n]
+    Gv[2,2,2,2,n] = 1.0 
+    Gv[2,3,2,2,n] = 0.0
+    Gv[2,4,2,2,n] = 0.0
+    Gv[2,5,2,2,n] = 0.0
+
+    Gv[3,1,2,2,n] = -four3rd*v[2,n]
+    Gv[3,2,2,2,n] = 0.0
+    Gv[3,3,2,2,n] = four3rd
+    Gv[3,4,2,2,n] = 0.0
+    Gv[3,5,2,2,n] = 0.0
+
+    Gv[4,1,2,2,n] = -v[1,n]
+    Gv[4,2,2,2,n] = 0.0
+    Gv[4,3,2,2,n] = 0.0
+    Gv[4,4,2,2,n] = 1.0 
+    Gv[4,5,2,2,n] = 0.0
+
+    Gv[5,1,2,2,n] = -(v2[n] + one3rd*v[2,n]*v[2,n] + gamma_pr*(E[n] - v2[n]))
+    Gv[5,2,2,2,n] = (1.0 - gamma_pr)*v[1,n]
+    Gv[5,3,2,2,n] = (four3rd - gamma_pr)*v[2,n]
+    Gv[5,4,2,2,n] = (1.0 - gamma_pr)*v[3,n]
+    Gv[5,5,2,2,n] = gamma_pr
+
+    #
+    # G23
+    #
+    Gv[1,1,2,3] = 0.0
+    Gv[1,2,2,3] = 0.0
+    Gv[1,3,2,3] = 0.0
+    Gv[1,4,2,3] = 0.0
+    Gv[1,5,2,3] = 0.0
+
+    Gv[2,1,2,3] = 0.0
+    Gv[2,2,2,3] = 0.0
+    Gv[2,3,2,3] = 0.0
+    Gv[2,4,2,3] = 0.0
+    Gv[2,5,2,3] = 0.0
+
+    Gv[3,1,2,3] = two3rd * v[3,n]
+    Gv[3,2,2,3] = 0.0
+    Gv[3,3,2,3] = 0.0
+    Gv[3,4,2,3] = -two3rd
+    Gv[3,5,2,3] = 0.0
+
+    Gv[4,1,2,3] = v[2,n]
+    Gv[4,2,2,3] = 0.0
+    Gv[4,4,2,3] = 1.0
+    Gv[4,3,2,3] = 0.0
+    Gv[4,5,2,3] = 0.0
+
+    Gv[5,1,2,3,n] = -one3rd*v2v3[2,n]
+    Gv[5,2,2,3,n] = 0.0
+    Gv[5,3,2,3,n] = v[3,n]
+    Gv[5,4,2,3,n] = -two3rd * v[1,n] 
+    Gv[5,5,2,3,n] = 0.0
+
+    #
+    # G31
+    #
+    Gv[1,1,3,1,n] = 0.0
+    Gv[1,2,3,1,n] = 0.0
+    Gv[1,3,3,1,n] = 0.0
+    Gv[1,4,3,1,n] = 0.0
+    Gv[1,5,3,1,n] = 0.0
+
+    Gv[2,1,3,1,n] = -v[3,n]
+    Gv[2,2,3,1,n] = 0.0 
+    Gv[2,3,3,1,n] = 0.0
+    Gv[2,4,3,1,n] = 1.0
+    Gv[2,5,3,1,n] = 0.0
+
+    Gv[3,1,3,1,n] = 0.0
+    Gv[3,2,3,1,n] = 0.0
+    Gv[3,3,3,1,n] = 0.0
+    Gv[3,4,3,1,n] = 0.0
+    Gv[3,5,3,1,n] = 0.0
+
+    Gv[4,1,3,1,n] = two3rd*v[1,n]
+    Gv[4,2,3,1,n] = -two3rd
+    Gv[4,3,3,1,n] = 0.0
+    Gv[4,4,3,1,n] = 0.0
+    Gv[4,5,3,1,n] = 0.0
+
+
+    Gv[5,1,3,1,n] = -one3rd*v1v3[n]
+    Gv[5,2,3,1,n] = 0.0
+    Gv[5,3,3,1,n] = -two3rd*v[3,n]
+    Gv[5,4,3,1,n] = v[2,n] 
+    Gv[5,5,3,1,n] = 0.0
+    #
+    # G32
+    #
+    Gv[1,1,2,3] = 0.0
+    Gv[1,2,2,3] = 0.0
+    Gv[1,3,2,3] = 0.0
+    Gv[1,4,2,3] = 0.0
+    Gv[1,5,2,3] = 0.0
+
+    Gv[2,1,2,3] = 0.0
+    Gv[2,2,2,3] = 0.0
+    Gv[2,3,2,3] = 0.0
+    Gv[2,4,2,3] = 0.0
+    Gv[2,5,2,3] = 0.0
+
+    Gv[3,1,2,3] = -v[3,n]
+    Gv[3,2,2,3] = 0.0
+    Gv[3,3,2,3] = 0.0
+    Gv[3,4,2,3] = 1.0
+    Gv[3,5,2,3] = 0.0
+
+    Gv[4,1,2,3] = two3rd*v[2,n]
+    Gv[4,2,2,3] = 0.0
+    Gv[4,3,2,3] = -two3rd
+    Gv[4,4,2,3] = 1.0
+    Gv[4,5,2,3] = 0.0
+
+    Gv[5,1,2,3,n] = -one3rd*v2v3[2,n]
+    Gv[5,2,2,3,n] = 0.0
+    Gv[5,3,2,3,n] = -two3rd * v[3,n]
+    Gv[5,4,2,3,n] = v[2,n] 
+    Gv[5,5,2,3,n] = 0.0
+
+    #
+    # G33
+    #
+    Gv[1,1,3,3,n] = 0.0
+    Gv[1,2,3,3,n] = 0.0
+    Gv[1,3,3,3,n] = 0.0
+    Gv[1,4,3,3,n] = 0.0
+    Gv[1,5,3,3,n] = 0.0
+
+    Gv[2,1,3,3,n] = -v[1,n]
+    Gv[2,2,3,3,n] = 1.0 
+    Gv[2,3,3,3,n] = 0.0
+    Gv[2,4,3,3,n] = 0.0
+    Gv[2,5,3,3,n] = 0.0
+
+    Gv[3,1,3,3,n] = -v[2,n]
+    Gv[3,2,3,3,n] = 0.0
+    Gv[3,3,2,2,n] = 1.0
+    Gv[3,4,3,3,n] = 0.0
+    Gv[3,5,3,3,n] = 0.0
+
+    Gv[4,1,2,3,n] = -four3rd * v[3,n]
+    Gv[4,2,3,3,n] = 0.0
+    Gv[4,3,3,3,n] = 0.0
+    Gv[4,4,3,3,n] = four3rd
+    Gv[4,5,3,3,n] = 0.0
+
+    Gv[5,1,3,3,n] = -(v2[n] + one3rd*v[3,n]*v[3,n] + gamma_pr*(E[n] - v2[n]))
+    Gv[5,2,3,3,n] = (1.0 - gamma_pr)*v[1,n]
+    Gv[5,3,3,3,n] = (1.0 - gamma_pr)*v[2,n]
+    Gv[5,4,3,3,n] = (four3rd - gamma_pr)*v[3,n]
+    Gv[5,5,3,3,n] = gamma_pr
+
+    coef = rmuk[1,n]/q[1,n]
+
+    # TODO: hardcode this so that we don't loop over those zero values
+    for jDim = 1 : 3
+      for iDim = 1 : 3
+        for jDof = 1: 5
+          for iDof = 1 : 5
+            Gv[iDof, jDof, iDim, jDim ,n] *= coef 
+          end
+        end
+      end
+    end
+  end
+  return nothing
+end
+@doc """
+
+Compute the viscous diffusion matrix, only work for 2D
+
+Input: 
+q = conservative variable at a node
+Output
+jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
+"""->
+function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{2, :conservative},
+                                                 q::AbstractArray{Tsol, 2},
                                                  Gv::AbstractArray{Tsol, 5})
   @assert(size(q, 2) == size(Gv, 5))
   @assert(size(Gv, 4) == 2)
@@ -903,8 +1347,9 @@ type AdiabaticWall <: AbstractBoundaryValueType
 end
 function call{Tsol, Tmsh}(obj::AdiabaticWall, 
                           q_in::AbstractArray{Tsol, 2},
+                          xy::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{2},
+                          params::ParamType{2, :conservative},
                           q_bnd::AbstractArray{Tsol, 2})
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
@@ -926,6 +1371,56 @@ function call{Tsol, Tmsh}(obj::AdiabaticWall,
   return nothing
 end
 
+type ExactChannel<: AbstractBoundaryValueType
+end
+function call{Tsol, Tmsh}(obj::ExactChannel, 
+                          q_in::AbstractArray{Tsol, 2},
+                          xy::AbstractArray{Tmsh, 2},
+                          norm::AbstractArray{Tmsh, 2},
+                          params::ParamType{2, :conservative},
+                          q_bnd::AbstractArray{Tsol, 2})
+  @assert( size(q_in, 1) == size(q_bnd,  1))
+  @assert( size(q_in, 2) == size(q_bnd,  2))
+  @assert( size(q_in, 2) == size(norm,  2))
+  dim = size(norm, 1)
+  numNodes = size(q_in, 2)
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  qInf = Array(Tsol, 4)
+  calcFreeStream(xy[:,1], params, qInf)
+  rhoInf = 1.0
+  uInf = qInf[2] / qInf[1]
+  vInf = qInf[3] / qInf[1]
+  TInf = 1.0
+
+  for n = 1 : numNodes
+    x = xy[1, n]
+    y = xy[2, n]
+    rho = rhoInf
+    # rho = rhoInf * (0.1*sin(2*pi*x) + 0.1*y +  1.0)
+    # u   = uInf * (-4.0 * y * (y-1.0)) + 0.1*uInf
+    # u   = uInf * (-4.0 * y * (y-1.0)) 
+    ux = (0.1*sin(2*pi*x) + 0.2) * uInf
+    # uy = -4.0 * y * (y-1.0)
+    uy = sin(pi*y)
+    u  = ux * uy
+    v  = vInf 
+    T  = TInf 
+    if !params.isViscous
+      u += 0.2 * uInf
+    end
+    q_bnd[1, n] = rho 
+    q_bnd[2, n] = rho * u
+    q_bnd[3, n] = rho * v
+    q_bnd[4, n] = T/(gamma*gamma_1) + 0.5 * (u*u + v*v)
+    q_bnd[4, n] *= rho 
+  end
+
+  return nothing
+end
+
 @doc """
 
 compute the farfield boundary value
@@ -942,8 +1437,9 @@ end
 
 function call{Tsol, Tmsh}(obj::Farfield,
                           q_in::AbstractArray{Tsol, 2},
+                          xy::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{2},
+                          params::ParamType{2, :conservative},
                           q_bnd::AbstractArray{Tsol, 2})
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
@@ -996,8 +1492,8 @@ function call{Tsol, Tmsh}(obj::Farfield,
       rhoV2 = q_in[1, n] * v2
       q_bnd[dim+2, n] = pInf/gamma_1 + 0.5*rhoV2
     end    
-
-    # q_bnd[:,n] = qInf[:]
+    
+    q_bnd[:,n] = qInf[:]
   end
 
   return nothing

@@ -22,7 +22,7 @@ function test_convergence_p1_3dg()
     err_vals = data[:, 2]
     #println("err_vals = ", err_vals)
 
-    slope_val = 1.75
+    slope_val = 2.12
     slope_margin = 0.1
 
     @fact slope --> greater_than(slope_val - slope_margin)

@@ -504,4 +504,121 @@ function test_3d_bc(mesh, sbp, eqn, opts)
   return nothing
 end  # end functiona
 
+function test_3d_functional(mesh, sbp, eqn, opts)
+  facts("----- Testing 3D functional -----") do
+
+    q_bndry_orig = eqn.q_bndry
+    q_bndry2  = zeros(eqn.q_bndry)
+    eqn.q_bndry = q_bndry2
+    s1 = sview(eqn.q_bndry, 1, :, :)
+    fill!(s1, 1.0)
+    s2 = sview(eqn.q_bndry, 2, :, :)
+    fill!(s2, 0.355)
+    s3 = sview(eqn.q_bndry, 3, :, :)
+    fill!(s3, 0.355)
+    s4 = sview(eqn.q_bndry, 4, :, :)
+    fill!(s4, 0.355)
+    s5 = sview(eqn.q_bndry, 5, :, :)
+    fill!(s5, 3.0)
+
+
+    moment_about = [2., 2, 2]
+    mom = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
+    println("moment = ", mom)
+    for i=1:length(mom)
+      @fact mom[i] --> roughly(0.0, atol=1e-13)
+    end
+
+    # test reverse mode
+    moment_about = [0.0, 0, 0]
+    nout = 3
+    nin = mesh.dim*mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
+    jac = zeros(nout, nin)
+
+    mom_0 = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
+    pert = 1e-6
+    for i=1:nin
+      mesh.dxidx_bndry[i] += pert
+      mom_i = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
+
+      for j=1:nout
+        jac[j, i] = (mom_i[j] - mom_0[j])/pert
+      end
+
+      mesh.dxidx_bndry[i] -= pert
+    end
+
+    # reverse mode
+    jac2 = zeros(jac)
+    mom_bar = zeros(mom_0)
+    for i=1:nout
+      mom_bar[i] = 1
+      fill!(mesh.dxidx_bndry_bar, 0.0)
+      EulerEquationMod.calcMomentContribution_revm!(mesh, eqn, [1], moment_about, mom_bar)
+
+      for j=1:nin
+        jac2[i, j] = mesh.dxidx_bndry_bar[j]
+      end
+
+      mom_bar[i] = 0
+    end
+
+    for i=1:nin
+      @fact norm(jac[:, i] - jac2[:, i])/size(jac, 1) --> roughly(0.0, atol=1e-5)
+    end
+
+
+    # test other method
+    println("checking second method")
+    face_range = mesh.bndry_offsets[1]:(mesh.bndry_offsets[2] - 1)
+    bndryfaces = mesh.bndryfaces[face_range]
+    coords_faces = mesh.coords_bndry[:, :, face_range]
+
+    nrm = Utils.computeNormal(mesh, eqn, bndryfaces)
+    dforce = EulerEquationMod.computeDForce(mesh, eqn, bndryfaces, nrm)
+    mom_0 = EulerEquationMod.calcMomentContribution!(mesh.sbpface, coords_faces, dforce, moment_about)
+    nin = length(dforce)
+    nout = 3
+    jac = zeros(nout, nin)
+    for i=1:nin
+      dforce[i] += pert
+      mom_i = EulerEquationMod.calcMomentContribution!(mesh.sbpface, coords_faces, dforce, moment_about)
+
+      for j=1:nout
+        jac[j, i] = (mom_i[j] - mom_0[j])/pert
+      end
+
+      dforce[i] -= pert
+    end
+
+    jac2 = zeros(jac)
+    dforce_bar = zeros(dforce)
+    coords_bndry_bar = zeros(coords_faces)
+    mom_bar = zeros(mom_0)
+    for i=1:nout
+      mom_bar[i] = 1
+      fill!(dforce_bar, 0.0)
+      fill!(coords_bndry_bar, 0.0)
+
+      EulerEquationMod.calcMomentContribution_rev!(mesh.sbpface, coords_faces, coords_bndry_bar, dforce, dforce_bar, moment_about, mom_bar)
+      for j=1:nin
+        jac2[i, j] = dforce_bar[j]
+      end
+
+      mom_bar[i] = 0
+    end
+
+    for i=1:size(jac, 2)
+      @fact norm(jac[:, i] - jac2[:, i]) --> roughly(0.0, atol=1e-5)
+    end
+
+
+    eqn.q_bndry = q_bndry_orig
+  end
+
+
+  return nothing
+end
+
 add_func2!(EulerTests, test_3d_bc,  test_3d_inputfile, [TAG_BC])
+add_func2!(EulerTests, test_3d_functional,  test_3d_inputfile, [TAG_REVERSEMODE])

@@ -33,7 +33,7 @@
     * Ma  : free stream Mach number
     * Re  : free stream Reynolds number
     * aoa : angle of attack (radians)
- 
+
 """->
 type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   f::BufferedIO
@@ -56,7 +56,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   res_vals1::Array{Tres, 1}  # reusable residual type storage
   res_vals2::Array{Tres, 1}  # reusable residual type storage
-  res_vals3::Array{Tres, 1}  
+  res_vals3::Array{Tres, 1}
 
   flux_vals1::Array{Tres, 1}  # reusable storage for flux values
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
@@ -109,7 +109,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   Ma::Float64  # free stream Mach number
   Re::Float64  # free stream Reynolds number
-  aoa::Float64  # angle of attack
+  aoa::Tsol  # angle of attack
   rho_free::Float64  # free stream density
   E_free::Float64 # free stream energy (4th conservative variable)
 
@@ -144,6 +144,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   iperm::Array{Int, 1}
 
   S::Array{Float64, 3}  # SBP S matrix
+
+  homotopy_lambda::Float64
   #=
   # timings
   t_volume::Float64  # time for volume integrals
@@ -159,12 +161,14 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   t_solve::Float64 # linear solve time
   =#
   time::Timings
+  isViscous::Bool
+  penalty_relaxation::Float64
 
 	isViscous::Bool
 
   function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
-    
+
     t = 0.0
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
@@ -180,7 +184,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     v_vals = Array(Tsol, Tdim + 2)
     v_vals2 = Array(Tsol, Tdim + 2)
     Lambda = Array(Tsol, Tdim + 2)
- 
+
     w_vals_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
     w_vals2_stencil = Array(Tsol, Tdim + 2, mesh.sbpface.stencilsize)
 
@@ -290,9 +294,18 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     end
 
 
-		isViscous = opts["isViscous"]
+    homotopy_lambda = 0.0
 
     time = Timings()
+    if haskey(opts, "isViscous")
+      isViscous = opts["isViscous"]
+    else
+      isViscous = false
+    end
+    if haskey(opts, "Cip")
+      penalty_relaxation = opts["Cip"]
+      penalty_relaxation = 1.0
+    end
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
                Lambda, w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3,  flux_vals1, 
@@ -302,13 +315,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                velocity_deriv, velocity_deriv_xy,
                h, cv, R, gamma, gamma_1, Ma, Re, aoa, 
                rho_free, E_free,
-               edgestab_gamma, writeflux, writeboundary, 
-               writeq, use_edgestab, use_filter, use_res_filter, filter_mat, 
-               use_dissipation, dissipation_const, tau_type, vortex_x0, 
-               vortex_strength, 
+               edgestab_gamma, writeflux, writeboundary,
+               writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
+               use_dissipation, dissipation_const, tau_type, vortex_x0,
+               vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
-               S,
+               S, homotopy_lambda,
                time,
                isViscous)
 
@@ -325,7 +338,7 @@ end  # end type declaration
   because it stores some arrays of those types.  Tres is the 'maximum' type of
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
   It is also paremterized by var_type, which should be a symbol describing
-  the set of variables stored in eqn.q.  Currently supported values are 
+  the set of variables stored in eqn.q.  Currently supported values are
   :conservative and :entropy, which indicate the conservative variables and
   the entropy variables described in 'A New Finite Element Formulation for
   Computational Fluid Dynamics: Part I' by Hughes et al.
@@ -334,19 +347,19 @@ end  # end type declaration
   specifically a 3D one.
 
   Static Parameters:
-    Tsol : datatype of variables solution variables, ie. the 
+    Tsol : datatype of variables solution variables, ie. the
            q vector and array
     Tres : datatype of residual. ie. eltype(res_vec)
     Tdim : dimensionality of equation, integer, (2 or 3, currently only 2 is
            supported).
     Tmsh : datatype of mesh related quantities
-    var_type : symbol describing variables used in weak form, (:conservative 
+    var_type : symbol describing variables used in weak form, (:conservative
                or :entropy)
 
 
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}  
-# hold any constants needed for euler equation, as well as solution and data 
+type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
+# hold any constants needed for euler equation, as well as solution and data
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
 # Only the constants are initilized here, the arrays are not.
@@ -366,26 +379,42 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
+  q_bar::Array{Tsol, 3}  # adjoint part of q
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
-  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to 
+  q_face_bar::Array{Tsol, 4}  # adjoint part of q_face
+  q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
+  q_bndry_bar::Array{Tsol, 3}  # adjoint part
   q_vec::Array{Tres,1}            # initial condition in vector form
-  # hold fluxes in all directions
-  # [ndof per node by nnodes per element by num element by num dimensions]
-  aux_vars::Array{Tres, 3}        # storage for auxiliary variables 
-  aux_vars_face::Array{Tres,3}    # storage for aux variables interpolated
+
+  aux_vars::Array{Tres, 3}        # storage for auxiliary variables
+  aux_vars_bar::Array{Tres, 3}    # adjoint part
+  aux_vars_face::Array{Tres, 3}    # storage for aux variables interpolated
                                   # to interior faces
+  aux_vars_face_bar::Array{Tres, 3}  # adjoint part
   aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
                                        # to shared faces
-  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated 
+  aux_vars_sharedface_bar::Array{Array{Tres, 3}} # adjoint part
+  aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated
                                   # to the boundaries
+  aux_vars_bndry_bar::Array{Tres, 3}  # adjoint part
+
+  # hold fluxes in all directions
+  # [ndof per node by nnodes per element by num element by num dimensions]
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
+  flux_parametric_bar::Array{Tsol, 4}  # adjoint part
   q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
+  q_face_send_bar::Array{Array{Tsol, 3}, 1}  # adjoint part
   q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
+  q_face_recv_bar::Array{Array{Tsol, 3}, 1}  # adjoint part
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
+  flux_face_bar::Array{Tres, 3}  # adjoint part
   flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
+  flux_sharedface_bar::Array{Array{Tres, 3}, 1}  # adjoint part
   res::Array{Tres, 3}             # result of computation
+  res_bar::Array{Tres, 3}         # adjoint part
+
   res_vec::Array{Tres, 1}         # result of computation in vector form
   Axi::Array{Tsol,4}               # Flux Jacobian in the xi-direction
   Aeta::Array{Tsol,4}               # Flux Jacobian in the eta-direction
@@ -396,11 +425,12 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
                                   # Tdim x Tdim x nnodesPerElement x numEl
   bndryflux::Array{Tsol, 3}       # boundary flux
+  bndryflux_bar::Array{Tsol, 3}   # adjoint part
   stabscale::Array{Tsol, 2}       # stabilization scale factor
 
   # artificial dissipation operator:
   #   a square numnodes x numnodes matrix for every element
-  dissipation_mat::Array{Tmsh, 3}  
+  dissipation_mat::Array{Tmsh, 3}
 
   Minv3D::Array{Float64, 3}       # inverse mass matrix for application to res, not res_vec
   Minv::Array{Float64, 1}         # inverse mass matrix
@@ -411,12 +441,13 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   disassembleSolution::Function   # function: q_vec -> eqn.q
   assembleSolution::Function      # function : eqn.res -> res_vec
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
-                                  # is the coefficient matrix of the time 
+                                  # is the coefficient matrix of the time
 				  # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
+  flux_func_bar::FluxType_revm # Functor for the reverse mode of face flux
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
   face_element_integral_func::FaceElementIntegralType  # function for face
@@ -481,8 +512,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     else
       eqn.dissipation_mat = Array(Tmsh, 0, 0, 0)
     end
-    
-    # Must initialize them because some datatypes (BigFloat) 
+
+    # Must initialize them because some datatypes (BigFloat)
     #   don't automatically initialize them
     # Taking a sview(A,...) of undefined values is illegal
     # I think its a bug that Array(Float64, ...) initializes values
@@ -493,12 +524,12 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
                     mesh.numEl)
     eqn.Aeta = zeros(eqn.Axi)
     eqn.aux_vars = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, 
+    eqn.flux_parametric = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes,
                                 mesh.numEl, Tdim)
     eqn.res = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
     if opts["use_edge_res"]
-      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl, 
+      eqn.res_edge = zeros(Tres, mesh.numDofPerNode, sbp.numnodes, mesh.numEl,
                            mesh.numTypePerElement[2])
     else
       eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
@@ -526,7 +557,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
-    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes, 
+    eqn.bndryflux = zeros(Tsol, mesh.numDofPerNode, numfacenodes,
                           mesh.numBoundaryFaces)
 
     # send and receive buffers
@@ -549,18 +580,72 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
         throw(ErrorException("Unsupported parallel type requested: $ptype"))
       end
       for i=1:mesh.npeers
-        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2, 
+        eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2,
                                          dim3_send[i])
         eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
                                         dim3_recv[i])
-        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes, 
+        eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes,
                                        mesh.peer_face_counts[i])
-        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode, 
+        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end
     end
-   
-		if opts["isViscous"]
+
+    if eqn.params.use_edgestab
+      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces)
+      calcEdgeStabAlpha(mesh, sbp, eqn)
+    else
+      eqn.stabscale = Array(Tres, 0, 0)
+      eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
+    end
+
+    if opts["need_adjoint"]
+      eqn.q_bar = zeros(eqn.q)
+      eqn.q_face_bar = zeros(eqn.q_face)
+      eqn.q_bndry_bar = zeros(eqn.q_bndry)
+      eqn.flux_parametric_bar = zeros(eqn.flux_parametric)
+
+      eqn.aux_vars_bar = zeros(eqn.aux_vars)
+      eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
+      eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
+
+      eqn.q_face_send_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.q_face_recv_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
+
+      for i=1:mesh.npeers
+        eqn.q_face_send_bar[i] = zeros(eqn.q_face_send[i])
+        eqn.q_face_recv_bar[i] = zeros(eqn.q_face_recv[i])
+        eqn.flux_shareface_bar[i] = zeros(eqn.flux_sharedface[i])
+        eqn.aux_vars_sharedface_bar[i] = zeros(eqn.aux_vars_sharedface[i])
+      end
+
+      eqn.flux_face_bar = zeros(eqn.flux_face)
+      eqn.bndryflux_bar = zeros(eqn.bndryflux)
+      eqn.res_bar = zeros(eqn.res)
+    else  # don't allocate arrays if they are not needed
+      eqn.q_bar = Array(Tsol, 0, 0, 0)
+      eqn.q_face_bar = zeros(Tsol, 0, 0, 0, 0)
+      eqn.q_bndry_bar = zeros(Tsol, 0, 0, 0)
+      eqn.flux_parametric_bar = zeros(Tsol, 0, 0, 0, 0)
+
+      eqn.aux_vars_bar = zeros(Tres, 0, 0, 0)
+      eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
+      eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
+
+      eqn.q_face_send_bar = Array(Array{Tsol, 3}, 0)
+      eqn.q_face_recv_bar = Array(Array{Tsol, 3}, 0)
+      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, 0)
+      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, 0)
+
+      eqn.flux_face_bar = zeros(Tres, 0, 0, 0)
+      eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
+      eqn.res_bar = zeros(Tres, 0, 0, 0)
+   end
+   eqn.file_dict = openLoggingFiles(mesh, opts)
+
+		if eqn.params.isViscous
 
 			numfacenodes = mesh.numNodesPerFace
 			numfaces = mesh.numInterfaces
@@ -571,7 +656,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 			eqn.vecflux_faceR = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
 			eqn.vecflux_bndry = zeros(Tsol, Tdim, numvars, numfacenodes, numBndFaces)
 			eqn.area_sum = zeros(Tmsh, mesh.numEl)
-			calcWetArea(mesh, sbp, eqn)
+			calcElemSurfaceArea(mesh, sbp, eqn)
 		else
 			# eqn.vecflux_face  = Array(Tsol, 0, 0, 0, 0)
 			eqn.vecflux_faceL = Array(Tsol, 0, 0, 0, 0)
@@ -580,22 +665,45 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 			eqn.area_sum = Array(Tsol, 0)
 		end
 
-    if eqn.params.use_edgestab
-      eqn.stabscale = zeros(Tres, sbp.numnodes, mesh.numInterfaces) 
-      calcEdgeStabAlpha(mesh, sbp, eqn)
-    else
-      eqn.stabscale = Array(Tres, 0, 0)
-      eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
-    end
-
-    eqn.file_dict = openLoggingFiles(mesh, opts)
-
     return eqn
 
   end  # end of constructor
 
 end  # end of type declaration
 
+@doc """
+###EulerEquationMod.BoundaryForceData
+
+Composite data type for storing data pertaining to the boundaryForce. It holds
+lift and drag values
+
+"""->
+
+type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
+  is_objective_fn::Bool
+  geom_faces_functional::AbstractArray{Int,1}
+  ndof::Int
+  bndry_force::AbstractArray{Topt,1}
+  lift_val::Topt
+  drag_val::Topt
+  dLiftdAlpha::Topt # Partial derivative of lift w.r.t. alpha
+  dDragdAlpha::Topt # Partial derivative of drag w.r.t. alpha
+
+  function BoundaryForceData(mesh, sbp, eqn, opts, geom_faces_functional)
+
+    functional = new()
+    functional.is_objective_fn = false
+    functional.geom_faces_functional = geom_faces_functional
+    functional.ndof = mesh.dim
+    functional.bndry_force = zeros(Topt, mesh.dim)
+    functional.lift_val = 0.0
+    functional.drag_val = 0.0
+    functional.dLiftdAlpha = 0.0
+    functional.dDragdAlpha = 0.0
+
+    return functional
+  end
+end
 
 """
   This function opens all used for logging data.  In particular, every data
@@ -681,7 +789,7 @@ function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
 end
 
 @doc """
-### EulerEquationMod.calcWetArea
+### EulerEquationMod.calcElemFurfaceArea
 
 This function calculates the wet area of each element. A weight of 2 is given to
 faces with Dirichlet boundary conditions.
@@ -692,11 +800,11 @@ sbp: SBP operator
 eqn: an implementation of EulerData. Does not have to be fully initialized.
 """->
 # used by EulerData Constructor
-function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 											 sbp::AbstractSBP,
 											 eqn::EulerData{Tsol, Tres, Tdim})
 	nfaces = length(mesh.interfaces)
-	nrm = zeros(Tmsh, mesh.numNodesPerFace, Tdim)
+	nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
 	area = zeros(Tmsh, mesh.numNodesPerFace)
 	face_area::Tmsh
 	face_area = 0.0
@@ -718,12 +826,18 @@ function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 			dxidx = sview(mesh.dxidx_face, :, :, n, f)
 			# norm vector in reference element
-			# nrm_xi = sview(sbp.facenormal, :, fL)
+			# nrm_xi = sview(mesh.sbpface.normal, :, fL)
+			# nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+			# nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
       nrm_xi = sview(sbpface.normal, :, fL)
-			nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-			nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+      for i = 1 : Tdim
+        nrm[i,n] = 0.0
+        for j = 1 : Tdim
+          nrm[i,n] += dxidx[i,j] * nrm_xi[i]
+        end
+      end
 
-			area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
+      area[n] = norm(view(nrm, :, n))
 			face_area += sbpface.wface[n]*area[n]
 		end
 		eqn.area_sum[eL] += face_area
@@ -744,13 +858,19 @@ function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 				dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
 				# norm vector in reference element
-				# nrm_xi = sview(sbp.facenormal, :, face)
+				# nrm_xi = sview(mesh.sbpface.normal, :, face)
 				nrm_xi = sview(sbpface.normal, :, face)
-				nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-				nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+				# nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+				# nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+        for i = 1 : Tdim
+          nrm[i,n] = 0.0
+          for j = 1 : Tdim
+            nrm[i,n] += dxidx[i,j] * nrm_xi[i]
+          end
+        end
 
-				area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
-				face_area += sbpface.wface[n]*area[n]
+        area[n] = norm(view(nrm, :, n))
+        face_area += sbpface.wface[n]*area[n]
 			end
 			eqn.area_sum[elem] += 2.0*face_area
 		end

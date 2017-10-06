@@ -5,7 +5,7 @@ function ICConstant(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData, op
                     u0::AbstractArray)
 
   for i=1:length(u0)
-    u0[i] = 2
+    u0[i] =  2
   end
 
   return nothing

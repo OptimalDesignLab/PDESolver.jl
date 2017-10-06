@@ -2,6 +2,7 @@
 *~
 *.vtu
 *.pvtu
+install.log
 *.dat
 *.out
 simpleODE_*_3x3
@@ -11,3 +12,4 @@ known_keys.jl
 counts_*.txt
 deps/install.log
 test/Advection/input_vals_mms*.jl
+

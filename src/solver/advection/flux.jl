@@ -50,7 +50,7 @@ function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       qL = eqn.q_face[1, 1, j, i]
       qR = eqn.q_face[1, 2, j, i]
       dxidx = sview(mesh.dxidx_face, :, :, j, i)
-      nrm = sview(sbp.facenormal, :, fL)
+      nrm = sview(mesh.sbpface.normal, :, fL)
 
       face_flux[1, j, i] = -functor(qL, qR, dxidx, nrm, eqn.params)
       @debug1 println(eqn.params.f, "  j: $j  face_flux[1, j, i]: ", face_flux[1, j, i], "  qL: $qL  qR: $qR")
@@ -119,7 +119,7 @@ function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
         qL = qL_arr[1, k, j]
         qR = qR_arr[1, k, j]
         dxidx = sview(dxidx_arr, :, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
+        nrm = sview(mesh.sbpface.normal, :, fL)
         flux_arr[1,k,j] = -functor(qL, qR, dxidx, nrm, 
                                     eqn.params)
       end
@@ -228,7 +228,7 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh}
         qL_k = q_faceL[k]
         qR_k = q_faceR[k]
         dxidx = sview(dxidx_arr, :, :, k, j)
-        nrm = sview(sbp.facenormal, :, fL)
+        nrm = sview(mesh.sbpface.normal, :, fL)
 
         flux_tmp = -functor(qL_k, qR_k, dxidx, nrm, 
                                      eqn.params)

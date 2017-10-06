@@ -22,6 +22,7 @@ function run_euler(input_file::AbstractString)
   solve_euler(mesh, sbp, eqn, opts, pmesh)
 
   return mesh, sbp, eqn, opts
+
 end
 
 
@@ -112,7 +113,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
 
   fill!(eqn.res, 0.0)
   fill!(eqn.res_vec, 0.0)
-  res_vec = eqn.res_vec 
+  res_vec = eqn.res_vec
   q_vec = eqn.q_vec       # solution at current timestep
 
   # calculate residual of some other function for res_reltol0
@@ -161,8 +162,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   end
 
   if opts["calc_error"]
-    @mpi_master println("\ncalculating error of file ", 
-                        opts["calc_error_infname"], 
+    @mpi_master println("\ncalculating error of file ",
+                        opts["calc_error_infname"],
                         " compared to initial condition")
 
     # read in this processors portion of the solution
@@ -224,6 +225,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     opts["delta_t"] = delta_t
   end
 
+  println("numColors = ", mesh.numColors)
+  println("maxColors = ", mesh.maxColors)
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
@@ -280,6 +283,7 @@ function postproc(mesh, sbp, eqn, opts)
       exfunc = ICDict[exfname]
       q_exact = zeros(Tsol, mesh.numDof)
       exfunc(mesh, sbp, eqn, opts, q_exact)
+
       #    if var_type == :entropy
       #      println("converting to entropy variables")
       #      for i=1:mesh.numDofPerNode:mesh.numDof
@@ -289,17 +293,34 @@ function postproc(mesh, sbp, eqn, opts)
       #    end
 
       myrank = mesh.myrank
-      q_diff = eqn.q_vec - q_exact
-      saveSolutionToMesh(mesh, abs(real(q_diff)))
+      # q_diff = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+      # q_diff_vec = reshape(q_diff, mesh.numDof) 
+      q_diff_vec = eqn.q_vec - q_exact
+      # eqn.disassembleSolution(mesh, sbp, eqn, opts, q_diff, q_diff_vec)
+      saveSolutionToMesh(mesh, abs(real(q_diff_vec)))
       writeVisFiles(mesh, "solution_error")
 
-
-      diff_norm = calcNorm(eqn, q_diff)
+      diff_norm = calcNorm(eqn, q_diff_vec)
       #      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
       #      diff_norm = sqrt(diff_norm)
+      q_error = zeros(Float64, mesh.numDofPerNode)
+      for el = 1 : mesh.numEl
+        for n = 1 : mesh.numNodesPerElement
+          for dof = 1 : mesh.numDofPerNode
+            dofnum = mesh.dofs[dof, n, el]
+            q_error_j = real(q_diff_vec[dofnum])
 
-
+            q_error[dof] += q_error_j  * q_error_j* sbp.w[n]/mesh.jac[n, el]
+          end
+        end
+      end
       @mpi_master println("solution error norm = ", diff_norm)
+      for dof = 1 : mesh.numDofPerNode
+        q_error[dof] = sqrt(q_error[dof])
+        @mpi_master println("soln_error[", dof, "] = ", q_error[dof])
+      end
+      file_soln_err = open("soln_error.dat", "w")
+      println(file_soln_err, q_error[1:mesh.numDofPerNode])
       # TODO: make this mesh.min_el_size?
       h_avg = calcMeshH(mesh, sbp, eqn, opts)
 
@@ -314,6 +335,52 @@ function postproc(mesh, sbp, eqn, opts)
     end
   end
 
+  # Calculate functionals on a boundary
+  if opts["calc_functional"]
+
+    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    if mesh.isDG
+      boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+    end
+
+    # Calculate functional over edges
+    # num_functionals = opts["num_functionals"]
+    # for j = 1:num_functionals
+    # Geometric edge at which the functional needs to be integrated
+    key_j = string("geom_edges_functional")
+    functional_edges = opts[key_j]
+    # functional_name = getFunctionalName(opts, j)
+    # println(functional_name)
+
+    force = zeros(Tsol,2)
+    # functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
+    # functional_name, functional_edges)
+    force = calcBndryFunctional(mesh, sbp, eqn, opts, functional_edges)
+
+    println("\nNumerical functional value on geometric edges ", 
+            functional_edges, " = ", real(force))
+    file_force = open("cl_cd.dat", "w")
+    println(file_force, real(force[1]), " ", real(force[2]))
+    # if haskey(opts, "analytical_functional_val")
+      # analytical_functional_val = opts["analytical_functional_val"]
+      # println("analytical_functional_val = ", analytical_functional_val)
+
+      # functional_val = force[1]
+      # absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
+      # relative_functional_error = absolute_functional_error/ norm(analytical_functional_val, 2)
+
+      # mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
+
+      # # write functional error to file
+      # outname = string(opts["functional_error_outfname"], j, ".dat")
+      # println("printed relative functional error = ", 
+              # relative_functional_error, " to file ", outname, '\n')
+      # f = open(outname, "w")
+      # println(f, relative_functional_error, " ", mesh_metric)
+      # close(f)
+    # end
+    # end  # End for i = 1:num_functionals
+  end    # End if opts["calc_functional"]
 
   #----- Calculate Adjoint Vector For A Functional -----#
   if opts["calc_adjoint"]
@@ -325,67 +392,20 @@ function postproc(mesh, sbp, eqn, opts)
 
     # TODO: Presently adjoint computation only for 1 functional. Figure out
     # API based on future use.
-    j = 1
-    key = string("geom_edges_functional", j)
+    key = string("geom_edges_functional")
     functional_edges = opts[key]
-    functional_number = j
-    functional_name = getFunctionalName(opts, j)
+    # functional_number = j
+    # functional_name = getFunctionalName(opts, j)
 
-    adjoint_vec = zeros(Tsol, mesh.numDof)
-    calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
-
-    # Write adjoint vector to file and mesh
-    saveSolutionToMesh(mesh, real(adjoint_vec))
-    writeVisFiles(mesh, "adjoint_field")
+    adjoint_vec = zeros(Tsol, mesh.numDof, 2)
+    # calcAdjoint(mesh, sbp, eqn, opts, functional_number, adjoint_vec)
+    calcAdjoint(mesh, sbp, eqn, opts, adjoint_vec)
+    saveSolutionToMesh(mesh, sview(real(adjoint_vec[:,1])))
+    writeVisFiles(mesh, "adjoint_Cl")
+    saveSolutionToMesh(mesh, sview(real(adjoint_vec[:,2])))
+    writeVisFiles(mesh, "adjoint_Cd")
 
   end  # End if opts["calc_adjoint"]
-
-
-
-  # Calculate functionals on a boundary
-  if opts["calc_functional"]
-
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    if mesh.isDG
-      boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-    end
-
-    # Calculate functional over edges
-    num_functionals = opts["num_functionals"]
-    for j = 1:num_functionals
-      # Geometric edge at which the functional needs to be integrated
-      key_j = string("geom_edges_functional", j)
-      functional_edges = opts[key_j]
-      functional_name = getFunctionalName(opts, j)
-      println(functional_name)
-
-      functional_val = zero(Tsol)
-      # functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, 
-      # functional_name, functional_edges)
-      functional_val = calcBndryFunctional(mesh, sbp, eqn, opts, functional_name, functional_edges)
-
-      println("\nNumerical functional value on geometric edges ", 
-              functional_edges, " = ", functional_val)
-
-      if haskey(opts, "analytical_functional_val")
-        analytical_functional_val = opts["analytical_functional_val"]
-        println("analytical_functional_val = ", analytical_functional_val)
-
-        absolute_functional_error = norm((functional_val - analytical_functional_val), 2)
-        relative_functional_error = absolute_functional_error/ norm(analytical_functional_val, 2)
-
-        mesh_metric = 1/sqrt(mesh.numEl/2)  # TODO: Find a suitable mesh metric
-
-        # write functional error to file
-        outname = string(opts["functional_error_outfname"], j, ".dat")
-        println("printed relative functional error = ", 
-                relative_functional_error, " to file ", outname, '\n')
-        f = open(outname, "w")
-        println(f, relative_functional_error, " ", mesh_metric)
-        close(f)
-      end
-    end  # End for i = 1:num_functionals
-  end    # End if opts["calc_functional"]
 
   return nothing
 end

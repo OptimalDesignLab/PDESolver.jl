@@ -2,12 +2,12 @@
 
 """
   A wrapper for the Roe Solver that computes the scaled normal vector
-  in parametric coordinates from the the face normal and the scaled 
+  in parametric coordinates from the the face normal and the scaled
   mapping jacobian.
 
   Useful for boundary conditions.
 
-""" 
+"""
 function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
                                      q::AbstractArray{Tsol,1}, 
                                      qg::AbstractArray{Tsol, 1}, 
@@ -24,12 +24,55 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType,
   return nothing
 end
 
+@doc """
+###EulerEquationMod.RoeSolver_revm
+
+Wrapper for the reverse mode of the Roe Solver. This needs to get called during
+the reverse mode of Boundary condtitons
+
+**Inputs**
+
+* `params` : Object of ParamType
+* `q`  : Conservative variable of the fluid
+* `qg` : Conservative variable of the boundary or the adjacent element
+* `aux_vars` : Auxiliary variables
+* `dxidx` : Mapping jacobian for an SBP face node
+* `nrm`   : SBP face normal vector
+* `flux_bar` : Flux product that needs to git differentiated
+
+**Output**
+
+* `dxidx_bar` : Derivative w.r.t the mapping jacobian
+
+"""->
+
+function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType,
+                                     q::AbstractArray{Tsol,1},
+                                     qg::AbstractArray{Tsol, 1},
+                                     aux_vars::AbstractArray{Tres, 1},
+                                     dxidx::AbstractArray{Tmsh,2},
+                                     nrm::AbstractArray{Tmsh,1},
+                                     flux_bar::AbstractArray{Tres, 1},
+                                     dxidx_bar::AbstractArray{Tmsh, 2},
+                                     use_efix::Int=1)
+
+  # Forward sweep
+  nrm2 = params.nrm2
+  calcBCNormal(params, dxidx, nrm, nrm2)
+
+  # Reverse sweep
+  nrm2_bar = zeros(params.nrm2)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm2, flux_bar, nrm2_bar)
+  calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
+
+  return nothing
+end
 
 
 
 @doc """
 ### EulerEquationMod.RoeSolver
-  This calculates the Roe flux for boundary conditions at a node. The inputs 
+  This calculates the Roe flux for boundary conditions at a node. The inputs
   must be in *conservative* variables.
 
   Inputs:
@@ -45,7 +88,8 @@ end
     flux : vector to populate with solution
 
   Aliasing restrictions:  none of the inputs can alias params.res_vals1,
-                          params.res_vals2, params.q_vals, params.flux_vals1, or                          params.sat
+                          params.res_vals2, params.q_vals, params.flux_vals1, or
+                          params.sat
 
 
 """->
@@ -57,122 +101,53 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
                                      flux::AbstractArray{Tres, 1}, 
                                      use_efix::Int=1)
 
-  # SAT terms are used for ensuring consistency with the physical problem. Its 
-  # similar to upwinding which adds dissipation to the problem. SATs on the 
+  # SAT terms are used for ensuring consistency with the physical problem. Its
+  # similar to upwinding which adds dissipation to the problem. SATs on the
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
 
-
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
-
-  # Declaring constants 
+  # Declaring constants
   d1_0 = 1.0
   d0_0 = 0.0
   d0_5 = 0.5
   tau = 1.0
-#  sgn = -1.0
   gamma = params.gamma
   gami = params.gamma_1
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
   sat_fac = 1  # multiplier for SAT term
 
   # Begin main executuion
   nx = nrm[1]
   ny = nrm[2]
 
-  dA = sqrt(nx*nx + ny*ny)
-
+  # Compute the Roe Averaged states
+  # The left state of Roe are the actual solution variables
   fac = d1_0/q[1]
   uL = q[2]*fac; vL = q[3]*fac;
   phi = d0_5*(uL*uL + vL*vL)
+  HL = gamma*q[4]*fac - gami*phi # Total enthalpy, H = e + 0.5*(u^2 + v^2) + p/rho,
+                                 # where e is the internal energy per unit mass
 
-  HL = gamma*q[4]*fac - gami*phi
-  
+  # The right side of the Roe solver comprises the boundary conditions
   fac = d1_0/qg[1]
   uR = qg[2]*fac; vR = qg[3]*fac;
   phi = d0_5*(uR*uR + vR*vR)
-  HR = gamma*qg[4]*fac - gami*phi
+  HR = gamma*qg[4]*fac - gami*phi # Total Enthalpy
 
-  sqL = sqrt(q[1]) 
+  # Averaged states
+  sqL = sqrt(q[1])
   sqR = sqrt(qg[1])
   fac = d1_0/(sqL + sqR)
   u = (sqL*uL + sqR*uR)*fac
   v = (sqL*vL + sqR*vR)*fac
-  
   H = (sqL*HL + sqR*HR)*fac
-  phi = d0_5*(u*u + v*v)
- 
-  a = sqrt(gami*(H - phi))
-  Un = u*nx + v*ny
-
-  lambda1 = Un + dA*a
-  lambda2 = Un - dA*a
-  lambda3 = Un
-  rhoA = absvalue(Un) + dA*a
-
-  lambda1 = use_efix*d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1) + (1-use_efix)*lambda1
-  lambda2 = use_efix*d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2) + (1-use_efix)*lambda2
-  lambda3 = use_efix*d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3) + (1-use_efix)*lambda3
 
 
-  dq1 = q[1] - qg[1] 
-  dq2 = q[2] - qg[2]
-  dq3 = q[3] - qg[3]
-  dq4 = q[4] - qg[4]
-
-  #-- diagonal matrix multiply
-#  sat = zeros(Tres, 4)
+  dq = params.v_vals2 # zeros(Tsol, 4)
+  dq[:] = q[:] - qg[:]
   sat = params.sat_vals
-  sat[1] = lambda3*dq1
-  sat[2] = lambda3*dq2
-  sat[3] = lambda3*dq3
-  sat[4] = lambda3*dq4
-
-  #-- get E1*dq
-  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
-  E1dq[2] = E1dq[1]*u
-  E1dq[3] = E1dq[1]*v
-  E1dq[4] = E1dq[1]*H
-
-  #-- get E2*dq
-  E2dq[1] = d0_0
-  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3
-  E2dq[3] = E2dq[2]*ny
-  E2dq[4] = E2dq[2]*Un
-  E2dq[2] = E2dq[2]*nx
-
-  #-- add to sat
-  tmp1 = d0_5*(lambda1 + lambda2) - lambda3
-  tmp2 = gami/(a*a)
-  tmp3 = d1_0/(dA*dA)
-  for i=1:length(sat)
-    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
-  end
-  
-  #-- get E3*dq
-  E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
-  E1dq[2] = E1dq[1]*u
-  E1dq[3] = E1dq[1]*v
-  E1dq[4] = E1dq[1]*H
-
-  #-- get E4*dq
-  E2dq[1] = d0_0
-  E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
-  E2dq[3] = E2dq[2]*ny
-  E2dq[4] = E2dq[2]*Un
-  E2dq[2] = E2dq[2]*nx
-
-  #-- add to sat
-  tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
-  for i=1:length(sat)
-    sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
-  end
+  calcSAT(params, nrm, dq, sat, [u, v], H, use_efix)
 
   euler_flux = params.flux_vals1
-
-
   # calculate Euler flux in wall normal directiona
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
@@ -185,14 +160,108 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
 
   for i=1:4  # ArrayViews does not support flux[:] = .
-
-    flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
-    # when weak differentiate has transpose = true
+    flux[i] = (sat_fac*sat[i] + euler_flux[i])
   end
 
   return nothing
 
 end # ends the function eulerRoeSAT
+
+@doc """
+###EulerEquationMod.RoeSolver_revm
+
+Reverse mode of `EulerEquationMod.RoeSolver`. This function computes the
+reverse mode of the Roe flux w.r.t the mesh metrics
+
+**Inputs**
+
+* `params` : Parameter object
+* `q`  : Conservative variable of the fluid
+* `qg` : Conservative variable of the boundary or the adjacent element
+* `aux_vars` : Auxiliary variables
+* `nrm` : Element face normal vector in the physical space
+* `flux_bar` : Flux value which needs to get differentiated
+
+**Output**
+
+* `nrm_bar` : derivaitve of the flux_bar w.r.t the mesh metrics
+
+Aliasing Restrictions: Same as the forward function
+
+"""->
+
+function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
+                                     q::AbstractArray{Tsol,1},
+                                     qg::AbstractArray{Tsol, 1},
+                                     aux_vars::AbstractArray{Tres, 1},
+                                     nrm::AbstractArray{Tmsh,1},
+                                     flux_bar::AbstractArray{Tres, 1},
+                                     nrm_bar::AbstractArray{Tmsh, 1},
+                                     use_efix::Int=1)
+
+  # Forward sweep
+  tau = 1.0
+  gamma = params.gamma
+  gami = params.gamma_1
+  sat_fac = 1  # multiplier for SAT term
+
+  # Begin main executuion
+  nx = nrm[1]
+  ny = nrm[2]
+
+  # Compute the Roe Averaged states
+  fac = 1.0/q[1]
+  uL = q[2]*fac; vL = q[3]*fac;
+  phi = 0.5*(uL*uL + vL*vL)
+  HL = gamma*q[4]*fac - gami*phi
+  fac = 1.0/qg[1]
+  uR = qg[2]*fac
+  vR = qg[3]*fac
+  phi = 0.5*(uR*uR + vR*vR)
+  HR = gamma*qg[4]*fac - gami*phi # Total Enthalpy
+  sqL = sqrt(q[1])
+  sqR = sqrt(qg[1])
+  fac = 1.0/(sqL + sqR)
+  u = (sqL*uL + sqR*uR)*fac
+  v = (sqL*vL + sqR*vR)*fac
+  H = (sqL*HL + sqR*HR)*fac
+  dq = params.v_vals2
+  dq[:] = q[:] - qg[:]
+  v_vals = params.q_vals
+  nrm2 = params.nrm
+  nrm2[1] = nx
+  nrm2[2] = ny
+  convertFromNaturalToWorkingVars(params, q, v_vals)
+
+  # Reverse Sweep
+  # for i=1:4  # ArrayViews does not support flux[:] = .
+  #   flux[i] = (sat_fac*sat[i] + euler_flux[i])
+  # end
+  euler_flux_bar = params.flux_vals1 # zeros(Tsol, 4)
+  sat_bar = params.sat_vals
+  fill!(euler_flux_bar, 0.0)
+  fill!(sat_bar, 0.0)
+  for i = 4:-1:1
+    euler_flux_bar[i] += flux_bar[i]
+    sat_bar[i] += sat_fac*flux_bar[i]
+  end
+
+  # calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+  nrm2_bar = zeros(Tsol, 2)
+  calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
+
+  # nrm2[2] = ny
+  ny_bar = nrm2_bar[2]
+  # nrm2[1] = nx
+  nx_bar = nrm2_bar[1]
+
+  #  calcSAT(params, nrm, dq, sat, [u, v], H)
+  calcSAT_revm(params, nrm, dq, [u, v], H, sat_bar, nrm_bar)
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
+
+  return nothing
+end
 
 
 """
@@ -207,14 +276,14 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
                                      use_efix::Int=1)
                                      
 
-  # SAT terms are used for ensuring consistency with the physical problem. Its 
-  # similar to upwinding which adds dissipation to the problem. SATs on the 
+  # SAT terms are used for ensuring consistency with the physical problem. Its
+  # similar to upwinding which adds dissipation to the problem. SATs on the
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
   E1dq = params.res_vals1
   E2dq = params.res_vals2
 
-  # Declaring constants 
+  # Declaring constants
   d1_0 = 1.0
   d0_0 = 0.0
   d0_5 = 0.5
@@ -238,18 +307,18 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   phi = d0_5*(uL*uL + vL*vL + wL*wL)
 
   HL = gamma*q[5]*fac - gami*phi
-  
+
   fac = d1_0/qg[1]
   uR = qg[2]*fac; vR = qg[3]*fac; wR = qg[4]*fac
   phi = d0_5*(uR*uR + vR*vR + wR*wR)
   HR = gamma*qg[5]*fac - gami*phi
-  sqL = sqrt(q[1]) 
+  sqL = sqrt(q[1])
   sqR = sqrt(qg[1])
   fac = d1_0/(sqL + sqR)
   u = (sqL*uL + sqR*uR)*fac
   v = (sqL*vL + sqR*vR)*fac
   w = (sqL*wL + sqR*wR)*fac
-  
+
   H = (sqL*HL + sqR*HR)*fac
   phi = d0_5*(u*u + v*v + w*w)
 #  println("H = ", H)
@@ -301,11 +370,11 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   tmp1 = d0_5*(lambda1 + lambda2) - lambda3
   tmp2 = gami/(a*a)
   tmp3 = d1_0/(dA*dA)
-  
+
   for i=1:5
     sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
   end
-  
+
   #-- get E3*dq
   E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
   E1dq[2] = E1dq[1]*u
@@ -317,7 +386,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   E2dq[1] = d0_0
   E2dq[2] = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
   E2dq[3] = E2dq[2]*ny
-  E1dq[4] = E2dq[2]*nz
+  E2dq[4] = E2dq[2]*nz
   E2dq[5] = E2dq[2]*Un
   E2dq[2] = E2dq[2]*nx
 
@@ -338,18 +407,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
   calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
 
   for i=1:5  # ArrayViews does not support flux[:] = .
-   #= 
-    if  abs(sat[i]) > 1e-13
-      println("sat = ", sat)
-      println("q = \n", q)
-      println("qg = \n", qg)
-      println("dq = \n", q - qg)
-      printbacktrace()
-      error("sat is non zero")
-    end
-   =#
     flux[i] = (sat_fac*sat[i] + euler_flux[i]) 
-    # when weak differentiate has transpose = true
   end
 
   if use_efix == 0
@@ -363,10 +421,370 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{3},
 
 end # ends the function eulerRoeSAT
 
+@doc """
+###EulerEquationMod.calcSAT
+
+Computes the simultaneous approximation term for use in computing the numerical
+flux
+
+**Arguments**
+
+* `params` : Parameter object of type ParamType
+* `nrm` : Normal to face in the physical space
+* `dq`  : Boundary condition penalty variable
+* `sat` : Simultaneous approximation Term
+* `u`   : Velocity in the X-direction in physical space
+* `v`   : Velocity in the Y-direction in physical space
+* `H`   : Total enthalpy
+
+"""->
+
+function calcSAT{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
+                 dq::AbstractArray{Tsol,1}, sat::AbstractArray{Tsol,1},
+                 vel::AbstractArray{Tsol, 1}, H::Tsol, use_efix::Int=1)
+
+
+  # SAT parameters
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
+  tau = 1.0
+
+  u = vel[1]
+  v = vel[2]
+
+  gami = params.gamma_1
+
+  # Begin main executuion
+  nx = nrm[1]
+  ny = nrm[2]
+
+  dA = sqrt(nx*nx + ny*ny)
+
+  Un = u*nx + v*ny # Normal Velocity
+
+  phi = 0.5*(u*u + v*v)
+  a = sqrt(gami*(H - phi)) # speed of sound
+
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+
+  rhoA = absvalue(Un) + dA*a
+
+  # Compute Eigen Values of the Flux Jacobian
+  # The eigen values calculated above cannot be used directly. Near stagnation
+  # points lambda3 approaches zero while near sonic lines lambda1 and lambda2
+  # approach zero. This has a possibility of creating numerical difficulties.
+  # As a result, the eigen values are limited by the following expressions.
+
+  lambda1 = use_efix*0.5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1) + (1-use_efix)*lambda1
+  lambda2 = use_efix*0.5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2) + (1-use_efix)*lambda2
+  lambda3 = use_efix*0.5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3) + (1-use_efix)*lambda3
+
+  dq1 = dq[1]
+  dq2 = dq[2]
+  dq3 = dq[3]
+  dq4 = dq[4]
+
+  sat[1] = lambda3*dq1
+  sat[2] = lambda3*dq2
+  sat[3] = lambda3*dq3
+  sat[4] = lambda3*dq4
+
+  E1dq = params.res_vals1
+  E2dq = params.res_vals2
+
+  #-- get E1*dq
+  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*H
+
+  #-- get E2*dq
+  E2dq[1] = 0.0
+  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 + lambda2) - lambda3
+  tmp2 = gami/(a*a)
+  tmp3 = 1.0/(dA*dA)
+  for i=1:length(sat)
+    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
+  end
+
+  #-- get E3*dq
+  E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*H
+
+  #-- get E4*dq
+  E2dq[1] = 0.0
+  E2dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
+  for i=1:length(sat)
+    sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
+  end
+
+  return nothing
+end  # End function calcSAT
+
+@doc """
+###EulerEquationMod.calcSAT_revm
+
+Reverse mode of calcSAT
+
+**Inputs**
+* `params` : Parameter object of type ParamType
+* `nrm` : Normal to face in the physical space
+* `dq`  : Boundary condition penalty variable
+* `vel` : Velocities along X & Y directions in the physical space
+* `H`   : Total enthalpy
+* `sat_bar` : Inpute seed for sat flux whose derivative needs to be computed
+
+**Output**
+
+* `nrm_bar` : derivative of `sat_bar` w.r.t physical normal vector
+
+"""->
+
+function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
+                      dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
+                      H::Tsol, sat_bar::AbstractArray{Tsol, 1},
+                      nrm_bar::AbstractArray{Tmsh,1}, use_efix::Int=1)
+
+  # Forward Sweep
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
+  u = vel[1]
+  v = vel[2]
+  gami = params.gamma_1
+
+  # Begin main executuion
+  nx = nrm[1]
+  ny = nrm[2]
+  dA = sqrt(nx*nx + ny*ny)
+  Un = u*nx + v*ny # Normal Velocity
+  phi = 0.5*(u*u + v*v)
+  a = sqrt(gami*(H - phi)) # speed of sound
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+  rhoA = absvalue(Un) + dA*a
+
+  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+
+  dq1 = dq[1]
+  dq2 = dq[2]
+  dq3 = dq[3]
+  dq4 = dq[4]
+
+  sat = zeros(Tsol, 4)
+  sat[1] = lambda3*dq1
+  sat[2] = lambda3*dq2
+  sat[3] = lambda3*dq3
+  sat[4] = lambda3*dq4
+
+  E1dq = params.res_vals1
+  E2dq = params.res_vals2
+  E3dq = zeros(Tsol, 4)
+  E4dq = zeros(Tsol, 4)
+
+  #-- get E1*dq
+  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*H
+
+  #-- get E2*dq
+  E2dq[1] = 0.0
+  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 + lambda2) - lambda3
+  tmp2 = gami/(a*a)
+  tmp3 = 1.0/(dA*dA)
+
+  #-- get E3*dq
+  E3dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
+  E3dq[2] = E3dq[1]*u
+  E3dq[3] = E3dq[1]*v
+  E3dq[4] = E3dq[1]*H
+
+  #-- get E4*dq
+  E4dq[1] = 0.0
+  E4dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E4dq[3] = E4dq[2]*ny
+  E4dq[4] = E4dq[2]*Un
+  E4dq[2] = E4dq[2]*nx
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
+
+  # Reverse sweep
+  E3dq_bar = zeros(Tsol, 4)
+  E4dq_bar = zeros(Tsol, 4)
+  tmp1_bar = zero(Tsol)
+  for i = 1:length(sat_bar)
+    E3dq_bar[i] += sat_bar[i]*tmp1
+    E4dq_bar[i] = sat_bar[i]*tmp1*gami
+    tmp1_bar += sat_bar[i]*(E3dq[i] + gami*E4dq[i])
+  end
+
+  # tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
+  lambda1_bar = (0.5/(dA*a))*tmp1_bar
+  lambda2_bar = -(0.5/(dA*a))*tmp1_bar
+  dA_bar = -(0.5*(lambda1 - lambda2)/(dA*dA*a))*tmp1_bar
+
+
+  #  E4dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  #  E4dq[3] = E4dq[2]*ny
+  #  E4dq[4] = E4dq[2]*Un
+  #  E4dq[2] = E4dq[2]*nx
+  nx_bar = E4dq_bar[2]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
+  Un_bar = E4dq_bar[4]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
+  ny_bar = E4dq_bar[3]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
+
+  # E3dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
+  # E3dq[2] = E3dq[1]*u
+  # E3dq[3] = E3dq[1]*v
+  # E3dq[4] = E3dq[1]*H
+  E3dq_bar[1] += E3dq_bar[4]*H + E3dq_bar[3]*v + E3dq_bar[2]*u
+  Un_bar += -E3dq_bar[1]*dq1
+  nx_bar += E3dq_bar[1]*dq2
+  ny_bar += E3dq_bar[1]*dq3
+
+  #  for i=1:length(sat)
+  #    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
+  #  end
+  tmp1 = 0.5*(lambda1 + lambda2) - lambda3 # For E1dq & E2dq matrices
+  tmp1_bar = zero(Tsol) # Reset tmp1_bar to 0 since the variable is being reused
+  E1dq_bar = zeros(Tsol, 4)
+  E2dq_bar = zeros(Tsol, 4)
+  tmp3_bar = zero(Tsol)
+  for i = 1:length(sat_bar)
+    E1dq_bar[i] += sat_bar[i]*tmp1*tmp2
+    E2dq_bar[i] += sat_bar[i]*tmp1*tmp3
+    tmp1_bar += sat_bar[i]*(tmp2*E1dq[i] + tmp3*E2dq[i])
+    tmp3_bar += sat_bar[i]*tmp1*E2dq[i]
+  end
+
+  # tmp1 = 0.5*(lambda1 + lambda2) - lambda3
+  # tmp2 = gami/(a*a)
+  # tmp3 = 1.0/(dA*dA)
+  dA_bar += -2*tmp3_bar/(dA^3)
+  lambda1_bar += tmp1_bar*0.5
+  lambda2_bar += tmp1_bar*0.5
+  lambda3_bar = -tmp1_bar
+
+  #  E2dq[1] = 0.0
+  #  intvar = -Un*dq1 + nx*dq2 + ny*dq3
+  #  E2dq[2] = intvar*nx
+  #  E2dq[3] = intvar*ny
+  #  E2dq[4] = intvar*Un
+  intvar = -Un*dq1 + nx*dq2 + ny*dq3
+  Un_bar += E2dq_bar[4]*intvar
+  ny_bar += E2dq_bar[3]*intvar
+  nx_bar += E2dq_bar[2]*intvar
+  intvar_bar = E2dq_bar[4]*Un + E2dq_bar[3]*ny + E2dq_bar[2]*nx
+  Un_bar -= intvar_bar*dq1
+  nx_bar += intvar_bar*dq2
+  ny_bar += intvar_bar*dq3
+
+  # None of the following need to be differentiated as they dont depen on nrm
+  # E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  # E1dq[2] = E1dq[1]*u
+  # E1dq[3] = E1dq[1]*v
+  # E1dq[4] = E1dq[1]*H
+
+  # sat[1] = lambda3*dq1
+  # sat[2] = lambda3*dq2
+  # sat[3] = lambda3*dq3
+  # sat[4] = lambda3*dq4
+  lambda3_bar += dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
+
+  rhoA_bar = zero(Tsol)
+  # lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+  # Breaking the above down. lambda3 on RHS = Un
+  # intVar1 = = absvalue(Un)
+  # intVar2 = sat_Vl*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda3 = 0.5*(intVar3 - Un)
+  intVar3_bar = 0.5*lambda3_bar
+  Un_bar -= 0.5*lambda3_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un), sat_Vl*rhoA, intVar3_bar)
+  rhoA_bar += sat_Vl*intVar2_bar
+  Un_bar += intVar1_bar*absvalue_deriv(Un)
+
+  L2 = Un - dA*a
+  # lambda2 = 0.5*(max(absvalue(L2),sat_Vn *rhoA) - L2)
+  # intVar1 = absvalue(L2)
+  # intVar2 = sat_Vn*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda2 = 0.5*(intVar3 - L2)
+  intVar3_bar = 0.5*lambda2_bar
+  L2_bar = -0.5*lambda2_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(L2), sat_Vn*rhoA, intVar3_bar)
+  rhoA_bar += sat_Vn*intVar2_bar
+  L2_bar += intVar1_bar*absvalue_deriv(L2)
+
+  L1 = Un + dA*a
+  # lambda1 = 0.5*(max(absvalue(L1),sat_Vn *rhoA) - L1)
+  # intVar1 = absvalue(L1)
+  # intVar2 = sat_Vn*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda1 = 0.5*(intVar3 - L1)
+  intVar3_bar = 0.5*lambda1_bar
+  L1_bar = -0.5*lambda1_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un + dA*a), sat_Vn*rhoA, intVar3_bar)
+  rhoA_bar += intVar2_bar*sat_Vn
+  L1_bar += intVar1_bar*absvalue_deriv(L1)
+
+  # rhoA = absvalue(Un) + dA*a
+  dA_bar += rhoA_bar*a
+  if real(Un) >= 0.0
+    Un_bar += rhoA_bar
+  else
+    Un_bar -= rhoA_bar
+  end
+
+  # lambda1 = Un + dA*a
+  # lambda2 = Un - dA*a
+  # lambda3 = Un
+  Un_bar += L1_bar + L2_bar #  + lambda3_bar
+  dA_bar += a*L1_bar - a*L2_bar
+
+  # nx = nrm[1]
+  # ny = nrm[2]
+  # dA = sqrt(nx*nx + ny*ny)
+  # Un = u*nx + v*ny
+  nx_bar += u*Un_bar
+  ny_bar += v*Un_bar
+  nx_bar += nx*dA_bar/dA
+  ny_bar += ny*dA_bar/dA
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
+
+  return nothing
+end
 
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres}, 
+                      aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
                       nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
@@ -379,7 +797,7 @@ end
 
 
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
-                      params::ParamType{2, :conservative}, 
+                      params::ParamType{2, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tsol, 1},
                       dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1})
@@ -468,7 +886,7 @@ end
 
 
 function calcEulerFlux_standard{Tmsh, Tsol, Tres}(
-                      params::ParamType{3, :conservative}, 
+                      params::ParamType{3, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres, 1},
                       dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1})
@@ -557,9 +975,9 @@ end
 
 
 function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(
-                      params::ParamType, 
+                      params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres}, 
+                      aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
                       nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
@@ -571,7 +989,7 @@ end
 
 
 
-function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative}, 
+function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
@@ -580,7 +998,7 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservati
   pL = calcPressure(params, qL); pR = calcPressure(params, qR)
   uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
   vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
-  
+
   u_avg = 0.5*(uL + uR)
   v_avg = 0.5*(vL + vR)
 
@@ -598,7 +1016,7 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{2, :conservati
   return nothing
 end
 
-function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative}, 
+function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
@@ -621,13 +1039,13 @@ function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(params::ParamType{3, :conservati
   p_avg = 0.5*(pL + pR)
 
   F[1] = dir[1]*rho_avg*u_avg + dir[2]*rho_avg*v_avg + dir[3]*rho_avg*w_avg
-  F[2] = dir[1]*(rhou_avg*u_avg + p_avg) + dir[2]*(rhou_avg*v_avg) + 
+  F[2] = dir[1]*(rhou_avg*u_avg + p_avg) + dir[2]*(rhou_avg*v_avg) +
          dir[3]rhou_avg*w_avg
-  F[3] = dir[1]*(rhov_avg*u_avg) + dir[2]*(rhov_avg*v_avg + p_avg) + 
+  F[3] = dir[1]*(rhov_avg*u_avg) + dir[2]*(rhov_avg*v_avg + p_avg) +
          dir[3]*rhov_avg*w_avg
-  F[4] = dir[1]*rhow_avg*u_avg + dir[2]*rhow_avg*v_avg + 
+  F[4] = dir[1]*rhow_avg*u_avg + dir[2]*rhow_avg*v_avg +
          dir[3]*(rhow_avg*w_avg + p_avg)
-  F[5] = dir[1]*(E_avg + p_avg)*u_avg + dir[2]*(E_avg + p_avg)*v_avg + 
+  F[5] = dir[1]*(E_avg + p_avg)*u_avg + dir[2]*(E_avg + p_avg)*v_avg +
          dir[3]*( (E_avg + p_avg)*w_avg)
 
   return nothing
@@ -636,7 +1054,7 @@ end
 
 function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres}, 
+                      aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
                       nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
@@ -684,7 +1102,7 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
   p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z4L, z4R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
 
-  
+
   Un = dir[1]*u_hat + dir[2]*v_hat
   F[1] = rho_hat*Un
   F[2] = rho_hat*u_hat*Un + dir[1]*p1_hat
@@ -779,11 +1197,11 @@ function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
 
   F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat + dir[3]*rho_hat*w_hat
-  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat + 
+  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat +
          dir[3]*rho_hat*u_hat*w_hat
-  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat) + 
+  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat) +
          dir[3]*rho_hat*v_hat*w_hat
-  F[4] = dir[1]*rho_hat*u_hat*w_hat + dir[2]*rho_hat*v_hat*w_hat + 
+  F[4] = dir[1]*rho_hat*u_hat*w_hat + dir[2]*rho_hat*v_hat*w_hat +
          dir[3]*(rho_hat*w_hat*w_hat + p1_hat)
   F[5] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat + dir[3]*rho_hat*w_hat*h_hat
 
@@ -830,13 +1248,13 @@ end
 
 # stabilized IR flux
 """
-  This function calculates the flux across an interface using the IR 
+  This function calculates the flux across an interface using the IR
   numerical flux function and a Lax-Friedrich type of entropy dissipation.
 
   Currently this is implemented for conservative variables only.
 
   Methods are available that take in dxidx and a normal vector in parametric
-  space and compute and normal vector xy space and that take in a 
+  space and compute and normal vector xy space and that take in a
   normal vector directly.
 
   Inputs:
@@ -853,7 +1271,7 @@ end
 """
 function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres}, 
+                      aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
                       nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
@@ -880,7 +1298,7 @@ end
 
 """
 function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres, Tdim}(
-                      params::ParamType{Tdim, :conservative}, 
+                      params::ParamType{Tdim, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractVector{Tres},
                       dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1})
@@ -899,7 +1317,7 @@ end
 """
 function calcEulerFlux_IRSLW{Tmsh, Tsol, Tres}(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres}, 
+                      aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
                       nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
 
@@ -910,7 +1328,7 @@ function calcEulerFlux_IRSLW{Tmsh, Tsol, Tres}(params::ParamType,
 end
 
 function calcEulerFlux_IRSWF{Tmsh, Tsol, Tres, Tdim}(
-                      params::ParamType{Tdim, :conservative}, 
+                      params::ParamType{Tdim, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractVector{Tres},
                       dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1})
@@ -939,6 +1357,3 @@ function logavg(aL, aR)
 
   return (aL + aR)/(2*F)
 end
-
-
-

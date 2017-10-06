@@ -42,8 +42,10 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 
   #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
   numDofPerNode = mesh.numDofPerNode
-  PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
-  comm = MPI.COMM_WORLD
+  if PetscInitialized() == 0 # PETSc Not initialized before
+    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+  end
+  comm = mesh.comm
 
   obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
   @mpi_master println("creating b")
@@ -243,7 +245,7 @@ end
 @doc """
 ### NonlinearSolver.petscSolve
 
-  This function performs the petsc solve x = inv(A)*b. More specifically, it 
+  This function performs the petsc solve x = inv(A)\*b. More specifically, it
   copies he right hand side into the PetscVec b, assembles them, and performs
   the solve.
 
@@ -325,7 +327,7 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
       println("  number of mallocs = ", matinfo.mallocs)
     end
 
- 
+
 #  return nothing
   # only call this first time?
   # what happens when A and Ap change?
@@ -333,8 +335,7 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   # calls it if needed
   # it is necessary to call KSPSetUp before getting the preconditioner
   # context in some cases
-
-  KSPSetTolerances(ksp, newton_data.reltol, newton_data.abstol, 
+  KSPSetTolerances(ksp, newton_data.reltol, newton_data.abstol,
                    newton_data.dtol, PetscInt(newton_data.itermax))
 
   KSPSetUp(ksp)
@@ -369,5 +370,3 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   return nothing
 
 end
-
-

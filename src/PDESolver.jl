@@ -5,7 +5,7 @@ module PDESolver
 export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
-export evalResidual
+export evalResidual, evalHomotopy
 
 # from initialization.jl
 export createMeshAndOperator, call_nlsolver
@@ -27,6 +27,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
 # create a circular dependency)
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 

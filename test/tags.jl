@@ -15,6 +15,7 @@ if !tag_defs
   global const TAG_CONVERGENCE = "tag_convergence"
   global const TAG_MMS = "tag_mms"
   global const TAG_FRONTEND = "tag_frontend"
+  global const TAG_ADJOINT = "tag_adjoint"
 
   # euler
   global const TAG_ENTROPYVARS = "tag_entropyvars"
@@ -22,8 +23,10 @@ if !tag_defs
   global const TAG_ESS = "tag_ess"
   global const TAG_UTILS = "tag_utils"
   global const TAG_INPUT = "tag_input"
+  global const TAG_REVERSEMODE = "tag_reversemode"
   global const TAG_MISC = "tag_misc"
   global const TAG_CURVILINEAR = "tag_curvilinear"
+  global const TAG_HOMOTOPY = "tag_homotopy"
 
 end
 

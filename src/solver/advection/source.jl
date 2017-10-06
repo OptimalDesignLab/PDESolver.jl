@@ -28,7 +28,19 @@ function call(obj::SRC1, coords::AbstractVector, params::ParamType2, t)
 end
 
 @doc """
-### AdvectionEquationMod.SRC1
+### AdvectionEquationMod.SRC2
+
+  This source term returns 1 everywhere.
+"""->
+type SRC2 <: SRCType
+end
+
+function call(obj::SRC2, coords::AbstractVector, params::ParamType2, t)
+  return 2
+end
+
+@doc """
+### AdvectionEquationMod.SRCx
 
   This source term that returns: f = x
 """->
@@ -338,6 +350,7 @@ end
 global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRC0" => SRC0(),
 "SRC1" => SRC1(),
+"SRC2" => SRC2(),
 "SRCx" => SRCx(),
 "SRCmms1" => SRCmms1(),
 "SRCx4" => SRCx4(),
