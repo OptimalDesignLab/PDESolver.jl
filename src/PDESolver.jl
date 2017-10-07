@@ -8,7 +8,7 @@ export register_physics, retrieve_physics, registerIC, registerBC
 export evalResidual, evalHomotopy
 
 # from initialization.jl
-export createMeshAndOperator, call_nlsolver
+export createMeshAndOperator, loadRestartState, call_nlsolver
 
 # from startup_func
 export run_solver

@@ -10,8 +10,8 @@ global const Checkpointer_fname = "checkpointer.dat"
 # file name stem for solution files
 global const Solution_fname = "qvec"
 
-#file name for input_file
-global const Input_fname = "arg_dict_output"
+# file name for input_file
+global const Input_fname = "input_vals_restart"
 
 # file name step for user checkpoint data
 global const CheckpointData_fname = "checkpointdata"
@@ -43,13 +43,16 @@ abstract AbstractCheckpointData
   The fields of the type should *never* be directly accessed.  Use the API
   instead.
 
-  Every commit must be in its own directory.
+  Every checkpoint must be in its own directory.
 
   Checkpointing has two uses: loading a previous state and restarting.
   The first one is rather easy, all that needs to happen is the solution
   variables get loaded.  Restarting is more involved because all the local
   data of the NonlinearSolver that was running needs to be stored and then
   loaded again in a new session.
+
+  An input file called $(Input_fname) is created in the current directory
+  that can be used to restart the code.
 
   **Fields**
 
@@ -82,6 +85,8 @@ end
 
   **Inputs**
 
+   * myrank: MPI rank of this process
+
    * ncheckpoints: number of checkpoints, defaults to 2.  Using fewer than
                    2 is not recommended (there will be a moment in time during
                    which the old checkpoint has been partially overwritten but
@@ -95,7 +100,8 @@ end
 
    * a Checkpointer object, fully initialized
 """
-function Checkpointer(ncheckpoints::Integer=2, prefix::ASCIIString="")
+function Checkpointer(myrank::Integer, ncheckpoints::Integer=2,
+                      prefix::ASCIIString="")
 
   paths = Array(ASCIIString, ncheckpoints)
   status = Array(Int, ncheckpoints)
@@ -114,7 +120,7 @@ function Checkpointer(ncheckpoints::Integer=2, prefix::ASCIIString="")
     paths[i] = joinpath_ascii(pwd(), "$(prefix)checkpoint$i")
     status[i] = CheckpointFree
 
-    if !isdir(paths[i])
+    if !isdir(paths[i]) && myrank == 0
       mkdir(paths[i])
     end
 
@@ -125,8 +131,11 @@ function Checkpointer(ncheckpoints::Integer=2, prefix::ASCIIString="")
   # make sure the flag files don't exist (perhaps left over from a previous
   # run)
 
-  for i=1:ncheckpoints
-    deleteFlagFile(checkpointer, i)
+
+  if myrank == 0
+    for i=1:ncheckpoints
+      deleteFlagFile(checkpointer, i)
+    end
   end
 
 
@@ -171,7 +180,7 @@ end
 
     The Checkpointer object is the same on all processes.
 """
-function Checkpointer(opts::Dict)
+function Checkpointer(opts::Dict, myrank::Integer)
 
   # figure out whether checkpoint that was in the process of being written
   # finished.
@@ -180,14 +189,23 @@ function Checkpointer(opts::Dict)
   checkpoint2_path = opts["most_recent_checkpoint_path"]
 
   if checkFlagFile(checkpoint1_path)
+    if myrank == 0
+      println(BSTDOUT, "Loading checkpoint most recent checkpoint")
+    end
     checkpoint = opts["writing_checkpoint"]
     checkpoint_path = checkpoint1_path
   else
     @assert checkFlagFile(checkpoint2_path)
+    if myrank == 0
+      println(BSTDOUT, "Most recent checkpoint incomplete, loading older checkpoint")
+    end
     checkpoint = opts["most_recent_checkpoint"]
     checkpoint_path = checkpoint2_path
   end
 
+  if myrank == 0
+    println(BSTDOUT, "checkpont path = ", checkpoint_path)
+  end
   fname = joinpath_ascii(checkpoint_path, Checkpointer_fname)
   f = open(fname, "r")
   checkpointer = deserialize(f)
@@ -302,7 +320,10 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
   # wait for all processes to catch up before overwriting whatever data
   # might be in the checkpoint
   MPI.Barrier(mesh.comm)
-  deleteFlagFile(checkpointer, checkpoint)
+  if mesh.myrank == 0
+    println(BSTDOUT, "saving to checkpoint ", checkpoint)
+    deleteFlagFile(checkpointer, checkpoint)
+  end
 
   # record the state change now, because we have started to overwrite things
   # the options dictionary handles the case of the program getting killed
@@ -331,7 +352,15 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
                                        # the code will have to look for
 
     opts_fname = joinpath_ascii(checkpointer.paths[checkpoint], Input_fname)
-    make_input(opts_restart, opts_fname)
+    opts_fname = make_input(opts_restart, opts_fname)
+
+    # symlink it into the current directory so we know which checkpoint to
+    # load on restart
+    try 
+      rm(Input_fname)
+    end
+    symlink(opts_fname, Input_fname)
+
 
     #TODO: deal with mesh adaptation
     # if only coordinates have changed, need to make sure that all the
@@ -512,7 +541,13 @@ function writeCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
   fname = string(get_parallel_fname(CheckpointData_fname, comm_rank), ".dat")
   fpath = joinpath_ascii(chkpointer.paths[chkpoint], fname)
 
-  f = open(fname, "w")
+  if comm_rank == 0
+    println(BSTDOUT, "fname = ", fname)
+    println(BSTDOUT, "fpath = ", fpath)
+  end
+
+
+  f = open(fpath, "w")
   serialize(f, obj)
   close(f)
 
@@ -560,7 +595,7 @@ end
 
 """
   This function reads an object of type AbstractSolutionData from a file
-  and reuturns the object.  This is type unstable, so every AbstractSolutionData
+  and reuturns the object.  This is type unstable, so every AbstractCheckpointData
   implementation should create a constructor that calls this function and
   uses a type assertion to specify that the object must be of their concrete
   type.
@@ -574,12 +609,36 @@ end
 function readCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
                             comm_rank::Integer)
 
+  @assert chkpoint > 0
+  @assert chkpoint <= chkpointer.ncheckpoints
+
   fname = string(get_parallel_fname(CheckpointData_fname, comm_rank), ".dat")
   fpath = joinpath_ascii(chkpointer.paths[chkpoint], fname)
 
-  f = open(fname, "r")
+  if comm_rank == 0
+    println(BSTDOUT, "loading checkpoint data from ", fpath)
+  end
+
+  f = open(fpath, "r")
   obj = deserialize(f)
   close(f)
+
+  return obj
+end
+
+"""
+  Simple wrapper around [`readCheckpointData`](@ref) to loading the most
+  recently saved checkpoint data
+
+  **Inputs**
+
+   * chkpointer: a Checkpointer
+   * comm_rank: MPI rank of this process
+"""
+function readLastCheckpointData(chkpointer::Checkpointer, comm_rank::Integer)
+
+  chkpoint = getLastCheckpoint(chkpointer)
+  obj = readCheckpointData(chkpointer, chkpoint, comm_rank)
 
   return obj
 end
@@ -725,7 +784,8 @@ function getOldestCheckpoint(checkpointer::Checkpointer)
 end
 
 """
-  Frees the least recently written checkpoint
+  Frees the least recently written checkpoint. Calling this function when
+  all checkpoints are free is allowed.
 
   **Inputs**
 
@@ -733,12 +793,14 @@ end
 
   **Outputs**
 
-   * returns the checkpoint freed
+   * returns the checkpoint freed (0 all checkpoints were free on entry)
 """
 function freeOldestCheckpoint(checkpointer::Checkpointer)
 
   checkpoint = getOldestCheckpoint(checkpointer)
-  freeCheckpoint(checkpointer, checkpoint)
+  if checkpoint != -1
+    freeCheckpoint(checkpointer, checkpoint)
+  end
 
   return checkpoint
 end
@@ -752,7 +814,11 @@ end
 
    * checkpointer: the Checkpointer object
    * checkpoint: the index of the checkpoint to free
-  The user must explictly free checkpoints
+
+  The user must explictly free checkpoints (loading a checkpoint does not
+  free it).
+  Note that a free checkpoint can still be loaded for restarting if it has
+  not been saved to yet.
 """
 function freeCheckpoint(checkpointer::Checkpointer, checkpoint::Integer)
 
@@ -786,7 +852,12 @@ function freeCheckpoint(checkpointer::Checkpointer, checkpoint::Integer)
     checkpointer.history[i] = checkpointer.history[i+1]
   end
 
-  checkpointer.history[last_idx] = -1  # the last one is now unused
+  # if we are freeing the last checkpoint, last_idx == 0
+  if last_idx != 0
+    checkpointer.history[last_idx] = -1  # the last one is now unused
+  else
+    checkpointer.history[end] = -1  
+  end
   checkpointer.status[checkpoint] = CheckpointFree
 
   return nothing

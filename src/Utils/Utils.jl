@@ -70,7 +70,8 @@ export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master,
 
 # checkpoint.jl
 export Checkpointer, AbstractCheckpointData, readCheckpointData,
-       saveNextFreeCheckpoint, loadLastCheckpoint, countFreeCheckpoints,
+       readLastCheckpointData, saveNextFreeCheckpoint, loadLastCheckpoint,
+       countFreeCheckpoints,
        getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
        freeCheckpoint, getNextFreeCheckpoint
 

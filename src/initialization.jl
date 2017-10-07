@@ -381,6 +381,35 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
 end
 
 """
+  This function is used by all physics modules to load the most recently
+  saved state when restarting.
+
+  **Inputs**
+
+   * mesh: the mesh
+   * sbp: AbstractSBP
+   * eqn: AbstractSolutionData, eqn.q_vec is overwritten with the saved state
+   * opts: options dictionary
+
+   The keys described in the [`Checkpointer`](@ref Utils.Checkpointer)
+   documentation are used to determine the most recent complete checkpoint.
+
+   Implementation notes:
+     currently pmesh isn't used for anything because checkpointing does not
+     support mesh adaptation.  When this changes, this function will have to
+     be updated.
+"""
+function loadRestartState(mesh::AbstractMesh, sbp::AbstractSBP,
+                        eqn::AbstractSolutionData, opts::Dict,
+                        pmesh::AbstractMesh=mesh)
+
+  chkpointer = Checkpointer(opts, mesh.myrank)
+  loadLastCheckpoint(chkpointer, mesh, sbp, eqn, opts)
+
+  return nothing
+end
+
+"""
   This function takes in the 4 principle object, fully initialized, and calls
   a nonlinear solver on them, according to the options in the dictionary.
   The evalResidual function is passed to the nonlinear solver

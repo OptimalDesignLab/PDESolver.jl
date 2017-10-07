@@ -415,6 +415,8 @@ get!(arg_dict, "most_recent_checkpoint_path", "")
 get!(arg_dict, "writing_checkpoint", -1)
 get!(arg_dict, "writing_checkpoint_path", "")
 get!(arg_dict, "is_restart", false)
+get!(arg_dict, "ncheckpoints", 0)
+get!(arg_dict, "checkpoint_freq", 0)
 
 checkForIllegalOptions_post(arg_dict)
 
@@ -536,6 +538,19 @@ end
 
   if !arg_dict["precompute_volume_flux"] && !arg_dict["Q_transpose"]
     error("cannot combine non-transposed Q and not precomputing the volume flux")
+  end
+
+  # error if checkpointing not supported
+  if arg_dict["ncheckpoints"] > 0 && arg_dict["run_type"] != 1
+    error("checkpointing only supported with RK4")
+  end
+
+  if arg_dict["ncheckpoints"] > 0 && !(arg_dict["checkpoint_freq"] > 0)
+    error("must set checkpoint_freq when checkpointing")
+  end
+
+  if arg_dict["checkpoint_freq"] > 0 && arg_dict["ncheckpoints"] <= 0
+    error("must set ncheckpoints when checkpoint_freq is used")
   end
 
   checkBCOptions(arg_dict)
