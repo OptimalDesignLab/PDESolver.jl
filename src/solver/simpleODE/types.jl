@@ -10,7 +10,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
   function ParamType(mesh, sbp, opts)
     myrank = mesh.myrank
     if DB_LEVEL >= 1
-      f = BufferedIO("log_$myrank.dat", "w")
+      f = BufferedIO("log_$myrank.dat", "a")
     else
       f = BufferedIO(DevNull)  # create a dummy IOStream
     end

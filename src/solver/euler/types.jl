@@ -203,7 +203,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
     if DB_LEVEL >= 1
-      f = BufferedIO("log_$myrank.dat", "w")
+      f = BufferedIO("log_$myrank.dat", "a")
     else
       f = BufferedIO(DevNull)
     end
@@ -791,6 +791,10 @@ end
 
   Exceptions: this function will throw an exception if any two file names
               are the same
+
+  Implementation notes:
+    When restarting, all files must be appended to.  Currently, files
+    are appended to in all cases.
 """
 function openLoggingFiles(mesh, opts)
 

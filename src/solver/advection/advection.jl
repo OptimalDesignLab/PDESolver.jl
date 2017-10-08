@@ -27,9 +27,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-  #f = open("pfout_$myrank.dat", "a+")
-  #println(f, "----- entered evalResidual -----")
-  #close(f)
+  #println(BSTDOUT, "----- entered evalResidual -----")
 
   eqn.t = t
 #  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
@@ -73,11 +71,6 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   end
 
 #  params.time.t_barriers[7] += @elapsed MPI.Barrier(mesh.comm) 
-#=
-  f = open("pfout_$myrank.dat", "a+")
-  println(f, "----- finished evalResidual -----")
-  close(f)
-=#
 
   if opts["use_Minv"]
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)

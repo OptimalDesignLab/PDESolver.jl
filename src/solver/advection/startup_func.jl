@@ -56,21 +56,10 @@ function createObjects(input_file::AbstractString)
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
-  #mesh.numColors = 4
-  #mesh.maxColors = 4
-
-  if opts["write_timing"]
-    MPI.Barrier(mesh.comm)
-    if mesh.myrank == 0
-      f = open("timing.dat", "a+")
-      println(f, mesh_time)
-      close(f)
-    end
-  end
-
   # Create advection equation object
   Tdim = dim
   eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+  eqn.params.time.t_meshinit = mesh_time  # save the mesh init time
 
   # Initialize the advection equation
   init(mesh, sbp, eqn, opts)

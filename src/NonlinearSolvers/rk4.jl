@@ -135,7 +135,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   (m,) = size(q_vec)
 
   if myrank == 0
-    _f1 = open("convergence.dat", "a+")
+    _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
   end
 

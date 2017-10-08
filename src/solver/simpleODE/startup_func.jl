@@ -53,16 +53,6 @@ function createObjects(input_file::AbstractString)
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
-  if opts["write_timing"]
-    MPI.Barrier(mesh.comm)
-    if mesh.myrank == 0
-      f = open("timing.dat", "a+")
-      println(f, mesh_time)
-      close(f)
-    end
-  end
-
-
   println("\ntypeof(mesh) = ", typeof(mesh))
   println("is subtype of DG mesh = ", typeof(mesh) <: AbstractDGMesh)
   println("mesh.isDG = ", mesh.isDG)
@@ -70,6 +60,7 @@ function createObjects(input_file::AbstractString)
   # Create a simpleODE equation object
   Tdim = dim
   eqn = SimpleODEData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+  eqn.params.t_meshinit = mesh_time
 
 
   init(mesh, sbp, eqn, opts)
