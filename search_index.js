@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Build Options",
     "title": "Environmental Variables",
     "category": "section",
-    "text": "PDESOLVER_INSTALL_DEPS_MANUAL: install the packages in the REQUIRE file manually, forcefully. PDESOLVER_FORCE_DEP_INSTALL_ALL: forces the checkout and re-installation   of the non-standard packages, even if already installed PDESOLVER_FORCE_DEP_INSTALL_pkg_name: force the checkout and re-installation of the package named pkg_name.For all these environmental variables, the value is not important, only the  existance of the variable."
+    "text": "PDESOLVER_INSTALL_DEPS_MANUAL\n: install the packages in the \nREQUIRE\n file manually.  If the package is already installed, does nothing (does not check out the specified version).PDESOLVER_FORCE_DEP_INSTALL_ALL\n: forces the checkout and re-installation   of the non-standard packages, even if already installed\nPDESOLVER_FORCE_DEP_INSTALL_pkg_name\n: force the checkout and re-installation of the package named \npkg_name\n.For all these environmental variables, the value is not important, only the  existance of the variable."
 },
 
 {
@@ -181,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Build Options",
     "title": "Logging",
     "category": "section",
-    "text": "The file deps/install.log is created and written to with the progress of the checkout process, including error information if a build fails."
+    "text": "The file deps/install.log is created and written to with the progress of the checkout process, including error information if a build fails. Because Pkg.build swallows errors, failures inside Pkg.build are not logged."
 },
 
 {
@@ -694,6 +694,14 @@ var documenterSearchIndex = {"docs": [
     "title": "PDESolver.createMeshAndOperator",
     "category": "Method",
     "text": "Create a SBP operator and a mesh.  This is used by all physics modules   to create the right type of operator and mesh based on the input options.   It is type unstable, but that is ok.\n\nIf the options dictionary specifies a second SBP operator type, a second   mesh and SBP operator will be created and stored in the mesh2 and sbp2\n\nInputs:     opts: options dictonary     dofpernode: number of degrees of freedom on each node\n\nOutputs     sbp : an AbstractSBP     mesh : an AbstractMesh     pmesh : an AbstractMesh, used for preconditioning, may be same object as             mesh     Tsol : DataType that should be used for eqn.q     Tres : DataType that should be used for eqn.res     Tmsh : DataType of mesh.dxidx and friends     mesh_time : time in seconds for creation of mesh (Float64)\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_structure.html#PDESolver.loadRestartState",
+    "page": "PDESolver Structure",
+    "title": "PDESolver.loadRestartState",
+    "category": "Function",
+    "text": "This function is used by all physics modules to load the most recently   saved state when restarting.\n\nInputs\n\nmesh: the mesh\nsbp: AbstractSBP\neqn: AbstractSolutionData, eqn.q_vec is overwritten with the saved state\nopts: options dictionary\n\nThe keys described in the Checkpointer    documentation are used to determine the most recent complete checkpoint.\n\nImplementation notes:      currently pmesh isn't used for anything because checkpointing does not      support mesh adaptation.  When this changes, this function will have to      be updated.\n\n\n\n"
 },
 
 {
@@ -2325,7 +2333,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Datatypes",
     "title": "EulerEquationMod.openLoggingFiles",
     "category": "Method",
-    "text": "This function opens all used for logging data.  In particular, every data   file that has data appended to it in majorIterationCallback should be   opened here.  Most files are of type BufferedIO, so they must be flushed   periodically.\n\nThis function requires each output to have two keys: \"write_outname\"   and \"write_outname_fname\", where the first has a boolean value that   controls whether or not to write the output, and the second is the   file name (including extension) to write.\n\nThis function contains a list of all possible log files.  Every new   log file must be added to the list\n\nInputs:\n\nmesh: an AbstractMesh (needed for MPI Communicator)\nopts: options dictionary\n\nOutputs:\n\nfile_dict: dictionary mapping names of files to the file object                  ie. opts[\"write_entropy_fname\"] => f\n\nExceptions: this function will throw an exception if any two file names               are the same\n\n\n\n"
+    "text": "This function opens all used for logging data.  In particular, every data   file that has data appended to it in majorIterationCallback should be   opened here.  Most files are of type BufferedIO, so they must be flushed   periodically.\n\nThis function requires each output to have two keys: \"write_outname\"   and \"write_outname_fname\", where the first has a boolean value that   controls whether or not to write the output, and the second is the   file name (including extension) to write.\n\nThis function contains a list of all possible log files.  Every new   log file must be added to the list\n\nInputs:\n\nmesh: an AbstractMesh (needed for MPI Communicator)\nopts: options dictionary\n\nOutputs:\n\nfile_dict: dictionary mapping names of files to the file object                  ie. opts[\"write_entropy_fname\"] => f\n\nExceptions: this function will throw an exception if any two file names               are the same\n\nImplementation notes:     When restarting, all files must be appended to.  Currently, files     are appended to in all cases.\n\n\n\n"
 },
 
 {
@@ -2477,7 +2485,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Face Integrals",
     "title": "EulerEquationMod.calcSharedFaceElementIntegralsStaggered_element_inner",
     "category": "Method",
-    "text": "Like calcSharedFaceElementIntegrals_inner, but for staggered grid.\n\ndata.q_recv is the solution grid data.  This function interpolates it to the   flux grid on the fly.\n\nInputs:\n\nmesh_s: solution grid mesh\nmesh_f: flux grid mesh\nsbp_s: SBP operator for solution grid\nsbp_f: SBP operator for the flux grid\nopts: options dictionary\ndata: \nSharedFaceData\nface_integral_functor: \nFaceElementIntegralType\nflux_functor: \nFluxType\n passed to face_integral functor\n\nInputs/Outputs:\n\n* eqn: equation object (lives on solution grid)\n\nAliasing restrictions: none\n\n\n\n"
+    "text": "Like calcSharedFaceElementIntegrals_element_inner, but for staggered grid.\n\ndata.q_recv is the solution grid data.  This function interpolates it to the   flux grid on the fly.\n\nInputs:\n\nmesh_s: solution grid mesh\nmesh_f: flux grid mesh\nsbp_s: SBP operator for solution grid\nsbp_f: SBP operator for the flux grid\nopts: options dictionary\ndata: \nSharedFaceData\nface_integral_functor: \nFaceElementIntegralType\nflux_functor: \nFluxType\n passed to face_integral functor\n\nInputs/Outputs:\n\n* eqn: equation object (lives on solution grid)\n\nAliasing restrictions: none\n\n\n\n"
 },
 
 {
@@ -2665,11 +2673,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcECFaceIntegral-Tuple{ODLCommonTools.AbstractParamType{Tdim},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},ODLCommonTools.FluxType,AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcECFaceIntegral-Tuple{ODLCommonTools.AbstractParamType{Tdim},SummationByParts.DenseFace{T},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},ODLCommonTools.FluxType,AbstractArray{Tres,2},AbstractArray{Tres,2}}",
     "page": "Face Element Integrals",
     "title": "EulerEquationMod.calcECFaceIntegral",
     "category": "Method",
     "text": "Calculate the face integrals in an entropy conservative manner for a given   interface.  Unlike standard face integrals, this requires data from   the entirety of both elements, not just data interpolated to the face\n\nresL and resR are updated with the results of the computation for the    left and right elements, respectively.\n\nNote that nrm_xy must contains the normal vector in x-y space at the   face nodes.\n\nThe flux function must be symmetric!\n\nAliasing restrictions: none, although its unclear what the meaning of this                          function would be if resL and resR alias\n\nPerformance note: the version in the tests is the same speed as this one                     for p=1 Omega elements and about 10% faster for                      p=4 elements, but would not be able to take advantage of                      the sparsity of R for SBP Gamma elements\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcECFaceIntegral-Tuple{ODLCommonTools.AbstractParamType{Tdim},SummationByParts.SparseFace{T},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},ODLCommonTools.FluxType,AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcECFaceIntegral",
+    "category": "Method",
+    "text": "Method for sparse faces.  See other method for details\n\nAliasing restrictions: params.flux_vals1 must not be in use\n\n\n\n"
 },
 
 {
@@ -2705,7 +2721,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLFEntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLFEntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.DenseFace{T},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
     "page": "Face Element Integrals",
     "title": "EulerEquationMod.calcLFEntropyPenaltyIntegral",
     "category": "Method",
@@ -2713,7 +2729,15 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLW2EntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLFEntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.SparseFace{T},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcLFEntropyPenaltyIntegral",
+    "category": "Method",
+    "text": "Method for sparse faces.  See other method for details\n\nAliasing restrictions: params: v_vals, v_vals2, q_vals, A0, res_vals1, res_vals2\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLW2EntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.DenseFace{T},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
     "page": "Face Element Integrals",
     "title": "EulerEquationMod.calcLW2EntropyPenaltyIntegral",
     "category": "Method",
@@ -2721,7 +2745,15 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLWEntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.AbstractFace{T<:Number},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLW2EntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.SparseFace{T},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Face Element Integrals",
+    "title": "EulerEquationMod.calcLW2EntropyPenaltyIntegral",
+    "category": "Method",
+    "text": "Method for sparse faces.  See other method for details\n\nAliasing restrictions: params: v_vals, v_vals2, q_vals, q_vals2, A0, res_vals1, res_vals2                          A0, S2, Lambda, nrm2, P\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/faceElementIntegrals.html#EulerEquationMod.calcLWEntropyPenaltyIntegral-Tuple{EulerEquationMod.ParamType{Tdim,:conservative,Tsol,Tres,Tmsh},SummationByParts.DenseFace{T},ODLCommonTools.Interface,AbstractArray{Tsol,2},AbstractArray{Tsol,2},AbstractArray{Tres,2},AbstractArray{Tmsh,2},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
     "page": "Face Element Integrals",
     "title": "EulerEquationMod.calcLWEntropyPenaltyIntegral",
     "category": "Method",
@@ -3113,6 +3145,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/ic.html#EulerEquationMod.ICRho1E2U1VW0-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICRho1E2U1VW0",
+    "category": "Method",
+    "text": "EulerEquationMod.ICRho1E2U1VW0\n\nSets the density values 1.0, x momentum to 1.0,    v & w momenta to 0.0, and energy to 2.0 at a node.\n\nIt should work for 2D and 3D meshes.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
     "location": "solver/euler/ic.html#EulerEquationMod.ICRho1E2U3-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
     "page": "Initial Conditions",
     "title": "EulerEquationMod.ICRho1E2U3",
@@ -3361,6 +3401,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/common.html#EulerEquationMod.calcRho1Energy2U1VW0-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcRho1Energy2U1VW0",
+    "category": "Method",
+    "text": "EulerEquationMod.calcRho1Energy2U1VW0\n\nSets the density values 1.0, x momentum to 1.0,    v & w momenta to 0.0, and energy to 2.0 at a node.\n\nIt should work for 2D and 3D meshes.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
     "location": "solver/euler/common.html#EulerEquationMod.calcRho1Energy2U3-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
     "page": "Common Functions",
     "title": "EulerEquationMod.calcRho1Energy2U3",
@@ -3557,7 +3605,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
+    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
 },
 
 {
@@ -3565,7 +3613,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
+    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
 },
 
 {
@@ -4157,7 +4205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Misc",
     "title": "EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear",
     "category": "Method",
-    "text": "This function calculates I_S2F.'(S . F( uk(I_S2F wk), uk(I_S2F wk)))1.   This is similar to   `calcVolumeIntegralsSplitFormCurvilinear, but for the staggered grid   algorithm.\n\nInputs:     mesh_s: the mesh object for the solution grid     mesh_f: the mesh object for the flux grid     sbp_s: SBP operator for solution grid     sbp_f: SBP operator for flux grid     functor: the numerical flux functor (FluxType) used to compute F\n\nInputs/Outputs:     eqn: the equation object (implicitly on the solution grid).  eqn.res is          updated with the result\n\nAliasing Restrictions: none (the meshes and the sbp operators could alias,                          in which case this algorithm reduces to the                           non-staggered version\n\n\n\n"
+    "text": "This function calculates I_S2F.'(S . F( uk(I_S2F wk), uk(I_S2F wk)))1.   This is similar to the other method but for the staggered grid   algorithm.\n\nInputs:     mesh_s: the mesh object for the solution grid     mesh_f: the mesh object for the flux grid     sbp_s: SBP operator for solution grid     sbp_f: SBP operator for flux grid     functor: the numerical flux functor (FluxType) used to compute F\n\nInputs/Outputs:     eqn: the equation object (implicitly on the solution grid).  eqn.res is          updated with the result\n\nAliasing Restrictions: none (the meshes and the sbp operators could alias,                          in which case this algorithm reduces to the                           non-staggered version\n\n\n\n"
 },
 
 {
@@ -4445,7 +4493,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Startup",
     "title": "EulerEquationMod.solve_euler",
     "category": "Function",
-    "text": "Given fully initialized mesh, sbp, eqn, opts, this function solves   the Euler equations.  The 4 object should be obtained from createObjects().\n\nSpecifically, it applies an initial condition and invokes a nonlinear   solver according to the options dictionary.\n\nInputs:     mesh: an AbstractMesh     sbp: an AbstractSBP     eqn: an AbstractEulerData     opts: the options dictionary.  This must be the options dictionary returned           by createObjects().  Changing values in the options dictionary after           calling createObjects() results in undefined behavior.     pmesh: mesh used for preconditioning, can be same object as mesh.            default value of mesh\n\n\n\n"
+    "text": "Given fully initialized mesh, sbp, eqn, opts, this function solves   the Euler equations.  The 4 object should be obtained from createObjects().\n\nSpecifically, it applies an initial condition and invokes a nonlinear   solver according to the options dictionary.\n\nInputs:     mesh: an AbstractMesh     sbp: an AbstractSBP     eqn: an AbstractEulerData     opts: the options dictionary.  This must be the options dictionary returned           by createObjects().  Changing values in the options dictionary after           calling createObjects() results in undefined behavior.     pmesh: mesh used for preconditioning, can be same object as mesh.            default value of mesh\n\nOptions Keys:     Relfunc_name: also writes vtk files called \"solution_relfunc\"                   if key not present, ignored                    TODO: fix that     IC_name     calc_error: also write vtk files called \"solution_error\"     calc_trunc_error     perturb_ic     calc_dt     finalize_mpi\n\nFor options like calc_dt and Relfunc_name, it is very important that\nthe computed quantity be saved to the options dictionary for use later\nin the code (ie. and not passed directly to another function).  The\ncode won't restart correctly if this happens.\n\n\n\n"
 },
 
 {
@@ -4510,6 +4558,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Input.read_input",
     "category": "Method",
     "text": "PDESolver.read_input\n\nThis function read an input file, supplies default values whenever possible,   and does sanity checks on the options.   A dictionary (referred to as the options dictionary) is returned.   See read_input_file for the description of the input file format.\n\nAfter default values are supplied, the dictionary is printed to    arg_dict_output.jl (by MPI rank 0) in the format of an input file.   This is useful for rerunning a simulation.\n\nThis function prints warnings if keys in the dictionary do not correspond   to known options.  The file known_keys.jl lists all known keys.   See input_vals.txt for the list of keys, possible values, and their meanings.\n\nThis function is idempotent; this is essential for using arg_dict_output.jl   to rerun a simulation.\n\nInputs:     * fname : name of file to read, can be relative or absolute path.\n\nOutputs:     arg_dict: a Dict{Any, Any} containing the option keywords and values\n\n\n\n"
+},
+
+{
+    "location": "input/input.html#Input.read_input-Tuple{Dict{K,V}}",
+    "page": "Introduction",
+    "title": "Input.read_input",
+    "category": "Method",
+    "text": "This method supplies default values to a given dictionary.  See the other   method for details.\n\nInputs\n\narg_dict: a dictionary\n\nOutputs\n\narg_dict: the same dictionary, with default values supplied\n\n\n\n"
 },
 
 {
@@ -5261,7 +5317,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Checkpointing",
     "category": "section",
-    "text": "  CurrentModule = UtilsCheckpointing has two use cases: saving the state of the solver to be loaded later (for example, in unsteady adjoint calculations), and to restart the solver after a crash. This checkpointing functionality described here is useful for both of these functions. Its purpose is to provide an interface for writing the current state to a file that can be read back later. As long as at least 2 checkpoints are saved, the implementation guarantees that at least one checkpoint is loadable at any time, even if the code is terminated while writing a checkpoint.TODO: write a little how-to"
+    "text": "  CurrentModule = UtilsCheckpointing has two use cases: saving the state of the solver to be loaded later (for example, in unsteady adjoint calculations), and to restart the solver after a crash. This checkpointing functionality described here is useful for both of these functions. Its purpose is to provide an interface for writing the current state to a file that can be read back later. As long as at least 2 checkpoints are saved, the implementation guarantees that at least one checkpoint is loadable at any time, even if the code is terminated while writing a checkpoint.Log files require special handling when restarting. Log files should be opened in append mode when restarting (in fact, the code usually opens log files in append mode even when not restarting). One of the consequences of restarting is that there may be duplicate lines in log files.  For example, if a code is doing a run of 10,000 timesteps, checkpointing every 1,000 timesteps, and gets terminated at timestep 6,500, it can be restarted from the checkpoint at timestep 6,000 and run to the end.  This means any output written between timesteps 6,000 and 6,500 will  appear twice in the log files. To deal with this problem, the script log_cleaner.jl (located in src/scripts) can be used to post-process delimited data files (space, comma, tab, etc.) and remove duplicate entries in favor of the entry appearing last in the log file. It also checks removed entries to make sure they are the same (to floating point tolerance) as the entries that are preserved."
 },
 
 {
@@ -5277,19 +5333,19 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Utils.Checkpointer",
     "category": "Type",
-    "text": "This type keeps track of which checkpoints are in use and has an API   for loading and saving checkpoints\n\nThe fields of the type should never be directly accessed.  Use the API   instead.\n\nEvery commit must be in its own directory.\n\nCheckpointing has two uses: loading a previous state and restarting.   The first one is rather easy, all that needs to happen is the solution   variables get loaded.  Restarting is more involved because all the local   data of the NonlinearSolver that was running needs to be stored and then   loaded again in a new session.\n\nFields\n\nncheckpoints: total number of checkpoints\npaths: absolute paths to the checkpoints (array of strings)\nstatus: status of each checkpoint (used or free), (array of Ints)\nhistory: list of checkpoints from most recently used to least recently               used, unused entries set to -1\n\n\n\n"
+    "text": "This type keeps track of which checkpoints are in use and has an API   for loading and saving checkpoints\n\nThe fields of the type should never be directly accessed.  Use the API   instead.\n\nEvery checkpoint must be in its own directory.\n\nCheckpointing has two uses: loading a previous state and restarting.   The first one is rather easy, all that needs to happen is the solution   variables get loaded.  Restarting is more involved because all the local   data of the NonlinearSolver that was running needs to be stored and then   loaded again in a new session.\n\nAn input file called input_vals_restart is created in the current directory   that can be used to restart the code.\n\nFields\n\nncheckpoints: total number of checkpoints\npaths: absolute paths to the checkpoints (array of strings)\nstatus: status of each checkpoint (used or free), (array of Ints)\nhistory: list of checkpoints from most recently used to least recently               used, unused entries set to -1\n\n\n\n"
 },
 
 {
-    "location": "Utils/checkpoint.html#Utils.Checkpointer-Tuple{Integer,ASCIIString}",
+    "location": "Utils/checkpoint.html#Utils.Checkpointer-Tuple{Integer,Integer,ASCIIString}",
     "page": "Checkpointing",
     "title": "Utils.Checkpointer",
     "category": "Method",
-    "text": "Constructs a Checkpointer with a given number of checkpoints.\n\nThe checkpoints are put into directories called \"checkpoint\", where the   \"\" is replaced by the index of the checkpoint (from 1 to ncheckpoints).   This constructor does not error if the directories already exist, however   any data in the checkpoints may be overwritten.\n\nInputs\n\nncheckpoints: number of checkpoints, defaults to 2.  Using fewer than                    2 is not recommended (there will be a moment in time during                    which the old checkpoint has been partially overwritten but                    the new checkpoint is not complete yet)\n\nprefix: added to directory names (with an underscore added in-between).               Defaults to empty string. This is useful if there are multiple               sets of checkpoints (and therefore multiple Checkpointer objects).\n\nOutputs\n\na Checkpointer object, fully initialized\n\n\n\n"
+    "text": "Constructs a Checkpointer with a given number of checkpoints.\n\nThe checkpoints are put into directories called \"checkpoint\", where the   \"\" is replaced by the index of the checkpoint (from 1 to ncheckpoints).   This constructor does not error if the directories already exist, however   any data in the checkpoints may be overwritten.\n\nInputs\n\nmyrank: MPI rank of this process\n\nncheckpoints: number of checkpoints, defaults to 2.  Using fewer than                    2 is not recommended (there will be a moment in time during                    which the old checkpoint has been partially overwritten but                    the new checkpoint is not complete yet)\n\nprefix: added to directory names (with an underscore added in-between).               Defaults to empty string. This is useful if there are multiple               sets of checkpoints (and therefore multiple Checkpointer objects).\n\nOutputs\n\na Checkpointer object, fully initialized\n\n\n\n"
 },
 
 {
-    "location": "Utils/checkpoint.html#Utils.Checkpointer-Tuple{Dict{K,V}}",
+    "location": "Utils/checkpoint.html#Utils.Checkpointer-Tuple{Dict{K,V},Integer}",
     "page": "Checkpointing",
     "title": "Utils.Checkpointer",
     "category": "Method",
@@ -5325,7 +5381,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Types",
     "category": "section",
-    "text": "Checkpointer\nCheckpointer(::Integer, ::ASCIIString)\nCheckpointer(::Dict)\ncopy(::Checkpointer)\ncopy!(::Checkpointer, ::Checkpointer)\nAbstractCheckpointData"
+    "text": "Checkpointer\nCheckpointer(::Integer, ::Integer, ::ASCIIString)\nCheckpointer(::Dict, ::Integer)\ncopy(::Checkpointer)\ncopy!(::Checkpointer, ::Checkpointer)\nAbstractCheckpointData"
 },
 
 {
@@ -5345,11 +5401,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "Utils/checkpoint.html#Utils.readLastCheckpointData",
+    "page": "Checkpointing",
+    "title": "Utils.readLastCheckpointData",
+    "category": "Function",
+    "text": "Simple wrapper around readCheckpointData to loading the most   recently saved checkpoint data\n\nInputs\n\nchkpointer: a Checkpointer\ncomm_rank: MPI rank of this process\n\n\n\n"
+},
+
+{
     "location": "Utils/checkpoint.html#Utils.readCheckpointData",
     "page": "Checkpointing",
     "title": "Utils.readCheckpointData",
     "category": "Function",
-    "text": "This function reads an object of type AbstractCheckpointData from a file   and reuturns the object.  This is type unstable, so every AbstractSolutionData   implementation should create a constructor that calls this function and   uses a type assertion to specify that the object must be of their concrete   type.\n\nInputs\n\nchkpointer: a Checkpointer\nchkpoint: the index of hte checkpoint\ncomm_rank: the MPI rank of this process\n\nOutputs\n\nthe \nAbstractCheckpointData\n loaded from the checkpoint\n\n\n\n"
+    "text": "This function reads an object of type AbstractSolutionData from a file   and reuturns the object.  This is type unstable, so every AbstractCheckpointData   implementation should create a constructor that calls this function and   uses a type assertion to specify that the object must be of their concrete   type.\n\nInputs\n\nchkpointer: a Checkpointer\nchkpoint: the index of hte checkpoint\ncomm_rank: the MPI rank of this process\n\nOutputs\n\nthe \nAbstractCheckpointData\n loaded from the checkpoint\n\n\n\n"
 },
 
 {
@@ -5389,7 +5453,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Utils.freeOldestCheckpoint",
     "category": "Function",
-    "text": "Frees the least recently written checkpoint\n\nInputs\n\ncheckpointer: the Checkpointer\n\nOutputs\n\nreturns the checkpoint freed\n\n\n\n"
+    "text": "Frees the least recently written checkpoint. Calling this function when   all checkpoints are free is allowed.\n\nInputs\n\ncheckpointer: the Checkpointer\n\nOutputs\n\nreturns the checkpoint freed (0 all checkpoints were free on entry)\n\n\n\n"
 },
 
 {
@@ -5397,7 +5461,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Utils.freeCheckpoint",
     "category": "Function",
-    "text": "This function frees a checkpoint (marks it as available to be overwritten)   Unlike certain algorithms that use free lists (cough, cough, malloc)   freeing an already free checkpoint is allowed.\n\nInputs\n\ncheckpointer: the Checkpointer object\ncheckpoint: the index of the checkpoint to free   The user must explictly free checkpoints\n\n\n\n"
+    "text": "This function frees a checkpoint (marks it as available to be overwritten)   Unlike certain algorithms that use free lists (cough, cough, malloc)   freeing an already free checkpoint is allowed.\n\nInputs\n\ncheckpointer: the Checkpointer object\ncheckpoint: the index of the checkpoint to free\n\nThe user must explictly free checkpoints (loading a checkpoint does not   free it).   Note that a free checkpoint can still be loaded for restarting if it has   not been saved to yet.\n\n\n\n"
 },
 
 {
@@ -5405,7 +5469,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Functions",
     "category": "section",
-    "text": "These function provide the basic operations required for checkpointingsaveNextFreeCheckpoint\nloadLastCheckpoint\nreadCheckpointData\ncountFreeCheckpoints\ngetNextFreeCheckpoint\ngetLastCheckpoint\ngetOldestCheckpoint\nfreeOldestCheckpoint\nfreeCheckpoint"
+    "text": "These function provide the basic operations required for checkpointingsaveNextFreeCheckpoint\nloadLastCheckpoint\nreadLastCheckpointData\nreadCheckpointData\ncountFreeCheckpoints\ngetNextFreeCheckpoint\ngetLastCheckpoint\ngetOldestCheckpoint\nfreeOldestCheckpoint\nfreeCheckpoint"
+},
+
+{
+    "location": "Utils/checkpoint.html#Example-1",
+    "page": "Checkpointing",
+    "title": "Example",
+    "category": "section",
+    "text": "This section provides a simple example of how to use checkpointing for an explicit time marching scheme. The original scheme (without checkpointing) looks like:function explicit_timemarching_example(mesh, sbp, eqn, opts, func::Function)\n\n  nsteps = round(Int, opts[\"tmax\"]/opts[\"delta_t\"])\n  t = 0.0\n\n  for step=1:nsteps\n\n    t = (step - 1)*delta_t\n    # q_vec -> q\n    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)\n    func(mesh, sbp, eqn, opts, t)\n\n    # res -> res_vec\n    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)\n\n    for i=1:mesh.numDof\n      eqn.q_vec[i] = ... # some function of eqn.res_vec[i]\n    end\n  end  # end loop over timesteps\n\n  return nothing\nendWith checkpointing, it becomes:\ntype ExampleCheckpointData <: AbstractCheckpointData\n  step::Int  # for this method, the only thing that needs to be stored is the\n             # current time step, everything else can be recalculated\nend\n\n# this constructor is used when restarting, see below\nfunction ExampleCheckpointData(chkpointer::Checkpointer, comm_rank)\n\n  chkpoint_data = readLastCheckpointData(chkpointer, comm_rank)\n\n  return chkpoint_data::ExampleCheckpointData\nend\n\nfunction explicit_timemarching_example(mesh, sbp, eqn, opts, func::Function)\n\n  nsteps = round(Int, opts[\"tmax\"]/opts[\"delta_t\"])\n  t = 0.0\n\n  if !opts[\"is_restart\"]\n    # regular starting of a run\n    stepstart = 1\n    chkpointdata = ExampleCheckpointData(stepstart)\n    # this is valid even if we don't intend to checkpoint (ncheckpoints = 0)\n    chkpointer = Checkpointer(mesh.myrank, opts[\"ncheckpoints\"]\n    skip_checkpoint = false\n  else\n    chkpointer = Checkpointer(opts, myrank)  # read Checkpointer from most recent\n                                             # checkpoint\n    # now get the checkpoint data telling which timestep we are on\n    # eqn.q_vec already holds the state saved in the checkpoint.  This is handled\n    # during the initialization of the equation object\n    chkpointdata = ExampleCheckpointData(chkpoinnter, mesh.myrank)\n    stepstart = chkpointdata.step\n    skip_checkpoint = true  # skip writing the first checkpoint.  Without this, a\n                            # checkpoint would be written immediately.\n                            # Writing the checkpoint is not harmful, but not useful\n                            # either.\n   end\n    \n  for step=stepstart:nsteps  # start the loop from stepstart\n\n    t = (step - 1)*delta_t   # t is recalculated from step, which was set using\n                             # stepstart, thus only stepstart needs to be saved\n\n    # save checkpoint, if needed\n    if opts[\"use_checkpointing\"] && step % opts[\"checkpoint_freq\"] == 0 && !skip_checkpoint\n      skip_checkpoint = false\n\n      # save all needed variables to the ExampleCheckpointData object\n      # For simple time marching schemes, step is the only needed data\n      chkpointdata.step = step\n\n      if countFreeCheckpoints(chkpointer) == 0\n        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint\n      end\n\n      saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpointdata)\n    end\n\n    # q_vec -> q\n    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)\n    func(mesh, sbp, eqn, opts, t)\n\n    # res -> res_vec\n    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)\n\n    for i=1:mesh.numDof\n      eqn.q_vec[i] = ... # some function of eqn.res_vec[i]\n    end\n  end  # end loop over timesteps\n\n  return nothing\nend"
 },
 
 {
