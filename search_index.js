@@ -3605,7 +3605,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
+    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
 },
 
 {
@@ -3613,7 +3613,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
     "category": "Function",
-    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
+    "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
 },
 
 {
@@ -5349,7 +5349,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Utils.Checkpointer",
     "category": "Method",
-    "text": "This constructor loads a Checkpointer object from a file.  This should   be used for restarting.  Do not use the other constructor for restarting.   It will load the most recently written checkpoint that is complete (an   important distinction if the code was killed in the middle of writing   a checkpoint)\n\nInputs\n\nopts: the options dictionary.  \n\nOutputs\n\na Checkpointer object, fully initialized and aware of which checkpoints      are in use and which are free\n\nThis function only loads the Checkpointer from the checkpoint.   See loadLastCheckpoint and readCheckpointData to   load the rest of checkpoint data.   The checkpoint that was loaded can be accessed via getLastCheckpoint\n\nImplementation notes:\n\nUses 4 keys in the options dictionary:\n\n  * \"writing checkpoint\": index of checkpoint that might be complete\n  * \"writing_checkpoint_path\": absolute path of checkpoint\n  * \"most_recent_checkpoint\": index of checkpoint that is definitely\n                              complete, but might be older than the above\n  * \"most_recent_checkpoint_path\": absolute path of checkpoint\n\nThis system ensure it is possible to restart even if the code is\nkilled in the middle of writing a checkpoint.\n\nThe Checkpointer object is the same on all processes.\n\n\n\n"
+    "text": "This constructor loads a Checkpointer object from a file.  This should   be used for restarting.  Do not use the other constructor for restarting.   It will load the most recently written checkpoint that is complete (an   important distinction if the code was killed in the middle of writing   a checkpoint)\n\nInputs\n\nopts: the options dictionary.  \n\nOutputs\n\na Checkpointer object, fully initialized and aware of which checkpoints      are in use and which are free\n\nThis function only loads the Checkpointer from the checkpoint.   See loadLastCheckpoint and readCheckpointData to   load the rest of checkpoint data.   The checkpoint that was loaded can be accessed via getLastCheckpoint\n\nImplementation notes:\n\nUses 4 keys in the options dictionary:\n\n\"writing checkpoint\": index of checkpoint that might be complete\n\"writing_checkpoint_path\": absolute path of checkpoint\n\"most_recent_checkpoint\": index of checkpoint that is definitely                                 complete, but might be older than the above\n\"most_recent_checkpoint_path\": absolute path of checkpoint\n\nThis system ensure it is possible to restart even if the code is   killed in the middle of writing a checkpoint.\n\nThe Checkpointer object is the same on all processes.\n\n\n\n"
 },
 
 {
@@ -5493,7 +5493,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Utils.saveCheckpoint",
     "category": "Function",
-    "text": "Save to a specified checkpoint.  Throw error if checkpoint is not free.   Users should not generally call this function directly.  Instead, they   should prefer saveNextFreeCheckpoint.\n\nThis function automatically saves eqn.q_vec and the checkpointer to   a file.  Any additional data should be in checkpoint_data.\n\nNote: mesh adaptation is not compatable with checkpointing   #TODO; add a field to the mesh to record that it has been modified\n\nInputs\n\ncheckpointer: the CheckPointer\ncheckpoint: the index of the checkpoint\nmesh: an AbstractMesh object\nsbp: SBP operator\neqn: an AbstractSolutionData\ncheckpoint_data: an AbstractCheckpointData.  This is the random bag                       of data the user needs saved.\n\n**Inputs/Outputs*\n\n* opts: options dictionary\n\nImplementation Notes:\n\nUses options dictionary keys described by Checkpointer   Note that the checkpoint is eagerly marked as used, before finishing writing   the checkpoint.  Upon restart the code needs to check if this checkpoint   is really finished.\n\n\n\n"
+    "text": "Save to a specified checkpoint.  Throw error if checkpoint is not free.   Users should not generally call this function directly.  Instead, they   should prefer saveNextFreeCheckpoint.\n\nThis function automatically saves eqn.q_vec and the checkpointer to   a file.  Any additional data should be in checkpoint_data.\n\nNote: mesh adaptation is not compatable with checkpointing   #TODO; add a field to the mesh to record that it has been modified\n\nInputs\n\ncheckpointer: the CheckPointer\ncheckpoint: the index of the checkpoint\nmesh: an AbstractMesh object\nsbp: SBP operator\neqn: an AbstractSolutionData\ncheckpoint_data: an AbstractCheckpointData.  This is the random bag                       of data the user needs saved.\n\nInputs/Outputs\n\n* opts: options dictionary\n\nImplementation Notes:\n\nUses options dictionary keys described by Checkpointer   Note that the checkpoint is eagerly marked as used, before finishing writing   the checkpoint.  Upon restart the code needs to check if this checkpoint   is really finished.\n\n\n\n"
 },
 
 {
@@ -5517,7 +5517,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Utils.checkFlagFile",
     "category": "Function",
-    "text": "Returns true if the flag file exists and is consistent, returns false   otherwise\n\nInputs\n\ncheckpointer: the Checkpointer object\ncheckpoint: the checkpoint index\n\n\n\nSometimes need to check the flag file before the Checkpointer is available.   See the other method ofr details.\n\n**Inputs*\n\nfpath: path to the checkpoint directory\n\n\n\n"
+    "text": "Returns true if the flag file exists and is consistent, returns false   otherwise\n\nInputs\n\ncheckpointer: the Checkpointer object\ncheckpoint: the checkpoint index\n\n\n\nSometimes need to check the flag file before the Checkpointer is available.   See the other method ofr details.\n\nInputs\n\nfpath: path to the checkpoint directory\n\n\n\n"
 },
 
 {
@@ -5533,7 +5533,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Checkpointing",
     "title": "Utils.writeCheckpointData",
     "category": "Function",
-    "text": "Writes the AbstractCheckpointData to a file.  The file can be read by   readCheckpointData.\n\n**Inputs*\n\ncheckpoint: Checkpointer object\ncheckpoint: the checkpoint index\nobj: the AbstractCheckpointData object\ncomm_rank: the MPI rank of this process\n\n\n\n"
+    "text": "Writes the AbstractCheckpointData to a file.  The file can be read by   readCheckpointData.\n\nInputs\n\ncheckpoint: Checkpointer object\ncheckpoint: the checkpoint index\nobj: the AbstractCheckpointData object\ncomm_rank: the MPI rank of this process\n\n\n\n"
 },
 
 {
