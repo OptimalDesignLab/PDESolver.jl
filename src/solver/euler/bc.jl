@@ -932,6 +932,99 @@ end # ends the function unsteadyVortex BC
 
 
 @doc """
+### EulerEquationMod.Rho1E2U1VW0BC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where the fluid density is 1, energy = 2, and 
+    u = 1.0, v = 0.0, and w = 0.0 (if 3D).
+
+  It should work for 2D and 3D meshes.
+
+  This is a low level functor.
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
+"""
+type Rho1E2U1VW0BC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U1VW0BC, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+
+  #println("in Rho1E2BCU1V0W0")
+  qg = params.qg
+
+  calcRho1Energy2U1VW0(params, coords, qg)
+
+  #println("qg = ", qg)
+  # call Roe solver
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+
+end
+
+@doc """
+### EulerEquationMod.Rho1E2BC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where the fluid density is 1, energy = 2, and u = v = 0.0
+
+  This is a low level functor
+
+**Arguments**
+
+*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
+           condition needs to have its own type and entered in BCDict
+*  `q`   : Solution variable
+*  `aux_vars` : Auxiliary variables
+*  `x`        : physical coordinates of the SBP node
+*  `dxidx`    : Mapping jacobian matrix for the SBP node
+*  `nrm`      : SBP face normal
+*  `bndryflux` : Computed flux value at the boundary
+
+"""
+type Rho1E2BC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2BC, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+
+  #println("in Rho1E2BC")
+  qg = params.qg
+
+  calcRho1Energy2(params, coords, qg)
+
+  #println("qg = ", qg)
+  # call Roe solver
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+
+end
+
+@doc """
 ### EulerEquationMod.Rho1E2U3BC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
@@ -955,13 +1048,12 @@ type Rho1E2U3BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType2,
+function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
-
 
 
   #println("in Rho1E2U3Bc")
@@ -973,8 +1065,7 @@ function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType2,
   # call Roe solver
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
-return nothing
-
+  return nothing
 
 end
 
@@ -1249,6 +1340,8 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
 "noPenetrationESBC" => noPenetrationESBC(),
+"Rho1E2BC" => Rho1E2BC(),
+"Rho1E2U1VW0BC" => Rho1E2U1VW0BC(),
 "Rho1E2U3BC" => Rho1E2U3BC(),
 "isentropicVortexBC_physical" => isentropicVortexBC_physical(),
 "FreeStreamBC" => FreeStreamBC(),
