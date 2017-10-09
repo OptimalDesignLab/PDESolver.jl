@@ -8,9 +8,10 @@ end
 
 function test_checkpoint(mesh, sbp, eqn, opts)
   facts("----- Testing Checkpointer -----") do
+    myrank = mesh.myrank
     rand!(eqn.q_vec)
 
-    chkpointer = Checkpointer(2, "abc")
+    chkpointer = Checkpointer(myrank, 2, "abc")
 
     chkpoint_data = TestCheckpointData(42, rand(10))
 
@@ -51,7 +52,7 @@ function test_checkpoint(mesh, sbp, eqn, opts)
     loadLastCheckpoint(chkpointer, mesh, sbp, eqn, opts)
     @fact norm(eqn.q_vec - q2) --> roughly(0.0, atol=1e-14)
 
-    chkpointer2 = Checkpointer(opts)
+    chkpointer2 = Checkpointer(opts, mesh.myrank)
 
     @fact chkpointer.ncheckpoints --> chkpointer2.ncheckpoints
     @fact norm(chkpointer.history - chkpointer2.history) --> roughly(0.0, atol=1e-14)
@@ -70,13 +71,13 @@ function test_checkpoint(mesh, sbp, eqn, opts)
     opts["most_recent_checkpoint"] = 1
     opts["most_recent_checkpoint_path"] = chkpointer.paths[1]
 
-    chkpointer2 = Checkpointer(opts)
+    chkpointer2 = Checkpointer(opts, mesh.myrank)
     @fact countFreeCheckpoints(chkpointer2) --> 1
     @fact getLastCheckpoint(chkpointer2) --> 1
 
 
     # test with more checkpoints
-    chkpointer = Checkpointer(5)
+    chkpointer = Checkpointer(myrank, 5)
     saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpoint_data)
     saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpoint_data)
     saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpoint_data)

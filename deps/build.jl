@@ -1,18 +1,47 @@
 # download and build all non metadata dependences
 include("build_funcs.jl")
 
+"""
+  This function install all of PDESolvers dependencies (currently PDESolver
+  itself does not need to be built).
+
+  Environmental variables:
+    PDESOLVER_INSTALL_DEPS_MANUAL: install all dependencies manually (ie. using 
+                                   the particular commit stored in this file.
+                                   Note that if the package is already
+                                   installed, this does not do anything
+
+    PDESOLVER_FORCE_DEP_INSTALL_ALL: download and install all dependencies,
+          checking out the version stored in this file, even if the package
+          is already installed
+
+    PDESOLVER_FORCE_DEP_INSTALL_pkg_name: where pkg_name is replaced with the
+          name of a dependency, forces the installation of only that dependency.
+
+    PDESOLVER_BUNDLE_DEPS: download packages to a specified directory, do not
+                           install
+
+    PDESOLVER_PKGDIR: the specified directory for PDESOLVER_BUNDLE_DEPS
+
+    PDESOLVER_UNBUNDLE_DEPS: install PDESolver, using the packages in
+                             PDESOLVER_PKGDIR rather than downloading from the
+                             internet
+
+    TODO: add a bundling mode that copies the currently installed packages to
+          a directory, rather than downloading them from the internet
+"""
 function installPDESolver()
 
-  f = open("install.log", "a+")
+  f = open("install.log", "w")
   #------------------------------------------------------------------------------
   # these packages are always installed manually
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
   std_pkgs = [
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "copy_change";
+              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "new_parallel";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
-              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
               ]
 
 

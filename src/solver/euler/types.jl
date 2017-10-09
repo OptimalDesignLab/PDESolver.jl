@@ -193,17 +193,17 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     # right size
     if opts["use_staggered_grid"]
       numNodesPerElement = mesh.mesh2.numNodesPerElement
-      stencilsize = mesh.mesh2.sbpface.stencilsize
+      stencilsize = size(mesh.mesh2.sbpface.perm, 1)
     else
       numNodesPerElement = mesh.numNodesPerElement
-      stencilsize = mesh.sbpface.stencilsize
+      stencilsize = size(mesh.sbpface.perm, 1)
     end
 
     t = 0.0
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
     if DB_LEVEL >= 1
-      f = BufferedIO("log_$myrank.dat", "w")
+      f = BufferedIO("log_$myrank.dat", "a")
     else
       f = BufferedIO(DevNull)
     end
@@ -318,13 +318,17 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     sbpface = mesh.sbpface
 
-    Rprime = zeros(size(sbpface.interp, 2), numNodesPerElement)
-    # expand into right size (used in SBP Gamma case)
-    for i=1:size(sbpface.interp, 1)
-      for j=1:size(sbpface.interp, 2)
-        Rprime[j, i] = sbpface.interp[i, j]
+    if typeof(sbpface) <: SparseFace
+      Rprime = zeros(0, 0)
+    else
+      Rprime = zeros(size(sbpface.interp, 2), numNodesPerElement)
+      # expand into right size (used in SBP Gamma case)
+      for i=1:size(sbpface.interp, 1)
+        for j=1:size(sbpface.interp, 2)
+          Rprime[j, i] = sbpface.interp[i, j]
+        end
       end
-    end
+    end  # end if
 
     A = zeros(Tres, size(Rprime))
     B = zeros(Tres, numNodesPerElement, numNodesPerElement, 2)
@@ -787,6 +791,10 @@ end
 
   Exceptions: this function will throw an exception if any two file names
               are the same
+
+  Implementation notes:
+    When restarting, all files must be appended to.  Currently, files
+    are appended to in all cases.
 """
 function openLoggingFiles(mesh, opts)
 

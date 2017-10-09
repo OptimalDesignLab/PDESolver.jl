@@ -4,6 +4,8 @@
 
 # this code borrows some infrastructure (pde_pre_func, pde_post_func) from
 # the classical rk4 file
+# Also borrows the RK$CheckpointData
+
 
 """
   This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
@@ -76,6 +78,11 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
+  use_checkpointing = opts["use_checkpointing"]::Bool
+  chkpoint_freq = opts["checkpoint_freq"]::Int
+  ncheckpoints = opts["ncheckpoints"]::Int
+
+
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/delta_t)
@@ -90,14 +97,22 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   dq_vec = zeros(q_vec)
 
   if myrank == 0
-    _f1 = open("convergence.dat", "a+")
+    _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
   end
+
+  # setup all the checkpointing related data
+  chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
+  istart = chkpointdata.i
+
+
 
   flush(BSTDOUT)
   #-----------------------------------------------------
   # Main timestepping loop
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
+
+    t = (i-2)*delta_t
 
     @mpi_master if i % output_freq == 0
        println(BSTDOUT, "\ntimestep ",i)
@@ -105,6 +120,21 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
          flush(BSTDOUT)
        end
     end
+
+    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
+      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+      skip_checkpoint = false
+      # save all needed variables to the chkpointdata
+      chkpointdata.i = i
+
+      if countFreeCheckpoints(chkpointer) == 0
+        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+      end
+      
+      # save the checkpoint
+      saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
+    end
+
 
     #--------------------------------------------------------------------------
     # stage 1
@@ -130,7 +160,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     # check stopping conditions
-    if (sol_norm < res_tol)
+    if (sol_norm < res_tol) && !real_time
       if myrank == 0
         println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
@@ -178,10 +208,11 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
     end  # end loop over stages
 
-    # update
-    t += delta_t
-
   end  # end loop over timesteps
+
+  # final update
+  t += delta_t
+
 
   if myrank == 0
     close(f1)

@@ -25,7 +25,7 @@ include("../../src/solver/advection/GLS.jl")
 facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
 
   context("Checking shape function derivatives") do
-    sbp2 = TriSBP{Float64}()
+    sbp2 = getTriSBPGamma{Float64}()
     shapefuncderiv = zeros(Tsol, sbp2.numnodes, sbp2.numnodes, Tdim)
     calcShapefuncDeriv(sbp2, shapefuncderiv)
     @fact shapefuncderiv[:,:,1] --> roughly([-0.5  0.5  0.0

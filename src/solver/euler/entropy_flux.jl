@@ -53,11 +53,8 @@ function computeInterfacePotentialFlux{Tdim, Tsol, Tres}(
                 qL::AbstractMatrix, qR::AbstractMatrix)
 # compute the potential flux then compute the reduction with Eface
 
-  rhs = zero(Tres)
-  for dim=1:Tdim
-    rhs += reduceEface(params, iface, sbpface, nrm_scaled, dim, qL, qR)
-  end
-
+  
+  rhs = reduceEface(params, iface, sbpface, nrm_scaled, dim, qL, qR)
   return rhs
 end
 
@@ -70,39 +67,35 @@ end
   integral psi dot n dGamma
 
   it determines the normal vector n
+
+  TODO: this is currently broken for SparseFace SBP operators
 """
-function reduceEface{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}, iface::Interface, 
-                                             sbpface, nrm_scaled::AbstractMatrix, dir::Integer, qL::AbstractMatrix, 
-                                             qR::AbstractMatrix)
+function reduceEface{Tdim, Tsol, Tres, Tmsh}(
+                     params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+                     iface::Interface, sbpface, nrm_scaled::AbstractMatrix,
+                     qL::AbstractMatrix, qR::AbstractMatrix)
   # compute Ex_gamma kappa * psiL + Ex_gamma_nu * psiR, where x is one 
   # of either x or y, as specified by dir
 
-  RHS1 = zero(Tres)
-  RHS2 = zero(Tres)
+  # interpolate q to the faces
+  qfaceL = zeros(Tsol, size(qL, 1), sbpface.numnodes)
+  qfaceR = zeros(qfaceL)
+  interiorFaceInterpolate!(sbpface, iface, qL, qR, qfaceL, qfaceR)
 
-  flux_nrm = params.nrm
-  fill!(flux_nrm, 0.0)
-  flux_nrm[dir] = 1
-
-  for i=1:sbpface.stencilsize
-    for j=1:sbpface.stencilsize
-      p_jL = sbpface.perm[j, iface.faceL]
-      p_jR = sbpface.perm[j, iface.faceR]
-      psiL = getPsi(params, sview(qL, :, p_jL), flux_nrm)
-      psiR = getPsi(params, sview(qR, :, p_jR), flux_nrm)
-      for k=1:sbpface.numnodes
-        nrm_k = nrm_scaled[dir, k]
-        val = sbpface.interp[i,k]*sbpface.interp[j,k]*sbpface.wface[k]*nrm_k
-        RHS1 += val*psiL
-
-        kR = sbpface.nbrperm[k, iface.orient]
-        val = sbpface.interp[i, kR]*sbpface.interp[j, kR]*sbpface.wface[k]*nrm_k
-        RHS1 -= val*psiR
-      end
-    end
+  psiL = zeros(Tres, sbpface.numnodes)
+  psiR = zeros(Tres, sbpface.numnodes)
+  # compute psi dot n
+  for i=1:sbpface.numnodes
+    nrm_i = sview(nrm_scaled, :, i)
+    psiL[i] = getPsi(params, sview(qfaceL, :, i), nrm_i)
+    psiR[i] = -getPsi(params, sview(qfaceR, :, i), nrm_i)  # negative sign for
+                                                           # direction
   end
 
-  return RHS1 + RHS2
+  val = integrateBoundaryFunctional!(sbpface, iface.faceL, psiL)
+  val += integrateBoundaryFunctional!(sbpface, iface.faceR, psiR)
+
+  return val
 end
 
 #TODO: this can be made more efficient once SBP stores E

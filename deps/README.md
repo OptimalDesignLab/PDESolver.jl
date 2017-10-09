@@ -32,11 +32,13 @@ even if it is already installed.
 
 ## Environmental Variables
 
-`PDESOLVER_INSTALL_DEPS_MANUAL`: install the packages in the `REQUIRE` file
-manually, forcefully.
-`PDESOLVER_FORCE_DEP_INSTALL_ALL`: forces the checkout and re-installation 
+  * `PDESOLVER_INSTALL_DEPS_MANUAL`: install the packages in the `REQUIRE` file
+manually.  If the package is already installed, does nothing (does not check
+out the specified version).
+
+  * `PDESOLVER_FORCE_DEP_INSTALL_ALL`: forces the checkout and re-installation 
  of the non-standard packages, even if already installed
-`PDESOLVER_FORCE_DEP_INSTALL_pkg_name`: force the checkout and re-installation
+  * `PDESOLVER_FORCE_DEP_INSTALL_pkg_name`: force the checkout and re-installation
 of the package named `pkg_name`.
 
 For all these environmental variables, the value is not important, only the 
@@ -61,5 +63,6 @@ run the `PDESolver/build.jl`.
 
 The file `deps/install.log` is created and written to with the progress of the
 checkout process, including error information if a build fails.
+Because `Pkg.build` swallows errors, failures inside `Pkg.build` are not logged.
 
 

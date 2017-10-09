@@ -1,7 +1,10 @@
+include(joinpath(dirname(@__FILE__), "crank_nicolson_CS", "calc_line.jl"))
+
 function test_CN()
   facts("---- Crank-Nicolson Convergence Tests, Complex Step Jacobian -----") do
     start_dir = pwd()
 
+    cd(dirname(@__FILE__))
     resize!(ARGS, 1)
 
     # =================== CN, CS tests ===================
@@ -26,7 +29,7 @@ function test_CN()
     cd("..")
     println("======", pwd())
     ARGS[1] = "calc_line.jl"  #???
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+#    mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
     slope = calc_line()
     # println("slope = ", slope)
@@ -49,7 +52,7 @@ function test_CN()
 
     cd("../")
     # =================== CN, FD tests ===================
-    cd("./crank_nicolson_CS/")
+    cd("./crank_nicolson_FD/")
 
     cd("./m1")
     ARGS[1] = "input_vals1.jl"
@@ -65,7 +68,7 @@ function test_CN()
 
     cd("..")
     ARGS[1] = "calc_line.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])  #???
+#    mesh, sbp, eqn, opts = run_advection(ARGS[1])  #???
 
     slope = calc_line()
     # println("slope = ", slope)
@@ -88,7 +91,7 @@ function test_CN()
 
     cd("../")
     # =================== CN, PETSc CS tests =================== 
-    cd("./crank_nicolson_CS/")
+    cd("./crank_nicolson_PETSc_serial/")
 
     cd("./m1")
     ARGS[1] = "input_vals1.jl"
@@ -104,7 +107,7 @@ function test_CN()
 
     cd("..")
     ARGS[1] = "calc_line.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1]) #???
+#    mesh, sbp, eqn, opts = run_advection(ARGS[1]) #???
 
     slope = calc_line()
     # println("slope = ", slope)
@@ -124,8 +127,10 @@ function test_CN()
     # println("err_vals[1] = ", err_vals[1])
     @fact err_vals[1] --> greater_than(err_val/slope_fac)
     @fact err_vals[1] --> less_than(err_val*slope_fac)
+
+    cd(start_dir)
   end  # end facts block
 
 end
 
-add_func1!(AdvectionTests, test_CN, [TAG_SHORTTEST])
+add_func1!(AdvectionTests, test_CN, [TAG_SHORTTEST, TAG_CN])

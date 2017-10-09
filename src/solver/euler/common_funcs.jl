@@ -377,13 +377,16 @@ function calcUnsteadyVortex2{Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
   gamma_1 = params.gamma_1
   x = coords[1]
   y = coords[2]
-  x0 = 0
+  x0 = 0.0
   y0 = 0
   epsilon = 5.0
   Ma = 0.5
   alpha = 45.0  # degrees
-  cinf = 1.0  # assumption, I think this is a free parameter
-  Uinf = Ma*cinf
+#  cinf = 1.0  # assumption, I think this is a free parameter
+#  Uinf = Ma*cinf
+
+  Uinf = 1.0
+  cinf = Ma/Uinf
 
   ycoeff = y - y0 - Uinf*sind(alpha)*t
   xcoeff = x - x0 - Uinf*cosd(alpha)*t
@@ -391,15 +394,20 @@ function calcUnsteadyVortex2{Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
 
   coeff1 = epsilon*epsilon*Ma*Ma*gamma_1/(8*pi*pi)
   T = 1 - coeff1*exp(f)
+#  T = 1 - coeff1*e^f
   rho = T^(1/gamma_1)
  
- 
+#  u1 = Uinf - (epsilon*y/(2*pi))*e^(f/2)
   u1 = Uinf*cosd(alpha) - (epsilon*ycoeff/(2*pi))*exp(f/2)
-  u2 = Uinf*sind(alpha) - ((epsilon*xcoeff)/(2*pi))*exp(f/2)
+#  u2 = (epsilon*xcoeff/(2*pi))*e^(f/2)
+  u2 = Uinf*sind(alpha) + ((epsilon*xcoeff)/(2*pi))*exp(f/2)
  
   q2 = rho*u1
   q3 = rho*u2
 
+#  p = rho*params.R*T
+#  p = (rho^gamma)/(gamma*Ma*ma)
+#  term1 = (p)/(gamma_1*gamma*Ma*Ma)
   term1 = (rho^gamma)/(gamma_1*gamma*Ma*Ma)
   term2 = 0.5*(q2*q2 + q3*q3)/rho
   E = term1 + term2
@@ -411,6 +419,7 @@ function calcUnsteadyVortex2{Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
 
   return nothing
 end
+
 
 
 
@@ -451,6 +460,20 @@ function calcRho1Energy2{Tmsh, Tsol}(params::ParamType2,
 
   return nothing
 end
+function calcRho1Energy2{Tmsh, Tsol}(params::ParamType3,
+                         coords::AbstractArray{Tmsh, 1},
+                         sol::AbstractArray{Tsol,1})
+  # for square test case with rho = 1, everything else  = 0
+
+  sol[1] = 1.0
+  sol[2] = 0.0
+  sol[3] = 0.0
+  sol[4] = 0.0
+  sol[5] = 2.0
+
+  return nothing
+end
+
 
 
 @doc """
@@ -508,6 +531,54 @@ function calcZeros{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end  # end function calcZeros
 
+
+@doc """
+### EulerEquationMod.calcRho1Energy2U1VW0
+
+  Sets the density values 1.0, x momentum to 1.0, 
+  v & w momenta to 0.0, and energy to 2.0 at a node.
+
+  It should work for 2D and 3D meshes.
+
+  This function uses conservative variables regardless of the static parameter
+  of params.
+
+  Inputs:
+    coords: a vector of length 2 containing the x and y coordinates of the point
+    params: the params object.
+
+  Inputs/Outputs:
+    sol: vector of length 4 to be populated with the solution
+
+  Aliasing restrictions: none
+
+"""->
+function calcRho1Energy2U1VW0{Tmsh, Tsol}(params::ParamType2,
+                           coords::AbstractArray{Tmsh},
+                           sol::AbstractArray{Tsol, 1})
+  # for square test case with rho = 1, digonal momentum, energy
+
+  sol[1] = 1.0
+  sol[2] = 1.0
+  sol[3] = 0.0
+  sol[4] = 2.0
+
+  return nothing
+end
+
+function calcRho1Energy2U1VW0{Tmsh, Tsol}(params::ParamType3,
+                           coords::AbstractArray{Tmsh},
+                           sol::AbstractArray{Tsol, 1})
+  # for square test case with rho = 1, digonal momentum, energy
+
+  sol[1] = 1.0
+  sol[2] = 1.0
+  sol[3] = 0.0
+  sol[4] = 0.0
+  sol[5] = 2.0
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod.calcRho1Energy2U3

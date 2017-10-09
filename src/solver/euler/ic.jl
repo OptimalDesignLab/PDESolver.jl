@@ -163,6 +163,57 @@ return nothing
 end  # end function
 
 @doc """
+### EulerEquationMod.ICRho1E2U1VW0
+
+  Sets the density values 1.0, x momentum to 1.0, 
+  v & w momenta to 0.0, and energy to 2.0 at a node.
+
+  It should work for 2D and 3D meshes.
+
+  Inputs:
+    mesh
+    sbp
+    eqn
+    opts
+
+  Inputs/Outputs: 
+    u0: vector to populate with the solution
+
+  Aliasing restrictions: none.
+
+"""->
+function ICRho1E2U1VW0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+                    opts, u0::AbstractVector{Tsol})
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+
+numEl = mesh.numEl
+nnodes = mesh.numNodesPerElement
+dofpernode = mesh.numDofPerNode
+sol = zeros(Tsol, mesh.numDofPerNode)
+for i=1:numEl
+  for j=1:nnodes
+
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      # get dof numbers for each variable
+
+      calcRho1Energy2U1VW0(eqn.params, coords_j, sol)
+
+      for k=1:dofpernode
+        u0[dofnums_j[k]] = sol[k]
+      end
+  end
+end
+
+return nothing
+
+end  # end function
+
+
+@doc """
 ### EulerEquationMod.ICRho1E2U3
 
   Sets all components density values to 1.0, x and y momenta to 0.35355, and
@@ -180,8 +231,6 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-
-
 function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                     operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
                     opts, u0::AbstractVector{Tsol})
@@ -828,6 +877,7 @@ global const ICDict = Dict{Any, Function}(
 "ICZero" => ICZero,
 "ICOnes" => ICOnes,
 "ICRho1E2" => ICRho1E2,
+"ICRho1E2U1VW0" => ICRho1E2U1VW0,
 "ICRho1E2U3" => ICRho1E2U3,
 "ICFreeStream" => ICFreeStream,
 "ICVortex" => ICVortex,

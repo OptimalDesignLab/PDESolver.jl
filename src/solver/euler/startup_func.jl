@@ -86,6 +86,22 @@ end
     pmesh: mesh used for preconditioning, can be same object as mesh.
            default value of mesh
 
+  Options Keys:
+    Relfunc_name: also writes vtk files called "solution_relfunc"
+                  if key not present, ignored
+                   TODO: fix that
+    IC_name
+    calc_error: also write vtk files called "solution_error"
+    calc_trunc_error
+    perturb_ic
+    calc_dt
+    finalize_mpi
+
+    For options like calc_dt and Relfunc_name, it is very important that
+    the computed quantity be saved to the options dictionary for use later
+    in the code (ie. and not passed directly to another function).  The
+    code won't restart correctly if this happens.
+
 """
 function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
@@ -212,8 +228,14 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     @mpi_master println("max wave speed = ", wave_speed)
     @mpi_master println("min element size = ", mesh.min_el_size)
     delta_t = opts["CFL"]*mesh.min_el_size/wave_speed
-    println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
+    @mpi_master println("for a CFL of ", opts["CFL"], " delta_t = ", delta_t)
     opts["delta_t"] = delta_t
+  end
+
+  # this must be last, because all previous calculations need to use the
+  # original initial condition
+  if opts["is_restart"]
+    loadRestartState(mesh, sbp, eqn, opts, pmesh)
   end
 
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)

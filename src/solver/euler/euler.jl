@@ -154,7 +154,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   #----------------------------------------------------------------------------
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-   evalBoundaryIntegrals(mesh, sbp, eqn, opts)
+    evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 #   println("boundary integral @time printed above")
   end
 
@@ -361,13 +361,11 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
     @mpi_master begin
       f = eqn.file_dict[opts["write_integralq_fname"]]
-  #    f = open(opts["write_integralq_fname"], "a+")
       print(f, itr, " ", eqn.params.t)
       for i=1:length(integralq_vals)
         print(f, " ", integralq_vals[i])
       end
       print(f, "\n")
-  #    close(f)
 
       if (itr % output_freq) == 0
         flush(f)

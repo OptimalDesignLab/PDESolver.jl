@@ -46,6 +46,10 @@ include("test_staggered.jl")
 include("test_adjoint.jl")
 include("test_parallel.jl")
 include( "./energy/runtests.jl")
+#cd("./Nonlinearsolvers/")
+include(joinpath(pwd(), "Nonlinearsolvers", "runtests_serial.jl"))
+#cd("../")
+
 
 #------------------------------------------------------------------------------
 # run tests
@@ -62,10 +66,6 @@ facts("----- Running Advection tests -----") do
   ARGS[1] = ""
   run_testlist(AdvectionTests, run_advection, tags)
 end
-
-cd("./Nonlinearsolvers/")
-include(joinpath(pwd(), "runtests_serial.jl"))
-cd("../")
 
 
 #------------------------------------------------------------------------------
