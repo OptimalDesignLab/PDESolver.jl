@@ -137,10 +137,30 @@ function test_parallel_nopre()
   return nothing
 end
 
+function test_restart()
+  facts("----- Testing restart -----") do
+    start_dir = pwd()
+
+    # test rk4
+    cd ("./rk4/parallel")
+    ARGS[1] = "input_vals_restart"
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
+
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+  end
+
+  return nothing
+end
+
 
 #test_parallel2()
 add_func1!(EulerTests, test_parallel2, [TAG_SHORTTEST])
 add_func1!(EulerTests, test_parallel_nopre, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_restart, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests

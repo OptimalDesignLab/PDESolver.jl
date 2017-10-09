@@ -22,7 +22,8 @@ end
 """
 function test_rk4()
     facts("----- testing rk4 -----") do
-    opts_rk = Dict{Any, Any}("output_freq" => 1, "write_vis" => false, "use_itermax" => false)
+    opts_rk = Dict{Any, Any}("run_type" => 1, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
+    read_input(opts_rk)
 
     q_vec_rk = [1.0]
     res_vec_rk = [0.0]
@@ -37,11 +38,13 @@ function test_rk4()
     f_exact = true_f(t)
     err = abs(f_approx - f_exact)
 
+    @fact t --> roughly(t_max, atol=1e-14)
     @fact err --> less_than(1e-14)  # machine precision
   end  # end facts block
 
   facts("----- testing lserk54 -----") do
-    opts_rk = Dict{Any, Any}("output_freq" => 1, "write_vis" => false, "use_itermax" => false)
+    opts_rk = Dict{Any, Any}("run_type" => 30, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
+    read_input(opts_rk)
 
     q_vec_rk = [1.0]
     res_vec_rk = [0.0]

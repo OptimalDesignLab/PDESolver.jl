@@ -41,6 +41,7 @@ function read_input_file(fname::AbstractString)
   return arg_dict
 end
 
+
 @doc """
 ### PDESolver.read_input
 
@@ -69,6 +70,26 @@ end
 """->
 function read_input(fname::AbstractString)
 
+  arg_dict = read_input_file(fname)
+  arg_dict = read_input(arg_dict)
+
+  return arg_dict
+end
+
+"""
+  This method supplies default values to a given dictionary.  See the other
+  method for details.
+
+  **Inputs**
+
+   * arg_dict: a dictionary
+
+  **Outputs**
+
+   * arg_dict: the same dictionary, with default values supplied
+"""
+function read_input(arg_dict::Dict)
+
 
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
 #include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
@@ -76,13 +97,10 @@ function read_input(fname::AbstractString)
 
 #arg_dict = evalfile(fpath)  # include file in the users pwd()a
 
-arg_dict = read_input_file(fname)
+#arg_dict = read_input_file(fname)
 # TODO: make this a global const
 #known_keys = evalfile(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
 
-# record fname in dictionary
-#TODO: this isn't idempotent, but its not used
-arg_dict["fname"] = fname
 
 # new (201612) options checking function
 checkForIllegalOptions_pre(arg_dict)
@@ -415,8 +433,9 @@ get!(arg_dict, "most_recent_checkpoint_path", "")
 get!(arg_dict, "writing_checkpoint", -1)
 get!(arg_dict, "writing_checkpoint_path", "")
 get!(arg_dict, "is_restart", false)
-get!(arg_dict, "ncheckpoints", 0)
-get!(arg_dict, "checkpoint_freq", 0)
+get!(arg_dict, "ncheckpoints", 2)
+get!(arg_dict, "checkpoint_freq", 200)
+get!(arg_dict, "use_checkpointing", false)
 
 checkForIllegalOptions_post(arg_dict)
 
@@ -541,16 +560,18 @@ end
   end
 
   # error if checkpointing not supported
-  if arg_dict["ncheckpoints"] > 0 && arg_dict["run_type"] != 1
+  if arg_dict["use_checkpointing"] && arg_dict["run_type"] != 1
     error("checkpointing only supported with RK4")
   end
 
-  if arg_dict["ncheckpoints"] > 0 && !(arg_dict["checkpoint_freq"] > 0)
-    error("must set checkpoint_freq when checkpointing")
-  end
+  if arg_dict["use_checkpointing"]
+    if arg_dict["ncheckpoints"] <= 0
+      error("checkpointing requires ncheckpoints > 0")
+    end
 
-  if arg_dict["checkpoint_freq"] > 0 && arg_dict["ncheckpoints"] <= 0
-    error("must set ncheckpoints when checkpoint_freq is used")
+    if arg_dict["checkpoint_freq"] <= 0
+      error("checkpointing requires checkpoint_freq > 0")
+    end
   end
 
   checkBCOptions(arg_dict)

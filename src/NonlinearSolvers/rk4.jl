@@ -123,6 +123,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end
 
   is_restart = opts["is_restart"]::Bool
+  use_checkpointing = opts["use_checkpointing"]::Bool
   chkpoint_freq = opts["checkpoint_freq"]::Int
   ncheckpoints = opts["ncheckpoints"]::Int
 
@@ -156,12 +157,13 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     chkpointer = Checkpointer(myrank, ncheckpoints)
     skip_checkpoint = false
   else  # this is a restart, load existing data
+    # using default value of 0 checkpoints is ok
     chkpointer = Checkpointer(opts, myrank)
     chkpointdata = RK4CheckpointData(chkpointer, myrank)
     istart = chkpointdata.i
     skip_checkpoint = true  # when restarting, don't immediately write a
                             # checkpoint
-                            # doing so it not strickly incorrect, but not useful
+                            # doing so it not strictly incorrect, but not useful
   end
 
 
@@ -180,9 +182,11 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     @mpi_master if i % output_freq == 0
        println(BSTDOUT, "\ntimestep ",i)
+       println(BSTDOUT, "t = ", t)
     end
 
-    if chkpoint_freq != 0 && i % chkpoint_freq == 0 && !skip_checkpoint
+
+    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
       @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
       skip_checkpoint = false
       # save all needed variables to the chkpointdata
@@ -194,7 +198,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       
       # save the checkpoint
       saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
-      sleep(3)
     end
 
     # flush after all printing
@@ -298,6 +301,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 #    t = t + h
 
   end   # end of RK4 time stepping loop
+
+  t += h  # final time step
 
   if myrank == 0
     close(f1)

@@ -321,7 +321,6 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
   # might be in the checkpoint
   MPI.Barrier(mesh.comm)
   if mesh.myrank == 0
-    println(BSTDOUT, "saving to checkpoint ", checkpoint)
     deleteFlagFile(checkpointer, checkpoint)
   end
 
@@ -541,12 +540,6 @@ function writeCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
   fname = string(get_parallel_fname(CheckpointData_fname, comm_rank), ".dat")
   fpath = joinpath_ascii(chkpointer.paths[chkpoint], fname)
 
-  if comm_rank == 0
-    println(BSTDOUT, "fname = ", fname)
-    println(BSTDOUT, "fpath = ", fpath)
-  end
-
-
   f = open(fpath, "w")
   serialize(f, obj)
   close(f)
@@ -614,10 +607,6 @@ function readCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
 
   fname = string(get_parallel_fname(CheckpointData_fname, comm_rank), ".dat")
   fpath = joinpath_ascii(chkpointer.paths[chkpoint], fname)
-
-  if comm_rank == 0
-    println(BSTDOUT, "loading checkpoint data from ", fpath)
-  end
 
   f = open(fpath, "r")
   obj = deserialize(f)

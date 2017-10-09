@@ -361,8 +361,9 @@ Note that any values associated with these options are shared with the regular
                                when reverse sweep is underway
 
 # checkpointing/restart
-"ncheckpoints" : number of checkpoints to use, (Int), default 0 (disables checkpointing)
-"checkpoint_freq" : write checkpoints every this many time steps, (Int) default  0
+"use_checkpointing" : whether or not to write checkpoints, (Bool), default false
+"ncheckpoints" : number of checkpoints to use, (Int), default 2
+"checkpoint_freq" : write checkpoints every this many time steps, (Int) default  200
 
 # Optimization Dictionary Options
 "objective_function" : name of the objective function being evalueated. There is an implicit assumption
