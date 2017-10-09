@@ -403,8 +403,7 @@ end
 
 """
   This function calculates I_S2F.'*(S .* F( uk(I_S2F wk), uk(I_S2F wk)))1.
-  This is similar to
-  [`calcVolumeIntegralsSplitFormCurvilinear](@ref), but for the staggered grid
+  This is similar to the other method but for the staggered grid
   algorithm.
 
   Inputs:
