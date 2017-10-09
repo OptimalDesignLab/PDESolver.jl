@@ -63,6 +63,18 @@ function test_parallel2()
 
     cd("../../")
 
+    cd ("./lserk/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
+
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+
+    cd("../../")
+
     # test newton
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
@@ -151,6 +163,19 @@ function test_restart()
 
     @fact datas[1] --> roughly(datap[1], atol=1e-13)
     @fact datas[2] --> roughly(datap[2], atol=1e-13)
+
+    cd("../../lserk/parallel")
+    ARGS[1] = "input_vals_restart"
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+
+    datas = readdlm("../serial/error_calc.dat")
+    datap = readdlm("error_calc.dat")
+
+    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+
+
+    cd(start_dir)
   end
 
   return nothing

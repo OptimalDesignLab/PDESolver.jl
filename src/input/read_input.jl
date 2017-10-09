@@ -560,8 +560,8 @@ end
   end
 
   # error if checkpointing not supported
-  if arg_dict["use_checkpointing"] && arg_dict["run_type"] != 1
-    error("checkpointing only supported with RK4")
+  if arg_dict["use_checkpointing"] && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
+    error("checkpointing only supported with RK4 and LSERK")
   end
 
   if arg_dict["use_checkpointing"]

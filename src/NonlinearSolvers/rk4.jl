@@ -49,6 +49,46 @@ function RK4CheckpointData(chkpointer::Checkpointer, comm_rank::Integer)
   return chkpoint_data::RK4CheckpointData
 end
 
+"""
+  This function assists in setting up checkpoinging related things for
+  self-starting explicit time marching methods
+
+  **Inputs**
+
+   * opts: the options dictionary
+   * myrank: MPI rank of this process
+
+  **Outputs*
+
+   * chkpointer: a Checkpointer fully initialized
+   * chkpointdata: a RK4CheckpoinntData object, fully initialized
+   * skip_checkpoint: a bool indicating if the next checkpoint write should be
+                      skipped
+"""
+function explicit_checkpoint_setup(opts, myrank)
+  is_restart = opts["is_restart"]
+  ncheckpoints = opts["ncheckpoints"]
+
+  if !is_restart
+    # this is a new simulation, create all the stuff needed to checkpoint
+    # note that having zero checkpoints is valid
+    istart = 2
+    chkpointdata = RK4CheckpointData(istart)
+    chkpointer = Checkpointer(myrank, ncheckpoints)
+    skip_checkpoint = false
+  else  # this is a restart, load existing data
+    # using default value of 0 checkpoints is ok
+    chkpointer = Checkpointer(opts, myrank)
+    chkpointdata = RK4CheckpointData(chkpointer, myrank)
+    skip_checkpoint = true  # when restarting, don't immediately write a
+                            # checkpoint
+                            # doing so it not strictly incorrect, but not useful
+  end
+
+  return chkpointer, chkpointdata, skip_checkpoint
+end
+
+
 
 @doc """
 rk4
@@ -149,23 +189,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # Note: q_vec_old_DEBUG is a tool for showing the change in q between timesteps for comparison with CN (for ex)
 #   q_vec_old_DEBUG = zeros(q_vec)
 
-  if !is_restart
-    # this is a new simulation, create all the stuff needed to checkpoint
-    # note that having zero checkpoints is valid
-    istart = 2
-    chkpointdata = RK4CheckpointData(istart)
-    chkpointer = Checkpointer(myrank, ncheckpoints)
-    skip_checkpoint = false
-  else  # this is a restart, load existing data
-    # using default value of 0 checkpoints is ok
-    chkpointer = Checkpointer(opts, myrank)
-    chkpointdata = RK4CheckpointData(chkpointer, myrank)
-    istart = chkpointdata.i
-    skip_checkpoint = true  # when restarting, don't immediately write a
-                            # checkpoint
-                            # doing so it not strictly incorrect, but not useful
-  end
-
+  # setup all the checkpointing related data
+  chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
+  istart = chkpointdata.i
 
   flush(BSTDOUT)
   #-----------------------------------------------------

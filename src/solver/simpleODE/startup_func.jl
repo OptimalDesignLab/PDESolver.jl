@@ -60,7 +60,7 @@ function createObjects(input_file::AbstractString)
   # Create a simpleODE equation object
   Tdim = dim
   eqn = SimpleODEData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
-  eqn.params.t_meshinit = mesh_time
+  eqn.params.time.t_meshinit = mesh_time
 
 
   init(mesh, sbp, eqn, opts)
