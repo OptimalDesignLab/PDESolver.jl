@@ -1,6 +1,7 @@
 function test_CN_parallel()
+    
+  start_dir = pwd()
   facts("---- Crank-Nicolson Convergence Tests, PETSc + CS Jacobian -----") do
-    start_dir = pwd()
 
     cd(dirname(@__FILE__))
     cd("./m1")
@@ -40,8 +41,24 @@ function test_CN_parallel()
     @fact err_vals[1] --> greater_than(err_val/slope_fac)
     @fact err_vals[1] --> less_than(err_val*slope_fac)
 
-    cd(start_dir)
   end
+
+  facts("---- Testing restart -----") do
+    cd("./m1")
+    mesh, sbp, eqn, opts = run_advection("input_vals_restart")
+    MPI.Barrier(mesh.comm)
+    data = readdlm("error_calc.dat")
+    datas = readdlm("../../crank_nicolson_PETSc_serial/m1/error_calc.dat")
+
+    @fact data[1] --> roughly(datas[1], atol=1e-13)
+    @fact data[2] --> roughly(datas[2], atol=1e-13)
+
+    cd("..")
+
+
+  end
+
+  cd(start_dir)
 
   return nothing
 end

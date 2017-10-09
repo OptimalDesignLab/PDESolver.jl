@@ -162,7 +162,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
-  is_restart = opts["is_restart"]::Bool
   use_checkpointing = opts["use_checkpointing"]::Bool
   chkpoint_freq = opts["checkpoint_freq"]::Int
   ncheckpoints = opts["ncheckpoints"]::Int
@@ -208,7 +207,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     @mpi_master if i % output_freq == 0
        println(BSTDOUT, "\ntimestep ",i)
-       println(BSTDOUT, "t = ", t)
     end
 
 

@@ -78,7 +78,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
-  is_restart = opts["is_restart"]::Bool
   use_checkpointing = opts["use_checkpointing"]::Bool
   chkpoint_freq = opts["checkpoint_freq"]::Int
   ncheckpoints = opts["ncheckpoints"]::Int

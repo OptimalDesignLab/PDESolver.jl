@@ -69,12 +69,17 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
+  use_checkpointing = opts["use_checkpointing"]::Bool
+  chkpoint_freq = opts["checkpoint_freq"]::Int
+  ncheckpoints = opts["ncheckpoints"]::Int
+
+
   if jac_type == 4
     throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
   end
 
   @mpi_master if myrank == 0
-    _f1 = open("convergence.dat", "a+")
+    _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
   end
 
@@ -92,15 +97,36 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   @debug1 println("============ In CN ============")
 
+   # setup all the checkpointing related data
+  chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
+  istart = chkpointdata.i
+
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
 
-  for i = 2:(t_steps + 1)
+  # this loop is 2:(t_steps+1) when not restarting
+  for i = istart:(t_steps + 1)
 
+    t = (i-2)*h
     @mpi_master println(BSTDOUT, "\ni = ", i, ", t = ", t)
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
+
+    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
+      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+      skip_checkpoint = false
+      # save all needed variables to the chkpointdata
+      chkpointdata.i = i
+
+      if countFreeCheckpoints(chkpointer) == 0
+        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+      end
+      
+      # save the checkpoint
+      saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpointdata)
+    end
+
 
     #----------------------------
     # zero out Jac
@@ -178,10 +204,13 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
-    t = t_nextstep
+#    t = t_nextstep
     flush(BSTDOUT)
 
   end   # end of t step loop
+
+  # final time update
+  t += h
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copyForMultistage!(dest, src)

@@ -175,6 +175,12 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
     opts["delta_t"] = opts["CFL"]*mesh.min_el_size/alpha_net
   end
 
+  # this must be last, because all previous calculations need to use the
+  # original initial condition
+  if opts["is_restart"]
+    loadRestartState(mesh, sbp, eqn, opts, pmesh)
+  end
+
 
   MPI.Barrier( mesh.comm)
 
