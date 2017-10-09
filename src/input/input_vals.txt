@@ -360,6 +360,11 @@ Note that any values associated with these options are shared with the regular
 "use_Minv_override_for_uadj" : override applying use_Minv at the end of evalResidual in advection
                                when reverse sweep is underway
 
+# checkpointing/restart
+"use_checkpointing" : whether or not to write checkpoints, (Bool), default false
+"ncheckpoints" : number of checkpoints to use, (Int), default 2
+"checkpoint_freq" : write checkpoints every this many time steps, (Int) default  200
+
 # Optimization Dictionary Options
 "objective_function" : name of the objective function being evalueated. There is an implicit assumption
                        a boundary functional has already been specified and that the objective functiom

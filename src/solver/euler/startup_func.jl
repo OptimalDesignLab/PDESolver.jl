@@ -232,6 +232,12 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     opts["delta_t"] = delta_t
   end
 
+  # this must be last, because all previous calculations need to use the
+  # original initial condition
+  if opts["is_restart"]
+    loadRestartState(mesh, sbp, eqn, opts, pmesh)
+  end
+
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 

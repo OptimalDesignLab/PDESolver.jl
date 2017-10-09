@@ -70,7 +70,8 @@ export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master,
 
 # checkpoint.jl
 export Checkpointer, AbstractCheckpointData, readCheckpointData,
-       saveNextFreeCheckpoint, loadLastCheckpoint, countFreeCheckpoints,
+       readLastCheckpointData, saveNextFreeCheckpoint, loadLastCheckpoint,
+       countFreeCheckpoints,
        getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
        freeCheckpoint, getNextFreeCheckpoint
 
@@ -434,6 +435,7 @@ type Timings
   t_timemarch::Float64 # time spent in time marching loop
   t_callback::Float64  # time spent performing callbacks
   t_nlsolve::Float64  # time spent in the nonlinear solver
+  t_meshinit::Float64  # time spent initializing the mesh object
   t_barrier::Float64  # time spent in MPI_Barrier
   t_barrier2::Float64
   t_barrier3::Float64
@@ -442,7 +444,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 
