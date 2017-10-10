@@ -16,7 +16,7 @@ For parallel meshes, a PETSc solve is done using ILU factorization.
 *  `opts` : Options dictionary
 *  `functionalData` : Object corresponding the boundary functional being
                       computed. It must be a subtype of `AbstractOptimizationData`
-*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint  
+*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint
                    vector is distributed over the processors similar to
                    eqn.q_vec i.e. every rank has its
                    share of the adjoint vector corresponding to the dofs on the
@@ -88,9 +88,22 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
                                          adjoint_vec, real(func_deriv), BSTDOUT)
 
-  saveSolutionToMesh(mesh, adjoint_vec)
-  fname = "adjoint_field"
-  writeVisFiles(mesh, fname)
+
+  # Output/Visualization options for Adjoint
+  if opts["write_adjoint"]
+    outname = string("adjoint_vec_", mesh.myrank,".dat")
+    f = open(outname, "w")
+    for i = 1:length(adjoint_vec)
+      println(f, real(adjoint_vec[i]))
+    end
+    close(f)
+  end
+  
+  if opts["write_adjoint_vis"]
+    saveSolutionToMesh(mesh, adjoint_vec)
+    fname = "adjoint_field"
+    writeVisFiles(mesh, fname)
+  end
 
   return nothing
 end
