@@ -1,4 +1,5 @@
 arg_dict = Dict{Any, Any}(
+"physics" => "Euler",
 "run_type" => 5,
 "jac_type" => 2,
 "jac_method" => 2,

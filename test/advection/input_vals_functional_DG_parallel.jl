@@ -5,6 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any}(
+"physics" => "Advection",
 "run_type" => 5,
 "jac_type" => 3,
 "jac_method" => 2,

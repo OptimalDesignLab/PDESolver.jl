@@ -1,4 +1,5 @@
 arg_dict = Dict{ASCIIString,Any}(
+"physics" => "Advection",
 "write_boundarynums" => false,
 "krylov_itermax" => 1000,
 "BC1" => [0,1,2,3],

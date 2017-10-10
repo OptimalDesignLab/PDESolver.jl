@@ -1,4 +1,5 @@
 arg_dict = Dict{Any, Any}(
+"physics" => "Euler",
 "dimensions" => 2,
 "use_DG" => true,
 "operator_type" => "SBPOmega",
