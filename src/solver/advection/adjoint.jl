@@ -125,13 +125,22 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
                                            adjoint_vec, real(func_deriv), BSTDOUT)
 
-  outname = string("adjoint_vec_", mesh.myrank,".dat")
-  f = open(outname, "w")
-  for i = 1:length(adjoint_vec)
-    println(f, real(adjoint_vec[i]))
-  end
-  close(f)
 
+  # Output/Visualization options for Adjoint
+  if opts["write_adjoint"]
+    outname = string("adjoint_vec_", mesh.myrank,".dat")
+    f = open(outname, "w")
+    for i = 1:length(adjoint_vec)
+      println(f, real(adjoint_vec[i]))
+    end
+    close(f)
+  end
+
+  if opts["write_adjoint_vis"]
+    saveSolutionToMesh(mesh, adjoint_vec)
+    fname = "adjoint_field"
+    writeVisFiles(mesh, fname)
+  end
 
   return nothing
 end # End function calcAdjoint

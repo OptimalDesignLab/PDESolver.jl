@@ -50,7 +50,7 @@ end
   A dictionary (referred to as the options dictionary) is returned.
   See [`read_input_file`](@ref) for the description of the input file format.
 
-  After default values are supplied, the dictionary is printed to 
+  After default values are supplied, the dictionary is printed to
   arg_dict_output.jl (by MPI rank 0) in the format of an input file.
   This is useful for rerunning a simulation.
 
@@ -126,7 +126,6 @@ end
 get!(arg_dict, "operator_type2", "SBPNone")
 get!(arg_dict, "use_staggered_grid", arg_dict["operator_type2"] != "SBPNone")
 
-get!(arg_dict, "need_adjoint", false)
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
@@ -212,7 +211,7 @@ else
 end
 
 if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
-  if arg_dict["face_integral_type"] == 2  # entropy stable 
+  if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")
   else
     get!(arg_dict, "parallel_data", "face")
@@ -418,7 +417,9 @@ get!(arg_dict, "functional_error_outfname", "functional_error")
 get!(arg_dict, "analytical_functional_val", 0.0)
 
 # Adjoint computation options
-get!(arg_dict, "calc_adjoint", false)
+get!(arg_dict, "need_adjoint", false)
+get!(arg_dict, "write_adjoint", false)
+get!(arg_dict, "write_adjoint_vis", false)
 
 # Unsteady adjoint (CN) computation options --- EXPERIMENTAL, NONWORKING CODE
 get!(arg_dict, "adjoint_revolve", false)
@@ -514,7 +515,7 @@ end
 """
 function checkForIllegalOptions_pre(arg_dict)
 
-  # Ensure that jac-method is not specified 
+  # Ensure that jac-method is not specified
   if haskey(arg_dict, "jac_method")
     if arg_dict["run_type"] == 1
       warn("jac_method specified, but run_type is RK4.")
@@ -539,7 +540,7 @@ end
   Check the user supplied options for errors after supplying default options.
 """
 function checkForIllegalOptions_post(arg_dict)
-  
+
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   commsize = MPI.Comm_size(MPI.COMM_WORLD)
 
@@ -627,4 +628,3 @@ function checkBCOptions(arg_dict)
 
   return nothing
 end
-
