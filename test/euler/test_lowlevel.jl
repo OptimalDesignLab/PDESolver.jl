@@ -296,7 +296,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
 
   facts("--- Testing convert Functions ---") do
     # for the case, the solution is uniform flow
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     v_arr = copy(eqn.q)
     v2 = zeros(4)
 

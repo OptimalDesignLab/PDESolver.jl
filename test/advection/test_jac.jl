@@ -70,7 +70,7 @@ function test_jac_res()
     println("----- Testing Finite Difference Jacobian -----")
     ARGS[1] = "input_vals_8el.jl"
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # needed for calls to NewtonData below
     Tsol = eltype(eqn.q)
@@ -80,7 +80,7 @@ function test_jac_res()
     newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     res_3d0 = copy(eqn.res)
     res_0 = copy(eqn.res_vec)
     jac = zeros(Float64, mesh.numDof, mesh.numDof)
@@ -92,7 +92,7 @@ function test_jac_res()
     jac_sparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     println("create jac_sparse")
     fill!(eqn.res, 0.0)
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_fd, jac_sparse)
 
     jac_sparsefull = full(jac_sparse)
@@ -108,7 +108,7 @@ function test_jac_res()
     ARGS[1] = "input_vals_8elc.jl"
     arg_dict["jac_method"] = 2  # something screwy is going on because this is necessary
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # now test full jacobian
     newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
@@ -121,7 +121,7 @@ function test_jac_res()
     jac_csparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
     res_3d0 = Array(Float64, 0, 0, 0)
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
 
 
@@ -150,7 +150,7 @@ function test_jac_calc()
     println("----- Testing Finite Difference Jacobian -----")
     ARGS[1] = "input_vals_8el.jl"
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # needed for calls to NewtonData below
     Tsol = eltype(eqn.q)
@@ -160,7 +160,7 @@ function test_jac_calc()
     newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     res_3d0 = copy(eqn.res)
     res_0 = copy(eqn.res_vec)
     jac = zeros(Float64, mesh.numDof, mesh.numDof)
@@ -171,7 +171,7 @@ function test_jac_calc()
   #  jac_sparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
     jac_sparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_fd, jac_sparse)
 
     jac_sparsefull = full(jac_sparse)
@@ -188,7 +188,7 @@ function test_jac_calc()
     arg_dict["run_type"] = 5  # something screwy is going on because this is necessary
     arg_dict["jac_method"] = 2
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # now test full jacobian
     newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
@@ -201,7 +201,7 @@ function test_jac_calc()
     jac_csparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
     res_3d0 = Array(Float64, 0, 0, 0)
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
 
 

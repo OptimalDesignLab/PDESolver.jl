@@ -12,3 +12,5 @@ done
 # names with wildcards
 find . -name 'solution_*' -type d -exec rm -r '{}' \;
 find . -name 'checkpoint*' -type d -exec rm -r '{}' \;
+find . -name '*~' -print -exec rm '{}' \;
+find . -name 'input_vals_restart' -type l -print -exec rm '{}' \;

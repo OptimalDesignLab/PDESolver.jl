@@ -162,12 +162,12 @@ function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1};
 # assembles all of the residuals into res_vec
 # no aliasing concerns
 
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
 
   if assemble_edgeres
 
     for i=1:size(eqn.res_edge, 4)
-      eqn.assembleSolution(mesh, sbp, eqn, opts, sview(eqn.res_edge, :, :, :, i),
+      assembleSolution(mesh, sbp, eqn, opts, sview(eqn.res_edge, :, :, :, i),
                            res_vec, zero_resvec=zero_resvec)
     end
   end
@@ -197,7 +197,7 @@ end
 function disassembleSolution{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
 # scatters the q_vec to the 3d array eqn.q
 # no aliasing concerns here
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, q_vec)
 
   return nothing
 end

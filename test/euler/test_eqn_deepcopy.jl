@@ -70,12 +70,12 @@ function test_eqn_copy()
     @fact (eqn_copy.edgestab_alpha == eqn.edgestab_alpha) --> true
     @fact (eqn_copy.bndryflux == eqn.bndryflux) --> true
     @fact (eqn_copy.stabscale == eqn.stabscale) --> true
-    @fact (eqn_copy.dissipation_mat == eqn.dissipation_mat) --> true
+    @fact (eqn_copy.dissipation_mat == dissipation_mat) --> true
     @fact (eqn_copy.Minv3D == eqn.Minv3D) --> true
     @fact (eqn_copy.Minv == eqn.Minv) --> true
     @fact (eqn_copy.M == eqn.M) --> true
-    @fact (eqn_copy.disassembleSolution == eqn.disassembleSolution) --> true
-    @fact (eqn_copy.assembleSolution == eqn.assembleSolution) --> true
+    @fact (eqn_copy.disassembleSolution == disassembleSolution) --> true
+    @fact (eqn_copy.assembleSolution == assembleSolution) --> true
     @fact (eqn_copy.multiplyA0inv == eqn.multiplyA0inv) --> true
     @fact (eqn_copy.majorIterationCallback == eqn.majorIterationCallback) --> true
     @fact (eqn_copy.src_func == eqn.src_func) --> true
@@ -233,7 +233,7 @@ function test_eqn_copy()
     @fact (pointer(eqn_copy.edgestab_alpha) == pointer(eqn.edgestab_alpha)) --> false
     @fact (pointer(eqn_copy.bndryflux) == pointer(eqn.bndryflux)) --> false
     @fact (pointer(eqn_copy.stabscale) == pointer(eqn.stabscale)) --> false
-    @fact (pointer(eqn_copy.dissipation_mat) == pointer(eqn.dissipation_mat)) --> false
+    @fact (pointer(eqn_copy.dissipation_mat) == pointer(dissipation_mat)) --> false
     @fact (pointer(eqn_copy.Minv3D) == pointer(eqn.Minv3D)) --> false
     @fact (pointer(eqn_copy.Minv) == pointer(eqn.Minv)) --> false
     @fact (pointer(eqn_copy.M) == pointer(eqn.M)) --> false
