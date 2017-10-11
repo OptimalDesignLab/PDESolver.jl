@@ -309,49 +309,6 @@ function postproc(mesh, sbp, eqn, opts)
         println(f, diff_norm, " ", h_avg)
         close(f)
       end
-      #=
-      #---- Calculate functional on a boundary  -----#
-      if opts["calc_functional"]
-        num_functionals = opts["num_functionals"]
-        for j = 1:num_functionals
-          functional = OptimizationData{Tsol}(mesh, sbp, opts)
-          evalFunctional(mesh, sbp, eqn, opts, functional, functional_number=j)
-        end  # End for j = 1:num_functionals
-        # evalFunctional(mesh, sbp, eqn, opts) # Legacy
-      end    # End if opts["calc_functional"]
-
-
-      #----- Calculate Adjoint Vector For A Functional -----#
-      if opts["calc_adjoint"]
-        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        if mesh.isDG
-          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        end
-
-        # TODO: Presently adjoint computation only for 1 functional. Figure out
-        # API based on future use.
-        j = 1
-        key = string("geom_edges_functional", j)
-        functional_edges = opts[key]
-        functional_number = j
-        functional_name = getFunctionalName(opts, j)
-
-        adjoint_vec = zeros(Tsol, mesh.numDof)
-        calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
-
-
-        # Write adjoint vector to file and mesh
-        file_object = open("adjoint_vector.dat", "w")
-        for iter = 1:length(adjoint_vec)
-          println(file_object, real(adjoint_vec[iter]))
-        end
-        close(file_object)
-        saveSolutionToMesh(mesh, real(adjoint_vec))
-        writeVisFiles(mesh, "adjoint_field")
-
-      end  # End if opts["calc_adjoint"]
-      =#
-
     end  # end if haskey(ICname)
   end  # end if do_postproc
 
