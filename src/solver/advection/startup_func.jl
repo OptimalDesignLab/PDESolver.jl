@@ -269,7 +269,7 @@ function postproc(mesh, sbp, eqn, opts)
       #-----  Calculate adjoint vector for a functional  -----#
 
       if opts["calc_adjoint"]
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
         if mesh.isDG
           boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
         end

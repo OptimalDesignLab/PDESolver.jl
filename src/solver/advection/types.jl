@@ -153,8 +153,6 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
   Minv3D::Array{Float64, 3}    # inverse mass matrix for application to res, not res_vec
-  disassembleSolution::Function # function u_vec -> eqn.q
-  assembleSolution::Function    # function : eqn.res -> res_vec
   multiplyA0inv::Function       # multiply an array by inv(A0), where A0
                                 # is the coefficient matrix of the time
                                 # derivative
@@ -178,8 +176,6 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.params = ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts)
     eqn.t = 0.0
     eqn.res_type = Tres
-    eqn.disassembleSolution = disassembleSolution
-    eqn.assembleSolution = assembleSolution
     eqn.majorIterationCallback = majorIterationCallback
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)

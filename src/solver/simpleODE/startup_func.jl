@@ -144,11 +144,11 @@ function solve_simpleODE(mesh::AbstractMesh, sbp, eqn::SimpleODEData, opts, pmes
 
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     evalResidual(mesh, sbp, eqn, opts, eqn.params.t)
 
     eqn.res_vec[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     # printing solution and residual to file
     writedlm("solution_final.dat", real(eqn.q_vec))

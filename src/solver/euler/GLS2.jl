@@ -614,7 +614,7 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
   gls_res_vec = zeros(Tres, mesh.numDof)
   middle_vec = zeros(gls_res_vec)
   gls_fullvec = zeros(gls_res_vec)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, gls_res_vec
+  assembleSolution(mesh, sbp, eqn, opts, gls_res_vec
   =#
 
   return nothing

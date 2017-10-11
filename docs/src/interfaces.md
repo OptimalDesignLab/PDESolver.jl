@@ -110,7 +110,8 @@ many other operations, so it is allocated here so the memory can be reused.
 There are functions to facilitate the scattering of values from `q_vec` to `q`.
 Note that for Continuous Galerkin type discretization (as opposed to
 Discontinuous Galerkin discretizations), there is not a corresponding "gather"
-operation (ie. `q` -> `q_vec`).
+operation (ie. `q` -> `q_vec`).  See [`Utils.disassembleSolution`](@ref) 
+and [`Utils.assembleSolution`](@ref).
 
 `shared_data` is a vector of length `npeers`.  Each element contains the data
               needed send and receive the `q` variables to/from other

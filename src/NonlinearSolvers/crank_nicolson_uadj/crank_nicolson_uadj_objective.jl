@@ -101,7 +101,7 @@ end
 """
 function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t; isDeriv=false)
 
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end

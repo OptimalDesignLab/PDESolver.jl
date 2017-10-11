@@ -1,4 +1,5 @@
 arg_dict = Dict{ASCIIString,Any}(
+"physics" => "Advection",
 "run_type" => 20,
 "order" => 1,
 "dimensions" => 2,

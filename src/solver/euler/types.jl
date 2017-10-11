@@ -476,8 +476,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # TODO: consider overloading getField instead of having function as
   #       fields
-  disassembleSolution::Function   # function: q_vec -> eqn.q
-  assembleSolution::Function      # function : eqn.res -> res_vec
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
                                   # is the coefficient matrix of the time derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
@@ -526,8 +524,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     else
       println(BSTDERR, "Warning: variable_type not recognized")
     end
-    eqn.disassembleSolution = disassembleSolution
-    eqn.assembleSolution = assembleSolution
     eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
 

@@ -36,8 +36,6 @@ function test_eqn_copy(mesh, sbp, eqn, opts)
     @fact (eqn_copy.myrank == eqn.myrank) --> true
     @fact (eqn_copy.t == eqn.t) --> true
     @fact (eqn_copy.res_type == eqn.res_type) --> true
-    @fact (eqn_copy.disassembleSolution == eqn.disassembleSolution) --> true
-    @fact (eqn_copy.assembleSolution == eqn.assembleSolution) --> true
     @fact (eqn_copy.multiplyA0inv == eqn.multiplyA0inv) --> true
     @fact (eqn_copy.params.LFalpha == eqn.params.LFalpha) --> true
     @fact (eqn_copy.params.alpha_x == eqn.params.alpha_x) --> true
@@ -155,8 +153,6 @@ Fields of advection eqn object:
   myrank
   t
   res_type
-  disassembleSolution
-  assembleSolution
   multiplyA0inv
   params.LFalpha
   params.alpha_x
