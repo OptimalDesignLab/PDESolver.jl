@@ -107,28 +107,28 @@ function test_precompute()
   facts("----- Testing non-precompute functions -----") do
     icfunc = AdvectionEquationMod.ICDict["ICexp_xplusy"]
     icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+    physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
 
     res_orig = copy(eqn.res)
 
     # test volume integrals
     fill!(eqn.res, 0.0)
     opts["precompute_volume_integrals"] = false
-    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+    physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
 
     @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
 
     # test face integrals
     fill!(eqn.res, 0.0)
     opts["precompute_face_integrals"] = false
-    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+    physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
 
     @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
 
     # test boundary integrals
     fill!(eqn.res, 0.0)
     opts["precompute_boundary_integrals"] = false
-    calcResidual(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual)
+    physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
 
     @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
   end

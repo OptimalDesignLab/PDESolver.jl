@@ -145,7 +145,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   ctx_residual = (homotopyPhysics,)
 
   # calculate physics residual
-  res_norm = real(calcResidual(mesh, sbp, eqn, opts, physics_func))
+  res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,)))
   res_norm_0 = res_norm
 
   # print to log file
@@ -168,7 +168,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end
 
     # calculate homotopy residual
-    homotopy_norm = calcResidual(mesh, sbp, eqn, opts, homotopyPhysics)
+    homotopy_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (homotopyPhysics,))
 
     homotopy_norm0 = homotopy_norm
     copy!(q_vec0, eqn.q_vec)  # save initial q to calculate delta_q later
@@ -251,7 +251,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end  # end if lambda too large
 
     # calculate physics residual at new state q
-    res_norm = real(calcResidual(mesh, sbp, eqn, opts, physics_func))
+    res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,),))
 
     # print to log file
     @mpi_master println(fconv, iter, " ", res_norm, " ", h )

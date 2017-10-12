@@ -331,16 +331,29 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   t_nextstep = t + h
 
-  # these two flipped 20161219
-  physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
-  assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+  # evalute residual at t_nextstep
+  # q_vec -> q
+  disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec)
 
-  # TODO: can parallel_type != 2 and have CN work?
+  # start parallel communication if needed
+  time = eqn.params.time
+  time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
+    startSolutionExchange(mesh, sbp, eqn_nextstep, opts)
+  end
+
+
+  physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+  assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, 
+                   eqn_nextstep.res_vec)
+
+  # evalute residual at t
   if opts["parallel_type"] == 2 && mesh.npeers > 0
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
   physics_func(mesh, sbp, eqn, opts, t)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+  # compute rhs
 
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
@@ -356,7 +369,11 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   end
 
-  return nothing
+  # calculate the norm
+  rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
+
+
+  return rhs_0_norm
 
 end     # end of function cnRhs
 
@@ -495,6 +512,8 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
 end
 
+
+#TODO: why not use the versions in Utils?
 # TODO: comment here
 function applyMassMatrixInv(mesh, eqn, vec)
 

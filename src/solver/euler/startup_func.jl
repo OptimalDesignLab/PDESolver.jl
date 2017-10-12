@@ -140,7 +140,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
       end
     end
   #  println("eqn.q_vec = ", eqn.q_vec)
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    tmp = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
     res_real = real(eqn.res_vec)
   #  println("res_real = \n", res_real)
   #  println("eqn.res_vec = ", eqn.res_vec)
@@ -198,7 +198,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
 
   if opts["calc_trunc_error"]  # calculate truncation error
     @mpi_master println("\nCalculating residual for truncation error")
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    tmp = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
 
     @mpi_master begin
       f = open("error_trunc.dat", "w")

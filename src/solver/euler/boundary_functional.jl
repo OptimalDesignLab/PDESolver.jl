@@ -151,7 +151,7 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   eqn.params.aoa += pert # Imaginary perturbation
   fill!(eqn.res_vec, 0.0)
   fill!(eqn.res, 0.0)
-  res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
+  res_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
   ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
   eqn.params.aoa -= pert # Remove perturbation
 

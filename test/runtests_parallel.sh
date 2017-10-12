@@ -13,9 +13,19 @@ cd ./advection
   tmp=$?
   err=$((err + tmp))
 
+  if [[ $err -gt 0 ]];
+  then
+    exit $err
+  fi
+
   mpirun -np 4 julia $jflags ./runtests_parallel4.jl
   tmp=$?
   err=$((err + tmp))
+
+  if [[ $err -gt 0 ]];
+  then
+    exit $err
+  fi
 
 cd $start_dir
 
@@ -24,9 +34,20 @@ cd ./euler
   tmp=$?
   err=$((err + tmp))
 
+  if [[ $err -gt 0 ]];
+  then
+    exit $err
+  fi
+
   mpirun -np 4 julia $jflags ./runtests_parallel4.jl
   tmp=$?
   err=$((err + tmp))
+
+  if [[ $err -gt 0 ]];
+  then
+    exit $err
+  fi
+
 cd $start_dir
 
 echo $err

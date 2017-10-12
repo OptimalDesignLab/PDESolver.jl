@@ -14,18 +14,34 @@ cd ./euler
   $jj $jflags ./runtests.jl
   tmp=$?
   err=$((err + tmp))
+
+  if [[ $err -gt 0 ]];
+  then
+    exit $err
+  fi
+
 cd $start_dir
 
 cd ./advection
   $jj $jflags ./runtests.jl
   tmp=$?
   err=$((err + tmp))
+  if [[ $err -gt 0 ]];
+  then
+    exit $err
+  fi
+
+
 cd $start_dir
 
 cd ./simpleODE/
   $jj $jflags ./runtests.jl
   tmp=$?
   err=$((err + tmp))
+  if [[ $err -gt 0 ]];
+  then
+    exit $err
+  fi
 cd $start_dir
 
 ./runtests_parallel.sh $jflags

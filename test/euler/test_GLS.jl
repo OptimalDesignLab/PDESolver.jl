@@ -22,7 +22,7 @@ include("../src/solver/euler/GLS.jl")
 fill!(eqn.res, 0.0)
 fill!(eqn.res_vec,0.0)
 # res_0 = zeros(eqn.res_vec)
-res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalResidual)
+res_0_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
 
 # println("eqn.q = \n", eqn.q)
 # println("dxidx = \n", mesh.dxidx)

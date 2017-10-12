@@ -134,7 +134,7 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
 
   if opts["calc_trunc_error"]  # calculate truncation error
     @mpi_master println("\nCalculating residual for truncation error")
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    tmp = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
     if myrank == 0
       f = open("error_trunc.dat", "w")
       println(f, tmp)

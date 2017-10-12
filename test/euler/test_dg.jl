@@ -119,7 +119,7 @@ function test_dg_uniform(mesh, sbp, eqn, opts)
 
   facts("----- Testing Uniform Channel -----") do
 
-    calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
 
     for i=1:mesh.numDof
       @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-13)
