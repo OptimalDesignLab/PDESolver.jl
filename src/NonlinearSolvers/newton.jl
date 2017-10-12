@@ -841,18 +841,20 @@ end   # end of physicsJac function
   computing the Jacobian.
 
   The Jacobian refers to the Jacobian of the point stored in eqn.q_vec
-  Inputs:
-    newton_data:  NewtonData object
-    mesh: AbstractMesh
-    sbp:  SBP operator
-    eqn:  AbstractEquation object
-    opts: options dictionary
-    pert: perturbation to use for the algorithmic differentiation.  Currently,
-          only complex numbers are supported.
-    func: residual evaluation function
-    vec:  the x vector in Ax=b.  Can be AbstractVector type.
-    b:    location to store the result (the b an Ax=b).  Can be any
-          AbstractVector type
+
+  **Inputs**:
+
+   * newton_data:  NewtonData object
+   * mesh: AbstractMesh
+   * sbp:  SBP operator
+   * eqn:  AbstractEquation object
+   * opts: options dictionary
+   * pert: perturbation to use for the algorithmic differentiation.  Currently,
+   *       only complex numbers are supported.
+   * func: residual evaluation function
+   * vec:  the x vector in Ax=b.  Can be AbstractVector type.
+   * b:    location to store the result (the b an Ax=b).  Can be any
+           AbstractVector type
 
   Outputs:
     none

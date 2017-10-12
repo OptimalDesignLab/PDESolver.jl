@@ -36,7 +36,7 @@ import Utils.disassembleSolution
     for example, for implicit time marching methods.  This method has the
     signature:
 
-    calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, tx_residual, t=0.0)
+    calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0.0)
 
     with Inputs:
       mesh:   an AbstractMesh object
@@ -80,7 +80,6 @@ import Utils.disassembleSolution
 """->
 function calcResidual(mesh, sbp, eqn, opts, func_physics, t=0.0)
 
-  # TODO: this equals... deepcopy?
   rhs_vec = eqn.res_vec
   ctx_residual = (func_physics, )
 
@@ -92,10 +91,14 @@ end
 
 """
   The second method of calcResidual.  See documentation of the first method.
+
+  This method performs eqn.q -> eqn.res_vec.
+  It also starts parallel communication.
 """
 function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0.0)
 # calculate the residual and its norm
 
+  # q -> q_vec
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   time = eqn.params.time
   time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
