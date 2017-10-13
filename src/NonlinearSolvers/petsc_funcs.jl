@@ -47,12 +47,18 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp,
   #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
   numDofPerNode = mesh.numDofPerNode
   if PetscInitialized() == 0 # PETSc Not initialized before
+    PetscInitialize()
 
     #TODO: get this from the options dictionary
     #TODO: use petsc SetOptions function
 #    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
-    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "-pc_type", "none", "ksp_gmres_modifiedgramschmidt", "-ksp_gmres_restart", "30" ])
+#    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "-pc_type", "none", "ksp_gmres_modifiedgramschmidt", "-ksp_gmres_restart", "30" ])
   end
+
+  println("setting Petsc options ", opts["petsc_options"])
+  PetscSetOptions(opts["petsc_options"])
+  PetscOptionsView()
+
   comm = mesh.comm
 
   obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices

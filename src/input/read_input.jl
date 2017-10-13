@@ -438,6 +438,21 @@ get!(arg_dict, "ncheckpoints", 2)
 get!(arg_dict, "checkpoint_freq", 200)
 get!(arg_dict, "use_checkpointing", false)
 
+# Options passed directly to Petsc
+petsc_opts = Dict{AbstractString, AbstractString}(
+  "-malloc" => "",
+  "-malloc_debug" => "",
+  "-ksp_monitor" => "",
+  "-pc_type" => "bjacobi",
+  "-sub_pc_type" => "ilu",
+  "-sub_pc_factor_levels" => "4",
+  "-ksp_gmres_modifiedgramschmidt" => "",
+  "-ksp_pc_side" => "right",
+  "-ksp_gmres_restart" => "30"
+)
+
+get!(arg_dict, "petsc_options", petsc_opts)
+
 checkForIllegalOptions_post(arg_dict)
 
 # write complete dictionary to file

@@ -382,3 +382,10 @@ Note that any values associated with these options are shared with the regular
                   5: u = t
                   6: du/dt = u + 2t
                   7: du/dt = u
+
+# Petsc Options
+"petsc_options" : options passed directly into Petsc, 
+                  Dict{AbstractString, AbstractString}), defaults include
+                  a block jacobi ilu(4) preconditioner.  The keys must begin
+                  with a dash (as required by PETSc).  Keys that do not take
+                  a value should use an empty string as the value.

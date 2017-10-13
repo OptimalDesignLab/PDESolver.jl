@@ -14,6 +14,7 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
 using Input
+using PETSc
 
 
 #------------------------------------------------------------------------------
