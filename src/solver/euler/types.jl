@@ -157,6 +157,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   vortex_x0::Float64  # vortex center x coordinate at t=0
   vortex_strength::Float64  # strength of the vortex
 
+  #TODO: get rid of these, move to NewtonData
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
 

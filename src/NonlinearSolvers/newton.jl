@@ -34,8 +34,12 @@ type NewtonData{Tsol, Tres}
   idx_tmp::Array{PetscInt, 1}
   idy_tmp::Array{PetscInt, 1}
 
-  # tuple to be passed to func
+  # tuple of values needed to cleanup Petsc data structures
   ctx_newton
+
+  # ctx needed by MatShell
+  # TODO: get list of contents from jac-vec prod wrapper
+  ctx_petsc
 
   #TODO; make this an outer constructor
   function NewtonData(mesh, sbp, eqn, opts)
@@ -70,10 +74,14 @@ type NewtonData{Tsol, Tres}
     # NOTE: we are leaving ctx_newton uninitialized because 
     #   createPetscData needs it, but ctx_newton depends on its returned values
 
+    # initialize these to something, will be replaced in setupNewton
+    ctx_newton = ()
+    ctx_petsc = ()
+
     return new(myrank, commsize, reltol, abstol, dtol, 
                       itermax, krylov_gamma, 
                       res_norm_i, res_norm_i_1, tau_l, tau_vec, 1, localsize, vals_tmp, 
-                      idx_tmp, idy_tmp)
+                      idx_tmp, idy_tmp, ctx_newton, ctx_petsc)
   end
 
 end
@@ -89,13 +97,18 @@ include("petsc_funcs.jl")  # Petsc related functions
                 true (default) allocates a new vector
                 false will use eqn.res_vec
 
-  f: only used for Petsc in matrix-free mode to do Jac-vec products
-     f should be the function that evaluates the physics (gives the RHS)
+  rhs_func: only used for Petsc in matrix-free mode to do Jac-vec products
+            should be the rhs_func passed into [`newtonInner`](@ref)
+  ctx_residual: ctx_residual passed into [`newtonInner`](@ref)
 
   Allocates Jac & RHS
 
+  See [`cleanupNewton`](@ref) to the cleanup function
+
 """->
-function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts, f; alloc_rhs=true)
+function setupNewton{Tsol, Tres}(mesh, pmesh, sbp,
+                     eqn::AbstractSolutionData{Tsol, Tres}, opts;
+                     alloc_rhs=true)
 
   jac_type = opts["jac_type"]
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
@@ -118,8 +131,8 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
     end
     ctx_newton = ()
   elseif jac_type == 3 || jac_type == 4 # petsc
-    jac, jacp, x, b, ksp = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data, f)
-    ctx_newton = (jacp, x, b, ksp)
+    jac, jacp, x, b, ksp = createPetscData(mesh, pmesh, sbp, eqn, opts, newton_data)
+    ctx_newton = (jac, jacp, x, b, ksp)
   end
 
   # now put ctx_newton into newton_data
@@ -129,13 +142,7 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
   #   having rhs_vec and eqn.res_vec pointing to the same memory
   #   saves us from having to copy back and forth
   if alloc_rhs 
-#     rhs_vec = deepcopy(eqn.res_vec)
-
-    # TODO changed this zeros to have the type, 20161203
-    # didn't matter.
-#     rhs_vec = zeros(eqn.res_vec)
     rhs_vec = zeros(Tsol, size(eqn.res_vec))
-
   else
     rhs_vec = eqn.res_vec
   end
@@ -146,6 +153,30 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp, eqn::AbstractSolutionData{Tso
   return newton_data, jac, rhs_vec
 
 end   # end of setupNewton
+
+"""
+  Cleans up after running Newton's method.  Petsc will leak memory if this
+  function is not called
+
+  **Inputs**
+
+   * newton_data: the NewtonData object
+   * mesh: the AbstractMesh
+   * pmesh: the AbstractMesh used for preconditioning
+   * sbp: the SBP operator
+   * eqn: the AbstractSolutionData
+
+"""
+function cleanupNewton{Tsol, Tres}(newton_data::NewtonData, mesh, pmesh, sbp,
+                                   eqn::AbstractSolutionData{Tsol, Tres}, opts)
+
+  jac_type = opts["jac_type"]
+  if jac_type == 3 || jac_type == 4
+    NonlinearSolvers.destroyPetsc(newton_data.ctx_newton...)
+  end
+
+  return nothing
+end
 
 @doc """
 ### NonlinearSolvers.newton
@@ -207,21 +238,21 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP, eqn::Abstr
   # They evaluate the basic Jac & RHS of only the physics function, such as evalEuler
   rhs_func = physicsRhs
   jac_func = physicsJac
-
-  # allocate jac & rhs, and construct newton_data
-  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, func, alloc_rhs=false)
-
   ctx_residual = (func, )
 
-  newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, rhs_vec, ctx_residual, t,
-                itermax=itermax, step_tol=step_tol, res_abstol=res_abstol, res_reltol=res_reltol, res_reltol0=res_reltol0)
+  # allocate jac & rhs, and construct newton_data
+  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, alloc_rhs=false)
 
-  #TODO; create a general destructor for newtonInnter, the complement of 
+
+  newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac,
+              rhs_vec, ctx_residual, t, itermax=itermax, step_tol=step_tol,
+              res_abstol=res_abstol, res_reltol=res_reltol, 
+              res_reltol0=res_reltol0)
+
+  #TODO; create a general destructor for newtonInner, the complement of 
   #      setupNewton
-  if jac_type == 3
-    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
-  end
 
+  cleanupNewton(newton_data, mesh, pmesh, sbp, eqn, opts)
 end
 
 """
@@ -250,7 +281,7 @@ end
    * rhs_func: function to evaluate f(q)
    * jac_func: function to compute the Jacobian df/dq
    * rhs_vec: vector to store R(q) in
-   * ctx_residual: extra arguments required by rhs_func
+   * ctx_residual: extra data required by rhs_func
 
 
   The user must supply tow functions, one to calculate the residual vector
@@ -343,14 +374,16 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     pert = complex(0, epsilon)
   end
 
-
+  # set the ctx pointer for the matrix-free matrix
   if jac_type == 4
-    # TODO: call Petsc MatShellSetContext here
-    ctx_petsc = createPetscCtx(mesh, sbp, eqn, opts, newton_data, func)
+    ctx_petsc = (mesh, sbp, eqn, opts, newton_data, rhs_func, ctx_residual)
+    newton_data.ctx_petsc = ctx_petsc
+    ctx_ptr = pointer_from_objref(ctx_petsc)
+    MatShellSetContext(jac, ctx_ptr)
   end
 
   if jac_type == 3 || jac_type == 4
-    jacp = newton_data.ctx_newton[1]
+    jacp = newton_data.ctx_newton[2]
   end
 
   Tjac = typeof(real(rhs_vec[1]))  # type of jacobian, residual

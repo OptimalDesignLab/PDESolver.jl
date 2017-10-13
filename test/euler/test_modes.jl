@@ -32,7 +32,8 @@ function test_modes()
     v = ones(mesh.numDof)  # vector to multiply jacobian against
     result1 = jac*v
     result2 = zeros(mesh.numDof)
-    NonlinearSolvers.calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, EulerEquationMod.evalResidual, v, result2)
+
+    NonlinearSolvers.calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, physicsRhs, (EulerEquationMod.evalResidual,), v, result2)
 
     # check the two products are equal
     for i=1:mesh.numDof
@@ -103,4 +104,4 @@ function test_modes()
   return nothing
 end
 
-add_func1!(EulerTests, test_modes, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_modes, [TAG_SHORTTEST, TAG_TMP])

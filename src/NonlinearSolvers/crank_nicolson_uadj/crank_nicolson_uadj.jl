@@ -143,9 +143,9 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
   # allocate Jac outside of time-stepping loop
   # these jacs are for full CN or CN adj jac
   if neg_time == false
-    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, physics_func)
+    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
   else
-    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts, physics_func)
+    newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, adj, opts)
   end
 
   # Setting IC for reverse sweep
@@ -451,7 +451,7 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
           II = eye(blksz)
 
           # TODO: check eqn or eqn_nextstep
-          newton_data_discard, jac_for_dRdu_global, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts, physics_func)
+          newton_data_discard, jac_for_dRdu_global, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_nextstep, opts)
           assert(opts["jac_method"] == 2)
           epsilon = opts["epsilon"]
           pert = complex(0, epsilon)
@@ -659,10 +659,7 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
   # End debugging integer ordering output
   =#
 
-  if jac_type == 3      # if jac is a Petsc matrix, it needs to be freed when we're done using it
-    # contents of ctx_newton: (jacp, x, b, ksp)
-    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
-  end
+  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
 
   # @debug1 println("============= end of CN: t = $t ===============")
 

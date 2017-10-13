@@ -136,4 +136,4 @@ function test_precompute()
   return nothing
 end
 
-add_func1!(AdvectionTests, test_precompute, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(AdvectionTests, test_precompute, [TAG_SHORTTEST])

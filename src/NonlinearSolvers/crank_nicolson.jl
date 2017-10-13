@@ -103,7 +103,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
+
+  # NOTE: eqn_nextstep changed to eqn 20161013
+  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts)
 
   # this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
@@ -141,15 +143,14 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
-    # NOTE: eqn_nextstep changed to eqn 20161013
-    ctx_residual = (f, eqn, h, newton_data)
-
     t_nextstep = t + h
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
     if opts["cleansheet_CN_newton"]
       cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
     else
+
+      ctx_residual = (f, eqn, h, newton_data)
       newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, 
                   jac, rhs_vec, ctx_residual, t, itermax=30, step_tol=opts["step_tol"], 
                   res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"],                   res_reltol0=opts["res_reltol0"])
@@ -217,10 +218,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   copyForMultistage!(eqn, eqn_nextstep)
 
 
-  if jac_type == 3
-    # contents of ctx_newton: (jacp, x, b, ksp)
-    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
-  end
+  # second mesh should be pmesh
+  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
 
   @debug1 println("============= end of CN: t = $t ===============")
   return t

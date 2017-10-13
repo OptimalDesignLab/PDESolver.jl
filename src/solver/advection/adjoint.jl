@@ -88,7 +88,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   end
 
   # Allocate space for adjoint solve
-  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, evalResidual, alloc_rhs=true)
+  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, alloc_rhs=true)
 
   # Get the residual jacobian
   ctx_residual = (evalResidual,)

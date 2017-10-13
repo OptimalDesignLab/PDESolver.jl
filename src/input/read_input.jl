@@ -544,7 +544,8 @@ function checkForIllegalOptions_post(arg_dict)
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   commsize = MPI.Comm_size(MPI.COMM_WORLD)
 
-  if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
+  jac_type = arg_dict["jac_type"]
+  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
   error("Invalid jacobian type for parallel run")
 end
 

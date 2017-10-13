@@ -173,6 +173,8 @@ end   # end of physicsJac function
 
   The Jacobian refers to the Jacobian of the point stored in eqn.q_vec
 
+  The implict Euler globalization is supported in matrix-free mode.
+
   **Inputs**:
 
    * newton_data:  NewtonData object
@@ -182,7 +184,8 @@ end   # end of physicsJac function
    * opts: options dictionary
    * pert: perturbation to use for the algorithmic differentiation.  Currently,
    *       only complex numbers are supported.
-   * func: residual evaluation function
+   * rhs_func: rhs_func from [`newtonInner`](@ref)
+   * ctx_residual: ctx_residual from [`newtonInner`](@ref)
    * vec:  the x vector in Ax=b.  Can be AbstractVector type.
    * b:    location to store the result (the b an Ax=b).  Can be any
            AbstractVector type
@@ -194,7 +197,9 @@ end   # end of physicsJac function
   Aliasing restrictions: vec, b, and eqn.q must not alias each other.
 
 """
-function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, func::Function, vec::AbstractVector, b::AbstractVector, t=0.0)
+function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert,
+                        rhs_func::Function, ctx_residual, vec::AbstractVector,
+                        b::AbstractVector, t=0.0)
 # calculates the product of the jacobian with the vector vec using a directional
 # derivative
 # only intended to work with complex step
@@ -207,7 +212,7 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
 # complex step, respectively
 # func is the residual evaluation function
  
-  itr = eqn.params.krylov_itr
+#  itr = newton_data.krylov_itr
   globalize_euler = opts["newton_globalize_euler"]::Bool
 
   epsilon = imag(pert)  # magnitude of perturbationa
@@ -217,13 +222,15 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
     eqn.q_vec[i] += pert*vec[i]
   end
 
+  rhs_func(mesh, sbp, eqn, opts, eqn.res_vec, ctx_residual, t)
+#=
   # scatter into eqn.q
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec) 
   func(mesh, sbp, eqn, opts, t)
 
   # gather into eqn.res_vec
   assembleResidual(mesh, sbp, eqn, opts, eqn.res_vec, assemble_edgeres=opts["use_edge_res"])
-  
+=#  
   # calculate derivatives, store into b
   calcJacCol(b, eqn.res_vec, epsilon)
 
@@ -236,7 +243,7 @@ function calcJacVecProd(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, fun
     eqn.q_vec[i] -= pert*vec[i]
   end
 
-  eqn.params.krylov_itr += 1
+#  eqn.params.krylov_itr += 1
 
   return nothing
 end
@@ -338,6 +345,8 @@ end
   This function is passed to Petsc so it can calculate Jacobian-vector products
   Ax=b.
 
+  This function does not pass t correctly.
+
   Inputs
     A:  PetscMat object 
     x:  PetscVec to multiply A with
@@ -357,15 +366,17 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   # get the context
   # the context is a pointer to a tuple of all objects needed
   # for a residual evaluation
-  ctx = MatShellGetContext(A)
-  tpl = unsafe_pointer_to_objref(ctx)
+  ctx_ptr = MatShellGetContext(A)
+  ctx_petsc = unsafe_pointer_to_objref(ctx_ptr)
+  @assert length(ctx_petsc) == 7
   # unpack the tuple (could use compact syntax)
-  mesh = tpl[1]
-  sbp = tpl[2]
-  eqn = tpl[3]
-  opts = tpl[4]
-  newton_data = tpl[5]
-  func = tpl[6]
+  mesh = ctx_petsc[1]
+  sbp = ctx_petsc[2]
+  eqn = ctx_petsc[3]
+  opts = ctx_petsc[4]
+  newton_data = ctx_petsc[5]
+  func = ctx_petsc[6]  # rhs_func from newtonInner
+  ctx_residual = ctx_petsc[7]
 
   epsilon =  opts["epsilon"]
   jac_method = opts["jac_method"]
@@ -381,7 +392,7 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   x_arr, xptr = PetscVecGetArrayRead(x)  # read only
   b_arr, bptr = PetscVecGetArray(b)  # writeable
 
-  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, x_arr, b_arr)
+  calcJacVecProd(newton_data, mesh, sbp, eqn, opts, pert, func, ctx_residual, x_arr, b_arr)
 
 #  println("finished calculating JacVecProd")
   PetscVecRestoreArrayRead(x, xptr)
@@ -893,7 +904,7 @@ function matrixSolve(newton_data::NewtonData, eqn::AbstractSolutionData,
       copy!(x, tmp2)
 
   elseif  jac_type <: PetscMat
-    petscSolve(newton_data, jac, newton_data.ctx_newton..., opts, b, x, 
+    petscSolve(newton_data, newton_data.ctx_newton..., opts, b, x, 
                mesh.dof_offset)
 
   else
