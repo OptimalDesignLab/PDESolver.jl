@@ -1,5 +1,5 @@
-const test_checkpoint_inputfile = "input_vals_channel.jl"
-const test_checkpoint_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
+const test_checkpoint_inputfile = "input_vals_channel_dg.jl"
+#const test_checkpoint_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
 
 type TestCheckpointData <: AbstractCheckpointData
   a::Int
@@ -100,4 +100,4 @@ function test_checkpoint(mesh, sbp, eqn, opts)
   return nothing
 end
 
-add_func3!(EulerTests, test_checkpoint, test_dg_inputfile, test_dg_moddict, [TAG_SHORTTEST, TAG_CHECKPOINT])
+add_func2!(EulerTests, test_checkpoint, test_dg_inputfile, [TAG_SHORTTEST, TAG_CHECKPOINT])
