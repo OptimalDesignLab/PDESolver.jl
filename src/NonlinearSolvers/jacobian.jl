@@ -544,7 +544,7 @@ end
     opts: options dictionary
     pert: perturbation to use for the algorithmic differentiation.  Currently,
           only complex numbers are supported.
-    func: residual evaluation function
+    func: residual evaluation function (eqn.q -> eqn.res)
     res_0: element-based (3 dimensional) array containing the residual evaluated           at the point where the Jacobian is being calculated.
            This is only used for finite differences (can be a 0 x 0 x 0 array
            otherwise).

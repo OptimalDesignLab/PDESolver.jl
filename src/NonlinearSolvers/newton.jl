@@ -27,6 +27,9 @@ type NewtonData{Tsol, Tres}
   tau_l::Float64  # current pseudo-timestep
   tau_vec::Array{Float64, 1}  # array of solution at previous pseudo-timestep
 
+  # volume preconditioning
+  vol_prec::VolumePreconditioner
+
   # temporary arrays used to for Petsc MatSetValues
   insert_idx::Int
   localsize::Int
@@ -65,6 +68,12 @@ type NewtonData{Tsol, Tres}
       tau_vec = []
     end
 
+    if opts["use_volume_preconditioner"]
+      vol_prec = VolumePreconditioner(mesh, sbp, eqn, opts)
+    else
+      vol_prec = VolumePreconditioner()
+    end
+
     local_size = mesh.numNodesPerElement*mesh.numDofPerNode*insert_freq
     vals_tmp = zeros(local_size, 1) # values
     idx_tmp = zeros(PetscInt, local_size)  # row index
@@ -80,7 +89,9 @@ type NewtonData{Tsol, Tres}
 
     return new(myrank, commsize, reltol, abstol, dtol, 
                       itermax, krylov_gamma, 
-                      res_norm_i, res_norm_i_1, tau_l, tau_vec, 1, localsize, vals_tmp, 
+                      res_norm_i, res_norm_i_1, tau_l, tau_vec, 
+                      vol_prec,
+                      1, localsize, vals_tmp, 
                       idx_tmp, idy_tmp, ctx_newton, ctx_petsc)
   end
 

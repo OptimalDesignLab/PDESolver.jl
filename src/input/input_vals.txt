@@ -307,6 +307,11 @@ Note that any values associated with these options are shared with the regular
                             (aka. implicit Euler) globalization, (Bool), default                            false
 "euler_tau": the magnitude factor of the initial pseudo-timestep for the
              Euler globalization, (FloatingPoint), default 1.0
+
+"use_volume_preconditioner" : use the jacobian of the volume integrals as a
+                              preconditioner (Bool), default false.  Note that
+                              this is done matrix-free
+
 "newton_verbosity": how much printing to do in Newton's method, (Int), default 5
                     if steady newton, 4 otherwise (ie. when Newton is used by
                     another method in NonlinearSolvers).  When 4 or less,

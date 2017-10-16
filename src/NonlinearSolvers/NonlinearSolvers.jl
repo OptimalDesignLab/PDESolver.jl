@@ -19,7 +19,9 @@ include("lserk.jl")
   export lserk54
 
 include("crank_nicolson.jl")
+include("preconditioning_types.jl")
 include("newton.jl")
+include("preconditioning.jl")
 include("globalization.jl")
 include("predictor_corrector.jl")
 #include("newton_fd_old.jl")
