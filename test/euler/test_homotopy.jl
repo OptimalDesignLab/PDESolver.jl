@@ -8,7 +8,7 @@ const test_homotopy_moddict = Dict{ASCIIString, Any}(
   "BC1_name" => "FreeStreamBC",
   "jac_type" => 1,
   "jac_method" => 2,
-  "new_fname" => "input_vals_channel_dg")
+  "new_fname" => "input_vals_channel_dg_homotopy")
 
 
 function test_homotopy(mesh, sbp, eqn, opts)
