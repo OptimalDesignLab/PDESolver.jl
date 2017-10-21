@@ -452,7 +452,12 @@ petsc_opts = Dict{AbstractString, AbstractString}(
   "-ksp_gmres_restart" => "30"
 )
 
-get!(arg_dict, "petsc_options", petsc_opts)
+petsc_opts = get!(arg_dict, "petsc_options", petsc_opts)
+
+if arg_dict["use_volume_preconditioner"]
+  get!(petsc_opts, "-pc_type", "shell")
+end
+
 
 checkForIllegalOptions_post(arg_dict)
 
@@ -546,6 +551,14 @@ function checkForIllegalOptions_pre(arg_dict)
     end
   end
 
+  if get(arg_dict, "use_volume_preconditioner", false)
+    petsc_opts = get(arg_dict, "petsc_options", Dict{Any, Any}())
+    val = get(petsc_opts, "-pc_type", "shell")
+    if val != "shell"
+      error("when use_volume_preconditioner, the petsc_opts -pc_type must be either unspecified or \"shell\"")
+    end
+  end
+
 
   return nothing
 
@@ -580,7 +593,7 @@ end
   # error if checkpointing not supported
   checkpointing_run_types = [1, 30, 20]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
-    error("checkpointing only supported with RK4 and LSERK")
+    error("checkpointing only supported with RK4 and LSERK and CN")
   end
 
   if arg_dict["use_checkpointing"]
@@ -592,6 +605,16 @@ end
       error("checkpointing requires checkpoint_freq > 0")
     end
   end
+
+  jac_type = arg_dict["jac_type"]
+  if arg_dict["use_volume_preconditioner"] && (jac_type != 3 && jac_type != 4)
+    error("cannot precondition non-iterative method")
+  end
+
+  if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
+    error("cannot use volume preconditioner with any method except CN")
+  end
+
 
   checkBCOptions(arg_dict)
 

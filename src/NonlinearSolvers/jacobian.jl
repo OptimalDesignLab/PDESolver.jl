@@ -368,7 +368,7 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   # for a residual evaluation
   ctx_ptr = MatShellGetContext(A)
   ctx_petsc = unsafe_pointer_to_objref(ctx_ptr)
-  @assert length(ctx_petsc) == 7
+  @assert length(ctx_petsc) == 8
   # unpack the tuple (could use compact syntax)
   mesh = ctx_petsc[1]
   sbp = ctx_petsc[2]
@@ -377,6 +377,7 @@ function calcJacVecProd_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   newton_data = ctx_petsc[5]
   func = ctx_petsc[6]  # rhs_func from newtonInner
   ctx_residual = ctx_petsc[7]
+  t = ctx_petsc[8]
 
   epsilon =  opts["epsilon"]
   jac_method = opts["jac_method"]

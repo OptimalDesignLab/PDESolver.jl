@@ -101,7 +101,7 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp,
     println(STDERR, "jac_type = ", jac_type)
   end
 
-  if jac_type == 4 || opts["use_jac_precond"]
+  if jac_type == 4 || opts["use_jac_precond"] && !opts["use_volume_preconditioner"]
     @mpi_master println("creating Ap")  # used for preconditioner
     Ap = PetscMat(comm)
     PetscMatSetFromOptions(Ap)
@@ -138,6 +138,7 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp,
 
   # preallocate A
   if jac_type == 3
+    @mpi_master println("preallocating A")
 
     PetscMatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
 
@@ -151,7 +152,8 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp,
   end
 
   # preallocate Ap
-  if jac_type == 4 || opts["use_jac_precond"]
+  if jac_type == 4 || opts["use_jac_precond"] && !opts["use_volume_preconditioner"]
+    @mpi_master println("preallocating Ap")
     # calculate number of nonzeros per row for A[
     for i=1:mesh.numNodes
   #    max_dof = pmesh.sparsity_nodebnds[2, i]
@@ -187,15 +189,24 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp,
 
   KSPSetFromOptions(ksp)
   KSPSetOperators(ksp, A, Ap)  # this was A, Ap
-
+  newton_data.ksp = ksp
   # set: rtol, abstol, dtol, maxits
   #KSPSetTolerances(ksp, 1e-2, 1e-12, 1e5, PetscInt(1000))
   #KSPSetUp(ksp)
 
 
   pc = KSPGetPC(ksp)
+  newton_data.pc = pc
   pc_type = PCGetType(pc)
   @mpi_master println("pc_type = ", pc_type)
+  if opts["use_volume_preconditioner"]
+    @assert pc_type == PETSc.PCSHELL
+
+    fptr = cfunction(applyVolumePC_wrapper, PetscErrorCode, (PC, PetscVec, PetscVec))
+    PCShellSetApply(pc, fptr)
+    fptr = cfunction(cnVolumePCSetUp_wrapper, PetscErrorCode, (PC,))
+    PCShellSetSetUp(pc, fptr)
+  end
   #=
   if pc_type == "bjacobi"
     n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)

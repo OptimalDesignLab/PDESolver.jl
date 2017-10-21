@@ -3,6 +3,7 @@
 
 export crank_nicolson, cnResidual
 
+#TODO: stop doing this
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -74,9 +75,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   ncheckpoints = opts["ncheckpoints"]::Int
 
 
-  if jac_type == 4
-    throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
-  end
+#  if jac_type == 4
+#    throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
+#  end
 
   @mpi_master if myrank == 0
     _f1 = open("convergence.dat", "a")
@@ -134,7 +135,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # zero out Jac
     #   this works for both PETSc and Julia matrices.
     #   when jac is a Julia matrix, this is effectively wrapping: fill!(jac, 0.0)
-    PetscMatZeroEntries(jac)
+    if jac_type != 4
+      PetscMatZeroEntries(jac)
+    end
 
     # TODO: Allow for some kind of stage loop: ES-Dirk
 
@@ -246,21 +249,28 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
+  # should t be t_nextstep?
   physics_func = ctx[1]
   # NOTE: eqn instead of eqn_nextstep, 20161013
-  eqn = ctx[2]
+  eqn = ctx[2] # unused?
   h = ctx[3]
-  newton_data = ctx[4]
+#  newton_data = ctx[4]  # ??? this is an argumetn
 
   jac_type = opts["jac_type"]
 
   t_nextstep = t + h
 
+  # don't compute the jacobian
+  #TODO: support using a preconditioning matrix
+  if jac_type == 4
+    return nothing
+  end
   # Forming the CN Jacobian:
   #   call physicsJac with eqn_nextstep & t_nextstep
   #   then form CN_Jac = I + dt/2 * physics_Jac
 
   NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
+
 
   # need to flush assembly cache before performing the scale operation.
   #   These are defined for Julia matrices; they're just noops
@@ -308,6 +318,109 @@ function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 
 end
+
+"""
+  This wrapper around [`cnVolumePCSetUp`](@ref) is passed into Petsc as a
+  callback
+
+  **Inputs**
+
+   * pc: a Shell PC object
+
+  **Notes**
+
+  the PC ctx must be: (mesh, sbp, eqn, opts, newton_data, func, ctx_residual,
+  t), where ctx_residual is the ctx used by all the CN functions and
+  func is the right hand side function passed into [`newtonInner`](@ref).
+
+"""
+function cnVolumePCSetUp_wrapper(pc::PC)
+  ctx_ptr = PCShellGetContext(pc)
+  ctx_petsc_pc = unsafe_pointer_to_objref(ctx_ptr)
+
+  # unpack ctx
+  # the ctx_petsc_pc is the same as for a shell matrix for convenience
+  mesh = ctx_petsc_pc[1]
+  sbp = ctx_petsc_pc[2]
+  eqn = ctx_petsc_pc[3]
+  opts = ctx_petsc_pc[4]
+  newton_data = ctx_petsc_pc[5]
+  func = ctx_petsc_pc[6]  # rhs_func from newtonInner
+  ctx_residual = ctx_petsc_pc[7]
+  t = ctx_petsc_pc[8]
+
+  cnVolumePCSetUp(newton_data, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  return PetscErrorCode(0)
+end
+
+
+"""
+  This function calculates and factors the volume preconditioner.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * ctx_residual: the Crank-Nicolson ctx used by all CN functions
+   * t: current time
+
+  **Inputs/Outputs**
+
+   * newton_data: vol_prec is updated with the new preconditioner
+"""
+function cnVolumePCSetUp(newton_data, mesh::AbstractDGMesh,
+                         sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData,
+                         opts, ctx_residual, t)
+
+  cnCalcVolumePreconditioner(newton_data, mesh, sbp, eqn_nextstep, opts,
+                             ctx_residual, t)
+  factorVolumePreconditioner(newton_data, mesh, sbp, eqn_nextstep, opts)
+
+  return nothing
+end
+"""
+  This function uses [`calcVolumePreconditioner`](@ref) to compute a
+  a preconditioner for the matrix used by Crank-Nicolson.  This function
+  has the same signature as [`cnJac`](@ref) to facilitate matrix-free
+  operations.
+"""
+function cnCalcVolumePreconditioner(newton_data, mesh::AbstractDGMesh,
+               sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts,
+               ctx, t)
+  #TODO: is this ctx_residual?
+  physics_func = ctx[1]
+#  eqn = ctx[2]
+  h = ctx[3]
+  t_nextstep = t + h
+
+  epsilon = opts["epsilon"]
+  pert = Complex128(0, epsilon)
+
+
+
+#  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
+  calcVolumePreconditioner(newton_data, mesh, sbp, eqn_nextstep, opts, pert, physics_func, t_nextstep)
+
+  volume_prec = newton_data.vol_prec
+  scale!(volume_prec.volume_jac, -0.5*h)
+
+  # add the identity matrix
+  jac_size = mesh.numDofPerNode*mesh.numNodesPerElement
+
+  for i=1:mesh.numEl
+    for j=1:jac_size
+      volume_prec.volume_jac[j, j, i] += 1
+    end
+  end
+
+  return nothing
+end
+
+
+
 
 @doc """
 ###NonlinearSolvers.cnRhs

@@ -39,10 +39,13 @@ type NewtonData{Tsol, Tres}
 
   # tuple of values needed to cleanup Petsc data structures
   ctx_newton
+  ksp::KSP
+  pc::PC
 
   # ctx needed by MatShell
   # TODO: get list of contents from jac-vec prod wrapper
   ctx_petsc
+  ctx_petsc_pc  # for the matrix-free preconditioner
 
   #TODO; make this an outer constructor
   function NewtonData(mesh, sbp, eqn, opts)
@@ -85,14 +88,18 @@ type NewtonData{Tsol, Tres}
 
     # initialize these to something, will be replaced in setupNewton
     ctx_newton = ()
+    # these get replaced later, if needed
+    ksp = PETSc.KSP_NULL
+    pc = PETSc.PC_NULL
     ctx_petsc = ()
+    ctx_petsc_pc = ()
 
     return new(myrank, commsize, reltol, abstol, dtol, 
                       itermax, krylov_gamma, 
                       res_norm_i, res_norm_i_1, tau_l, tau_vec, 
                       vol_prec,
                       1, localsize, vals_tmp, 
-                      idx_tmp, idy_tmp, ctx_newton, ctx_petsc)
+                      idx_tmp, idy_tmp, ctx_newton, ksp, pc, ctx_petsc, ctx_petsc_pc)
   end
 
 end
@@ -374,11 +381,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
     println("res_reltol0 = ", res_reltol0)
   end
 
-  if (t != 0.0) && (jac_type == 4)
-    throw(ErrorException, "Matrix free Petsc cannot be used for solving unsteady problems, see TODO in calcJacVecProd_wrapper")
-  end
-
-
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step
@@ -387,11 +389,20 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, sbp::AbstractS
 
   # set the ctx pointer for the matrix-free matrix
   if jac_type == 4
-    ctx_petsc = (mesh, sbp, eqn, opts, newton_data, rhs_func, ctx_residual)
+    ctx_petsc = (mesh, sbp, eqn, opts, newton_data, rhs_func, ctx_residual, t)
     newton_data.ctx_petsc = ctx_petsc
     ctx_ptr = pointer_from_objref(ctx_petsc)
     MatShellSetContext(jac, ctx_ptr)
   end
+
+  if opts["use_volume_preconditioner"]
+    pc = newton_data.pc
+    ctx_petsc_pc = (mesh, sbp, eqn, opts, newton_data, rhs_func, ctx_residual, t)
+    newton_data.ctx_petsc_pc = ctx_petsc_pc
+    ctx_ptr_pc = pointer_from_objref(ctx_petsc_pc)
+    PCShellSetContext(pc, ctx_ptr_pc)
+  end
+
 
   if jac_type == 3 || jac_type == 4
     jacp = newton_data.ctx_newton[2]
