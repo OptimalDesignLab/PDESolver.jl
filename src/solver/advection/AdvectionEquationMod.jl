@@ -104,12 +104,15 @@ function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
                                     eqn::AdvectionData{Tsol}, opts,
                                     functional_number::Int=1)
 
-  dict_val = string("functional_name", functional_number)
+  dict_key = string("functional_name", functional_number)
   key = string("geom_faces_functional", functional_number)
   functional_faces = opts[key]
 
-  if opts[dict_val] == "qflux"
+  func_name = opts[dict_key]
+  if func_name == "qflux"
     functional = QfluxData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
+  elseif func_name "integralq"
+    functional = IntegralQData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
   end
 
   return functional

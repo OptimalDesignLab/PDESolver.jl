@@ -128,7 +128,7 @@ end
 
 function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
                             eqn::AdvectionData{Tsol}, opts,
-                            functionalData::QfluxData{Topt})
+                            functionalData::AbstractIntegralOptimizationData{Topt})
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary
@@ -145,6 +145,8 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
     g_edge_number = functional_edges[itr] # Extract geometric edge number
 
     # get the boundary array associated with the geometric edge
+    #TODO: describe functionals in terms of which *group* of edges they are 
+    #      applied to, (ie opts["BC1"}), not the geometry directly
     itr2 = 0
     for itr2 = 1:mesh.numBC
       if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
@@ -218,6 +220,19 @@ function calcBoundaryFunctionalIntegrand(params::ParamType2, nx, ny, q,
   alpha_y = params.alpha_y
 
   return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
+end
+
+"""
+  Method for [`IntegralQData`](@ref) functional.
+
+  Note that q should be scaled by the length of the normal vector so the
+  integration works correctly
+"""
+function calcBoundaryFunctionalIntegrand(params::ParamType2, nx, ny, q,
+                                         functionalData::IntegralQData)
+
+  fac = sqrt(nx*nx + ny*ny)
+  return q*fac
 end
 
 

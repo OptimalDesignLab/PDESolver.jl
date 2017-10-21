@@ -20,6 +20,12 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   sin_amplitude::Complex128
   omega::Complex128
 
+  x_design::Array{Tres, 1}  # array of design variables
+                            # This is *not* the official place where design
+                            # variables are stored, meerly a copy that is
+                            # accessible to all the parts of the solver
+                            # that might need them
+
   qL_s::Array{Tsol, 1}  # solution vector for a solution grid element
   qR_s::Array{Tsol, 1}  # solution vector for a solution grid element
   qL_f::Array{Tsol, 1}  # solution vector for flux grid element
@@ -56,13 +62,15 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     else
       f = BufferedIO()  # create a dummy IOStream
     end
-    alpha_x = 1.0
-#     alpha_x = 0.0
-    # Note: alpha_y = 0.0 might be useful for testing out new methods,
-    #    but the CI tests will fail unless set to 1.0
-    alpha_y = 1.0
-#     alpha_y = 0.0
-    alpha_z = 1.0
+
+    advection_velocity = opts["advection_velocity"]
+    alpha_x = advection_velocity[1]
+    alpha_y = advection_velocity[2]
+    if Tdim == 3
+      alpha_z = advection_velocity[3]
+    else
+      alpha_z = 1.0
+    end
 
     numNodesPerElement_s = mesh.numNodesPerElement
     if opts["use_staggered_grid"]
@@ -85,10 +93,12 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     sin_amplitude = 2.0
     omega = 1.0
 
+    x_design = zeros(Tres, 1)  # TODO: get proper size information
+
     t = Timings()
 
     return new(LFalpha, alpha_x, alpha_y, alpha_z,
-               sin_amplitude, omega,
+               sin_amplitude, omega, x_design,
                qL_s, qR_s, qL_f, qR_f, resL_s, resR_s, resL_f, resR_f,
                f, t)
   end
@@ -303,7 +313,7 @@ The object is constructed using an inner constructor with the following
 
 """->
 
-type QfluxData{Topt} <: AbstractOptimizationData
+type QfluxData{Topt} <: AbstractIntegralOptimizationData{Topt}
   is_objective_fn::Bool
   geom_faces_functional::AbstractArray{Int,1}
   val::Topt
@@ -318,6 +328,35 @@ type QfluxData{Topt} <: AbstractOptimizationData
     return functional
   end
 end # End type OfluxData
+
+"""
+  Functional that integrates the solution q over the specified boundary(/ies)
+
+  **Fields**
+
+   * geom_face_functional: the geometric faces the functional is computed over
+   * val: the value of the functional, initially 0.0
+
+  **Constructor Argument**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * geom_faces_functional: array of faces, used as the field of the same name
+
+"""
+type IntegralQData{Topt} <: AbstractIntegralOptimizationData{Topt}
+  geom_faces_functional::Array{Int, 1}
+  val::Topt
+
+  function IntegralQData(mesh, sbp, eqn, opts, geom_faces_functional)
+
+    val = 0.0
+    return new(geom_faces_functional, val)
+  end
+end
+
 
 import ODLCommonTools.getAllTypeParams
 

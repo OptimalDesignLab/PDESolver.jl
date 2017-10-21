@@ -75,6 +75,12 @@ function test_adjoint()
       functional_error = norm(real(objective.val) - analytical_val,2)
       @fact functional_error --> roughly(0.0, atol=1e-12)
 
+      # test another functional
+      func = AdvectionEquationMod.IntegralQData{Complex128}(mesh, sbp, eqn, opts, opts["geom_faces_functional1"])
+      AdvectionEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, func)
+      @fact func.val --> roughly(analytical_val, atol=1e-13)
+
+
     end # End context("Checking Functional Computation")
 
     context("Checking Adjoint Computation on DG mesh") do

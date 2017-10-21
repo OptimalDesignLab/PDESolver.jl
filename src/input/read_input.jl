@@ -458,6 +458,9 @@ if arg_dict["use_volume_preconditioner"]
   get!(petsc_opts, "-pc_type", "shell")
 end
 
+# Advection specific options
+# TODO; move these into physics module
+get!(arg_dict, "advection_velocity", [1.0, 1.0, 1.0])
 
 checkForIllegalOptions_post(arg_dict)
 
