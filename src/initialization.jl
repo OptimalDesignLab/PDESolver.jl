@@ -328,6 +328,10 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
 
   dmg_name = opts["dmg_name"]
   smb_name = opts["smb_name"]
+  # the mesh constructor looks at the order option, so temporarily make
+  # order = order$suffix
+  order_orig = opts["order"]
+  opts["order"] = opts["order$suffix"]
   order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
@@ -335,15 +339,19 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
   if opts["use_DG"]
     println("constructing DG mesh")
     if dim == 2
-      mesh = PumiMeshDG2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface; 
-                               dofpernode=dofpernode, 
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
+      mesh = PumiMeshDG2(Tmsh, sbp, opts, sbpface, dofpernode=dofpernode,
+                                                   shape_type=shape_type)
+#      mesh = PumiMeshDG2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface; 
+#                               dofpernode=dofpernode, 
+#                               coloring_distance=opts["coloring_distance"],
+#                               shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface,
-                               topo; dofpernode=dofpernode,
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
+      mesh = PumiMeshDG3(Tmsh, sbp, opts, sbpface, topo, dofpernode=dofpernode,
+                                                   shape_type=shape_type)
+#      mesh = PumiMeshDG3{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface,
+#                               topo; dofpernode=dofpernode,
+#                               coloring_distance=opts["coloring_distance"],
+#                               shape_type=shape_type)
     end
 
     # create preconditioning mesh
@@ -376,6 +384,9 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
     end
   end  # end if DG
 
+
+  # reset order
+  opts["order"] = order_orig
 
   return mesh, pmesh
 end

@@ -40,7 +40,7 @@ function test_staggered()
   mesh, sbp, eqn, opts = run_solver(fname)
 
   # check if the D operators are the same
-  println("chekcing D")
+  println("checking D")
   for d=1:2
     sbp2 = mesh.sbp2
     Hinv = inv(diagm(sbp2.w))
