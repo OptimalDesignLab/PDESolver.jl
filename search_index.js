@@ -557,7 +557,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver User Interface",
     "title": "PDESolver.registerIC",
     "category": "Function",
-    "text": "This function registers a new initial condition function with the specified   physics module.  The function must have the signature:\n\n```    ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},                 opts:Dict, q_vec::AbstractVector{Tsol})   ```\n\nwhere q_vec is a vector of length numDof that will be populated with the   initial condition.  If the function is used to provide the exact solution   for an unsteady problem (for calculating the error via the exact_soln_func   key in the options dictionary), then it should use eqn.params.t as the   current time value.\n\nThis function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.\n\nInputs:\n\nmod: physics module to register the function with\nfname: name associated with the function, used as the value for the\n       for any key in the options dictionary that specifies an initial\n       condition function\nfunc: the function itself\n\nOutputs:\n\nnone\n\n\n\n"
+    "text": "This function registers a new initial condition function with the specified   physics module.  The function must have the signature:\n\n```    ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},                 opts:Dict, q_vec::AbstractVector{Tsol})   ```\n\nwhere q_vec is a vector of length numDof that will be populated with the   initial condition.  If the function is used to provide the exact solution   for an unsteady problem (for calculating the error via the exact_soln_func   key in the options dictionary), then it should use eqn.params.t as the   current time value.\n\nThis function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.\n\nThe physics module must have an associative container called ICDict that   accepts ASCIIStrings as keys and functions as values.\n\nInputs:\n\nmod: physics module to register the function with\nfname: name associated with the function, used as the value for the\n       for any key in the options dictionary that specifies an initial\n       condition function\nfunc: the function itself\n\nOutputs:\n\nnone\n\n\n\n"
 },
 
 {
@@ -741,7 +741,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Physics Module Startup",
     "category": "section",
-    "text": "TODO: does this belong here, or in the physics module section?Each physics module is required to do some of the setup work needed to start a simulation. The functions above facilitate doing so. In particular, the physics module mustread the input dictionary\ncreate an \nAbstractMesh\n and \nAbstractSBP\ncreate an \nAbstractSolutionData\nLoad an initial condition\nCalculate various quantities\nInvoke a NonlinearSolver\nDo postprocessing"
+    "text": "Each physics module is required to do some of the setup work needed to start a simulation. The functions above facilitate doing so. In particular, the physics module mustread the input dictionary\ncreate an \nAbstractMesh\n and \nAbstractSBP\ncreate an \nAbstractSolutionData\nLoad an initial condition\nCalculate various quantities\nInvoke a NonlinearSolver\nDo postprocessing  CurrentModule = EulerEquationModPhysics modules should define a function called run_physics (ex. run_euler) that does all these operations (by calling other functions within the physics module) and returns the mesh, sbp, eqn, and opts objects."
 },
 
 {
@@ -749,7 +749,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Input Dictionary",
     "category": "section",
-    "text": ""
+    "text": "The first thing a physics module must do is read the input file.   Reading input files is split into two parts.  The first part is done by the Input module, which loads the file from disk and supplies default values. The section part is done by the physics function that verifies the physics module supports the given options (especially checking for combinations of options that might not be supported).  See, for example, checkOptions."
 },
 
 {
@@ -757,7 +757,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Creating Mesh and Operator",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = PDESolverThe next thing the physics module needs to do is create AbstractSBP and AbstractMesh objects. The function createMeshAndOperator should be used by all physics modules to do this."
 },
 
 {
@@ -765,7 +765,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Create an Equation Object",
     "category": "section",
-    "text": ""
+    "text": "Next, the physics module must create its AbstractSolutionData object. The details of how to do this are left up to the physics module, but the return values of createMeshAndOperator should be used for static parameter values.  CurrentModule = EulerEquationModThe creation of the mesh, sbp, and equation object are usually combined into a single function called createObjects."
 },
 
 {
@@ -773,7 +773,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Load an initial condition",
     "category": "section",
-    "text": ""
+    "text": "A function called solve_physics (ex. solve_euler) is created by the physics module do the operations described in this section and the next two.  CurrentModule = PDESolverThe details of how to load an initial condition are left up to the physics module, but the end result must be the initial condition is present in eqn.q_vec.Physics modules generally use a Dictionary to map IC names (which is how  ICs are referred to in the input file) to the function that applies the IC.  See registerIC for further description."
 },
 
 {
@@ -781,7 +781,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Various calculations",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = EulerEquationModAfter loading the IC, the options dictionary may require the calculation of a few quantities.  See solve_euler for the list of options keys that must be supported."
 },
 
 {
@@ -789,7 +789,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Invoke a NonlinearSolver",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = PDESolverThe next step is calling a Nonlinear Solver. The function call_nlsolver takes the objects already constructed and calls the appropriate nonlinear solver. Currently, there are no strong guarantees about where the solution is stored (eqn.q or eqn.q_vec) when this function returns (TODO: fix that)."
 },
 
 {
@@ -797,7 +797,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Do Postprocessing",
     "category": "section",
-    "text": "The functions here should be used by all physics modules to assist in creating the AbstractMesh and AbstractSBP objects and calling a nonlinear solver.TODO: document what the physics module needs to implement for startup"
+    "text": "  CurrentModule = EulerEquationModThe options dictionary may require post-processing be done, for example calculating the solution error when the analytical solution is known. Each physics module usually defines a function to do this. See postproc for an example.  CurrentModule = EulerEquationMod"
 },
 
 {
@@ -4497,11 +4497,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/startup.html#EulerEquationMod.checkOptions-Tuple{Any}",
+    "page": "Startup",
+    "title": "EulerEquationMod.checkOptions",
+    "category": "Method",
+    "text": "This function checks the options in the options dictionary after default   values have been supplied and throws exceptions if unsupported/incompatable   options are specified\n\nInputs:     opts: options dictionary\n\nOutputs:     none\n\n\n\n"
+},
+
+{
     "location": "solver/euler/startup.html#Functions-1",
     "page": "Startup",
     "title": "Functions",
     "category": "section",
-    "text": "  Modules = [EulerEquationMod]\n  Pages = [\"euler/startup_func.jl\"]"
+    "text": "  Modules = [EulerEquationMod]\n  Pages = [\"euler/startup_func.jl\", \"euler/check_options.jl\"]"
 },
 
 {
@@ -4641,7 +4649,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "NonlinearSolvers/nonlinearsolvers.html#NonlinearSolvers-Introduction-1",
+    "location": "NonlinearSolvers/nonlinearsolvers.html#sec:nonlinearsolvers-1",
     "page": "Introduction",
     "title": "NonlinearSolvers Introduction",
     "category": "section",
