@@ -20,6 +20,7 @@ export printICNames, printBCNames
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/linearsolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
 
@@ -35,6 +36,7 @@ using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
