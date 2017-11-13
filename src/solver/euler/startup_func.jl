@@ -69,6 +69,42 @@ function createObjects(input_file::AbstractString)
 end
 
 """
+  Constructs a the EulerData object given a mesh, sbp, and options dictionary.
+
+  Used for submesh solves.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * opts
+
+  **Outputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * pmesh: currently, always the same as mesh
+"""
+function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
+
+  read_input(opts)  # get default values
+  checkOptions(opts)
+  var_type = opts["variable_type"]
+
+  Tdim = mesh.dim
+  Tmsh, Tsbp, Tsol, Tres = PDESolver.getDataTypes(opts)
+
+  eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
+
+  init(mesh, sbp, eqn, opts, mesh)
+
+  return mesh, sbp, eqn, opts, mesh
+end
+
+
+"""
   Given fully initialized mesh, sbp, eqn, opts, this function solves
   the Euler equations.  The 4 object should be obtained from createObjects().
 

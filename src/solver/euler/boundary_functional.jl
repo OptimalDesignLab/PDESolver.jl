@@ -39,6 +39,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   # Calculate functional over edges
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
+  #TODO: return functional value as well
   return nothing
 end
 
