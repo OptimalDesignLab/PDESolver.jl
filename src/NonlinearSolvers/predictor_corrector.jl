@@ -70,10 +70,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
     # this function is only for use with Newton's method, where parallel
     # communication is started outside the physics
+    # q_vec -> q
 
-#    global evalPhysicsResidual
-
-    res_homotopy = zeros(eqn.res)
+#    res_homotopy = zeros(eqn.res)
     fill!(eqn.res, 0.0)
     fill!(res_homotopy, 0.0)
 
@@ -101,9 +100,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
   Tjac = real(Tres)
 
-  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, 
-                                          homotopyPhysics)
-  
+ 
 
   time = eqn.params.time
   lambda = 1.0  # homotopy parameter
@@ -144,8 +141,10 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   jac_func = physicsJac
   ctx_residual = (homotopyPhysics,)
 
+  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts)
+ 
   # calculate physics residual
-  res_norm = real(calcResidual(mesh, sbp, eqn, opts, physics_func))
+  res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,)))
   res_norm_0 = res_norm
 
   # print to log file
@@ -168,7 +167,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end
 
     # calculate homotopy residual
-    homotopy_norm = calcResidual(mesh, sbp, eqn, opts, homotopyPhysics)
+    homotopy_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (homotopyPhysics,))
 
     homotopy_norm0 = homotopy_norm
     copy!(q_vec0, eqn.q_vec)  # save initial q to calculate delta_q later
@@ -251,7 +250,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end  # end if lambda too large
 
     # calculate physics residual at new state q
-    res_norm = real(calcResidual(mesh, sbp, eqn, opts, physics_func))
+    res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,),))
 
     # print to log file
     @mpi_master println(fconv, iter, " ", res_norm, " ", h )
@@ -275,9 +274,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
 
-  if opts["jac_type"] == 3
-    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
-  end
+  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
 
   flush(BSTDOUT)
   flush(BSTDERR)

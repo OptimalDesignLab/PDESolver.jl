@@ -45,13 +45,15 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
       "-ksp_gmres_restart", "30" ])
   end
 
+  # This doesn't work in parallel?  paralle_type == 2 if calculating the
+  # jacobian
   if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
   # Allocate space for adjoint solve
   jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn,
-                                             opts, evalResidual, alloc_rhs=true)
+                                             opts, alloc_rhs=true)
 
   # Get the residual jacobian
   ctx_residual = (evalResidual,)
@@ -131,6 +133,7 @@ specified in the options dictionary `jac_type`.
 function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
+  #TODO: get rid of this function, use NonlinearSolvers.physicsJac instead
   jac_type = opts["jac_type"]
   Tjac = typeof(real(eqn.res_vec[1]))  # type of jacobian, residual
   if jac_type == 4 # For now. Date: 28/11/2016
@@ -204,7 +207,7 @@ mesh nodes.
 
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::AbstractOptimizationData, func_deriv_arr)
+                           functionalData::AbstractIntegralOptimizationData, func_deriv_arr)
 
   integrand = zeros(eqn.q_bndry)
   functional_edges = functionalData.geom_faces_functional
@@ -225,21 +228,21 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
-    q2 = zeros(Tsol, mesh.numDofPerNode)
+#    q2 = zeros(Tsol, mesh.numDofPerNode)
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
         vtx_arr = mesh.topo.face_verts[:,bndry_i.face]
-        q = ro_sview(eqn.q_bndry, :, j, global_facenum)
-        convertToConservative(eqn.params, q, q2)
+        q = sview(eqn.q_bndry, :, j, global_facenum)
+#        convertToConservative(eqn.params, q, q2)
         aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
         nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         integrand_i = sview(integrand, :, j, global_facenum)
 
-        calcIntegrandDeriv(opts, eqn.params, q2, aux_vars, nrm, integrand_i, node_info,
+        calcIntegrandDeriv(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info,
                            functionalData)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
@@ -315,6 +318,34 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
 
   return nothing
 end
+
+function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+                            q::AbstractArray{Tsol,1},
+                            aux_vars::AbstractArray{Tres, 1},
+                            nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::MassFlowData)
+
+  node_info = [1, 2, 3]
+  h = 1e-20
+  pert = Complex128(0, h)
+  val = zeros(Complex128, 1)
+  for i=1:length(q)
+    q[i] += pert
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info,
+                                          functionalData, val)
+    integrand_deriv[i] = imag(val[1])/h
+    q[i] -= pert
+  end
+  # functional integrand rho*v
+#  integrand_deriv[2] = 1*nrm[1]
+#  integrand_deriv[3] = 1*nrm[2]
+
+  return nothing
+end
+  
+
+
 #=
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params, q::AbstractArray{Tsol,1},
                           aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},

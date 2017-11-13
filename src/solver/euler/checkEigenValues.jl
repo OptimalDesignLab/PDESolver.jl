@@ -34,7 +34,7 @@ function elementEigenValues{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                        eqn::EulerData{Tsol, Tres, Tdim})
 
   res_0 = zeros(eqn.res_vec)
-  res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalResidual, res_0)
+  res_0_norm = physicsRhs(mesh, sbp, eqn, opts, res_0, (evalResidual,))
   pert = 1e-6
   numDofPerElement = mesh.numDofPerNode*mesh.numNodesPerElement
   elem_eigen_vals = zeros(numDofPerElement)
@@ -113,7 +113,7 @@ function elementEigenValues{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   println("Number of elements with negative eigen values = ", elem_count)
   =#
-  res_0_norm = calcResidual(mesh, sbp, eqn, opts, evalResidual, res_0)
+  res_0_norm = physicsRhs(mesh, sbp, eqn, opts, res_0, (evalResidual,))
   jac = zeros(Float64, mesh.numDof, mesh.numDof)
   res_0 = copy(eqn.res_vec)
   nl_solvers.calcJacFD(mesh, sbp, eqn, opts, evalResidual, res_0, pert, jac)

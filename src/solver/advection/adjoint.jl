@@ -21,6 +21,7 @@ always call this function in order to compute the adjoint.
                    distributed across `eqn.comm`, just like `eqn.q_vec`
 *  `functional_number` : The functional for which the adjoint vector is being,
                          default = 1
+                         TODO: this is unused?
 
 **Outputs**
 
@@ -73,6 +74,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
                      functional_number::Int=1)
 
   # Check if PETSc is initialized
+  #!!! No, don't do this here!, 
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
                     "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels",
@@ -88,7 +90,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   end
 
   # Allocate space for adjoint solve
-  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, evalResidual, alloc_rhs=true)
+  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, alloc_rhs=true)
 
   # Get the residual jacobian
   ctx_residual = (evalResidual,)
@@ -225,7 +227,8 @@ end
 # DG Version
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn::AdvectionData{Tsol}, opts,
-                             functionalData::QfluxData, func_deriv_arr)
+                             functionalData::AbstractIntegralOptimizationData,
+                             func_deriv_arr)
 
   alpha_x = eqn.params.alpha_x
   alpha_y = eqn.params.alpha_y
@@ -293,7 +296,7 @@ step to compute the derivative
 """->
 
 function calcIntegrandDeriv(opts, params::ParamType2, nx, ny, q,
-                            functionalData::QfluxData)
+                            functionalData::AbstractIntegralOptimizationData)
 
   pert = complex(0, 1e-20)  # complex perturbation
   q += pert

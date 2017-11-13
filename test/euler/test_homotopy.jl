@@ -8,7 +8,7 @@ const test_homotopy_moddict = Dict{ASCIIString, Any}(
   "BC1_name" => "FreeStreamBC",
   "jac_type" => 1,
   "jac_method" => 2,
-  "new_fname" => "input_vals_channel_dg")
+  "new_fname" => "input_vals_channel_dg_homotopy")
 
 
 function test_homotopy(mesh, sbp, eqn, opts)
@@ -40,11 +40,11 @@ function test_homotopy(mesh, sbp, eqn, opts)
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-  newton_data_dense, jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, homotopy_physics_test)
+  newton_data_dense, jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts)
 
   opts2 = copy(opts)
   opts2["jac_type"] = 2  # SparseMatrixCSC
-  newton_data_sparse, jac_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2, homotopy_physics_test)
+  newton_data_sparse, jac_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2)
 
   @fact typeof(jac) <: Array --> true
   @fact typeof(jac_sparse) <: SparseMatrixCSC -->  true

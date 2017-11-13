@@ -5,6 +5,11 @@
 
   This function creates all the objects needed to use the Petsc solver.
 
+  Note that in the matrix free case, this function does *not* set the
+  context pointer for MatShell (because some of the objects that might need
+  to be in the context pointer might not have been created yet).
+  [`newtonInner`](@ref) sets the context pointer intead.
+
   Inputs:
     mesh: AbstractMesh object
     pmesh: AbstractMesh object used for preconditioning
@@ -12,7 +17,6 @@
     eqn: AbstractSolutionData object
     opts: options dictonary
     newton_data:  newton iteration object
-    func: residual evaluation function
 
   Outputs:
     A: PetscMat for the Jacobian
@@ -20,13 +24,13 @@
     x: PetscVec for the solution of Ax=b
     b: Petscvec for the b in Ax=b
     ksp: KSP context
-    ctx: the context for the KSP context.  Is a tuple of all the objects other
-         than A, x, and b needed to do jacobian vector products
 
     Aliasing restrictions: none
 
 """->
-function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, newton_data::NewtonData, func)
+function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp,
+                         eqn::AbstractSolutionData, opts,
+                         newton_data::NewtonData)
 # initialize petsc and create Jacobian matrix A, and vectors x, b, and the
 # ksp context
 # serial only
@@ -43,8 +47,18 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
   #PetscInitialize(["-malloc", "-malloc_debug", "-malloc_dump", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "1000" ])
   numDofPerNode = mesh.numDofPerNode
   if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+    PetscInitialize()
+
+    #TODO: get this from the options dictionary
+    #TODO: use petsc SetOptions function
+#    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type", "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right", "-ksp_gmres_restart", "30" ])
+#    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor", "-pc_type", "none", "ksp_gmres_modifiedgramschmidt", "-ksp_gmres_restart", "30" ])
   end
+
+  println("setting Petsc options ", opts["petsc_options"])
+  PetscSetOptions(opts["petsc_options"])
+  PetscOptionsView()
+
   comm = mesh.comm
 
   obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
@@ -58,10 +72,6 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
   PetscVecSetType(x, vectype)
   PetscVecSetSizes(x, obj_size, PETSC_DECIDE)
 
-  # tuple of all the objects needed to evaluate the residual
-  # only used by Mat Shell
-  ctx = (mesh, sbp, eqn, opts, newton_data, func)  # tuple of all the objects needed to evalute the
-                                    # residual
   if jac_type == 3  # explicit sparse jacobian
     @mpi_master println("creating A")
     A = PetscMat(comm)
@@ -73,8 +83,12 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
     end
   elseif jac_type == 4  # jacobian-vector product
     # create matrix shell
-    ctx_ptr = pointer_from_objref(ctx)  # make a pointer from the tuple
-    A = MatCreateShell(comm, obj_size, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
+
+    # the user supplied ctx_residual (inside ctx_petsc) might need to contain
+    # the NewtonData object, so we can set this here
+    # This gets set by NewtonInner
+    ctx_ptr = C_NULL # 
+    A = MatCreateShell(comm, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE, ctx_ptr)
     PetscMatSetFromOptions(A)  # necessary?
     PetscSetUp(A)
 
@@ -87,12 +101,12 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
     println(STDERR, "jac_type = ", jac_type)
   end
 
-  if jac_type == 4 || opts["use_jac_precond"]
+  if jac_type == 4 || opts["use_jac_precond"] && !opts["use_volume_preconditioner"]
     @mpi_master println("creating Ap")  # used for preconditioner
     Ap = PetscMat(comm)
     PetscMatSetFromOptions(Ap)
     PetscMatSetType(Ap, mattype)
-    PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof), PetscInt(mesh.numDof))
+    PetscMatSetSizes(Ap, PetscInt(mesh.numDof), PetscInt(mesh.numDof), PETSC_DECIDE, PETSC_DECIDE)
     if mesh.isDG
       MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
     end
@@ -124,6 +138,7 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 
   # preallocate A
   if jac_type == 3
+    @mpi_master println("preallocating A")
 
     PetscMatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
 
@@ -137,7 +152,8 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
   end
 
   # preallocate Ap
-  if jac_type == 4 || opts["use_jac_precond"]
+  if jac_type == 4 || opts["use_jac_precond"] && !opts["use_volume_preconditioner"]
+    @mpi_master println("preallocating Ap")
     # calculate number of nonzeros per row for A[
     for i=1:mesh.numNodes
   #    max_dof = pmesh.sparsity_nodebnds[2, i]
@@ -150,7 +166,7 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
     #  println("row ", i," has ", nnz_i, " non zero entries")
     end
 
-    PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, dnnzu, onnzu)
+    PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
 
     MatSetOption(Ap, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
     matinfo = PetscMatGetInfo(Ap, Int32(1))
@@ -173,15 +189,24 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 
   KSPSetFromOptions(ksp)
   KSPSetOperators(ksp, A, Ap)  # this was A, Ap
-
+  newton_data.ksp = ksp
   # set: rtol, abstol, dtol, maxits
   #KSPSetTolerances(ksp, 1e-2, 1e-12, 1e5, PetscInt(1000))
   #KSPSetUp(ksp)
 
 
   pc = KSPGetPC(ksp)
+  newton_data.pc = pc
   pc_type = PCGetType(pc)
   @mpi_master println("pc_type = ", pc_type)
+  if opts["use_volume_preconditioner"]
+    @assert pc_type == PETSc.PCSHELL
+
+    fptr = cfunction(applyVolumePC_wrapper, PetscErrorCode, (PC, PetscVec, PetscVec))
+    PCShellSetApply(pc, fptr)
+    fptr = cfunction(cnVolumePCSetUp_wrapper, PetscErrorCode, (PC,))
+    PCShellSetSetUp(pc, fptr)
+  end
   #=
   if pc_type == "bjacobi"
     n_local, first_local, ksp_arr = PCBJacobiGetSubKSP(pc)
@@ -208,6 +233,7 @@ function createPetscData(mesh::AbstractMesh, pmesh::AbstractMesh, sbp, eqn::Abst
 
 end
 
+#=
 function createPetscCtx(mesh, sbp, eqn, opts, newton_data, func)
 
   # tuple of all the objects needed to evaluate the residual
@@ -217,6 +243,8 @@ function createPetscCtx(mesh, sbp, eqn, opts, newton_data, func)
   return ctx
 
 end
+=#
+
 
 @doc """
 ### NonlinearSolvers.destroyPetsc

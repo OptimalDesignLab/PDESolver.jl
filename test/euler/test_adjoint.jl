@@ -50,7 +50,32 @@ function test_adjoint()
       @fact drag.dLiftdaoa --> zero(Complex{Float64})
       @fact drag.dDragdaoa --> zero(Complex{Float64})
 
+
     end # context("Checking Objective Functional Object Creation")
+
+    context("Checking Functional Computation Before Solve") do
+      massflow = EulerEquationMod.MassFlowData{Complex128, :mass}(mesh, sbp, eqn, opts, [3])
+      EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, massflow)
+      @fact massflow.val --> roughly(0.0, atol=1e-13)
+
+      # check derivative
+      func_deriv = zeros(eqn.res)
+      func_deriv2 = zeros(eqn.res) 
+      h = 1e-20
+      pert = Complex128(0, h)
+      for i=1:length(eqn.q)
+        eqn.q[i] += pert
+        boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+        calcBndryFunctional(mesh, sbp, eqn, opts, massflow)
+        func_deriv[i] = imag(massflow.val)/h
+        eqn.q[i] -= pert
+      end
+
+      EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, massflow, func_deriv2)
+
+      @fact vecnorm(func_deriv - func_deriv2) --> roughly(0.0, atol=1e-13)
+    end  # context Checking Functional Computation Before Solve
+
 
     EulerEquationMod.solve_euler(mesh, sbp, eqn, opts, pmesh)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
@@ -61,7 +86,7 @@ function test_adjoint()
       drag_error = norm(drag.drag_val - analytical_drag, 2)
       @fact drag_error --> roughly(0.0, atol = 1e-2)
 
-    end # End context("Checking Functional Computation")
+       end # End context("Checking Functional Computation")
 
   end # End facts("--- Testing Functional Computation On a Boundary ---")
 
@@ -69,7 +94,7 @@ function test_adjoint()
     # println("testing adjoint functions\n")
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_airfoil.jl"
-    include("../../src/solver/euler/startup.jl")
+    include("../../src/solver/euler/startup.jl")  #TODO: use run_euler
     @assert opts["aoa"] == 2.0*pi/180
 
     lift = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)

@@ -307,6 +307,11 @@ Note that any values associated with these options are shared with the regular
                             (aka. implicit Euler) globalization, (Bool), default                            false
 "euler_tau": the magnitude factor of the initial pseudo-timestep for the
              Euler globalization, (FloatingPoint), default 1.0
+
+"use_volume_preconditioner" : use the jacobian of the volume integrals as a
+                              preconditioner (Bool), default false.  Note that
+                              this is done matrix-free
+
 "newton_verbosity": how much printing to do in Newton's method, (Int), default 5
                     if steady newton, 4 otherwise (ie. when Newton is used by
                     another method in NonlinearSolvers).  When 4 or less,
@@ -382,3 +387,14 @@ Note that any values associated with these options are shared with the regular
                   5: u = t
                   6: du/dt = u + 2t
                   7: du/dt = u
+
+# Petsc Options
+"petsc_options" : options passed directly into Petsc, 
+                  Dict{AbstractString, AbstractString}), defaults include
+                  a block jacobi ilu(4) preconditioner.  The keys must begin
+                  with a dash (as required by PETSc).  Keys that do not take
+                  a value should use an empty string as the value.
+
+# Advection specific options
+"advection_velocity" : advection velocity vector, length 2 in 2D and 3 in 3D,
+                       (Vector{Float64}), default [1.0, 1.0, 1.0]

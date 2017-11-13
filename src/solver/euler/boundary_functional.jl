@@ -39,6 +39,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   # Calculate functional over edges
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
+  #TODO: return functional value as well
   return nothing
 end
 
@@ -151,7 +152,7 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   eqn.params.aoa += pert # Imaginary perturbation
   fill!(eqn.res_vec, 0.0)
   fill!(eqn.res, 0.0)
-  res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
+  res_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
   ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
   eqn.params.aoa -= pert # Remove perturbation
 
@@ -164,6 +165,59 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return dJdaoa
 end
 
+function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             opts, functionalData::MassFlowData)
+
+  functional_val = zeros(Tres, 1)
+  # Get bndry_offsets for the functional edge concerned
+  #!!!: no, this gives wrong results if there is more than one geometric edge in
+  #     the group containing the specified edge
+
+  functional_edges = functionalData.geom_faces_functional
+  for itr = 1:length(functional_edges)
+    g_edge_number = functional_edges[itr] # Extract geometric edge number
+    # get the boundary array associated with the geometric edge
+    itr2 = 0
+    for itr2 = 1:mesh.numBC
+      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
+        break
+      end
+    end
+
+    start_index = mesh.bndry_offsets[itr2]
+    end_index = mesh.bndry_offsets[itr2+1]
+    idx_range = start_index:(end_index-1)
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
+    nfaces = length(bndry_facenums)
+    boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
+ 
+    for i = 1:nfaces
+      bndry_i = bndry_facenums[i]
+      global_facenum = idx_range[i]
+      for j = 1:mesh.sbpface.numnodes
+        q = ro_sview(eqn.q_bndry, :, j, global_facenum)
+#        convertToConservative(eqn.params, q, q2)
+        aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
+        x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+        phys_nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
+        node_info = Int[itr,j,i]
+        b_integrand_ji = sview(boundary_integrand,:,j,i)
+        calcBoundaryFunctionalIntegrand(eqn.params, q, aux_vars, phys_nrm,
+                                        node_info, functionalData, b_integrand_ji)
+      end  # End for j = 1:mesh.sbpface.numnodes
+    end    # End for i = 1:nfaces
+
+    bndry_facenums_arr = mesh.bndryfaces[idx_range]
+    integratefunctional!(mesh.sbpface, bndry_facenums_arr, boundary_integrand, functional_val)
+  end  # end loop itr
+
+  # global sum
+  functionalData.val = MPI.allreduce(functional_val, MPI.SUM, eqn.comm)[1]
+
+  return nothing
+end  # function calcBndryFunctional
 
 @doc """
 ### EulerEquationMod.calcBndryFunctional
@@ -197,6 +251,8 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 #  phys_nrm = zeros(Tmsh, Tdim)
 
   # Get bndry_offsets for the functional edge concerned
+  #!!!: no, this gives wrong results if there is more than one geometric edge in
+  #     the group containing the specified edge
   for itr = 1:length(functional_edges)
     g_edge_number = functional_edges[itr] # Extract geometric edge number
     # get the boundary array associated with the geometric edge
@@ -440,6 +496,19 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{3},
 
   return nothing
 end # End calcBoundaryFunctionalIntegrand 3D
+
+function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{2},
+                                         q::AbstractArray{Tsol,1},
+                                         aux_vars::AbstractArray{Tres, 1},
+                                         nrm::AbstractArray{Tmsh},
+                                         node_info::AbstractArray{Int},
+                                         objective::MassFlowData,
+                                         val::AbstractArray{Tsol,1})
+
+  val[1] = q[2]*nrm[1] + q[3]*nrm[2]
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod. calcBoundaryFunctionalIntegrand_revm

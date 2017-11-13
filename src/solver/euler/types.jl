@@ -157,6 +157,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   vortex_x0::Float64  # vortex center x coordinate at t=0
   vortex_strength::Float64  # strength of the vortex
 
+  #TODO: get rid of these, move to NewtonData
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
 
@@ -735,7 +736,7 @@ lift and drag values
 
 """->
 
-type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
+type BoundaryForceData{Topt, fname} <: AbstractIntegralOptimizationData
   is_objective_fn::Bool
   geom_faces_functional::AbstractArray{Int,1}
   ndof::Int
@@ -758,6 +759,20 @@ type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
     functional.dDragdaoa = 0.0
 
     return functional
+  end
+end
+
+"""
+  Type for computing the mass flow rate over a boundary (integral rho*u dot n
+  dGamma)
+"""
+type MassFlowData{Topt, fname} <: AbstractIntegralOptimizationData
+  geom_faces_functional::Array{Int, 1}
+  ndof::Int
+  val::Topt
+
+  function MassFlowData(mesh, sbp, eqn, opts, geom_faces_functional)
+    return new(geom_faces_functional, 1, 0.0)
   end
 end
 
