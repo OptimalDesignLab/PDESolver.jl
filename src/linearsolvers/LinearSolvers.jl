@@ -60,7 +60,15 @@ end
 
   The purpose of this type is to provide a consistent interface for different
   types of preconditioners.  In particular, it provides control over when the
-  preconditioner is recomputed
+  preconditioner is recomputed.
+
+  Users should implement new preconditioners using composition with
+  one of the preconditioners defined here, namely [`PetscMatPC`](@ref) or
+  [`PetscMatFreePC`](@ref), ie. they should define a new subtype of
+  [`AbstractPC`](@ref) that has either `PetscMatPC` or `PetscMatFrePC` as
+  a field.  This allows calling the existing functions for these types
+  (which compute a preconditioner for the Jacobian of the physics) and
+  modifying the preconditioner as needed.
 """
 abstract AbstractPC
 
@@ -68,6 +76,9 @@ abstract AbstractPC
 """
   This function calculates the preconditioner.  Every implementation of
   [`AbstractPC`](@ref) should extend this function with a new method
+
+  When creating new preconditioners, this function should generally be called
+  first, and modifications to the Jacobian should be made subsequently.
 
   **Inputs**
 
@@ -96,22 +107,34 @@ end
 """
   Applies the preconditioner, ie. x = inv(Ap)*b, where Ap is the approximation
   to the matrix A.  Note that Ap itself may not be available for some
-  preconditioners, hence there is only an API for applying inv(AP),
+  preconditioners, hence there is only an API for applying inv(Ap),
   not Ap itself.
 
   Every implementation of [`AbstractPC`](@ref) should extend this function with
-  a new method.
+  a new method, although most matrix-explicit preconditioners can delegate to
+  the underlying [`PetscMatPC`](@ref) (ie. call `calcPC` on the
+  [`PetscMatPC`](@ref).  Matrix-free preconditioners need to provide a full
+  implementaton of this function.
 
   **Inputs**
 
    * pc: the [`AbstractPC`](@ref) implementation.
-   * b: an AbstractVector (although never a PetscVec)
+   * mesh
+   * sbp
+   * eqn: this argument should generally not be used because all the solution
+          related data should be stored in the pc ovject by [`calcPC`](@ref)
+   * opts
+   * t: current time
+   * b: a AbstractVector representing the local part of the solution (ie
+        eqn.q_vec)
 
   **Inputs/Outputs**
 
-   * x: vector overwritten with results
+   * x: AbstractVector overwritten with results (same size as b)
 """
-function applyPC(pc::AbstractPC, x::AbstractVector, b::AbstractVector)
+function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector)
 
 
   error("reached AbstractPC applyPC(), did you forget to define applyPC() for your AbstracPC implementation?")
@@ -122,32 +145,17 @@ end
   Applies the transpose of the preconditioner, ie. x = inv(Ap).'*b.
   Similar to [`applyPC`](@ref), see that function for details.
 
-  Note that not every method supports this.  In particular, Petsc
-  matrix-explicit PCs don't currently expose this (although they could)
-
-  **Inputs**
-
-   * pc: the [`AbstractPC`](@ref)
-   * b: input vector
-
-  **Inputs/Outputs**
-
-   * x: vector overwritten with result
+  Note that not every preconditioning method supports this.
 """
-function applyPCTranspose(pc::AbstractPC, x::AbstractVector, b::AbstractVector)
+function applyPCTranspose(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector)
 
   
   error("reached AbstractPC applyPCTranspose(), did you forget to define applyPCTranspose() for your AbstracPC implementation?")
 
 end
 
-
-"""
-  Preconditioner type for direct solve.
-  Do not use with PetscLinearOperator.
-"""
-type PCNone <: AbstractPC
-end
 
 # LinearOperator interface
 """
@@ -281,5 +289,7 @@ function applyLinearOperatorTranspose(lo::AbstractLinearOperator,
 end
 
 
+# include implementations
+include("pc_none.jl")
 
 end  # end module
