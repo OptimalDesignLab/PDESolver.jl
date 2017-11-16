@@ -70,6 +70,8 @@ end
   a field.  This allows calling the existing functions for these types
   (which compute a preconditioner for the Jacobian of the physics) and
   modifying the preconditioner as needed.
+  User defined preconditioners should subtype either [`AbstracPetscMatPC`](@ref)
+  of [`AbstracPetscMatFreePC`](@ref).
 
   **Fields**
 
@@ -81,6 +83,16 @@ end
   other [`AbstracPC`](@ref) for a nested preconditioner.
 """
 abstract AbstractPC
+
+"""
+  Abstract supertype of all Petsc matrix-explicit preconditioners
+"""
+abstract AbstractPetscMatPC <: AbstractPC
+
+"""
+  Abstract supertype of all Petsc matrix-free preconditioners.
+"""
+abstract AbstractPetscMatFreePC <: AbstractPC
 
 # PC interface
 """
@@ -174,6 +186,9 @@ end
   Users do not have to implement as long as the nested preconditioner is
   stored in a field called `pc_inner`.
 
+  For matrix-explicit preconditioners, this function is useful for getting
+  the [`PetscMatPC`](@ref) object, which contains the preconditioning
+  Jacobian matrix.
 
   **Inputs**
 
@@ -324,6 +339,10 @@ end
   Similar to [`getBasePC`](@ref) except it gets the underlying linear operator,
   ie. one of [`DenseLO`](@ref), [`SparseDirectLO`](@ref), [`PetscMatLO`](@ref)
   or [`PetscMatFreeLO`](@ref).
+
+  For matrix-explicit methods, this is a good way of getting the underlying
+  linear operator object, which contains the matrix in the `A` field (for
+  all matrix-explicit linear operators).
 
   **Inputs**
 

@@ -30,7 +30,7 @@ function setLOCtx(lo::AbstractIterativeMatFreeLO, mesh::AbstractMesh,
 
   lo2 = getBaseLO(lo)
   @assert lo2 <: PetscMatFreeLO
-  lo2.ctx = (mesh, sbp, eqn, opts, lo, lo2, ctx_residual, t)
+  lo2.ctx = (mesh, sbp, eqn, opts, lo, ctx_residual, t)
   MatShellSetContext(lo2.A, pointer(lo2.ctx))
 
   return nothing
@@ -45,9 +45,8 @@ function applyLinearOperator_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   eqn = ctx[3]
   opts = ctx[4]
   lo = ctx[5]  # user defined LO
-  lo2 = ctx[6] # PetscMatFreeLO
-  ctx_residual = ctx[7]
-  t = ctx[8]
+  ctx_residual = ctx[6]
+  t = ctx[7]
 
   btmp, b_ptr = PetscVecGetArray(b)
   xtmp, x_ptr = PetscVecGetArrayRead(x)
@@ -70,9 +69,8 @@ function applyLinearOperatorTranspose_wrapper(A::PetscMat, x::PetscVec,
   eqn = ctx[3]
   opts = ctx[4]
   lo = ctx[5]  # user defined LO
-  lo2 = ctx[6] # PetscMatFreeLO
-  ctx_residual = ctx[7]
-  t = ctx[8]
+  ctx_residual = ctx[6]
+  t = ctx[7]
 
   btmp, b_ptr = PetscVecGetArray(b)
   xtmp, x_ptr = PetscVecGetArrayRead(x)
@@ -105,10 +103,10 @@ function checkLOCtx(ctx)
   eqn = ctx[3]
   opts = ctx[4]
   lo = ctx[5]  # user defined LO
-  lo2 = ctx[6] # PetscMatFreeLO
-  ctx_residual = ctx[7]
-  t = ctx[8]
+  ctx_residual = ctx[6]
+  t = ctx[7]
 
+  lo2 = getBaseLO(lo)
   @assert mesh <: AbstractMesh
   @assert sbp <: AbstractSBP
   @assert eqn <: AbstractSolutionData

@@ -11,9 +11,9 @@
   The [`calcPC`](@ref) function the user defines must call [`setPCCtx`](@ref).
 
 """
-type PetscMatFreePC <: AbstractPC
+type PetscMatFreePC <: AbstracPetscMatFreePC
   pc::PC
-  ctx  # Petsc PC function
+  ctx  # Petsc PC ctx
 end
 
 #TODO: outer constructor
@@ -35,28 +35,28 @@ end
    * ctx_residual
    * t
 """
-function setPCCtx(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
-                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+function setPCCtx(pc::AbstractPetscMatFreePC, mesh::AbstractMesh,
+                  sbp::AbstractSBP,
+                  eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 # users *must* call this function from within their calcPC function
 
-  pc2 = = getBasePC(pc)
+  pc2 = getBasePC(pc)
   @assert pc2 <: PetscMatFreePC
-  pc2.ctx = (mesh, sbp, eqn, opts, pc, pc2, ctx_residual, t)
-  PCShellSetContex(pc2, pointer(pc.ctx))
+  pc2.ctx = (mesh, sbp, eqn, opts, pc, ctx_residual, t)
+  PCShellSetContex(pc2, pointer(pc2.ctx))
 
   return nothing
 end
 
-function calcPC_wrapper(pc::PC)
+function calcPC_wrapper(_pc::PC)
 
-  ctx = unsafe_pointer_to_objref(PCShellGetContex(pc))
+  ctx = unsafe_pointer_to_objref(PCShellGetContex(_pc))
   checkPCCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]
   eqn = ctx[3]
   opts = ctx[4]
   pc = ctx[5]  # the user PC
-  pc2 = ctx[6]  # PetscMatFreePC
   ctx_residual = ctx[6]
   t = ctx[7]
 
@@ -67,16 +67,15 @@ end
 
 
 # wrapper for Petsc
-function applyPC_wrapper(pc::PC, b::PetscVec, x::PetscVec)
+function applyPC_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
 
-  ctx = unsafe_pointer_to_objref(PCShellGetContex(pc))
+  ctx = unsafe_pointer_to_objref(PCShellGetContex(_pc))
   checkPCCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]
   eqn = ctx[3]
   opts = ctx[4]
   pc = ctx[5]  # the user PC
-  pc2 = ctx[6]  # PetscMatFreePC
   ctx_residual = ctx[6]
   t = ctx[7]
 
@@ -86,7 +85,6 @@ function applyPC_wrapper(pc::PC, b::PetscVec, x::PetscVec)
 
 
   applyPC(pc, mesh, sbp, eqn, opts, t, btmp, xtmp)
-#  pc2.apply_func(pc, btmp, xtmp)
 
   PetscVecRestoreArrayRead(b, b_ptr)
   PetscVecRestoreArray(x, x_ptr)
@@ -94,16 +92,15 @@ function applyPC_wrapper(pc::PC, b::PetscVec, x::PetscVec)
   return PetscErrorCode(0)
 end
 
-function applyPCTranspose_wrapper(pc::PC, b::PetscVec, x::PetscVec)
+function applyPCTranspose_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
 
-  ctx = unsafe_pointer_to_objref(PCShellGetContex(pc))
+  ctx = unsafe_pointer_to_objref(PCShellGetContex(_pc))
   checkPCCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]
   eqn = ctx[3]
   opts = ctx[4]
   pc = ctx[5]  # the user PC
-  pc2 = ctx[6]  # PetscMatFreePC
   ctx_residual = ctx[6]
   t = ctx[7]
 
@@ -113,7 +110,6 @@ function applyPCTranspose_wrapper(pc::PC, b::PetscVec, x::PetscVec)
 
 
   applyPCTranspose(pc, mesh, sbp, eqn, opts, t, btmp, xtmp)
-#  pc2.apply_func(pc, btmp, xtmp)
 
   PetscVecRestoreArrayRead(b, b_ptr)
   PetscVecRestoreArray(x, x_ptr)
@@ -141,9 +137,11 @@ function checkPCCtx(ctx)
   eqn = ctx[3]
   opts = ctx[4]
   pc = ctx[5]  # the user PC
-  pc2 = ctx[6]  # PetscMatFreePC
-  ctx_residual = ctx[7]
-  t = ctx[8]
+#  pc2 = ctx[6]  # PetscMatFreePC
+  ctx_residual = ctx[6]
+  t = ctx[7]
+
+  pc2 = getBasePC(pc)
 
   @assert mesh <: AbstractMesh
   @assert sbp <: AbstractSBP

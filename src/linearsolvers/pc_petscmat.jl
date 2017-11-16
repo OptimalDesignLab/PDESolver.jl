@@ -13,7 +13,7 @@
    * pc: a Petsc PC object
    * Ap: a PetscMat object used to calculate the preconditioner
 """
-type PetscMatPC <: AbstractPC
+type PetscMatPC <: AbstractPetscMatPC
   pc::PC  # Petsc PC object
   Ap::PetscMat  # Petsc Mat object
   xtmp::PetscVec  # reusable temporary vector
@@ -37,57 +37,62 @@ function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 
-function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(pc::AbstractPetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
-  
-  if !pc.is_setup
-    setupPC(pc)
+  pc2 = getBasePC(pc) 
+  if !pc2.is_setup
+    setupPC(pc2)
   end
 
 
   # copy into temp vector
-  btmp, b_ptr = PetscVecGetArray(pc.btmp)
+  btmp, b_ptr = PetscVecGetArray(pc2.btmp)
   copy!(btmp, b)
-  PetscVecRestoreArray(pc.btmp, b_ptr)
+  PetscVecRestoreArray(pc2.btmp, b_ptr)
 
   # call Petsc PCApply
-  PetscPCApply(pc.pc, pc.btmp, pc.xtmp)
+  PetscPCApply(pc2.pc, pc2.btmp, pc2.xtmp)
 
   # copy back to x
-  xtmp, x_ptr = PetscVecGetArrayRead(pc.xtmp)
+  xtmp, x_ptr = PetscVecGetArrayRead(pc2.xtmp)
   copy!(x, xtmp)
-  PetscVecRestoreArrayRead(pc.xtmp, x_ptr)
+  PetscVecRestoreArrayRead(pc2.xtmp, x_ptr)
 
   return nothing
 end
 
 
-function applyPCTranspose(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
-                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
-                 x::AbstractVector)
+function applyPCTranspose(pc::AbstracPetscMatPC, mesh::AbstractMesh,
+                 sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict, t,
+                 b::AbstractVector, x::AbstractVector)
 
 
-  if !PCApplyTransposeExists(pc)
-    throw(ErrorException("PCApplyTranspose not defined for this PC"))
+  pc2 = getBasePC(pc)
+  @assert pc2 <: PetscMatPC
+
+  if !PCApplyTransposeExists(pc2.pc)
+    ptype = PCGetType(pc2.pc)
+    throw(ErrorException("PCApplyTranspose not defined for PC $ptype"))
   end
 
-  if !pc.is_setup
-    setupPC(pc)
+  if !pc2.is_setup
+    setupPC(pc2)
   end
 
   # copy into temp vector
-  btmp, b_ptr = PetscVecGetArray(pc.btmp)
+  btmp, b_ptr = PetscVecGetArray(pc2.btmp)
   copy!(btmp, b)
-  PetscVecRestoreArray(pc.btmp, b_ptr)
+  PetscVecRestoreArray(pc2.btmp, b_ptr)
 
   # call Petsc PCApplyTranspose
-  PetscPCApplyTranspose(pc.pc, pc.btmp, pc.xtmp)
+  PetscPCApplyTranspose(pc2.pc, pc2.btmp, pc2.xtmp)
 
   # copy back to x
-  xtmp, x_ptr = PetscVecGetArrayRead(pc.xtmp)
+  xtmp, x_ptr = PetscVecGetArrayRead(pc2.xtmp)
   copy!(x, xtmp)
-  PetscVecRestoreArrayRead(pc.xtmp, x_ptr)
+  PetscVecRestoreArrayRead(pc2.xtmp, x_ptr)
 
   return nothing
 end

@@ -18,40 +18,41 @@ function calcLinearOperator(lo::AbstractLinearOperator, mesh::AbstractMesh,
 end
 
 
-function applyLinearOperator(lo::PetscMatLO, mesh::AbstractMesh,
+function applyLinearOperator(lo::AbstractPetscMatLO, mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
-  xtmp, x_ptr = PetscVecGetArray(lo.xtmp)
+  lo2 = getBaseLinearOperator(lo)
+  xtmp, x_ptr = PetscVecGetArray(lo2.xtmp)
   copy!(xtmp, x)
-  PetscVecRestoreArray(lo.xtmp, x_ptr)
+  PetscVecRestoreArray(lo2.xtmp, x_ptr)
 
-  PetscMatMult(lo.A, lo.xtmp, lo.btmp)
+  PetscMatMult(lo2.A, lo2.xtmp, lo2.btmp)
 
-  btmp, b_ptr = PetscVecGetArrayRead(lo.btmp)
+  btmp, b_ptr = PetscVecGetArrayRead(lo2.btmp)
   copy!(b, btmp)
-  PetscVecRestoreArrayRead(lo.btmp, b_ptr)
+  PetscVecRestoreArrayRead(lo2.btmp, b_ptr)
 
   return nothing
 end
 
 
-function applyLinearOperatorTranspose(lo::PetscMatLO, 
+function applyLinearOperatorTranspose(lo::AbstractPetscMatLO, 
                              mesh::AbstractMesh, sbp::AbstractSBP,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
-
-  xtmp, x_ptr = PetscVecGetArray(lo.xtmp)
+  lo2 = getBaseLinearOperator(lo)
+  xtmp, x_ptr = PetscVecGetArray(lo2.xtmp)
   copy!(xtmp, x)
-  PetscVecRestoreArray(lo.xtmp, x_ptr)
+  PetscVecRestoreArray(lo2.xtmp, x_ptr)
 
-  PetscMatMultTranspose(lo.A, lo.xtmp, lo.btmp)
+  PetscMatMultTranspose(lo2.A, lo2.xtmp, lo2.btmp)
 
-  btmp, b_ptr = PetscVecGetArrayRead(lo.btmp)
+  btmp, b_ptr = PetscVecGetArrayRead(lo2.btmp)
   copy!(b, btmp)
-  PetscVecRestoreArrayRead(lo.btmp, b_ptr)
+  PetscVecRestoreArrayRead(lo2.btmp, b_ptr)
 
   return nothing
 end
