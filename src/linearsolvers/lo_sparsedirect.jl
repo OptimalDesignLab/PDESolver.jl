@@ -35,7 +35,7 @@ function applyLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
 end
 
 
-function applyLinearOperatorTranspose(lo::AbstractLinearOperator, 
+function applyLinearOperatorTranspose(lo::SparseDirectLO, 
                              mesh::AbstractMesh, sbp::AbstractSBP,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 

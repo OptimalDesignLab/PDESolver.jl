@@ -1,13 +1,13 @@
 # Linear operator implementation for Petsc matrix-explicit
 
 #TODO: rename the abstract type to AbstractPetscMatLO?
-type PetscMatLO <: AbstractIterativeMatLO
+type PetscMatLO <: AbstractPetscMatLO
   A::PetscMat
   xtmp::PetscVec  # these are shared with the PC if possible
   btmp::PetscVec
 end
 
-function calcLinearOperator(lo::AbstractLinearOperator, mesh::AbstractMesh,
+function calcLinearOperator(lo::PetscMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 

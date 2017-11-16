@@ -23,7 +23,7 @@ end
 
 
 # note: this may be faster if lo is not yet set up
-function applyLinearOperator(lo::AbstractLinearOperator, mesh::AbstractMesh,
+function applyLinearOperator(lo::DenseLO, mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
@@ -43,7 +43,7 @@ function applyLinearOperator(lo::AbstractLinearOperator, mesh::AbstractMesh,
 end
 
 
-function applyLinearOperatorTranspose(lo::AbstractLinearOperator, 
+function applyLinearOperatorTranspose(lo::DenseLO,
                              mesh::AbstractMesh, sbp::AbstractSBP,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 

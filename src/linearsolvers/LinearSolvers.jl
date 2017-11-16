@@ -211,7 +211,7 @@ end
 
   Any implementation of this type should subtype the appropriate catagory
   of: [`AbstractDenseLO`](@ref), [`AbstractSparseDirectLO`](@ref),
-  [`AbstractIterativeMatLO`](@ref), [`AbstractIterativeMatFreeLO`](@ref)
+  [`AbstractPetscMatLO`](@ref), [`AbstractPetscMatFreeLO`](@ref)
 
   Note that matrix-explicit implementations can often write a single function
   for all these cases if using an matrix interface functions that are defined
@@ -236,12 +236,12 @@ abstract AbstractSparseDirectLO <: AbstractLinearOperator
 """
   Linear operator type for Petsc matrix-explicit.
 """
-abstract AbstractIterativeMatLO <: AbstractLinearOperator
+abstract AbstractPetscMatLO <: AbstractLinearOperator
 
 """
   Linear operator type for Petsc matrix-free.
 """
-abstract AbstractIterativeMatFreeLO <: AbstractLinearOperator
+abstract AbstractPetscMatFreeLO <: AbstractLinearOperator
 
 """
   Useful union for all the matrix-explicit linear operator types.
@@ -249,7 +249,7 @@ abstract AbstractIterativeMatFreeLO <: AbstractLinearOperator
   often possible to write a single function that works on all the different
   types of matrices.
 """
-typealias MatExplicitLO Union{AbstractDenseLO, AbstractSparseDirectLO, AbstractIterativeMatLO}
+typealias MatExplicitLO Union{AbstractDenseLO, AbstractSparseDirectLO, AbstractPetscMatLO}
 
 """
   This function calculates the linear operator.  Every implementation of

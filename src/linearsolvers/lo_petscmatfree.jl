@@ -1,6 +1,6 @@
 # linear operator implementation for Petsc matrix-free
 
-type PetscMatFreeLO <: AbstractIterativeMatFreeLO
+type PetscMatFreeLO <: AbstractPetscMatFreeLO
   A::PetscMat  # shell matrix
   xtmp::PetscVec  # these are shared with the PC if possible
   btmp::PetscVec
@@ -24,7 +24,7 @@ end
    * ctx_residual
    * t
 """
-function setLOCtx(lo::AbstractIterativeMatFreeLO, mesh::AbstractMesh,
+function setLOCtx(lo::AbstractPetscMatFreeLO, mesh::AbstractMesh,
                   sbp::AbstractSBP,
                   eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
@@ -110,7 +110,7 @@ function checkLOCtx(ctx)
   @assert mesh <: AbstractMesh
   @assert sbp <: AbstractSBP
   @assert eqn <: AbstractSolutionData
-  @assert lo <: AbstractIterativeMatFreeLO
+  @assert lo <: AbstractPetscMatFreeLO
   @assert lo2 <: PetscMatFreeLO
   @assert t <: Number
 

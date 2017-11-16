@@ -14,7 +14,7 @@ function calcPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 
-function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
@@ -23,7 +23,7 @@ function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 
-function applyPCTranspose(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPCTranspose(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
