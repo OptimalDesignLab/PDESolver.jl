@@ -7,6 +7,7 @@ module LinearSolvers
 using ODLCommonTools
 using Utils
 using SummationByParts
+using Base.LinAlg.BLAS
 
 """
   Abstract supertype of all linear solvers.  The [`StandardLinearSolver`](@ref)
@@ -69,6 +70,15 @@ end
   a field.  This allows calling the existing functions for these types
   (which compute a preconditioner for the Jacobian of the physics) and
   modifying the preconditioner as needed.
+
+  **Fields**
+
+   * pc_inner: another [`AbstracPC`](@ref)
+
+  Note that arbitrarily deep nesting of preconditioners is allowed.
+  The `pc_inner` field can be one of [`PCNone`](@ref), [`PetscMatPC`](@ref),
+  or [`PetscMatFreePC`](@ref) for a non-nested preconditioner, or some
+  other [`AbstracPC`](@ref) for a nested preconditioner.
 """
 abstract AbstractPC
 
@@ -156,6 +166,25 @@ function applyPCTranspose(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
 
 end
 
+"""
+  This function returns the underlying preconditioner object, ie.
+  [`PCNone`](@ref), [`PetscMatPC`](@ref), or [`PetscMatFreePC`](@ref).
+
+  Note that arbitrarily deep nesting of preconditioners is allowed.
+  Users do not have to implement as long as the nested preconditioner is
+  stored in a field called `pc_inner`.
+
+
+  **Inputs**
+
+   * pc: the users [`AbstracPC`](@ref)
+"""
+function getBasePC(pc::AbstractPC)
+
+  # this will recurse all the way down to the underyling pc, which returns
+  # itself
+  return getBasePC(pc.pc_inner)
+end
 
 # LinearOperator interface
 """
@@ -202,7 +231,7 @@ abstract AbstractIterativeMatFreeLO <: AbstractLinearOperator
 """
   Useful union for all the matrix-explicit linear operator types.
   Because matrices have a small set of common interface functions, it is
-  sometimes possible to write a single function that works on all the different
+  often possible to write a single function that works on all the different
   types of matrices.
 """
 typealias MatExplicitLO Union{AbstractDenseLO, AbstractSparseDirectLO, AbstractIterativeMatLO}
@@ -249,13 +278,22 @@ end
   **Inputs**
 
    * lo: the [`AbstractLinearOperator`](@ref) implementation.
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * ctx_residual: the ctx for [`physicsRhs`](@ref) or the another right hand
+                   side function built on top of it
+   * t: current time
    * x: an AbstractVector (although never a PetscVec)
 
   **Inputs/Outputs**
 
    * b: vector overwritten with results
 """
-function applyLinearOperator(lo::AbstractLinearOperator, x::AbstractVector, 
+function applyLinearOperator(lo::AbstractLinearOperator, mesh::AbstractMesh,
+                             sbp::AbstractSBP, eqn::AbstractSolutionData,
+                             opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
 
@@ -271,25 +309,39 @@ end
   matrix-free LinearOperators don't currently expose this 
   (although they could with enough reverse-mode)
 
-  **Inputs**
-
-   * lo: the [`AbstractLinearOperator`](@ref)
-   * x: input vector
-
-  **Inputs/Outputs**
-
-   * b: vector overwritten with result
 """
 function applyLinearOperatorTranspose(lo::AbstractLinearOperator, 
-                                      x::AbstractVector, b::AbstractVector)
+                             mesh::AbstractMesh, sbp::AbstractSBP,
+                             eqn::AbstractSolutionData, opts::Dict, 
+                             ctx_residual, t, x::AbstractVector, 
+                             b::AbstractVector)
 
-  
   error("reached AbstractLinearOperator applyLinearOperatorTranspose(), did you forget to define applyLinearOperatorTranspose() for your AbstracLinearOperator implementation?")
 
 end
 
+"""
+  Similar to [`getBasePC`](@ref) except it gets the underlying linear operator,
+  ie. one of [`DenseLO`](@ref), [`SparseDirectLO`](@ref), [`PetscMatLO`](@ref)
+  or [`PetscMatFreeLO`](@ref).
+
+  **Inputs**
+
+   * lo: an AbstractLinearOperator
+"""
+function getBaseLinearOperator(lo::AbstractLinearOperator)
+
+  # this will recurse down to the underlying linear operator
+  return getBaseLinearOperator(lo.lo_inner)
+end
 
 # include implementations
 include("pc_none.jl")
+include("pc_petscmat.jl")
+include("pc_petscmatfree.jl")
+include("lo_dense.jl")
+include("lo_sparsedirect.jl")
+include("lo_petscmat.jl")
+include("lo_petscmatfree.jl")
 
 end  # end module

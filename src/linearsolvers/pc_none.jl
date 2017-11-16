@@ -30,3 +30,9 @@ function applyPCTranspose(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+
+function getBasePC(pc::PCNone)
+
+  # this is the bottom of the recursion tree
+  return pc
+end

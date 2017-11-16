@@ -18,7 +18,7 @@ type PetscMatPC <: AbstractPC
   Ap::PetscMat  # Petsc Mat object
   xtmp::PetscVec  # reusable temporary vector
   btmp::PetscVec
-  pc_setup::Bool  # is PC already set up
+  is_setup::Bool  # is PC already set up
 end
 
 #TODO: outer constructor, have a flag to avoid allocating xtmp and btmp
@@ -31,7 +31,7 @@ function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
  
   # don't setup the PC here because PC built on top of this one might
   # modify Ap after calling this function
-  pc.pc_setup = false
+  pc.is_setup = false
 
   return nothing
 end
@@ -41,7 +41,7 @@ function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
   
-  if !pc.pc_setup
+  if !pc.is_setup
     setupPC(pc)
   end
 
@@ -49,7 +49,7 @@ function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
   # copy into temp vector
   btmp, b_ptr = PetscVecGetArray(pc.btmp)
   copy!(btmp, b)
-  PetscVecRestoreArray(btmp, b_ptr)
+  PetscVecRestoreArray(pc.btmp, b_ptr)
 
   # call Petsc PCApply
   PetscPCApply(pc.pc, pc.btmp, pc.xtmp)
@@ -57,7 +57,7 @@ function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
   # copy back to x
   xtmp, x_ptr = PetscVecGetArrayRead(pc.xtmp)
   copy!(x, xtmp)
-  PetscVecRestoreArrayRead(xtmp, x_ptr)
+  PetscVecRestoreArrayRead(pc.xtmp, x_ptr)
 
   return nothing
 end
@@ -72,14 +72,14 @@ function applyPCTranspose(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
     throw(ErrorException("PCApplyTranspose not defined for this PC"))
   end
 
-  if !pc.pc_setup
+  if !pc.is_setup
     setupPC(pc)
   end
 
   # copy into temp vector
   btmp, b_ptr = PetscVecGetArray(pc.btmp)
   copy!(btmp, b)
-  PetscVecRestoreArray(btmp, b_ptr)
+  PetscVecRestoreArray(pc.btmp, b_ptr)
 
   # call Petsc PCApplyTranspose
   PetscPCApplyTranspose(pc.pc, pc.btmp, pc.xtmp)
@@ -87,7 +87,7 @@ function applyPCTranspose(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
   # copy back to x
   xtmp, x_ptr = PetscVecGetArrayRead(pc.xtmp)
   copy!(x, xtmp)
-  PetscVecRestoreArrayRead(xtmp, x_ptr)
+  PetscVecRestoreArrayRead(pc.xtmp, x_ptr)
 
   return nothing
 end
@@ -108,7 +108,13 @@ function setupPC(pc::PetscMatPC)
   # preconditioner on its own.  Using higher level functionality like TS
   # or Petsc nonlinear solvers likely won't work in this case
   PCSetReusePreconditioner(pc)
-  pc.pc_setup = true
+  pc.is_setup = true
 
   return nothing
+end
+
+function getBasePC(pc::PetscMatPC)
+
+  # this is the bottom of the recursion tree
+  return pc
 end

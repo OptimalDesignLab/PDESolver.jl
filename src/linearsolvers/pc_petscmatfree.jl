@@ -11,20 +11,36 @@
   The [`calcPC`](@ref) function the user defines must call [`setPCCtx`](@ref).
 
 """
-type PetscMatFreePC
+type PetscMatFreePC <: AbstractPC
   pc::PC
   ctx  # Petsc PC function
 end
 
 #TODO: outer constructor
 
+#TODO: rename this to calcPC?
 """
-  This function should be called by the users [`applyPC`](@ref) function.
+  This function should be called by the users [`calcPC`](@ref) function.
+  The arguments passed to this function are passed to [`applyPC`](@ref)
+  during the next linear solve.  See that function for a description of
+  the arguments
+
+  **Inputs**
+
+   * pc:
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * ctx_residual
+   * t
 """
-function setPCCtx(pc::AbstractPC, pc2::PetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
+function setPCCtx(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 # users *must* call this function from within their calcPC function
 
+  pc2 = = getBasePC(pc)
+  @assert pc2 <: PetscMatFreePC
   pc2.ctx = (mesh, sbp, eqn, opts, pc, pc2, ctx_residual, t)
   PCShellSetContex(pc2, pointer(pc.ctx))
 
@@ -65,15 +81,15 @@ function applyPC_wrapper(pc::PC, b::PetscVec, x::PetscVec)
   t = ctx[7]
 
   # get the local parts of the vectors
-  btmp, b_ptr = PetscVecGetArray(b)
-  xtmp, x_ptr = PetscVecGetArrayRead(x)
+  btmp, b_ptr = PetscVecGetArrayRead(b)
+  xtmp, x_ptr = PetscVecGetArray(x)
 
 
   applyPC(pc, mesh, sbp, eqn, opts, t, btmp, xtmp)
 #  pc2.apply_func(pc, btmp, xtmp)
 
-  PetscVecRestoreArray(btmp, b_ptr)
-  PetscVecRestoreArrayRead(xtmp, x_ptr)
+  PetscVecRestoreArrayRead(b, b_ptr)
+  PetscVecRestoreArray(x, x_ptr)
 
   return PetscErrorCode(0)
 end
@@ -92,15 +108,15 @@ function applyPCTranspose_wrapper(pc::PC, b::PetscVec, x::PetscVec)
   t = ctx[7]
 
   # get the local parts of the vectors
-  btmp, b_ptr = PetscVecGetArray(b)
-  xtmp, x_ptr = PetscVecGetArrayRead(x)
+  btmp, b_ptr = PetscVecGetArrayRead(b)
+  xtmp, x_ptr = PetscVecGetArray(x)
 
 
   applyPCTranspose(pc, mesh, sbp, eqn, opts, t, btmp, xtmp)
 #  pc2.apply_func(pc, btmp, xtmp)
 
-  PetscVecRestoreArray(btmp, b_ptr)
-  PetscVecRestoreArrayRead(xtmp, x_ptr)
+  PetscVecRestoreArrayRead(b, b_ptr)
+  PetscVecRestoreArray(x, x_ptr)
 
   return PetscErrorCode(0)
 end
@@ -108,7 +124,7 @@ end
 
 
 """
-  This function verifies the [`PetscMatFreePC`](@ref) PC is valid, throwing
+  This function verifies the [`PetscMatFreePC`](@ref) ctx is valid, throwing
   an exception otherwise.
 
   Currently this only checks whether the members of the tuple have the right
@@ -126,8 +142,8 @@ function checkPCCtx(ctx)
   opts = ctx[4]
   pc = ctx[5]  # the user PC
   pc2 = ctx[6]  # PetscMatFreePC
-  ctx_residual = ctx[6]
-  t = ctx[7]
+  ctx_residual = ctx[7]
+  t = ctx[8]
 
   @assert mesh <: AbstractMesh
   @assert sbp <: AbstractSBP
@@ -140,4 +156,10 @@ function checkPCCtx(ctx)
   # verify equality with pc2.ctx ?
 
   return nothing
+end
+
+function getBasePC(pc::PetscMatFreePC)
+
+  # this is the bottom of the recursion tree
+  return pc
 end
