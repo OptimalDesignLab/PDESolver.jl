@@ -14,6 +14,10 @@ type SparseDirectLO <: AbstractSparseDirectLO
   is_setup::Bool
 end
 
+#TODO: in the constructor, make colptr and rowval alias A
+#      also, compute the symbolic factorization
+#      also, create finalizer for symbolic factorizatrion
+
 function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
@@ -51,3 +55,51 @@ function getBaseLinearOperator(lo::SparseDirectLO)
   # this is the bottom of the recursion tree
   return lo
 end
+
+#------------------------------------------------------------------------------
+# helper functions
+
+"""
+  Take a 1-based SparseMatrixCSC and make it 0-based.  Throws an exception
+  if the matrix is not 1-based.
+"""
+function make_zerobased(A::SparseMatrixCSC)
+
+  @assert A.colptr[1] == 1
+
+  rowval = A.rowval
+  colptr = A.colptr
+  @simd @inbound for i=1:length(rowval)
+    rowval[i] -= 1
+  end
+
+  @simd @inbounds for i=1:length(colptr)
+    colptr[i] -= 1
+  end
+
+  return nothing
+end
+
+
+"""
+  Take a 0-based SparseMatrixCSC and make it 1-based.  Throws an exception if
+  the matrix is not 1-based
+"""
+function make_onebased(A::SparseMatrixCSC)
+
+  @assert A.colptr[1] == 0
+
+  rowval = A.rowval
+  colptr = A.colptr
+  @simd @inbound for i=1:length(rowval)
+    rowval[i] += 1
+  end
+
+  @simd @inbounds for i=1:length(colptr)
+    colptr[i] += 1
+  end
+
+  return nothing
+end
+
+

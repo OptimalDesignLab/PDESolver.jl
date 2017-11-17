@@ -9,6 +9,12 @@ using Utils
 using SummationByParts
 using Base.LinAlg.BLAS
 
+# import SuiteSparse stuff
+import Base.SparseMatrix.UMFPACK: UmfpackLU, umfpack_free_numeric,
+                                  umfpack_free_symbolic, umfpack_symbolic!
+                                  umfpack_numeric!
+
+
 """
   Abstract supertype of all linear solvers.  The [`StandardLinearSolver`](@ref)
   implementation should be general enough for everything we do.
@@ -45,13 +51,49 @@ type StandardLinearSolver{T1, T2} <: LinearSolver{T1, T2}
   pc::T1
   lo::T2
   shared_mat::Bool
+  comm::MPI.COMM
+  myrank::Int
+  commsize::Int
+  #TODO: check pc and lo types are compatable
 end
 
 """
-  Constructor for StandardLinearSolver
-"""
-function StandardLinearSolver{T1, T2}(pc::T1, lo::T2)
+  Constructor for StandardLinearSolver.
 
+  **Inputs**
+
+   * pc: an [`AbstractPC`](@ref), fully initialized
+   * lo: an [`AbstractLO`](@ref), fully initialized
+   * comm: the MPI communicator the pc and lo are defined on
+
+  This function throws exceptions if incompatible pc and lo types are used.
+"""
+function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.COMM)
+
+  if typeof(lo) <: DirecLO
+    @assert typeof(pc) <: PCNone
+  end
+
+  if typeof(lo) <: PetscLO
+    @assert typeof(pc) <: Union{AbstractPetscMatPC, AbstractPetscMatFreePC}
+  end
+
+  pc2 = getBasePC(pc)
+  lo2 = getBaseLO(lo)
+  if pc2 <: PetscMatPC && lo2 <: PetscMatLO
+    if pc2.Ap.pobj == lo2.A.pobj
+      shared_mat = true
+    else
+      shared_mat = false
+    end
+  else
+    shared_mat = false
+  end
+
+  myrank = MPI.Comm_rank(comm)
+  commsize = MPI.Comm_size(comm)
+
+  return new{T1, T2}(pc, lo, shared_mat, comm, myrank, commsize)
 end
 
 """
@@ -252,6 +294,17 @@ abstract AbstractPetscMatFreeLO <: AbstractLinearOperator
 typealias MatExplicitLO Union{AbstractDenseLO, AbstractSparseDirectLO, AbstractPetscMatLO}
 
 """
+  Union of Petsc linear operator types
+"""
+typealias PetscLO Union{AbstractPetscMatLO, AbstractPetscMatFreeLO}
+
+"""
+  Union of linear operators that do direct solves
+"""
+typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectlO}
+
+
+"""
   This function calculates the linear operator.  Every implementation of
   [`AbstractLinearOperator`](@ref) should extend this function with a new
   method.  For matrix-free operators, this function must exist but need
@@ -362,5 +415,5 @@ include("lo_dense.jl")
 include("lo_sparsedirect.jl")
 include("lo_petscmat.jl")
 include("lo_petscmatfree.jl")
-
+include("ls_standard.jl")
 end  # end module

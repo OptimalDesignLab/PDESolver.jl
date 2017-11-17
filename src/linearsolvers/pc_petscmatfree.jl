@@ -14,6 +14,7 @@
 type PetscMatFreePC <: AbstracPetscMatFreePC
   pc::PC
   ctx  # Petsc PC ctx
+  is_setup::Bool # needed for consistency with PetscMatPC
 end
 
 #TODO: outer constructor
