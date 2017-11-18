@@ -458,6 +458,14 @@ if arg_dict["use_volume_preconditioner"]
   get!(petsc_opts, "-pc_type", "shell")
 end
 
+# set the options in Petsc, if Petsc will be used
+if opts["jac_type "] == 3 || opts["jac_type"] == 4
+  if PetscInitialized() == 0
+    PetscInitialize()
+  end
+  PetscSetOptions(petsc_opts)
+end
+
 # Advection specific options
 # TODO; move these into physics module
 get!(arg_dict, "advection_velocity", [1.0, 1.0, 1.0])

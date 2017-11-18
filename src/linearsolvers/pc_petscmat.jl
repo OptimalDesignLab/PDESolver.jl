@@ -19,9 +19,54 @@ type PetscMatPC <: AbstractPetscMatPC
   xtmp::PetscVec  # reusable temporary vector
   btmp::PetscVec
   is_setup::Bool  # is PC already set up
+  is_finalized::Bool
 end
 
-#TODO: outer constructor, have a flag to avoid allocating xtmp and btmp
+
+function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+                    eqn::AbstractSolutionData, opts::Dict, comm::MPI.Comm)
+
+  pc = createPetscPC(mesh, sbp, eqn, opts, comm)
+  Ap = createPetscMat(mesh, sbp, eqn, opts, comm)
+  xtmp = createPetscVec(mesh, sbp, eqn, opts, comm)
+  btmp = createPetscVec(mesh, sbp, eqn, opts, comm)
+  is_setup = false
+  is_finalized = false
+
+  return new(pc, Ap, xtmp, btmp, is_setup, is_finalized)
+end
+
+function free(pc::PetscMatPC)
+
+  if !pc.is_finalized
+    if pc.pc.pobj != C_NULL
+      PetscDestroy(pc.pc)
+      pc.pc.pobj = C_NULL
+    end
+
+    if pc.A.pobj != C_NULL
+      PetscDestroy(pc.A)
+      pc.A.pobj = C_NULL
+    end
+
+    if pc.A.xtmp.pobj != C_NULL
+      PetscDestroy(pc.xtmp)
+      pc.xtmp.pobj = C_NULL
+    end
+
+    if pc.btmp.pboj != C_NULL
+      PetscDestroy(pc.btmp)
+      pc.btmp.pboj = C_NULL
+    end
+  end
+
+  pc.is_finalized = true
+
+  return nothing
+end
+
+
+
 
 function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
@@ -63,7 +108,7 @@ function applyPC(pc::AbstractPetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 
-function applyPCTranspose(pc::AbstracPetscMatPC, mesh::AbstractMesh,
+function applyPCTranspose(pc::AbstractPetscMatPC, mesh::AbstractMesh,
                  sbp::AbstractSBP,
                  eqn::AbstractSolutionData, opts::Dict, t,
                  b::AbstractVector, x::AbstractVector)

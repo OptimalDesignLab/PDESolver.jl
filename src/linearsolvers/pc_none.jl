@@ -7,6 +7,12 @@
 type PCNone <: AbstractPC
 end
 
+function PCNone(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict)
+
+  return PCNone()
+end
+
 function calcPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 

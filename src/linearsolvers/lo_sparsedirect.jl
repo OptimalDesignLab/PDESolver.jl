@@ -12,11 +12,47 @@ type SparseDirectLO <: AbstractSparseDirectLO
   A::SparseMatrixCSC{Float64, Int64}
   fac::UmfpackLU{Float64, Int64}
   is_setup::Bool
+  is_finalized::Bool
 end
 
 #TODO: in the constructor, make colptr and rowval alias A
 #      also, compute the symbolic factorization
 #      also, create finalizer for symbolic factorizatrion
+
+function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+                        eqn::AbstractSolutionData, opts::Dict)
+
+  if mesh <: AbstractCGMesh
+    jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
+  else
+    jac = SparseMatrixCSC(mesh, Float64)
+  end
+
+  fac = UmfpackLU{Float64, Int}(C_NULL, C_NULL, mesh.numDof, mesh.numDof,
+                                jac.colptr, jac.rowval, jac.nzval)
+
+  make_zerobased(jac)
+  umfpack_symbolic!(fac)
+  make_onebased(jac)
+
+  is_setup = false
+
+  return SparseDirectLO(jac, fac, is_setup, false)
+end
+
+
+function free(lo::SparseDirectLO)
+
+  if !lo.is_finalized
+    umfpack_free_symbolic(lo.fac)
+    umfpack_free_numeric(lo.fac)
+  end
+
+  lo.is_finalized = true
+
+  return nothing
+end
+
 
 function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
@@ -69,11 +105,11 @@ function make_zerobased(A::SparseMatrixCSC)
 
   rowval = A.rowval
   colptr = A.colptr
-  @simd @inbound for i=1:length(rowval)
+  @inbounds @simd for i=1:length(rowval)
     rowval[i] -= 1
   end
 
-  @simd @inbounds for i=1:length(colptr)
+  @inbounds @simd for i=1:length(colptr)
     colptr[i] -= 1
   end
 
@@ -91,11 +127,11 @@ function make_onebased(A::SparseMatrixCSC)
 
   rowval = A.rowval
   colptr = A.colptr
-  @simd @inbound for i=1:length(rowval)
+  @inbounds @simd for i=1:length(rowval)
     rowval[i] += 1
   end
 
-  @simd @inbounds for i=1:length(colptr)
+  @inbounds @simd for i=1:length(colptr)
     colptr[i] += 1
   end
 

@@ -1,11 +1,68 @@
 # linear operator implementation for Petsc matrix-free
 
+"""
+  Petsc matrix-free linear operator
+"""
 type PetscMatFreeLO <: AbstractPetscMatFreeLO
   A::PetscMat  # shell matrix
   xtmp::PetscVec  # these are shared with the PC if possible
   btmp::PetscVec
   ctx
+  is_finalized::Bool
 end
+
+function PetscMatLO(pc::AbstracPetscMatPC, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  A = createPetscMatShell(mesh, sbp, eqn, opts)
+
+  # set operations:
+  fptr = cfunction(applyLinearOperator_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
+  MatShellSetOperation(A, PETSc.MATOP_MULT, fptr)
+
+  fptr = cfunction(applyLinearOperator_wrapperTranspose, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
+  MatShellSetOperation(A, PETSc.MATOP_MULT_TRANSPOSE, fptr)
+
+
+  pc2 = getBasePC(pc)
+  if pc2 <: PetscMatPC  # if pc2 has Petsc vectors inside it
+    xtmp = pc2.xtmp
+    btmp = pc2.btmp
+  else
+    xtmp = createPetscVec(mesh, sbp, eqn, opts)
+    btmp = createPetscVec(mesh, sbp, eqn, opts)
+  end
+
+  ctx = C_NULL  # this gets set later
+  is_finalized = false
+
+  return new(A, xtmp, btmp, ctx, is_finalized)
+end
+
+function free(lo::PetscMatFreeLO)
+
+  if !lo.is_finalized
+    if lo.A.pobj != C_NULL
+      PetscDestroy(lo.A)
+      lo.A.pobj = C_NULL
+    end
+
+    if lo.A.xtmp.pobj != C_NULL
+      PetscDestroy(lo.xtmp)
+      lo.xtmp.pobj = C_NULL
+    end
+
+    if lo.btmp.pboj != C_NULL
+      PetscDestroy(lo.btmp)
+      lo.btmp.pboj = C_NULL
+    end
+  end
+
+  lo.is_finalized = true
+
+  return nothing
+end
+
 
 """
   This function sets the ctx for the underlying Petsc matrix object.  The

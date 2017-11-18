@@ -9,7 +9,34 @@ type DenseLO <: AbstractDenseLO
   is_setup::Bool # true if LO is already setup (ie. factored), false otherwise
 end
 
-#TODO: outer constructor
+"""
+  Outer constructor for DenseLO
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
+function DenseLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict)
+
+  @assert mesh.commsize == 1  # serial only
+  A = zeros(mesh.numDof, mesh.numDof)
+  ipiv = zeros(BlasInt, mesh.numDof)
+  is_setup = false
+
+  return DenseLO(A, ipiv, is_setup)
+end
+
+
+function free(lo::DenseLO)
+  # nothing to do here
+
+  return nothing
+end
+
 
 function calcLinearOperator(lo::DenseLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,

@@ -8,10 +8,12 @@ using ODLCommonTools
 using Utils
 using SummationByParts
 using Base.LinAlg.BLAS
+using MPI
+using PETSc
 
 # import SuiteSparse stuff
 import Base.SparseMatrix.UMFPACK: UmfpackLU, umfpack_free_numeric,
-                                  umfpack_free_symbolic, umfpack_symbolic!
+                                  umfpack_free_symbolic, umfpack_symbolic!,
                                   umfpack_numeric!
 
 
@@ -51,7 +53,7 @@ type StandardLinearSolver{T1, T2} <: LinearSolver{T1, T2}
   pc::T1
   lo::T2
   shared_mat::Bool
-  comm::MPI.COMM
+  comm::MPI.Comm
   myrank::Int
   commsize::Int
   #TODO: check pc and lo types are compatable
@@ -68,7 +70,7 @@ end
 
   This function throws exceptions if incompatible pc and lo types are used.
 """
-function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.COMM)
+function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
 
   if typeof(lo) <: DirecLO
     @assert typeof(pc) <: PCNone
@@ -243,6 +245,24 @@ function getBasePC(pc::AbstractPC)
   return getBasePC(pc.pc_inner)
 end
 
+"""
+  This function frees any memory belonging to external libraries.  Users must
+  call this function when they are finished with an AbstractPC
+  object.
+
+  Users do not have to define this function for their
+  [`AbstractPC`](@ref) types.
+
+  **Inputs**
+
+   * pc: the AbstracPC object
+"""
+function free(pc::AbstractPC)
+
+  free(getBasePC(pc))
+end
+
+
 # LinearOperator interface
 """
   Abstract supertype of all linear operators used for A when solving Ax = b.
@@ -301,7 +321,7 @@ typealias PetscLO Union{AbstractPetscMatLO, AbstractPetscMatFreeLO}
 """
   Union of linear operators that do direct solves
 """
-typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectlO}
+typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
 
 
 """
@@ -407,6 +427,23 @@ function getBaseLinearOperator(lo::AbstractLinearOperator)
   return getBaseLinearOperator(lo.lo_inner)
 end
 
+"""
+  This function frees any memory belonging to external libraries.  Users must
+  call this function when they are finished with an AbstractLinearOperator
+  object.
+
+  Users do not have to define this function for their
+  [`AbstractLinearOperator`](@ref) types.
+
+  **Inputs**
+
+   * lo: the AbstractLO object
+"""
+function free(lo::AbstractLinearOperator)
+
+  free(getBaseLO(lo))
+end
+
 # include implementations
 include("pc_none.jl")
 include("pc_petscmat.jl")
@@ -416,4 +453,5 @@ include("lo_sparsedirect.jl")
 include("lo_petscmat.jl")
 include("lo_petscmatfree.jl")
 include("ls_standard.jl")
+
 end  # end module

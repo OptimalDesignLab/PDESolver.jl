@@ -1,11 +1,60 @@
 # Linear operator implementation for Petsc matrix-explicit
 
-#TODO: rename the abstract type to AbstractPetscMatLO?
+"""
+  Petsc matrix-explicit linear operator.
+"""
 type PetscMatLO <: AbstractPetscMatLO
   A::PetscMat
   xtmp::PetscVec  # these are shared with the PC if possible
   btmp::PetscVec
+  is_finalized::Bool
 end
+
+function PetscMatLO(pc::AbstracPetscMatPC, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  pc2 = getBasePC(pc)
+  if !opts["use_jac_precon"] && !(pc <: PetscMatFreeLO) # share matrix if possible
+    A = pc2.Ap
+  else
+    A = createPetscMat(mesh, sbp, eqn, opts)
+  end
+
+  if pc2 <: PetscMatPC  # if pc2 has Petsc vectors inside it
+    xtmp = pc2.xtmp
+    btmp = pc2.btmp
+  else
+    xtmp = createPetscVec(mesh, sbp, eqn, opts)
+    btmp = createPetscVec(mesh, sbp, eqn, opts)
+  end
+
+  return new(A, xtmp, btmp, false)
+end
+
+function free(lo::PetscMatLO)
+
+  if !lo.is_finalized
+    if lo.A.pobj != C_NULL
+      PetscDestroy(lo.A)
+      lo.A.pobj = C_NULL
+    end
+
+    if lo.A.xtmp.pobj != C_NULL
+      PetscDestroy(lo.xtmp)
+      lo.xtmp.pobj = C_NULL
+    end
+
+    if lo.btmp.pboj != C_NULL
+      PetscDestroy(lo.btmp)
+      lo.btmp.pboj = C_NULL
+    end
+  end
+
+  lo.is_finalized = true
+
+  return nothing
+end
+
 
 function calcLinearOperator(lo::PetscMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,

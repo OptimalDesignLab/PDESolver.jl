@@ -11,15 +11,39 @@
   The [`calcPC`](@ref) function the user defines must call [`setPCCtx`](@ref).
 
 """
-type PetscMatFreePC <: AbstracPetscMatFreePC
+type PetscMatFreePC <: AbstractPetscMatFreePC
   pc::PC
   ctx  # Petsc PC ctx
   is_setup::Bool # needed for consistency with PetscMatPC
+  is_finalized::Bool
 end
 
-#TODO: outer constructor
+function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+                    eqn::AbstractSolutionData, opts::Dict, comm::MPI.Comm)
 
-#TODO: rename this to calcPC?
+  pc = createPetsPC(mesh, sbp, eqn, opts, comm)
+  ctx = ()
+  is_setup = false
+  is_finalized = false
+
+  return new(pc, ctx, is_setup, is_fianlized)
+end
+
+function free(pc::PetscMatFreePC)
+
+  if !pc.is_finalized
+    if pc.pc.pobj != C_NULL
+      PetscDestroy(pc.pc)
+      pc.pc.pobj = C_NULL
+    end
+  end
+
+  pc.is_finalized = true
+
+  return nothing
+end
+
+
 """
   This function should be called by the users [`calcPC`](@ref) function.
   The arguments passed to this function are passed to [`applyPC`](@ref)
@@ -148,7 +172,7 @@ function checkPCCtx(ctx)
   @assert sbp <: AbstractSBP
   @assert eqn <: AbstractSolutionData
   @assert opts <: Dict
-  @assert pc <: AbstracPC
+  @assert pc <: AbstractPC
   @assert pc2 <: PetscMatFreePC
   @assert t <: Number
 

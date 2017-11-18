@@ -253,10 +253,11 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
   end
 
   # prepare the data structures
-  assemblePetscData(ls, b)
+  t_assem = @elapsed assemblePetscData(ls, b)
+  println(BSTDOUT, "Final matrix assembly time = ", t_assem)
 
   # do the solve
-  ksp =  ls.ksp
+  ksp = ls.ksp
   KSPSetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
   if trans
