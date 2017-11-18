@@ -10,7 +10,7 @@ type PetscMatLO <: AbstractPetscMatLO
   is_finalized::Bool
 end
 
-function PetscMatLO(pc::AbstracPetscMatPC, mesh::AbstractMesh,
+function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
   pc2 = getBasePC(pc)

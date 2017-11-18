@@ -56,8 +56,10 @@ type StandardLinearSolver{T1, T2} <: LinearSolver{T1, T2}
   comm::MPI.Comm
   myrank::Int
   commsize::Int
-  #TODO: check pc and lo types are compatable
+  ksp::KSP  # used only for Petsc matrices
+  is_finalized::Bool
 end
+
 
 """
   Constructor for StandardLinearSolver.
@@ -95,8 +97,22 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
   myrank = MPI.Comm_rank(comm)
   commsize = MPI.Comm_size(comm)
 
-  return new{T1, T2}(pc, lo, shared_mat, comm, myrank, commsize)
+  if lo <: PetscLO
+    ksp = createKSP(pc, lo, comm)
+  else
+    ksp = KSP_NULL
+  end
+
+  is_finalized = false
+
+  ls = StandardLinearSolver{T1, T2}(pc, lo, shared_mat, comm, myrank,
+                                    commsize, ksp, is_finalized)
+
+  atexit( () -> free(ls))  # make sure this gets destroyed eventually
+
+  return ls
 end
+
 
 """
   Abstract supertype of all preconditioner types.  Preconditioners can be used
@@ -114,17 +130,17 @@ end
   a field.  This allows calling the existing functions for these types
   (which compute a preconditioner for the Jacobian of the physics) and
   modifying the preconditioner as needed.
-  User defined preconditioners should subtype either [`AbstracPetscMatPC`](@ref)
-  of [`AbstracPetscMatFreePC`](@ref).
+  User defined preconditioners should subtype either [`AbstractPetscMatPC`](@ref)
+  of [`AbstractPetscMatFreePC`](@ref).
 
   **Fields**
 
-   * pc_inner: another [`AbstracPC`](@ref)
+   * pc_inner: another [`AbstractPC`](@ref)
 
   Note that arbitrarily deep nesting of preconditioners is allowed.
   The `pc_inner` field can be one of [`PCNone`](@ref), [`PetscMatPC`](@ref),
   or [`PetscMatFreePC`](@ref) for a non-nested preconditioner, or some
-  other [`AbstracPC`](@ref) for a nested preconditioner.
+  other [`AbstractPC`](@ref) for a nested preconditioner.
 """
 abstract AbstractPC
 
@@ -167,7 +183,7 @@ abstract AbstractPetscMatFreePC <: AbstractPC
 function calcPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
-  error("reached AbstractPC calcPC(), did you forget to define calcPC() for your AbstracPC implementation?")
+  error("reached AbstractPC calcPC(), did you forget to define calcPC() for your AbstractPC implementation?")
 end
 
 """
@@ -203,7 +219,7 @@ function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
                  x::AbstractVector)
 
 
-  error("reached AbstractPC applyPC(), did you forget to define applyPC() for your AbstracPC implementation?")
+  error("reached AbstractPC applyPC(), did you forget to define applyPC() for your AbstractPC implementation?")
 
 end
 
@@ -218,7 +234,7 @@ function applyPCTranspose(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
                  x::AbstractVector)
 
   
-  error("reached AbstractPC applyPCTranspose(), did you forget to define applyPCTranspose() for your AbstracPC implementation?")
+  error("reached AbstractPC applyPCTranspose(), did you forget to define applyPCTranspose() for your AbstractPC implementation?")
 
 end
 
@@ -236,7 +252,7 @@ end
 
   **Inputs**
 
-   * pc: the users [`AbstracPC`](@ref)
+   * pc: the users [`AbstractPC`](@ref)
 """
 function getBasePC(pc::AbstractPC)
 
@@ -255,7 +271,7 @@ end
 
   **Inputs**
 
-   * pc: the AbstracPC object
+   * pc: the AbstractPC object
 """
 function free(pc::AbstractPC)
 

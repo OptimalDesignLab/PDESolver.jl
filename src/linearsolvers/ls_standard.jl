@@ -147,6 +147,7 @@ end
 
    * ls: the [`StandardLinearSolver`](@ref) object.
    * b: the right hand side vector (local process portion only)
+   * verbose: verbosity level, default 5, < 4 indicates no output
   
   **Inputs/Outputs**
 
@@ -174,6 +175,10 @@ function linearSolve(ls::StandardLinearSolver, b::AbstractVector,
   return nothing
 end
 
+"""
+  Similar to [`linearSolver]`(@ref), but solves A.'x = v.  See that function
+  for details.
+"""
 function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
                      x::AbstractVector, verbose=5)
 
@@ -377,3 +382,29 @@ function setTolerances(ls::StandardLinearSolver, reltol, abstol, dtol, itermax)
 
   return nothing
 end
+
+"""
+  This function frees any memory owned by external libraries, both in the 
+  StandardLinearSolver object itself and in the pc and lo objects.
+  Therefore, at the end of a run, all you need to do is free the
+  StandardLinearSolver and everything will be taken care of.
+"""
+function free(ls::StandardLinearSolver)
+
+  if !ls.is_finalized
+    if ls.ksp.pobj != C_NULL
+      PetscDestroy(ls.ksp)
+      ls.ksp.pobj = C_NULL
+    end
+
+    free(ls.pc)
+    free(ls.lo)
+
+  end
+
+  ls.is_finalized = true
+
+  return nothing
+end
+
+

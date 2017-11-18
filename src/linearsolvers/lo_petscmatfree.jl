@@ -11,7 +11,7 @@ type PetscMatFreeLO <: AbstractPetscMatFreeLO
   is_finalized::Bool
 end
 
-function PetscMatLO(pc::AbstracPetscMatPC, mesh::AbstractMesh,
+function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
   A = createPetscMatShell(mesh, sbp, eqn, opts)
