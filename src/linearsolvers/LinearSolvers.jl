@@ -160,7 +160,8 @@ abstract AbstractPetscMatFreePC <: AbstractPC
   [`AbstractPC`](@ref) should extend this function with a new method
 
   When creating new preconditioners, this function should generally be called
-  first, and modifications to the Jacobian should be made subsequently.
+  first on pc_inner, and modifications to the Jacobian should be made 
+  subsequently.
 
   **Inputs**
 
@@ -346,6 +347,9 @@ typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
   method.  For matrix-free operators, this function must exist but need
   not perform any actions.
 
+  For matrix-explicit implementations, this function should be called on
+  lo_inner first and modifications to the jacobian made subsequently.
+
   **Inputs**
 
    * lo: the AbstractLinearOperator implementation (updated with new
@@ -469,5 +473,7 @@ include("lo_sparsedirect.jl")
 include("lo_petscmat.jl")
 include("lo_petscmatfree.jl")
 include("ls_standard.jl")
+
+include("jacobian.jl")
 
 end  # end module

@@ -14,7 +14,7 @@
   
   **Inputs**:
    
-   * newton_data: a NewtonData object (TODO: see if this can be removed?)
+   * lo: an [`AbstractLinearOperator`](@ref) (a matrix-explicit one)
    * mesh: an AbstractMesh
    * sbp: an SBP operator
    * eqn: an AbstractSolutionData, eqn.res and eqn.res_vec may be overwritten
