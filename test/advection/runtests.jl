@@ -15,6 +15,7 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 import ODLCommonTools.sview
 using Input
+using LinearSolvers
 
 function clean_dict(collection)
   for i in keys(collection)
@@ -32,6 +33,7 @@ include("../tags.jl")
 global const AdvectionTests = TestList()
 
 include("test_frontend.jl")
+include("test_linearsolver.jl")
 include("test_lowlevel.jl")
 include("test_eqn_deepcopy.jl")
 include("test_3d.jl")

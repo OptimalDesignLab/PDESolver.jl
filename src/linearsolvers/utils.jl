@@ -151,7 +151,7 @@ function createKSP(pc::Union{PetscMatPC, PetscMatFreePC},
   KSPSetFromOptions(ksp)
   KSPSetPC(ksp, pc.pc)
 
-  if pc <: PetscMatFreePC
+  if typeof(pc) <: PetscMatFreePC
     Ap = lo.A  # Ap is never used, so set it to whatever
   else  # matrix-explicit PC
     Ap = pc.Ap

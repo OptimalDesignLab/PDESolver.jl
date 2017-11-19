@@ -25,7 +25,7 @@ function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
 
 
   pc2 = getBasePC(pc)
-  if pc2 <: PetscMatPC  # if pc2 has Petsc vectors inside it
+  if typeof(pc2) <: PetscMatPC  # if pc2 has Petsc vectors inside it
     xtmp = pc2.xtmp
     btmp = pc2.btmp
   else
@@ -86,7 +86,7 @@ function setLOCtx(lo::AbstractPetscMatFreeLO, mesh::AbstractMesh,
                   eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   lo2 = getBaseLO(lo)
-  @assert lo2 <: PetscMatFreeLO
+  @assert typeof(lo2) <: PetscMatFreeLO
   lo2.ctx = (mesh, sbp, eqn, opts, lo, ctx_residual, t)
   MatShellSetContext(lo2.A, pointer(lo2.ctx))
 
@@ -164,17 +164,17 @@ function checkLOCtx(ctx)
   t = ctx[7]
 
   lo2 = getBaseLO(lo)
-  @assert mesh <: AbstractMesh
-  @assert sbp <: AbstractSBP
-  @assert eqn <: AbstractSolutionData
-  @assert lo <: AbstractPetscMatFreeLO
-  @assert lo2 <: PetscMatFreeLO
-  @assert t <: Number
+  @assert typeof(mesh) <: AbstractMesh
+  @assert typeof(sbp) <: AbstractSBP
+  @assert typeof(eqn) <: AbstractSolutionData
+  @assert typeof(lo) <: AbstractPetscMatFreeLO
+  @assert typeof(lo2) <: PetscMatFreeLO
+  @assert typeof(t) <: Number
 
   return nothing
 end
 
-function getBaseLinearOperator(lo::PetscMatFreeLO)
+function getBaseLO(lo::PetscMatFreeLO)
 
   # this is the bottom of the recursion tree
   return lo

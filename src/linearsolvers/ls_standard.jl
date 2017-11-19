@@ -21,7 +21,7 @@
 function calcPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
-  if ls.pc <: PCNONE
+  if typeof(ls.pc) <: PCNONE
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   else
     calcPC(ls.pc, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -77,7 +77,7 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
                      eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
 
-  if lo.pc <: PCNONE
+  if typeof(ls.pc) <: PCNONE
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif ls.is_shared
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -107,7 +107,7 @@ function applyPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractSBP,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
-  if ls.pc <: PCNone
+  if typeof(ls.pc) <: PCNone
     # apply the most recent linear operator
     linearSolve(ls, b, x)
   else
@@ -125,10 +125,10 @@ function applyPCTranspose(ls::StandardLinearSolver, mesh::AbstractMesh,
                           sbp::AbstractSBP,
                           eqn::AbstractSolutionData, opts::Dict, t,
                           b::AbstractVector, x::AbstractVector)
-  if ls.pc <: PCNone
-    linearSolvetransposee(ls, b, x)
+  if typeof(ls.pc) <: PCNone
+    linearSolveTranspose(ls, b, x)
   else
-    applPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x)
+    applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x)
   end
 
   return nothing
@@ -165,7 +165,7 @@ function linearSolve(ls::StandardLinearSolver, b::AbstractVector,
   # call the specific solver
 
   #TODO: have time_all return a struct
-  tmp, t_solve, t_gc, alloc = @time_all _linearSolver(ls, b, x)
+  tmp, t_solve, t_gc, alloc = @time_all _linearSolve(ls, b, x)
 
   @verbose5 if ls.myrank == 0
     println(BSTDOUT, "matrix solve:")
@@ -185,7 +185,7 @@ function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
   # call the specific solver
 
   #TODO: have time_all return a struct
-  tmp, t_solve, t_gc, alloc = @time_all _linearSolver(ls, b, x, trans=true)
+  tmp, t_solve, t_gc, alloc = @time_all _linearSolve(ls, b, x, trans=true)
 
   @verbose5 if ls.myrank == 0
     println(BSTDOUT, "matrix transpose solve:")
@@ -196,56 +196,71 @@ function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
 end
 
 function _linearSolve{Tlo <: AbstractDenseLO, Tpc}(
-                      ls::StandardLinearSolver{Tlo, Tpc},
+                      ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
 
-  @assert typeof(lo.pc) <: PCNone
+  @assert typeof(ls.pc) <: PCNone
 
   lo2 = getBaseLO(ls.lo)
 
-  # factor is needed
-  if !lo2..is_setup
-    getrf!(lo2.A. lo2.ipiv)
+  # factor if needed
+  if !lo2.is_setup
+    getrf!(lo2.A, lo2.ipiv)
     lo2.is_setup = true
+    lo2.nfactorizations += 1
   end
 
   tchar = trans ? 'T' : 'N'
 
   # solve
   copy!(x, b)
-  getrs2!(tchar, lo2.A, lo2.ipiv, x)
+  info = getrs2!(tchar, lo2.A, lo2.ipiv, x)
+  @assert info == 0
+
+  if trans
+    lo2.ntsolves += 1
+  else
+    lo2.nsolves += 1
+  end
+
 
   return nothing
 end
 
 
 function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
-                      ls::StandardLinearSolver{Tlo, Tpc},
+                      ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
 
-  @assert typeof(lo.pc) <: PCNone
+  @assert typeof(ls.pc) <: PCNone
 
   lo2 = getBaseLO(ls.lo)
 
+  make_zerobased(lo2.A)
   # compute factorization if needed
   if !lo2.is_setup
     umfpack_free_numeric(lo2.fac)  # free old factorization
     # note: the matrix stored in the factorization object must alias. lo2.A
-    make_zerobased(lo2.A)
     umfpack_numeric!(lo2.fac)
-    make_onebased(lo2.A)
     lo2.is_setup = true
+    lo2.nfactorizations += 1
   end
 
   tchar = trans ? UMFPACK_At : UMFPACK_A
 
   solve_suitesparse(lo2.fac, b, tchar, x)
+  make_onebased(lo2.A)
+  if trans
+    lo2.ntsolves += 1
+  else
+    lo2.nsolves += 1
+  end
 
   return nothing
 end
 
 function _linearSolve{Tlo <: PetscLO , Tpc}(
-                      ls::StandardLinearSolver{Tlo, Tpc},
+                      ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
 
   myrank = ls.myrank
@@ -338,7 +353,7 @@ end
 """
 function isLOMatFree(ls::StandardLinearSolver)
 
-  return ls.lo <: AbstractPetscMatFree
+  return typeof(ls.lo) <: AbstractPetscMatFree
 end
 
 """
@@ -346,7 +361,7 @@ end
 """
 function isPCMatFree(ls::StandardLinearSolver)
 
-  return ls.pc <: AbstractMatFreePC
+  return typeof(ls.pc) <: AbstractMatFreePC
 end
 
 """

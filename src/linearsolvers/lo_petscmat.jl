@@ -14,13 +14,13 @@ function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
   pc2 = getBasePC(pc)
-  if !opts["use_jac_precon"] && !(pc <: PetscMatFreeLO) # share matrix if possible
+  if !opts["use_jac_precon"] && !(typeof(pc) <: PetscMatFreeLO) # share matrix if possible
     A = pc2.Ap
   else
     A = createPetscMat(mesh, sbp, eqn, opts)
   end
 
-  if pc2 <: PetscMatPC  # if pc2 has Petsc vectors inside it
+  if typeof(pc2) <: PetscMatPC  # if pc2 has Petsc vectors inside it
     xtmp = pc2.xtmp
     btmp = pc2.btmp
   else
@@ -61,7 +61,7 @@ function calcLinearOperator(lo::PetscMatLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
 
-  physicsJac(mesh, sbp, eqn, opts, pc.Ap, ctx_residual, t)
+#  physicsJac(mesh, sbp, eqn, opts, pc.Ap, ctx_residual, t)
 
   return nothing
 end
@@ -72,7 +72,7 @@ function applyLinearOperator(lo::AbstractPetscMatLO, mesh::AbstractMesh,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
-  lo2 = getBaseLinearOperator(lo)
+  lo2 = getBaseLO(lo)
   xtmp, x_ptr = PetscVecGetArray(lo2.xtmp)
   copy!(xtmp, x)
   PetscVecRestoreArray(lo2.xtmp, x_ptr)
@@ -92,7 +92,7 @@ function applyLinearOperatorTranspose(lo::AbstractPetscMatLO,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
-  lo2 = getBaseLinearOperator(lo)
+  lo2 = getBaseLO(lo)
   xtmp, x_ptr = PetscVecGetArray(lo2.xtmp)
   copy!(xtmp, x)
   PetscVecRestoreArray(lo2.xtmp, x_ptr)
@@ -107,7 +107,7 @@ function applyLinearOperatorTranspose(lo::AbstractPetscMatLO,
 end
 
 
-function getBaseLinearOperator(lo::PetscMatLO)
+function getBaseLO(lo::PetscMatLO)
 
   # this is the bottom of the recursion tree
   return lo

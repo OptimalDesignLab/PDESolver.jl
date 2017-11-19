@@ -452,18 +452,19 @@ petsc_opts = Dict{AbstractString, AbstractString}(
   "-ksp_gmres_restart" => "30"
 )
 
-petsc_opts = get!(arg_dict, "petsc_options", petsc_opts)
-
 if arg_dict["use_volume_preconditioner"]
   get!(petsc_opts, "-pc_type", "shell")
 end
 
+
+petsc_opts = get!(arg_dict, "petsc_options", petsc_opts)
+
 # set the options in Petsc, if Petsc will be used
-if opts["jac_type "] == 3 || opts["jac_type"] == 4
+if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
   if PetscInitialized() == 0
     PetscInitialize()
   end
-  PetscSetOptions(petsc_opts)
+  PetscSetOptions(arg_dict["petsc_options"])
 end
 
 # Advection specific options

@@ -4,6 +4,19 @@
 
 module LinearSolvers
 
+export LinearSolver, StandardLinearSolver,  # Linear Solver types
+       calcPC, calcLinearOperator, calcPCandLO, # Linear Solver interface
+       applyPC, applyPCTranspose, 
+       linearSolve, linearSolveTranspose, 
+       isLOMatFree, isPCMatFree, setTolerances, free,  # utility functions
+       applyLinearOperator, applyLinearOperatorTranspose,  # LO functions
+       getBaseLO, getBasePC,
+       PCNone, PetscMatPC, PetscMatFreePC,  # PC types
+       DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO  # LO types
+
+
+
+
 using ODLCommonTools
 using Utils
 using SummationByParts
@@ -74,7 +87,7 @@ end
 """
 function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
 
-  if typeof(lo) <: DirecLO
+  if typeof(lo) <: DirectLO
     @assert typeof(pc) <: PCNone
   end
 
@@ -84,7 +97,7 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
 
   pc2 = getBasePC(pc)
   lo2 = getBaseLO(lo)
-  if pc2 <: PetscMatPC && lo2 <: PetscMatLO
+  if typeof(pc2) <: PetscMatPC && lo2 <: PetscMatLO
     if pc2.Ap.pobj == lo2.A.pobj
       shared_mat = true
     else
@@ -97,7 +110,7 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
   myrank = MPI.Comm_rank(comm)
   commsize = MPI.Comm_size(comm)
 
-  if lo <: PetscLO
+  if typeof(lo) <: PetscLO
     ksp = createKSP(pc, lo, comm)
   else
     ksp = KSP_NULL
@@ -441,10 +454,10 @@ end
 
    * lo: an AbstractLinearOperator
 """
-function getBaseLinearOperator(lo::AbstractLinearOperator)
+function getBaseLO(lo::AbstractLinearOperator)
 
   # this will recurse down to the underlying linear operator
-  return getBaseLinearOperator(lo.lo_inner)
+  return getBaseLO(lo.lo_inner)
 end
 
 """
@@ -473,7 +486,5 @@ include("lo_sparsedirect.jl")
 include("lo_petscmat.jl")
 include("lo_petscmatfree.jl")
 include("ls_standard.jl")
-
-include("jacobian.jl")
 
 end  # end module

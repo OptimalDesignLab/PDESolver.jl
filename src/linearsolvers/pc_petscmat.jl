@@ -72,7 +72,7 @@ function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   # compute the jacobian here
-  physicsJac(mesh, sbp, eqn, opts, pc.Ap, ctx_residual, t)
+#  physicsJac(mesh, sbp, eqn, opts, pc.Ap, ctx_residual, t)
  
   # don't setup the PC here because PC built on top of this one might
   # modify Ap after calling this function

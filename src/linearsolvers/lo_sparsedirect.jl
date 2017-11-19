@@ -13,6 +13,9 @@ type SparseDirectLO <: AbstractSparseDirectLO
   fac::UmfpackLU{Float64, Int64}
   is_setup::Bool
   is_finalized::Bool
+  nfactorizations::Int
+  nsolves::Int
+  ntsolves::Int
 end
 
 #TODO: in the constructor, make colptr and rowval alias A
@@ -22,7 +25,7 @@ end
 function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts::Dict)
 
-  if mesh <: AbstractCGMesh
+  if typeof(mesh) <: AbstractCGMesh
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   else
     jac = SparseMatrixCSC(mesh, Float64)
@@ -36,8 +39,11 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   make_onebased(jac)
 
   is_setup = false
+  nfactorizations = 0
+  nsolves = 0
+  ntsolves = 0
 
-  return SparseDirectLO(jac, fac, is_setup, false)
+  return SparseDirectLO(jac, fac, is_setup, false, nfactorizations, nsolves, ntsolves)
 end
 
 
@@ -58,7 +64,7 @@ function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
+#  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
   lo.is_setup = false
 
   return nothing
@@ -81,12 +87,12 @@ function applyLinearOperatorTranspose(lo::SparseDirectLO,
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
-  A_mul_Bt!(1, lo.A, x, 0, b)
+  At_mul_B!(1, lo.A, x, 0, b)
 
   return nothing
 end
 
-function getBaseLinearOperator(lo::SparseDirectLO)
+function getBaseLO(lo::SparseDirectLO)
 
   # this is the bottom of the recursion tree
   return lo

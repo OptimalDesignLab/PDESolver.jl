@@ -168,13 +168,13 @@ function checkPCCtx(ctx)
 
   pc2 = getBasePC(pc)
 
-  @assert mesh <: AbstractMesh
-  @assert sbp <: AbstractSBP
-  @assert eqn <: AbstractSolutionData
-  @assert opts <: Dict
-  @assert pc <: AbstractPC
-  @assert pc2 <: PetscMatFreePC
-  @assert t <: Number
+  @assert typeof(mesh) <: AbstractMesh
+  @assert typeof(sbp) <: AbstractSBP
+  @assert typeof(eqn) <: AbstractSolutionData
+  @assert typeof(opts) <: Dict
+  @assert typeof(pc) <: AbstractPC
+  @assert typeof(pc2) <: PetscMatFreePC
+  @assert typeof(t) <: Number
 
   # verify equality with pc2.ctx ?
 
