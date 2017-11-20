@@ -1,7 +1,9 @@
 # helper functions
 
 """
-  Creates and preallocates an explicit Petsc matrix to be used as the Jacobian
+  Creates and preallocates an explicit Petsc matrix to be used as the Jacobian.
+  Matrices created by this routine require the arguments to MatSetValues to
+  be column-major.
 
   Petsc must already be initialized and have its options set.
 
@@ -16,6 +18,7 @@
 function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
+  println("creating Petsc Matrix")
   const mattype = PETSc.MATMPIAIJ # should this be BAIJ?
   numDofPerNode = mesh.numDofPerNode
 
@@ -25,14 +28,17 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # create the matrix
   A = PetscMat(comm)
+  println("A.pobj = ", A.pobj)
+  println("setting from options")
   PetscMatSetFromOptions(A)
+  println("setting type")
   PetscMatSetType(A, mattype)
+  println("setting size")
   PetscMatSetSizes(A, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
   if mesh.isDG
+    println("setting off proc entries")
     MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
   end
-  MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
-
   dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
   onnz = zeros(PetscInt, mesh.numDof)
   bs = PetscInt(mesh.numDofPerNode)  # block size
@@ -50,8 +56,13 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
   PetscMatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
   #PetscMatXAIJSetPreallocation(Ap, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
   PetscMatZeroEntries(A)
-  matinfo = PetscMatGetInfo(A, Int32(1))
+  matinfo = PetscMatGetInfo(A, PETSc.MAT_LOCAL)
   @mpi_master println(BSTDOUT, "A block size = ", matinfo.block_size)
+
+  println("setting column oriented")
+  # Petsc objects if this comes before preallocation
+  MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
+
 
   return A
 end
@@ -157,7 +168,7 @@ function createKSP(pc::Union{PetscMatPC, PetscMatFreePC},
     Ap = pc.Ap
   end
 
-  KSPSetOperators(ksp, A, Ap)
+  KSPSetOperators(ksp, lo.A, Ap)
 
   return ksp
 end

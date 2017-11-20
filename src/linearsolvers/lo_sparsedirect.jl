@@ -11,11 +11,16 @@
 type SparseDirectLO <: AbstractSparseDirectLO
   A::SparseMatrixCSC{Float64, Int64}
   fac::UmfpackLU{Float64, Int64}
-  is_setup::Bool
+  is_setup::Array{Bool, 1}
   is_finalized::Bool
   nfactorizations::Int
   nsolves::Int
   ntsolves::Int
+
+  # MPI stuff
+  comm::MPI.Comm
+  myrank::Int
+  commsize::Int
 end
 
 #TODO: in the constructor, make colptr and rowval alias A
@@ -38,12 +43,17 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   umfpack_symbolic!(fac)
   make_onebased(jac)
 
-  is_setup = false
+  is_setup = Bool[false]
   nfactorizations = 0
   nsolves = 0
   ntsolves = 0
 
-  return SparseDirectLO(jac, fac, is_setup, false, nfactorizations, nsolves, ntsolves)
+  comm = eqn.comm
+  myrank = eqn.myrank
+  commsize = eqn.commsize
+
+  return SparseDirectLO(jac, fac, is_setup, false, nfactorizations, nsolves,
+                        ntsolves, comm, myrank, commsize)
 end
 
 
@@ -65,7 +75,7 @@ function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
 #  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
-  lo.is_setup = false
+  setIsSetup(lo, false)
 
   return nothing
 end

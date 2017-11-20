@@ -9,9 +9,14 @@ type PetscMatFreeLO <: AbstractPetscMatFreeLO
   btmp::PetscVec
   ctx
   is_finalized::Bool
+
+  # MPI stuff
+  comm::MPI.Comm
+  myrank::Int
+  commsize::Int
 end
 
-function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
+function PetscMatFreeLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
   A = createPetscMatShell(mesh, sbp, eqn, opts)
@@ -35,8 +40,13 @@ function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
 
   ctx = C_NULL  # this gets set later
   is_finalized = false
+  comm = eqn.comm
+  myrank = eqn.myrank
+  commsize = eqn.commsize
 
-  return new(A, xtmp, btmp, ctx, is_finalized)
+
+  return PetscMatFreeLO(A, xtmp, btmp, ctx, is_finalized, comm, myrank,
+                        commsize)
 end
 
 function free(lo::PetscMatFreeLO)
@@ -52,9 +62,9 @@ function free(lo::PetscMatFreeLO)
       lo.xtmp.pobj = C_NULL
     end
 
-    if lo.btmp.pboj != C_NULL
+    if lo.btmp.pobj != C_NULL
       PetscDestroy(lo.btmp)
-      lo.btmp.pboj = C_NULL
+      lo.btmp.pobj = C_NULL
     end
   end
 
@@ -113,7 +123,7 @@ function applyLinearOperator_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   PetscVecRestoreArray(b, b_ptr)
   PetscVecRestoreArrayRead(x, x_ptr)
 
-  return nothing
+  return PetscErrorCode(0)
 end
 
 function applyLinearOperatorTranspose_wrapper(A::PetscMat, x::PetscVec,
@@ -138,7 +148,7 @@ function applyLinearOperatorTranspose_wrapper(A::PetscMat, x::PetscVec,
   PetscVecRestoreArray(b, b_ptr)
   PetscVecRestoreArrayRead(x, x_ptr)
 
-  return nothing
+  return PetscErrorCode(0)
 end
 
 

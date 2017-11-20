@@ -14,19 +14,28 @@
 type PetscMatFreePC <: AbstractPetscMatFreePC
   pc::PC
   ctx  # Petsc PC ctx
-  is_setup::Bool # needed for consistency with PetscMatPC
   is_finalized::Bool
+
+  # MPI stuff
+  comm::MPI.Comm
+  myrank::Int
+  commsize::Int
+
 end
 
-function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
-                    eqn::AbstractSolutionData, opts::Dict, comm::MPI.Comm)
+function PetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
+                    eqn::AbstractSolutionData, opts::Dict)
 
-  pc = createPetsPC(mesh, sbp, eqn, opts, comm)
+  pc = createPetscPC(mesh, sbp, eqn, opts)
   ctx = ()
   is_setup = false
   is_finalized = false
 
-  return new(pc, ctx, is_setup, is_fianlized)
+  comm = eqn.comm
+  myrank = eqn.myrank
+  commsize = eqn.commsize
+
+  return PetscMatFreePC(pc, ctx, is_setup, is_finalized, comm, myrank, commsize)
 end
 
 function free(pc::PetscMatFreePC)

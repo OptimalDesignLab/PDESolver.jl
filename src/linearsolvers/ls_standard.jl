@@ -204,9 +204,9 @@ function _linearSolve{Tlo <: AbstractDenseLO, Tpc}(
   lo2 = getBaseLO(ls.lo)
 
   # factor if needed
-  if !lo2.is_setup
+  if !getIsSetup(lo2)
     getrf!(lo2.A, lo2.ipiv)
-    lo2.is_setup = true
+    setIsSetup(lo2, true)
     lo2.nfactorizations += 1
   end
 
@@ -238,11 +238,11 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
 
   make_zerobased(lo2.A)
   # compute factorization if needed
-  if !lo2.is_setup
+  if !getIsSetup(lo2)
     umfpack_free_numeric(lo2.fac)  # free old factorization
     # note: the matrix stored in the factorization object must alias. lo2.A
     umfpack_numeric!(lo2.fac)
-    lo2.is_setup = true
+    setIsSetup(lo2, true)
     lo2.nfactorizations += 1
   end
 
@@ -259,6 +259,7 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
   return nothing
 end
 
+
 function _linearSolve{Tlo <: PetscLO , Tpc}(
                       ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
@@ -268,13 +269,14 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
   lo2 = getBaseLO(ls.lo)
   @assert !(typeof(pc2) <: PCNone)
   
-  if !pc2.is_setup
+  # prepare the data structures
+  t_assem = @elapsed assemblePetscData(ls, b, lo2.btmp)
+  println(BSTDOUT, "Final matrix assembly time = ", t_assem)
+
+  if !isPCMatFree(ls) && !pc2.is_setup
     setupPC(pc2)
   end
 
-  # prepare the data structures
-  t_assem = @elapsed assemblePetscData(ls, b)
-  println(BSTDOUT, "Final matrix assembly time = ", t_assem)
 
   # do the solve
   ksp = ls.ksp
@@ -289,7 +291,7 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
   # print convergence info
   @mpi_master begin
     reason = KSPGetConvergedReason(ksp)
-    println(BSTDOUT, "KSP converged reason = "< KSPConvergedREasonDict[reason])
+    println(BSTDOUT, "KSP converged reason = "< KSPConvergedReasonDict[reason])
     rnorm = KSPGetResidualNorm(ksp)
     @mpi_master println("Linear residual = ", rnorm)
   end
@@ -305,55 +307,62 @@ end
   Helper function for doing linear solves with Petsc matrices.  It assembles
   A, and Ap, and copies b into the local part of the petsc vector for b.
 """
-function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector)
+function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
+                           b_petsc::PetscVec)
 
   lo_matfree = isLOMatFree(ls)
-  pc_matfree = isPCMatFRee(ls)
+  pc_matfree = isPCMatFree(ls)
 
   pc2 = getBasePC(ls.pc)
   lo2 = getBaseLO(ls.lo)
   myrank = ls.myrank
 
   # assemble things
-  if !lo_matfree
-    PetscMatAssembleBegin(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+  if !lo_matfree && !getIsSetup(lo2)
+    PetscMatAssemblyBegin(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
   end
 
-  if !pc_matfree && !lo.shared_mat
-    PetscMatAssembleBegin(pc2.Ap, PETSC_MAT_FINAL_ASSEMBLY)
+  if !pc_matfree && !ls.shared_mat
+    PetscMatAssemblyBegin(pc2.Ap, PETSC_MAT_FINAL_ASSEMBLY)
   end
 
   # copy values into the vector
-  btmp, b_ptr = PetscVecGetArray(lo2.btmp)
+  btmp, b_ptr = PetscVecGetArray(b_petsc)
   copy!(btmp, b)
-  PetscVecRestoreArray(lo2.btmp, b_ptr)
+  PetscVecRestoreArray(b_petsc, b_ptr)
 
   # end assembly
-  if !lo_matfree
-    PetscMatAssembleEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
-    matinfo = PetscMatGetInfo(lo2.A)
+  if !lo_matfree && !getIsSetup(lo2)
+    PetscMatAssemblyEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+    setIsSetup(lo2, true)
+    matinfo = PetscMatGetInfo(lo2.A, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
     end
   end
 
-  if !pc_matfree && !lo.shared_mat
-    PetscMatAssembleEnd(pc2.Ap, PETSC_MAT_FINAL_ASSEMBLY)
-    matinfo = PetscMatGetInfo(pc2.Ap)
+  if !pc_matfree && !ls.shared_mat
+    PetscMatAssemblyEnd(pc2.Ap, PETSC_MAT_FINAL_ASSEMBLY)
+    setIsAssembled(pc2, true)
+    matinfo = PetscMatGetInfo(pc2.Ap, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for Ap on process $myrank: $(matinfo.mallocs) mallocs")
     end
   end
 
+#  pc2.is_setup = true
+
   return nothing
 end
+
+
 
 """
   Returns true if the linear operator is matrix free, false otherwise
 """
 function isLOMatFree(ls::StandardLinearSolver)
 
-  return typeof(ls.lo) <: AbstractPetscMatFree
+  return typeof(ls.lo) <: AbstractPetscMatFreeLO
 end
 
 """
@@ -361,7 +370,7 @@ end
 """
 function isPCMatFree(ls::StandardLinearSolver)
 
-  return typeof(ls.pc) <: AbstractMatFreePC
+  return typeof(ls.pc) <: AbstractPetscMatFreePC
 end
 
 """
@@ -376,7 +385,8 @@ end
    * dtol: divergence tolerance
    * itermax: maximum number of iterations
 """
-function setTolerances(ls::StandardLinearSolver, reltol, abstol, dtol, itermax)
+function setTolerances(ls::StandardLinearSolver, reltol::Number, abstol::Number,
+                       dtol::Number, itermax::Integer)
 
 
   if reltol > 0

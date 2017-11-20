@@ -71,6 +71,12 @@ type StandardLinearSolver{T1, T2} <: LinearSolver{T1, T2}
   commsize::Int
   ksp::KSP  # used only for Petsc matrices
   is_finalized::Bool
+
+  # tolerances for iterative solve
+  reltol::PetscReal
+  abstol::PetscReal
+  dtol::PetscReal
+  itermax::PetscInt
 end
 
 
@@ -97,7 +103,7 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
 
   pc2 = getBasePC(pc)
   lo2 = getBaseLO(lo)
-  if typeof(pc2) <: PetscMatPC && lo2 <: PetscMatLO
+  if typeof(pc2) <: PetscMatPC && typeof(lo2) <: PetscMatLO
     if pc2.Ap.pobj == lo2.A.pobj
       shared_mat = true
     else
@@ -118,8 +124,14 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
 
   is_finalized = false
 
+  reltol = 1e-8
+  abstol = 1e-8
+  dtol = 1e50
+  itermax = 1000
+
   ls = StandardLinearSolver{T1, T2}(pc, lo, shared_mat, comm, myrank,
-                                    commsize, ksp, is_finalized)
+                                    commsize, ksp, is_finalized,
+                                    reltol, abstol, dtol, itermax)
 
   atexit( () -> free(ls))  # make sure this gets destroyed eventually
 
@@ -441,6 +453,7 @@ function applyLinearOperatorTranspose(lo::AbstractLinearOperator,
 
 end
 
+
 """
   Similar to [`getBasePC`](@ref) except it gets the underlying linear operator,
   ie. one of [`DenseLO`](@ref), [`SparseDirectLO`](@ref), [`PetscMatLO`](@ref)
@@ -486,5 +499,6 @@ include("lo_sparsedirect.jl")
 include("lo_petscmat.jl")
 include("lo_petscmatfree.jl")
 include("ls_standard.jl")
+include("utils.jl")
 
 end  # end module

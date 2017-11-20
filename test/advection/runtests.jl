@@ -2,6 +2,12 @@
 
 push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
+using MPI
+if !MPI.Initialized()
+  MPI.Init()
+end
+
+
 using PDESolver
 #using Base.Test
 using FactCheck
@@ -16,6 +22,7 @@ using ArrayViews
 import ODLCommonTools.sview
 using Input
 using LinearSolvers
+using PETSc
 
 function clean_dict(collection)
   for i in keys(collection)
@@ -69,6 +76,7 @@ facts("----- Running Advection tests -----") do
   run_testlist(AdvectionTests, run_advection, tags)
 end
 
+println("finished running tests")
 
 #------------------------------------------------------------------------------
 # cleanup

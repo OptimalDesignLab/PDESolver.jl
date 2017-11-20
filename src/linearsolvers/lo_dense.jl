@@ -6,10 +6,15 @@
 type DenseLO <: AbstractDenseLO
   A::Array{Float64, 2}
   ipiv::Array{BlasInt, 1}
-  is_setup::Bool # true if LO is already setup (ie. factored), false otherwise
+  is_setup::Array{Bool, 1} # true if LO is already setup (ie. factored), false otherwise
   nfactorizations::Int
   nsolves::Int  # regular solves
   ntsolves::Int  # transpose solves
+
+  # MPI stuff
+  comm::MPI.Comm
+  myrank::Int
+  commsize::Int
 end
 
 """
@@ -28,12 +33,16 @@ function DenseLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   @assert mesh.commsize == 1  # serial only
   A = zeros(mesh.numDof, mesh.numDof)
   ipiv = zeros(BlasInt, mesh.numDof)
-  is_setup = false
+  is_setup = Bool[false]
   nfactorizations = 0
   nsolves = 0
-  ntsolves = 0 
+  ntsolves = 0
+  comm = eqn.comm
+  myrank = eqn.myrank
+  commsize = eqn.commsize
 
-  return DenseLO(A, ipiv, is_setup, nfactorizations, nsolves, ntsolves)
+  return DenseLO(A, ipiv, is_setup, nfactorizations, nsolves, ntsolves,
+                 comm, myrank, commsize)
 end
 
 
@@ -49,7 +58,7 @@ function calcLinearOperator(lo::DenseLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
 #  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
-  lo.is_setup = false
+  setIsSetup(lo, false)
 
   return nothing
 end
@@ -62,7 +71,7 @@ function applyLinearOperator(lo::DenseLO, mesh::AbstractMesh,
                              b::AbstractVector)
 
   # BLAS operates in-place
-  if lo.is_setup  # A is already factored
+  if getIsSetup(lo)  # A is already factored
     throw(ErrorException("Multiplying factored matrix not supported"))
     # this doesn't work because the permutation is not correct for the vector
     # I think the problem is that ipiv is not a permuatation matrix, so really
@@ -93,7 +102,7 @@ function applyLinearOperatorTranspose(lo::DenseLO,
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
-  if lo.is_setup  # A is already factored
+  if getIsSetup(lo)  # A is already factored
     # A.'x = (P*L*U).'x = (U.'*L.'*P.')*x
     # there is no way to apply P.' in lapack (ipiv is not a true permutation)
 
