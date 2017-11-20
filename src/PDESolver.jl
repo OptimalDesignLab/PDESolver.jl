@@ -43,6 +43,41 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 using Input
+using PETSc
+
+if !MPI.Initialized()
+  MPI.Init()
+  mpi_inited = true
+else
+  mpi_inited =false
+end
+
+if PetscInitialized() == 0
+  PetscInitialize()
+  petsc_inited = true
+else
+  petsc_inited = false
+end
+
+function finalizePetsc()
+  if PetscInitialized() == 0
+    PetscFinalize()
+  end
+end
+
+function finalizeMPI()
+  if MPI.Initialized()
+    MPI.Finalize()
+  end
+end
+
+if petsc_inited
+  atexit( () -> finalizePetsc() )
+end
+
+if mpi_inited
+  atexit( () -> finalizeMPI() )
+end
 
 include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement

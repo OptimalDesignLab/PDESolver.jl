@@ -461,9 +461,6 @@ petsc_opts = get!(arg_dict, "petsc_options", petsc_opts)
 
 # set the options in Petsc, if Petsc will be used
 if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
-  if PetscInitialized() == 0
-    PetscInitialize()
-  end
   PetscSetOptions(arg_dict["petsc_options"])
 end
 

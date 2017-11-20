@@ -219,6 +219,7 @@ function test_petscmat(mesh, sbp, eqn, opts)
 
   b = rand(mesh.numDof)
 
+  @fact ls.shared_mat --> true
   # test product
   c = vals*b
   c2 = zeros(c)
