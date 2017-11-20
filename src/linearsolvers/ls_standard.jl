@@ -21,7 +21,7 @@
 function calcPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
-  if typeof(ls.pc) <: PCNONE
+  if typeof(ls.pc) <: PCNone
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   else
     calcPC(ls.pc, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -77,7 +77,7 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
                      eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
 
-  if typeof(ls.pc) <: PCNONE
+  if typeof(ls.pc) <: PCNone
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif ls.is_shared
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -126,9 +126,11 @@ function applyPCTranspose(ls::StandardLinearSolver, mesh::AbstractMesh,
                           eqn::AbstractSolutionData, opts::Dict, t,
                           b::AbstractVector, x::AbstractVector)
   if typeof(ls.pc) <: PCNone
+    println("no PC, doing solve instead")
     linearSolveTranspose(ls, b, x)
   else
-    applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x)
+    println("applying transposed preconditioner")
+    applyPCTranspose(ls.pc, mesh, sbp, eqn, opts, t, b, x)
   end
 
   return nothing
@@ -264,9 +266,11 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
                       ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
 
+  println("solving Petsc matrix")
   myrank = ls.myrank
   pc2 = getBasePC(ls.pc)
   lo2 = getBaseLO(ls.lo)
+  println("typeof(lo2) = ", typeof(lo2))
   @assert !(typeof(pc2) <: PCNone)
   
   # prepare the data structures
@@ -280,14 +284,23 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
 
   # do the solve
   ksp = ls.ksp
+  println("ls.reltol = ", ls.reltol)
+  println("ls.abstol = ", ls.abstol)
   KSPSetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
+
   if trans
+    println("doing transpose solve")
     KSPSolveTranspose(ksp, lo2.btmp, lo2.xtmp)
+    lo2.ntsolves += 1
   else
+    println("doing regular solve")
     KSPSolve(ksp, lo2.btmp, lo2.xtmp)
+    println("finished ksp solve")
+    lo2.nsolves += 1
   end
 
+  println("finished solving")
   # print convergence info
   @mpi_master begin
     reason = KSPGetConvergedReason(ksp)
@@ -335,6 +348,7 @@ function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
   if !lo_matfree && !getIsSetup(lo2)
     PetscMatAssemblyEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
     setIsSetup(lo2, true)
+    lo.nassemblies[1] += 1
     matinfo = PetscMatGetInfo(lo2.A, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
@@ -344,6 +358,7 @@ function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
   if !pc_matfree && !ls.shared_mat
     PetscMatAssemblyEnd(pc2.Ap, PETSC_MAT_FINAL_ASSEMBLY)
     setIsAssembled(pc2, true)
+    pc2.nassemblies[1] += 1
     matinfo = PetscMatGetInfo(pc2.Ap, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for Ap on process $myrank: $(matinfo.mallocs) mallocs")

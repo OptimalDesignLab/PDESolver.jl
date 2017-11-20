@@ -1,4 +1,4 @@
-# define the special PCNONE type for use with direct solvers
+# define the special PCNone type for use with direct solvers
 
 """
   Preconditioner type for direct solve.

@@ -12,7 +12,11 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
        applyLinearOperator, applyLinearOperatorTranspose,  # LO functions
        getBaseLO, getBasePC,
        PCNone, PetscMatPC, PetscMatFreePC,  # PC types
-       DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO  # LO types
+       DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO,  # LO types
+       AbstractPC, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstrac PC types
+       AbstractLO, AbstractDenseLO, AbstractSparseDirectLO, # Abstrac LO types
+       AbstractPetscMatLO, AbstractPetscMatFreeLO,
+       setPCCtx, setLOCtx  # matrix-free specific functions
 
 
 
@@ -38,17 +42,17 @@ import Base.SparseMatrix.UMFPACK: UmfpackLU, umfpack_free_numeric,
   a linear solve, including preconditioning if needed.  Many of the
   operations on this type are delegated to the pc and lo objects.
 
-  The [`AbstractPC`](@ref) and [`AbstractLinearOperator`](@ref) types
+  The [`AbstractPC`](@ref) and [`AbstractLO`](@ref) types
   defined in this module are suitible for solving Ax = b when A is the
   Jacobian of the physics.  Other methods (for example, unsteady time marching
   or homotopy methods) should build their own AbstractPC and
-  AbstractLinearOperator objects and use them with
+  AbstractLO objects and use them with
   [`StandardLinearSolver`](@ref).
 
   **Required Fields**
 
    * pc: an [`AbstractPC`](@ref) object
-   * lo: an [`AbstractLinearOperator`](@ref) object
+   * lo: an [`AbstractLO`](@ref) object
    * shared_mat:  Bool, true if pc and lo share the same matrix object false
                   otherwise (either different matrix objects or matrix-free)
 
@@ -117,7 +121,7 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
   commsize = MPI.Comm_size(comm)
 
   if typeof(lo) <: PetscLO
-    ksp = createKSP(pc, lo, comm)
+    ksp = createKSP(pc2, lo2, comm)
   else
     ksp = KSP_NULL
   end
@@ -178,6 +182,11 @@ abstract AbstractPetscMatPC <: AbstractPC
   Abstract supertype of all Petsc matrix-free preconditioners.
 """
 abstract AbstractPetscMatFreePC <: AbstractPC
+
+"""
+  Alias for any kind of Petsc PC (matrix-explicit or matrix-free)
+"""
+typealias AbstractPetscPC Union{AbstractPetscMatPC, AbstractPetscMatFreePC}
 
 # PC interface
 """
@@ -321,7 +330,7 @@ end
   for all these cases if using an matrix interface functions that are defined
   for all the matrix types.  See [`MatExplicitLO`](@ref)
 """
-abstract AbstractLinearOperator
+abstract AbstractLO
 
 #TODO: doc these
 
@@ -329,23 +338,23 @@ abstract AbstractLinearOperator
   Linear operator type for Dense matrices.  This is generally used only for
   debugging.
 """
-abstract AbstractDenseLO <: AbstractLinearOperator
+abstract AbstractDenseLO <: AbstractLO
 
 """
   Linear operator type for `SparseMatrixCSC` matrices, which use a direct
   solver.
 """
-abstract AbstractSparseDirectLO <: AbstractLinearOperator
+abstract AbstractSparseDirectLO <: AbstractLO
 
 """
   Linear operator type for Petsc matrix-explicit.
 """
-abstract AbstractPetscMatLO <: AbstractLinearOperator
+abstract AbstractPetscMatLO <: AbstractLO
 
 """
   Linear operator type for Petsc matrix-free.
 """
-abstract AbstractPetscMatFreeLO <: AbstractLinearOperator
+abstract AbstractPetscMatFreeLO <: AbstractLO
 
 """
   Useful union for all the matrix-explicit linear operator types.
@@ -368,7 +377,7 @@ typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
 
 """
   This function calculates the linear operator.  Every implementation of
-  [`AbstractLinearOperator`](@ref) should extend this function with a new
+  [`AbstractLO`](@ref) should extend this function with a new
   method.  For matrix-free operators, this function must exist but need
   not perform any actions.
 
@@ -377,7 +386,7 @@ typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
 
   **Inputs**
 
-   * lo: the AbstractLinearOperator implementation (updated with new
+   * lo: the AbstractLO implementation (updated with new
          matrix).
    * mesh
    * sbp
@@ -394,23 +403,23 @@ typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
     this function is not called again before the next solve
 
 """
-function calcLinearOperator(lo::AbstractLinearOperator, mesh::AbstractMesh,
+function calcLinearOperator(lo::AbstractLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  error("reached AbstractLinearOperator calcLinearOperator(), did you forget to define calcLinearOperator() for your AbstracLinearOperator implementation?")
+  error("reached AbstractLO calcLinearOperator(), did you forget to define calcLinearOperator() for your AbstractLO implementation?")
 end
 
 """
   Applies the linear operator, ie. , Ax = b
   
-  Matrix-explicit implementations [`AbstractLinearOperator`](@ref) do not have
+  Matrix-explicit implementations [`AbstractLO`](@ref) do not have
   to implement this function, though matrix-free implementations must extend
   it with a new method.
 
   **Inputs**
 
-   * lo: the [`AbstractLinearOperator`](@ref) implementation.
+   * lo: the [`AbstractLO`](@ref) implementation.
    * mesh
    * sbp
    * eqn
@@ -424,13 +433,13 @@ end
 
    * b: vector overwritten with results
 """
-function applyLinearOperator(lo::AbstractLinearOperator, mesh::AbstractMesh,
+function applyLinearOperator(lo::AbstractLO, mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
 
-  error("reached AbstractLinearOperator applyLinearOperator(), did you forget to define applyLinearOperator() for your AbstracLinearOperator implementation?")
+  error("reached AbstractLO applyLinearOperator(), did you forget to define applyLinearOperator() for your AbstractLO implementation?")
 
 end
 
@@ -443,13 +452,13 @@ end
   (although they could with enough reverse-mode)
 
 """
-function applyLinearOperatorTranspose(lo::AbstractLinearOperator, 
+function applyLinearOperatorTranspose(lo::AbstractLO, 
                              mesh::AbstractMesh, sbp::AbstractSBP,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
-  error("reached AbstractLinearOperator applyLinearOperatorTranspose(), did you forget to define applyLinearOperatorTranspose() for your AbstracLinearOperator implementation?")
+  error("reached AbstractLO applyLinearOperatorTranspose(), did you forget to define applyLinearOperatorTranspose() for your AbstractLO implementation?")
 
 end
 
@@ -465,9 +474,9 @@ end
 
   **Inputs**
 
-   * lo: an AbstractLinearOperator
+   * lo: an AbstractLO
 """
-function getBaseLO(lo::AbstractLinearOperator)
+function getBaseLO(lo::AbstractLO)
 
   # this will recurse down to the underlying linear operator
   return getBaseLO(lo.lo_inner)
@@ -475,17 +484,17 @@ end
 
 """
   This function frees any memory belonging to external libraries.  Users must
-  call this function when they are finished with an AbstractLinearOperator
+  call this function when they are finished with an AbstractLO
   object.
 
   Users do not have to define this function for their
-  [`AbstractLinearOperator`](@ref) types.
+  [`AbstractLO`](@ref) types.
 
   **Inputs**
 
    * lo: the AbstractLO object
 """
-function free(lo::AbstractLinearOperator)
+function free(lo::AbstractLO)
 
   free(getBaseLO(lo))
 end

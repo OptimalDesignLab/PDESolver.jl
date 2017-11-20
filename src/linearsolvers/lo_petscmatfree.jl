@@ -9,6 +9,9 @@ type PetscMatFreeLO <: AbstractPetscMatFreeLO
   btmp::PetscVec
   ctx
   is_finalized::Bool
+ 
+  nsolves::Int
+  ntsolves::Int
 
   # MPI stuff
   comm::MPI.Comm
@@ -16,7 +19,8 @@ type PetscMatFreeLO <: AbstractPetscMatFreeLO
   commsize::Int
 end
 
-function PetscMatFreeLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
+function PetscMatFreeLO(pc::Union{AbstractPetscMatPC, AbstractPetscMatFreePC},
+                    mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
   A = createPetscMatShell(mesh, sbp, eqn, opts)
@@ -25,7 +29,7 @@ function PetscMatFreeLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
   fptr = cfunction(applyLinearOperator_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
   MatShellSetOperation(A, PETSc.MATOP_MULT, fptr)
 
-  fptr = cfunction(applyLinearOperator_wrapperTranspose, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
+  fptr = cfunction(applyLinearOperatorTranspose_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
   MatShellSetOperation(A, PETSc.MATOP_MULT_TRANSPOSE, fptr)
 
 
@@ -40,13 +44,15 @@ function PetscMatFreeLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
 
   ctx = C_NULL  # this gets set later
   is_finalized = false
+  nsolves = 0
+  ntsolves = 0
   comm = eqn.comm
   myrank = eqn.myrank
   commsize = eqn.commsize
 
 
-  return PetscMatFreeLO(A, xtmp, btmp, ctx, is_finalized, comm, myrank,
-                        commsize)
+  return PetscMatFreeLO(A, xtmp, btmp, ctx, is_finalized, nsolves, ntsolves,
+                        comm, myrank, commsize)
 end
 
 function free(lo::PetscMatFreeLO)
@@ -57,7 +63,7 @@ function free(lo::PetscMatFreeLO)
       lo.A.pobj = C_NULL
     end
 
-    if lo.A.xtmp.pobj != C_NULL
+    if lo.xtmp.pobj != C_NULL
       PetscDestroy(lo.xtmp)
       lo.xtmp.pobj = C_NULL
     end
@@ -98,14 +104,17 @@ function setLOCtx(lo::AbstractPetscMatFreeLO, mesh::AbstractMesh,
   lo2 = getBaseLO(lo)
   @assert typeof(lo2) <: PetscMatFreeLO
   lo2.ctx = (mesh, sbp, eqn, opts, lo, ctx_residual, t)
-  MatShellSetContext(lo2.A, pointer(lo2.ctx))
+  MatShellSetContext(lo2.A, pointer_from_objref(lo2.ctx))
 
   return nothing
 end
 
 function applyLinearOperator_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 
-  ctx = MatShellGetContext(A)
+  println("entered applyLinearOperator_wrapper")
+  ctx_ptr = MatShellGetContext(A)
+  @assert ctx_ptr != C_NULL
+  ctx = unsafe_pointer_to_objref(ctx_ptr)
   checkLOCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]
@@ -129,7 +138,9 @@ end
 function applyLinearOperatorTranspose_wrapper(A::PetscMat, x::PetscVec,
                                               b::PetscVec)
 
-  ctx = MatShellGetContext(A)
+  ctx_ptr = MatShellGetContext(A)
+  @assert ctx_ptr != C_NULL
+  ctx = unsafe_pointer_to_objref(ctx_ptr)
   checkLOCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]

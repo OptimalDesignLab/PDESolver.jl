@@ -16,26 +16,48 @@ type PetscMatFreePC <: AbstractPetscMatFreePC
   ctx  # Petsc PC ctx
   is_finalized::Bool
 
+  nsetups::Int
+  napplies::Int
+  ntapplies::Int
+
   # MPI stuff
   comm::MPI.Comm
   myrank::Int
   commsize::Int
-
 end
 
 function PetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
                     eqn::AbstractSolutionData, opts::Dict)
 
   pc = createPetscPC(mesh, sbp, eqn, opts)
+
+  # register wrapper routines with Petsc
+  fptr = cfunction(applyPC_wrapper, PetscErrorCode, (PC, PetscVec, PetscVec))
+  PCShellSetApply(pc, fptr)
+
+  fptr = cfunction(applyPCTranspose_wrapper, PetscErrorCode, (PC, PetscVec, PetscVec))
+  PCShellSetApplyTranspose(pc, fptr)
+
+  fptr = cfunction(calcPC_wrapper, PetscErrorCode, (PC,))
+  PCShellSetSetUp(pc, fptr)
+
+
   ctx = ()
-  is_setup = false
   is_finalized = false
+
+  nsetups = 0
+  napplies = 0
+  ntapplies = 0
 
   comm = eqn.comm
   myrank = eqn.myrank
   commsize = eqn.commsize
 
-  return PetscMatFreePC(pc, ctx, is_setup, is_finalized, comm, myrank, commsize)
+  # only update the PC when explicitly requested
+  PCSetReusePreconditioner(pc, PETSC_TRUE)
+
+  return PetscMatFreePC(pc, ctx, is_finalized, nsetups, napplies, ntapplies,
+                        comm, myrank, commsize)
 end
 
 function free(pc::PetscMatFreePC)
@@ -75,16 +97,19 @@ function setPCCtx(pc::AbstractPetscMatFreePC, mesh::AbstractMesh,
 # users *must* call this function from within their calcPC function
 
   pc2 = getBasePC(pc)
-  @assert pc2 <: PetscMatFreePC
+  @assert typeof(pc2) <: PetscMatFreePC
   pc2.ctx = (mesh, sbp, eqn, opts, pc, ctx_residual, t)
-  PCShellSetContex(pc2, pointer(pc2.ctx))
+  PCShellSetContext(pc2.pc, pointer_from_objref(pc2.ctx))
 
   return nothing
 end
 
 function calcPC_wrapper(_pc::PC)
 
-  ctx = unsafe_pointer_to_objref(PCShellGetContex(_pc))
+  println("entered calcPC_wrapper")
+  ctx_ptr = PCShellGetContext(_pc)
+  @assert ctx_ptr != C_NULL
+  ctx = unsafe_pointer_to_objref(ctx_ptr)
   checkPCCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]
@@ -94,8 +119,11 @@ function calcPC_wrapper(_pc::PC)
   ctx_residual = ctx[6]
   t = ctx[7]
 
+  println("calculating PC")
   calcPC(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+  println("finished calculating PC")
 
+  println("finished calcPC_wrapper")
   return PetscErrorCode(0)
 end
 
@@ -103,7 +131,8 @@ end
 # wrapper for Petsc
 function applyPC_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
 
-  ctx = unsafe_pointer_to_objref(PCShellGetContex(_pc))
+  println("entered applyPC_wrapper")
+  ctx = unsafe_pointer_to_objref(PCShellGetContext(_pc))
   checkPCCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]
@@ -112,6 +141,8 @@ function applyPC_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
   pc = ctx[5]  # the user PC
   ctx_residual = ctx[6]
   t = ctx[7]
+
+  println("typeof(pc) = ", typeof(pc))
 
   # get the local parts of the vectors
   btmp, b_ptr = PetscVecGetArrayRead(b)
@@ -128,7 +159,9 @@ end
 
 function applyPCTranspose_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
 
-  ctx = unsafe_pointer_to_objref(PCShellGetContex(_pc))
+  ctx_ptr = PCShellGetContext(_pc)
+  @assert ctx_ptr != C_NULL
+  ctx = unsafe_pointer_to_objref(ctx_ptr)
   checkPCCtx(ctx)
   mesh = ctx[1]
   sbp = ctx[2]

@@ -10,6 +10,9 @@ type PetscMatLO <: AbstractPetscMatLO
   is_setup::Array{Bool, 1}  # is matrix assembled (shared with PC.is_assembled)
                             # if A is shared
   is_finalized::Bool
+  nassemblies::Array{Int, 1}
+  nsolves::Int
+  ntsolves::Int
 
   # MPI stuff
   comm::MPI.Comm
@@ -17,16 +20,18 @@ type PetscMatLO <: AbstractPetscMatLO
   commsize::Int
 end
 
-function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
+function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
   pc2 = getBasePC(pc)
   if !opts["use_jac_precond"] && !(typeof(pc) <: PetscMatFreeLO) # share matrix if possible
     A = pc2.Ap
     is_setup = pc2.is_assembled  # share the indicator array
+    nassemblies = pc2.nassemblies
   else
     A = createPetscMat(mesh, sbp, eqn, opts)
     is_setup = Bool[false]
+    nassemblies = Int[0]
   end
 
   if typeof(pc2) <: PetscMatPC  # if pc2 has Petsc vectors inside it
@@ -38,13 +43,15 @@ function PetscMatLO(pc::AbstractPetscMatPC, mesh::AbstractMesh,
   end
 
   is_finalized = false
+  nsolves = 0
+  ntsolves = 0
   comm = eqn.comm
   myrank = eqn.myrank
   commsize = eqn.commsize
 
 
-  return PetscMatLO(A, xtmp, btmp, is_setup, is_finalized, comm, myrank,
-                    commsize)
+  return PetscMatLO(A, xtmp, btmp, is_setup, is_finalized, nassemblies, nsolves,
+                    ntsolves, comm, myrank, commsize)
 end
 
 
@@ -91,9 +98,9 @@ function applyLinearOperator(lo::AbstractPetscMatLO, mesh::AbstractMesh,
                              b::AbstractVector)
 
   lo2 = getBaseLO(lo)
-  if !getIsSetup(lo2)
-    assemblePetscData(lo, x, lo.xtmp)
-  end
+
+  # assemble Ap (if needed)
+  assemblePetscData(lo, x, lo.xtmp)
 
   PetscMatMult(lo2.A, lo2.xtmp, lo2.btmp)
 
@@ -112,9 +119,9 @@ function applyLinearOperatorTranspose(lo::AbstractPetscMatLO,
                              b::AbstractVector)
   lo2 = getBaseLO(lo)
 
-  if !getIsSetup(lo2)
-    assemblePetscData(lo, x, lo.xtmp)
-  end
+  # assemble Ap (if needed)
+  assemblePetscData(lo, x, lo.xtmp)
+
 
   PetscMatMultTranspose(lo2.A, lo2.xtmp, lo2.btmp)
 
@@ -144,6 +151,7 @@ function assemblePetscData(lo::PetscMatLO, b::AbstractVector,
   if !getIsSetup(lo)
     PetscMatAssemblyEnd(lo.A, PETSC_MAT_FINAL_ASSEMBLY)
     setIsSetup(lo, true)
+    lo.nassemblies[1] += 1
     matinfo = PetscMatGetInfo(lo.A, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
@@ -154,13 +162,13 @@ function assemblePetscData(lo::PetscMatLO, b::AbstractVector,
 end
 
 # this function works for all linear operators
-function getIsSetup(lo::AbstractLinearOperator)
+function getIsSetup(lo::AbstractLO)
 
   lo2 = getBaseLO(lo)
   return lo2.is_setup[1]
 end
 
-function setIsSetup(lo::AbstractLinearOperator, val::Bool)
+function setIsSetup(lo::AbstractLO, val::Bool)
   
   lo2 = getBaseLO(lo)
   lo2.is_setup[1] = val

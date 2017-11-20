@@ -10,6 +10,8 @@ function test_linearsolver()
     test_dense(mesh, sbp, eqn, opts)
     test_sparsedirect(mesh, sbp, eqn, opts)
     test_petscmat(mesh, sbp, eqn, opts)
+    test_petscmatfree(mesh, sbp, eqn, opts)
+    test_petscmat_matfree(mesh, sbp, eqn, opts)
   end
 
 
@@ -49,11 +51,21 @@ function test_dense(mesh, sbp, eqn, opts)
   linearSolve(ls, b, x2)
   @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
 
+  # test PC
+  x3 = zeros(x2)
+  applyPC(ls, mesh, sbp, eqn, opts, t, b, x3)
+  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
+
   # test transpose solve
   x = A_orig.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
   @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+
+  # test PC
+  x3 = zeros(x2)
+  applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x3)
+  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
 
 
   
@@ -80,13 +92,12 @@ function test_dense(mesh, sbp, eqn, opts)
   linearSolve(ls, b, x3)
   @fact norm(x3 - x) --> roughly(0.0, atol=1e-12)
   @fact ls.lo.nfactorizations --> 1
-  @fact ls.lo.nsolves --> 2
+  @fact ls.lo.nsolves --> 3
 
   free(ls)
 
   return nothing
 end
-
 
 
 function test_sparsedirect(mesh, sbp, eqn, opts)
@@ -126,12 +137,24 @@ function test_sparsedirect(mesh, sbp, eqn, opts)
   @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
   println("finished testing solve")
 
+  # test PC
+  x3 = zeros(x2)
+  applyPC(ls, mesh, sbp, eqn, opts, t, b, x3)
+  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
+
   # test transpose solve
   x = A_orig.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
   @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
   println("finished testing solve")
+
+  # test PC
+  x3 = zeros(x2)
+  applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x3)
+  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
+
+
 
 
   
@@ -146,14 +169,13 @@ function test_sparsedirect(mesh, sbp, eqn, opts)
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
   @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
 
-  setTolerances(ls, 1e-16, 1e-16, -1, -1)
   # test solve (again)
   x = factorize(lo.A)\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
   @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
   @fact ls.lo.nfactorizations --> 1
-  @fact ls.lo.nsolves --> 2
+  @fact ls.lo.nsolves --> 3
   println("finished testing solve")
 
   # test transpose solve
@@ -162,7 +184,7 @@ function test_sparsedirect(mesh, sbp, eqn, opts)
   linearSolveTranspose(ls, b, x2)
   @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
   @fact ls.lo.nfactorizations --> 1
-  @fact ls.lo.ntsolves --> 2
+  @fact ls.lo.ntsolves --> 3
   println("finished testing solve")
 
 
@@ -171,8 +193,10 @@ function test_sparsedirect(mesh, sbp, eqn, opts)
   return nothing
 end
 
+
 function test_petscmat(mesh, sbp, eqn, opts)
 
+  println("Testing Petsc matrix-explicit linear operator")
   if PetscInitialized() == 0
     PetscInitialize()
   end
@@ -200,16 +224,19 @@ function test_petscmat(mesh, sbp, eqn, opts)
   b = rand(mesh.numDof)
 
   # test product
+  println("testing product")
   c = vals*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
   @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
 
   # test transpose product
+  println("testing transpose product")
   c = vals.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
   @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
 
+  setTolerances(ls, 1e-16, 1e-16, -1, -1)
   # test solve
   x = vals\b
   x2 = zeros(x)
@@ -224,11 +251,408 @@ function test_petscmat(mesh, sbp, eqn, opts)
   @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
   println("finished testing solve")
 
+  # test product (again)
+  println("testing product")
+  c = vals*b
+  c2 = zeros(c)
+  applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @fact lo.nassemblies[1] --> 1
 
- free(ls)
+  # test transpose product (again)
+  println("testing transpose product")
+  c = vals.'*b
+  applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @fact lo.nassemblies[1] --> 1
+
+  # test solve (again)
+  x = vals\b
+  x2 = zeros(x)
+  linearSolve(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @fact lo.nassemblies[1] --> 1
+  @fact lo.nsolves --> 2
+  println("finished testing solve")
+
+  # test transpose solve (again)
+  x = vals.'\b
+  x2 = zeros(x)
+  linearSolveTranspose(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @fact lo.nassemblies[1] --> 1
+  @fact lo.ntsolves --> 2
+  @fact pc.nsetups --> 1
+  println("finished testing solve")
+
+
+
+  free(ls)
 
   return nothing
 end
+
+
+function test_petscmatfree(mesh, sbp, eqn, opts)
+
+  println("testing matrix-free operator")
+
+  vals = rand(mesh.numDof, mesh.numDof)
+  for i=1:mesh.numDof
+    vals[i, i] = 20  # make really diagonally dominant
+  end
+
+  # set petsc options
+  petsc_opts = opts["petsc_options"]
+  petsc_opts["-pc_type"] = "shell"
+  PetscSetOptions(petsc_opts)
+
+  pc = TestMatFreePC(mesh, sbp, eqn, opts)
+  lo = TestMatFreeLO(pc, mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ctx_residual = (evalResidual, vals)
+  t = 0.0
+
+  println("setting tolerances")
+  setTolerances(ls, 1e-16, 1e-16, -1, -1)
+  println("ls.reltol = ", ls.reltol)
+
+  calcPC(ls, mesh ,sbp, eqn, opts, ctx_residual, t)
+  calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  b = rand(mesh.numDof)
+
+  # test product
+  println("testing product")
+  c = vals*b
+  c2 = zeros(c)
+  applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+
+  # test transpose product
+  println("testing transpose product")
+  c = vals.'*b
+  applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+
+  # test PC product
+  println("testing PC product")
+  x = inv(diagm(diag(vals)))*b
+  x2 = zeros(x)
+  applyPC(ls, mesh, sbp, eqn, opts, t, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+
+  # test PC transpose product
+  println("tesing PC transepose product")
+  x = inv(diagm(diag(vals)))*b
+  x2 = zeros(x)
+  applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+
+  # test solve
+  println("testing solve")
+  x = vals\b
+  x2 = zeros(x)
+  linearSolve(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  println("finished testing solve")
+
+  # test transpose solve
+  x = vals.'\b
+  x2 = zeros(x)
+  linearSolveTranspose(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  println("finished testing solve")
+
+  ### Test everything again
+
+  # test product
+  println("testing product")
+  c = vals*b
+  c2 = zeros(c)
+  applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+
+  # test transpose product
+  println("testing transpose product")
+  c = vals.'*b
+  applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+
+  # test PC product
+  x = inv(diagm(diag(vals)))*b
+  x2 = zeros(x)
+  applyPC(ls, mesh, sbp, eqn, opts, t, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+
+  # test PC transpose product
+  x = inv(diagm(diag(vals)))*b
+  x2 = zeros(x)
+  applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+
+  # test solve
+  println("testing solve")
+  x = vals\b
+  x2 = zeros(x)
+  linearSolve(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @fact lo.lo_inner.nsolves --> 2
+  println("finished testing solve")
+
+  # test transpose solve
+  x = vals.'\b
+  x2 = zeros(x)
+  linearSolveTranspose(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @fact lo.lo_inner.ntsolves --> 2
+  println("finished testing solve")
+
+
+  free(ls)
+
+  return nothing
+end
+
+
+function test_petscmat_matfree(mesh, sbp, eqn, opts)
+# test matrix-free linear operator with a matrix-free PC
+  println("testing matrix-free operator with matrix-explicit PC")
+
+  vals = rand(mesh.numDof, mesh.numDof)
+  for i=1:mesh.numDof
+    vals[i, i] = 20  # make really diagonally dominant
+  end
+
+  # set petsc options
+  petsc_opts = opts["petsc_options"]
+  petsc_opts["-pc_type"] = "jacobi"
+  PetscSetOptions(petsc_opts)
+
+  pc = TestMatPC(mesh, sbp, eqn, opts)
+  lo = TestMatFreeLO(pc, mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ctx_residual = (evalResidual, vals)
+  t = 0.0
+
+  println("setting tolerances")
+  setTolerances(ls, 1e-16, 1e-16, -1, -1)
+  println("ls.reltol = ", ls.reltol)
+
+  # for testing
+  MatSetOption(getBasePC(pc).Ap, PETSc.MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE)
+
+
+  calcPC(ls, mesh ,sbp, eqn, opts, ctx_residual, t)
+  calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  b = rand(mesh.numDof)
+
+  # test product
+  println("testing product")
+  c = vals*b
+  c2 = zeros(c)
+  applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+
+  # test transpose product
+  println("testing transpose product")
+  c = vals.'*b
+  applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+
+  # test PC product
+  x = inv(diagm(diag(vals)))*b
+  x2 = zeros(x)
+  applyPC(ls, mesh, sbp, eqn, opts, t, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+
+  # test PC transpose product
+  x = inv(diagm(diag(vals)))*b
+  x2 = zeros(x)
+  applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+
+  # test solve
+  println("testing solve")
+  x = vals\b
+  x2 = zeros(x)
+  linearSolve(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  println("finished testing solve")
+
+  # test transpose solve
+  x = vals.'\b
+  x2 = zeros(x)
+  linearSolveTranspose(ls, b, x2)
+  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  println("finished testing solve")
+
+
+  free(ls)
+
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
+# define PC and LO
+import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
+                      applyLinearOperator, applyLinearOperatorTranspose
+
+# define matrix-free precondtioner for testing
+# diagonal preconditioning
+type TestMatFreePC <: AbstractPetscMatFreePC
+  pc_inner::PetscMatFreePC
+  diag::Array{Float64, 1}  # inverse of diagonal of matrix
+end
+
+function TestMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
+                       eqn::AbstractSolutionData, opts)
+
+  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
+  diag = Array(Float64, mesh.numDof)
+
+  return TestMatFreePC(pc_inner, diag)
+end
+
+function calcPC(pc::TestMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  f = ctx_residual[1]
+  vals = ctx_residual[2]  # for testing only
+
+  for i=1:size(vals, 1)
+    pc.diag[i] = 1/vals[i, i]
+  end
+
+  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+  pc2 = getBasePC(pc)
+  pc2.nsetups += 1
+
+  return nothing
+end
+
+
+function applyPC(pc::TestMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, t,
+                b::AbstractVector, x::AbstractVector)
+
+  for i=1:length(pc.diag)
+    x[i] = pc.diag[i]*b[i]
+  end
+
+  pc2 = getBasePC(pc)
+  pc2.napplies += 1
+
+  return nothing
+end
+
+function applyPCTranspose(pc::TestMatFreePC, mesh::AbstractMesh,
+                sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, t,
+                b::AbstractVector, x::AbstractVector)
+
+  println("applying transposed PC")
+  for i=1:length(pc.diag)
+    x[i] = pc.diag[i]*b[i]
+  end
+
+  pc2 = getBasePC(pc)
+  pc2.ntapplies += 1
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
+# define matrix-explicit PC
+type TestMatPC <: AbstractPetscMatPC
+  pc_inner::PetscMatPC
+end
+
+function TestMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+                       eqn::AbstractSolutionData, opts)
+
+  pc_inner = PetscMatPC(mesh, sbp, eqn, opts)
+
+  return TestMatPC(pc_inner)
+end
+
+function calcPC(pc::TestMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  f = ctx_residual[1]
+  vals = ctx_residual[2]  # for testing only
+
+  pc2 = getBasePC(pc)
+  calcPC(pc2, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  idx = collect(PetscInt, 1:mesh.numDof)
+  idy = copy(idx)
+  set_values1!(pc2.Ap, idx, idy, vals, PETSC_ADD_VALUES)
+
+  return nothing
+end
+
+# other functions do not need to be defined for matrix-explicit PC
+
+
+#------------------------------------------------------------------------------
+# define LO
+
+# define fake matrix-free linear operator for testing
+type TestMatFreeLO <: AbstractPetscMatFreeLO
+  lo_inner::PetscMatFreeLO
+  vals::Array{Float64, 2}  # the matrix
+end
+
+function TestMatFreeLO(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+                       eqn::AbstractSolutionData, opts)
+
+
+  lo_inner = PetscMatFreeLO(pc, mesh, sbp, eqn, opts)
+  vals = zeros(mesh.numDof, mesh.numDof)
+
+  return TestMatFreeLO(lo_inner, vals)
+end
+
+
+function calcLinearOperator(lo::TestMatFreeLO, mesh::AbstractMesh,
+                sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  f = ctx_residual[1]
+  vals = ctx_residual[2]
+  copy!(lo.vals, vals)
+
+  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  return nothing
+end
+
+function applyLinearOperator(lo::TestMatFreeLO, mesh::AbstractMesh,
+                sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t,
+                x::AbstractVector, b::AbstractVector)
+
+  smallmatvec!(lo.vals, x, b)
+
+  return nothing
+end
+
+function applyLinearOperatorTranspose(lo::TestMatFreeLO, mesh::AbstractMesh,
+                sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t,
+                x::AbstractVector, b::AbstractVector)
+
+  smallmatTvec!(lo.vals, x, b)
+
+  return nothing
+end
+
+
+
+
 
 add_func1!(AdvectionTests, test_linearsolver, [TAG_TMP, TAG_SHORTTEST])
 

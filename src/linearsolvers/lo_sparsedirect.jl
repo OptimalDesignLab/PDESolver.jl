@@ -80,24 +80,25 @@ function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
   return nothing
 end
 
-function applyLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
+function applyLinearOperator(lo::AbstractSparseDirectLO, mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
-  A_mul_B!(1, lo.A, x, 0, b)
+  lo2 = getBaseLO(lo)
+  A_mul_B!(1, lo2.A, x, 0, b)
 
   return nothing
 end
 
 
-function applyLinearOperatorTranspose(lo::SparseDirectLO, 
+function applyLinearOperatorTranspose(lo::AbstractSparseDirectLO, 
                              mesh::AbstractMesh, sbp::AbstractSBP,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
-
-  At_mul_B!(1, lo.A, x, 0, b)
+  lo2 = getBaseLO(lo)
+  At_mul_B!(1, lo2.A, x, 0, b)
 
   return nothing
 end

@@ -65,13 +65,14 @@ end
 
 
 # note: this may be faster if lo is not yet set up
-function applyLinearOperator(lo::DenseLO, mesh::AbstractMesh,
+function applyLinearOperator(lo::AbstractDenseLO, mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
+  lo2 = getBaseLO(lo)
   # BLAS operates in-place
-  if getIsSetup(lo)  # A is already factored
+  if getIsSetup(lo2)  # A is already factored
     throw(ErrorException("Multiplying factored matrix not supported"))
     # this doesn't work because the permutation is not correct for the vector
     # I think the problem is that ipiv is not a permuatation matrix, so really
@@ -80,35 +81,35 @@ function applyLinearOperator(lo::DenseLO, mesh::AbstractMesh,
     println("multiplying in factored form")
     # A = P*L*U
     copy!(b, x)
-    trmv!('U', 'N', 'N', lo.A, b)
-    trmv!('L', 'N', 'U', lo.A, b)
+    trmv!('U', 'N', 'N', lo2.A, b)
+    trmv!('L', 'N', 'U', lo2.A, b)
     println("b = \n", b)
-    println("ipiv = \n", lo.ipiv)
-    laswp!(b, 1, length(b), lo.ipiv)
+    println("ipiv = \n", lo2.ipiv)
+    laswp!(b, 1, length(b), lo2.ipiv)
     println("b = \n", b)
     =#
   else
     println("standard multiply")
-    gemv!('N', 1.0, lo.A, x, 0.0, b)
+    gemv!('N', 1.0, lo2.A, x, 0.0, b)
   end
 
   return nothing
 end
 
 
-function applyLinearOperatorTranspose(lo::DenseLO,
+function applyLinearOperatorTranspose(lo::AbstractDenseLO,
                              mesh::AbstractMesh, sbp::AbstractSBP,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
-
-  if getIsSetup(lo)  # A is already factored
+  lo2 = getBaseLO(lo)
+  if getIsSetup(lo2)  # A is already factored
     # A.'x = (P*L*U).'x = (U.'*L.'*P.')*x
     # there is no way to apply P.' in lapack (ipiv is not a true permutation)
 
     throw(ErrorException("applyLinearOperatorTranspose not supported for DenseLO in factored state: recompute the linear operator"))
   else
-    gemv!('T', 1.0, lo.A, x, 0.0, b)
+    gemv!('T', 1.0, lo2.A, x, 0.0, b)
   end
 
   return nothing

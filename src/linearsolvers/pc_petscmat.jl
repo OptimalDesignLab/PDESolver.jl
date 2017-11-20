@@ -21,6 +21,11 @@ type PetscMatPC <: AbstractPetscMatPC
   is_assembled::Array{Bool, 1}  # is Ap assembled
   is_setup::Bool  # is PC already set up
   is_finalized::Bool
+  nassemblies::Array{Int, 1}  # number of matrix assemblies, shared with lo
+                              # if A is shared
+  nsetups::Int  # number of PC setups
+  napplies::Int  # number of PC applications
+  ntapplies::Int  # number of transpose applies
 
   # MPI stuff
   comm::MPI.Comm
@@ -39,13 +44,18 @@ function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   is_assembled = Bool[false]
   is_setup = false
   is_finalized = false
+  nassemblies = Int[0]
+  nsetups = 0
+  napplies = 0
+  ntapplies = 0
 
   comm = eqn.comm
   myrank = eqn.myrank
   commsize = eqn.commsize
 
   return PetscMatPC(pc, Ap, xtmp, btmp, is_assembled, is_setup, is_finalized,
-                    comm, myrank, commsize)
+                    nassemblies, nsetups, napplies, ntapplies, comm, myrank,
+                    commsize)
 end
 
 function free(pc::PetscMatPC)
@@ -102,19 +112,21 @@ function applyPC(pc::AbstractPetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
   pc2 = getBasePC(pc)
 
   # assemble matrix (if needed)
-  assemblePetscData(pc2, b, pc.btmp)
+  assemblePetscData(pc2, b, pc2.btmp)
 
   if !pc2.is_setup
     setupPC(pc2)
   end
 
   # call Petsc PCApply
-  PetscPCApply(pc2.pc, pc2.btmp, pc2.xtmp)
+  PCApply(pc2.pc, pc2.btmp, pc2.xtmp)
 
   # copy back to x
   xtmp, x_ptr = PetscVecGetArrayRead(pc2.xtmp)
   copy!(x, xtmp)
   PetscVecRestoreArrayRead(pc2.xtmp, x_ptr)
+
+  pc2.napplies += 1
 
   return nothing
 end
@@ -127,7 +139,7 @@ function applyPCTranspose(pc::AbstractPetscMatPC, mesh::AbstractMesh,
 
 
   pc2 = getBasePC(pc)
-  @assert pc2 <: PetscMatPC
+  @assert typeof(pc2) <: PetscMatPC
 
   if !PCApplyTransposeExists(pc2.pc)
     ptype = PCGetType(pc2.pc)
@@ -142,13 +154,14 @@ function applyPCTranspose(pc::AbstractPetscMatPC, mesh::AbstractMesh,
   end
 
   # call Petsc PCApplyTranspose
-  PetscPCApplyTranspose(pc2.pc, pc2.btmp, pc2.xtmp)
+  PCApplyTranspose(pc2.pc, pc2.btmp, pc2.xtmp)
 
   # copy back to x
   xtmp, x_ptr = PetscVecGetArrayRead(pc2.xtmp)
   copy!(x, xtmp)
   PetscVecRestoreArrayRead(pc2.xtmp, x_ptr)
 
+  pc2.ntapplies += 1
   return nothing
 end
 
@@ -170,6 +183,7 @@ function setupPC(pc::PetscMatPC)
   # preconditioner on its own.  Using higher level functionality like TS
   # or Petsc nonlinear solvers likely won't work in this case
   PCSetReusePreconditioner(pc.pc, PETSC_TRUE)
+  pc.nsetups += 1
   pc.is_setup = true
 
   return nothing
@@ -180,7 +194,7 @@ function assemblePetscData(pc::PetscMatPC, b::AbstractVector, b_petsc::PetscVec)
   myrank = pc.myrank
 
   if !getIsAssembled(pc)
-    PetscMatAssemblyBegin(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyBegin(pc.Ap, PETSC_MAT_FINAL_ASSEMBLY)
   end
 
   # copy values into the vector
@@ -189,9 +203,10 @@ function assemblePetscData(pc::PetscMatPC, b::AbstractVector, b_petsc::PetscVec)
   PetscVecRestoreArray(b_petsc, b_ptr)
 
   if !getIsAssembled(pc)
-    PetscMatAssemblyEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyEnd(pc.Ap, PETSC_MAT_FINAL_ASSEMBLY)
     setIsAssembled(pc, true)
-    matinfo = PetscMatGetInfo(lo2.A, PETSc.MAT_LOCAL)
+    pc.nassemblies[1] += 1
+    matinfo = PetscMatGetInfo(pc.Ap, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
     end
