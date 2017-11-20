@@ -106,7 +106,6 @@ end
 
 function calcPC_wrapper(_pc::PC)
 
-  println("entered calcPC_wrapper")
   ctx_ptr = PCShellGetContext(_pc)
   @assert ctx_ptr != C_NULL
   ctx = unsafe_pointer_to_objref(ctx_ptr)
@@ -119,11 +118,8 @@ function calcPC_wrapper(_pc::PC)
   ctx_residual = ctx[6]
   t = ctx[7]
 
-  println("calculating PC")
   calcPC(pc, mesh, sbp, eqn, opts, ctx_residual, t)
-  println("finished calculating PC")
 
-  println("finished calcPC_wrapper")
   return PetscErrorCode(0)
 end
 
@@ -131,7 +127,6 @@ end
 # wrapper for Petsc
 function applyPC_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
 
-  println("entered applyPC_wrapper")
   ctx = unsafe_pointer_to_objref(PCShellGetContext(_pc))
   checkPCCtx(ctx)
   mesh = ctx[1]
@@ -142,7 +137,6 @@ function applyPC_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
   ctx_residual = ctx[6]
   t = ctx[7]
 
-  println("typeof(pc) = ", typeof(pc))
 
   # get the local parts of the vectors
   btmp, b_ptr = PetscVecGetArrayRead(b)

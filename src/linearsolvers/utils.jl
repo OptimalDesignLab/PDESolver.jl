@@ -18,7 +18,6 @@
 function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
-  println("creating Petsc Matrix")
   const mattype = PETSc.MATMPIAIJ # should this be BAIJ?
   numDofPerNode = mesh.numDofPerNode
 
@@ -28,15 +27,10 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # create the matrix
   A = PetscMat(comm)
-  println("A.pobj = ", A.pobj)
-  println("setting from options")
   PetscMatSetFromOptions(A)
-  println("setting type")
   PetscMatSetType(A, mattype)
-  println("setting size")
   PetscMatSetSizes(A, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
   if mesh.isDG
-    println("setting off proc entries")
     MatSetOption(A, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
   end
   dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
@@ -59,7 +53,6 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
   matinfo = PetscMatGetInfo(A, PETSc.MAT_LOCAL)
   @mpi_master println(BSTDOUT, "A block size = ", matinfo.block_size)
 
-  println("setting column oriented")
   # Petsc objects if this comes before preallocation
   MatSetOption(A, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
 

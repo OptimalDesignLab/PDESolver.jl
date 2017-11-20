@@ -126,10 +126,8 @@ function applyPCTranspose(ls::StandardLinearSolver, mesh::AbstractMesh,
                           eqn::AbstractSolutionData, opts::Dict, t,
                           b::AbstractVector, x::AbstractVector)
   if typeof(ls.pc) <: PCNone
-    println("no PC, doing solve instead")
     linearSolveTranspose(ls, b, x)
   else
-    println("applying transposed preconditioner")
     applyPCTranspose(ls.pc, mesh, sbp, eqn, opts, t, b, x)
   end
 
@@ -266,11 +264,9 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
                       ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
 
-  println("solving Petsc matrix")
   myrank = ls.myrank
   pc2 = getBasePC(ls.pc)
   lo2 = getBaseLO(ls.lo)
-  println("typeof(lo2) = ", typeof(lo2))
   @assert !(typeof(pc2) <: PCNone)
   
   # prepare the data structures
@@ -284,23 +280,17 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
 
   # do the solve
   ksp = ls.ksp
-  println("ls.reltol = ", ls.reltol)
-  println("ls.abstol = ", ls.abstol)
   KSPSetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
 
   if trans
-    println("doing transpose solve")
     KSPSolveTranspose(ksp, lo2.btmp, lo2.xtmp)
     lo2.ntsolves += 1
   else
-    println("doing regular solve")
     KSPSolve(ksp, lo2.btmp, lo2.xtmp)
-    println("finished ksp solve")
     lo2.nsolves += 1
   end
 
-  println("finished solving")
   # print convergence info
   @mpi_master begin
     reason = KSPGetConvergedReason(ksp)

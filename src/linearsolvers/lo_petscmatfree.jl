@@ -111,7 +111,6 @@ end
 
 function applyLinearOperator_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
 
-  println("entered applyLinearOperator_wrapper")
   ctx_ptr = MatShellGetContext(A)
   @assert ctx_ptr != C_NULL
   ctx = unsafe_pointer_to_objref(ctx_ptr)

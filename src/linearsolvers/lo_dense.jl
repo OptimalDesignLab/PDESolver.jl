@@ -89,7 +89,6 @@ function applyLinearOperator(lo::AbstractDenseLO, mesh::AbstractMesh,
     println("b = \n", b)
     =#
   else
-    println("standard multiply")
     gemv!('N', 1.0, lo2.A, x, 0.0, b)
   end
 
