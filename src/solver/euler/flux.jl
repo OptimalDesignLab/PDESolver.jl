@@ -323,7 +323,7 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
 end
 
 """
-  Like [`calcSharedFaceElementIntegrals_inner`](@ref), but for staggered grid.
+  Like [`calcSharedFaceElementIntegrals_element_inner`](@ref), but for staggered grid.
 
   data.q_recv is the solution grid data.  This function interpolates it to the
   flux grid on the fly.

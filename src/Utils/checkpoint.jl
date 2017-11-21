@@ -92,7 +92,7 @@ end
                    which the old checkpoint has been partially overwritten but
                    the new checkpoint is not complete yet)
 
-    * prefix: added to directory names (with an underscore added in-between).
+   * prefix: added to directory names (with an underscore added in-between).
               Defaults to empty string. This is useful if there are multiple
               sets of checkpoints (and therefore multiple Checkpointer objects).
 
@@ -165,20 +165,20 @@ end
   The checkpoint that was loaded can be accessed via [`getLastCheckpoint`](@ref)
 
 
-  Implementation notes:
+  **Implementation notes:**
 
-    Uses 4 keys in the options dictionary:
+  Uses 4 keys in the options dictionary:
 
-      * "writing checkpoint": index of checkpoint that might be complete
-      * "writing_checkpoint_path": absolute path of checkpoint
-      * "most_recent_checkpoint": index of checkpoint that is definitely
-                                  complete, but might be older than the above
-      * "most_recent_checkpoint_path": absolute path of checkpoint
+   * "writing checkpoint": index of checkpoint that might be complete
+   * "writing_checkpoint_path": absolute path of checkpoint
+   * "most_recent_checkpoint": index of checkpoint that is definitely
+                                complete, but might be older than the above
+   * "most_recent_checkpoint_path": absolute path of checkpoint
 
-    This system ensure it is possible to restart even if the code is
-    killed in the middle of writing a checkpoint.
+  This system ensure it is possible to restart even if the code is
+  killed in the middle of writing a checkpoint.
 
-    The Checkpointer object is the same on all processes.
+  The Checkpointer object is the same on all processes.
 """
 function Checkpointer(opts::Dict, myrank::Integer)
 
@@ -221,7 +221,7 @@ import Base.copy, Base.copy!
   Note that changes to one Checkpointer object will not affect the other
   (ie. the record of which checkpoints are used and which are not).
   This could easily lead to corrupting a checkpoint.
-  For this reason, this function should rarely be used
+  For this reason, this function should rarely be used.
 """
 function copy(chkpointer::Checkpointer)
 
@@ -237,7 +237,7 @@ function copy(chkpointer::Checkpointer)
 end
 
 """
-  2 argument version of copy().  See that function for details
+  2 argument version of copy().  See that function for details.
 """
 function copy!(dest::Checkpointer, src::Checkpointer)
 
@@ -293,7 +293,7 @@ end
    * checkpoint_data: an AbstractCheckpointData.  This is the random bag
                       of data the user needs saved.
 
-   **Inputs/Outputs*
+   **Inputs/Outputs**
 
     * opts: options dictionary
 
@@ -481,7 +481,7 @@ end
   Sometimes need to check the flag file before the Checkpointer is available.
   See the other method ofr details.
 
-  **Inputs*
+  **Inputs**
 
    * fpath: path to the checkpoint directory
 """
@@ -527,7 +527,7 @@ end
   Writes the AbstractCheckpointData to a file.  The file can be read by
   [`readCheckpointData`](@ref).
 
-  **Inputs*
+  **Inputs**
 
    * checkpoint: Checkpointer object
    * checkpoint: the checkpoint index
@@ -598,6 +598,10 @@ end
    * chkpointer: a Checkpointer
    * chkpoint: the index of hte checkpoint
    * comm_rank: the MPI rank of this process
+
+  **Outputs**
+
+   * the [`AbstractCheckpointData`](@ref) loaded from the checkpoint
 """
 function readCheckpointData(chkpointer::Checkpointer, chkpoint::Integer,
                             comm_rank::Integer)
