@@ -105,6 +105,7 @@ makedocs(
                   "Logging" => "Utils/logging.md"
                   "Input/Output" => "Utils/io.md"
                   "Checkpointing" => "Utils/checkpoint.md"
+                  "Misccellaneous" => "Utils/misc.md"
                  ]
              ] # end Home
 )  # end mkdocs

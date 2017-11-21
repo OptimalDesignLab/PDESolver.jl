@@ -95,6 +95,11 @@ The required fields of an `AbstractSolutionData` are:
 
 ### Field Meanings
 
+```@meta
+  CurrentModule = Utils
+```
+
+
 The purpose of these fields are:
 
 `q`: to hold the solution variables in an element-based array.
@@ -166,6 +171,11 @@ The function must have the signature:
 `function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)`
 
 `params`:  user defined type that inherits from `AbstractParamType`:
+
+```@meta
+  CurrentModule = ODLCommonTools
+```
+
 
 ```@docs
 AbstractParamType
