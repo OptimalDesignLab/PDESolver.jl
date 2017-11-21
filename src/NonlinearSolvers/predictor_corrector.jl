@@ -192,7 +192,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     # do corrector steps
     newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, 
                 rhs_vec, ctx_residual, res_reltol=homotopy_tol, 
-                res_abstol=res_abstol, itermax=15)
+                res_abstol=res_abstol, itermax=30)
 
     # compute delta_q
     for i=1:length(eqn.q)

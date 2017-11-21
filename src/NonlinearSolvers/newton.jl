@@ -1,8 +1,7 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
 # includes residual_evaluation.jl and petsc_funcs.jl
 
-export newton, setupNewton, physicsJac, newtonInner
-export NewtonData, calcJacobianSparse
+export newton
 global const insert_freq = 1
 @doc """
   This type holds all the data the might be needed for Newton's method,
@@ -723,7 +722,8 @@ end               # end of function newton()
 """->
 function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
-  # TOOD: we need to change it when we implement the restart
+#   DEBUG = false
+  DEBUG = true
   verbose = opts["newton_verbosity"]::Int
 
   myrank = mesh.myrank
@@ -747,9 +747,6 @@ function physicsJac(newton_data::NewtonData, mesh, sbp, eqn, opts, jac, ctx_resi
   recalc_prec_freq = opts["recalc_prec_freq"]::Int
   use_jac_precond = opts["use_jac_precond"]::Bool
 
-  if jac_type == 1 || jac_type == 2
-    fill!(jac, 0.0)
-  end
   if jac_method == 1  # finite difference
     pert = epsilon
   elseif jac_method == 2  # complex step

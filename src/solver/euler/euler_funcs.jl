@@ -499,11 +499,11 @@ end
 
 # calculating the Euler flux at a node
 #------------------------------------------------------------------------------
-# @doc """
-# ### EulerEquationMod.calcEulerFlux
+@doc """
+### EulerEquationMod.calcEulerFlux
 
-   # This function calculates the Euler flux from the conservative variables at
-   # a single node in a particular direction.  2D only.
+   This function calculates the Euler flux from the conservative variables at
+   a single node in a particular direction.  2D only.
 
    Inputs:
    params  : ParamaterType{2, :conservative}
@@ -511,14 +511,14 @@ end
    aux_vars : vector of auxiliary variables
    dir :  vector in direction to calculate the flux
 
-   # Inputs/Outputs:
-   # F  : vector to populate with the flux
+   Inputs/Outputs:
+   F  : vector to populate with the flux
 
-   # The Tdim paramater of params determine whether this method or the 3D
-   # version is called.
+   The Tdim paramater of params determine whether this method or the 3D
+   version is called.
 
-   # This is a low level function
-# """->
+   This is a low level function
+"""->
 # low level function
 function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1},
@@ -533,15 +533,15 @@ function calcEulerFlux{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 # 2D  only
 
 
- # temporaryly change from calcPressure to getPressure
   press = calcPressure(params, q)
- # press = getPressure(aux_vars)
+#  press = getPressure(aux_vars)
 #  press = @getPressure(aux_vars)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
   F[1] = q[1]*U
   F[2] = q[2]*U + dir[1]*press
   F[3] = q[3]*U + dir[2]*press
   F[4] = (q[4] + press)*U
+
   return nothing
 
 end

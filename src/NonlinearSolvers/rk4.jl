@@ -177,8 +177,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   if myrank == 0
     _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
-    _f2 = open("unsteady_error.dat", "a+")
-    f2 = BufferedIO(_f2)
   end
 
   x_old = copy(q_vec)
@@ -237,11 +235,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if real_time treal = t end
     timing.t_func += @elapsed f( ctx..., opts, treal)
     sol_norm = post_func(ctx..., opts)
-    l2norm = my_post_func(ctx...,opts, treal)
-    if myrank == 0
-      println(f2, treal, " ", real(l2norm))
-      flush(f2)
-    end
 
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
     for j=1:m
@@ -447,7 +440,6 @@ end
 
 """->
 function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
-
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
@@ -460,33 +452,8 @@ function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   return nothing
 end
 
-function my_post_func(mesh, sbp, eqn, opts, t=0.0; calc_norm=true)
 
-  if haskey(opts, "exactSolution")
-    t = eqn.params.t
-    l2norm::Float64 = 0.
-    lInfnorm::Float64 = 0.
-    qe = Array(Tsol, mesh.numDofPerNode)
-    # exactFunc = ExactDict[opts["exactSolution"]]
-    exactFunc = eqn.ExactFunc
-
-    for el = 1 : mesh.numEl
-      for n = 1 : mesh.numNodesPerElement
-        xy = sview(mesh.coords, :, n, el)
-        exactFunc(xy, qe, t)
-        q = sview(eqn.q, :, n, el)
-        jac = mesh.jac[n, el]
-        for v = 1:mesh.numDofPerNode
-          dq = real(q[v] - qe[v])
-          # dq = Float64(q[v] - qe[v])
-          l2norm += dq*dq*sbp.w[n]/jac
-        end
-      end
-    end
-  end
-
-  return l2norm
-end
+#DEBUGGING
 
 function globalNorm(vec)
 

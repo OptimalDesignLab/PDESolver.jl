@@ -8,38 +8,38 @@
 
 
 """
-This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
-Carpenter and Kennedy
+  This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
+  Carpenter and Kennedy
 
-Arguments:
-f: a function that evalutes du/dt = f(q, t)
-delta_t: the time step
-t_max: the maximum time value
-q_vec: vector (of length numDof) containing initial solution.  Will contain final solution 
-at exit
-res_vec: vector to store the residual in during evaluation of f.  The contents of this vector
-at exit is undefined
-pre_func: function to call after new values are written into q_vec but before f is called
-post_func: function to call after f is called but before res_vec is accessed
-ctx: tuple arguments of f (ie. f = f(ctx...))
-opts: options dictionary
-timing: a Timings object
+  Arguments:
+    f: a function that evalutes du/dt = f(q, t)
+    delta_t: the time step
+    t_max: the maximum time value
+    q_vec: vector (of length numDof) containing initial solution.  Will contain final solution 
+           at exit
+    res_vec: vector to store the residual in during evaluation of f.  The contents of this vector
+             at exit is undefined
+    pre_func: function to call after new values are written into q_vec but before f is called
+    post_func: function to call after f is called but before res_vec is accessed
+    ctx: tuple arguments of f (ie. f = f(ctx...))
+    opts: options dictionary
+    timing: a Timings object
+    
+  Keyword Arguments:
+    majorIterationCallback: function to call after first function evaluation of each time step, ie. 
+                            when q_vec and res_vec have been updated.  Useful for logging.  Defaults
+                            to no-op
+    res_tol: stopping tolerance for residual (useful for pseudo-timestepping), default -1.0
+    real_time: whether or not to advance time (ie. pseudo timestepping or not) default faulse
 
-Keyword Arguments:
-majorIterationCallback: function to call after first function evaluation of each time step, ie. 
-when q_vec and res_vec have been updated.  Useful for logging.  Defaults
-to no-op
-res_tol: stopping tolerance for residual (useful for pseudo-timestepping), default -1.0
-real_time: whether or not to advance time (ie. pseudo timestepping or not) default faulse
-
-See the documentation for rk4.
+  See the documentation for rk4.
 """
 
 function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
-                 q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-                 post_func, ctx, opts, timing::Timings=Timings(); 
-                 majorIterationCallback=((a...) -> (a...)), 
-  res_tol = -1.0, real_time=false)
+             q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
+             post_func, ctx, opts, timing::Timings=Timings(); 
+             majorIterationCallback=((a...) -> (a...)), 
+             res_tol = -1.0, real_time=false)
 
   # LSERK coefficients
   const a_coeffs = [0; 
@@ -99,8 +99,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   if myrank == 0
     _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
-    _f2 = open("unsteady_error.dat", "a+")
-    f2 = BufferedIO(_f2)
   end
 
   # setup all the checkpointing related data
@@ -140,18 +138,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     #--------------------------------------------------------------------------
     # stage 1
-    #    f(params, u, F_vals, t_i)
+#    f(params, u, F_vals, t_i)
 
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)
     sol_norm = post_func(ctx..., opts)
-    l2norm = my_post_func(ctx...,opts, treal)
-    if myrank == 0
-      println(f2, treal, " ", real(l2norm))
-      flush(f2)
-    end
-
+ 
     #--------------------------------------------------------------------------
     # callback and logging
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
@@ -160,7 +153,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
     end
-
+    
     @mpi_master if i % output_freq == 0
       println(BSTDOUT, "flushing convergence.dat to disk")
       flush(f1)
@@ -231,7 +224,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 end  # end lserk54
 
 """
-See rk4 method with same signature
+  See rk4 method with same signature
 """
 function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts,
@@ -245,5 +238,5 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
               majorIterationCallback=majorIterationCallback, res_tol=res_tol,
               real_time=real_time)
 
-  return l2norm
+        return t
 end

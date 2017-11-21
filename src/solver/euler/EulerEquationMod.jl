@@ -3,8 +3,6 @@
 #   Includes all the files for the Euler module
 
 module EulerEquationMod
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 
 using PDESolver  # setup LOAD_PATH to find all PDESolver components
 using ArrayViews
@@ -14,6 +12,7 @@ using PdePumiInterface  # common mesh interface implementation - pumi
 using NonlinearSolvers
 using ForwardDiff
 using Utils
+import ODLCommonTools.sview
 using MPI
 using Input  # input file processing
 using PETSc

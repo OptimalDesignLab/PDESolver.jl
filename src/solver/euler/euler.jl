@@ -79,11 +79,35 @@ type parameters as the EulerEquation object, so it can be used for dispatch.
 
 import PDESolver.evalResidual
 
-# """->
+@doc """
+### EulerEquationMod.evalResidual
+
+  This function drives the evaluation of the EulerEquations.
+  It is agnostic to the dimension of the equation. and the types the arguments
+  are paramaterized on.
+
+  The function calls only high level functions, all of which take the same
+  four arguments.  Mid level function also take the same arguments.
+
+  The input/output variables are eqn.q and eqn.res, respectively.
+  eqn.q_vec and eqn.res_vec exist for reusable storage *outside* the residual
+  evaluation.  They should never be used inside the residual evaluation.
+
+  The function disassembleSolution takes q_vec and puts it into eqn.q
+  The function assembleSolution takes eqn.res and puts it into res_vec
+
+  Arguments:
+    * mesh  : a mesh object
+    * sbp   : SBP operator object
+    * eqn   : an EulerData object
+    * opts  : options dictionary
+
+  The optional time argument is used for unsteady equations
+
+"""->
 # this function is what the timestepper calls
 # high level function
-using Debug
-@debug function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
 #  println("\n----- entered evalResidual -----")
@@ -92,20 +116,42 @@ using Debug
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
+#  println("entered evalResidual")
+#  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
+
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
 #  println("dataPrep @time printed above")
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
+#    println("volume integral @time printed above")
   end
+
+  # delete this if unneeded or put it in a function.  It doesn't belong here,
+  # in a high level function.
+  #----------------------------------------------------------------------------
+  #=
+  bndryfluxPhysical = zeros(eqn.bndryflux)
+  getPhysBCFluxes(mesh, sbp, eqn, opts, bndryfluxPhysical)
+  #println("bndryfluxPhysical = \n", bndryfluxPhysical)
+  #println("eqn.bndryflux = \n", eqn.bndryflux)
+  bndryfluxPhysical = -1*bndryfluxPhysical
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
+  =#
 
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
+
+  #=
+  bndryfluxPhysical = -1*bndryfluxPhysical
+  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
+  =#
+  #----------------------------------------------------------------------------
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
@@ -115,10 +161,12 @@ using Debug
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
+#    println("stabilizing @time printed above")
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
+#    println("face integral @time printed above")
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
@@ -227,6 +275,18 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       fname = string("solution_vorticity_", itr)
       writeVisFiles(mesh, fname)
     end
+
+
+#=
+    # DEBUGGING: write error to file
+    q_exact = zeros(eqn.q_vec)
+    ex_func = ICDict[opts["IC_name"]]
+    ex_func(mesh, sbp, eqn, opts, q_exact)
+    q_err = real(eqn.q_vec) - q_exact
+    saveSolutionToMesh(mesh, q_err)
+    fname = string("error_", itr)
+    writeVisFiles(mesh, fname)
+=#
   end
 
     # add an option on control this or something.  Large blocks of commented
@@ -288,6 +348,11 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       # compute w^T * res_vec
       val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
 #      val3 = real(contractResEntropyVars2(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
+
+      # DEBUGGING: compute the potential flux from q
+      #            directly, to verify the boundary terms are the problem
+  #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
+  #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
 
       @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
     end
@@ -379,6 +444,11 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 # this is almost the exact list of everything we *shouldn't* be storing, but
 # rather recalculating on the fly
 
+#println("Entered dataPrep()")
+
+#  println("typeof(eqn) = ", typeof(eqn))
+#  println("typeof(eqn.params) = ", typeof(eqn.params))
+
   # apply filtering to input
   if eqn.params.use_filter
     applyFilter(mesh, sbp, eqn, eqn.q, opts)
@@ -389,13 +459,17 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   fill!(eqn.res_edge, 0.0)
 
   getAuxVars(mesh, eqn)
-  
+#  println("  getAuxVars @time printed above")
+
   if opts["check_density"]
     checkDensity(eqn)
+#    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
+#    throw(ErrorException("I'm done"))
     checkPressure(eqn)
+#    println("  checkPressure @time printed above")
   end
 
   # calculate fluxes
@@ -448,9 +522,14 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if eqn.params.use_edgestab
     stabscale(mesh, sbp, eqn)
   end
+#  println("  stabscale @time printed above")
 
   return nothing
 end # end function dataPrep
+
+
+
+
 
 
 #------------------------------------------------------------------------------
@@ -619,8 +698,11 @@ end  # end evalBoundaryIntegrals
 function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
 
+#  println("==== start of addStabilization ====")
+
   # ----- Edge Stabilization -----#
   if eqn.params.use_edgestab
+#    println("applying edge stabilization")
     if opts["use_edge_res"]
       edgestabilize!(mesh, sbp, eqn, mesh.interfaces, eqn.q, mesh.coords,
                      mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale,
@@ -633,18 +715,27 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
 
   # ----- Filtering -----
   if eqn.params.use_res_filter
+#    println("applying residual filter")
     applyFilter(mesh, sbp, eqn, eqn.res, opts, trans=true)
   end
 
+  # ----- Artificial Dissipation -----
   if eqn.params.use_dissipation
+#    println("applying artificial dissipation")
     applyDissipation(mesh, sbp, eqn, opts, eqn.q)
   end
 
   if opts["use_GLS2"]
      applyGLS3(mesh, sbp, eqn, opts)
+#    test_GLS(mesh, sbp, eqn, opts)
   end
 
+#  println("==== end of addStabilization ====")
+
+
+
   return nothing
+
 end
 
 @doc """

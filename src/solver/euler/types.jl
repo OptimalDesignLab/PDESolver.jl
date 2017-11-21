@@ -513,6 +513,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use
                                                        # volume data
+# minorIterationCallback::Function # called before every residual evaluation
 
   file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
 

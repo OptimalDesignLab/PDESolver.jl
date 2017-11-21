@@ -31,7 +31,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -73,7 +73,7 @@ function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   end
 
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -151,7 +151,7 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   eqn.params.aoa += pert # Imaginary perturbation
   fill!(eqn.res_vec, 0.0)
   fill!(eqn.res, 0.0)
-  res_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
+  res_norm = NonlinearSolvers.calcResidual(mesh, sbp, eqn, opts, evalResidual)
   ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
   eqn.params.aoa -= pert # Remove perturbation
 

@@ -125,12 +125,7 @@ end
 
     Aliasing restrictions: none
 """->
-function interpolateBoundary(mesh::AbstractDGMesh, 
-                             sbp, 
-                             eqn, 
-                             opts, 
-                             q::Abstract3DArray, 
-                             q_bndry::Abstract3DArray)
+function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray)
 
   # interpolate solutions
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -772,53 +767,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
   =#
   return nothing
 end
-
-type zeroPressGradientBC <: BCType
-end
-
-# low level function
-function call{Tmsh, Tsol, Tres}(obj::zeroPressGradientBC, 
-                                q::AbstractArray{Tsol,1},  
-                                aux_vars::AbstractArray{Tres, 1},  
-                                x::AbstractArray{Tmsh,1}, 
-                                dxidx::AbstractArray{Tmsh,2}, 
-                                nrm::AbstractArray{Tmsh,1}, 
-                                bndryflux::AbstractArray{Tres, 1}, 
-                                params::ParamType{2})
-
-
-	nx = zero(Tmsh)
-	ny = zero(Tmsh)
-	tngt = Array(Tmsh, 2)  # tangent vector
-	nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-	ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-	fac = 1.0/(sqrt(nx*nx + ny*ny))
-	# normalize normal vector
-	nx *= fac  
-	ny *= fac
-
-	Unrm = nx*q[2] + ny*q[3]
-
-	nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-	ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-
-	gamma = params.gamma
-	gamma_1 = params.gamma_1
-	qg = params.qg
-	dim = 2
-	qg[1:dim+1] = q[1:dim+1]
-	rhoV2 = (q[2]*q[2] + q[3]*q[3]) / q[1]
-	pinf = 1./gamma
-	qg[dim+2] = pinf/gamma_1 + 0.5*rhoV2
-
-	v_vals = params.v_vals
-	convertFromNaturalToWorkingVars(params, qg, v_vals)
-	# this is a problem: q is in conservative variables even if
-	# params says we are using entropy variables
-	calcEulerFlux(params, v_vals, aux_vars, [nx2, ny2], bndryflux)
-
-	return nothing
-end
 #=
 function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType3,
               q::AbstractArray{Tsol,1},
@@ -1402,7 +1350,6 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "unsteadyVortexBC" => unsteadyVortexBC(),
 "unsteadyVortex2BC" => unsteadyVortex2BC(),
 "ExpBC" => ExpBC(),
-"nonslipBC" => nonslipBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
 "ChannelMMSBC" => ChannelMMSBC(),
 "defaultBC" => defaultBC(),
@@ -1428,7 +1375,7 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-    println("BC = ", i, ", BCDict[val] = ", BCDict[val])
+    println("BCDict[val] = ", BCDict[val])
     mesh.bndry_funcs[i] = BCDict[val]
   end
 
