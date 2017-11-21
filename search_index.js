@@ -245,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Field Meanings",
     "category": "section",
-    "text": "The purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.disassembleSolution:  Function that takes the a vector such as q_vec and                         scatters it to an array such as q.                         This function must have the signature:                         disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})                         Because this variable is a field of a type, it will be dynamically dispatched.                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.assembleSolution:  Function that takes an array such as res and performs an additive reduction to a vector such as res_vec.                      This function must have the signature:                      assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)                      The argument zero_resvec determines whether res_vec is zeroed before the reduction is performed.                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.                      Thus the default is true.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:AbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
+    "text": "  CurrentModule = UtilsThe purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).  See Utils.disassembleSolution  and Utils.assembleSolution.shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.disassembleSolution:  Function that takes the a vector such as q_vec and                         scatters it to an array such as q.                         This function must have the signature:                         disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})                         Because this variable is a field of a type, it will be dynamically dispatched.                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.assembleSolution:  Function that takes an array such as res and performs an additive reduction to a vector such as res_vec.                      This function must have the signature:                      assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)                      The argument zero_resvec determines whether res_vec is zeroed before the reduction is performed.                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.                      Thus the default is true.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:  CurrentModule = ODLCommonToolsAbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
 },
 
 {
@@ -2153,15 +2153,15 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData,Array{Tsol,1}}",
+    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData{Topt},Array{Tsol,1}}",
     "page": "Adjoint",
     "title": "AdvectionEquationMod.calcAdjoint",
     "category": "Method",
-    "text": "AdvectionEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization. The user always call this function in order to compute the adjoint.\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is the type                       associated with the adjoint of the functional being                       computed and holds all the necessary data.\n \nadjoint_vec\n : Adjoint vector corresponding to the particular functional                    computed. If called in parallel, the vector should be                    distributed across \neqn.comm\n, just like \neqn.q_vec\n \nfunctional_number\n : The functional for which the adjoint vector is being,                          default = 1\n\nOutputs\n\n None\n\n\n\n"
+    "text": "AdvectionEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization. The user always call this function in order to compute the adjoint.\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is the type                       associated with the adjoint of the functional being                       computed and holds all the necessary data.\n \nadjoint_vec\n : Adjoint vector corresponding to the particular functional                    computed. If called in parallel, the vector should be                    distributed across \neqn.comm\n, just like \neqn.q_vec\n \nfunctional_number\n : The functional for which the adjoint vector is being,                          default = 1                          TODO: this is unused?\n\nOutputs\n\n None\n\n\n\n"
 },
 
 {
-    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,AdvectionEquationMod.QfluxData{Topt},Any}",
+    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt},Any}",
     "page": "Adjoint",
     "title": "AdvectionEquationMod.calcFunctionalDeriv",
     "category": "Method",
@@ -2169,7 +2169,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcIntegrandDeriv-Tuple{Any,AdvectionEquationMod.ParamType{Tsol,Tres,2},Any,Any,Any,AdvectionEquationMod.QfluxData{Topt}}",
+    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcIntegrandDeriv-Tuple{Any,AdvectionEquationMod.ParamType{Tsol,Tres,2},Any,Any,Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt}}",
     "page": "Adjoint",
     "title": "AdvectionEquationMod.calcIntegrandDeriv",
     "category": "Method",
@@ -2193,7 +2193,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData}",
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData{Topt}}",
     "page": "Boundary Functional",
     "title": "AdvectionEquationMod.evalFunctional",
     "category": "Method",
@@ -2201,11 +2201,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.calcBndryFunctional-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,AdvectionEquationMod.QfluxData{Topt}}",
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.calcBndryFunctional-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt}}",
     "page": "Boundary Functional",
     "title": "AdvectionEquationMod.calcBndryFunctional",
     "category": "Method",
     "text": "AdvectionEquationMod.calcBndryfunctional\n\nThis function calculates the functional on a geometric boundary of a the computational space. This is a mid level function that should not be called from outside the module. Depending on the functional being computed, it may be necessary to define another method for this function based on a different boundary functional type.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of the functional being computed\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.calcBoundaryFunctionalIntegrand-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},Any,Any,Any,AdvectionEquationMod.IntegralQData{Topt}}",
+    "page": "Boundary Functional",
+    "title": "AdvectionEquationMod.calcBoundaryFunctionalIntegrand",
+    "category": "Method",
+    "text": "Method for IntegralQData functional.\n\nNote that q should be scaled by the length of the normal vector so the   integration works correctly\n\n\n\n"
 },
 
 {
@@ -2221,7 +2229,31 @@ var documenterSearchIndex = {"docs": [
     "page": "Boundary Functional",
     "title": "Advection Boundary Functional",
     "category": "section",
-    "text": "This page consists of all the functions necessary for computing a boundary functional along the geometric edges of a mesh for the advection equation.  Modules = [AdvectionEquationMod]\n  Pages = [\"solver/advection/boundary_functional.jl\"]"
+    "text": "  CurrentModule = AdvectionEquationModThis page consists of all the functions necessary for computing a boundary functional along the geometric edges of a mesh for the advection equation.  Modules = [AdvectionEquationMod]\n  Pages = [\"solver/advection/boundary_functional.jl\"]"
+},
+
+{
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.QfluxData",
+    "page": "Boundary Functional",
+    "title": "AdvectionEquationMod.QfluxData",
+    "category": "Type",
+    "text": "###AdvectionEquationMod.QfluxData\n\nData type for storing relevant information pertaining to an a functional or an objective function.\n\nMembers\n\n \nis_objective_fn\n : Bool whether the functional object is an objective                        function or not.\n \ngeom_faces_functional\n : Geometric faces on which the functional is to be                              computed.\n \nval\n : Computed value of the functional\n \ntarget_qFlux\n : Target value for the functional qFlux\n\nThe object is constructed using an inner constructor with the following \n\nArguments\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \ngeom_faces_functional\n : Geometric faces on which the functional is to be                               computed\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.IntegralQData",
+    "page": "Boundary Functional",
+    "title": "AdvectionEquationMod.IntegralQData",
+    "category": "Type",
+    "text": "Functional that integrates the solution q over the specified boundary(/ies)\n\nFields\n\ngeom_face_functional: the geometric faces the functional is computed over\nval: the value of the functional, initially 0.0\n\nConstructor Argument\n\nmesh\nsbp\neqn\nopts\ngeom_faces_functional: array of faces, used as the field of the same name\n\n\n\n"
+},
+
+{
+    "location": "solver/advection/boundary_functional.html#Functional-Types-1",
+    "page": "Boundary Functional",
+    "title": "Functional Types",
+    "category": "section",
+    "text": "QfluxData\nIntegralQData"
 },
 
 {
@@ -2286,6 +2318,14 @@ var documenterSearchIndex = {"docs": [
     "title": "EulerEquationMod.BoundaryForceData",
     "category": "Type",
     "text": "###EulerEquationMod.BoundaryForceData\n\nComposite data type for storing data pertaining to the boundaryForce. It holds lift and drag values\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/types.html#EulerEquationMod.MassFlowData",
+    "page": "Datatypes",
+    "title": "EulerEquationMod.MassFlowData",
+    "category": "Type",
+    "text": "Type for computing the mass flow rate over a boundary (integral rho*u dot n   dGamma)\n\n\n\n"
 },
 
 {
@@ -3913,15 +3953,15 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/adjoint.html#EulerEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,Array{Tsol,1}}",
+    "location": "solver/euler/adjoint.html#EulerEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt},Array{Tsol,1}}",
     "page": "Adjoint",
     "title": "EulerEquationMod.calcAdjoint",
     "category": "Method",
-    "text": "EulerEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. The user must always call this function in order to compute the adjoint vector. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization.\n\nInputs\n\n \nmesh\n : Abstract DG mesh type\n \nsbp\n  : Summation-By-parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object corresponding the boundary functional being                       computed. It must be a subtype of \nAbstractOptimizationData\n \nadjoint_vec\n : Resulting adjoint vector. In the parallel case, the adjoint                      vector is distributed over the processors similar to                    eqn.q_vec i.e. every rank has its                    share of the adjoint vector corresponding to the dofs on the                    rank.\n\n \nfunctional_number\n : Numerical identifier to obtain geometric edges on                          which a functional acts\n\nOutputs\n\n None\n\n\n\n"
+    "text": "EulerEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. The user must always call this function in order to compute the adjoint vector. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization.\n\nInputs\n\n \nmesh\n : Abstract DG mesh type\n \nsbp\n  : Summation-By-parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object corresponding the boundary functional being                       computed. It must be a subtype of \nAbstractOptimizationData\n \nadjoint_vec\n : Resulting adjoint vector. In the parallel case, the adjoint                    vector is distributed over the processors similar to                    eqn.q_vec i.e. every rank has its                    share of the adjoint vector corresponding to the dofs on the                    rank.\n\n \nfunctional_number\n : Numerical identifier to obtain geometric edges on                          which a functional acts\n\nOutputs\n\n None\n\n\n\n"
 },
 
 {
-    "location": "solver/euler/adjoint.html#EulerEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,Any}",
+    "location": "solver/euler/adjoint.html#EulerEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt},Any}",
     "page": "Adjoint",
     "title": "EulerEquationMod.calcFunctionalDeriv",
     "category": "Method",
@@ -3969,7 +4009,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData}",
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt}}",
     "page": "Boundary Functional",
     "title": "EulerEquationMod.evalFunctional",
     "category": "Method",
@@ -3977,7 +4017,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/boundary_functional.html#EulerEquationMod.eval_dJdaoa-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,ASCIIString,AbstractArray{Tsol,1}}",
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.eval_dJdaoa-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt},ASCIIString,AbstractArray{Tsol,1}}",
     "page": "Boundary Functional",
     "title": "EulerEquationMod.eval_dJdaoa",
     "category": "Method",
@@ -4001,7 +4041,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional_revm-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData,ASCIIString}",
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional_revm-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt},ASCIIString}",
     "page": "Boundary Functional",
     "title": "EulerEquationMod.evalFunctional_revm",
     "category": "Method",
@@ -4481,6 +4521,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/startup.html#EulerEquationMod.createObjects-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},Dict{K,V}}",
+    "page": "Startup",
+    "title": "EulerEquationMod.createObjects",
+    "category": "Method",
+    "text": "Constructs a the EulerData object given a mesh, sbp, and options dictionary.\n\nUsed for submesh solves.\n\nInputs\n\nmesh\nsbp\nopts\n\nOutputs\n\nmesh\nsbp\neqn\nopts\npmesh: currently, always the same as mesh\n\n\n\n"
+},
+
+{
     "location": "solver/euler/startup.html#EulerEquationMod.postproc-Tuple{Any,Any,Any,Any}",
     "page": "Startup",
     "title": "EulerEquationMod.postproc",
@@ -4565,7 +4613,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Input.read_input",
     "category": "Method",
-    "text": "PDESolver.read_input\n\nThis function read an input file, supplies default values whenever possible,   and does sanity checks on the options.   A dictionary (referred to as the options dictionary) is returned.   See read_input_file for the description of the input file format.\n\nAfter default values are supplied, the dictionary is printed to    arg_dict_output.jl (by MPI rank 0) in the format of an input file.   This is useful for rerunning a simulation.\n\nThis function prints warnings if keys in the dictionary do not correspond   to known options.  The file known_keys.jl lists all known keys.   See input_vals.txt for the list of keys, possible values, and their meanings.\n\nThis function is idempotent; this is essential for using arg_dict_output.jl   to rerun a simulation.\n\nInputs:     * fname : name of file to read, can be relative or absolute path.\n\nOutputs:     arg_dict: a Dict{Any, Any} containing the option keywords and values\n\n\n\n"
+    "text": "PDESolver.read_input\n\nThis function read an input file, supplies default values whenever possible,   and does sanity checks on the options.   A dictionary (referred to as the options dictionary) is returned.   See read_input_file for the description of the input file format.\n\nAfter default values are supplied, the dictionary is printed to   arg_dict_output.jl (by MPI rank 0) in the format of an input file.   This is useful for rerunning a simulation.\n\nThis function prints warnings if keys in the dictionary do not correspond   to known options.  The file known_keys.jl lists all known keys.   See input_vals.txt for the list of keys, possible values, and their meanings.\n\nThis function is idempotent; this is essential for using arg_dict_output.jl   to rerun a simulation.\n\nInputs:     * fname : name of file to read, can be relative or absolute path.\n\nOutputs:     arg_dict: a Dict{Any, Any} containing the option keywords and values\n\n\n\n"
 },
 
 {
@@ -4638,6 +4686,598 @@ var documenterSearchIndex = {"docs": [
     "title": "Important Keys",
     "category": "section",
     "text": "  CurrentModule = PDESolverThe input dictionary contains many keys.  All possible user supplied keys are listed in input_vals.txt. The purpose of this page is to describe the most important keys and use them to elucidate some of the structure of the code.The most important key is physics which specifies which physics to solve. The name must be the name the physics module registers with the front end described in Registration Functions.The run_type key specifies what kind of solver to use.  There are a variety of options, including explicit and implicit time marching methods for unsteady problems and inexact-Newton methods for steady problems. Many of the time marching methods can also be used for pseudo-time stepping of steady problems. See call_nlsolver for the complete list of values.  Physics modules should never invoke a nonlinear solver directly, they should always use call_nlsolver().The jac_method key is needed if the nonlinear solver computes a Jacobian. PDESolver supports multiple methods of computing derivatives, including finite differences and the complex step method.  The functions in the Nonlinear solvers module are required to support all methods. This key specifies which method to use. Complex step is generally recommended, finite difference are used primarily for verification.The order key specifies the degree of the operator used to discretize the spatial terms. This is analagous to the degree of the polynomial basis functions used for finite elements.smb_name is the name of the mesh file.  This is passed directly to the AbstractMesh constructor.  The mesh should already be partitioned into the correct number of parts (ie. the number of MPI processes PDESolver was launched with).  For Pumi, the partitioned mesh is comprised of many numbered files.  The smb_name should not have the numbers appended to it, and should be the same for all processes.dmg_name is the name of the geometry file associated with the mesh.IC_name is the name of the initial condition.  See Registration Functions for how to add new initial conditions.  Note that initial conditions are physics module specific and that getting an error about an unrecognized initial condition is often the result of specifying the incorrect physics.operator_type: the name of the SBP operator to use.  See createSBPOperator."
+},
+
+{
+    "location": "linearsolvers/linearsolvers.html#",
+    "page": "Introduction",
+    "title": "Introduction",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "linearsolvers/linearsolvers.html#Linear-Solvers-1",
+    "page": "Introduction",
+    "title": "Linear Solvers",
+    "category": "section",
+    "text": "  CurrentModule = LinearSolversThe purpose of the LinearSolvers module is to provide a consistant API for preconditioning and solving linear systems, using both direct and iterative methods, serial and parallel.  The API is highly composable, allowing new preconditioners and linear operators to be built on top of existing ones.  One important feature is the ability to explictly control when the linear operator and preconditioner are recalculated, which is important for efficiently solving nonlinear problems.The interface for using a linear solver (including is component preconditioner and linear operator) is described on the LinearSolvers page.The interface for defining a new preconditioner is described on the Preconditioners page, and, similarly, the interface for new linear operators is described on the  Linear Operators](@ref sec:linearoperators) page.  These interfaces must be defined by every new preconditioner and linear operator, respectively, but they should not be used directly.  The LinearSolvers interface should be used instead.  Pages = [\"pc.md\"\n           \"lo.md\"\n           \"ls.md\"\n          ]\n  Depth = 1"
+},
+
+{
+    "location": "linearsolvers/pc.html#",
+    "page": "Preconditioners",
+    "title": "Preconditioners",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "linearsolvers/pc.html#sec:preconditioners-1",
+    "page": "Preconditioners",
+    "title": "Preconditioners",
+    "category": "section",
+    "text": "  CurrentModule = LinearSolversThis section describes the different catagories of preconditioners, including the API and the requirements for creating new preconditioners. Note that whenever a linear solver is used, the Linear Solver interface should be used rather than the Linear Operator interface described here."
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.AbstractPC",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.AbstractPC",
+    "category": "Type",
+    "text": "Abstract supertype of all preconditioner types.  Preconditioners can be used   with iterative methods only.  When using a direct method, PCNone   should be used.\n\nThe purpose of this type is to provide a consistent interface for different   types of preconditioners.  In particular, it provides control over when the   preconditioner is recomputed.\n\nUsers should implement new preconditioners using composition with   one of the preconditioners defined here, namely PetscMatPC or   PetscMatFreePC, ie. they should define a new subtype of   AbstractPC that has either PetscMatPC or PetscMatFrePC as   a field.  This allows calling the existing functions for these types   (which compute a preconditioner for the Jacobian of the physics) and   modifying the preconditioner as needed.   User defined preconditioners should subtype either AbstractPetscMatPC   of AbstractPetscMatFreePC.\n\nFields\n\npc_inner: another \nAbstractPC\n\nNote that arbitrarily deep nesting of preconditioners is allowed.   The pc_inner field can be one of PCNone, PetscMatPC,   or PetscMatFreePC for a non-nested preconditioner, or some   other AbstractPC for a nested preconditioner.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.AbstractPetscMatPC",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.AbstractPetscMatPC",
+    "category": "Type",
+    "text": "Abstract supertype of all Petsc matrix-explicit preconditioners\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.AbstractPetscMatFreePC",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.AbstractPetscMatFreePC",
+    "category": "Type",
+    "text": "Abstract supertype of all Petsc matrix-free preconditioners.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.AbstractPetscPC",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.AbstractPetscPC",
+    "category": "Constant",
+    "text": "Alias for any kind of Petsc PC (matrix-explicit or matrix-free)\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#Type-hierarchy-1",
+    "page": "Preconditioners",
+    "title": "Type hierarchy",
+    "category": "section",
+    "text": "When creating a new preconditioner, it is very important to make it inherit from the proper supertype.AbstractPC\nAbstractPetscMatPC\nAbstractPetscMatFreePC\nAbstractPetscPC"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.calcPC-Tuple{LinearSolvers.AbstractPC,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,Any}",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.calcPC",
+    "category": "Method",
+    "text": "This function calculates the preconditioner.  Every implementation of   AbstractPC should extend this function with a new method\n\nWhen creating new preconditioners, this function should generally be called   first on pc_inner, and modifications to the Jacobian should be made    subsequently.\n\nInputs\n\npc: the AbstractPC implementation\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\nt: current time\n\nImplementation Notes:     For matrix-explicit preconditioners, this might not actually calculate the     preconditioner.  Rather, it calculates the matrix the preconditioner is     based on, and the solve function calcultes the preconditioner from it.     Nevertheless, it supports the proper semantics for when the PC is updated     even when the PC matrix and LinearOperator matrix are the same (as long as     the solve function is called regularly).\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.applyPC-Tuple{LinearSolvers.AbstractPC,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.applyPC",
+    "category": "Method",
+    "text": "Applies the preconditioner, ie. x = inv(Ap)*b, where Ap is the approximation   to the matrix A.  Note that Ap itself may not be available for some   preconditioners, hence there is only an API for applying inv(Ap),   not Ap itself.\n\nMatrix-free preconditioners need to extend this function with a new method,\nmatrix-explicit preconditioners do not.\n\nInputs\n\npc: the \nAbstractPC\n implementation.\nmesh\nsbp\neqn: this argument should generally not be used because all the solution           related data should be stored in the pc ovject by \ncalcPC\nopts\nt: current time\nb: a AbstractVector representing the local part of the solution (ie         eqn.q_vec)\n\nInputs/Outputs\n\nx: AbstractVector updated with results (same size as b) (do not overwrite)\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.applyPCTranspose-Tuple{LinearSolvers.AbstractPC,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.applyPCTranspose",
+    "category": "Method",
+    "text": "Applies the transpose of the preconditioner, ie. x = inv(Ap).'*b.   Similar to applyPC, see that function for details.\n\nNote that not every preconditioning method supports this.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.getBasePC",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.getBasePC",
+    "category": "Function",
+    "text": "This function returns the underlying preconditioner object, ie.   PCNone, PetscMatPC, or PetscMatFreePC.\n\nNote that arbitrarily deep nesting of preconditioners is allowed.   Users do not have to implement as long as the nested preconditioner is   stored in a field called pc_inner.\n\nFor matrix-explicit preconditioners, this function is useful for getting   the PetscMatPC object, which contains the preconditioning   Jacobian matrix.\n\nInputs\n\npc: the users \nAbstractPC\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.free-Tuple{LinearSolvers.AbstractPC}",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.free",
+    "category": "Method",
+    "text": "This function frees any memory belonging to external libraries.  Users must   call this function when they are finished with an AbstractPC   object.\n\nUsers do not have to define this function for their   AbstractPC types.\n\nInputs\n\npc: the AbstractPC object\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#API-1",
+    "page": "Preconditioners",
+    "title": "API",
+    "category": "section",
+    "text": "Every preconditioner supports the following functions.  When defining a new preconditioner, some of the functions must be defined for the new  AbstractPC type, while others are defined automatically based on the supertype of the preconditioner.calcPC(::AbstractPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::Any)\napplyPC(::AbstractPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::AbstractVector, ::AbstractVector)\napplyPCTranspose(::AbstractPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::AbstractVector, ::AbstractVector)\ngetBasePC\nfree(::AbstractPC)"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.PCNone",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.PCNone",
+    "category": "Type",
+    "text": "Preconditioner type for direct solve.   Do not use with PetscLinearOperator.\n\nPublic Fields\n\nnone\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.PCNone-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.PCNone",
+    "category": "Method",
+    "text": "Outer constructor\n\nInputs\n\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.PetscMatPC",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.PetscMatPC",
+    "category": "Type",
+    "text": "AbstractPC implementation for Petsc matrix-explicit preconditioners.\n\nPublic Fields\n\nAp: a PetscMat object used to calculate the preconditioner\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.PetscMatPC-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.PetscMatPC",
+    "category": "Method",
+    "text": "Outer constructor\n\nInputs\n\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.PetscMatFreePC",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.PetscMatFreePC",
+    "category": "Type",
+    "text": "Type for managing a Petsc matrix-free preconditioner.  Actual preconditioners   can be built on top of this.  Because matrix-free preconditioners do not have   a particular form, this type requires the preconditioner to implement the   entire AbstractPC interface.  The benefit of using this type to   build a preconditioner is that is automatically exposes the preconditioner   to Petsc.\n\nThe calcPC function the user defines must call setPCCtx.\n\nPublic Fields\n\nnone\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.PetscMatFreePC-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.PetscMatFreePC",
+    "category": "Method",
+    "text": "Outer constructor\n\nInputs\n\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#LinearSolvers.setPCCtx",
+    "page": "Preconditioners",
+    "title": "LinearSolvers.setPCCtx",
+    "category": "Function",
+    "text": "This function should be called by the users calcPC function.   The arguments passed to this function are passed to applyPC   during the next preconditioner application.   See that function for a description of the arguments\n\nInputs\n\npc:\nmesh\nsbp\neqn\nopts\nctx_residual\nt\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/pc.html#Concrete-PC-Types-1",
+    "page": "Preconditioners",
+    "title": "Concrete PC Types",
+    "category": "section",
+    "text": "The following types are the \"Base\" PC types refered to by getBasePC. Every preconditioner must contain one of these (either directly, in the pc_inner field described by AbstractPC, of inside another preconditioner).PCNone\nPCNone(::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nPetscMatPC\nPetscMatPC(::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nPetscMatFreePC\nPetscMatFreePC(::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)PetscMatFreePC has an additional function not needed by other preconditioner types:setPCCtx"
+},
+
+{
+    "location": "linearsolvers/pc.html#Implementing-a-New-Preconditioner-1",
+    "page": "Preconditioners",
+    "title": "Implementing a New Preconditioner",
+    "category": "section",
+    "text": "Many of the API functions are automatically generated for matrix-explicit preconditioners.  Matrix-free preconditioners need to define most of the PC interface themselves.  A summary of the functions each preconditioner must implements is:Matrix-explicitcalcPCMatrix-freecalcPC\napplyPC\napplyPCTranspose"
+},
+
+{
+    "location": "linearsolvers/pc.html#First-Level-PC-1",
+    "page": "Preconditioners",
+    "title": "First Level PC",
+    "category": "section",
+    "text": "This example shows how to implement a new preconditioner that directly   contains one of the Concrete PC Types described above.type ExamplePetscMatPC <: AbstractPetscMatPC\n  pc_inner::PetscMatPC  # the supertype of pc_inner and ExamplePetscMatPC\n                        # must match\nend\n\nfunction ExamplePetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,\n                    eqn::AbstractSolutionData, opts::Dict)\n\n  pc_inner = PetscMatPC(mesh, sbp, eqn, opts)\n\n  return ExamplePetscMatPC(pc_inner)\nend\n\n\nfunction calcPC(pc::ExamplePetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,\n                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)\n\n\n  calcPC(pc.pc_inner)\n\n  pc2 = getBasePC(pc)  # because pc_inner is the base pc, this returns\n                       # pc.pc_inner\n  # call set_values1!(pc2.Ap, ...) to put values into the preconditioning matrix\n\n  return nothing\nendBecause calcPC is defined and the base PC is one of the concrete PC types, namely PetscMatPC, the functions applyPC and applyPC are automatically defined for ExamplePetscMatPC. The new preconditioner is now fully usable."
+},
+
+{
+    "location": "linearsolvers/pc.html#Multiple-Levels-of-Composition-1",
+    "page": "Preconditioners",
+    "title": "Multiple Levels of Composition",
+    "category": "section",
+    "text": "The same structure as shown in the previous structure can be used to build a new preconditioner out of any existing preconditioner, not only the Concrete PC Types.type OuterPetscMatPC <: AbstractPetscMatPC\n  pc_inner::ExamplePetscMatPC  # use the PC define in the previous example\nend\n\nfunction OuterPetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,\n                         eqn::AbstractSolutionData, opts::Dict)\n\n  pc_inner = ExamplePetscMatPC(mesh, sbp, eqn, opts)\n\n  return OuterPetscMatPC(pc_inner)\nend\n\n\nfunction calcPC(pc::OuterPetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,\n                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)\n\n\n  calcPC(pc.pc_inner)  # always call the inner PC calc function first\n\n  pc2 = getBasePC(pc)  # in this case, pc2 is the PetscMatPC inside \n                       # the ExamplePetscMatPC\n  # call set_values1!(pc2.Ap, ...) to put values into the preconditioning matrix  # because calcPC(pc.pc_inner) was called already, the values here should\n  # be added to those already in pc2.Ap\n\n  return nothing\nendAs before, this preconditioner is now fully usable."
+},
+
+{
+    "location": "linearsolvers/pc.html#Matrix-Free-1",
+    "page": "Preconditioners",
+    "title": "Matrix Free",
+    "category": "section",
+    "text": "An outline of how a matrix free preconditioner should be implemented is:type ExamplePetscMatFreePC <: AbstractPetscMatFreePC\n  pc_inner::PetscMatFreePC\n  # other fields...\nend\n\nfunction ExamplePetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,\n                         eqn::AbstractSolutionData, opts::Dict)\n\n  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)\n\n  return ExamplePetscMatFreePC(pc_inner)\nend\n\nfunction calcPC(pc::ExamplePetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,\n                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)\n\n  # these arguments will be passed into applyPC() the next time it is called\n  # by Petsc\n  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)\n\n  # do any setup operations, storing data into the \"other fields...\" of the pc\n\n  return nothing\nend\n\nfunction applyPC(pc::PetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,\n                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, \n                 x::AbstractVector)\n\n  # use the data in pc to multiply the preconditioner by b, storing result in x\n\n  return nothing\nend\n\nfunction applyPCTranspose(pc::PetscMatFreePC, mesh::AbstractMesh,\n                 sbp::AbstractSBP,\n                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, \n                 x::AbstractVector)\n\n  # use the data in pc to multiply the transpose of the preconditioner by b,\n  # storing result in x\n\n  return nothing\nendMatrix-free preconditioners support the same kind of composition as matrix explicit preconditioners, so it is recommended to add the result into x, rather than overwrite x when pc_inner is not one of the Concrete PC Types."
+},
+
+{
+    "location": "linearsolvers/lo.html#",
+    "page": "Linear Operators",
+    "title": "Linear Operators",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "linearsolvers/lo.html#sec:linearoperators-1",
+    "page": "Linear Operators",
+    "title": "Linear Operators",
+    "category": "section",
+    "text": "  CurrentModule = LinearSolversThis section describes the different catagories of linear operators, including the API and the requirements for defining new linear operators. Note that whenever a linear solver is used, the Linear Solver interface should be used rather than the Linear Operator interface described here."
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.AbstractLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.AbstractLO",
+    "category": "Type",
+    "text": "Abstract supertype of all linear operators used for A when solving Ax = b.\n\nThe purpose of this type is to provide a consistent interface for different   types of linear operators.  This type really combines two notions: what the   type of the linear operator is, and how it should be solved.\n\nAny implementation of this type should subtype the appropriate catagory   of: AbstractDenseLO, AbstractSparseDirectLO,   AbstractPetscMatLO, AbstractPetscMatFreeLO\n\nNote that matrix-explicit implementations can often write a single function   for all these cases if using an matrix interface functions that are defined   for all the matrix types.  See MatExplicitLO\n\nRequired Fields\n\nlo_inner: another \nAbstractPC\n.  Can be one of \nDenseLO\n,                \nSparseDirectLO\n, \nPetscMatLO\n, or                \nPetscMatFreeLO\n, or any other user defined linear                operator.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.AbstractDenseLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.AbstractDenseLO",
+    "category": "Type",
+    "text": "Linear operator type for Dense matrices.  This is generally used only for   debugging.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.AbstractSparseDirectLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.AbstractSparseDirectLO",
+    "category": "Type",
+    "text": "Linear operator type for SparseMatrixCSC matrices, which use a direct   solver.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.AbstractPetscMatLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.AbstractPetscMatLO",
+    "category": "Type",
+    "text": "Linear operator type for Petsc matrix-explicit.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.AbstractPetscMatFreeLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.AbstractPetscMatFreeLO",
+    "category": "Type",
+    "text": "Linear operator type for Petsc matrix-free.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.MatExplicitLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.MatExplicitLO",
+    "category": "Constant",
+    "text": "Useful union for all the matrix-explicit linear operator types.   Because matrices have a small set of common interface functions, it is   often possible to write a single function that works on all the different   types of matrices.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.PetscLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.PetscLO",
+    "category": "Constant",
+    "text": "Union of Petsc linear operator types\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.DirectLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.DirectLO",
+    "category": "Constant",
+    "text": "Union of linear operators that do direct solves\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#Type-Hierarchy-1",
+    "page": "Linear Operators",
+    "title": "Type Hierarchy",
+    "category": "section",
+    "text": "When creating a new linear operator, it is very important to make it inherit from the proper abstract type.AbstractLO\nAbstractDenseLO\nAbstractSparseDirectLO\nAbstractPetscMatLO\nAbstractPetscMatFreeLOSeveral typealiases are also available:MatExplicitLO\nPetscLO\nDirectLO"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.calcLinearOperator",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.calcLinearOperator",
+    "category": "Function",
+    "text": "This function calculates the linear operator.  Every implementation of   AbstractLO should extend this function with a new   method.  For matrix-free operators, this function must exist but need   not perform any actions.\n\nFor matrix-explicit implementations, this function should be called on   lo_inner first and modifications to the Jacobian made subsequently.\n\nInputs\n\nlo: the AbstractLO implementation (fields may be updated)\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\nt: current time\n\nImplementation Notes:     For matrix-free operation, this function sets the Petsc ctx for the     PetscMat, which contains a reference to the mesh, sbp, eqn, opts arguments.     This could lead to unexpected behavior if those arguments are modified and     this function is not called again before the next solve.\n\n\n\nCalculates the linear operator.  Use this function only if you want to   calculate the linear operator and not the preconditioner.   Prefer calcPCandLO, which avoids calculating the matrix twice if   the preconditioner and linear operator share the same matrix\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.applyLinearOperator",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.applyLinearOperator",
+    "category": "Function",
+    "text": "Applies the linear operator, ie. , Ax = b\n\nMatrix-explicit implementations AbstractLO do not have   to implement this function, though matrix-free implementations must extend   it with a new method.\n\nInputs\n\nlo: the \nAbstractLO\n implementation.\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx for \nphysicsRhs\n or the another right hand                    side function built on top of it\nt: current time\nx: an AbstractVector (although never a PetscVec)\n\nInputs/Outputs\n\nb: vector updated with results (do not overwrite)\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.applyLinearOperatorTranspose",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.applyLinearOperatorTranspose",
+    "category": "Function",
+    "text": "Applies the transpose of the linear operator, ie. A.'*x = b   Similar to applyLinearOperator, see that function for details.\n\nNote that not every method supports this.  In particular, Petsc   matrix-free LinearOperators don't currently expose this    (although they could with enough reverse-mode)\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.getBaseLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.getBaseLO",
+    "category": "Function",
+    "text": "Similar to getBasePC except it gets the underlying linear operator,   ie. one of DenseLO, SparseDirectLO, PetscMatLO   or PetscMatFreeLO.\n\nFor matrix-explicit methods, this is a good way of getting the underlying   linear operator object, which contains the matrix in the A field (for   all matrix-explicit linear operators).\n\nInputs\n\nlo: an AbstractLO\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.free-Tuple{LinearSolvers.AbstractLO}",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.free",
+    "category": "Method",
+    "text": "This function frees any memory belonging to external libraries.  Users must   call this function when they are finished with an AbstractLO   object.\n\nUsers do not have to define this function for their   AbstractLO types.\n\nInputs\n\nlo: the AbstractLO object\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#API-1",
+    "page": "Linear Operators",
+    "title": "API",
+    "category": "section",
+    "text": "Every linear operator supports the following functions.  When defining a new linear operator, some of the functions must be extended with new methods, while others will be created automatically based on the supertype of the linear operator.calcLinearOperator\napplyLinearOperator\napplyLinearOperatorTranspose\ngetBaseLO\nfree(::AbstractLO)"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.DenseLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.DenseLO",
+    "category": "Type",
+    "text": "Dense array linear operator.  Serial only.\n\nPublic Fields\n\nA: an Array{Float64, 1}\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.DenseLO-Tuple{LinearSolvers.PCNone,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.DenseLO",
+    "category": "Method",
+    "text": "Outer constructor for DenseLO\n\nInputs\n\npc: a PCNone\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.SparseDirectLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.SparseDirectLO",
+    "category": "Type",
+    "text": "LinearOperator type to be used with sparse direct solve.  Note that the   sparsity pattern of the matrix A must be constant.\n\nFields\n\nA: the matrix\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.SparseDirectLO-Tuple{LinearSolvers.PCNone,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.SparseDirectLO",
+    "category": "Method",
+    "text": "Outer constructor for SparseDirectLO\n\nInputs\n\npc: a PCNone\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.PetscMatLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.PetscMatLO",
+    "category": "Type",
+    "text": "Petsc matrix-explicit linear operator.\n\nNote that if an interface common to both Petsc and regular matrices is used   when accessing the Ap field, it is possible to write functions that   operate on both regular and Petsc linear operators.\n\nPublic Fields\n\nA: a PetscMat\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.PetscMatLO-Tuple{LinearSolvers.PetscMatPC,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.PetscMatLO",
+    "category": "Method",
+    "text": "Outer constructor for PetscMatLO\n\nInputs\n\npc: a Petsc preconditioner of some kind\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.PetscMatFreeLO",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.PetscMatFreeLO",
+    "category": "Type",
+    "text": "Petsc matrix-free linear operator.\n\nPublic Fields\n\nnone\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.PetscMatFreeLO-Tuple{LinearSolvers.PetscMatPC,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.PetscMatFreeLO",
+    "category": "Method",
+    "text": "Outer constructor for PetscMatFreeLO\n\nInputs\n\npc: a Petsc preconditioner of some kind\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#LinearSolvers.setLOCtx",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.setLOCtx",
+    "category": "Function",
+    "text": "This function sets the ctx for the underlying Petsc matrix object.  The   end result is that the mesh, sbp, eqn, and opts that are passed into this   function will be passed to the user-defined applyLinearOperator   during the next linear solve.  See that function for a description of   the arguments.\n\nInputs\n\nlo: the user defined linear operator\nmesh\nsbp\neqn\nopts\nctx_residual\nt\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/lo.html#Concrete-LO-Types-1",
+    "page": "Linear Operators",
+    "title": "Concrete LO Types",
+    "category": "section",
+    "text": "DenseLO\nDenseLO(::PCNone, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nSparseDirectLO\nSparseDirectLO(::PCNone, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nPetscMatLO\nPetscMatLO(::PetscMatPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nPetscMatFreeLO\nPetscMatFreeLO(::PetscMatPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)PetscMatFreePC has an additional function not needed by other linear operator types:setLOCtx"
+},
+
+{
+    "location": "linearsolvers/lo.html#Implementing-a-New-Linear-Operator-1",
+    "page": "Linear Operators",
+    "title": "Implementing a New Linear Operator",
+    "category": "section",
+    "text": "Many of the API functions are automatically generated for matrix-explicit linear operators.  Matrix-free linear operators need to define most of the LO interface themselves.  A summary of the functions each preconditioner must implement is:Matrix-explicitcalcLinearOperator\n   \nMatrix-freecalcLinearOperator\napplyLinearOperator\napplyLinearOperatorTranspose"
+},
+
+{
+    "location": "linearsolvers/lo.html#Example-1",
+    "page": "Linear Operators",
+    "title": "Example",
+    "category": "section",
+    "text": "Linear operators use the same composition structure as preconditioners, see the Implementing a New Preconditioner section before proceeding.# Assume the ExamplePetscMatLO type has already been defined\n\ntype OuterPetscMatLO <: AbstractPetscMatPC\n  lo_inner::ExamplePetscMatLO\nend\n\n\nfunction OuterPetscMatPC(pc::OuterPetscMatLO, mesh::AbstractMesh,\n                         sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)\n\n  lo_inner = ExamplePetscMatLO(pc, mesh, sbp, eqn, opts)\n  return OuterPetscMatPC(lo_inner)\nend\n\nfunction calcLinearOperator(lo::OuterPetscMatLO, mesh::AbstractMesh,\n                            sbp::AbstractSBP, eqn::AbstractSolutionData,\n                            opts::Dict, ctx_residual, t)\n\n  # have inner LO do its computation\n  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)\n\n  lo2 = getBaseLO(lo)\n  # use set_values1!(lo2.A, ...) to modify the matrix A\n\n  return nothing\nendapplyLinearOperator and applyLinearOperatorTranspose are defined automatically for all AbstractPetscMatLO types (using getBaseLO)."
+},
+
+{
+    "location": "linearsolvers/ls.html#",
+    "page": "Linear Solvers",
+    "title": "Linear Solvers",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "linearsolvers/ls.html#sec:linearsolvers-1",
+    "page": "Linear Solvers",
+    "title": "Linear Solvers",
+    "category": "section",
+    "text": "  CurrentModule = LinearSolversThis section describes the interface for a linear solver.  This also provides a means to access some of the functions implemented by AbstractPC and AbstractLO. Whenever a linear solver is used, the linear solver API should be used rather than accessing the AbstractPC and AbstractLO"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.LinearSolver",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.LinearSolver",
+    "category": "Type",
+    "text": "Abstract supertype of all linear solvers.  The StandardLinearSolver   implementation should be general enough for everything we do.\n\nThe purpose of this type is to provide a unified interface for managing   a linear solve, including preconditioning if needed.  Many of the   operations on this type are delegated to the pc and lo objects.\n\nThe AbstractPC and AbstractLO types   defined in this module are suitible for solving Ax = b when A is the   Jacobian of the physics.  Other methods (for example, unsteady time marching   or homotopy methods) should build their own AbstractPC and   AbstractLO objects and use them with   StandardLinearSolver.\n\nRequired Fields\n\npc: an \nAbstractPC\n object\nlo: an \nAbstractLO\n object\nshared_mat:  Bool, true if pc and lo share the same matrix object false                   otherwise (either different matrix objects or matrix-free)\n\nStatic Parameters\n\nT1: type of pc\nT2: type of lo\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.StandardLinearSolver",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.StandardLinearSolver",
+    "category": "Type",
+    "text": "The most commonly used implementation of LinearSolver.\n\n\n\nConstructor for StandardLinearSolver.\n\nInputs\n\npc: an \nAbstractPC\n, fully initialized\nlo: an \nAbstractLO\n, fully initialized\ncomm: the MPI communicator the pc and lo are defined on\n\nThis function throws exceptions if incompatible pc and lo types are used.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.StandardLinearSolver-Tuple{Any,Any,MPI.Comm}",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.StandardLinearSolver",
+    "category": "Method",
+    "text": "Constructor for StandardLinearSolver.\n\nInputs\n\npc: an \nAbstractPC\n, fully initialized\nlo: an \nAbstractLO\n, fully initialized\ncomm: the MPI communicator the pc and lo are defined on\n\nThis function throws exceptions if incompatible pc and lo types are used.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#Type-Hierarchy-1",
+    "page": "Linear Solvers",
+    "title": "Type Hierarchy",
+    "category": "section",
+    "text": "LinearSolver\nStandardLinearSolver\nStandardLinearSolver(::Any, ::Any, ::MPI.Comm)"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.calcPC-Tuple{LinearSolvers.StandardLinearSolver{T1,T2},ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,Any}",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.calcPC",
+    "category": "Method",
+    "text": "Calculates the preconditioner for the linear solver.  Thsi preconditioner   will be used for all linear solves until this function is called again.\n\nFor direct solvers, this function calculates the linear operator itself.   Prefer calcPCandLO whenever possible.\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.calcLinearOperator-Tuple{LinearSolvers.StandardLinearSolver{T1,T2},ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,Any}",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.calcLinearOperator",
+    "category": "Method",
+    "text": "Calculates the linear operator.  Use this function only if you want to   calculate the linear operator and not the preconditioner.   Prefer calcPCandLO, which avoids calculating the matrix twice if   the preconditioner and linear operator share the same matrix\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.calcPCandLO-Tuple{LinearSolvers.StandardLinearSolver{T1,T2},ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,Any}",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.calcPCandLO",
+    "category": "Method",
+    "text": "Calculates both the preconditioner and linear operator.  In the case where   they share the matrix, the calculation is only performed once.  This function   should be preferred to calling calcPC and calcLinearOperator one   after the other\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.applyPC-Tuple{LinearSolvers.StandardLinearSolver{T1,T2},ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.applyPC",
+    "category": "Method",
+    "text": "Apply the preconditioner, ie. x = inv(Ap)*b, where Ap is an approximation   to the linear operator used for preconditioner.  This function also works   for matrix-free methods.\n\nNote that calcPC or calcPCandLO must be called before   this function can be used.\n\nFor direct methods, a linear solve is performed because there is no   preconditioner.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.applyPCTranspose-Tuple{LinearSolvers.StandardLinearSolver{T1,T2},ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},Any,AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.applyPCTranspose",
+    "category": "Method",
+    "text": "Like applyPC, but applies the transpose (if possible, otherwise   throws an error).\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.linearSolve",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.linearSolve",
+    "category": "Function",
+    "text": "Solves the linear system Ax = b for x. This function does not recompute the   precondtioner or linear operator,  The preconditioner and linear operator   used are the ones calculated by the most recent call to   calcPC, calcLinearOperator (or calcPCandLO.\n\nFor Petsc matrices, this function does the final matrix assembly.\n\nInputs\n\nls: the \nStandardLinearSolver\n object.\nb: the right hand side vector (local process portion only)\nverbose: verbosity level, default 5, < 4 indicates no output      \nInputs/Outputs\n\nx: vector overwritten with result (local process portion only)\n\nImplementation Notes:\n\nThe preconditioner and matrix factorization (for direct solves) might   be computed during this function, but they will be computed at the state   correspondong to the last call to the functions that calculate them.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.linearSolveTranspose",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.linearSolveTranspose",
+    "category": "Function",
+    "text": "Similar to [linearSolver](@ref), but solves A.'x = v.  See that function   for details.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.isLOMatFree",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.isLOMatFree",
+    "category": "Function",
+    "text": "Returns true if the linear operator is matrix free, false otherwise\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.isPCMatFree",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.isPCMatFree",
+    "category": "Function",
+    "text": "Returns true if the preconditioner is matrix free, false otherwise\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.setTolerances",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.setTolerances",
+    "category": "Function",
+    "text": "Set the tolerances for iterative solves.  Has no effect for direct solves.   Supplying a negative value results in retaining the original value.\n\nInputs\n\nls: StandardLinearSolver\nreltol: relative residual tolerance\nabstol: absolute residual tolerance\ndtol: divergence tolerance\nitermax: maximum number of iterations\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#LinearSolvers.free-Tuple{LinearSolvers.StandardLinearSolver{T1,T2}}",
+    "page": "Linear Solvers",
+    "title": "LinearSolvers.free",
+    "category": "Method",
+    "text": "This function frees any memory owned by external libraries, both in the    StandardLinearSolver object itself and in the pc and lo objects.   Therefore, at the end of a run, all you need to do is free the   StandardLinearSolver and everything will be taken care of.\n\nIt is safe to call this function multiple times.\n\n\n\n"
+},
+
+{
+    "location": "linearsolvers/ls.html#API-1",
+    "page": "Linear Solvers",
+    "title": "API",
+    "category": "section",
+    "text": "calcPC(::StandardLinearSolver, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::Any)\ncalcLinearOperator(::StandardLinearSolver, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::Any)\ncalcPCandLO(::StandardLinearSolver, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::Any)\napplyPC(::StandardLinearSolver, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::AbstractVector, ::AbstractVector)\napplyPCTranspose(::StandardLinearSolver, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::AbstractVector, ::AbstractVector)\nlinearSolve\nlinearSolveTranspose\nisLOMatFree\nisPCMatFree\nsetTolerances\nfree(::StandardLinearSolver)"
 },
 
 {
@@ -4885,7 +5525,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton Inner",
     "title": "Newton_inner",
     "category": "section",
-    "text": ""
+    "text": "  CurrentModule = NonlinearSolvers"
 },
 
 {
@@ -4905,11 +5545,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "NonlinearSolvers/newton_inner.html#NonlinearSolvers.physicsRhs",
+    "page": "Newton Inner",
+    "title": "NonlinearSolvers.physicsRhs",
+    "category": "Function",
+    "text": "This function computes the vector form of of the residual from the vector   form of the solution, ie. q_vec -> rhs_vec, for a given physics.   This is one of the two functions required by newtonInner.\n\nUsers of newtonInner that are not physics modules (for example, implicit   time marching schemes) will need to implement their own version of this   function.  See the Implimentation Notes section below.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an AbstractSBP\neqn: an AbstractSolutionData (may be modified during this function)\nopts: the options dictionary\nctx_residual: a tuple of values.  ctx_residual[1] must be a function                    that computes (q -> res).  Typically this is evalResidual.                    The other entries of the tuple (if any) are not used.\n\n               The purpose of this argument is to make the signature of\n               the function generic enough so that implict time marching\n               methods can use it.  (If you are confused about this\n               programming pattern, google how callback are implemented\n               in C, this ctx is like a void* in C).\n\nt: the time at which to evalute the residual\n\nInputs/Outputs\n\nrhs_vec: vector to put the residual in\n\nOutput\n\nnorm of the residual vector\n\nImplementation Notes:\n\nThis function is really a wrapper around an evalResidual-like function.   It has to do 5 things:\n\n1. scatter eqn.q_vec -> eqn.q\n2. start parallel communication if needed\n3. call the evalResidual-like function to compute eqn.q -> eqn.res\n4. assemble the residual into the output vector, ie. eqn.res -> rhs_vec\n5. compute the norm of the rhs_vec\n\nAny implementation of this function (used with newtonInner) must have the   following properties:\n\n1. on exit, eqn.q and eqn.q_vec must be consistent\n2. this function start parallel communication if needed\n3. allow for the possibility that rhs_vec and eqn.res_vec alias\n\nIs is recommended to use calcNorm to compute the norm.\n\nOther implementations of this function are encouraged to use this function   to help construct their rhs_vec.\n\n\n\n"
+},
+
+{
     "location": "NonlinearSolvers/newton_inner.html#newtonInner-1",
     "page": "Newton Inner",
     "title": "newtonInner",
     "category": "section",
-    "text": ""
+    "text": "physicsRhs"
 },
 
 {
@@ -4925,7 +5573,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Main",
     "title": "Utilties",
     "category": "section",
-    "text": "This module contains functions and types that are useful for the solver but independent of the equation being solved. Additional utility functions are located in the ODLCommontools. The functions defined in the Utils module are useful in the context of PDESolver and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in ODLCommonTools are more general in nature and usable independent of PDESolver.  Pages = [\"io.md\"\n           \"logging.md\"\n           \"projections.md\"\n           \"parallel.md\"\n          ]\n  Depth = 1"
+    "text": "This module contains functions and types that are useful for the solver but independent of the equation being solved. Additional utility functions are located in the ODLCommontools. The functions defined in the Utils module are useful in the context of PDESolver and depend on the functions and datatypes defined in the other parts of the solver. The functions defined in ODLCommonTools are more general in nature and usable independent of PDESolver.  Pages = [\"io.md\"\n           \"logging.md\"\n           \"projections.md\"\n           \"parallel.md\"\n           \"misc.md\"\n          ]\n  Depth = 1"
 },
 
 {
@@ -5558,6 +6206,222 @@ var documenterSearchIndex = {"docs": [
     "title": "Internal Functions",
     "category": "section",
     "text": "The internal functions used for checkpointing are documented here. Users should not call these functions directly.  Improper use can cause checkpoint corruption.  writeCheckpointer\n  saveCheckpoint\n  loadCheckpoint\n  writeFlagFile\n  checkFlagFile\n  deleteFlagFile\n  writeCheckpointData\n  markCheckpointUsed"
+},
+
+{
+    "location": "Utils/misc.html#",
+    "page": "Misccellaneous",
+    "title": "Misccellaneous",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "Utils/misc.html#Main.Utils",
+    "page": "Misccellaneous",
+    "title": "Main.Utils",
+    "category": "Module",
+    "text": "Module Utils:   This module holds miscellaneous functions used throughout the code\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.Timings",
+    "page": "Misccellaneous",
+    "title": "Utils.Timings",
+    "category": "Type",
+    "text": "Utils.Timings\n\nThis type accumulates the time spent in each part of the code.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.absvalue_deriv-Tuple{Tval}",
+    "page": "Misccellaneous",
+    "title": "Utils.absvalue_deriv",
+    "category": "Method",
+    "text": "###Utils.absvalue_deriv\n\nComputes the derivative of the absolute value of a variable w.r.t itself\n\nInputs\n\nval\n : The variable whose derivative needs to be computed e.r.t itself\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.applyPermColumn-Tuple{AbstractArray{T,1},AbstractArray{T,2},AbstractArray{T,2}}",
+    "page": "Misccellaneous",
+    "title": "Utils.applyPermColumn",
+    "category": "Method",
+    "text": "Permute the columns of A according to permvec.  See applyPermRow for the   definition of a permvec.  Note that for column permutation the   interpretation is that destination column permvec[i] comes from   source column i.  This is consistent with the notion that post-multiplying   by a permutation matrix (obtained from permMatrix) is a column   permutation, i.e B = A*P\n\nAliasing: no aliasing allowed\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.applyPermColumnInplace-Tuple{AbstractArray{T,1},AbstractArray{T,2},AbstractArray{T,2}}",
+    "page": "Misccellaneous",
+    "title": "Utils.applyPermColumnInplace",
+    "category": "Method",
+    "text": "Like applyPermColumn, but the result is returned in A.  Both A and B   are overwritten\n\nAliasing: no aliasing allowed\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.applyPermRow-Tuple{AbstractArray{T,1},AbstractArray{T,2},AbstractArray{T,2}}",
+    "page": "Misccellaneous",
+    "title": "Utils.applyPermRow",
+    "category": "Method",
+    "text": "Permute the rows of A according to the permvec, storing the result in B   The permvec contains the source indices for each entry in B, ie.   B[i] comes from A[permvec[i]].  This is consistent with the mathematical   definition of a permutation that pre-multiplication by a permutation    matrix (obtained from permMatrix) is a row permutation, ie.   B = P*A\n\nAliasing: no aliasing allowed\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.applyPermRowInplace-Tuple{AbstractArray{T,1},AbstractArray{T,2},AbstractArray{T,2}}",
+    "page": "Misccellaneous",
+    "title": "Utils.applyPermRowInplace",
+    "category": "Method",
+    "text": "Like applyPermRow, but the result is returned in A.  Both A and B   are overwritten.\n\nAliasing: no aliasing allowed\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.assembleSolution",
+    "page": "Misccellaneous",
+    "title": "Utils.assembleSolution",
+    "category": "Function",
+    "text": "Utils.assembleSolution\n\nThis function takes the 3D array of variables in arr and   reassembles it into the vector res_vec.  Note that   This is a reduction operation and zeros res_vec before performing the   operation, unless zero_resvec is set to false\n\nThis is a mid level function, and does the right thing regardless of   equation dimension\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.calcBCNormal-Tuple{ODLCommonTools.AbstractParamType{2},AbstractArray{T,2},AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Misccellaneous",
+    "title": "Utils.calcBCNormal",
+    "category": "Method",
+    "text": "Calculate the scaled normal vector in parametric coordinates from the   face normal and scaled mapping jacobian.  nrm2 is overwritten with   the result.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.calcEuclidianNorm-Tuple{MPI.Comm,AbstractArray{T,1}}",
+    "page": "Misccellaneous",
+    "title": "Utils.calcEuclidianNorm",
+    "category": "Method",
+    "text": "This function computes the Euclidian norm of a vector where each MPI   process owns part of the vector\n\nInputs:     comm: an MPI communicator     vec: the local part of the vector\n\nOutputs:     val: the Euclidian norm of the entire vector\n\nNote that unlike calcNorm, the time spent in the Allreduce is not logged   for this function.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.calcMeshH-Tuple{ODLCommonTools.AbstractMesh{Tmsh},Any,Any,Any}",
+    "page": "Misccellaneous",
+    "title": "Utils.calcMeshH",
+    "category": "Method",
+    "text": "Utils.calcMeshH\n\nThis function calculates the average distance between nodes over the entire   mesh.  This function allocates a bunch of temporary memory, so don't call   it too often.  This is, strictly speaking, not quite accurate in parallel   because the divison by length happens before the allreduce.\n\nInputs:     mesh     eqn     opts\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.calcNorm-Tuple{ODLCommonTools.AbstractSolutionData{Tsol,Tres},AbstractArray{T,N}}",
+    "page": "Misccellaneous",
+    "title": "Utils.calcNorm",
+    "category": "Method",
+    "text": "Utils.calcNorm\n\nThis function calculates the norm of a vector (of length numDof) using the     SBP norm.\n\nInputs:\n  eqn:  an AbstractSolutionData\n  res_vec:  vector to calculate the norm of\n\nKeyword arguments:\n  strongres: if res_vec is the residual of the weak form, then\n             strongres=true computes (efficiently) the norm of the strong\n             form residual.  Default false\n  globalnrm: compute the norm over all processes or not. Default true\n\nReturns:\n  val:  norm of solution using SBP norm (Float64)\n\nThere are no restrctions on the datatype of res_vec (ie. it can be complex)\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.disassembleSolution-Tuple{ODLCommonTools.AbstractCGMesh{Tmsh},Any,ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,AbstractArray{T,3},AbstractArray{T,1}}",
+    "page": "Misccellaneous",
+    "title": "Utils.disassembleSolution",
+    "category": "Method",
+    "text": "Utils.disassembleSolution\n\nThis takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the   3 dimensional array.  This function uses mesh.dofs   to speed the process.\n\nThis function also calls writeQ to do any requested output.\n\nInputs:     mesh     sbp     eqn     opts\n\nThis is a mid level function, and does the right thing regardless of equation   dimension.\n\nThe DG method for disassembleSolution assumes that q and q_vec refer to the     same memory address, and therefore does no explicit writing/copying.\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.fastscale!-Tuple{AbstractArray{T,N},Number}",
+    "page": "Misccellaneous",
+    "title": "Utils.fastscale!",
+    "category": "Method",
+    "text": "This function scales an array by a constant, and should be faster than scale!   because it is branch free\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.fastzero!-Tuple{AbstractArray{T,N}}",
+    "page": "Misccellaneous",
+    "title": "Utils.fastzero!",
+    "category": "Method",
+    "text": "This function zeros out an array, and should be faster than fill! (branch   free)\n\nInputs/Outputs:     x: an array\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.inversePerm-Tuple{AbstractArray{T,1},AbstractArray{T,1}}",
+    "page": "Misccellaneous",
+    "title": "Utils.inversePerm",
+    "category": "Method",
+    "text": "Compute the permutation vector that corresponds to the inverse permutation\n\nInputs:     permvec: the original permutation vector\n\nInputs/Outputs:     invperm: the inverse permutation vector\n\nAliasing: no aliasing allowed\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.permMatrix!-Tuple{AbstractArray{T,1},AbstractArray{T,2}}",
+    "page": "Misccellaneous",
+    "title": "Utils.permMatrix!",
+    "category": "Method",
+    "text": "Create a permutation matrix from a permutation vector.  Only select   entries of A are overwritten.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.permMatrix-Tuple{AbstractArray{T,1}}",
+    "page": "Misccellaneous",
+    "title": "Utils.permMatrix",
+    "category": "Method",
+    "text": "Create a permutation matrix from a permutation vector.  The element type   of the returned matrix is Int.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.writeQ-Tuple{Any,Any,Any,Any}",
+    "page": "Misccellaneous",
+    "title": "Utils.writeQ",
+    "category": "Method",
+    "text": "Utils.writeQ\n\nThis function writes the real part of the solution variables eqn.q to a space   delimited file called q.dat, controlled by the input options 'writeq', of type bool\n\nThis is a high level function.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.write_timings-Tuple{Utils.Timings,AbstractString}",
+    "page": "Misccellaneous",
+    "title": "Utils.write_timings",
+    "category": "Method",
+    "text": "Utils.write_timings\n\nWrite the values in a Timings object to a file.  Also writes the names of   fields to a separate file.\n\nInputs:     t: a  Timings object     fname: the file name, without extension\n\nThe values are written to the file fname.dat, and the names are written to   fname_names.dat\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.@verbose1",
+    "page": "Misccellaneous",
+    "title": "Utils.@verbose1",
+    "category": "Macro",
+    "text": "Utils.verbose1\n\nThis macro introduces an if statement that causes the expression to be    executed only if the variable verbose is greater than or equal to 1.     verbose must exist in the scope of the caller\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.@verbose2",
+    "page": "Misccellaneous",
+    "title": "Utils.@verbose2",
+    "category": "Macro",
+    "text": "Utils.verbose2\n\nThis macro introduces an if statement that causes the expression to be    executed only if the variable verbose is greater than or equal to 2.     verbose must exist in the scope of the caller\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.@verbose3",
+    "page": "Misccellaneous",
+    "title": "Utils.@verbose3",
+    "category": "Macro",
+    "text": "Utils.verbose3\n\nThis macro introduces an if statement that causes the expression to be    executed only if the variable verbose is greater than or equal to 3.     verbose must exist in the scope of the caller\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.@verbose4",
+    "page": "Misccellaneous",
+    "title": "Utils.@verbose4",
+    "category": "Macro",
+    "text": "Utils.verbose4\n\nThis macro introduces an if statement that causes the expression to be    executed only if the variable verbose is greater than or equal to 4.     verbose must exist in the scope of the caller\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.@verbose5",
+    "page": "Misccellaneous",
+    "title": "Utils.@verbose5",
+    "category": "Macro",
+    "text": "Utils.verbose5\n\nThis macro introduces an if statement that causes the expression to be    executed only if the variable verbose is greater than or equal to 5.     verbose must exist in the scope of the caller\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Miscellaneous-1",
+    "page": "Misccellaneous",
+    "title": "Miscellaneous",
+    "category": "section",
+    "text": "  CurrentModule = Utils  Modules = [Utils]\n  Pages = [\"Utils/Utils.jl\"]"
 },
 
 ]}

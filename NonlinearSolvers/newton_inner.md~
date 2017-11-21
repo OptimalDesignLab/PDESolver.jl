@@ -1,0 +1,14 @@
+# Newton_inner
+
+## NewtonData type
+
+
+## setupNewton
+
+## newtonInner
+
+```@docs
+physicsRhs
+```
+
+
