@@ -1,7 +1,11 @@
 # linear operator implementation for Petsc matrix-free
 
 """
-  Petsc matrix-free linear operator
+  Petsc matrix-free linear operator.
+
+  **Public Fields**
+
+   * none
 """
 type PetscMatFreeLO <: AbstractPetscMatFreeLO
   A::PetscMat  # shell matrix
@@ -19,6 +23,17 @@ type PetscMatFreeLO <: AbstractPetscMatFreeLO
   commsize::Int
 end
 
+"""
+  Outer constructor for PetscMatFreeLO
+
+  **Inputs**
+
+   * pc: a Petsc preconditioner of some kind
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function PetscMatFreeLO(pc::Union{AbstractPetscMatPC, AbstractPetscMatFreePC},
                     mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)

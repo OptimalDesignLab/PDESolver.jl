@@ -59,7 +59,7 @@ end
 """
   Calculates both the preconditioner and linear operator.  In the case where
   they share the matrix, the calculation is only performed once.  This function
-  should be preferred to callcing [`calcPC`](@ref) and [`calcLO`](@ref) one
+  should be preferred to callcing [`calcPC`](@ref) and [`calcLinearOperator`](@ref) one
   after the other
 
   **Inputs**
@@ -418,6 +418,8 @@ end
   StandardLinearSolver object itself and in the pc and lo objects.
   Therefore, at the end of a run, all you need to do is free the
   StandardLinearSolver and everything will be taken care of.
+
+  It is safe to call this function multiple times.
 """
 function free(ls::StandardLinearSolver)
 

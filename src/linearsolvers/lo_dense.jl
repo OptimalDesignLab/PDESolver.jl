@@ -2,6 +2,10 @@
 
 """
   Dense array linear operator.  Serial only.
+
+  **Public Fields**
+
+   * A: an Array{Float64, 1}
 """
 type DenseLO <: AbstractDenseLO
   A::Array{Float64, 2}
@@ -22,6 +26,7 @@ end
 
   **Inputs**
 
+   * pc: a PCNone
    * mesh
    * sbp
    * eqn

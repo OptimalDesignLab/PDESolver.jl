@@ -23,10 +23,17 @@ type SparseDirectLO <: AbstractSparseDirectLO
   commsize::Int
 end
 
-#TODO: in the constructor, make colptr and rowval alias A
-#      also, compute the symbolic factorization
-#      also, create finalizer for symbolic factorizatrion
+"""
+  Outer constructor for SparseDirectLO
 
+  **Inputs**
+
+   * pc: a PCNone
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts::Dict)
 
@@ -35,6 +42,9 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   else
     jac = SparseMatrixCSC(mesh, Float64)
   end
+
+  # Note: colptr and rowval alias A
+  #      also, compute the symbolic factorization
 
   fac = UmfpackLU{Float64, Int}(C_NULL, C_NULL, mesh.numDof, mesh.numDof,
                                 jac.colptr, jac.rowval, jac.nzval)

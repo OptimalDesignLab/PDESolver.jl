@@ -4,7 +4,12 @@
   CurrentModule = LinearSolvers
 ```
 
-This section describes the different catagories of preconditioners.
+This section describes the different catagories of preconditioners, including
+the API and the requirements for creating new preconditioners.
+Note that whenever a linear solver is used, the
+[Linear Solver](@ref sec:linearsolvers) interface should be used rather than
+the Linear Operator interface described here.
+
 
 ## Type hierarchy
 
@@ -27,9 +32,9 @@ preconditioner, some of the functions must be defined for the new
 supertype of the preconditioner.
 
 ```@docs
-calcPC
-applyPC
-applyPCTranspose
+calcPC(::AbstractPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::Any)
+applyPC(::AbstractPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::AbstractVector, ::AbstractVector)
+applyPCTranspose(::AbstractPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict, ::Any, ::AbstractVector, ::AbstractVector)
 getBasePC
 free(::AbstractPC)
 ```
@@ -148,3 +153,5 @@ end
 ```
 
 As before, this preconditioner is now fully usable.
+
+TODO: matrix free example

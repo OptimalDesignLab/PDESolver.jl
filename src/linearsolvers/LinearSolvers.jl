@@ -227,11 +227,8 @@ end
   preconditioners, hence there is only an API for applying inv(Ap),
   not Ap itself.
 
-  Every implementation of [`AbstractPC`](@ref) should extend this function with
-  a new method, although most matrix-explicit preconditioners can delegate to
-  the underlying [`PetscMatPC`](@ref) (ie. call `calcPC` on the
-  [`PetscMatPC`](@ref).  Matrix-free preconditioners need to provide a full
-  implementaton of this function.
+    Matrix-free preconditioners need to extend this function with a new method,
+    matrix-explicit preconditioners do not.
 
   **Inputs**
 
@@ -329,6 +326,13 @@ end
   Note that matrix-explicit implementations can often write a single function
   for all these cases if using an matrix interface functions that are defined
   for all the matrix types.  See [`MatExplicitLO`](@ref)
+
+  **Required Fields**
+
+   * lo_inner: another `AbstractPC`.  Can be one of [`DenseLO`](@ref),
+               [`SparseDirectLO`](@ref), [`PetscMatLO`](@ref), or
+               [`PetscMatFreeLO`](@ref), or any other user defined linear
+               operator.
 """
 abstract AbstractLO
 
@@ -382,12 +386,11 @@ typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
   not perform any actions.
 
   For matrix-explicit implementations, this function should be called on
-  lo_inner first and modifications to the jacobian made subsequently.
+  `lo_inner` first and modifications to the Jacobian made subsequently.
 
   **Inputs**
 
-   * lo: the AbstractLO implementation (updated with new
-         matrix).
+   * lo: the AbstractLO implementation (fields may be updated)
    * mesh
    * sbp
    * eqn
@@ -400,7 +403,7 @@ typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
     For matrix-free operation, this function sets the Petsc ctx for the
     PetscMat, which contains a reference to the mesh, sbp, eqn, opts arguments.
     This could lead to unexpected behavior if those arguments are modified and
-    this function is not called again before the next solve
+    this function is not called again before the next solve.
 
 """
 function calcLinearOperator(lo::AbstractLO, mesh::AbstractMesh,

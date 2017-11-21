@@ -7,6 +7,10 @@
   when accessing the `Ap` field, it is possible to write functions that
   operate on both regular and Petsc linear operators.
 
+  **Public Fields**
+
+   * A: a PetscMat
+
 """
 type PetscMatLO <: AbstractPetscMatLO
   A::PetscMat
@@ -25,6 +29,17 @@ type PetscMatLO <: AbstractPetscMatLO
   commsize::Int
 end
 
+"""
+  Outer constructor for PetscMatLO
+
+  **Inputs**
+
+   * pc: a Petsc preconditioner of some kind
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
