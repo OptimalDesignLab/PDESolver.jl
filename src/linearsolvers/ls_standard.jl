@@ -59,7 +59,7 @@ end
 """
   Calculates both the preconditioner and linear operator.  In the case where
   they share the matrix, the calculation is only performed once.  This function
-  should be preferred to callcing [`calcPC`](@ref) and [`calcLinearOperator`](@ref) one
+  should be preferred to calling [`calcPC`](@ref) and [`calcLinearOperator`](@ref) one
   after the other
 
   **Inputs**

@@ -154,4 +154,57 @@ end
 
 As before, this preconditioner is now fully usable.
 
-TODO: matrix free example
+### Matrix Free
+
+An outline of how a matrix free preconditioner should be implemented is:
+
+```
+type ExamplePetscMatFreePC <: AbstractPetscMatFreePC
+  pc_inner::PetscMatFreePC
+  # other fields...
+end
+
+function ExamplePetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
+                         eqn::AbstractSolutionData, opts::Dict)
+
+  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
+
+  return ExamplePetscMatFreePC(pc_inner)
+end
+
+function calcPC(pc::ExamplePetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  # these arguments will be passed into applyPC() the next time it is called
+  # by Petsc
+  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  # do any setup operations, storing data into the "other fields..." of the pc
+
+  return nothing
+end
+
+function applyPC(pc::PetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector)
+
+  # use the data in pc to multiply the preconditioner by b, storing result in x
+
+  return nothing
+end
+
+function applyPCTranspose(pc::PetscMatFreePC, mesh::AbstractMesh,
+                 sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector)
+
+  # use the data in pc to multiply the transpose of the preconditioner by b,
+  # storing result in x
+
+  return nothing
+end
+```
+
+Matrix-free preconditioners support the same kind of composition as matrix
+explicit preconditioners, so it is recommended to add the result into `x`,
+rather than overwrite `x` when `pc_inner` is not one of the [Concrete PC Types](@ref).

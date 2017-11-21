@@ -244,7 +244,7 @@ end
 
   **Inputs/Outputs**
 
-   * x: AbstractVector overwritten with results (same size as b)
+   * x: AbstractVector updated with results (same size as b) (do not overwrite)
 """
 function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
@@ -434,7 +434,7 @@ end
 
   **Inputs/Outputs**
 
-   * b: vector overwritten with results
+   * b: vector updated with results (do not overwrite)
 """
 function applyLinearOperator(lo::AbstractLO, mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData,
