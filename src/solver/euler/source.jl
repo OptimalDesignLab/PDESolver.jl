@@ -1,3 +1,8 @@
+#
+#TODO: As far as we know `q`, `q_x`, `q_xx`, we can move
+# the rest into a function, which is less error prone, and 
+# will save a lot of space
+#
 @doc """
 ### EulerEquationMod.applySourceTerm
 
@@ -245,7 +250,7 @@ function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-
+include("source_viscous.jl")
 
 @doc """
 ### EulerEquationMod.SRCDict
@@ -265,6 +270,11 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
+"SRCTrigonometric" => SRCTrigonometric(),
+"SRCTrigWall" => SRCTrigWall(),
+"SRCDoubleSquare" => SRCDoubleSquare(),
+"SRCPolynomial" => SRCPolynomial(),
+"SRCChannel" => SRCChannel(),
 )
 
 

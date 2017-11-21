@@ -1331,6 +1331,7 @@ function call{Tmsh, Tsol, Tres}(obj::defaultBC, params::ParamType,
   return nothing
 end
 
+include("bc_viscous.jl")
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -1352,6 +1353,9 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "PeriodicMMSBC" => PeriodicMMSBC(),
 "ChannelMMSBC" => ChannelMMSBC(),
 "defaultBC" => defaultBC(),
+"nonslipBC" => nonslipBC(),
+"ExactChannelBC" => ExactChannelBC(),
+"zeroPressGradientBC" => zeroPressGradientBC(),
 )
 
 @doc """

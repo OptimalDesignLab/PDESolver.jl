@@ -134,6 +134,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   Ma::Float64  # free stream Mach number
   Re::Float64  # free stream Reynolds number
   aoa::Tsol  # angle of attack
+  sideslip_angle::Tsol
   rho_free::Float64  # free stream density
   E_free::Float64 # free stream energy (4th conservative variable)
 
@@ -184,6 +185,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   t_solve::Float64 # linear solve time
   =#
   time::Timings
+  isViscous::Bool
+  penalty_relaxation::Float64
+  const_tii::Float64
 
   function ParamType(mesh, sbp, opts, order::Integer)
   # create values, apply defaults
@@ -277,6 +281,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     Ma = opts[ "Ma"]
     Re = opts[ "Re"]
     aoa = opts[ "aoa"]
+    sideslip_angle = 0.0
+    if haskey(opts, "sideslip_angle")
+      sideslip_angle = opts[ "sideslip_angle"]
+    end
     E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
     rho_free = 1.0
 
@@ -340,8 +348,22 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
       S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
     end
 
-
     time = Timings()
+
+    penalty_relaxation = 1.0
+    if haskey(opts, "Cip")
+      penalty_relaxation = opts["Cip"]
+    end
+    isViscous = false
+    if haskey(opts, "isViscous")
+      isViscous = opts["isViscous"]
+    end
+
+    const_tii = 0.0
+    if isViscous
+      const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
+    end
+
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
                Lambda,q_el1, q_el2, q_el3, q_el4, res_el1, res_el2,
                qs_el1, qs_el2, ress_el1, ress_el2,
@@ -351,7 +373,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                A_mats, Rmat1, Rmat2, P,
                nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
                velocity_deriv, velocity_deriv_xy,
-               h, cv, R, gamma, gamma_1, Ma, Re, aoa,
+               h, cv, R, gamma, gamma_1, Ma, Re, aoa, sideslip_angle,
                rho_free, E_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
@@ -359,7 +381,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
-               S, time)
+               S, time,
+               isViscous, penalty_relaxation, const_tii)
 
     end   # end of ParamType function
 
@@ -493,6 +516,15 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 # minorIterationCallback::Function # called before every residual evaluation
 
   file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
+
+  #
+  # variables for viscous terms
+  #
+  area_sum::Array{Tmsh, 1}			    # the wet area of each element
+	# vecflux_face::Array{Tres, 4}    # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+	vecflux_faceL::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+	vecflux_faceR::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+	vecflux_bndry::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 
   # inner constructor
   function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true)
@@ -714,7 +746,25 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
      eqn.file_dict = Dict{ASCIIString, IO}()
    end
 
-    return eqn
+   if eqn.params.isViscous
+     numfacenodes = mesh.numNodesPerFace
+     numfaces = mesh.numInterfaces
+     numBndFaces = mesh.numBoundaryFaces
+     numvars  = mesh.numDofPerNode
+     # eqn.vecflux_face = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+     eqn.vecflux_faceL = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+     eqn.vecflux_faceR = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+     eqn.vecflux_bndry = zeros(Tsol, Tdim, numvars, numfacenodes, numBndFaces)
+     eqn.area_sum = zeros(Tmsh, mesh.numEl)
+     calcElemSurfaceArea(mesh, sbp, eqn)
+   else
+     # eqn.vecflux_face  = Array(Tsol, 0, 0, 0, 0)
+     eqn.vecflux_faceL = Array(Tsol, 0, 0, 0, 0)
+     eqn.vecflux_faceR = Array(Tsol, 0, 0, 0, 0)
+     eqn.vecflux_bndry = Array(Tsol, 0, 0, 0, 0)
+     eqn.area_sum = Array(Tsol, 0)
+   end
+   return eqn
 
   end  # end of constructor
 
@@ -900,3 +950,104 @@ function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{T
 
   return tuple
 end
+
+@doc """
+### EulerEquationMod.calcElemFurfaceArea
+This function calculates the wet area of each element. A weight of 2 is given to
+faces with Dirichlet boundary conditions.
+Arguments:
+mesh: AbstractMesh
+sbp: SBP operator
+eqn: an implementation of EulerData. Does not have to be fully initialized.
+"""->
+# used by EulerData Constructor
+function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+                                                     sbp::AbstractSBP,
+                                                     eqn::EulerData{Tsol, Tres, Tdim})
+  nfaces = length(mesh.interfaces)
+  nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
+  area = zeros(Tmsh, mesh.numNodesPerFace)
+  face_area::Tmsh
+  face_area = 0.0
+  sbpface = mesh.sbpface
+
+  #
+  # Compute the wet area of each element
+  #
+  for f = 1:nfaces
+    face = mesh.interfaces[f]
+    eL = face.elementL
+    eR = face.elementR
+    fL = face.faceL
+    fR = face.faceR
+    #
+    # Compute the size of face
+    face_area = 0.0
+    
+    for n = 1 : mesh.numNodesPerFace
+      nrm_xy = ro_sview(mesh.nrm_face, :, n, f)
+      area[n] = norm(nrm_xy)
+      face_area += sbpface.wface[n]*area[n]
+    end
+
+    eqn.area_sum[eL] += face_area
+    eqn.area_sum[eR] += face_area
+  end
+
+  for bc = 1 : mesh.numBC
+    indx0 = mesh.bndry_offsets[bc]
+    indx1 = mesh.bndry_offsets[bc+1] - 1
+
+    for f = indx0 : indx1
+      face = mesh.bndryfaces[f].face
+      elem = mesh.bndryfaces[f].element
+
+      # Compute the size of face
+      face_area = 0.0
+      for n=1:mesh.numNodesPerFace
+        nrm_xy = ro_sview(mesh.nrm_face, :, n, f)
+        area[n] = norm(nrm_xy)
+        face_area += sbpface.wface[n]*area[n]
+      end
+      eqn.area_sum[elem] += 2.0*face_area
+    end
+  end
+  return nothing
+end
+
+@doc """
+
+Compute the constant coefficent in inverse trace ineqality, i.e.,
+the largest eigenvalue of 
+B^{1/2} R H^{-1} R^{T} B^{1/2}
+
+Input:
+  sbp
+Output:
+  cont_tii
+"""->
+
+function calcTraceInverseInequalityConst{Tsbp}(sbp::AbstractSBP{Tsbp},
+                                               sbpface::AbstractFace{Tsbp})
+  R = sview(sbpface.interp, :,:)
+  BsqrtRHinvRtBsqrt = Array(Tsbp, sbpface.numnodes, sbpface.numnodes)
+  perm = zeros(Tsbp, sbp.numnodes, sbpface.stencilsize)
+  Hinv = zeros(Tsbp, sbp.numnodes, sbp.numnodes)
+  Bsqrt = zeros(Tsbp, sbpface.numnodes, sbpface.numnodes)
+  for s = 1:sbpface.stencilsize
+    perm[sbpface.perm[s, 1], s] = 1.0
+  end
+  for i = 1:sbp.numnodes
+    Hinv[i,i] = 1.0/sbp.w[i]
+  end
+  for i = 1:sbpface.numnodes
+    Bsqrt[i,i] = sqrt(sbpface.wface[i])
+  end
+
+  BsqrtRHinvRtBsqrt = Bsqrt*R.'*perm.'*Hinv*perm*R*Bsqrt 
+  const_tii = eigmax(BsqrtRHinvRtBsqrt)
+
+  return const_tii
+
+end
+

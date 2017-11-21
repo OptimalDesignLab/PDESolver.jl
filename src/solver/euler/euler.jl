@@ -182,6 +182,11 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
+  if eqn.params.isViscous == true
+    evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
+    evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
+  end
+
   return nothing
 end  # end evalResidual
 
@@ -501,6 +506,17 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getBCFluxes(mesh, sbp, eqn, opts)
 #     println("  getBCFluxes @time printed above")
   end
+  
+  if eqn.params.isViscous == true
+		# fill!(eqn.vecflux_face, 0.0)
+		fill!(eqn.vecflux_faceL, 0.0)
+		fill!(eqn.vecflux_faceR, 0.0)
+
+		calcViscousFlux_interior(mesh, sbp, eqn, opts)
+
+		fill!(eqn.vecflux_bndry, 0.0)
+		calcViscousFlux_boundary(mesh, sbp, eqn, opts)
+  end
 
   # is this needed for anything besides edge stabilization?
   if eqn.params.use_edgestab
@@ -628,6 +644,9 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
 
+  if eqn.params.isViscous == true
+    weakdifferentiate2!(mesh, sbp, eqn, eqn.res)
+  end
   # artificialViscosity(mesh, sbp, eqn)
 
 end  # end evalVolumeIntegrals
