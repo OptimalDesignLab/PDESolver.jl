@@ -107,6 +107,9 @@ end
   signature, so the user should take care to ensure it is correct for the
   physics module.
 
+  The physics module must have an associative container called `ICDict` that
+  accepts ASCIIStrings as keys and functions as values.
+
   Inputs:
 
     mod: physics module to register the function with
