@@ -72,7 +72,7 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
 end # end function
 
 #test_lowlevel_mesh(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_mesh, "input_vals_channel.jl")
+add_func2!(EulerTests, test_lowlevel_mesh, "input_vals_channel.jl", [TAG_SHORTTEST])
 
 """
   This function tests calculation of quantities needed for using the
@@ -265,7 +265,7 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 """
   This function tests functions that are used to convert entire vectors/arrays
@@ -362,7 +362,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
 end
      
 #test_lowlevel_convert(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 
 
@@ -443,7 +443,7 @@ end  # end function
 
 #test_lowlevel_eigsystem()
 
-add_func2!(EulerTests, test_lowlevel_eigsystem, "input_vals_channel.jl")
+add_func2!(EulerTests, test_lowlevel_eigsystem, "input_vals_channel.jl", [TAG_SHORTTEST])
 
 
 """
@@ -483,7 +483,7 @@ function test_lowlevel_calc(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_convert(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 """
   Ths function tests calculation of boundary conditions and the Roe solver.
@@ -498,6 +498,8 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
   F = zeros(4)
   Fe = zeros(4)
   coords = [1.0,  0.0]
+  nrm_xy = zeros(mesh.dim)
+
 
   flux_parametric = zeros(4,2)
 
@@ -520,12 +522,12 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     nrm2 = [dxidx[2,1], dxidx[2,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
-    EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, dxidx, dir, F_roe)
+    EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, nrm, F_roe)
     @fact F_roe --> roughly(F) 
 
 
     # test that roe flux = euler flux of BC functions
-    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, q)
+    EulerEquationMod.calcIsentropicVortex(eqn.params, coords, q)
 
     nrm1 = [dxidx[1,1], dxidx[1,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
@@ -535,7 +537,8 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
     func1 = EulerEquationMod.isentropicVortexBC()
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+    calcBCNormal(eqn.params, dxidx, dir, nrm_xy)
+    func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe,)
 
     @fact F_roe --> roughly(F) 
 
@@ -545,14 +548,20 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
     nrm2 = [dxidx[2,1], dxidx[2,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
-
+   
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+    func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
     @fact F_roe --> roughly(F) 
 
-    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, q)
+    # test the entropy stable BC
+    func2 = EulerEquationMod.noPenetrationESBC()
+    func2(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
+
+    @fact F_roe --> roughly(F)
+
+    EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, q)
     func1 = EulerEquationMod.Rho1E2U3BC()
     nrm1 = [dxidx[1,1], dxidx[1,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
@@ -561,7 +570,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 
 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
-    func1(q, aux_vars, coords, dxidx, dir, F_roe, eqn.params)
+    func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
     @fact F_roe --> roughly(F) 
   end  # end facts block
@@ -570,7 +579,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_boundary(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_boundary, "input_vals_channel.jl", [TAG_BC, TAG_FLUX])
+add_func2!(EulerTests, test_lowlevel_boundary, "input_vals_channel.jl", [TAG_BC, TAG_FLUX, TAG_SHORTTEST])
 
 
 """
@@ -583,19 +592,19 @@ function test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
   facts("--- Testing common functions ---") do
 
     F = zeros(4)
-    EulerEquationMod.calcRho1Energy2(coords, eqn.params, F)
+    EulerEquationMod.calcRho1Energy2(eqn.params, coords, F)
     @fact F[1] --> 1.0
     @fact F[4] --> 2.0
 
     fill!(F, 0.0)
-    EulerEquationMod.calcRho1Energy2U3(coords, eqn.params, F)
+    EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, F)
     @fact F[1] --> roughly(1.0, atol=1e-4)
     @fact F[2] --> roughly(0.35355, atol=1e-4)
     @fact F[3] --> roughly(0.35355, atol=1e-4)
     @fact F[4] --> roughly(2.0, atol=1e-4)
 
     fill!(F, 0.0)
-    EulerEquationMod.calcIsentropicVortex(coords, eqn.params, F)
+    EulerEquationMod.calcIsentropicVortex(eqn.params, coords, F)
     @fact F[1] --> roughly(2.000, atol=1e-4)
     @fact F[2] --> roughly(0.000, atol=1e-4)
     @fact F[3] --> roughly(-1.3435, atol=1e-4)
@@ -630,7 +639,7 @@ function test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_commonfuncs, "input_vals_channel.jl")
+add_func2!(EulerTests, test_lowlevel_commonfuncs, "input_vals_channel.jl", [TAG_SHORTTEST])
 
 """
   This functinon tests dataprep and some auxiliary functions
@@ -689,19 +698,19 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 
 
     # test getBCFluxes
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 1] --> roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 2] --> roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 3] --> roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
     end
 
-    for j= 1:sbp.numfacenodes
+    for j= 1:mesh.numNodesPerFace
       @fact eqn.bndryflux[:, j, 4] --> roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
     end
   end  # end facts block
@@ -710,7 +719,7 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_dataprep(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_dataprep, "input_vals_channel.jl", [TAG_FLUX])
+add_func2!(EulerTests, test_lowlevel_dataprep, "input_vals_channel.jl", [TAG_FLUX, TAG_SHORTTEST])
 
 """
   This function tests evaluating volume and boundary integrals over the
@@ -727,12 +736,12 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
     el1_res = [-0.35355  0  0.35355;
                 -0.874999  0.750001  0.124998;
-		-0.124998  -0.750001  0.874999;
-		-0.972263  0  0.972263]
+    -0.124998  -0.750001  0.874999;
+    -0.972263  0  0.972263]
     el2_res = [-0.35355  0.35355 0;
                 -0.124998  0.874999 -0.75001;
-		-0.874999 0.124998 0.75001;
-		-0.972263  0.972263 0]
+    -0.874999 0.124998 0.75001;
+    -0.972263  0.972263 0]
  
     @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-4)
     @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-4)
@@ -743,16 +752,16 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
   facts("--- Testing evalBoundaryIntegrals ---") do
     fill!(eqn.res, 0.0)
 
-    EulerEquationMod.evalBoundaryIntegrals( mesh, sbp, eqn)
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
     el1_res = [0.35355 0 -0.35355;
                0.124998 -0.750001 -0.874999;
-	       0.874999 0.750001 -0.124998;
-	       0.972263  0  -0.972263]
+         0.874999 0.750001 -0.124998;
+         0.972263  0  -0.972263]
     el2_res = [0.35355 -0.35355 0;
                0.874999 -0.124998 0.750001;
-	       0.124998  -0.874999  -0.750001;
-	       0.972263  -0.972263  0]
+         0.124998  -0.874999  -0.750001;
+         0.972263  -0.972263  0]
 
     @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-5)
     @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-5)
@@ -782,5 +791,5 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 end
 
 #test_lowlevel_integrals(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_integrals, "input_vals_channel.jl", [TAG_BC, TAG_FLUX])
+add_func2!(EulerTests, test_lowlevel_integrals, "input_vals_channel.jl", [TAG_BC, TAG_FLUX, TAG_SHORTTEST])
 

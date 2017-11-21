@@ -25,17 +25,16 @@ println("eqn.q = \n", eqn.q)
 facts("--- Testing evalInteriorFlux ---") do
 
   for (findex, face) in enumerate(mesh.interfaces)
-    @fact sbp.numfacenodes --> 2
     
     nbrnodeindex = Array(sbp.numfacenodes:-1:1)
     @fact nbrnodeindex --> [2,1]
 
     iL = Array(Int, 2)
     iR = Array(Int, 2)
-    iL[1] = sbp.facenodes[1, face.faceL]
-    iL[2] = sbp.facenodes[2, face.faceL]
-    iR[1] = sbp.facenodes[nbrnodeindex[1], face.faceR]
-    iR[2] = sbp.facenodes[nbrnodeindex[2], face.faceR]
+    iL[1] = mesh.facenodes[1, face.faceL]
+    iL[2] = mesh.facenodes[2, face.faceL]
+    iR[1] = mesh.facenodes[nbrnodeindex[1], face.faceR]
+    iR[2] = mesh.facenodes[nbrnodeindex[2], face.faceR]
     
     @fact iL[1] --> 2
     @fact iL[2] --> 3
@@ -45,13 +44,13 @@ facts("--- Testing evalInteriorFlux ---") do
     evalInteriorFlux(mesh, sbp, eqn, opts)
     println("eqn.res = \n", eqn.res)
     #=
-  	for j = 1:sbp.numfacenodes
-	  il = sbp.facenodes[j, face.faceL]::Int
-	  println("il = ", il)
-	  ir = sbp.facenodes[nbrnodeindex[j], face.faceR]::Int
-	  println("ir = ", ir)
-  	end
-  	=#
+    for j = 1:sbp.numfacenodes
+    il = mesh.facenodes[j, face.faceL]::Int
+    println("il = ", il)
+    ir = mesh.facenodes[nbrnodeindex[j], face.faceR]::Int
+    println("ir = ", ir)
+    end
+    =#
   end
   
 

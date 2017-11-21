@@ -53,16 +53,13 @@ crank_nicolson
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
-  #----------------------------------------------------------------------
-#   throw(ErrorException("Crank-Nicolson is in development. Exiting."))
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-  fstdout = BufferedIO(STDOUT)
   if myrank == 0
-    println(fstdout, "\nEntered Crank-Nicolson")
-    println(fstdout, "res_tol = ", res_tol)
+    println(BSTDOUT, "\nEntered Crank-Nicolson")
+    println(BSTDOUT, "res_tol = ", res_tol)
   end
-  flush(fstdout)
+  flush(BSTDOUT)
 
   output_freq = opts["output_freq"]::Int
   write_vis = opts["write_vis"]::Bool
@@ -72,38 +69,64 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
+  use_checkpointing = opts["use_checkpointing"]::Bool
+  chkpoint_freq = opts["checkpoint_freq"]::Int
+  ncheckpoints = opts["ncheckpoints"]::Int
+
+
   if jac_type == 4
     throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
   end
 
   @mpi_master if myrank == 0
-    _f1 = open("convergence.dat", "a+")
+    _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
   end
 
   t = 0.0
   t_steps = round(Int, t_max/h)
 
-  eqn_nextstep = deepcopy(eqn)
-  # TODO TODO TODO: copyForMultistage does not give correct values.
-  #     deepcopy works for now, but uses more memory than copyForMultistage, if it worked
-#   eqn_nextstep = copyForMultistage(eqn)
+  # eqn_nextstep = deepcopy(eqn)
+  eqn_nextstep = eqn_deepcopy(mesh, sbp, eqn, opts)
+
+  # TODO: copyForMultistage! does not give correct values.
+  #     deepcopy works for now, but uses more memory than copyForMultistage!, if it worked
+  # eqn_nextstep = copyForMultistage!(eqn)
   eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
   @debug1 println("============ In CN ============")
 
+   # setup all the checkpointing related data
+  chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
+  istart = chkpointdata.i
+
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
-  # NOTE 20161103: supplying eqn_nextstep does not work for x^2 + t^2 case, need to use eqn
   newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
-  # TODO TODO: f should be the rhs function. this is createPetsc ctx stuff, 20161123
 
-  for i = 2:(t_steps + 1)
+  # this loop is 2:(t_steps+1) when not restarting
+  for i = istart:(t_steps + 1)
 
-    @mpi_master println("\ni = ", i, ", t = ", t)
+    t = (i-2)*h
+    @mpi_master println(BSTDOUT, "\ni = ", i, ", t = ", t)
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
+
+    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
+      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+      skip_checkpoint = false
+      # save all needed variables to the chkpointdata
+      chkpointdata.i = i
+
+      if countFreeCheckpoints(chkpointer) == 0
+        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+      end
+      
+      # save the checkpoint
+      saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpointdata)
+    end
+
 
     #----------------------------
     # zero out Jac
@@ -115,14 +138,12 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # TODO: output freq
 
-
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
     # NOTE: eqn_nextstep changed to eqn 20161013
     ctx_residual = (f, eqn, h, newton_data)
 
-    #TODO: unused variable?
     t_nextstep = t + h
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
@@ -145,16 +166,16 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     
     @mpi_master if i % output_freq == 0
-      println(fstdout, "flushing convergence.dat to disk")
+      println(BSTDOUT, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
     if (res_norm < res_tol)
       if myrank == 0
-        println(fstdout, "breaking due to res_tol, res norm = $res_norm")
+        println(BSTDOUT, "breaking due to res_tol, res norm = $res_norm")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
@@ -162,9 +183,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     if use_itermax && i > itermax
       if myrank == 0
-        println(fstdout, "breaking due to itermax")
+        println(BSTDOUT, "breaking due to itermax")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
@@ -183,14 +204,17 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
-    t = t_nextstep
-    flush(fstdout)
+#    t = t_nextstep
+    flush(BSTDOUT)
 
   end   # end of t step loop
 
+  # final time update
+  t += h
+
   # depending on how many timesteps we do, this may or may not be necessary
-  #   usage: copy!(dest, src)
-  copy!(eqn, eqn_nextstep)
+  #   usage: copyForMultistage!(dest, src)
+  copyForMultistage!(eqn, eqn_nextstep)
 
 
   if jac_type == 3
@@ -200,6 +224,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   @debug1 println("============= end of CN: t = $t ===============")
   return t
+
+  flush(BSTDOUT)
 
 end   # end of crank_nicolson function
 
@@ -300,7 +326,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   # eqn comes in through ctx_residual, which is set up in CN before the newtonInner call
 
   physics_func = ctx[1]
-  # NOTE: changed to eqn 20161013
   eqn = ctx[2]
   h = ctx[3]
 
@@ -310,8 +335,9 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
   assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
+  # TODO: can parallel_type != 2 and have CN work?
   if opts["parallel_type"] == 2 && mesh.npeers > 0
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    startSolutionExchange(mesh, sbp, eqn, opts)
   end
   physics_func(mesh, sbp, eqn, opts, t)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
@@ -333,53 +359,6 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   return nothing
 
 end     # end of function cnRhs
-
-@doc """
-### NonlinearSolvers.pde_pre_func
-
-  The pre-function for solving partial differential equations with a physics
-  module.  The only operation it performs is disassembling eqn.q_vec into
-  eqn.q
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-"""->
-function pde_pre_func(mesh, sbp, eqn, opts)
-  
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-end
-
-
-@doc """
-### NonlinearSolvers.pde_post_func
-
-  The post-function for solving partial differential equations with a physics
-  module.  This function multiplies by A0inv, assembles eqn.res into
-  eqn.res_vec, multiplies by the inverse mass matrix, and calculates
-  the SBP approximation to the integral L2 norm
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-"""->
-function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
-  eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
-  if calc_norm
-    local_norm = calcNorm(eqn, eqn.res_vec)
-    eqn.params.time.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
-    return sqrt(global_norm)
-  end
-
-   return nothing
-end
 
 # the goal is to replace newton.jl.
 # this will go into CN in the time-stepping loop

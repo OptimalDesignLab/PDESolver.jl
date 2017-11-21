@@ -56,7 +56,7 @@ function test_3d_conversion(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_conversion(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 
 function test_3d_eigensystem(mesh, sbp, eqn, opts)
@@ -153,7 +153,7 @@ function test_3d_eigensystem(mesh, sbp, eqn, opts)
 end
 
 
-add_func2!(EulerTests, test_3d_eigensystem,  test_3d_inputfile, [TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_3d_eigensystem,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 
 """
@@ -202,7 +202,7 @@ function test_3d_flux(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_flux(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_FLUX])
+add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_FLUX, TAG_SHORTTEST])
 
 """
   Test some auxiliary calculation functions in 3D
@@ -231,7 +231,7 @@ function test_3d_misc(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_misc(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_MISC])
+add_func2!(EulerTests, test_3d_misc,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_MISC, TAG_SHORTTEST])
 
 
 function test_3d_secondary_quantities()
@@ -412,7 +412,7 @@ function test_3d_secondary_quantities()
 
 end 
 
-add_func1!(EulerTests, test_3d_secondary_quantities, [TAG_MISC])
+add_func1!(EulerTests, test_3d_secondary_quantities, [TAG_MISC, TAG_SHORTTEST])
 
 
 
@@ -478,7 +478,7 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_matrices(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile)
+add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST])
 
 """
   Test Roe solver in 3D
@@ -486,6 +486,7 @@ add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile)
 function test_3d_bc(mesh, sbp, eqn, opts)
   facts("----- Testing BC Solvers -----") do
 
+    params = eqn.params
     q = [1., 2, 3, 4, 15]
     F = zeros(q)
     F2 = zeros(q)
@@ -494,11 +495,35 @@ function test_3d_bc(mesh, sbp, eqn, opts)
     p = EulerEquationMod.calcPressure(eqn.params, q)
     aux_vars = [p]
     dxidx = mesh.dxidx[:, :, 1, 1]
+    nrm_xy = zeros(mesh.dim)
 
-    EulerEquationMod.RoeSolver(eqn.params, q, q, aux_vars, dxidx, nrm, F2)
-    EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
+    calcBCNormal(params, dxidx, nrm, nrm_xy)
+    EulerEquationMod.RoeSolver(params, q, q, aux_vars, nrm_xy, F2)
+    EulerEquationMod.calcEulerFlux(params, q, aux_vars, dir, F)
 
     @fact F2 --> roughly(F, atol=1e-13)
+
+    func1 = EulerEquationMod.noPenetrationESBC()
+    # make velocity parallel to the boundary
+    nrm = mesh.nrm_bndry[:, 1, 1]
+    tngt = mesh.coords_bndry[:, 2, 1] - mesh.coords_bndry[:, 1, 1]
+    tngt = tngt./norm(tngt)
+    vval = 3
+    q = [1., vval*tngt[1], vval*tngt[2], vval*tngt[3], 15]
+    aux_vars = eqn.aux_vars[:, 1, 1]
+    coords = mesh.coords_bndry[:, 1, 1]
+
+
+    func1(params, q, aux_vars, coords, nrm, F2)
+    EulerEquationMod.calcEulerFlux(params, q, aux_vars, nrm, F)
+
+    @fact F2 --> roughly(F, atol=1e-13)
+
+    func1 = EulerEquationMod.noPenetrationBC()
+    func1(params, q, aux_vars, coords, nrm, F2)
+
+    @fact F2 --> roughly(F, atol=1e-13)
+
   end  # end facts block
 
   return nothing
@@ -532,20 +557,20 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     # test reverse mode
     moment_about = [0.0, 0, 0]
     nout = 3
-    nin = mesh.dim*mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
+    nin = mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
     jac = zeros(nout, nin)
 
     mom_0 = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
     pert = 1e-6
     for i=1:nin
-      mesh.dxidx_bndry[i] += pert
+      mesh.nrm_bndry[i] += pert
       mom_i = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
 
       for j=1:nout
         jac[j, i] = (mom_i[j] - mom_0[j])/pert
       end
 
-      mesh.dxidx_bndry[i] -= pert
+      mesh.nrm_bndry[i] -= pert
     end
 
     # reverse mode
@@ -553,19 +578,22 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     mom_bar = zeros(mom_0)
     for i=1:nout
       mom_bar[i] = 1
-      fill!(mesh.dxidx_bndry_bar, 0.0)
+      fill!(mesh.nrm_bndry_bar, 0.0)
       EulerEquationMod.calcMomentContribution_revm!(mesh, eqn, [1], moment_about, mom_bar)
 
       for j=1:nin
-        jac2[i, j] = mesh.dxidx_bndry_bar[j]
+        jac2[i, j] = mesh.nrm_bndry_bar[j]
       end
 
       mom_bar[i] = 0
     end
 
+    #=
     for i=1:nin
       @fact norm(jac[:, i] - jac2[:, i])/size(jac, 1) --> roughly(0.0, atol=1e-5)
     end
+    =#
+    @fact norm(jac - jac2)/sqrt(length(jac)) --> roughly(0.0, atol=1e-5)
 
 
     # test other method
@@ -573,8 +601,8 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     face_range = mesh.bndry_offsets[1]:(mesh.bndry_offsets[2] - 1)
     bndryfaces = mesh.bndryfaces[face_range]
     coords_faces = mesh.coords_bndry[:, :, face_range]
+    nrm = mesh.nrm_bndry[:, :, face_range]
 
-    nrm = Utils.computeNormal(mesh, eqn, bndryfaces)
     dforce = EulerEquationMod.computeDForce(mesh, eqn, bndryfaces, nrm)
     mom_0 = EulerEquationMod.calcMomentContribution!(mesh.sbpface, coords_faces, dforce, moment_about)
     nin = length(dforce)
@@ -608,9 +636,12 @@ function test_3d_functional(mesh, sbp, eqn, opts)
       mom_bar[i] = 0
     end
 
+    #=
     for i=1:size(jac, 2)
       @fact norm(jac[:, i] - jac2[:, i]) --> roughly(0.0, atol=1e-5)
     end
+    =#
+    @fact norm(jac - jac2)/sqrt(length(jac)) --> roughly(0.0, atol=1e-5)
 
 
     eqn.q_bndry = q_bndry_orig
@@ -620,5 +651,5 @@ function test_3d_functional(mesh, sbp, eqn, opts)
   return nothing
 end
 
-add_func2!(EulerTests, test_3d_bc,  test_3d_inputfile, [TAG_BC])
-add_func2!(EulerTests, test_3d_functional,  test_3d_inputfile, [TAG_REVERSEMODE])
+add_func2!(EulerTests, test_3d_bc,  test_3d_inputfile, [TAG_BC, TAG_SHORTTEST])
+add_func2!(EulerTests, test_3d_functional,  test_3d_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])

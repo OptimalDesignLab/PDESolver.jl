@@ -65,4 +65,19 @@ function test_homotopy(mesh, sbp, eqn, opts)
   return nothing
 end
 
-add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY])
+add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST])
+
+function test_homotopy_convergence()
+
+  rmfile("convergence.dat")
+  mesh, sbp, eqn, opts = run_solver("input_vals_homotopy.jl")
+
+  @fact calcNorm(eqn, eqn.res_vec, strongres=true) --> less_than(opts["res_abstol"])
+  data = readdlm("convergence.dat")
+
+  @fact size(data, 1) --> less_than(30)  # 16 iterations to convergence
+
+  return nothing
+end
+
+add_func1!(EulerTests, test_homotopy_convergence, [TAG_HOMOTOPY, TAG_LONGTEST])

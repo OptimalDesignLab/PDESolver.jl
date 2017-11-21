@@ -27,7 +27,7 @@ function calcVolumeContribution!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp},
   vol = zero(Tmsh)
   for f = 1:size(nrm,3)
     for i = 1:sbpface.numnodes
-      for di = 1:3
+      for di = 1:size(nrm,1)# 3
         vol += (1/3)*sbpface.wface[i]*xsbp[di,i,f]*nrm[di,i,f]
       end
     end
@@ -51,11 +51,12 @@ function calcVolumeContribution!{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSo
     bndry_faces = sview(mesh.bndryfaces, face_range)
     
     # calculate normal
-    nrm = computeNormal(mesh, eqn, bndry_faces)
+    nrm = sview(mesh.nrm_bndry, :, :, face_range)
+#    nrm = computeNormal(mesh, eqn, bndry_faces, mesh.dxidx_bndry)
     coords = sview(mesh.coords_bndry, :, :, face_range)
 
     # compute volume contribution
-    vol += calcVolumeContribution!(mesh.sbpface, coords,nrm)
+    vol += calcVolumeContribution!(mesh.sbpface, coords, nrm)
   end
 
   return vol
@@ -71,15 +72,17 @@ function calcVolumeContribution_rev!{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::Abstra
     bndry_faces = sview(mesh.bndryfaces, face_range)
     coords = sview(mesh.coords_bndry, :, :, face_range)
     coords_bar = zeros(coords)  #TODO: make this a field of mesh?
-     
-    nrm = computeNormal(mesh, eqn, bndry_faces)
-    nrm_bar = zeros(Tmsh, mesh.dim, mesh.numNodesPerFace, length(bndry_faces))
+
+    nrm = sview(mesh.nrm_bndry, :, :, face_range)
+    nrm_bar = sview(mesh.nrm_bndry_bar, :, :, face_range)
+#    nrm = computeNormal(mesh, eqn, bndry_faces)
+#    nrm_bar = zeros(Tmsh, mesh.dim, mesh.numNodesPerFace, length(bndry_faces))
 
     # compute volume contribution
     calcVolumeContribution_rev!(mesh.sbpface, coords, coords_bar, nrm, nrm_bar, vol_bar)
 
     # calculate normal
-    computeNormal_rev(mesh, eqn,  bndry_faces, nrm_bar)
+#    computeNormal_rev(mesh, eqn,  bndry_faces, nrm_bar)
 
   end
 
@@ -88,7 +91,8 @@ end
 
 """
   Computes the normal vector at each surface node of the given list of faces.
-  
+  Straight-sided meshes only!
+
   Inputs:
     mesh: an AbstractMesh
     sbp: an SBP operator
@@ -98,7 +102,12 @@ end
                 containing the normal vectors
 """
 function computeNormal{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData,
-                             bndryfaces::AbstractArray{Boundary, 1})
+                             bndryfaces::AbstractArray{Boundary, 1},
+                             dxidx::AbstractArray{Tmsh, 4})
+
+  if typeof(mesh) <: AbstractDGMesh
+    @assert mesh.coord_order == 1
+  end
 
   nfaces = length(bndryfaces)
   nrm = zeros(Tmsh, mesh.dim, mesh.numNodesPerFace, nfaces)
@@ -107,7 +116,7 @@ function computeNormal{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData
     bndry_i = bndryfaces[i]
     nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)
     for j=1:mesh.numNodesPerFace
-      dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
+      dxidx_j = sview(dxidx, :, :, j, i)
       nrm_xy_j = sview(nrm, :, j, i)
       calcBCNormal(eqn.params, dxidx_j, nrm_xi, nrm_xy_j)
     end
@@ -121,16 +130,21 @@ end
   dxidx_bndry
 """
 function computeNormal_rev{Tmsh}(mesh::AbstractMesh, eqn::AbstractSolutionData,
-                                 bndryfaces::AbstractArray{Boundary, 1}, 
-                                 nrm_bar::Abstract3DArray{Tmsh})
+                                 bndryfaces::AbstractArray{Boundary, 1},
+                                 nrm_bar::Abstract3DArray{Tmsh},
+                                 dxidx::AbstractArray{Tmsh, 4},
+                                 dxidx_bar::AbstractArray{Tmsh, 4})
+  if typeof(mesh) <: AbstractDGMesh
+    @assert mesh.coord_order == 1
+  end
 
   nfaces = length(bndryfaces)
   for i=1:nfaces
     bndry_i = bndryfaces[i]
     nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)
     for j=1:mesh.numNodesPerFace
-      dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
-      dxidxbar_j = sview(mesh.dxidx_bndry_bar, :, :, j, i)
+      dxidx_j = sview(dxidx, :, :, j, i)
+      dxidxbar_j = sview(dxidx_bar, :, :, j, i)
       nrmbar_xy_j = sview(nrm_bar, :, j, i)
       calcBCNormal_revm(eqn.params, dxidx_j, nrm_xi, nrmbar_xy_j, dxidxbar_j)
     end
@@ -172,7 +186,7 @@ function calcVolumeContribution_rev!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp},
   @assert( size(xsbp,1) == size(xsbp,1) == size(nrm,1) == size(nrm_bar,1) )
   for f = 1:size(nrm,3)
     for i = 1:sbpface.numnodes
-      for di = 1:3
+      for di = 1:size(nrm,1) # 3
         # vol += (1/3)*sbpface.wface[i]*xsbp[di,i,f]*nrm[di,i,f]
         fac = vol_bar*(1/3)*sbpface.wface[i]
         xsbp_bar[di,i,f] += fac*nrm[di,i,f]
@@ -185,8 +199,11 @@ end
 @doc """
 ### calcProjectedAreaContribution!
 
-Returns the contribution from the given faces to the projected area onto the
-plane of coordiante `di`
+  Returns the contribution from the given faces to the projected area onto the
+  plane of coordiante `di`
+
+  Because this function uses the absolute value of the normal vector, it is not
+  differentiable at zero.
 
 **Inputs**
 
@@ -227,7 +244,8 @@ function calcProjectedAreaContribution!{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::Abs
     bndry_faces = sview(mesh.bndryfaces, face_range)
     
     # calculate normal
-    nrm = computeNormal(mesh, eqn, bndry_faces)
+    nrm = sview(mesh.nrm_bndry, :, :, face_range)
+#    nrm = computeNormal(mesh, eqn, bndry_faces)
 #    coords = sview(mesh.coords_bndry, :, :, face_range)
 
     proj_area += calcProjectedAreaContribution!(mesh.sbpface, nrm, di)
@@ -287,12 +305,14 @@ function calcProjectedAreaContribution_rev!{Tmsh}(mesh::AbstractMesh, eqn::Abstr
     face_range = start_idx:end_idx
     bndry_faces = sview(mesh.bndryfaces, face_range)
 
-    nrm = computeNormal(mesh, eqn, bndry_faces)
-    nrm_bar = zero(nrm)
+    nrm = sview(mesh.nrm_bndry, :, :, face_range)
+    nrm_bar = sview(mesh.nrm_bndry_bar, :, :, face_range)
+#    nrm = computeNormal(mesh, eqn, bndry_faces)
+#    nrm_bar = zero(nrm)
     calcProjectedAreaContribution_rev!(mesh.sbpface, nrm, nrm_bar, di, projarea_bar)
 
     # back propigate to dxidx_bndry_bar
-    computeNormal_rev(mesh, eqn, bndry_faces, nrm_bar)
+#    computeNormal_rev(mesh, eqn, bndry_faces, nrm_bar)
   end
 
   return nothing

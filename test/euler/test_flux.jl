@@ -18,14 +18,18 @@ end
 """
   Test that a flux is symmetric.  This is not a test function itself, but it
   is called by test functions
+
+  if test_symmetry = false, then only consistency is tested
 """
-function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler; test_symmetry=true)
 
   # test symmetry
-  functor(params, qL, qR, aux_vars, nrm, F_num)
-  functor(params, qR, qL, aux_vars, nrm, F_num2)
-  for i=1:length(F_num)
-    @fact F_num[i] --> roughly(F_num2[i], atol=1e-12)
+  if test_symmetry
+    functor(params, qL, qR, aux_vars, nrm, F_num)
+    functor(params, qR, qL, aux_vars, nrm, F_num2)
+    for i=1:length(F_num)
+      @fact F_num[i] --> roughly(F_num2[i], atol=1e-12)
+    end
   end
 
   # test consistency
@@ -127,6 +131,9 @@ function test_flux_2d()
 
     functor = EulerEquationMod.FluxDict["DucrosFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
+    
+    functor = EulerEquationMod.FluxDict["LFFlux"]
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler, test_symmetry=false)
 
     functor = EulerEquationMod.FluxDict["IRFlux"]
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
@@ -227,13 +234,59 @@ function test_flux_2d()
       end
     end
 
+
+    # test non-precomputed flux version of functions
+    ic_func = EulerEquationMod.ICDict["ICExp"]
+    ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+    # test volume integrals
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    fill!(eqn.res, 0.0)
+    opts["precompute_volume_flux"] = false
+    EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    # test face integrals
+    opts["precompute_volume_flux"] = true # reset, to avoid failure cascade
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    fill!(eqn.res, 0.0)
+    opts["precompute_face_flux"] = false
+    EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    # test face integrals
+    opts["precompute_face_flux"] = true # reset, to avoid failure cascade
+    fill!(eqn.res, 0.0)
+    EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    fill!(eqn.res, 0.0)
+    opts["precompute_face_flux"] = false
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+
+
   end  # end facts block
 
   return nothing
 end  # end function
 
 #test_flux_2d()
-add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILINEAR])
+add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILINEAR, TAG_SHORTTEST])
 
 """
   Test calculation of numerical flux functions in 3D
@@ -316,4 +369,4 @@ end
 
 
 #test_flux_3d()
-add_func1!(EulerTests, test_flux_3d, [TAG_VOLUMEINTEGRALS, TAG_FLUX])
+add_func1!(EulerTests, test_flux_3d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_SHORTTEST])

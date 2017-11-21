@@ -1,9 +1,11 @@
-# implimentation of 5 stage, 4th order Low Storage Explicit Runge Kutta
+# implementation of 5 stage, 4th order Low Storage Explicit Runge Kutta
 # from Carpenter and Kennedy's Fourth-Order 2N-Storage Runge Kutta Schemes
 # NASA Technical Memorandum 109112
 
 # this code borrows some infrastructure (pde_pre_func, pde_post_func) from
 # the classical rk4 file
+# Also borrows the RK$CheckpointData
+
 
 """
 This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
@@ -58,19 +60,15 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                     2006345519317/3224310063776; 
                     2802321613138/2924317926251]
 
-  println("c_coeffs = \n", c_coeffs)
-
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-  #  MPI.Barrier(MPI.COMM_WORLD)
+#  MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0
-    # println(STDOUT, "\nEntered lserk54")
-    # println(STDOUT, "res_tol = ", res_tol)
-    println(STDOUT, "\nEntered lserk54")
-    println(STDOUT, "res_tol = ", res_tol)
+    println(BSTDOUT, "\nEntered lserk54")
+    println(BSTDOUT, "res_tol = ", res_tol)
   end
-  #  flush(STDOUT)
-  #  MPI.Barrier(MPI.COMM_WORLD)
-  # res_tol is alternative stopping criteria
+#  flush(BSTDOUT)
+#  MPI.Barrier(MPI.COMM_WORLD)
+# res_tol is alternative stopping criteria
 
 
   # unpack options
@@ -80,11 +78,16 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
+  use_checkpointing = opts["use_checkpointing"]::Bool
+  chkpoint_freq = opts["checkpoint_freq"]::Int
+  ncheckpoints = opts["ncheckpoints"]::Int
+
+
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/delta_t)
-  println(STDOUT, "t_steps: ",t_steps)
-  println(STDOUT, "delta_t = ", delta_t)
+  println(BSTDOUT, "t_steps: ",t_steps)
+  println(BSTDOUT, "delta_t = ", delta_t)
 
   (m,) = size(q_vec)
 
@@ -94,23 +97,46 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   dq_vec = zeros(q_vec)
 
   if myrank == 0
-    _f1 = open("convergence.dat", "a+")
+    _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
     _f2 = open("unsteady_error.dat", "a+")
     f2 = BufferedIO(_f2)
   end
 
-  flush(STDOUT)
+  # setup all the checkpointing related data
+  chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
+  istart = chkpointdata.i
+
+
+
+  flush(BSTDOUT)
   #-----------------------------------------------------
   # Main timestepping loop
   timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
 
+    t = (i-2)*delta_t
+
     @mpi_master if i % output_freq == 0
-      println(STDOUT, "\ntimestep ",i)
-      if i % output_freq == 0
-        flush(STDOUT)
-      end
+       println(BSTDOUT, "\ntimestep ",i)
+       if i % output_freq == 0
+         flush(BSTDOUT)
+       end
     end
+
+    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
+      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+      skip_checkpoint = false
+      # save all needed variables to the chkpointdata
+      chkpointdata.i = i
+
+      if countFreeCheckpoints(chkpointer) == 0
+        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+      end
+      
+      # save the checkpoint
+      saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
+    end
+
 
     #--------------------------------------------------------------------------
     # stage 1
@@ -128,7 +154,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     #--------------------------------------------------------------------------
     # callback and logging
-    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, STDOUT)
+    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
 
     # logging
     @mpi_master if i % 1 == 0
@@ -136,25 +162,25 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     @mpi_master if i % output_freq == 0
-      println(STDOUT, "flushing convergence.dat to disk")
+      println(BSTDOUT, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
-    if (sol_norm < res_tol)
+    if (sol_norm < res_tol) && !real_time
       if myrank == 0
-        println(STDOUT, "breaking due to res_tol, res norm = $sol_norm")
+        println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
-        flush(STDOUT)
+        flush(BSTDOUT)
       end
       break
     end
 
     if use_itermax && i > itermax
       if myrank == 0
-        println(STDOUT, "breaking due to itermax")
+        println(BSTDOUT, "breaking due to itermax")
         close(f1)
-        flush(STDOUT)
+        flush(BSTDOUT)
       end
       break
     end
@@ -189,57 +215,35 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
     end  # end loop over stages
 
-    # update
-    t += delta_t
-
   end  # end loop over timesteps
+
+  # final update
+  t += delta_t
+
 
   if myrank == 0
     close(f1)
   end
 
-  flush(STDOUT)
-return t
+  flush(BSTDOUT)
+
+  return t
 end  # end lserk54
 
 """
 See rk4 method with same signature
 """
 function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
-                 q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
-                 majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
-  real_time=false)
+             q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts,
+             timing::Timings=Timings(); 
+             majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
+             real_time=false)
 
-  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
-              res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
-              majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
-
-  return t
-end
-function my_post_func(mesh, sbp, eqn, opts, t=0.0; calc_norm=true)
-
-  if haskey(opts, "exactSolution")
-    t = eqn.params.t
-    l2norm::Float64 = 0.
-    lInfnorm::Float64 = 0.
-    qe = Array(Float64, mesh.numDofPerNode)
-    # exactFunc = ExactDict[opts["exactSolution"]]
-    exactFunc = eqn.ExactFunc
-
-    for el = 1 : mesh.numEl
-      for n = 1 : mesh.numNodesPerElement
-        xy = sview(mesh.coords, :, n, el)
-        exactFunc(xy, qe, t)
-        q = sview(eqn.q, :, n, el)
-        jac = mesh.jac[n, el]
-        for v = 1:mesh.numDofPerNode
-          dq = real(q[v] - qe[v])
-          # dq = Float64(q[v] - qe[v])
-          l2norm += dq*dq*sbp.w[n]/jac
-        end
-      end
-    end
-  end
+  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+              q_vec::AbstractVector, res_vec::AbstractVector,
+              pde_pre_func, pde_post_func, ctx, opts, timing; 
+              majorIterationCallback=majorIterationCallback, res_tol=res_tol,
+              real_time=real_time)
 
   return l2norm
 end

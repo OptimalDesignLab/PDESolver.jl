@@ -9,23 +9,31 @@ function test_parallel_mpi()
 
   # test the Utils parallel functions
   facts("----- Testing Parallel Functions -----") do
-    mesh.npeers = 2
-    mesh.send_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.send_stats = Array(MPI.Status, mesh.npeers)
-    mesh.recv_stats = Array(MPI.Status, mesh.npeers)
-    mesh.send_waited = Array(Bool, mesh.npeers)
-    mesh.recv_waited = Array(Bool, mesh.npeers)
-
-    initMPIStructures(mesh, opts)
-
+    mesh.npeers = 1
+    nfaces = length(mesh.bndryfaces)
+    shared_data = Array(SharedFaceData, mesh.npeers)
+    resize!(mesh.bndries_local, mesh.npeers)
+    resize!(mesh.bndries_remote, mesh.npeers)
+    resize!(mesh.shared_interfaces, mesh.npeers)
+    resize!(mesh.peer_parts, mesh.npeers)
+    fill!(mesh.peer_parts, mesh.myrank)
     for i=1:mesh.npeers
-      @fact mesh.send_reqs[i] --> MPI.REQUEST_NULL
-      @fact mesh.recv_reqs[i] --> MPI.REQUEST_NULL
+      mesh.bndries_local[i] = mesh.bndryfaces
+      mesh.bndries_remote[i] = mesh.bndryfaces
+      mesh.shared_interfaces[i] = Array(Interface, 0)
+      q_send = zeros(mesh.numDofPerNode, mesh.numNodesPerFace, nfaces)
+      q_recv = zeros(q_send)
+      shared_data[i] = SharedFaceData(mesh, i, q_send, q_recv)
     end
 
-    buff = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, length(mesh.bndryfaces))
-    getSendData(mesh, opts, eqn.q, mesh.bndryfaces, buff, MPI.REQUEST_NULL, true)
+    for i=1:mesh.npeers
+      @fact shared_data[i].send_req --> MPI.REQUEST_NULL
+      @fact shared_data[i].recv_req --> MPI.REQUEST_NULL
+    end
+
+    data_i = shared_data[1]
+    Utils.getSendDataFace(mesh, sbp, eqn, opts, data_i)
+    buff = data_i.q_send
 
     # verify that the inteperpolation was exact
     eqn.params.alpha_x = 1
@@ -33,63 +41,43 @@ function test_parallel_mpi()
     for i=1:length(mesh.bndryfaces)
       for j=1:mesh.numNodesPerFace
         coords = mesh.coords_bndry[:, j, i]
-        val_exp = AdvectionEquationMod.calc_p4(coords, eqn.params, 0.0)
+        val_exp = AdvectionEquationMod.calc_p4(eqn.params, coords, 0.0)
         @fact buff[1, j, i] --> roughly(val_exp, atol=1e-13)
       end
     end
 
-    nvals = 5
-    vals = rand(nvals)
-    vals_recv = zeros(Float64, nvals)
-    req = MPI.Isend(vals, mesh.myrank, 1, mesh.comm)
-    req2 = MPI.Irecv!(vals_recv, mesh.myrank, 1, mesh.comm)
+    rand!(data_i.q_send)
+    data_i.send_req = MPI.Isend(data_i.q_send, data_i.myrank, 1, data_i.comm)
+    data_i.recv_req = MPI.Irecv!(data_i.q_recv, data_i.myrank, 1, data_i.comm)
 
-    stat = MPI.Wait!(req2)
+    data_i.recv_status = MPI.Wait!(data_i.recv_req)
     # if the assertiosn do not trigger, then the test passes
-    verifyCommunication(mesh, opts, vals_recv, mesh.myrank, stat)
-    @fact vals_recv --> roughly(vals, atol=1e-13)
-
-    req = MPI.Isend(vals, mesh.myrank, 1, mesh.comm)
-    req2 = MPI.Irecv!(vals_recv, mesh.myrank, 1, mesh.comm)
-
-    stat = MPI.Wait!(req2)
-    @fact_throws AssertionError verifyCommunication(mesh, opts, vals_recv[1:2], mesh.myrank, stat)
-
+    verifyReceiveCommunication(data_i)
+    @fact data_i.q_send --> roughly(data_i.q_recv, atol=1e-13)
 
     # test calcSharedFaceIntegrals
     mesh.npeers = 1
     mesh.peer_face_counts = [2]
-    mesh.send_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.send_stats = Array(MPI.Status, mesh.npeers)
-    mesh.recv_stats = Array(MPI.Status, mesh.npeers)
-    mesh.send_waited = Array(Bool, mesh.npeers)
-    mesh.recv_waited = Array(Bool, mesh.npeers)
-
-
-    initMPIStructures(mesh, opts)
 
     # do a dummy send
     a = [1]
     ar = [1]
-    mesh.send_reqs[1] = MPI.Isend(a, mesh.myrank, 1, mesh.comm)
-    mesh.recv_reqs[1] = MPI.Irecv!(ar, mesh.myrank, 1, mesh.comm)
-    eqn.q_face_send = Array(Array{Float64, 3}, 1)
-    eqn.q_face_recv = Array(Array{Float64, 3}, 1)
-    eqn.q_face_send[1] = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
-    eqn.q_face_recv[1] = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
-    mesh.dxidx_sharedface = Array(Array{Float64, 4}, 1)
-    mesh.dxidx_sharedface[1] = zeros(2,2, mesh.numNodesPerFace, 2)
-    dxidx_arr = mesh.dxidx_sharedface[1]
+    data_i.send_req = MPI.Isend(a, mesh.myrank, 1, mesh.comm)
+    data_i.recv_req = MPI.Irecv!(ar, mesh.myrank, 1, mesh.comm)
+    data_i.q_send = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
+    data_i.q_recv = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
+    mesh.nrm_sharedface = Array(Array{Float64, 3}, 1)
+    mesh.nrm_sharedface[1] = zeros(2, mesh.numNodesPerFace, 2)
+    nrm_arr = mesh.nrm_sharedface[1]
 
     interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, eqn.q, eqn.q_face)
     for i=1:mesh.peer_face_counts[1]
       iface = mesh.interfaces[i]
       for k=1:mesh.numNodesPerFace
-        dxidx_arr[:, :, k, i] = mesh.dxidx[:, :, 1, iface.elementL]
+        nrm_arr[:, k, i] = mesh.nrm_face[ :, k, i]
         for j=1:mesh.numDofPerNode
-          eqn.q_face_send[1][j, k, i] = eqn.q_face[j, 1, k, i]
-          eqn.q_face_recv[1][j, k, i] = eqn.q_face[j, 2, k, i]
+          data_i.q_send[j, k, i] = eqn.q_face[j, 1, k, i]
+          data_i.q_recv[j, k, i] = eqn.q_face[j, 2, k, i]
         end
       end
     end
@@ -105,19 +93,17 @@ function test_parallel_mpi()
     eqn.flux_sharedface = Array(Array{Float64, 3}, 1)
     eqn.flux_sharedface[1] = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
 
-    mesh.shared_interfaces = Array(Array{Interface, 1}, 1)
-    mesh.shared_interfaces[1] = ifaces_orig[1:2]
+    data_i.interfaces = ifaces_orig[1:2]
     # create the boundary array
-    mesh.bndries_local = Array(Array{Boundary, 1}, 1)
-    mesh.bndries_local[1] = Array(Boundary, 2)
+    data_i.bndries_local = Array(Boundary, 2)
     for i=1:2
-      mesh.bndries_local[1][i] = Boundary(ifaces_orig[i].elementL, ifaces_orig[i].faceL)
+      data_i.bndries_local[i] = Boundary(ifaces_orig[i].elementL, ifaces_orig[i].faceL)
     end
     # use the identity permutation because the values were already permuted
     for i=1:mesh.numNodesPerFace
       mesh.sbpface.nbrperm[i, 1] = i
     end
-    AdvectionEquationMod.calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+    AdvectionEquationMod.calcSharedFaceIntegrals(mesh, sbp, eqn, opts, data_i)
 
     for i=1:length(eqn.flux_sharedface[1])
       @fact eqn.flux_sharedface[1][i] --> roughly(eqn.flux_face[i], atol=1e-13)
@@ -128,7 +114,7 @@ function test_parallel_mpi()
 end
 
 #test_parallel_mpi()
-add_func1!(AdvectionTests, test_parallel_mpi)
+add_func1!(AdvectionTests, test_parallel_mpi, [TAG_SHORTTEST])
 
 function test_parallel_serialpart()
   ARGS[1] = "input_vals_parallel.jl"
@@ -192,4 +178,4 @@ function test_parallel_serialpart()
 end
 
 #test_parallel_serialpart()
-add_func1!(AdvectionTests, test_parallel_serialpart)
+add_func1!(AdvectionTests, test_parallel_serialpart, [TAG_SHORTTEST])

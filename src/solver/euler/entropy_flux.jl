@@ -35,18 +35,26 @@ end
 
 @doc """
   This function computes the integral of the potential flux over an interface
+
+  Inputs:
+    params: a ParamType
+    iface: the Interface
+    sbpface: an AbstractFace
+    nrm_scaled: the scaled normal vector at the face nodes in x-y space
+    qL: the solution at the volume nodes of elementL
+    qR: the solution at the volume nodes of elementR
+
+  Outputs:
+    rhs: the value of the integral
 """
 function computeInterfacePotentialFlux{Tdim, Tsol, Tres}(
                 params::ParamType{Tdim, :conservative, Tsol, Tres}, 
-                iface::Interface, sbpface, dxidx_face, 
+                iface::Interface, sbpface, nrm_scaled::AbstractMatrix, 
                 qL::AbstractMatrix, qR::AbstractMatrix)
 # compute the potential flux then compute the reduction with Eface
 
-  rhs = zero(Tres)
-  for dim=1:Tdim
-    rhs += reduceEface(params, iface, sbpface, dxidx_face, dim, qL, qR)
-  end
-
+  
+  rhs = reduceEface(params, iface, sbpface, nrm_scaled, dim, qL, qR)
   return rhs
 end
 
@@ -59,40 +67,35 @@ end
   integral psi dot n dGamma
 
   it determines the normal vector n
+
+  TODO: this is currently broken for SparseFace SBP operators
 """
-function reduceEface{Tdim, Tsol, Tres, Tmsh}(params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}, iface, sbpface, dxidx_face::Abstract3DArray{Tmsh}, dir::Integer, qL::AbstractMatrix, qR::AbstractMatrix)
+function reduceEface{Tdim, Tsol, Tres, Tmsh}(
+                     params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+                     iface::Interface, sbpface, nrm_scaled::AbstractMatrix,
+                     qL::AbstractMatrix, qR::AbstractMatrix)
   # compute Ex_gamma kappa * psiL + Ex_gamma_nu * psiR, where x is one 
   # of either x or y, as specified by dir
 
-  RHS1 = zero(Tres)
-  RHS2 = zero(Tres)
+  # interpolate q to the faces
+  qfaceL = zeros(Tsol, size(qL, 1), sbpface.numnodes)
+  qfaceR = zeros(qfaceL)
+  interiorFaceInterpolate!(sbpface, iface, qL, qR, qfaceL, qfaceR)
 
-  flux_nrm = params.nrm
-  fill!(flux_nrm, 0.0)
-  flux_nrm[dir] = 1
-
-  for i=1:sbpface.stencilsize
-    for j=1:sbpface.stencilsize
-      p_jL = sbpface.perm[j, iface.faceL]
-      p_jR = sbpface.perm[j, iface.faceR]
-      psiL = getPsi(params, sview(qL, :, p_jL), flux_nrm)
-      psiR = getPsi(params, sview(qR, :, p_jR), flux_nrm)
-      for k=1:sbpface.numnodes
-        nrm_k = zero(Tmsh)
-        for d=1:Tdim
-          nrm_k += sbpface.normal[d, iface.faceL]*dxidx_face[d, dir, k]
-        end
-        val = sbpface.interp[i,k]*sbpface.interp[j,k]*sbpface.wface[k]*nrm_k
-        RHS1 += val*psiL
-
-        kR = sbpface.nbrperm[k, iface.orient]
-        val = sbpface.interp[i, kR]*sbpface.interp[j, kR]*sbpface.wface[k]*nrm_k
-        RHS1 -= val*psiR
-      end
-    end
+  psiL = zeros(Tres, sbpface.numnodes)
+  psiR = zeros(Tres, sbpface.numnodes)
+  # compute psi dot n
+  for i=1:sbpface.numnodes
+    nrm_i = sview(nrm_scaled, :, i)
+    psiL[i] = getPsi(params, sview(qfaceL, :, i), nrm_i)
+    psiR[i] = -getPsi(params, sview(qfaceR, :, i), nrm_i)  # negative sign for
+                                                           # direction
   end
 
-  return RHS1 + RHS2
+  val = integrateBoundaryFunctional!(sbpface, iface.faceL, psiL)
+  val += integrateBoundaryFunctional!(sbpface, iface.faceR, psiR)
+
+  return val
 end
 
 #TODO: this can be made more efficient once SBP stores E
@@ -104,7 +107,7 @@ function computeVolumePotentialFlux{Tdim, Tsol, Tres}(params::ParamType{Tdim, :c
   # calculate psi vector
   psi = zeros(numNodesPerElement, 2)
   for j=1:numNodesPerElement
-    q_j = sview(q_i, :, j)
+    q_j = ro_sview(q_i, :, j)
     for d=1:Tdim
       fill!(nrm, 0.0)
       nrm[d] = 1
@@ -140,7 +143,7 @@ function calcEntropyIntegral{Tsol, Tres, Tmsh, Tdim}(mesh::AbstractMesh{Tmsh},
 
   val = zero(Tsol)
   for i=1:mesh.numDofPerNode:mesh.numDof
-    q_vals = sview(eqn.q_vec, i:(i+(mesh.numDofPerNode - 1)))
+    q_vals = ro_sview(eqn.q_vec, i:(i+(mesh.numDofPerNode - 1)))
 #      s = calcEntropy(eqn.params, q_vals)
     s = calcEntropyIR(eqn.params, q_vals)
 #      val += real(q_vals[1]*s)*eqn.M[i]
@@ -166,7 +169,7 @@ function contractResEntropyVars{Tsol, Tres, Tmsh, Tdim}(
   val = zero(Tres)
   w_vals = eqn.params.v_vals
   for i=1:mesh.numDofPerNode:mesh.numDof
-    q_vals_i = sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
+    q_vals_i = ro_sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
     convertToEntropy(eqn.params, q_vals_i, w_vals)
     scale!(w_vals, 1./eqn.params.gamma_1)  # the IR entropy variables are
                                            # scaled by 1/gamma compared to
@@ -181,6 +184,43 @@ function contractResEntropyVars{Tsol, Tres, Tmsh, Tdim}(
   return val
 end
 
+"""
+  Like contractResEntropyVars, but uses a special summation technique
+"""
+function contractResEntropyVars2{Tsol, Tres, Tmsh, Tdim}(
+             mesh::AbstractDGMesh{Tmsh}, 
+             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector,
+             res_vec::AbstractVector)
+
+  vals = zeros(Tres, mesh.numNodes)
+  w_vals = eqn.params.v_vals
+  idx = 1
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    q_vals_i = ro_sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
+    convertToEntropy(eqn.params, q_vals_i, w_vals)
+    scale!(w_vals, 1./eqn.params.gamma_1)  # the IR entropy variables are
+                                           # scaled by 1/gamma compared to
+                                           # Hugh's
+    res_vals = sview(res_vec, i:(i+mesh.numDofPerNode - 1))
+    for p=1:mesh.numDofPerNode
+      vals[idx] += w_vals[p]*res_vals[p]
+    end
+    idx += 1
+  end
+
+  # now do the sum in the order of decreasing absolute value
+  pvec = sortperm(abs(vals))
+  val = zero(Tres)
+  for i=mesh.numNodes:-1:1  # decreasing absolute value
+    val += vals[pvec[i]]
+  end
+
+  val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+  return val
+end
+
+
+
 @doc """
   Compute the SBP approximation to integral q dOmega, ie. the mass matrix
   times the vector of conservative variables at each node in the mesh.  
@@ -193,7 +233,7 @@ function integrateQ{Tsol, Tres, Tmsh, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
   vals = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numDofPerNode:mesh.numDof
-    q_vals_i = sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
+    q_vals_i = ro_sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
     w_val = eqn.M[i]
     for j=1:length(q_vals_i)
       vals[j] += w_val*q_vals_i[j]
@@ -205,9 +245,6 @@ function integrateQ{Tsol, Tres, Tmsh, Tdim}( mesh::AbstractDGMesh{Tmsh},
 
   return vals2
 end
-
-
-
 
 @doc """
   Computes the net potential flux integral over all interfaces, where the 
@@ -228,12 +265,11 @@ function calcInterfacePotentialFlux{Tsol, Tres, Tdim, Tmsh}(
     iface = mesh.interfaces[i]
     elL = iface.elementL
     elR = iface.elementR
-    qL = sview(q_arr, :, :, elL)
-    qR = sview(q_arr, :, :, elR)
-    aux_vars = sview(eqn.aux_vars, :, :, elL)
-    dxidx_face = sview(mesh.dxidx_face, :, :, :, i)
+    qL = ro_sview(q_arr, :, :, elL)
+    qR = ro_sview(q_arr, :, :, elR)
+    nrm_scaled = ro_sview(mesh.nrm_face, :, :, i)
 
-    bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, dxidx_face, qL, qR)
+    bndry_potentialflux = -computeInterfacePotentialFlux(eqn.params, iface, mesh.sbpface, nrm_scaled, qL, qR)
     val += bndry_potentialflux
   end
 
@@ -252,8 +288,8 @@ function calcVolumePotentialFlux{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh},
 
   val = zero(Tres)
   for i=1:mesh.numEl
-    q_i = sview(q_arr, :, :, i)
-    dxidx_i = sview(mesh.dxidx, :, :, :, i)
+    q_i = ro_sview(q_arr, :, :, i)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
     volume_potentialflux = -computeVolumePotentialFlux(eqn.params, sbp, q_i, dxidx_i)
     val += volume_potentialflux
   end
@@ -293,9 +329,9 @@ function calcEnstrophy{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,
   val = zero(Tres)
   vorticity = zeros(Tres, Tdim, mesh.numNodesPerElement)
   for i=1:mesh.numEl
-    q_i = sview(q_arr, :, :, i)
-    dxidx_i = sview(mesh.dxidx, :, :, :, i)
-    jac_i = sview(mesh.jac, :, i)
+    q_i = ro_sview(q_arr, :, :, i)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
 
     calcVorticity(eqn.params, sbp, q_i, dxidx_i, jac_i, vorticity)
 
@@ -326,9 +362,9 @@ function getVorticity{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Eule
   new_field = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   vorticity = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
   for i=1:mesh.numEl
-    q_i = sview(eqn.q, :, :, i)
-    dxidx_i = sview(mesh.dxidx, :, :, :, i)
-    jac_i = sview(mesh.jac, :, i)
+    q_i = ro_sview(eqn.q, :, :, i)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
 
     calcVorticity(eqn.params, sbp, q_i, dxidx_i, jac_i, vorticity)
 

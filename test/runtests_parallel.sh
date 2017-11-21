@@ -4,6 +4,7 @@
 
 #jflags="--code-coverage=user"
 jflags=$@
+
 err=0
 start_dir=`pwd`
 

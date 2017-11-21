@@ -1,11 +1,33 @@
 # definitions of concrete subtypes of AbstractParamType and AbstractSolutionData
 
+"""
+  Subtype of [`AbstractParamType`](@ref).
+
+  **Static Parameters**:
+
+   * Tsol
+   * Tres
+   *  Tdim
+
+  This is a container passed to all low level function, useful for storing
+  miscellaneous parameters or constants
+"""
 type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
   alpha_x::Float64
   alpha_y::Float64
   alpha_z::Float64
+  sin_amplitude::Complex128
+  omega::Complex128
 
+  qL_s::Array{Tsol, 1}  # solution vector for a solution grid element
+  qR_s::Array{Tsol, 1}  # solution vector for a solution grid element
+  qL_f::Array{Tsol, 1}  # solution vector for flux grid element
+  qR_f::Array{Tsol, 1}  # solution vector for flux grid element
+  resL_s::Array{Tres, 1}  # residual for solution grid element
+  resR_s::Array{Tres, 1}  # residual for solution grid element
+  resL_f::Array{Tsol, 1}  # residual for a flux grid element
+  resR_f::Array{Tsol, 1}  
   f::BufferedIO
   time::Timings
   #=
@@ -29,7 +51,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
-      _f = open("log_$myrank.dat", "w")
+      _f = open("log_$myrank.dat", "a")
       f = BufferedIO(_f)
     else
       f = BufferedIO()  # create a dummy IOStream
@@ -42,25 +64,63 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
 #     alpha_y = 0.0
     alpha_z = 1.0
 
+    numNodesPerElement_s = mesh.numNodesPerElement
+    if opts["use_staggered_grid"]
+      numNodesPerElement_f = mesh.mesh2.numNodesPerElement
+    else
+      numNodesPerElement_f = numNodesPerElement_s
+    end
+
+    qL_s = Array(Tsol, numNodesPerElement_s)
+    qR_s = Array(Tsol, numNodesPerElement_s)
+    qL_f = Array(Tsol, numNodesPerElement_f)
+    qR_f = Array(Tsol, numNodesPerElement_f)
+
+    resL_s = Array(Tsol, numNodesPerElement_s)
+    resR_s = Array(Tsol, numNodesPerElement_s)
+    resL_f = Array(Tsol, numNodesPerElement_f)
+    resR_f = Array(Tsol, numNodesPerElement_f)
+
+    # needed for the runtype=660 (CN uadj) objective
+    sin_amplitude = 2.0
+    omega = 1.0
 
     t = Timings()
-    return new(LFalpha, alpha_x, alpha_y, alpha_z, f, t)
+
+    return new(LFalpha, alpha_x, alpha_y, alpha_z,
+               sin_amplitude, omega,
+               qL_s, qR_s, qL_f, qR_f, resL_s, resR_s, resL_f, resR_f,
+               f, t)
   end
 end
 
+"""
+  Convenient alias for all 2D ParamTypes
+"""
 typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
+
+"""
+  Convenient alias for all 3D ParamTypes
+"""
 typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
+
+"""
+  All ParamTypes, without static parameters specified
+"""
 typealias ParamTypes Union{ParamType2, ParamType3}
 
-@doc """
+"""
 ### AdvectionEquationMod.AdvectionData_
 
   This type is an implementation of the abstract AdvectionData.  It is
-  paramterized by the residual type Tres and the mesh type Tmsh
-  because it stores some arrays of those types.  Tres is the 'maximum' type of
-  Tsol and Tmsh, where Tsol is the type of the conservative variables.
+  parameterized by Tsol, the datatype of the solution variables and Tmsh,
+  the datatype of the mesh variables.
+  Tres is the 'maximum' type of Tsol and Tmsh.
+  Tdim is the dimensionality of the equation being solve (2 or 3).
 
-"""->
+  This type is (ultimately) a subtype of [`AbstractSolutionData`](@ref) 
+  and contains all the required fields.
+"""
 type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
@@ -83,9 +143,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   q_vec::Array{Tres,1}     # initial condition in vector form
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
                           # the boundaries with boundary conditions
-  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
+  shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI data, including send and receive
+                                         # buffers
+#  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
-  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
+#  q_face_recv::Array{Array{Tsol, 3}, 1}  # recieve buffers for q values
   flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   bndryflux::Array{Tsol, 3}  # boundary flux
   M::Array{Float64, 1}       # mass matrix
@@ -108,7 +170,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     println("  Tmsh = ", Tmsh)
     numfacenodes = mesh.numNodesPerFace
 
-    eqn = new()  # incomplete initilization
+    eqn = new()  # incomplete initialization
     eqn.comm = mesh.comm
     eqn.commsize = mesh.commsize
     eqn.myrank = mesh.myrank
@@ -123,7 +185,15 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl, Tdim)
+    eqn.aux_vars = Array(Tsol, 0, 0, 0)
+
+    if opts["precompute_volume_flux"]
+      eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl,
+                                  Tdim)
+    else
+      eqn.flux_parametric = zeros(Tsol, 0, 0, 0, 0)
+    end
+
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res_edge = Array(Tres, 0, 0, 0, 0)
     if mesh.isDG
@@ -133,25 +203,52 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_vec = zeros(Tres, mesh.numDof)
       eqn.res_vec = zeros(Tres, mesh.numDof)
     end
-    eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+
+    if opts["precompute_boundary_flux"]
+      eqn.bndryflux = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+    else
+      eqn.bndryflux = zeros(Tsol, 0, 0, 0)
+    end
+
     eqn.multiplyA0inv = matVecA0inv
 
-    if mesh.isDG
+    if opts["precompute_q_face"]
       eqn.q_face = zeros(Tsol, 1, 2, numfacenodes, mesh.numInterfaces)
-      eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
-      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
-      eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
-
-      for i=1:mesh.npeers
-        eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes,
-                                       mesh.peer_face_counts[i])
-      end
     else
-      eqn.q_face = Array(Tres, 0, 0, 0, 0)
-      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.q_face = zeros(Tsol, 0, 0, 0, 0)
+    end
+
+    if opts["precompute_q_bndry"]
+      eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
+    else
       eqn.q_bndry = Array(Tsol, 0, 0, 0)
     end
 
+    if opts["precompute_face_flux"]
+      eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
+
+      if mesh.isDG
+        eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+        for i=1:mesh.npeers
+          eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes,
+                                         mesh.peer_face_counts[i])
+        end
+      else
+        eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+      end  # end if isDG
+
+    else
+      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+    end  # end if precompute_face_flux
+
+    if mesh.isDG
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+    else
+      eqn.shared_data = Array(SharedFaceData, 0)
+    end
+
+#=
     # send and receive buffers
     #TODO: rename buffers to not include face
     eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
@@ -177,7 +274,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
                                       dim3_recv[i])
     end
-
+=#
     return eqn
   end # ends the constructor AdvectionData_
 
@@ -225,3 +322,28 @@ type QfluxData{Topt} <: AbstractOptimizationData
     return functional
   end
 end # End type OfluxData
+
+import ODLCommonTools.getAllTypeParams
+
+@doc """
+### AdvectionEquationMod.getAllTypeParameters
+
+Gets the type parameters for mesh and equation objects.
+
+**Input**
+
+* `mesh` : Object of abstract meshing type.
+* `eqn`  : Euler Equation object.
+* `opts` : Options dictionary
+
+**Output**
+
+* `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
+
+"""->
+function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tres, Tdim, Tmsh}, opts)
+
+  tuple = (Tsol, Tres, Tdim, Tmsh)
+
+  return tuple
+end

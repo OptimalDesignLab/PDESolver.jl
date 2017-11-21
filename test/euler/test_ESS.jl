@@ -236,6 +236,8 @@ function getEface(iface, sbpface, nrm_face, dir::Integer)
   return EL, ER
 end
 
+import EulerEquationMod.reduceEface
+#=
 """
   Compute E for the current face (specified by dir) times psiL and psiR
 """
@@ -262,7 +264,7 @@ function reduceEface(iface, sbpface, nrm_face::AbstractMatrix, dir::Integer, psi
 
   return RHS1 + RHS2
 end
-
+=#
 
   
 function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
@@ -409,6 +411,10 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_test2, resR_test2)
 
+      @fact norm(vec(resL_code - resL_test2)) --> roughly(0.0, atol=1e-12*length(resL_code))
+      @fact norm(vec(resR_code - resR_test2)) --> roughly(0.0, atol=1e-12*length(resR_code))
+
+      #=
       for j=1:size(resL_code, 1)
         for k=1:size(resR_code, 2)
 
@@ -416,6 +422,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
           @fact resR_code[j, k] --> roughly(resR_test2[j, k], atol=1e-12)
         end
       end
+      =#
 
     end
   end  # end loop over interfaces
@@ -460,6 +467,8 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     nrm = zeros(mesh.dim)
 
     # calculate the integral of entropy flux from q
+    rhs = reduceEface(eqn.params, iface, mesh.sbpface, nrm_face, qL, qR)
+#=
     rhs = 0.0
     for dir=1:mesh.dim
       fill!(nrm, 0.0)
@@ -467,7 +476,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
       psiL, psiR = getPsi(eqn.params, qL, qR, nrm)
       rhs += reduceEface(iface, mesh.sbpface, nrm_face, dir, psiL, psiR)
     end
-
+=#
 
     @fact -(lhsL + lhsR) --> roughly(rhs, atol=1e-12)
     total_potentialflux -= lhsL + lhsR
@@ -606,12 +615,17 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, resL2, resR2)
 
+      @fact norm(vec(resL - resL2)) --> roughly(0.0, atol=1e-12)
+      @fact norm(vec(resR - resR2)) --> roughly(0.0, atol=1e-12)
+ 
+      #=
       for j=1:size(resL, 1)
         for k=1:size(resL, 2)
           @fact abs(resL[j, k] - resL2[j, k]) --> roughly(0.0, atol=1e-12)
           @fact abs(resR[j, k] - resR2[j, k]) --> roughly(0.0, atol=1e-12)
         end
       end
+      =#
 
     end
 
@@ -622,12 +636,17 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     @fact resL_sum --> roughly(-resR_sum, atol=1e-13)
 
     if zero_penalty
+      @fact norm(vec(resL)) --> roughly(0.0, atol=1e-13)
+      @fact norm(vec(resR)) --> roughly(0.0, atol=1e-13)
+ 
+      #=
       for j=1:mesh.numNodesPerElement
         for p=1:mesh.numDofPerNode
           @fact resL[p, j] --> roughly(0.0, atol=1e-13)
           @fact resR[p, j] --> roughly(0.0, atol=1e-13)
         end
       end
+      =#
     end
 #=
     # verify equality with Lax-Friedrich
@@ -708,14 +727,14 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
   tmp1 = params.res_vals1  # work vectors
   tmp2 = params.res_vals2
   tmp3 = params.res_vals3  # accumulate result vector
-  nrm = params.nrm2
+#  nrm = params.nrm2
+  nrm = sview(mesh.nrm_face, :, 1, 1)
 
   iface = mesh.interfaces[1]
   elL = iface.elementL
   elR = iface.elementR
   qL = eqn.q[:, 1, elL]
   qR = eqn.q[:, 1, elR]
-  dxidx_face = mesh.dxidx[:, :, 1, elL]
 
   q_avg = 0.5*(qL + qR)
 
@@ -727,14 +746,6 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
 
   # compute LW term
   lambda_net = 0.0
-  for dim =1:Tdim
-    nrm_dim = zero(Tmsh)
-    for d = 1:Tdim
-      nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim]
-    end
-    nrm[dim] = nrm_dim  # needed for LF below
-  end
-
 
   nrm2 = nrm./norm(nrm)
   A1 = zeros(4,4)  # flux jacobian computed via sum of x, y directions
@@ -820,10 +831,10 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
   return nothing
 end
 
-function applyPoly(mesh, sbp, eqn, opts, p)
+function applyPoly{Tsol, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, p)
 # set the solution to be a polynomial of degree p of the entropy variables
 
-  v_vals = zeros(mesh.numDofPerNode)
+  v_vals = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       x = mesh.coords[1, j, i]
@@ -850,6 +861,8 @@ end
 
 function factRes0(mesh, sbp, eqn, opts)
 
+  @fact norm(vec(eqn.res)) --> roughly(0.0, atol=1e-13)
+  #=
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
@@ -857,6 +870,7 @@ function factRes0(mesh, sbp, eqn, opts)
       end
     end
   end
+  =#
 
   return nothing
 end
@@ -891,6 +905,7 @@ function test_ESS()
         opts["smb_name"] = meshname
         opts["operator_type"] = "SBPOmega"
         opts["order"] = p
+        opts["numBC"] = 0
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
         ARGS[1] = fname*".jl"
@@ -968,10 +983,30 @@ function test_ESS()
       end  # end loop over p
     end  # end loop over dim
 
+    println("\nTesting diagonal E")
+    # test a diagonal E operator
+    dim = 3
+    p = 2
+    meshname = "SRCMESHES/tet8cubep.smb"
+    println("testing p = ", p)
+    opts["dimensions"] = dim
+    opts["smb_name"] = meshname
+    opts["operator_type"] = "SBPDiagonalE"
+    opts["order"] = p
+    opts["numBC"] = 0
+    fname = "input_vals_ESS_test2"
+    make_input(opts, fname)
+    ARGS[1] = fname*".jl"
+    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+   
+
+    runECTest(mesh, sbp, eqn, opts, test_ref=false)
+
+
   end  # end facts block
 
   return nothing
 end  # end function
 
 #test_ESS()
-add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS])
+add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST])

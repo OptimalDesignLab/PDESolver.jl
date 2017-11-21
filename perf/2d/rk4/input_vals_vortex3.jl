@@ -5,6 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any} (
+"physics" => "Euler",
 "var1" => 1,
 "var2" => "a",
 "var3" => 3.5,
@@ -28,7 +29,7 @@ arg_dict = Dict{Any, Any} (
 #"BC2_name" => "isentropicVortexBC",
 "delta_t" => 0.001,
 "t_max" => 50.000,
-"smb_name" => "src/mesh_files/square_benchmarksmall.smb",
+"smb_name" => "SRCMESHES/square_benchmarksmall.smb",
 "dmg_name" => ".null",
 "res_abstol" => 1e-12,
 "res_reltol" => 1e-10,

@@ -17,8 +17,8 @@ using Utils
 using MPI
 using Input  # input file processing
 using PETSc
-import ODLCommonTools.sview
->>>>>>> 3d_wing2
+# using FreeFormDeformation
+# using MeshMovement
 
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
@@ -32,7 +32,7 @@ export AbstractEulerData, EulerData, EulerData_, run_euler
   This abstract type should be the supertype of *all* solution data objects
   that are related to the Euler equations.
 
-  It should be used for specify the type of a function argument only when
+  It should be used for specifying the type of a function argument only when
   the function does no operations on the solution data object itself, it just
   passes it onto other functions that do the work (thus AbstractEulerData
   should be used for only the highest level functions).
@@ -46,7 +46,7 @@ abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 Use this type to leverage multiple dispatch.
 This type holds any data, including large arrays of solution values,
   that are specific to the equation for the Euler equations.
-  This includes the solutoin variables q, the fluxes in the xi and eta
+  This includes the solution variables q, the fluxes in the xi and eta
   direction, and the result of the calculation the inverse mass matrix is
   stored here as well (not sure if that fits better here or in the mesh object)
   things like the coordinate field, the jacobian etc. are stored
@@ -67,7 +67,7 @@ The uses of aux_vars should mirror that of eqn.q, in that entire columns
 The advantages of macros vs functions for access to variables remains unclear
   if aux_vars is a fixed size.
 If it is variable sized then macros give the advantage of doing location lookup
-  at compile time
+  at compile time.
 =#
 
 #=
@@ -151,7 +151,8 @@ If it is variable sized then macros give the advantage of doing location lookup
   conservative variables q, and Tdim, the dimension of the equation
 
   It should have the following fields:
-   * res_type : datatype of residual (depreciated)
+
+    * res_type : datatype of residual (depreciated)
     * q  : 3D array holding conservative variables
     * q_vec  : vector to assemble q into
     * aux_vars : 3D array holding auxiliary variables
@@ -205,15 +206,20 @@ include("PressureMod.jl")
 include("entropy_flux.jl")
 include("eigensystem.jl")
 include("check_options.jl")
+include("eqn_deepcopy.jl")
 include("startup_func.jl")  # function for invoking the solver
-include("./deriv/differentiateByMetrics.jl")
 include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")
+include("util_viscous.jl")
 include("viscous_flux.jl")
-include("viscous_funcs.jl")
+include("viscous_func.jl")
 
+"""
+  This physics is named `Euler`
+"""
 global const PhysicsName = "Euler"
+
 register_physics(PhysicsName, EulerEquationMod, run_euler)
 
 @doc """

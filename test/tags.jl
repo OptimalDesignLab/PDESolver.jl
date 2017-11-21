@@ -16,6 +16,7 @@ if !tag_defs
   global const TAG_MMS = "tag_mms"
   global const TAG_FRONTEND = "tag_frontend"
   global const TAG_ADJOINT = "tag_adjoint"
+  global const TAG_CN = "tag_cn"
 
   # euler
   global const TAG_ENTROPYVARS = "tag_entropyvars"
@@ -27,6 +28,16 @@ if !tag_defs
   global const TAG_MISC = "tag_misc"
   global const TAG_CURVILINEAR = "tag_curvilinear"
   global const TAG_HOMOTOPY = "tag_homotopy"
+  global const TAG_STAGGERED = "tag_staggered"
+  global const TAG_PARALLEL_DERIVATIVES = "tag_parallel_derivatives"
+  global const TAG_CHECKPOINT = "tag_checkpoint"
 
+  global const TAG_PARALLEL = "tag_parallel"
+
+  # types of tests
+  global const TAG_SHORTTEST = "tag_shorttest"
+  global const TAG_LONGTEST = "tag_longtest"
+  global const LengthTags = Set([TAG_SHORTTEST, TAG_LONGTEST])
+
+  global const TAG_TMP = "tag_tmp"  # a temporary tag
 end
-

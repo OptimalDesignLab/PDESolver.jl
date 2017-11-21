@@ -1,14 +1,17 @@
 # EulerEquationMod
+
 This module implements the Euler physics.  The internal structure of the
 code is described below.
 
 ## Mesh
+
 Any implementation of the abstract type AbstractMesh must provide the data required by the solver about the mesh.
 For performance reasons, all data used by the solver should be stored in the mesh object, typically in arrays.  During a resdual evaluation, the underlying mesh software should not be accessed.
 More details about this are forthcoming.
 
 
 ## Structure of each solver
+
 The following describes the structure of the Euler solver.  Other solvers use a similar structure.
 
 EulerEquationMod.jl contains the defintion for the EulerData object, which stores all data needed to solve the equation related to the physics.
@@ -22,6 +25,7 @@ euler_macros.jl contains macros to access the values stored in eqn.aux_vars
 
 
 ### Data Structures
+
 EulerData.q stores the conservative variables in a 3 dimensional array, numDofPerNode x numNodesPerElement x numEl.
 Although this contains some duplicate information compared to a column vector, it is much more convienient for doing computations.
 EulerData.res stores the non-linear residual, and is the same shape ad EulerData.q.
@@ -31,6 +35,7 @@ The input to the function is the q array, and the output is the res array.
 
 
 ### Precalculation of Quantities
+
 Some quantities are preallocated and stored in the EulerData object.
 The equation flux is stored for all equations.  
 The 'aux_vars' field is used to store any additional variables.
@@ -42,10 +47,12 @@ and access the data again later.
 
 
 ### Volume Integrals
+
 The volume integrals are computed using the stored flux using the function evalVolumeIntegrals.
 
 
 ### Boundary Conditions
+
 Boundary integrals are computed using evalBoundaryIntegrals.  
 The boundary flux must be calculated first using the function getBCFluxes.
 
@@ -59,4 +66,5 @@ The function getBCFunctors is called during initialization to get the dummy type
 them in the mesh object for use by calcBoundaryFlux, which calculates and stores the boundary flux.
 
 ### Stabilization
+
 The addStabilization function add the stabilization term to the residual.  It calls functions in the stabilization.jl file.

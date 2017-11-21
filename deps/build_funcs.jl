@@ -1,8 +1,54 @@
 
+"""
+  This function determines if a git identifier is a commit or something else
+  (ie. a branch or tag)
+
+  **Inputs**
+
+   * pkg_dir: path to directory containing the repo
+   * hash: git object identifier
+
+  **Outputs**
+
+   * bool, true if hash represents a commit, false otherwise
+"""
+function is_commit(pkg_dir::AbstractString, hash::AbstractString)
+
+  start_dir = pwd()
+  cd(pkg_dir)
+  
+  iscommit = false
+  try
+    vals = readall(`git show-ref | grep $hash`)
+    # make sure this is an exact match
+    name = split(vals, '/')[end]
+    if name[1:end-1] == hash
+      iscommit = false
+    else
+      iscommit = true
+    end
+  catch x
+    iscommit = true
+  end
+
+  cd(start_dir)
+  return iscommit
+end
+
+"""
+  Checks out a git object of some kind.  If the object is a tag or a branch,
+  it is checkout out as normal.  If it is a commit, a new branch is created
+  called detatched_from_commit, where commit is the commit hash
+
+  **Inputs**
+
+   * pkg_dir: directory where the git repo is located
+   * hash: git object identifier
+"""
 function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 # this function checks out a particular git hash of a particular package
 
-  new_branchname = "pdesolver_version"
+  new_branchname = "detached_from_$hash"
 
   start_dir = pwd()
   cd(pkg_dir)
@@ -10,12 +56,31 @@ function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 #  if branch_name[1:end-1] != new_branchname
 #    run(`git checkout -b pdesolver_version $hash`)
 #  end
+  iscommit = is_commit(pkg_dir, hash)
   run(`git checkout $hash`)
-  run(`git checkout -b pdesolver_version HEAD`)
+
+  if iscommit
+    run(`git checkout -b $new_branchname HEAD`)
+  end
   cd(start_dir)
 
 end
 
+"""
+  This function installs a specified package.  Unless overridded, if the package is
+  already installed, it will not be modified.
+
+  **Inputs**
+
+  * dir: directory in which to install package
+  * pkg_name: name of the package (not including .jl)
+  * git_url: URL of git repository
+  * git_commit: anything that git checkout can use to identify what to check out
+  * pkg_dict: dictionary of installed package
+  * f: an IO object to write info to
+  * force: force package to install even if already present, (keyword arg), default
+           false
+"""
 function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::AbstractString, git_commit::AbstractString, pkg_dict, f; force=false)
 # pkg_name = name of package
 # git_url: value to be passed to Pkg.clone()
@@ -34,17 +99,23 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
         start_dir = pwd()
         cd(dir)
         run(`git clone $git_url`)
-	name_ext = string(pkg_name, ".jl")
-	run(`mv -v ./$name_ext ./$pkg_name`)
+        name_ext = string(pkg_name, ".jl")
+        run(`mv -v ./$name_ext ./$pkg_name`)
         set_hash(pkg_path, git_commit)
         cd(start_dir)
       end
 #      else
 #        reset_repo(pkg_name)
 #      end
+      println(f, "Resolving dependencies")
+      Pkg.resolve()
+      println(f, "Building package")
+      println(f, "  Note: if this step fails, there is no way to report it in this log")
       Pkg.build(pkg_name)
+      Libc.flush_cstdio()
       println(f, "  Installation appears to have completed sucessfully")
     catch x
+      flush_cstdio()
       println(f, "Error installing package $pkg_name")
       println(f, "Error is $x")
     end

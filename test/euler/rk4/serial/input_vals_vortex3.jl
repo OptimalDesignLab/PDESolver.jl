@@ -51,6 +51,8 @@ arg_dict = Dict{ASCIIString, Any} (
 "write_counts" => true,
 "write_rhs" => false,
 "do_postproc" => true,
+"checkpoint" => true,
 "exact_soln_func" => "ICIsentropicVortex",
+"use_checkpointing" => true,
 "solve" => true,
 )

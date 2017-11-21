@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# run all serial and parallel tests in single session
+# run all serial and parallel tests in separate sessions
 
 jj=julia
 
-jflags=$@  # take flags as command line arguments
+tags=$@
+
 start_dir=`pwd`
 
 err=0

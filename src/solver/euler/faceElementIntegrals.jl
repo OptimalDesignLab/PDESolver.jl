@@ -21,8 +21,10 @@ include("IR_stab.jl")  # stabilization for the IR flux
   resL and resR are updated with the results of the computation for the 
   left and right elements, respectively.
 
-  Note that dxidx_face must contains the scaled metric terms interpolated 
-  to the face nodes.
+  Note that nrm_xy must contains the normal vector in x-y space at the
+  face nodes.
+
+  The flux function must be symmetric!
 
   Aliasing restrictions: none, although its unclear what the meaning of this
                          function would be if resL and resR alias
@@ -34,7 +36,7 @@ include("IR_stab.jl")  # stabilization for the IR flux
 """
 function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
+                             sbpface::DenseFace, 
                              iface::Interface,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
@@ -60,24 +62,18 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
     # loop over the nodes of "left" element that are in the stencil of interp
   for i = 1:sbpface.stencilsize
     p_i = sbpface.perm[i, iface.faceL]
-    qi = sview(qL, :, p_i)
-    aux_vars_i = sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
+    qi = ro_sview(qL, :, p_i)
+    aux_vars_i = ro_sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
 
     # loop over the nodes of "right" element that are in the stencil of interp
     for j = 1:sbpface.stencilsize
       p_j = sbpface.perm[j, iface.faceR]
-      qj = sview(qR, :, p_j)
+      qj = ro_sview(qR, :, p_j)
 
       # compute flux and add contribution to left and right elements
       functor(params, qi, qj, aux_vars_i, nrmD, fluxD)
 
       @simd for dim = 1:Tdim  # move this inside the j loop, at least
-#        for d=1:Tdim
-#          nrm[d] = 0
-#        end
-#        fill!(nrm, 0.0)
-#        nrm[dim] = 1
-
         # accumulate entry p_i, p_j of E
         Eij = zero(Tres)  # should be Tres
         @simd for k = 1:sbpface.numnodes
@@ -102,6 +98,52 @@ function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
   return nothing
 end
 
+"""
+  Method for sparse faces.  See other method for details
+
+  Aliasing restrictions: params.flux_vals1 must not be in use
+"""
+function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+                             params::AbstractParamType{Tdim}, 
+                             sbpface::SparseFace, 
+                             iface::Interface,
+                             qL::AbstractMatrix{Tsol}, 
+                             qR::AbstractMatrix{Tsol}, 
+                             aux_vars::AbstractMatrix{Tres}, 
+                             nrm_xy::AbstractMatrix{Tmsh},
+                             functor::FluxType, 
+                             resL::AbstractMatrix{Tres}, 
+                             resR::AbstractMatrix{Tres})
+
+  flux_tmp = params.flux_vals1
+
+  for i=1:sbpface.numnodes
+    p_i = sbpface.perm[i, iface.faceL]
+    q_i = ro_sview(qL, :, p_i)
+    aux_vars_i = ro_sview(aux_vars, :, p_i)
+
+    # get the corresponding node on faceR
+    pnbr = sbpface.nbrperm[i, iface.orient]
+    p_j = sbpface.perm[pnbr, iface.faceR]
+#    p_j = sbpface.nbrperm[sbpface.perm[i, iface.faceR], iface.orient]
+    q_j = ro_sview(qR, :, p_j)
+
+    # compute flux in face normal direction
+    nrm_i = ro_sview(nrm_xy, :, i)
+    functor(params, q_i, q_j, aux_vars_i, nrm_i, flux_tmp)
+
+    w_i = sbpface.wface[i]
+    for p=1:size(resL, 1)
+      resL[p, p_i] -= w_i*flux_tmp[p]
+      resR[p, p_j] += w_i*flux_tmp[p]
+    end
+
+  end  # end loop i
+
+  return nothing
+end
+
+
 
 """
   Calculate the face integral in an entropy stable manner using Lax-Friedrich
@@ -116,15 +158,15 @@ function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::AbstractArray{Tmsh},
+                             nrm_face::AbstractMatrix{Tmsh},
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
   calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                             dxidx_face, resL, resR)
+                               nrm_face, resL, resR)
 
   return nothing
 end
@@ -142,15 +184,15 @@ function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::AbstractArray{Tmsh},  # dxidx or nrm
+                             nrm_face::AbstractMatrix{Tmsh},  # dxidx or nrm
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
   calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                             dxidx_face, resL, resR)
+                               nrm_face, resL, resR)
 
   return nothing
 end
@@ -168,15 +210,15 @@ function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
-                             dxidx_face::AbstractArray{Tmsh}, # dxidx or nrm
+                             nrm_face::AbstractMatrix{Tmsh}, # dxidx or nrm
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
                              resR::AbstractMatrix{Tres})
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, dxidx_face, 
+  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
   calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                                dxidx_face, resL, resR)
+                                nrm_face, resL, resR)
 
   return nothing
 end
@@ -191,8 +233,8 @@ end
   requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
-  Note that dxidx_face must contain the scaled metric terms interpolated
-  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  Note that nrm_face must contain the scaled face normal vector in x-y space
+  at the face nodes, and qL, qR, resL, and resR are the arrays for the
   entire element, not just the face.
 
 
@@ -200,20 +242,16 @@ end
 """
 function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::AbstractFace, iface::Interface, 
+             sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
-
-#  println("----- entered calcLFEntropyPenaltyIntegral -----")
 
   numDofPerNode = size(qL, 1)
 
   # convert qL and qR to entropy variables (only the nodes that will be used)
   wL = params.w_vals_stencil
   wR = params.w_vals2_stencil
-#  wL = zeros(Tsol, numDofPerNode, sbpface.stencilsize)
-#  wR = zeros(wL)
 
   for i=1:sbpface.stencilsize
     # apply sbpface.perm here
@@ -221,8 +259,8 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     p_iR = sbpface.perm[i, iface.faceR]
     # these need to have different names from qL_i etc. below to avoid type
     # instability
-    qL_itmp = sview(qL, :, p_iL)
-    qR_itmp = sview(qR, :, p_iR)
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
     wL_itmp = sview(wL, :, i)
     wR_itmp = sview(wR, :, i)
     convertToIR(params, qL_itmp, wL_itmp)
@@ -237,22 +275,14 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
   qL_i = params.q_vals
   qR_i = params.q_vals2
 
-#  wL_i = zeros(Tsol, numDofPerNode)
-#  wR_i = zeros(Tsol, numDofPerNode)
-  # convert wL at the node back to qL
-#  qL_i = zeros(Tsol, numDofPerNode)
-#  qR_i = zeros(Tsol, numDofPerNode)
-#  dir = params.nrm2
   A0 = params.A0
   fastzero!(A0)
 
   @simd for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i, iface.orient]
-    dir = sview(nrm_face, :, i)
+    dir = ro_sview(nrm_face, :, i)
     fastzero!(wL_i)
     fastzero!(wR_i)
-#    fastzero!(qL_i)
-#    fastzero!(qR_i)
 
     # interpolate wL and wR to this node
     @simd for j=1:sbpface.stencilsize
@@ -262,23 +292,15 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
       @simd for k=1:numDofPerNode
         wL_i[k] += interpL*wL[k, j]
         wR_i[k] += interpR*wR[k, j]
-#        qL_i[k] += interpL*qL[k, j]
-#        qR_i[k] += interpR*qR[k, j]
       end
     end
 
-
+    #TODO: write getLambdaMaxSimple and getIRA0 in terms of the entropy
+    #      variables to avoid the conversion
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
     lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
-#    @assert lambda_max > 0
-#    lambda_max *= sqrt(params.h)
-    # poor mans entropy fix
-#    lambda_max *= 0.1
-#    lambda_max += 0.25
-#    lambda_max *= 2
-#    lambda_max = 3.0
     
     # compute average qL
     # also delta w (used later)
@@ -288,16 +310,10 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     end
 
     getIRA0(params, qL_i, A0)
-#    for j=1:numDofPerNode
-#      A0[j, j] = 1
-#    end
 
     # wface[i] * lambda_max * A0 * delta w
     smallmatvec!(A0, wL_i, wR_i)
     fastscale!(wR_i, sbpface.wface[i]*lambda_max)
-
-#    middle_term = scale(A0, sbpface.wface[i]*lambda_max)
-#    println("middle_term = \n", middle_term)
 
     # interpolate back to volume nodes
     @simd for j=1:sbpface.stencilsize
@@ -305,7 +321,6 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
       j_pR = sbpface.perm[j, iface.faceR]
 
       @simd for p=1:numDofPerNode
-        res_old = resL[p, j_pL]  # DEBUGGING
         resL[p, j_pL] -= sbpface.interp[j, i]*wR_i[p]
         resR[p, j_pR] += sbpface.interp[j, ni]*wR_i[p]
       end
@@ -317,13 +332,79 @@ function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 end
 
 """
+  Method for sparse faces.  See other method for details
+
+  Aliasing restrictions: params: v_vals, v_vals2, q_vals, A0, res_vals1, res_vals2
+"""
+function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::SparseFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+  numDofPerNode = size(qL, 1)
+
+  # convert qL and qR to entropy variables (only the nodes that will be used)
+#  wL = params.w_vals_stencil
+#  wR = params.w_vals2_stencil
+  wL_i = params.v_vals
+  wR_i = params.v_vals2
+  q_avg = params.q_vals
+  res_vals = params.res_vals1
+  res_vals2 = params.res_vals2
+  A0 = params.A0
+  fastzero!(A0)
+
+
+  @simd for i=1:sbpface.numnodes
+    # convert to entropy variables at the nodes
+    p_iL = sbpface.perm[i, iface.faceL]
+    pnbr = sbpface.nbrperm[i, iface.orient]
+    p_iR = sbpface.perm[pnbr, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_i = ro_sview(qL, :, p_iL)
+    qR_i = ro_sview(qR, :, p_iR)
+    convertToIR(params, qL_i, wL_i)
+    convertToIR(params, qR_i, wR_i)
+
+    dir = ro_sview(nrm_face, :, i)
+
+    # get lambda * IRA0
+    lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
+ 
+    # compute average qL
+    # also delta w (used later)
+    @simd for j=1:numDofPerNode
+      q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
+      res_vals[j] = sbpface.wface[i]*lambda_max*(wL_i[j] - wR_i[j])
+    end
+
+    getIRA0(params, qL_i, A0)
+
+    # wface[i] * lambda_max * A0 * delta w
+    smallmatvec!(A0, res_vals, res_vals2)
+#    fastscale!(wR_i, sbpface.wface[i]*lambda_max)
+
+    @simd for p=1:numDofPerNode
+      resL[p, p_iL] -= res_vals2[p]
+      resR[p, p_iR] += res_vals2[p]
+    end
+  end  # end loop i
+
+  return nothing
+end
+
+
+"""
   Calculate a term that provably dissipates (mathematical) entropy using a 
   an approximation to Lax-Wendroff type of dissipation.  
   This requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
-  Note that dxidx_face must contain the scaled metric terms interpolated
-  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  Note that nrm_face must contain the scaled normal vector in x-y space
+  at the face nodes, and qL, qR, resL, and resR are the arrays for the
   entire element, not just the face.
 
   The approximation to Lax-Wendroff is the computation of
@@ -340,7 +421,7 @@ end
 """
 function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::AbstractFace, iface::Interface, 
+             sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
@@ -367,8 +448,8 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     p_iR = sbpface.perm[i, iface.faceR]
     # these need to have different names from qL_i etc. below to avoid type
     # instability
-    qL_itmp = sview(qL, :, p_iL)
-    qR_itmp = sview(qR, :, p_iR)
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
     wL_itmp = sview(wL, :, i)
     wR_itmp = sview(wR, :, i)
     convertToIR(params, qL_itmp, wL_itmp)
@@ -414,12 +495,6 @@ function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     # get the normal vector (scaled)
 
     for dim =1:Tdim
-      #=
-      nrm_dim = zero(Tmsh)
-      for d = 1:Tdim
-        nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
-      end
-      =#
       nrm_dim = nrm_face[dim, i]
 
       # get the eigensystem in the current direction
@@ -494,8 +569,8 @@ end
   This requires data from the left and right element volume nodes, rather than
   face nodes for a regular face integral.
 
-  Note that dxidx_face must contain the scaled metric terms interpolated
-  to the face nodes, and qL, qR, resL, and resR are the arrays for the
+  Note nrm_face must contain the scaled normal vector in x-y space
+  at the face nodes, and qL, qR, resL, and resR are the arrays for the
   entire element, not just the face.
 
   Implementation Detail:
@@ -510,7 +585,7 @@ end
 """
 function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::AbstractFace, iface::Interface, 
+             sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
@@ -535,8 +610,8 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     p_iR = sbpface.perm[i, iface.faceR]
     # these need to have different names from qL_i etc. below to avoid type
     # instability
-    qL_itmp = sview(qL, :, p_iL)
-    qR_itmp = sview(qR, :, p_iR)
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
     wL_itmp = sview(wL, :, i)
     wR_itmp = sview(wR, :, i)
     convertToIR(params, qL_itmp, wL_itmp)
@@ -581,16 +656,6 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
 
     # get the normal vector (scaled)
-#=
-    for dim =1:Tdim
-      nrm_dim = zero(Tmsh)
-      for d = 1:Tdim
-        nrm_dim += sbpface.normal[d, iface.faceL]*dxidx_face[d, dim, i]
-      end
-
-      nrm[dim] = nrm_dim
-    end
-=#
     for dim=1:Tdim
       nrm[dim] = nrm_face[dim, i]
     end
@@ -610,12 +675,8 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
     calcEvalsx(params, qR_i, Lambda)
     calcEScalingx(params, qR_i, S2)
 
-    calcEntropyFix(params, Lambda)
+#    calcEntropyFix(params, Lambda)
  
-    #DEBUGGING: make this into LF
-#    fill!(Lambda, maximum(abs(Lambda)))
-#    lambda_max_scaled = len_fac*maximum(abs(Lambda))
-
     # compute LF term in n-t coordinates, then rotate back to x-y
     projectToNT(params, P, wL_i, tmp1)
     smallmatTvec!(Y, tmp1, tmp2)
@@ -643,6 +704,104 @@ function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
 
   return nothing
 end
+
+"""
+  Method for sparse faces.  See other method for details
+
+  Aliasing restrictions: params: v_vals, v_vals2, q_vals, q_vals2, A0, res_vals1, res_vals2
+                         A0, S2, Lambda, nrm2, P
+"""
+function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             sbpface::SparseFace, iface::Interface, 
+             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+
+  numDofPerNode = size(qL, 1)
+
+  # convert qL and qR to entropy variables (only the nodes that will be used)
+#  wL = params.w_vals_stencil
+#  wR = params.w_vals2_stencil
+  wL_i = params.v_vals
+  wR_i = params.v_vals2
+  q_avg = params.q_vals
+  qprime = params.q_vals2
+  res_vals = params.res_vals1
+  res_vals2 = params.res_vals2
+  A0 = params.A0
+  fastzero!(A0)
+
+  Y = params.A0  # eigenvectors of flux jacobian
+  S2 = params.S2  # diagonal scaling matrix squared
+                       # S is defined s.t. (YS)*(YS).' = A0
+  Lambda = params.Lambda  # diagonal matrix of eigenvalues
+  nrm = params.nrm2
+  P = params.P  # projection matrix
+
+
+  @simd for i=1:sbpface.numnodes
+    # convert to entropy variables at the nodes
+    p_iL = sbpface.perm[i, iface.faceL]
+    pnbr = sbpface.nbrperm[i, iface.orient]
+    p_iR = sbpface.perm[pnbr, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_i = ro_sview(qL, :, p_iL)
+    qR_i = ro_sview(qR, :, p_iR)
+    convertToIR(params, qL_i, wL_i)
+    convertToIR(params, qR_i, wR_i)
+
+    # compute average qL
+    # also delta w (used later)
+    @simd for j=1:numDofPerNode
+      q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
+      res_vals[j] = sbpface.wface[i]*(wL_i[j] - wR_i[j])
+    end
+
+    # get the normal vector (scaled)
+    for dim=1:Tdim
+      nrm[dim] = nrm_face[dim, i]
+    end
+    # normalize direction vector
+    len_fac = calcLength(params, nrm)
+    for dim=1:Tdim
+      nrm[dim] = nrm[dim]/len_fac
+    end
+
+    # project q into n-t coordinate system
+    getProjectionMatrix(params, nrm, P)
+    projectToNT(params, P, q_avg, qprime)
+
+    # get eigensystem in the normal direction, which is equivalent to
+    # the x direction now that q has been rotated
+    calcEvecsx(params, qprime, Y)
+    calcEvalsx(params, qprime, Lambda)
+    calcEScalingx(params, qprime, S2)
+
+#    calcEntropyFix(params, Lambda)
+ 
+    # compute LF term in n-t coordinates, then rotate back to x-y
+    projectToNT(params, P, res_vals, res_vals2)
+    smallmatTvec!(Y, res_vals2, res_vals)
+    # multiply by diagonal Lambda and S2, also include the scalar
+    # wface and len_fac components
+    for j=1:length(res_vals)
+      res_vals[j] *= len_fac*absvalue(Lambda[j])*S2[j]
+    end
+    smallmatvec!(Y, res_vals, res_vals2)
+    projectToXY(params, P, res_vals2, res_vals)
+
+    @simd for p=1:numDofPerNode
+      resL[p, p_iL] -= res_vals[p]
+      resR[p, p_iR] += res_vals[p]
+    end
+  end  # end loop i
+
+  return nothing
+end
+
+
 
 """
   This function modifies the eigenvalues of the euler flux jacobian such
@@ -874,6 +1033,21 @@ global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
 
 )
 
+"""
+  Populates the field(s) of the EulerData object with
+  [`FaceElementIntegralType`](@ref) functors as specified by the options
+  dictionary
+
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * opts: the options dictionary
+
+  **Inputs/Outputs**
+
+   * eqn: the EulerData object
+"""
 function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)
 
   eqn.face_element_integral_func = FaceElementDict[opts["FaceElementIntegral_name"]]

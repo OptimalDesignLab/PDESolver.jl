@@ -27,4 +27,6 @@ arg_dict = Dict{ASCIIString,Any}(
 "do_postproc" => true,
 "exact_soln_func" => "ICsinwave",
 "use_Minv" => true,
+"use_checkpointing" => true,
+"checkpoint_freq" => 1,
 )

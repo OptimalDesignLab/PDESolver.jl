@@ -37,15 +37,15 @@ function test_3d_sbp(mesh, sbp, eqn, opts)
 end
 
 #test_3d_sbp(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_sbp, test_3d_inputfile)
+add_func2!(AdvectionTests, test_3d_sbp, test_3d_inputfile, [TAG_SHORTTEST])
 
 """
   Test boundary flux.
 """
-function test_bc(flux_exp, mesh, sbp, eqn)
+function test_bc(flux_exp, mesh, sbp, eqn, opts)
 # test summing boundary condition
  fill!(eqn.bndryflux, 0.0)
- AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn)
+ AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
  flux_in = zero(eltype(eqn.bndryflux))
  flux_out = zero(flux_in)
@@ -76,13 +76,15 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
     q1 = eqn.q
     eqn.q = q2
     fill!(eqn.res, 0.0)
-    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn)
+    AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     nrm = [1., 1, 1]  # arbirary normal vector
+    nrm2 = zeros(nrm)
     alphas_xy = [eqn.params.alpha_x, eqn.params.alpha_y, eqn.params.alpha_z]
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         u = eqn.q[1, j, i]
         dxidx = sview(mesh.dxidx, :, :, j, i)
+        calcBCNormal(eqn.params, dxidx, nrm, nrm2)
 
         # calculate the flux directly
         alphas_parametric = dxidx*alphas_xy
@@ -90,7 +92,7 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
         net_flux = sum(flux_parametric.*nrm)
 
         # calculate boundary flux
-        bndryflux_calc = AdvectionEquationMod.RoeSolver(u, u, eqn.params, nrm, dxidx)
+        bndryflux_calc = AdvectionEquationMod.RoeSolver(eqn.params, u, u, nrm2)
         # calculate flux from evalVolumeIntegrals
         bndryflux_weak = zero(eltype(eqn.flux_parametric))
         for d=1:3
@@ -111,7 +113,7 @@ function test_3d_bcsolver(mesh, sbp, eqn, opts)
 end
 
 #test_3d_bcsolver(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_bcsolver, test_3d_inputfile, [TAG_BC, TAG_FLUX])
+add_func2!(AdvectionTests, test_3d_bcsolver, test_3d_inputfile, [TAG_BC, TAG_FLUX, TAG_SHORTTEST])
 
 """
   Test boundary flux calcuation in all 3 directions.
@@ -129,21 +131,21 @@ function test_3d_boundaryflux(mesh, sbp, eqn, opts)
      opts["numBC"] = 1
      AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
-     test_bc(8.0, mesh, sbp, eqn)
+     test_bc(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 0.0
 
-     test_bc(8.0, mesh, sbp, eqn)
+     test_bc(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 0.0
      eqn.params.alpha_z = 1.0
 
-     test_bc(8.0, mesh, sbp, eqn)
+     test_bc(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 1.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 1.0
-     test_bc(3*8.0, mesh, sbp, eqn)
+     test_bc(3*8.0, mesh, sbp, eqn, opts)
 
 
    end
@@ -152,7 +154,7 @@ function test_3d_boundaryflux(mesh, sbp, eqn, opts)
 end
 
 #test_3d_boundaryflux(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_boundaryflux, test_3d_inputfile, [TAG_BC])
+add_func2!(AdvectionTests, test_3d_boundaryflux, test_3d_inputfile, [TAG_BC, TAG_SHORTTEST])
 
 """
   Test calculation of face flux.
@@ -176,7 +178,7 @@ function test_3d_faceflux(mesh, sbp, eqn, opts)
       coords_face = SummationByParts.SymCubatures.calcnodes(sbpface.cub, coords_faceverts)
       for j=1:mesh.numNodesPerFace
         coords_j = coords_face[:, j]
-        q_exp = AdvectionEquationMod.calc_p1(coords_j, eqn.params, 0.0)
+        q_exp = AdvectionEquationMod.calc_p1(eqn.params, coords_j, 0.0)
         q_calc = eqn.q_face[1, 1, j, i]
         q_calc2 = eqn.q_face[1, 2, j, i]
         @fact q_calc --> roughly(q_exp, atol=1e-13)
@@ -189,4 +191,4 @@ function test_3d_faceflux(mesh, sbp, eqn, opts)
 end
 
 #test_3d_faceflux(mesh, sbp, eqn, opts)
-add_func2!(AdvectionTests, test_3d_faceflux, test_3d_inputfile, [TAG_FLUX])
+add_func2!(AdvectionTests, test_3d_faceflux, test_3d_inputfile, [TAG_FLUX, TAG_SHORTTEST])

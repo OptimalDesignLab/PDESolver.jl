@@ -1,3 +1,8 @@
+#
+#TODO: As far as we know `q`, `q_x`, `q_xx`, we can move
+# the rest into a function, which is less error prone, and 
+# will save a lot of space
+#
 @doc """
 ### EulerEquationMod.applySourceTerm
 
@@ -28,10 +33,10 @@ function applySourceTerm(mesh,sbp, eqn, opts, src_func::SRCType)
   t = eqn.params.t
 
   for i=1:mesh.numEl
-    jac_i = sview(mesh.jac, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
     for j=1:mesh.numNodesPerElement
-      coords_j = sview(mesh.coords, :, j, i)
+      coords_j = ro_sview(mesh.coords, :, j, i)
       src_func(q_vals, coords_j, eqn.params, t)
       fac = weights[j]/jac_i[j]
       for k=1:mesh.numDofPerNode
@@ -1357,7 +1362,7 @@ function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-
+include("source_viscous.jl")
 
 @doc """
 ### EulerEquationMod.SRCDict

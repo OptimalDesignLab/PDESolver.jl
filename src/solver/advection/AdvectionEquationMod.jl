@@ -20,8 +20,16 @@ export AdvectionData, AdvectionData_, run_advection #getMass, assembleSolution, 
 # include("advection.jl")
 # include("getMass.jl")
 
-
+"""
+  Direct subtype of [`AbstractSolutionData`](@ref), inheriting `Tsol` and
+  `Tres` as static parameter
+"""
 abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+
+"""
+  Subtype of [`AbstractAdvectionData`](@ref), inheriting its static parameters
+  and adding `Tdim`.
+"""
 abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
 
 include("types.jl")
@@ -38,9 +46,13 @@ include("adjoint.jl")
 include("source.jl")
 include("flux.jl")
 include("check_options.jl")
+include("eqn_deepcopy.jl")
 include("startup_func.jl")  # function to invoke the solver
 
 # register this physics module
+"""
+  This physics is named `Advection`
+"""
 global const PhysicsName = "Advection"
 register_physics(PhysicsName, AdvectionEquationMod, run_advection)
 

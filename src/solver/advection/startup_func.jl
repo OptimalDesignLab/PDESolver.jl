@@ -56,21 +56,10 @@ function createObjects(input_file::AbstractString)
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
 
-  #mesh.numColors = 4
-  #mesh.maxColors = 4
-
-  if opts["write_timing"]
-    MPI.Barrier(mesh.comm)
-    if mesh.myrank == 0
-      f = open("timing.dat", "a+")
-      println(f, mesh_time)
-      close(f)
-    end
-  end
-
   # Create advection equation object
   Tdim = dim
   eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+  eqn.params.time.t_meshinit = mesh_time  # save the mesh init time
 
   # Initialize the advection equation
   init(mesh, sbp, eqn, opts)
@@ -98,6 +87,13 @@ end
     pmesh: mesh used for preconditioning, can be same object as mesh.
            default value of mesh
 
+  Options Keys:
+    calc_error
+    calc_trunc_error
+    calc_havg
+    perturb_ic
+    calc_dt
+    finalize_mpi
 """
 function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmesh=mesh)
 
@@ -110,16 +106,16 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
 
 
   # Populate with initial conditions
-  println("\nEvaluating initial condition")
+  @mpi_master println("\nEvaluating initial condition")
   ICfunc_name = opts["IC_name"]
   ICfunc = ICDict[ICfunc_name]
-  println("ICfunc = ", ICfunc)
+  @mpi_master println("ICfunc = ", ICfunc)
   ICfunc(mesh, sbp, eqn, opts, q_vec) 
 
   writedlm("solution_ic.dat", eqn.q_vec)
 
   if opts["calc_error"]
-    println("\ncalculating error of file ", opts["calc_error_infname"], 
+    @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"], 
             " compared to initial condition")
     # read in this processors portion of the solution
     vals = readdlm(get_parallel_fname(opts["calc_error_infname"], mesy.myrank))
@@ -129,7 +125,7 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
     err_local = calcNorm(eqn, err_vec)
     if myrank == 0
       outname = opts["calc_error_outfname"]
-      println("printed err = ", err, " to file ", outname)
+      @mpi_master println("printed err = ", err, " to file ", outname)
       f = open(outname, "w")
       println(f, err)
       close(f)
@@ -137,7 +133,7 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
   end
 
   if opts["calc_trunc_error"]  # calculate truncation error
-    println("\nCalculating residual for truncation error")
+    @mpi_master println("\nCalculating residual for truncation error")
     tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
     if myrank == 0
       f = open("error_trunc.dat", "w")
@@ -159,7 +155,7 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
 
 
   if opts["perturb_ic"]
-    println("\nPerturbing initial condition")
+    @mpi_master println("\nPerturbing initial condition")
     perturb_mag = opts["perturb_mag"]
     for i=1:mesh.numDof
       q_vec[i] += perturb_mag*rand()
@@ -172,16 +168,21 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
   #writedlm("IC_$myrank.dat", real(q_vec))
   saveSolutionToMesh(mesh, q_vec)
   writeVisFiles(mesh, "solution_ic")
-  global int_advec = 1
+  global int_advec = 1  # ???
 
   if opts["calc_dt"]
     alpha_net = sqrt(eqn.params.alpha_x^2 + eqn.params.alpha_y^2)
     opts["delta_t"] = opts["CFL"]*mesh.min_el_size/alpha_net
   end
 
+  # this must be last, because all previous calculations need to use the
+  # original initial condition
+  if opts["is_restart"]
+    loadRestartState(mesh, sbp, eqn, opts, pmesh)
+  end
+
 
   MPI.Barrier( mesh.comm)
-  # evalResidual(mesh, sbp, eqn, opts, t)
 
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
@@ -208,15 +209,15 @@ end  # end function
 function postproc(mesh, sbp, eqn, opts)
 
   ##### Do postprocessing ######
-  println("\nDoing postprocessing")
+  myrank = mesh.myrank
+  @mpi_master println("\nDoing postprocessing")
 
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
   Tmsh = eltype(mesh.dxidx)
-  myrank = mesh.myrank
 
   if opts["do_postproc"] && opts["solve"]
-    println("final time = ", eqn.t)
+    @mpi_master println("final time = ", eqn.t)
     exfname = opts["exact_soln_func"]
     if haskey(ICDict, exfname)
       exfunc = ICDict[exfname]
@@ -247,7 +248,7 @@ function postproc(mesh, sbp, eqn, opts)
 #        println("mesh.min_node_distance = ", mesh.min_node_dist)
         # print to file
         outname = opts["calc_error_outfname"]
-        println("printed err = ", diff_norm, " to file ", outname)
+        @mpi_master println("printed err = ", diff_norm, " to file ", outname)
         f = open(outname, "w")
         println(f, diff_norm, " ", h_avg)
         close(f)

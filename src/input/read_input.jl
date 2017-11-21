@@ -1,26 +1,68 @@
 #include("new_file2.jl")  # creates arg_dict
 #include("../tools/misc.jl")
+"""
+  This function reads an input file and turns it into a dictionary.
+  Unlike [`read_input`](@ref), this function returns the contents of the
+  input file exactly as a dictionary, without supplying default values.
+
+  **Inputs**
+
+   * fname: a string containing the file name.  If the file name does not
+            start with a . or .. or /, then fname is treated as relative to
+            the pwd, otherwise fname is interpreted as an absolute path
+
+  **Outputs**
+
+   * arg_dict: the dictionary containing all the options.
+
+  Exceptions: if the input file does not contain a dictionary, an exception
+              is thrown.
+
+  Notes: currently, the input file format is a literal dictionary that is
+         processed using eval().  This is likely to change to change in the
+         future to support static compilation.
+"""
+function read_input_file(fname::AbstractString)
+
+  if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    println("pwd = ", pwd())
+    println("fname = ", fname)
+  end
+
+  fpath = joinpath(pwd(), fname)
+
+  # this uses eval, which is evil (and not statically compilable)
+  arg_dict = evalfile(fpath)  # include file in the users pwd()
+
+  if !( typeof(arg_dict) <: Dict )
+    throw(ErrorException("Input file does not contain a dictionary"))
+  end
+
+  return arg_dict
+end
 
 
 @doc """
 ### PDESolver.read_input
 
-  This function reads a file which must  be a julia source file that declares
-  a dictionary of option keywords and values for the options named arg_dict.
-  See the documention on input variables for valid keywords.
+  This function read an input file, supplies default values whenever possible,
+  and does sanity checks on the options.
+  A dictionary (referred to as the options dictionary) is returned.
+  See [`read_input_file`](@ref) for the description of the input file format.
 
-  read_input() returns the dictionary after doing some sanity checks and
-  supplying default values for any unspecified keys.
+  After default values are supplied, the dictionary is printed to 
+  arg_dict_output.jl (by MPI rank 0) in the format of an input file.
+  This is useful for rerunning a simulation.
 
-  After supplying default values, it prints the dictonary to arg_dict_output.jl,
-  which is a valid julia source file and can be read in to re-run a simulation.
+  This function prints warnings if keys in the dictionary do not correspond
+  to known options.  The file known_keys.jl lists all known keys.
+  See input_vals.txt for the list of keys, possible values, and their meanings.
 
-  This function checks whether the keys in arg_dict are recognized keywords
-  and prints a warning to STDERR if an unrecognized key is found.  The list of
-  known keys is read from the julia source file known_keys.jl
+  This function is idempotent; this is essential for using arg_dict_output.jl
+  to rerun a simulation.
 
   Inputs:
-    * fname : name of file to read
+    * fname : name of file to read, can be relative or absolute path.
 
   Outputs:
     arg_dict: a Dict{Any, Any} containing the option keywords and values
@@ -28,23 +70,40 @@
 """->
 function read_input(fname::AbstractString)
 
+  arg_dict = read_input_file(fname)
+  arg_dict = read_input(arg_dict)
 
-println("pwd = ", pwd())
-println("fname = ", fname)
-fpath = joinpath(pwd(), fname)
+  return arg_dict
+end
+
+"""
+  This method supplies default values to a given dictionary.  See the other
+  method for details.
+
+  **Inputs**
+
+   * arg_dict: a dictionary
+
+  **Outputs**
+
+   * arg_dict: the same dictionary, with default values supplied
+"""
+function read_input(arg_dict::Dict)
+
+
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
 #include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
 # take action based on the dictionary
 
-# this uses eval, which is evil (and not statically compilable)
-arg_dict = evalfile(fpath)  # include file in the users pwd()
-known_keys = evalfile(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
+#arg_dict = evalfile(fpath)  # include file in the users pwd()a
 
-# record fname in dictionary
-arg_dict["fname"] = fname
+#arg_dict = read_input_file(fname)
+# TODO: make this a global const
+#known_keys = evalfile(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
+
 
 # new (201612) options checking function
-checkForIllegalOptions(arg_dict)
+checkForIllegalOptions_pre(arg_dict)
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -63,6 +122,9 @@ if arg_dict["use_DG"]
 else
   get!(arg_dict, "operator_type", "SBPGamma")
 end
+
+get!(arg_dict, "operator_type2", "SBPNone")
+get!(arg_dict, "use_staggered_grid", arg_dict["operator_type2"] != "SBPNone")
 
 get!(arg_dict, "need_adjoint", false)
 
@@ -125,7 +187,7 @@ get!(arg_dict, "use_filter_prec", false)
 get!(arg_dict, "use_dissipation_prec", false)
 if arg_dict["use_filter"]
   get!(arg_dict, "filter_name", "raisedCosineFilter")
-  # the raised cosine filter has no paramters
+  # the raised cosine filter has no parameters
 end
 
 # figure out coloring distances
@@ -235,6 +297,25 @@ get!(arg_dict, "check_pressure", true)
 # DG Flux options
 get!(arg_dict, "LFalpha", 0.0)
 
+
+get!(arg_dict, "precompute_volume_flux", true)
+if arg_dict["volume_integral_type"] != 2
+  get!(arg_dict, "precompute_face_flux", true)
+else
+  get!(arg_dict, "precompute_face_flux", false)
+  get!(arg_dict, "precompute_q_face", false)
+end
+get!(arg_dict, "precompute_boundary_flux", true)
+
+if !arg_dict["use_DG"]
+  get!(arg_dict, "precompute_q_face", true)
+  get!(arg_dict, "precompute_q_bndry", true)
+end
+
+# if not already specified, set to true just in case
+get!(arg_dict, "precompute_q_face", true)
+get!(arg_dict, "precompute_q_bndry", true)
+
 # solver debugging options
 writeflux = get!(arg_dict, "writeflux", false)
 writeboundary = get!(arg_dict, "writeboundary", false)
@@ -257,6 +338,7 @@ get!(arg_dict, "write_counts", false)
 get!(arg_dict, "write_interfaces", false)
 get!(arg_dict, "write_boundaries", false)
 get!(arg_dict, "write_sharedboundaries", false)
+get!(arg_dict, "use_linear_metrics", false)
 
 # mesh options
 get!(arg_dict, "reordering_algorithm", "default")
@@ -338,12 +420,32 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 # Adjoint computation options
 get!(arg_dict, "calc_adjoint", false)
 
+# Unsteady adjoint (CN) computation options --- EXPERIMENTAL, NONWORKING CODE
+get!(arg_dict, "adjoint_revolve", false)
+get!(arg_dict, "adjoint_straight", false)
+get!(arg_dict, "uadj_global", false)
+get!(arg_dict, "use_Minv_override_for_uadj", false)
+
+
+# checkpointing/restart options
+get!(arg_dict, "most_recent_checkpoint", -1)
+get!(arg_dict, "most_recent_checkpoint_path", "")
+get!(arg_dict, "writing_checkpoint", -1)
+get!(arg_dict, "writing_checkpoint_path", "")
+get!(arg_dict, "is_restart", false)
+get!(arg_dict, "ncheckpoints", 2)
+get!(arg_dict, "checkpoint_freq", 200)
+get!(arg_dict, "use_checkpointing", false)
+
+checkForIllegalOptions_post(arg_dict)
+
 # write complete dictionary to file
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 commsize = MPI.Comm_size(MPI.COMM_WORLD)
 if myrank == 0
-  fname = "arg_dict_output.jl"
-  rmfile(fname)
+  fname = "arg_dict_output"
+  make_input(arg_dict, fname)
+  #=
   f = open(fname, "a+")
 
   println(f, "arg_dict = Dict{Any, Any}(")
@@ -359,70 +461,12 @@ if myrank == 0
   end
   println(f, ")")
   close(f)
+  =#
 end
 # do some sanity checks here
 
-if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
-  throw(ErrorException("Invalid jacobian type for parallel run"))
-end
 
-
-
-# deal with boundary conditions
-# "numBC" must be dictionary key whose value is the number of boundary conditions
-# for each boundary condition there must be keys BCi and BCi_name for i=1:numBC
-numBC = arg_dict["numBC"]
-
-#=
-# sort all the BC arrays
-for i=1:numBC
-  key_i = string("BC", i)
-  println("edge nums before sort = ", arg_dict[key_i])
-  sort!(arg_dict[key_i])
-  println("edge nums after sort = ", arg_dict[key_i])
-  enum_key_i = string("BC", i, "_name")
-  println("arg_dict[enum_key_i] = ", arg_dict[enum_key_i])
-end
-
-# check for repeated edge numbers
-# this isn't cache friendly
-for i=1:numBC
-key_i = string("BC", i)
-vals = arg_dict[key_i]
-
-  for j=1:length(vals)
-    val_j = vals[j]
-    println("val_j = ", val_j)
-
-    # check this value against all previous one
-    for k=1:(i-1)
-      key_k = string("BC", k)
-      println("key_k = ", key_k)
-      println("arg_dict[key_k] = ", arg_dict[key_k])
-      index = findfirst(arg_dict[key_k], val_j)
-      if index != 0
-	println("Error: cannot apply more than one boundary condition to a model entity")
-	println("  Model entity ", val_j, " from BC", i, " is repeated at index ", index, " of BC", k)
-      end
-    end
-  end
-end
-
-# check fo repeated edge numbers within each array
-
-for i=1:numBC
- key_i = string("BC", i)
- vals = arg_dict[key_i]
-
- if vals != unique(vals)
-   println("Error: cannot apply more than one boundary condition to a model entity")
-   println("BC", i, " has a repeated value")
- end
-end
-
-=#
-
-checkKeys(arg_dict, known_keys)
+checkKeys(arg_dict, KNOWN_KEYS)
 
 return arg_dict
 
@@ -465,7 +509,10 @@ function update_path(path)
   return path
 end
 
-function checkForIllegalOptions(arg_dict)
+"""
+  Check the user supplied options for errors before supplying default values
+"""
+function checkForIllegalOptions_pre(arg_dict)
 
   # Ensure that jac-method is not specified 
   if haskey(arg_dict, "jac_method")
@@ -482,6 +529,102 @@ function checkForIllegalOptions(arg_dict)
     end
   end
 
+
   return nothing
 
 end
+
+
+"""
+  Check the user supplied options for errors after supplying default options.
+"""
+function checkForIllegalOptions_post(arg_dict)
+  
+  myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+  commsize = MPI.Comm_size(MPI.COMM_WORLD)
+
+  if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
+  error("Invalid jacobian type for parallel run")
+end
+
+
+  if !arg_dict["use_DG"]
+    keys = ["precompute_volume_flux", "precompute_face_flux", "precompute_boundary_flux"]
+    for key in keys
+      !arg_dict[key] && error("$key not supported for CG")
+    end
+  end
+
+  if !arg_dict["precompute_volume_flux"] && !arg_dict["Q_transpose"]
+    error("cannot combine non-transposed Q and not precomputing the volume flux")
+  end
+
+  # error if checkpointing not supported
+  checkpointing_run_types = [1, 30, 20]
+  if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
+    error("checkpointing only supported with RK4 and LSERK")
+  end
+
+  if arg_dict["use_checkpointing"]
+    if arg_dict["ncheckpoints"] <= 0
+      error("checkpointing requires ncheckpoints > 0")
+    end
+
+    if arg_dict["checkpoint_freq"] <= 0
+      error("checkpointing requires checkpoint_freq > 0")
+    end
+  end
+
+  checkBCOptions(arg_dict)
+
+  return nothing
+end
+
+"""
+  Check that a model entity does not have more than one boundary condition
+  applied to it
+"""
+function checkBCOptions(arg_dict)
+
+  numBC = arg_dict["numBC"]
+
+  # sort all the BC arrays
+  for i=1:numBC
+    key_i = string("BC", i)
+    sort!(arg_dict[key_i])
+  end
+
+  # check for repeated edge numbers
+  # this isn't cache friendly
+  for i=1:numBC
+  key_i = string("BC", i)
+  vals = arg_dict[key_i]
+
+    for j=1:length(vals)
+      val_j = vals[j]
+
+      # check this value against all previous one
+      for k=1:(i-1)
+        key_k = string("BC", k)
+        index = findfirst(arg_dict[key_k], val_j)
+        if index != 0
+          throw(ErrorException("cannot apply more than one boundary condition to a model entity:\n Model entity $val_j from BC$i is repated in BC$k"))
+        end
+      end
+    end
+  end
+
+  # check for repeated edge numbers within each array
+
+  for i=1:numBC
+    key_i = string("BC", i)
+    vals = arg_dict[key_i]
+
+    if vals != unique(vals)
+      throw(ErrorException("cannot apply a boundary condition to a model entity more than once: BC$i has repeated model entities"))
+    end
+  end
+
+  return nothing
+end
+

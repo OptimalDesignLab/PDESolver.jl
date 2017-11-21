@@ -139,7 +139,7 @@ function test_jac_res()
 end
 
 #test_jac_res()
-add_func1!(AdvectionTests, test_jac_res)
+add_func1!(AdvectionTests, test_jac_res, [TAG_SHORTTEST])
 
 """
   Test the various methods of calculating the jacobian
@@ -227,4 +227,4 @@ function test_jac_calc()
 end
 
 #test_jac_calc()
-add_func1!(AdvectionTests, test_jac_calc)
+add_func1!(AdvectionTests, test_jac_calc, [TAG_SHORTTEST])

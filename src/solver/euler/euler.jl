@@ -35,26 +35,27 @@
 # fields directly (they can pass those fields to other functions however
 # This leads directly to a two level structure for the code: high level function
 # that take in composite types and low level function that take in arrays and
-# perform calculations on them
+# perform calculations on them.
 
-# the reason for this is that the compiler does not compile new version of the
-# function based
-# on the types of the fields of a composite type. Passing the fields of the typ
-# e to other functions fixes this problem because the fields are now arguments,
-# so the compiler can specialize the code
+# The reason for this is that the compiler does not compile new version of the 
+#   function based on the types of the fields of a composite type. Passing the 
+#   fields of the type to other functions fixes this problem because the fields 
+#   are now arguments, so the compiler can specialize the code.
 
 # 2.  Arrays should not be returned from functions.  The caller should allocate
-# and array and pass it into the function
+# and array and pass it into the function.
 
-# this allows reusing the same array during a loop (rather than
-# allocating a new array)
+# This allows reusing the same array during a loop (rather than 
+#   allocating a new array).
 
 @doc """
 ### EulerEquationMod General Description
 This module is organized into 3 levels of functions: high, middle, and low.
 
-The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, and opts (options dictionary), They do not know the types their
-arguments are paramaterized on. There is only one method for each high level function.  All they do is call mid level functions.
+The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, 
+and opts (options dictionary), They do not know the types their
+arguments are paramaterized on. There is only one method for each high level function.  
+All they do is call mid level functions.
 
 Mid level functions take the same arguments as high level functions but know
 the types they are paramaterized on and do the right thing for all parameters.
@@ -85,15 +86,18 @@ using Debug
 @debug function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
+#  println("\n----- entered evalResidual -----")
+
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
   time.t_send += @elapsed if opts["parallel_type"] == 1
-    startDataExchange(mesh, opts, eqn.q,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
+#  println("dataPrep @time printed above")
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
@@ -104,8 +108,10 @@ using Debug
   end
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-   evalBoundaryIntegrals(mesh, sbp, eqn)
+    evalBoundaryIntegrals(mesh, sbp, eqn, opts)
+#   println("boundary integral @time printed above")
   end
+
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
@@ -117,25 +123,21 @@ using Debug
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
+#    println("evalSharedFaceIntegrals @time printed above")
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
+#  println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
-	if eqn.params.isViscous == true
+  if eqn.params.isViscous == true
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
-	end
-
-  # eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec) 
-  # saveSolutionToMesh(mesh, sview(abs(real(eqn.res_vec))))
-  # writeVisFiles(mesh,"residual")
-  # println("L_inf(res) = ", maximum(abs(real(eqn.res))))
-  # @bp
+  end
 
   return nothing
 end  # end evalResidual
@@ -156,7 +158,6 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 #  println("\nInitializing Euler module")
 
-  initMPIStructures(mesh, opts)
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
   getBCFunctors(pmesh, sbp, eqn, opts)
@@ -166,6 +167,21 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     getFluxFunctors(mesh, sbp, eqn, opts)
     getFaceElementFunctors(mesh, sbp, eqn, opts)
   end
+
+  if opts["use_staggered_grid"]
+    mesh2 = mesh.mesh2
+    sbp2 = mesh.sbp2
+    
+    getBCFunctors(mesh2, sbp2, eqn, opts)
+
+    getSRCFunctors(mesh2, sbp2, eqn, opts)
+    if mesh2.isDG
+      getFluxFunctors(mesh2, sbp2, eqn, opts)
+      getFaceElementFunctors(mesh2, sbp2, eqn, opts)
+    end
+  end
+
+
 
   return nothing
 end
@@ -185,7 +201,6 @@ function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-
 function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
                                mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP,
@@ -197,9 +212,6 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   output_freq = opts["output_freq"]::Int
 
 #  println("eqn.q = \n", eqn.q)
-  # undo multiplication by inverse mass matrix
-  res_vec_orig = eqn.M.*copy(eqn.res_vec)
-  res_orig = reshape(res_vec_orig, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
 
   if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
     vals = real(eqn.q_vec)  # remove unneded imaginary part
@@ -260,6 +272,13 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   end
 =#
   if opts["write_entropy"]
+    if mesh.isDG
+      # undo multiplication by inverse mass matrix
+      res_vec_orig = eqn.M.*copy(eqn.res_vec)
+      res_orig = reshape(res_vec_orig, mesh.numDofPerNode, 
+                         mesh.numNodesPerElement, mesh.numEl)
+    end
+
     @mpi_master f = eqn.file_dict[opts["write_entropy_fname"]]
 
     if(itr % opts["write_entropy_freq"] == 0)
@@ -268,10 +287,9 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
       # compute w^T * res_vec
       val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
+#      val3 = real(contractResEntropyVars2(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
 
       @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
-      #DEBUGGING: flish every time
-      @mpi_master flush(f)
     end
 
     @mpi_master if (itr % output_freq) == 0
@@ -283,13 +301,11 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     integralq_vals = integrateQ(mesh, sbp, eqn, opts, eqn.q_vec)
     @mpi_master begin
       f = eqn.file_dict[opts["write_integralq_fname"]]
-  #    f = open(opts["write_integralq_fname"], "a+")
       print(f, itr, " ", eqn.params.t)
       for i=1:length(integralq_vals)
         print(f, " ", integralq_vals[i])
       end
       print(f, "\n")
-  #    close(f)
 
       if (itr % output_freq) == 0
         flush(f)
@@ -322,7 +338,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       flush(f)
     end
   end
- 
+
   if opts["write_kinetic_energydt"]
     @mpi_master f = eqn.file_dict[opts["write_kinetic_energydt_fname"]]
 
@@ -383,24 +399,41 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
   # calculate fluxes
-  getEulerFlux(mesh, sbp,  eqn, opts)
 
-  if mesh.isDG
-    fill!(eqn.q_bndry, 0.0)
-    fill!(eqn.q_face, 0.0)
-    fill!(eqn.flux_face, 0.0)
-    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
-
-    if opts["face_integral_type"] == 1
-      interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-      calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+  if opts["use_staggered_grid"]
+    aux_vars = zeros(Tres, 1, mesh.mesh2.numNodesPerElement)
+    for i=1:mesh.numEl
+      qs = ro_sview(eqn.q, :, :, i)
+      qf = sview(eqn.q_flux, :, :, i)
+      interpolateElementStaggered(eqn.params, mesh, qs, aux_vars, qf)
     end
   end
 
-  fill!(eqn.bndryflux, 0.0)
-  getBCFluxes(mesh, sbp, eqn, opts)
+  if opts["precompute_volume_flux"]
+    getEulerFlux(mesh, sbp,  eqn, opts)
+  end
+#  println("  getEulerFlux @time printed above")
 
-	if eqn.params.isViscous == true
+
+  if mesh.isDG
+    if opts["precompute_q_face"]
+      interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+    end
+    if opts["precompute_face_flux"]
+      calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+    end
+    if opts["precompute_q_bndry"]
+      interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    end
+  end
+
+  if opts["precompute_boundary_flux"]
+    fill!(eqn.bndryflux, 0.0)
+    getBCFluxes(mesh, sbp, eqn, opts)
+#     println("  getBCFluxes @time printed above")
+  end
+  
+  if eqn.params.isViscous == true
 		# fill!(eqn.vecflux_face, 0.0)
 		fill!(eqn.vecflux_faceL, 0.0)
 		fill!(eqn.vecflux_faceR, 0.0)
@@ -408,8 +441,8 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 		calcViscousFlux_interior(mesh, sbp, eqn, opts)
 
 		fill!(eqn.vecflux_bndry, 0.0)
-		calcViscousFlux_boundary(mesh, sbp, eqn, opts)	
-	end
+		calcViscousFlux_boundary(mesh, sbp, eqn, opts)
+  end
 
   # is this needed for anything besides edge stabilization?
   if eqn.params.use_edgestab
@@ -508,71 +541,60 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
   integral_type = opts["volume_integral_type"]
-  if integral_type == 1
-    if opts["Q_transpose"] == true
-      for i=1:Tdim
-        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
-      end
-    else
-      for i=1:Tdim
-        weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
-      end
-    end  # end if
-  elseif integral_type == 2
+  if integral_type == 1  # regular volume integrals
+
+    if opts["precompute_volume_flux"]
+
+      if opts["Q_transpose"] == true
+        for i=1:Tdim
+          weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, trans=true)
+        end
+      else
+        for i=1:Tdim
+          weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
+        end
+      end  # end if Q_transpose
+
+    else  # not precomputing the volume flux
+      calcVolumeIntegrals_nopre(mesh, sbp, eqn, opts)
+    end  # end if precompute_volume _flux
+
+  elseif integral_type == 2  # entropy stable formulation
     calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
 
-	if eqn.params.isViscous == true
+  if eqn.params.isViscous == true
     weakdifferentiate2!(mesh, sbp, eqn, eqn.res)
   end
-
-  # artificialViscosity(mesh, sbp, eqn) 
+  # artificialViscosity(mesh, sbp, eqn)
 
 end  # end evalVolumeIntegrals
 
 
-@doc """
+ """
   This function evaluates the boundary integrals in the Euler equations by
   calling the appropriate SBP function on eqn.bndryflux, which must be populated
   before calling this function.  eqn.res is updated with the result
 
   This is a mid level function
 
-"""->
-# mid level function
+"""
 function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
-
-  #=
-  if mesh.myrank == 1
-    f = open("bdnrylog.dat", "a")
-    elnum = 1
-    println(f, "\nelement $elnum coords = \n", mesh.coords[:, :, elnum])
-    println(f, "\nelement $elnum q = \n", eqn.q[:, :, elnum])
-    # find boundary
-    idx = 0
-    for i=1:length(mesh.bndryfaces)
-      if mesh.bndryfaces[i].element == elnum
-        idx = i
-      end
-    end
-    bndry = mesh.bndryfaces[idx]
-    println(f, "bndryface = ", bndry)
-
-    println(f, "element $elnum boundary q = \n", eqn.q_bndry[:, :, idx])
-    println(f, "element $elnum boundary flux = \n", eqn.bndryflux[:, :, idx])
-    println(f, "element $elnum boundary coords = \n", mesh.coords_bndry[:, :, idx])
-    println(f, "element $elnum boundary dxidx = \n", mesh.dxidx_bndry[:, :, idx])
-    println(f, "element $elnum boundary facenormal = \n", mesh.sbpface.normal[:, bndry.face])
-    close(f)
-  end
-  =#
+                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
   #TODO: remove conditional
   if mesh.isDG
-    boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
+    if opts["precompute_boundary_flux"]
+      boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
+    # else do nothing
+  else
+    # when precompute_boundary_flux == false, this fuunction does the
+    # integration too, updating res
+    getBCFluxes(mesh, sbp, eqn, opts)
+  end
+
   else
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
   end
@@ -604,7 +626,7 @@ function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
                      mesh.dxidx, mesh.jac, eqn.edgestab_alpha, eqn.stabscale,
                      eqn.res, eqn.res_edge)
     else
-      edgestabilize!(sbp, mesh.interfaces, eqn.q, mesh.coords, mesh.dxidx,
+      edgestabilize!(sbp, mesh.interfaces, mesh, eqn.q, mesh.coords, mesh.dxidx,
                      mesh.jac, eqn.edgestab_alpha, eqn.stabscale, eqn.res)
     end
   end
@@ -632,13 +654,15 @@ end
   updates the residual.  The array eqn.flux_face must already be populated
   with the face flux.
 
-  Inputs:
-    mesh: an AbstractDGMesh
-    sbp: an SBP operator
-    eqn: an EulerData object
-    opts: the options dictonary
+  **Inputs**:
 
-  Outputs:
+   * mesh: an AbstractDGMesh
+   * sbp: an SBP operator
+   * eqn: an EulerData object
+   * opts: the options dictonary
+
+  **Outputs**:
+
     none
 
 """->
@@ -647,11 +671,26 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
-    interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, eqn.res, SummationByParts.Subtract())
+#    println("calculating regular face integrals")
+    if opts["precompute_face_flux"]
+      interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, 
+                             eqn.res, SummationByParts.Subtract())
+    else
+      calcFaceIntegral_nopre(mesh, sbp, eqn, opts, eqn.flux_func, mesh.interfaces)
+    end
 
   elseif face_integral_type == 2
-    getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
-                           eqn.flux_func, mesh.sbpface, mesh.interfaces)
+#    println("calculating ESS face integrals")
+    if opts["use_staggered_grid"]
+      getFaceElementIntegral(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn,
+                             eqn.face_element_integral_func,  
+                             eqn.flux_func, mesh.mesh2.sbpface, mesh.interfaces)
+ 
+    else
+      getFaceElementIntegral(mesh, sbp, eqn, eqn.face_element_integral_func,  
+                             eqn.flux_func, mesh.sbpface, mesh.interfaces)
+    end
+
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))
   end
@@ -693,11 +732,12 @@ end
   communication to have finished already, namely the face integrals
   for the shared faces
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
+  **Inputs**:
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
@@ -706,16 +746,19 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
   if face_integral_type == 1
 
     if opts["parallel_data"] == "face"
-      calcSharedFaceIntegrals(mesh, sbp, eqn, opts, eqn.flux_func)
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals)
     elseif opts["parallel_data"] == "element"
-      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
+
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_element)
+#      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
     else
       throw(ErrorException("unsupported parallel data type"))
     end
 
   elseif face_integral_type == 2
 
-    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts, eqn.face_element_integral_func,  eqn.flux_func)
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element)
+#    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts, eqn.face_element_integral_func,  eqn.flux_func)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end
@@ -723,7 +766,7 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
-@doc """
+"""
 ### EulerEquationMod.evalSourceTerm
 
   This function performs all the actions necessary to update eqn.res
@@ -731,17 +774,18 @@ end
   an abstract field, so it cannot be accessed (performantly) directly, so
   it is passed to an inner function.
 
-  Inputs:
-    mesh : Abstract mesh type
-    sbp  : Summation-by-parts operator
-    eqn  : Euler equation object
-    opts : options dictonary
+  **Inputs**:
+
+   * mesh : Abstract mesh type
+   * sbp  : Summation-by-parts operator
+   * eqn  : Euler equation object
+   * opts : options dictonary
 
   Outputs: none
 
   Aliasing restrictions: none
 
-"""->
+"""
 function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts)
@@ -762,12 +806,13 @@ end  # end function
   This function applies the 3D inverse mass matrix to an array.
     The array passed in should always be eqn.res
 
-  Inputs:
-    mesh: mesh object, needed for numEl and numDofPerNode fields
-    sbp: sbp object, needed for numnodes field
-    eqn: equation object, needed for Minv3D field
-    opts
-    arr: the 3D array to have the 3D mass matrix inverse applied to it
+  **Inputs**:
+
+   * mesh: mesh object, needed for numEl and numDofPerNode fields
+   * sbp: sbp object, needed for numnodes field
+   * eqn: equation object, needed for Minv3D field
+   * opts
+   * arr: the 3D array to have the 3D mass matrix inverse applied to it
 
 """->
 function applyMassMatrixInverse3D(mesh, sbp, eqn, opts, arr)

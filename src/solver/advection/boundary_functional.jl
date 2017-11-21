@@ -5,9 +5,9 @@ export evalFunctional, calcBndryfunctional, getFunctionalName
 ### AdvectionEquationMod.evalFunctional
 
 Hight level function that evaluates functionals specified in the options
-dictionary. This function is agnostic which type of a functional is being
-computed and calls a mid level type specific function for the actual functional
-evaluation.
+dictionary. The user must call this function for functional evaluation.This
+function is agnostic which type of a functional is being computed and calls a
+mid level type specific function for the actual functional evaluation.
 
 **Arguments**
 
@@ -18,7 +18,7 @@ evaluation.
 *  `functionalData` : Object of the functional being computed.
 *  `functional_number` : Optional argument. This needs to be specified for all
                          non-objective functionals being computed, if there are
-                         more than 1 of them.
+                         more than 1 of them. Default = 1
 
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
@@ -28,8 +28,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   if opts["parallel_type"] == 1
 
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      params.f, wait=true)
+    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
 
   end
@@ -93,31 +92,31 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
-    boundary_integrand = zeros(Tsol, 1, sbp.numfacenodes, nfaces)
+    boundary_integrand = zeros(Tsol, 1, mesh.numNodesPerFace, nfaces)
     boundary_functional = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
 
     for i = 1:nfaces
-    	bndry_i = bndry_facenums[i]
-    	for j = 1:sbp.numfacenodes
-        k = sbp.facenodes[j, bndry_i.face]
+      bndry_i = bndry_facenums[i]
+      for j = 1:mesh.numNodesPerFace
+        k = mesh.facenodes[j, bndry_i.face]
         q = eqn.q[1,k,bndry_i.element]
-        x = sview(mesh.coords, :, k, bndry_i.element)
-        dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
+        x = ro_sview(mesh.coords, :, k, bndry_i.element)
+        dxidx = ro_sview(mesh.dxidx, :, :, k, bndry_i.element)
+        nrm = ro_sview(mesh.sbpface.normal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         boundary_integrand[1,j,i] = functor(eqn.params, nx, ny, q) # Boundary Flux
-    	end
+      end
     end
 
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces[idx_range], boundary_integrand, boundary_functional)
     # Add all boundary_force nodal values along the edge to get the nodal force value
     edge_functional_val = zero(Tsol) # functional value over a geometric edge
     for (bindex, bndry) in enumerate(mesh.bndryfaces[idx_range])
-      for i = 1:sbp.numfacenodes
-        k = sbp.facenodes[i, bndry.face]
+      for i = 1:mesh.numNodesPerFace
+        k = mesh.facenodes[i, bndry.face]
         edge_functional_val += boundary_functional[1,k,bndry.element]
-      end  # end for i = 1:sbp.numfacenodes
+      end  # end for i = 1:mesh.numNodesPerFace
     end    # end enumerate
 
     functional_val += edge_functional_val
@@ -166,11 +165,10 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
-        coords = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+        nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
+        nx = nrm[1]
+        ny = nrm[2]
         boundary_integrand[1,j,i] = calcBoundaryFunctionalIntegrand(eqn.params, nx, ny, q,
                                     functionalData) # Boundary Flux
       end

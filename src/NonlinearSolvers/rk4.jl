@@ -16,6 +16,80 @@ export rk4
 # Outputs:
 #   x:      solved x at t_max
 
+"""
+  This type stores all the data RK4 needs to restart.  It is a subtype of
+  [`AbstractCheckpointData`](@ref Utils.AbstractCheckpointData).
+
+  **Fields**
+
+   * i: the current time step
+
+"""
+type RK4CheckpointData <: AbstractCheckpointData
+  i::Int  # current time step
+end
+
+"""
+  This constructor loads a RK4CheckpointData from the most recently saved
+  checkpoint.
+
+  **Inputs**
+
+   * chkpointer: a [`Checkpointer`](@ref Utils.Checkpointer)
+   * comm_rank: MPI rank of this process
+
+  **Outputs**
+
+   * chkpoint_data: a RK4CheckpointData object
+"""
+function RK4CheckpointData(chkpointer::Checkpointer, comm_rank::Integer)
+
+  chkpoint_data = readLastCheckpointData(chkpointer, comm_rank)
+
+  return chkpoint_data::RK4CheckpointData
+end
+
+"""
+  This function assists in setting up checkpoinging related things for
+  self-starting explicit time marching methods
+
+  **Inputs**
+
+   * opts: the options dictionary
+   * myrank: MPI rank of this process
+
+  **Outputs*
+
+   * chkpointer: a Checkpointer fully initialized
+   * chkpointdata: a RK4CheckpoinntData object, fully initialized
+   * skip_checkpoint: a bool indicating if the next checkpoint write should be
+                      skipped
+"""
+function explicit_checkpoint_setup(opts, myrank)
+  is_restart = opts["is_restart"]
+  ncheckpoints = opts["ncheckpoints"]
+
+  if !is_restart
+    # this is a new simulation, create all the stuff needed to checkpoint
+    # note that having zero checkpoints is valid
+    istart = 2
+    chkpointdata = RK4CheckpointData(istart)
+    chkpointer = Checkpointer(myrank, ncheckpoints)
+    skip_checkpoint = false
+  else  # this is a restart, load existing data
+    # using default value of 0 checkpoints is ok
+    chkpointer = Checkpointer(opts, myrank)
+    chkpointdata = RK4CheckpointData(chkpointer, myrank)
+    skip_checkpoint = true  # when restarting, don't immediately write a
+                            # checkpoint
+                            # doing so it not strictly incorrect, but not useful
+  end
+
+  return chkpointer, chkpointdata, skip_checkpoint
+end
+
+
+
 @doc """
 rk4
 
@@ -26,7 +100,7 @@ rk4
     * f  : function evaluation, must have signature (ctx..., opts, t)
     * h  : time step size
     * t_max: time value to stop time stepping (time starts at 0)
-    * q_vec: vector of the u values
+    * q_vec: vector of the u values, must be eqn.q_vec
     * res_vec: vector of du/dt values (the output of the function f)
     * pre_func: function to to be called after the new u values are put into
                 q_vec but before the function f is evaluated.  Must have
@@ -61,17 +135,22 @@ rk4
    the values in res and put them in res_vec.  Thus pre_func and post_func
    provide the link between the way the rk4 represents the data and the 
    way the physics modules represent the data.
+
+   Options Keys
+
+   Implementation Notes
+     sol_norm check is only performed in real_time mode
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
-             post_func, ctx, opts, timing::Timings=Timings(); majorIterationCallback=((a...) -> (a...)), 
+             post_func, ctx, opts, timing::Timings=Timings(); 
+             majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
 
-  myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-  fstdout = BufferedIO(STDOUT)
+  myrank = MPI.Comm_rank(MPI.COMM_WORLD)  #???
   if myrank == 0
-    println(fstdout, "\nEntered rk4")
-    println(fstdout, "res_tol = ", res_tol)
+    println(BSTDOUT, "\nEntered rk4")
+    println(BSTDOUT, "res_tol = ", res_tol)
   end
 # res_tol is alternative stopping criteria
 
@@ -83,16 +162,20 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     itermax = opts["itermax"]
   end
 
+  use_checkpointing = opts["use_checkpointing"]::Bool
+  chkpoint_freq = opts["checkpoint_freq"]::Int
+  ncheckpoints = opts["ncheckpoints"]::Int
+
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/h)
-  println(fstdout, "t_steps: ",t_steps)
-  println(fstdout, "delta_t = ", h)
+  @mpi_master println(BSTDOUT, "t_steps: ",t_steps)
+  @mpi_master println(BSTDOUT, "delta_t = ", h)
 
   (m,) = size(q_vec)
 
   if myrank == 0
-    _f1 = open("convergence.dat", "a+")
+    _f1 = open("convergence.dat", "a")
     f1 = BufferedIO(_f1)
     _f2 = open("unsteady_error.dat", "a+")
     f2 = BufferedIO(_f2)
@@ -107,20 +190,47 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # Note: q_vec_old_DEBUG is a tool for showing the change in q between timesteps for comparison with CN (for ex)
 #   q_vec_old_DEBUG = zeros(q_vec)
 
-  flush(fstdout)
+  # setup all the checkpointing related data
+  chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
+  istart = chkpointdata.i
+
+  flush(BSTDOUT)
   #-----------------------------------------------------
   ### Main timestepping loop ###
   # beginning of RK4 time stepping loop
-  timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
+  #TODO: make this loop 1-based
+  # this loop is 2:(t_steps + 1) when not restarting
+  timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
+
+    # compute time value from time step
+    t = (i - 2)*h
 
 #     q_vec_old_DEBUG = deepcopy(q_vec)
 
     @mpi_master if i % output_freq == 0
-       println(fstdout, "\ntimestep ",i)
-       if i % output_freq == 0
-         flush(fstdout)
-       end
+       println(BSTDOUT, "\ntimestep ",i)
     end
+
+
+    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
+      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+      skip_checkpoint = false
+      # save all needed variables to the chkpointdata
+      chkpointdata.i = i
+
+      if countFreeCheckpoints(chkpointer) == 0
+        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+      end
+      
+      # save the checkpoint
+      saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
+    end
+
+    # flush after all printing
+    if i % output_freq == 0
+      flush(BSTDOUT)
+    end
+
 
     # stage 1
     pre_func(ctx..., opts)
@@ -133,7 +243,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       flush(f2)
     end
 
-    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, fstdout)
+    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
     for j=1:m
       k1[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k1[j]
@@ -145,25 +255,25 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     
     @mpi_master if i % output_freq == 0
-      println(fstdout, "flushing convergence.dat to disk")
+      println(BSTDOUT, "flushing convergence.dat to disk")
       flush(f1)
     end
 
     # check stopping conditions
-    if (sol_norm < res_tol)
+    if (sol_norm < res_tol) && !real_time
       if myrank == 0
-        println(fstdout, "breaking due to res_tol, res norm = $sol_norm")
+        println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
 
     if use_itermax && i > itermax
       if myrank == 0
-        println(fstdout, "breaking due to itermax")
+        println(BSTDOUT, "breaking due to itermax")
         close(f1)
-        flush(fstdout)
+        flush(BSTDOUT)
       end
       break
     end
@@ -213,18 +323,23 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 #     println("q_vec = \n", q_vec)
 
-    fill!(k1, 0.0)
-    fill!(k2, 0.0)
-    fill!(k3, 0.0)
-    fill!(k4, 0.0)
+    #TODO: is this necessary?
+#    fill!(k1, 0.0)
+#    fill!(k2, 0.0)
+#    fill!(k3, 0.0)
+#    fill!(k4, 0.0)
 
-    t = t + h
+#    t = t + h
 
   end   # end of RK4 time stepping loop
+
+  t += h  # final time step
 
   if myrank == 0
     close(f1)
   end
+
+  flush(BSTDOUT)
 
   # should this be treal?
   return t

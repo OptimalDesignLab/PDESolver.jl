@@ -35,7 +35,7 @@ function runtests_parallel()
   facts("----- Testing Parallel -----") do
 
     start_dir = pwd()
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel_runp.jl"
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
 
@@ -80,7 +80,76 @@ function runtests_parallel()
 end
 
 #runtests_parallel()
-add_func1!(AdvectionTests, runtests_parallel)
+add_func1!(AdvectionTests, runtests_parallel, [TAG_SHORTTEST])
+
+function test_precompute()
+  facts("----- testing non-precompute functions -----") do
+    start_dir = pwd()
+
+    # test rk4
+    cd("./rk4/parallel")
+    ARGS[1] = "input_vals_parallel_runp.jl"
+    #TODO: set opts["solve"] = false before doing this
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+
+    fill!(eqn.res, 0.0)
+    evalResidual(mesh, sbp, eqn, opts)
+
+    res_orig = copy(eqn.res)
+
+    opts["precompute_face_flux"] = false
+    evalResidual(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    # test newton
+    cd(start_dir)
+    cd("./newton/parallel")
+    ARGS[1] = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+
+    fill!(eqn.res, 0.0)
+    evalResidual(mesh, sbp, eqn, opts)
+    res_orig = copy(eqn.res)
+
+    opts["precompute_face_flux"] = false
+    evalResidual(mesh, sbp, eqn, opts)
+
+    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+
+    cd(start_dir)
+  end
+
+
+  return nothing
+end
+
+add_func1!(AdvectionTests, test_precompute, [TAG_SHORTTEST])
+
+function test_adjoint_parallel()
+
+  facts("--- Testing Adjoint Computation on a Geometric Boundary ---") do
+
+    resize!(ARGS, 1)
+    ARGS[1] = "input_vals_functional_DG_parallel.jl"
+    # include(STARTUP_PATH)
+    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+
+    objective = AdvectionEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
+    AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+
+    for i = 1:length(adjoint_vec)
+      @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)
+    end
+   
+  end # End facts("--- Testing Functional Computation on a Geometric Boundary ---")
+
+  return nothing
+end
+
+add_func1!(AdvectionTests, test_adjoint_parallel, [TAG_ADJOINT, TAG_LONGTEST])
 
 #------------------------------------------------------------------------------
 # run tests
@@ -134,4 +203,3 @@ if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
 FactCheck.exitstatus()
-

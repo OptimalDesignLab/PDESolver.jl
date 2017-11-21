@@ -7,6 +7,9 @@ using ODLCommonTools
   Inputs:
     dict: the options dictionary
     fname: the file name (without extension)
+
+  Outputs:
+    fname_ex: file name with extension
 """
 function make_input(dict::Dict, fname::AbstractString)
 
@@ -27,4 +30,5 @@ function make_input(dict::Dict, fname::AbstractString)
   println(f, ")")
   close(f)
 
+  return fname_ex
 end

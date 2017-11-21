@@ -193,12 +193,11 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
   gamma_1inv = 1/params.gamma_1
   p = calcPressure(params, q_avg)
 
-  convertToEntropy(params, qL, vL)
-  convertToEntropy(params, qR, vR)
+  convertToIR(params, qL, vL)
+  convertToIR(params, qR, vR)
 
   for i=1:length(vL)
-    vL[i] = gamma_1inv*(vR[i] - vL[i]) # scale by 1/gamma_1 to make IR entropy
-                                       # variables, now vL has vL - vR
+    vL[i] = vR[i] - vL[i]
   end
 
 #  println("delta v = \n", vL)
@@ -221,6 +220,7 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
     dA += dir[i]*dir[i]
   end
   dA = sqrt(dA)
+  lambda_max = absvalue(Un) + dA*a
 #=
   println("qL = \n", qL)
   println("qR = \n", qR)
@@ -231,9 +231,11 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
   # the sign of Un, the maximum is abs(Un) + dA*a
 #  lambda_max1 = absvalue(Un) + dA*a
 #  println("lambda_max1 = ", lambda_max1)
-
+#=
   # use the Roe solver code
   rhoA = absvalue(Un) + dA*a
+
+  #=
   lambda1 = Un + dA*a
   lambda2 = Un - dA*a
   lambda3 = Un
@@ -245,7 +247,7 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
   lambda3 = (tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
   lambda_max1 = max(lambda1, lambda2)
   lambda_max1 = max(lambda_max1, lambda3)
-
+  =#
 
   # DEBUGGING: try definition from Carpenters paper
 
@@ -253,7 +255,7 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
 #  lambda_max2 = getLambdaMax(params, qL, qR, dir)
 #  println("lambda_max1 = ", lambda_max1, ", lambda_max2 = ", lambda_max2)
   lambda_max = lambda_max1
-
+=#
 #  println("lambda_max = ", lambda_max)
   fac = 1
   for i=1:length(vR)

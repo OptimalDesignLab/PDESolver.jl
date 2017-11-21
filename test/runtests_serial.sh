@@ -4,25 +4,27 @@
 
 jj=julia
 
-jflags=$@  # take flags as command line arguments
+tags=$@
+
+#jflags=$@  # take flags as command line arguments
 start_dir=`pwd`
 
 err=0
 
 cd ./euler
-  $jj $jflags ./runtests.jl
+  $jj $jflags ./runtests.jl $tags
   tmp=$?
   err=$((err + tmp))
 cd $start_dir
 
 cd ./advection
-  $jj $jflags ./runtests.jl
+  $jj $jflags ./runtests.jl $tags
   tmp=$?
   err=$((err + tmp))
 cd $start_dir
 
 cd ./simpleODE/
-  $jj $jflags ./runtests.jl
+  $jj $jflags ./runtests.jl $tags
   tmp=$?
   err=$((err + tmp))
 cd $start_dir

@@ -1,5 +1,7 @@
 # file for homotopy functions
 # TODO: add mechanism for selecting which homotopy function to use
+# TODO: better idea: move the homotopy function to NLSolver, because it is
+#                    physics agnostic
 
 import PDESolver.evalHomotopy
 
@@ -40,7 +42,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   # some checks for when parallelism is enabled
   @assert opts["parallel_data"] == "element"
   for i=1:mesh.npeers
-    @assert mesh.recv_waited[i]
+    @assert eqn.shared_data[i].recv_waited
   end
 
   fill!(res, 0.0)
@@ -91,7 +93,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
   q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = zeros(q_faceL)
-  nrm2 = eqn.params.nrm2
+#  nrm2 = eqn.params.nrm2
   flux = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
@@ -108,12 +110,9 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     for j=1:mesh.numNodesPerFace
       qL_j = sview(q_faceL, :, j)
       qR_j = sview(q_faceR, :, j)
-#      fill!(nrm2, 0.0)
 
       # get the face normal
-      dxidx_j = sview(mesh.dxidx_face, :, :, j, i)
-      nrm_xi = sview(mesh.sbpface.normal, :, iface_i.faceL)
-      calcBCNormal(eqn.params, dxidx_j, nrm_xi, nrm2)
+      nrm2 = sview(mesh.nrm_face, :, j, i)
 
       lambda_max = getLambdaMaxSimple(eqn.params, qL_j, qR_j, nrm2)
 
@@ -141,17 +140,15 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
 #    q_faceL = sview(eqn.q_bndry, :, :, i)
     for j=1:mesh.numNodesPerFace
-      fill!(nrm2, 0.0)
       q_j = sview(q_faceL, :, j)
-      dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
+#      dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
 
       # calculate boundary state
       coords = sview(mesh.coords_bndry, :, j, i)
       calcFreeStream(coords, eqn.params, qg)
 
       # calculate face normal
-      nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)
-      calcBCNormal(eqn.params, dxidx_j, nrm_xi, nrm2)
+      nrm2 = sview(mesh.nrm_bndry, :, j, i)
 
       # calculate lambda_max
       lambda_max = getLambdaMaxSimple(eqn.params, q_j, qg, nrm2)
@@ -180,8 +177,9 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     bndries_remote = mesh.bndries_remote[peer]
     interfaces_peer = mesh.shared_interfaces[peer]
 
-    qR_peer = eqn.q_face_recv[peer]
-    dxidx_peer = mesh.dxidx_sharedface[peer]
+    qR_peer = eqn.shared_data[peer].q_recv
+#    dxidx_peer = mesh.dxidx_sharedface[peer]
+    nrm_peer = mesh.nrm_sharedface[peer]
     start_elnum = mesh.shared_element_offsets[peer]
 
     for i=1:length(bndries_local)
@@ -205,11 +203,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
       for j=1:mesh.numNodesPerFace
         qL_j = sview(q_faceL, :, j)
         qR_j = sview(q_faceR, :, j)
-
-        # calculate normal vector
-        dxidx_j = sview(dxidx_peer, :, :, j, i)
-        nrm_xi = sview(mesh.sbpface.normal, :, bndry_i.face)
-        calcBCNormal(eqn.params, dxidx_j, nrm_xi, nrm2)
+        nrm2 = sview(nrm_peer, :, j, i)
 
         # get max wave speed
         lambda_max = getLambdaMaxSimple(eqn.params, qL_j, qR_j, nrm2)

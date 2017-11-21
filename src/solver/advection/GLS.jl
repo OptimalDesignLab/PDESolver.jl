@@ -83,9 +83,9 @@ Calculates Axi*Dxi + Aeta*Deta at the element level
 
 """->
 function calcAxiDxi{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, 
-	                              dxidx::AbstractArray{Tmsh,3},
-	                              alpha_x::AbstractArray{Tsol}, 
-	                              alpha_y::AbstractArray{Tsol}, 
+                                dxidx::AbstractArray{Tmsh,3},
+                                alpha_x::AbstractArray{Tsol}, 
+                                alpha_y::AbstractArray{Tsol}, 
                                 shapefuncderiv::AbstractArray{Tsol,3})
 
   alpha_xi = zeros(Tsol, mesh.numNodesPerElement, mesh.numNodesPerElement)
@@ -132,7 +132,7 @@ function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     alpha_xi = zeros(Tsol, mesh.numNodesPerElement)
     alpha_eta = zeros(alpha_xi)
-  	for j = 1:mesh.numNodesPerElement
+    for j = 1:mesh.numNodesPerElement
       alpha_x = eqn.params.alpha_x[1, j, i]
       alpha_y = eqn.params.alpha_y[1, j, i]
       alpha_xi[j] = mesh.dxidx[1, 1, j, i]*alpha_x + mesh.dxidx[1, 2, j, i]*alpha_y

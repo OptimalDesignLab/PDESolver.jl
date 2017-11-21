@@ -99,7 +99,7 @@ function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
   time = eqn.params.time
   time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
+    startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
   func_rhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
@@ -160,7 +160,7 @@ end
 function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; 
                              assemble_edgeres=true, zero_resvec=true)
 # assembles all of the residuals into res_vec
-# no aliaising concerns
+# no aliasing concerns
 
   eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
 

@@ -10,7 +10,7 @@ using NonlinearSolvers
 using MPI
 using Utils
 using Input
-import ODLCommonTools: get_uninitialized_SolutionData, sview
+import ODLCommonTools: sview
 export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
 export evalResidual, init, run_simpleode # exported from simpleODE.jl
 export ICDict              # exported from ic.jl
@@ -27,20 +27,11 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("simpleODE.jl")
 include("common_funcs.jl")
 include("ic.jl")
+include("eqn_deepcopy.jl")
 include("startup_func.jl")
 
 global const PhysicsName = "SimpleODE"
 register_physics(PhysicsName, SimpleODEMod, run_simpleode)
-
-@doc """
-
-# TODO
-"""->
-function get_uninitialized_SolutionData(eqn::SimpleODEData_)
-
-  return SimpleODEData_(eqn)
-
-end
 
 @doc """
 ### SimpleODEMod.calcMassMatrix

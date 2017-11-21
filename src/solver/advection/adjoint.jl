@@ -2,7 +2,10 @@
 @doc """
 ### AdvectionEquationMod.calcAdjoint
 
-Calcualtes the adjoint vector for a single functional
+Calculates the adjoint vector, ψ, for a single functional. Currently only DG meshes
+are supported. The function performs a direct solve using Julia's  `\\` operator.
+For parallel meshes, a PETSc solve is done using ILU factorization. The user
+always call this function in order to compute the adjoint.
 
 **Inputs**
 
@@ -14,8 +17,10 @@ Calcualtes the adjoint vector for a single functional
                       associated with the adjoint of the functional being
                       computed and holds all the necessary data.
 *  `adjoint_vec` : Adjoint vector corresponding to the particular functional
-                         computed
-*  `functional_number` : The functional for which the adjoint vector is being
+                   computed. If called in parallel, the vector should be
+                   distributed across `eqn.comm`, just like `eqn.q_vec`
+*  `functional_number` : The functional for which the adjoint vector is being,
+                         default = 1
 
 **Outputs**
 
@@ -77,25 +82,26 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   if opts["parallel_type"] == 1
 
-    startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv,
-                      params.f, wait=true)
+    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
 
   end
-  
-  # Calculate the Jacobian of the residual
-  res_jac, jacData = calcResidualJacobian(mesh, sbp, eqn, opts)
+
+  # Allocate space for adjoint solve
+  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, evalResidual, alloc_rhs=true)
+
+  # Get the residual jacobian
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
 
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-
   # calculate the derivative of the function w.r.t q_vec
   func_deriv = zeros(Tsol, mesh.numDof)
 
   # 3D array into which func_deriv_arr gets interpolated
   func_deriv_arr = zeros(eqn.q)
-
 
   # Calculate df/dq_bndry on edges where the functional is calculated and put
   # it back in func_deriv_arr
@@ -103,33 +109,21 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Assemble func_deriv
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  func_deriv[:] = -func_deriv[:]
 
-  # Solve for adjoint vector. This depends on whether PETSc is used or not.
-  if opts["jac_type"] == 1 || opts["jac_type"] == 2
-    adjoint_vec[:] = -(res_jac.')\func_deriv
-  elseif opts["jac_type"] == 3
-
+  # Solve for adjoint vector. residual jacobian needs to be transposed first.
+  jac_type = typeof(res_jac)
+  if jac_type <: Array || jac_type <: SparseMatrixCSC
+    res_jac = res_jac.'
+  elseif  jac_type <: PetscMat
     PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
     PetscMatAssemblyEnd(res_jac)
-    res_jac = MatTranspose(res_jac)
-
-    b = PetscVec(eqn.comm)
-    PetscVecSetType(b, VECMPI)
-    PetscVecSetSizes(b, PetscInt(mesh.numDof), PETSC_DECIDE)
-
-    x = PetscVec(eqn.comm)
-    PetscVecSetType(x, VECMPI)
-    PetscVecSetSizes(x, PetscInt(mesh.numDof), PETSC_DECIDE)
-
-    ksp = KSP(eqn.comm)
-    KSPSetFromOptions(ksp)
-    KSPSetOperators(ksp, res_jac, res_jac)  # this was A, Ap
-
-    NonlinearSolvers.petscSolve(jacData, res_jac, res_jac, x, b, ksp, opts,
-                     func_deriv, adjoint_vec)
-    adjoint_vec = -adjoint_vec
-
-  end # End how to solve for adjoint_vec
+    res_jac = MatTranspose(res_jac, inplace=true)
+  else
+    error("Unsupported jacobian type")
+  end
+  step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
+                                           adjoint_vec, real(func_deriv), BSTDOUT)
 
   outname = string("adjoint_vec_", mesh.myrank,".dat")
   f = open(outname, "w")
@@ -141,95 +135,6 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   return nothing
 end # End function calcAdjoint
-
-
-@doc """
-###AdvectionEquationMod.calcResidualJacobian
-
-The function calculates the residual for computing the adjoint vector. The
-function allows for jacobian to be computed depending on the jacobian type
-specified in the options dictionary `jac_type`.
-
-**Input**
-
-* `mesh` : Abstract mesh object
-* `sbp`  : Summation-By-parts operator
-* `eqn`  : Euler equation object
-* `opts` : options dictionary
-
-**Output**
-
-* `jac` : Jacobian matrix
-
-"""->
-function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-         sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts)
-
-  jac_type = opts["jac_type"]
-  if jac_type == 4 # For now. Date: 28/11/2016
-    error("jac_type = 4 not yet supported")
-  end
-  jacData = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
-
-  # Initialize shape of Jacobian Matrix
-  if jac_type == 1
-    jac = zeros(Tres, mesh.numDof, mesh.numDof)
-  elseif jac_type == 2
-    if typeof(mesh) <: AbstractCGMesh
-      jac = SparseMatrixCSC(mesh.sparsity_bnds, Tres)
-    else
-      jac = SparseMatrixCSC(mesh, Tres)
-    end
-  elseif jac_type == 3
-    obj_size = PetscInt(mesh.numDof)
-    jac = PetscMat(eqn.comm)
-    PetscMatSetFromOptions(jac)
-    PetscMatSetType(jac, PETSc.MATMPIAIJ)
-    PetscMatSetSizes(jac, obj_size, obj_size, PETSC_DECIDE, PETSC_DECIDE)
-    if mesh.isDG
-      MatSetOption(jac, PETSc.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
-    end
-    # Preallocate matrix jac
-    dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
-    onnz = zeros(PetscInt, mesh.numDof)
-    for i = 1:mesh.numDof
-      dnnz[i] = mesh.sparsity_counts[1, i]
-      onnz[i] = mesh.sparsity_counts[2, i]
-    end
-    PetscMatMPIAIJSetPreallocation(jac, PetscInt(0),  dnnz, PetscInt(0), onnz)
-    MatSetOption(jac, PETSc.MAT_ROW_ORIENTED, PETSC_FALSE)
-    PetscMatZeroEntries(jac)
-    matinfo = PetscMatGetInfo(jac, Int32(1))
-  end
-
-  # Now function call for calculating Jacobian
-  ctx_residual = (evalResidual,)
-  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, jac, ctx_residual)
-  #=
-  jac_value = zeros(Float64, mesh.numDof, mesh.numDof)
-  if jac_type == 3
-    idx_range = collect(PetscInt, 0:(mesh.numDof-1)) # Array(0:mesh.numDof-1)
-    PetscMatAssemblyBegin(jac)
-    PetscMatAssemblyEnd(jac)
-    PetscMatGetValues(jac, idx_range, idx_range, jac_value)
-    jac_value = jac_value.'
-  elseif jac_type == 2
-    jac_value = full(jac)
-  elseif jac_type == 1
-    jac_value = jac
-  end
-
-  val = string("res_jac_type_",jac_type,".dat" )
-  f = open(val, "w")
-  for i = 1:length(jac_value)
-    println(f, real(jac_value[i]))
-  end
-  close(f)
-  =#
-
-  return jac, jacData
-end
-
 
 @doc """
 ### AdvectionEquationMod.calcFunctionalDeriv
@@ -286,17 +191,17 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
-      for j = 1:sbp.numfacenodes
-        k = sbp.facenodes[j, bndry_i.face]
+      for j = 1:mesh.numNodesPerFace
+        k = mesh.facenodes[j, bndry_i.face]
         q = eqn.q[1,k,bndry_i.element]
-        x = sview(mesh.coords, :, k, bndry_i.element)
-        dxidx = sview(mesh.dxidx, :, :, k, bndry_i.element)
-        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
+        x = ro_sview(mesh.coords, :, k, bndry_i.element)
+        dxidx = ro_sview(mesh.dxidx, :, :, k, bndry_i.element)
+        nrm = ro_sview(mesh.sbpface.normal, :, bndry_i.face)
         nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
         ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
         integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, functor, eqn.params,
                                         nx, ny, q, functionalData)
-      end  # End for j = 1:sbp.numfacenodes
+      end  # End for j = 1:mesh.numNodesPerFace
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
 
@@ -333,7 +238,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
     start_index = mesh.bndry_offsets[itr2]
     end_index = mesh.bndry_offsets[itr2+1]
     idx_range = start_index:(end_index-1)
-    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+    bndry_facenums = ro_sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
 
@@ -342,11 +247,10 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
-        coords = sview(mesh.coords_bndry, :, j, global_facenum)
-        dxidx = sview(mesh.dxidx_bndry, :, :, j, global_facenum)
-        nrm = sview(mesh.sbpface.normal, :, bndry_i.face)
-        nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-        ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
+        coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+        nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
+        nx = nrm[1]
+        ny = nrm[2]
         integrand[1,j,global_facenum] = calcIntegrandDeriv(opts, eqn.params,
                                         nx, ny, q, functionalData)
       end  # End for j = 1:mesh.sbpface.numnodes

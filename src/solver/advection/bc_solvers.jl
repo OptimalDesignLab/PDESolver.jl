@@ -1,6 +1,6 @@
 # bc_solvers.jl for advection
 
-@doc """
+"""
 flux1
 
 Calculates the boundary flux for the advection equation. It works at the nodal
@@ -17,9 +17,8 @@ level.
 **Outputs**
 
 *  None
-"""->
-
-function flux1(u_sbp_, dxidx, nrm, net_flux, params::ParamType2)
+"""
+function flux1(params::ParamType2, u_sbp_, dxidx, nrm, net_flux )
   # This function works at the nodal level  
   # u_sbp_ is the entry from u_sbp for this node
   # dxi_dx is the jacobian for this node
@@ -52,7 +51,8 @@ function flux1(u_sbp_, dxidx, nrm, net_flux, params::ParamType2)
   return nothing
 end # end function flux1
 
-@doc """
+#TODO: consolidate this with LFFlux?
+"""
 ### AdvectionEquationMod.RoeSolver
 
 Roe solver for the advection equations. It determines the boundary flux on 
@@ -63,36 +63,39 @@ each boundary. It is called at the nodal level
 *  `u`    : Solution of advection equation at a particular node
 *  `u_bc` : Prescribed solution value at the boundary
 *  `params`: the equation ParamType object
-*  `nrm`  : Summation-by-parts face normal vector
-*  `dxidx`: Mapping jacobian at a particular node
+*  `nrm`  : scaled face normal vector in x-y space
 
 **Outputs**
 
 *  `bndryflux` : Boundary flux at the particular node
 
-"""->
-function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, params::ParamType2, nrm, 
-                               dxidx::AbstractArray{Tmsh,2})
+"""
+function RoeSolver{Tsol}(params::ParamType2, u::Tsol, u_bc, nrm)
     alpha_x = params.alpha_x
     alpha_y = params.alpha_y
+    #=
     alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y
     alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y
     alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2]
+    =#
+    alpha_n = alpha_x*nrm[1] + alpha_y*nrm[2]
     bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
 
   return bndryflux
 end # end function RoeSolver
 
-function RoeSolver{Tsol, Tmsh}(u::Tsol, u_bc, params::ParamType3, nrm, 
-                               dxidx::AbstractArray{Tmsh,2})
+function RoeSolver{Tsol}(params::ParamType3, u::Tsol, u_bc, nrm)
     alpha_x = params.alpha_x
     alpha_y = params.alpha_y
     alpha_z = params.alpha_z
+    #=
     alpha_xi = dxidx[1,1]*alpha_x + dxidx[1,2]*alpha_y + dxidx[1,3]*alpha_z
     alpha_eta = dxidx[2,1]*alpha_x + dxidx[2,2]*alpha_y + dxidx[2,3]*alpha_z
     alpha_psi = dxidx[3,1]*alpha_x + dxidx[3,2]*alpha_y + dxidx[3,3]*alpha_z
 
     alpha_n  = alpha_xi*nrm[1] + alpha_eta*nrm[2] + alpha_psi*nrm[3]
+    =#
+    alpha_n = alpha_x*nrm[1] + alpha_y*nrm[2] + alpha_z*nrm[3]
     bndryflux = 0.5*alpha_n.*(u_bc + u) - 0.5*absvalue(alpha_n).*(u_bc - u)
 
   return bndryflux

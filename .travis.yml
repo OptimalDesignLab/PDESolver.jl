@@ -18,8 +18,9 @@ script:
   -  if [[ -a .git/shallow ]]; then git fetch --unshallow; fi 
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd())'
   - cd ~/.julia/v0.4/PDESolver/deps
-  - ./install_cmake3.sh
-  - source ./use_cmake.sh
+  - ./travis-install-mpi.sh mpich3
+#  - ./install_cmake3.sh
+#  - source ./use_cmake.sh
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
   - cd ~/.julia/v0.4/PumiInterface/src
   - source ./use_julialib.sh

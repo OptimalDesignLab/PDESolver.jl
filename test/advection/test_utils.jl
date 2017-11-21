@@ -46,33 +46,37 @@ function test_area(mesh, sbp, eqn, opts)
   
   #----------------------------------------------------------------------------
   # test computeNormal
+#  println("testing computeNormal")
   nout = mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
   nin = mesh.dim*mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
   jac = zeros(nout, nin)
 
-  nrm0 = Utils.computeNormal(mesh, eqn, mesh.bndryfaces)
+  dxidx = rand(mesh.dim, mesh.dim, mesh.numNodesPerFace, mesh.numBoundaryFaces)
+
+  nrm0 = Utils.computeNormal(mesh, eqn, mesh.bndryfaces, dxidx)
   pert = 1e-6
   for i=1:nin
-    mesh.dxidx_bndry[i] += pert
-    nrm = Utils.computeNormal(mesh, eqn, mesh.bndryfaces)
+    dxidx[i] += pert
+    nrm = Utils.computeNormal(mesh, eqn, mesh.bndryfaces, dxidx)
 
     for j=1:nout
       jac[j, i] = (nrm[j] - nrm0[j])/pert
     end
 
-    mesh.dxidx_bndry[i] -= pert
+    dxidx[i] -= pert
   end
 
   # reverse mode
   jac2 = zeros(jac)
   nrm_bar = zeros(nrm0)
+  dxidx_bar = zeros(dxidx)
   for i=1:nout
     nrm_bar[i] = 1
-    fill!(mesh.dxidx_bndry_bar, 0.0)
-    Utils.computeNormal_rev(mesh, eqn, mesh.bndryfaces, nrm_bar)
+    fill!(dxidx_bar, 0.0)
+    Utils.computeNormal_rev(mesh, eqn, mesh.bndryfaces, nrm_bar, dxidx, dxidx_bar)
 
     for j=1:nin
-      jac2[i, j] = mesh.dxidx_bndry_bar[j]
+      jac2[i, j] = dxidx_bar[j]
     end
 
     nrm_bar[i] = 0
@@ -87,55 +91,58 @@ i
 
   #----------------------------------------------------------------------------
   # test computeVolumeContribution
+#  println("testing computeVolumecontribution")
   vol = calcVolumeContribution!(mesh, eqn, [1])
   @fact vol --> roughly(8, atol=1e-12)
 
 
   # test computeVolumeContrib
   nout = 1
-  nin = mesh.dim*mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
+  nin = mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
   jac = zeros(nout, nin)
+
 
   v0 = calcVolumeContribution!(mesh, eqn, [1])
   pert = 1e-6
   for i=1:nin
-    mesh.dxidx_bndry[i] += pert
+    mesh.nrm_bndry[i] += pert
     v_i = calcVolumeContribution!(mesh, eqn, [1])
 
     jac[1, i] = (v_i - v0)/pert
 
-    mesh.dxidx_bndry[i] -= pert
+    mesh.nrm_bndry[i] -= pert
   end
 
   # reverse mode
-  fill!(mesh.dxidx_bndry_bar, 0.0)
+  fill!(mesh.nrm_bndry_bar, 0.0)
   Utils.calcVolumeContribution_rev!(mesh, eqn, [1], 1.0)
 
-  @fact norm(jac - reshape(mesh.dxidx_bndry_bar, 1, nin))/size(jac, 2) --> roughly(0.0, atol=1e-5)
+  @fact norm(jac - reshape(mesh.nrm_bndry_bar, 1, nin))/size(jac, 2) --> roughly(0.0, atol=1e-5)
 
   #----------------------------------------------------------------------------
   # test calcProjectedAreaContribution
- 
+#  println("testing calcProjectedAreaContribution")
+
   proj_area = calcProjectedAreaContribution!(mesh, eqn, [1], 1)
   @fact proj_area --> roughly(4, atol=1e-12)
 
   nout = 1
-  nin = mesh.dim*mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
+  nin = mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
   jac = zeros(nout, nin)
 
   v0 = calcProjectedAreaContribution!(mesh, eqn, [1], 1)
   pert = 1e-6
   for i=1:nin
-    mesh.dxidx_bndry[i] += pert
+    mesh.nrm_bndry[i] += pert
     v_i = calcProjectedAreaContribution!(mesh, eqn, [1], 1)
 
     jac[1, i] = (v_i - v0)/pert
 
-    mesh.dxidx_bndry[i] -= pert
+    mesh.nrm_bndry[i] -= pert
   end
 
   # reverse mode
-  fill!(mesh.dxidx_bndry_bar, 0.0)
+  fill!(mesh.nrm_bndry_bar, 0.0)
   Utils.calcProjectedAreaContribution_rev!(mesh, eqn, [1], 1, 1.0)
 
   diffnorm = 0.0
@@ -144,13 +151,14 @@ i
   for i=1:mesh.numBoundaryFaces
     for j=1:mesh.numNodesPerFace
       for k=1:mesh.dim
-        for p=1:mesh.dim
-          if abs(nrm[k, j, i]) > 1e-8  # abs is not differentiable at 0
-            diffnorm += jac[1, idx] - mesh.dxidx_bndry_bar[p, k, j, i]
-            cnt += 1
+        if abs(mesh.nrm_bndry[k, j, i]) > 1e-8  # abs is not differentiable at 0
+          diffnorm += abs(jac[1, idx] - mesh.nrm_bndry_bar[k, j, i])
+          if abs(jac[1, idx] - mesh.nrm_bndry_bar[k, j, i]) > 1e-5
           end
-          idx += 1
+
+          cnt += 1
         end
+        idx += 1
       end
     end
   end
@@ -159,11 +167,12 @@ i
   @fact diffnorm --> roughly(0.0, atol=1e-5)
 
   # check the other method
-#  println("checking other method")
-  nrm0 = Utils.computeNormal(mesh, eqn, mesh.bndryfaces)
+#  println("testing other method")
+#  nrm0 = Utils.computeNormal(mesh, eqn, mesh.bndryfaces,)
+  nrm0 = copy(mesh.nrm_bndry)
   coords = mesh.coords_bndry
 
-  nrm = copy(nrm)
+  nrm = copy(nrm0)
   jac = zeros(1, length(nrm0))
   for i=1:length(nrm)
     nrm[i] += pert
@@ -218,6 +227,6 @@ function test_utils3(mesh, sbp, eqn, opts)
 end
 
 
-add_func2!(AdvectionTests, test_utils3, test_3d_inputfile, [TAG_REVERSEMODE])
+add_func2!(AdvectionTests, test_utils3, test_3d_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])
 # it doesn't matter what mesh is loaded, so reuse the test_lowlevel one
-#add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE])
+add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])

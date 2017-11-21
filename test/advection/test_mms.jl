@@ -47,6 +47,7 @@ function test_mms()
     ARGS[1] = "input_vals_mms1.jl"
     fname = make_input_mms(opts, 1, dg=true)
     mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    println("precompute_q_face = ", opts["precompute_q_face"])
     fill!(eqn.res, 0.0)
     eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
@@ -200,6 +201,6 @@ function test_mms()
 end  # end function
 
 #test_mms()
-add_func1!(AdvectionTests, test_mms, [TAG_MMS])
+add_func1!(AdvectionTests, test_mms, [TAG_MMS, TAG_SHORTTEST])
 
 
