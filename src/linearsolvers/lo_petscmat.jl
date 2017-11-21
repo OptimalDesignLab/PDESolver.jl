@@ -2,6 +2,11 @@
 
 """
   Petsc matrix-explicit linear operator.
+
+  Note that if an interface common to both Petsc and regular matrices is used
+  when accessing the `Ap` field, it is possible to write functions that
+  operate on both regular and Petsc linear operators.
+
 """
 type PetscMatLO <: AbstractPetscMatLO
   A::PetscMat

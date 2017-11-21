@@ -10,6 +10,9 @@
 
   The [`calcPC`](@ref) function the user defines must call [`setPCCtx`](@ref).
 
+  **Public Fields**
+
+   * none
 """
 type PetscMatFreePC <: AbstractPetscMatFreePC
   pc::PC
@@ -26,6 +29,16 @@ type PetscMatFreePC <: AbstractPetscMatFreePC
   commsize::Int
 end
 
+"""
+  Outer constructor
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function PetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
                     eqn::AbstractSolutionData, opts::Dict)
 
@@ -78,8 +91,8 @@ end
 """
   This function should be called by the users [`calcPC`](@ref) function.
   The arguments passed to this function are passed to [`applyPC`](@ref)
-  during the next linear solve.  See that function for a description of
-  the arguments
+  during the next preconditioner application.
+  See that function for a description of the arguments
 
   **Inputs**
 

@@ -3,10 +3,24 @@
 """
   Preconditioner type for direct solve.
   Do not use with PetscLinearOperator.
+
+  **Public Fields**
+
+   * none
 """
 type PCNone <: AbstractPC
 end
 
+"""
+  Outer constructor
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function PCNone(mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict)
 

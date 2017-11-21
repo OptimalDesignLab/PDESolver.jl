@@ -2,15 +2,9 @@
 
 """
   [`AbstractPC`](@ref) implementation for Petsc matrix-explicit preconditioners.
+ 
+  **Public Fields**
 
-  Methods in NonlinearSolvers that want to use a Petsc matrix-explicit
-  preconditioner are encouraged to use composition, ie. create their own
-  [`AbstractPC`](@ref) type and include a PetscMatPC as a field.  This allows
-  the nonlinear method to use the functions defined on PetscMatPC as a building.
-
-  **Field**
-
-   * pc: a Petsc PC object
    * Ap: a PetscMat object used to calculate the preconditioner
 """
 type PetscMatPC <: AbstractPetscMatPC
@@ -33,7 +27,16 @@ type PetscMatPC <: AbstractPetscMatPC
   commsize::Int
 end
 
+"""
+  Outer constructor
 
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
                     eqn::AbstractSolutionData, opts::Dict)
 

@@ -84,6 +84,12 @@ makedocs(
                   "Introduction" => "input/input.md"
                   "Important Keys" => "input/keys.md"
                  ]
+              "LinearSolvers" => Any[
+                "Introduction" => "linearsolvers/linearsolvers.md"
+                "Preconditioners" => "linearsolvers/pc.md"
+                "Linear Operators" => "linearsolvers/lo.md"
+                "Linear Solvers" => "linearsolvers/ls.md"
+                ]  # end LinearSolvers
               "NonlinearSolvers" => Any[
                   "Introduction" => "NonlinearSolvers/nonlinearsolvers.md"
                   "Steady" => "NonlinearSolvers/steady.md"
