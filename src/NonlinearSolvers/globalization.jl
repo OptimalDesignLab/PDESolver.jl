@@ -212,17 +212,17 @@ function addDiagonal(mesh, sbp, eqn, jac)
 # add the mass matrix to the jacobian
 
   for i=1:mesh.numDof
-     idx = PetscInt[i-1]
-     idy = PetscInt[i-1]
-     vals = [100*eqn.M[i]]
+    idx = PetscInt[i-1]
+    idy = PetscInt[i-1]
+    vals = [100*eqn.M[i]]
 
 #     println("adding ", vals, " to jacobian entry ", i, ",", i)
-     PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
-   end
+    PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
+  end
 
-   return nothing
+  return nothing
 
- end
+end
 
 
 #------------------------------------------------------------------------------
