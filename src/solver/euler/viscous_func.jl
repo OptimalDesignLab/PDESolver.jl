@@ -193,7 +193,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
   for n = 1:numNodes
     v[1, n] = q[2, n]/q[1, n]
     v[2, n] = q[3, n]/q[1, n]
-    v[2, n] = q[4, n]/q[1, n]
+    v[3, n] = q[4, n]/q[1, n]
     vel2 = (v[1,n]*v[1,n] + v[2,n]*v[2,n] + v[3,n]*v[3,n])
     T[n] = gamma*gamma_1*(q[4, n]/q[1, n] - 0.5*vel2)
   end
@@ -231,7 +231,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
     Fv[1, 2, n] = tau[1, 1, n]
     Fv[1, 3, n] = tau[1, 2, n]
     Fv[1, 4, n] = tau[1, 3, n]
-    Fv[1, 5, n] = v[1, n]*tau[1, 1, n] + v[2, n]*tau[1, 2, n] + v[3,n]*tau[1,2,n]
+    Fv[1, 5, n] = v[1, n]*tau[1, 1, n] + v[2, n]*tau[1, 2, n] + v[3,n]*tau[1,3,n]
     Fv[1, 5, n] += rMuK[2, n] * dTdx[1, n] * coef_nondim  
 
     # Fv[2, 1, n] = 0.0
@@ -302,8 +302,8 @@ function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
   # calcGradient(mesh, sbp, elemR, qR, dqdx_eR)
 
   # method-2
-  calcFvis_elem_direct(params, sbp, qL, dxidxL, jacL, Fv_eL)
-  calcFvis_elem_direct(params, sbp, qR, dxidxR, jacR, Fv_eR)
+  # calcFvis_elem_direct(params, sbp, qL, dxidxL, jacL, Fv_eL)
+  # calcFvis_elem_direct(params, sbp, qR, dxidxR, jacR, Fv_eR)
   # method-3
   calcFvis_elem(params, sbp, qL, dxidxL, jacL, Fv_eL)
   calcFvis_elem(params, sbp, qR, dxidxR, jacR, Fv_eR)
@@ -1047,7 +1047,9 @@ function calcDiffusionTensor{Tsol}(params::ParamType{3, :conservative},
 end
 @doc """
 
-Compute the viscous diffusion matrix, only work for 2D
+Compute the viscous diffusion matrix for adiabatic wall. This matrix
+is different from calcDiffusionTensor because it is changed to
+satisfy ∇T = 0 condition. This is realized by setting gamma_pr = 0.0
 
 Input: 
   q = conservative variable at a node
@@ -1780,7 +1782,9 @@ function call{Tsol, Tmsh}(obj::Farfield,
       q_bnd[dim+2, n] = pInf/gamma_1 + 0.5*rhoV2
     end    
     
+    # DEBUB ONLY
     q_bnd[:,n] = qInf[:]
+    # DEBUG END
   end
 
   return nothing
