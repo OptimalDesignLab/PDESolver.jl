@@ -326,7 +326,7 @@ function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
   end
 
   if !pc_matfree && !ls.shared_mat
-    PetscMatAssemblyBegin(pc2.Ap, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyBegin(pc2.A, PETSC_MAT_FINAL_ASSEMBLY)
   end
 
   # copy values into the vector
@@ -346,10 +346,10 @@ function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
   end
 
   if !pc_matfree && !ls.shared_mat
-    PetscMatAssemblyEnd(pc2.Ap, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyEnd(pc2.A, PETSC_MAT_FINAL_ASSEMBLY)
     setIsAssembled(pc2, true)
     pc2.nassemblies[1] += 1
-    matinfo = PetscMatGetInfo(pc2.Ap, PETSc.MAT_LOCAL)
+    matinfo = PetscMatGetInfo(pc2.A, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for Ap on process $myrank: $(matinfo.mallocs) mallocs")
     end

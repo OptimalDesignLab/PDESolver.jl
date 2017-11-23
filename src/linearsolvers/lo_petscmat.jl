@@ -45,7 +45,7 @@ function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
 
   pc2 = getBasePC(pc)
   if !opts["use_jac_precond"] && !(typeof(pc) <: PetscMatFreeLO) # share matrix if possible
-    A = pc2.Ap
+    A = pc2.A
     is_setup = pc2.is_assembled  # share the indicator array
     nassemblies = pc2.nassemblies
   else
@@ -105,7 +105,7 @@ function calcLinearOperator(lo::PetscMatLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
 
-#  physicsJac(mesh, sbp, eqn, opts, pc.Ap, ctx_residual, t)
+#  physicsJac(mesh, sbp, eqn, opts, pc.A, ctx_residual, t)
   setIsSetup(lo, false)
 
   return nothing

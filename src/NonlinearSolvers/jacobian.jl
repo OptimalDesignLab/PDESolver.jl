@@ -88,6 +88,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
   #----------------------------------------------------------------------
   # Calculate Jacobian using selected method 
+  PetscMatZeroMatrix(jac)
   print_jacobian_timing = true
   eqn.params.time.t_jacobian += @elapsed if jac_method == 1
     @verbose5 @mpi_master println(BSTDOUT, "calculating finite difference jacobian")

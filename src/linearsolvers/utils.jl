@@ -158,7 +158,7 @@ function createKSP(pc::Union{PetscMatPC, PetscMatFreePC},
   if typeof(pc) <: PetscMatFreePC
     Ap = lo.A  # Ap is never used, so set it to whatever
   else  # matrix-explicit PC
-    Ap = pc.Ap
+    Ap = pc.A
   end
 
   KSPSetOperators(ksp, lo.A, Ap)

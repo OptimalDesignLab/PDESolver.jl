@@ -5,14 +5,14 @@
  
   **Public Fields**
 
-   * Ap: a PetscMat object used to calculate the preconditioner
+   * A: a PetscMat object used to calculate the preconditioner
 """
 type PetscMatPC <: AbstractPetscMatPC
   pc::PC  # Petsc PC object
-  Ap::PetscMat  # Petsc Mat object
+  A::PetscMat  # Petsc Mat object
   xtmp::PetscVec  # reusable temporary vector
   btmp::PetscVec
-  is_assembled::Array{Bool, 1}  # is Ap assembled
+  is_assembled::Array{Bool, 1}  # is A assembled
   is_setup::Bool  # is PC already set up
   is_finalized::Bool
   nassemblies::Array{Int, 1}  # number of matrix assemblies, shared with lo
@@ -41,7 +41,7 @@ function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
                     eqn::AbstractSolutionData, opts::Dict)
 
   pc = createPetscPC(mesh, sbp, eqn, opts)
-  Ap = createPetscMat(mesh, sbp, eqn, opts)
+  A = createPetscMat(mesh, sbp, eqn, opts)
   xtmp = createPetscVec(mesh, sbp, eqn, opts)
   btmp = createPetscVec(mesh, sbp, eqn, opts)
   is_assembled = Bool[false]
@@ -56,7 +56,7 @@ function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   myrank = eqn.myrank
   commsize = eqn.commsize
 
-  return PetscMatPC(pc, Ap, xtmp, btmp, is_assembled, is_setup, is_finalized,
+  return PetscMatPC(pc, A, xtmp, btmp, is_assembled, is_setup, is_finalized,
                     nassemblies, nsetups, napplies, ntapplies, comm, myrank,
                     commsize)
 end
@@ -69,9 +69,9 @@ function free(pc::PetscMatPC)
       pc.pc.pobj = C_NULL
     end
 
-    if pc.Ap.pobj != C_NULL
-      PetscDestroy(pc.Ap)
-      pc.Ap.pobj = C_NULL
+    if pc.A.pobj != C_NULL
+      PetscDestroy(pc.A)
+      pc.A.pobj = C_NULL
     end
 
     if pc.xtmp.pobj != C_NULL
@@ -97,10 +97,10 @@ function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   # compute the jacobian here
-#  physicsJac(mesh, sbp, eqn, opts, pc.Ap, ctx_residual, t)
+#  physicsJac(mesh, sbp, eqn, opts, pc.A, ctx_residual, t)
  
   # don't setup the PC here because PC built on top of this one might
-  # modify Ap after calling this function
+  # modify A after calling this function
   setIsAssembled(pc, false)
   pc.is_setup = false
 
@@ -173,7 +173,7 @@ end
   This internal function is used to setup the PC, including setting the flag.
   Users only need to do this if they did not call [`setupPC`](@ref)
 
-  The matrix pc.Ap must be assembled before this function is called.
+  The matrix pc.A must be assembled before this function is called.
 
   **Inputs**
 
@@ -197,7 +197,7 @@ function assemblePetscData(pc::PetscMatPC, b::AbstractVector, b_petsc::PetscVec)
   myrank = pc.myrank
 
   if !getIsAssembled(pc)
-    PetscMatAssemblyBegin(pc.Ap, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyBegin(pc.A, PETSC_MAT_FINAL_ASSEMBLY)
   end
 
   # copy values into the vector
@@ -206,10 +206,10 @@ function assemblePetscData(pc::PetscMatPC, b::AbstractVector, b_petsc::PetscVec)
   PetscVecRestoreArray(b_petsc, b_ptr)
 
   if !getIsAssembled(pc)
-    PetscMatAssemblyEnd(pc.Ap, PETSC_MAT_FINAL_ASSEMBLY)
+    PetscMatAssemblyEnd(pc.A, PETSC_MAT_FINAL_ASSEMBLY)
     setIsAssembled(pc, true)
     pc.nassemblies[1] += 1
-    matinfo = PetscMatGetInfo(pc.Ap, PETSc.MAT_LOCAL)
+    matinfo = PetscMatGetInfo(pc.A, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
     end
@@ -220,7 +220,7 @@ end
 
 
 """
-  Internal function for recording whether pc.Ap is assembled or not
+  Internal function for recording whether pc.A is assembled or not
 """
 function setIsAssembled(pc::PetscMatPC, val::Bool)
 
@@ -230,7 +230,7 @@ function setIsAssembled(pc::PetscMatPC, val::Bool)
 end
 
 """
-  Internal function for retrieving whether pc.Ap is assembled or not.
+  Internal function for retrieving whether pc.A is assembled or not.
 """
 function getIsAssembled(pc::PetscMatPC)
 

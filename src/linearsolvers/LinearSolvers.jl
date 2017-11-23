@@ -13,7 +13,8 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
        getBaseLO, getBasePC,
        PCNone, PetscMatPC, PetscMatFreePC,  # PC types
        DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO,  # LO types
-       AbstractPC, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstrac PC types
+       AbstractPC, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstract PC types
+       AbstractPetscPC,
        AbstractLO, AbstractDenseLO, AbstractSparseDirectLO, # Abstrac LO types
        AbstractPetscMatLO, AbstractPetscMatFreeLO,
        setPCCtx, setLOCtx  # matrix-free specific functions
@@ -28,6 +29,7 @@ using Base.LinAlg.BLAS
 using MPI
 using PETSc
 
+import Utils.free
 # import SuiteSparse stuff
 import Base.SparseMatrix.UMFPACK: UmfpackLU, umfpack_free_numeric,
                                   umfpack_free_symbolic, umfpack_symbolic!,
@@ -108,7 +110,7 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
   pc2 = getBasePC(pc)
   lo2 = getBaseLO(lo)
   if typeof(pc2) <: PetscMatPC && typeof(lo2) <: PetscMatLO
-    if pc2.Ap.pobj == lo2.A.pobj
+    if pc2.A.pobj == lo2.A.pobj
       shared_mat = true
     else
       shared_mat = false
