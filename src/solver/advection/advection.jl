@@ -392,11 +392,13 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 #   println("    calcBoundaryflux @time printed above")
   end
 
+  println("bndryflux = \n", eqn.bndryflux)
 
   if opts["precompute_boundary_flux"]
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)
   end
 
+  println("after boundaryintegrate, eqn.res = \n", eqn.res)
   return nothing
 end # end function evalBoundaryIntegrals
 
