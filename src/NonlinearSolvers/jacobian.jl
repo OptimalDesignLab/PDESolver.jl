@@ -53,8 +53,6 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
                     ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
   #TODO: get rid of is_preconditioned
-
-  println("calculating physics jacobian")
   verbose = opts["newton_verbosity"]::Int
 
   myrank = mesh.myrank

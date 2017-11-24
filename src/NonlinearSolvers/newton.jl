@@ -353,8 +353,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 #    checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
 
     #TODO: move this stuff to a separate function
-    # print as determined by options
+    # print as determined by options 
     if write_jac && jac_type != 4
+      jac = getBaseLO(ls.lo).A
       if jac_type == 3
         PetscMatAssemblyBegin(jac, PETSC_MAT_FINAL_ASSEMBLY)
         PetscMatAssemblyEnd(jac, PETSC_MAT_FINAL_ASSEMBLY)
@@ -365,6 +366,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     
     # calculate Jacobian condition number
     if print_cond && ( jac_type == 1 || jac_type == 2)
+      jac = getBaseLO(ls.lo).A
       println(BSTDOUT, "calculating condition number of jacobian"); flush(BSTDOUT)
 #      singular_vals = svdvals(full(jac))
 #      writedlm("svd_vals.dat", singular_vals)
@@ -375,6 +377,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     # if eigenvalues requested and we can calculate them
     if (( print_eigs || write_eigs) && (jac_type == 1 || jac_type == 2))
+      jac = getBaseLO(ls.lo).A
       println(BSTDOUT, "calculating eigenvalues of jacobian")
       flush(BSTDOUT)
       if typeof(jac) <: Array
@@ -400,6 +403,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     # do the full eigenvalue decomposition
     # if requested and if julia owns the Jacobian matrix
     if write_eigdecomp && ( jac_type == 1 || jac_type == 2)
+      jac = getBaseLO(ls.lo).A
       println(BSTDOUT, "doing eigen decomposition"); flush(BSTDOUT)
       # make a dense jacobian so we can get *all* the eigenvalues and vectors
       # the algorithm for sparse matrices can get all - 2 of them, and might
@@ -414,7 +418,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
       max_val = typemin(Float64)
       min_val = typemax(Float64)
     elseif write_eigdecomp # && we can't calculate it
-      println(STDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
+      println(BSTDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
 
     end
 

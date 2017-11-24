@@ -37,27 +37,38 @@ function test_homotopy(mesh, sbp, eqn, opts)
   ctx_residual = (homotopy_physics_test,)
 
   # test jacobian
+  t = 0.0
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-  newton_data_dense, jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts)
+  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  ls_dense = StandardLinearSolver(pc, lo, eqn.comm)
+  newton_data_dense, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, ls_dense)
 
   opts2 = copy(opts)
   opts2["jac_type"] = 2  # SparseMatrixCSC
-  newton_data_sparse, jac_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2)
+  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts2)
+  ls_sparse = StandardLinearSolver(pc, lo, eqn.comm)
 
-  @fact typeof(jac) <: Array --> true
-  @fact typeof(jac_sparse) <: SparseMatrixCSC -->  true
+  newton_data_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2, ls_sparse)
 
-  NonlinearSolvers.physicsJac(newton_data_dense, mesh, sbp, eqn, opts, jac, ctx_residual)
-  NonlinearSolvers.physicsJac(newton_data_sparse, mesh, sbp, eqn, opts2, jac_sparse, ctx_residual)
+  lo2_dense = getBaseLO(ls_dense.lo)
+  lo2_sparse = getBaseLO(ls_sparse.lo)
+  @fact typeof(lo2_dense.A) <: Array --> true
+  @fact typeof(lo2_sparse.A) <: SparseMatrixCSC -->  true
 
-  jac_dense2 = full(jac_sparse)
+  calcLinearOperator(ls_dense.lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  calcLinearOperator(ls_sparse.lo, mesh, sbp, eqn, opts2, ctx_residual, t)
+#  NonlinearSolvers.physicsJac(newton_data_dense, mesh, sbp, eqn, opts, jac, ctx_residual)
+#  NonlinearSolvers.physicsJac(newton_data_sparse, mesh, sbp, eqn, opts2, jac_sparse, ctx_residual)
+
+  jac_dense = lo2_dense.A
+  jac_dense2 = full(lo2_sparse.A)
 
 
   for i=1:mesh.numDof
     for j=1:mesh.numDof
-      @fact jac_dense2[j, i] --> roughly(jac[j, i], atol=1e-12)
+      @fact jac_dense2[j, i] --> roughly(jac_dense[j, i], atol=1e-12)
     end
   end
 

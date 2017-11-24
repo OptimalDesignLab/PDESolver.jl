@@ -145,7 +145,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   ls = StandardLinearSolver(pc, lo, eqn.comm)
 
 
-  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts)
+  newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls)
  
   # calculate physics residual
   res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,)))
@@ -216,9 +216,11 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
       # calculate tangent vector dH/dq * t = dH/dLambda
       @mpi_master println(BSTDOUT, "solving for tangent vector")
-      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
+      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
-      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
+#      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
+      linearSolve(ls, dHdLambda_real, tan_vec)
+#      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
 
       # normalize tangent vector
       tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
@@ -278,7 +280,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
 
-  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
+  free(newton_data)
+#  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
 
   flush(BSTDOUT)
   flush(BSTDERR)

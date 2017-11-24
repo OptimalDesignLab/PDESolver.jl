@@ -10,6 +10,7 @@ using PDESolver
 using PdePumiInterface  # common mesh interface - pumi
 using EulerEquationMod
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using EulerEquationMod
@@ -84,9 +85,9 @@ if !isdefined(:TestFinalizeMPI)
   TestFinalizeMPI = true
 end
 
-
+#=
 if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
-
+=#
 FactCheck.exitstatus()
