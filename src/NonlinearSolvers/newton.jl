@@ -71,13 +71,13 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP,
   ctx_residual = (func, )
 
   pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm)
 
   # allocate jac & rhs, and construct newton_data
-  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls, alloc_rhs=false)
+  newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls, alloc_rhs=false)
 
   #TODO: get rid of jac_func, jac
-  newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac,
+  newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls,
               rhs_vec, ctx_residual, t, itermax=itermax, step_tol=step_tol,
               res_abstol=res_abstol, res_reltol=res_reltol, 
               res_reltol0=res_reltol0)
@@ -109,8 +109,8 @@ end
    * sbp: an SBP operator
    * eqn: a solution data object
    * opts: options dictionary
-   * rhs_func: function to evaluate f(q)
-   * jac_func: function to compute the Jacobian df/dq
+   * ls: a LinearSolver with the preconditioner and linear operator fully
+         initialized.  
    * rhs_vec: vector to store R(q) in
    * ctx_residual: extra data required by rhs_func
 
@@ -206,6 +206,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     pert = complex(0, epsilon)
   end
 
+  # reset Euler globalization
+  clearEulerConstants()
+
   #=
   # set the ctx pointer for the matrix-free matrix
   if jac_type == 4
@@ -251,7 +254,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   # evaluating residual at initial condition
   @verbose5 @mpi_master println(BSTDOUT, "evaluating residual at initial condition"); flush(BSTDOUT)
   res_0_norm = newton_data.res_norm_i = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
-  newton_data.ls.lo.res_norm_i = newton_data.res_norm_i
+  recordEulerResidual(res_0_norm)
+  println("element 1 q = ", eqn.q[:, :, 1])
+  println("element 1 res = ", eqn.res[:, :, 1])
   @verbose5 @mpi_master println(BSTDOUT, "res_0_norm = ", res_0_norm); flush(BSTDOUT)
 
 #  saveSolutionToMesh(mesh, eqn.q_vec)
@@ -421,7 +426,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     # calculate Newton step
     flush(BSTDOUT)
-    linearsSolve(ls, res_0, delta_q_vec, verbose)
+    linearSolve(ls, res_0, delta_q_vec, verbose)
 #    step_norm = matrixSolve(newton_data, eqn, mesh, opts, jac, delta_q_vec, res_0, BSTDOUT, verbose=verbose)
     
     # perform Newton update
@@ -449,9 +454,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     newton_data.res_norm_i_1 = newton_data.res_norm_i
     # extract real component to res_0
     res_0_norm = newton_data.res_norm_i = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
-    # keep the LO consistant
-    newton_data.ls.lo.res_norm_i_1 = newton_data.res_norm_i_1
-    newton_data.ls.lo.res_norm_i = newton_data.res_norm_i
+    recordEulerResidual(res_0_norm)
     for j=1:m
       res_0[j] = real(rhs_vec[j])
     end

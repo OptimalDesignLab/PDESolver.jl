@@ -79,7 +79,7 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
 
   if typeof(ls.pc) <: PCNone
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
-  elseif ls.is_shared
+  elseif ls.shared_mat
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
     pc2 = getBasePC(ls.pc)
     pc2.is_setup = false  # we don't call calcPC but this flag still needs to
@@ -176,7 +176,7 @@ function linearSolve(ls::StandardLinearSolver, b::AbstractVector,
 end
 
 """
-  Similar to [`linearSolver]`(@ref), but solves A.'x = v.  See that function
+  Similar to [`linearSolver]`(@ref), but solves A.'x = b.  See that function
   for details.
 """
 function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
@@ -236,6 +236,8 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
 
   lo2 = getBaseLO(ls.lo)
 
+  println("about to solve, A = \n", lo2.A)
+  println("b = \n", b)
   make_zerobased(lo2.A)
   # compute factorization if needed
   if !getIsSetup(lo2)
@@ -256,6 +258,7 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
     lo2.nsolves += 1
   end
 
+  println("after solve, x = \n", x)
   return nothing
 end
 
@@ -338,7 +341,7 @@ function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
   if !lo_matfree && !getIsSetup(lo2)
     PetscMatAssemblyEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
     setIsSetup(lo2, true)
-    lo.nassemblies[1] += 1
+    lo2.nassemblies[1] += 1
     matinfo = PetscMatGetInfo(lo2.A, PETSc.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")

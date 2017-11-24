@@ -106,9 +106,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # allocate Jac outside of time-stepping loop
 
   # NOTE: eqn_nextstep changed to eqn 20161013
-  pc, lo = getNCPCandLO(mesh, sbp, eqn, opts)
+  pc, lo = getCNPCandLO(mesh, sbp, eqn, opts)
   ls = StandardLinearSolver(pc, lo, eqn.comm)
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
+  newton_data, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
 
   # this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
@@ -234,7 +234,16 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end   # end of crank_nicolson function
 
+"""
+  Construct CN preconditioner and linear operator based on options dictionary
 
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function getCNPCandLO(mesh, sbp, eqn, opts)
 
   jac_type = opts["jac_type"]
@@ -248,13 +257,13 @@ function getCNPCandLO(mesh, sbp, eqn, opts)
   end
 
   if jac_type == 1
-    lo = CNDenseLO(mesh, sbp, eqn, opts)
+    lo = CNDenseLO(pc, mesh, sbp, eqn, opts)
   elseif jac_type == 2
-    lo = CNSparseDirectLO(mesh, sbp, eqn, opts)
+    lo = CNSparseDirectLO(pc, mesh, sbp, eqn, opts)
   elseif jac_type == 3
-    lo = CNPetscMatLO(mesh, sbp, eqn, opts)
+    lo = CNPetscMatLO(pc, mesh, sbp, eqn, opts)
   elseif jac_type == 4
-    lo = CNPetscMatFreeLO(mesh, sbp, eqn, opts)
+    lo = CNPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
   end
 
   return pc, lo
@@ -269,7 +278,7 @@ end
 function CNMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
                     eqn::AbstractSolutionData, opts::Dict)
 
-  pc_inner = NewtonPetscMatPC(mesh, sbp, eqn, opts)
+  pc_inner = NewtonMatPC(mesh, sbp, eqn, opts)
 
   return CNMatPC(pc_inner)
 end
@@ -399,7 +408,7 @@ function CNPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
 
   lo_inner = NewtonPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
 
-  return CNPetscMatFreeLO(lo_inner)
+  return CNPetscMatFreeLO(lo_inner, rhs_func)
 end
 
 """
@@ -479,15 +488,19 @@ end
 function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 
 
+  lo2 = getBaseLO(lo)
   h = ctx_residual[3]
 
+  PetscMatAssemblyBegin(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+
   # scale jac by -delta_t/2
-  scale_factor = h*-0.5
+#  scale_factor = h*-0.5
   petsc_scale_factor = PetscScalar(-h*0.5)
-  PetscMatScale(lo.A, petsc_scale_factor)
+  PetscMatScale(lo2.A, petsc_scale_factor)
 
   # add the identity
-  PetscMatShift(lo.a, PetscScalar(1))
+  PetscMatShift(lo2.A, PetscScalar(1))
 
   return nothing
 end

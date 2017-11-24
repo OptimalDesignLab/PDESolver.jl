@@ -137,9 +137,13 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
 
   # stuff for newtonInner
+  # because the homotopy function is a pseudo-physics, we can reuse the
+  # Newton PC and LO stuff, supplying homotopyPhysics in ctx_residual
   rhs_func = physicsRhs
-  jac_func = physicsJac
   ctx_residual = (homotopyPhysics,)
+  pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm)
+
 
   newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts)
  
@@ -189,7 +193,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end
 
     # do corrector steps
-    newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, 
+    newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
                 rhs_vec, ctx_residual, res_reltol=homotopy_tol, 
                 res_abstol=res_abstol, itermax=30)
 
@@ -327,5 +331,6 @@ function calcdHdLambda(mesh, sbp, eqn, opts, lambda, physics_func, g_func, res_v
 
   return nothing
 end
+
 
 

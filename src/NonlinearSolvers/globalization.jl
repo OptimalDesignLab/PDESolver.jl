@@ -33,6 +33,44 @@ end
 # Psuedo-Transient Continuation (aka. Implicit Euler)
 #------------------------------------------------------------------------------
 
+# res_norm_i_1 and res_norm_i, updated inside newton's method
+# This is a bad way to pass parameters to updateEuler(), but I can't find a
+# better way that retains the composability of the linear operator abstraction.
+global const EulerConstants = Float64[0, 0]
+
+"""
+  Reinitailize the underlying data.  This function should be called every
+  time newtonInner() is entered
+"""
+function clearEulerConstants()
+  fill!(EulerConstants, 0.0)
+end
+
+"""
+  Record the most recent residual norm
+
+  **Inputs**
+
+   * res_norm_i: must be a real number
+"""
+function recordEulerResidual(res_norm_i)
+  EulerConstants[1] = EulerConstants[2]
+  EulerConstants[2] = res_norm_i
+end
+
+"""
+  Get the two most recent residual norms
+
+  **Outputs**
+
+   * res_norm_i_1: second most recent residual norm
+   * res_norm_i: most recent residual norm
+"""
+function getEulerConstants()
+  return EulerConstants[1], EulerConstants[2]
+end
+
+
 @doc """
 ### NonlinearSolvers.initEuler
 
@@ -125,9 +163,10 @@ function updateEuler(lo::NewtonLinearObject)
 
 
   tau_l_old = lo.tau_l
+  res_norm_i_1, res_norm_i = getEulerConstants()
 
   # update tau
-  lo.tau_l = lo.tau_l * lo.res_norm_i_1/lo.res_norm_i
+  lo.tau_l = lo.tau_l * res_norm_i_1/res_norm_i
   
   tau_update = lo.tau_l/tau_l_old
   println(BSTDOUT, "tau_update factor = ", tau_update)
@@ -161,9 +200,8 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
 # maybe something in lo?
 # for explicitly stored jacobian only
 
-  mat_type = MatGetType(jac)
-  @assert mat_type != PETSc.MATSHELL
 
+  lo2 = getBaseLO(lo)
 #  println("euler globalization tau = ", lo.tau_l)
   # create the indices
 
@@ -175,7 +213,7 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
     idx[1] = i + mesh.dof_offset
     idy[1] = i + mesh.dof_offset
     val[1] = -eqn.M[i]/lo.tau_vec[i]
-    set_values1!(lo.A, idx, idy, val, PETSC_ADD_VALUES)
+    set_values1!(lo2.A, idx, idy, val, PETSC_ADD_VALUES)
 #    PetscMatSetValues(jac, idx, idy, val, PETSC_ADD_VALUES)
   end
 
@@ -183,8 +221,24 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
   return nothing
 end
 
+"""
+  Updates a jacobian-vector product with the effects of the globalization
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * vec: vector that the jacobian is being multiplied by
+   * lo: a linaer operator or preconditioner, usually a matrix-free one
+
+  **Inputs/Outputs**
+
+   * b: result vector, updated
+"""
 function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, 
-                    lo::NewtonHasNoMat, b::AbstractArray)
+                    lo, b::AbstractArray)
 # apply the diagonal update term to the jacobian vector product
 
   for i=1:mesh.numDof

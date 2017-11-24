@@ -24,10 +24,12 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
 
   ls::Tsolver  # non-concrete type
 
-  #TODO; make this an outer constructor
 end
 
-function NewtonData(mesh, sbp, eqn, opts, ls::LinearSolver)
+#TODO: see if the static parameters are still needed
+function NewtonData{Tsol, Tres}(mesh, sbp,  
+                    eqn::AbstractSolutionData{Tsol, Tres}, opts,
+                    ls::LinearSolver)
 
   println("entered NewtonData constructor")
   println("typeof(eqn) = ", typeof(eqn))
@@ -44,10 +46,10 @@ function NewtonData(mesh, sbp, eqn, opts, ls::LinearSolver)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
 
+  println("finishing NewtonData constructor")
   return NewtonData{Tsol, Tres, typeof(ls)}(myrank, commsize, reltol, abstol,
                     dtol, itermax, krylov_gamma, res_norm_i, res_norm_i_1, ls)
 end
-
 
 include("residual_evaluation.jl")  # some functions for residual evaluation
 include("jacobian.jl")
@@ -73,8 +75,9 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp,
                      eqn::AbstractSolutionData{Tsol, Tres}, opts,
                      ls::LinearSolver; alloc_rhs=true)
 
-  newton_data = NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts, ls)
-
+  println("entered setupNewton")
+  newton_data = NewtonData(mesh, sbp, eqn, opts, ls)
+  println("finished constructing NewtonData")
   # For simple cases, especially for Newton's method as a steady solver,
   #   having rhs_vec and eqn.res_vec pointing to the same memory
   #   saves us from having to copy back and forth
@@ -112,6 +115,14 @@ end
 """
   Returns the Newton precondtioner and linear operator specified by the options
   dictionary
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * rhs_func: rhs_func required by [`newtonInner`](@ref)
 """
 function getNewtonPCandLO(mesh, sbp, eqn, opts)
 
@@ -185,16 +196,21 @@ end
 function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
-  calcPC(pc.pc_inner)
-  #TODO; zero the jacobian here?
+  calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
   physicsJac(mesh, sbp, eqn, opts. pc.A, ctx_residual, t)
 
-  #TODO: globalization here
+  if opts["newton_globalize_euler"]
+    # TODO: updating the Euler parameter here is potentially wrong if we
+    #       are not updating the Jacobian at every newton step
+    updateEuler(pc)
+    applyEuler(mesh, sbp, eqn, opts, pc)
+  end
+
 
   return nothing
 end
 
-
+#=
 type NewtonMatFreePC <: AbstractPetscMatFreePC
   pc_inner::PetscMatFreePC
   @newtonfields
@@ -221,20 +237,19 @@ end
 function calcPC(pc::NewtonMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
-  calcPC(pc.pc_inner)
-  #TODO; zero the jacobian here?
+  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
 
   if opts["newton_globalize_euler"]
     # TODO: updating the Euler parameter here is potentially wrong if we
     #       are not updating the Jacobian at every newton step
     updateEuler(pc)
-    applyEuler(mesh, sbp, eqn, opts, pc)
+#    applyEuler(mesh, sbp, eqn, opts, pc)
   end
 
 
   return nothing
 end
-
+=#
 
 #------------------------------------------------------------------------------
 # linear operator
@@ -250,7 +265,7 @@ end
 function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
-  lo_inner = DenseLO(mesh, sbp, eqn, opts)
+  lo_inner = DenseLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
   if opts["newton_globalize_euler"]
@@ -272,7 +287,7 @@ end
 function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
-  lo_inner = SparseDirectLO(mesh, sbp, eqn, opts)
+  lo_inner = SparseDirectLO(pc, mesh, sbp, eqn, opts)
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
@@ -295,7 +310,7 @@ end
 function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
-  lo_inner = PetscMatLO(mesh, sbp, eqn, opts)
+  lo_inner = PetscMatLO(pc, mesh, sbp, eqn, opts)
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
@@ -315,10 +330,22 @@ type NewtonPetscMatFreeLO <: AbstractPetscMatFreeLO
   @newtonfields
 end
 
+"""
+  Newton mat-free linear operator constructor
+
+  **Inputs**
+
+   * pc
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * rhs_func: rhs_func from [`newtonInner`](@ref)
+"""
 function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
-  lo_inner = PetscMatFreeLO(mesh, sbp, eqn, opts)
+  lo_inner = PetscMatFreeLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
   if opts["newton_globalize_euler"]
@@ -329,7 +356,7 @@ function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   end
 
 
-  return NewtonPetscMatFreeLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonPetscMatFreeLO(lo_inner, rhs_func, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
 """
@@ -348,14 +375,9 @@ typealias NewtonMatLO Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatL
 typealias NewtonHasMat Union{NewtonMatPC, NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO}
 
 """
-  Any PC or LO that does not have an explicit matrix
-"""
-typealias NewtonHasNoMat Union{NewtonMatFreePC, NewtonPetscMatFreeLO}
-
-"""
   Any Newton PC or LO.
 """
-typealias NewtonLinearObject Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO, NewtonMatPC, NewtonMatFreePC}
+typealias NewtonLinearObject Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO, NewtonMatPC}
 
 
 function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
@@ -363,10 +385,10 @@ function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
    
-   calcLinearOperator(pc.pc_inner)
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
-  #TODO; zero the jacobian here?
-  physicsJac(mesh, sbp, eqn, opts. lo.A, ctx_residual, t)
+  lo2 = getBaseLO(lo)
+  physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
 
   if opts["newton_globalize_euler"]
     # TODO: updating the Euler parameter here is potentially wrong if we
@@ -407,7 +429,7 @@ function applyLinearOperator{Tsol}(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
     eqn.q_vec[i] += pert*vec[i]
   end
 
-  rhs_func(mesh, sbp, eqn, opts, eqn.res_vec, ctx_residual, t)
+  physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, ctx_residual, t)
   
   # calculate derivatives, store into b
   calcJacCol(b, eqn.res_vec, epsilon)

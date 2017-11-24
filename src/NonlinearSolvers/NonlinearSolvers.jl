@@ -14,6 +14,9 @@ using Utils
 using SummationByParts
 using LinearSolvers
 
+import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
+                      applyLinearOperator, applyLinearOperatorTranspose
+
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
 include("lserk.jl")

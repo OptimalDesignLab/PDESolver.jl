@@ -77,7 +77,6 @@ function test_jac_res()
     Tres = eltype(eqn.res)
 
     # now test full jacobian
-    newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
@@ -86,14 +85,14 @@ function test_jac_res()
     jac = zeros(Float64, mesh.numDof, mesh.numDof)
     eps_fd = 1e-7
     fill!(eqn.res, 0.0)
-    NonlinearSolvers.calcJacFD(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_0, eps_fd, jac)
+    NonlinearSolvers.calcJacFD(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_0, eps_fd, jac)
 
   #  jac_sparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
     jac_sparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     println("create jac_sparse")
     fill!(eqn.res, 0.0)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_fd, jac_sparse)
+    NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_fd, jac_sparse)
 
     jac_sparsefull = full(jac_sparse)
     jac_diff = jac - jac_sparsefull
@@ -111,18 +110,17 @@ function test_jac_res()
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # now test full jacobian
-    newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
     jac_c = zeros(Complex128, mesh.numDof, mesh.numDof)
     eps_c = complex(0, 1e-20)
     fill!(eqn.res, 0.0)
-    NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, eps_c, jac_c)
+    NonlinearSolvers.calcJacobianComplex(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, eps_c, jac_c)
 
   #  jac_csparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
     jac_csparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
     res_3d0 = Array(Float64, 0, 0, 0)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
+    NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
 
 
     jac_csparsefull = full(jac_csparse)
@@ -157,7 +155,6 @@ function test_jac_calc()
     Tres = eltype(eqn.res)
 
     # now test full jacobian
-    newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
@@ -166,13 +163,13 @@ function test_jac_calc()
     jac = zeros(Float64, mesh.numDof, mesh.numDof)
     eps_fd = 1e-7
     fill!(eqn.res, 0.0)
-    NonlinearSolvers.calcJacFD(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_0, eps_fd, jac)
+    NonlinearSolvers.calcJacFD(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_0, eps_fd, jac)
 
   #  jac_sparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
     jac_sparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_fd, jac_sparse)
+    NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_fd, jac_sparse)
 
     jac_sparsefull = full(jac_sparse)
     jac_diff = jac - jac_sparsefull
@@ -191,18 +188,17 @@ function test_jac_calc()
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
     # now test full jacobian
-    newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
     jac_c = zeros(Complex128, mesh.numDof, mesh.numDof)
     eps_c = complex(0, 1e-20)
     fill!(eqn.res, 0.0)
-    NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, eps_c, jac_c)
+    NonlinearSolvers.calcJacobianComplex(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, eps_c, jac_c)
 
   #  jac_csparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
     jac_csparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
     res_3d0 = Array(Float64, 0, 0, 0)
     disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    NonlinearSolvers.calcJacobianSparse(newton_data, mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
+    NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
 
 
     jac_csparsefull = full(jac_csparse)

@@ -8,8 +8,8 @@
   implementations.
 
   [`newtonInner](@ref) guarantees that eqn.q and eqn.q_vec will be consistent
-  when this function is called.  No guarantees are made about the contents
-  of eqn.res or eqn.res_vec.
+  when this function is called.  When using finite differences, eqn.res and
+  eqn.res_vec must contain the residual of the physics.
 
   
   **Inputs**:
@@ -88,7 +88,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
   #----------------------------------------------------------------------
   # Calculate Jacobian using selected method 
-  PetscMatZeroMatrix(jac)
+  PetscMatZeroEntries(jac)
   print_jacobian_timing = true
   eqn.params.time.t_jacobian += @elapsed if jac_method == 1
     @verbose5 @mpi_master println(BSTDOUT, "calculating finite difference jacobian")
@@ -534,7 +534,7 @@ type AssembleData{T <: AbstractMatrix}
   A::T
   # temporary arrays used to for Petsc MatSetValues
   insert_idx::Int
-  localsize::Int
+  local_size::Int
   vals_tmp::Array{Float64, 2}
   idx_tmp::Array{PetscInt, 1}
   idy_tmp::Array{PetscInt, 1}
@@ -549,7 +549,7 @@ function AssembleData{T}(A::T, mesh, sbp, eqn, opts)
   idy_tmp = zeros(PetscInt, 1)  # column indices
 
 
-  return AssembleData{T}(A, insert_idx, localsize, vals_tmp, idx_tmp,
+  return AssembleData{T}(A, insert_idx, local_size, vals_tmp, idx_tmp,
                                  idy_tmp)
 end
 
@@ -593,6 +593,8 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
 #  filter_orig = eqn.params.use_filter  # record original filter state
 #  eqn.params.use_filter = false  # don't repetatively filter
 
+  printbacktrace()
+  println("in calcJacobianSparse, element 1 q = ", eqn.q[:, :, 1])
   # hold misc. data needed for assemble functions
   helper = AssembleData(jac, mesh, sbp, eqn, opts)
 
@@ -778,6 +780,11 @@ function assembleElement{Tsol <: Real}(helper::AssembleData, mesh,
   # basically a no-op if array is already the right size
   local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
 
+  println("assembling element ", el_res, ", dof_pert = ", dof_pert)
+  println("res_arr = ", res_arr[:, :, el_res])
+  println("res_0 = ", res_0[:, :, el_res])
+  println("q = ", eqn.q[:, :, el_res])
+
   # get row number
   helper.idy_tmp[1] = dof_pert + mesh.dof_offset
 
@@ -791,6 +798,9 @@ function assembleElement{Tsol <: Real}(helper::AssembleData, mesh,
       pos += 1
     end
   end
+
+  println("idx = ", helper.idx_tmp)
+  println("vals = ", helper.vals_tmp)
 
   set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
   
@@ -848,6 +858,10 @@ function assembleElement{Tsol <: Complex}(helper::AssembleData, mesh,
 # typically either el_pert or dof_pert will be needed, not both
 
 # get row number
+  println("assembling element ", el_res, ", dof_pert = ", dof_pert)
+  println("res_arr = ", res_arr[:, :, el_res])
+  println("q = ", eqn.q[:, :, el_res])
+
   helper.idy_tmp[1] = dof_pert + mesh.dof_offset
   pos = 1
   for j_j = 1:mesh.numNodesPerElement
@@ -863,6 +877,8 @@ function assembleElement{Tsol <: Complex}(helper::AssembleData, mesh,
     end
   end
 
+  println("idx = ", helper.idx_tmp)
+  println("vals = ", helper.vals_tmp)
   set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
 #  PetscMatSetValues(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
 

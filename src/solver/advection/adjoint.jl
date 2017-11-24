@@ -75,13 +75,14 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Check if PETSc is initialized
   #!!! No, don't do this here!, 
+  #=
   if PetscInitialized() == 0 # PETSc Not initialized before
     PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
                     "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels",
                     "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side",
                     "right", "-ksp_gmres_restart", "30" ])
   end
-
+  =#
   if opts["parallel_type"] == 1
 
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
@@ -90,12 +91,15 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   end
 
   # Allocate space for adjoint solve
-  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, alloc_rhs=true)
-
-  # Get the residual jacobian
+  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm)
   ctx_residual = (evalResidual,)
-  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
+  calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
+  #=
+  # Get the residual jacobian
+  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
+  =#
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -113,6 +117,13 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
   func_deriv[:] = -func_deriv[:]
 
+  # do transpose solve
+  _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
+  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
+  copy!(adjoint_vec, _adjoint_vec)
+
+
+#=
   # Solve for adjoint vector. residual jacobian needs to be transposed first.
   jac_type = typeof(res_jac)
   if jac_type <: Array || jac_type <: SparseMatrixCSC
@@ -127,7 +138,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
                                            adjoint_vec, real(func_deriv), BSTDOUT)
 
-
+=#
   # Output/Visualization options for Adjoint
   if opts["write_adjoint"]
     outname = string("adjoint_vec_", mesh.myrank,".dat")
