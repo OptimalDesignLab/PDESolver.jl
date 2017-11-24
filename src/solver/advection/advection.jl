@@ -27,7 +27,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-  #println(BSTDOUT, "----- entered evalResidual -----")
+  println("----- entered evalResidual -----")
 
   eqn.t = t
 #  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
@@ -42,20 +42,26 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   params.time.t_volume += @elapsed evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #  println("evalVolumeIntegrals @time printed above")
 
+  println("after volume integrals, eqn.res = \n", eqn.res)
 #  params.time.t_barriers[2] += @elapsed MPI.Barrier(mesh.comm) 
   params.time.t_face += @elapsed if mesh.isDG
     evalFaceIntegrals(mesh, sbp, eqn, opts)
   end
 #  println("evalFaceIntegrals @time printed above")
 
+  println("after face integrals, eqn.res = \n", eqn.res)
+
 #  params.time.t_barriers[3] += @elapsed MPI.Barrier(mesh.comm) 
   params.time.t_source += @elapsed evalSRCTerm(mesh, sbp, eqn, opts)
 #  println("evalSRCTerm @time printed above")
+
+  println("after source integrals, eqn.res = \n", eqn.res)
 
 #  params.time.t_barriers[4] += @elapsed MPI.Barrier(mesh.comm) 
   params.time.t_bndry += @elapsed evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 #  println("evalBoundaryIntegrals @time printed above")
 
+  println("after boundary integrals, eqn.res = \n", eqn.res)
 #  params.time.t_barriers[5] += @elapsed MPI.Barrier(mesh.comm) 
 
   if opts["use_GLS2"]
@@ -76,6 +82,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
+  println("after before exit integrals, eqn.res = \n", eqn.res)
   @debug1 flush(params.f)
 #  println(params.f, "----- finished evalResidual -----")
   return nothing
