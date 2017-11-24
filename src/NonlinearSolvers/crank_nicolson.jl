@@ -389,10 +389,11 @@ function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
+  h = ctx_residual[3]
+  t_nextstep = t + h
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t_nextstep)
 
-  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t_nextstep)
 
   return nothing
 end
@@ -420,10 +421,12 @@ typealias CNHasMat Union{CNMatPC, CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
 function calcLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
+  h = ctx_residual[3]
+  t_nextstep = t + h
 
-  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t_nextstep)
 
-  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, t_nextstep)
 
   return nothing
 end

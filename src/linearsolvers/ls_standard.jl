@@ -236,8 +236,6 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
 
   lo2 = getBaseLO(ls.lo)
 
-  println("about to solve, A = \n", lo2.A)
-  println("b = \n", b)
   make_zerobased(lo2.A)
   # compute factorization if needed
   if !getIsSetup(lo2)
@@ -258,7 +256,6 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
     lo2.nsolves += 1
   end
 
-  println("after solve, x = \n", x)
   return nothing
 end
 

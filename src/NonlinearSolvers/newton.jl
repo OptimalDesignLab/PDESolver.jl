@@ -255,10 +255,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   @verbose5 @mpi_master println(BSTDOUT, "evaluating residual at initial condition"); flush(BSTDOUT)
   res_0_norm = newton_data.res_norm_i = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
   recordEulerResidual(res_0_norm)
-  println("element 1 q = ", eqn.q[:, :, 1])
-  println("element 1 res = ", eqn.res[:, :, 1])
-  println("q = ", eqn.q)
-  println("res = ", eqn.res)
+
   @verbose5 @mpi_master println(BSTDOUT, "res_0_norm = ", res_0_norm); flush(BSTDOUT)
 
 #  saveSolutionToMesh(mesh, eqn.q_vec)

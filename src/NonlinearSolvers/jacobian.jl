@@ -87,10 +87,6 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
   # ctx_residual: func must be the first element
   func = ctx_residual[1]
-  println("q = ", eqn.q)
-  println("on entry, eqn.res = \n", eqn.res)
-  func(mesh, sbp, eqn, opts, t)
-  println("after residual evaluation, eqn.res = \n", eqn.res)
 
   #----------------------------------------------------------------------
   # Calculate Jacobian using selected method 
@@ -599,9 +595,6 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
 #  filter_orig = eqn.params.use_filter  # record original filter state
 #  eqn.params.use_filter = false  # don't repetatively filter
 
-  printbacktrace()
-  println("calculating sparse jacobia, func = ", func)
-  println("in calcJacobianSparse, element 1 q = ", eqn.q[:, :, 1])
   # hold misc. data needed for assemble functions
   helper = AssembleData(jac, mesh, sbp, eqn, opts)
 
@@ -787,11 +780,6 @@ function assembleElement{Tsol <: Real}(helper::AssembleData, mesh,
   # basically a no-op if array is already the right size
   local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
 
-  println("assembling element ", el_res, ", dof_pert = ", dof_pert)
-  println("res_arr = ", res_arr[:, :, el_res])
-  println("res_0 = ", res_0[:, :, el_res])
-  println("q = ", eqn.q[:, :, el_res])
-
   # get row number
   helper.idy_tmp[1] = dof_pert + mesh.dof_offset
 
@@ -805,9 +793,6 @@ function assembleElement{Tsol <: Real}(helper::AssembleData, mesh,
       pos += 1
     end
   end
-
-  println("idx = ", helper.idx_tmp)
-  println("vals = ", helper.vals_tmp)
 
   set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
   
@@ -864,11 +849,7 @@ function assembleElement{Tsol <: Complex}(helper::AssembleData, mesh,
 # dof_pert is the dof number (global) of the dof that was perturbed
 # typically either el_pert or dof_pert will be needed, not both
 
-# get row number
-  println("assembling element ", el_res, ", dof_pert = ", dof_pert)
-  println("res_arr = ", res_arr[:, :, el_res])
-  println("q = ", eqn.q[:, :, el_res])
-
+  # get row number
   helper.idy_tmp[1] = dof_pert + mesh.dof_offset
   pos = 1
   for j_j = 1:mesh.numNodesPerElement
@@ -884,8 +865,6 @@ function assembleElement{Tsol <: Complex}(helper::AssembleData, mesh,
     end
   end
 
-  println("idx = ", helper.idx_tmp)
-  println("vals = ", helper.vals_tmp)
   set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
 #  PetscMatSetValues(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
 
