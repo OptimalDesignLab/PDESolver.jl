@@ -53,6 +53,8 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
                     ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
   #TODO: get rid of is_preconditioned
+
+  println("calculating physics jacobian")
   verbose = opts["newton_verbosity"]::Int
 
   myrank = mesh.myrank
@@ -85,6 +87,10 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
   # ctx_residual: func must be the first element
   func = ctx_residual[1]
+  println("q = ", eqn.q)
+  println("on entry, eqn.res = \n", eqn.res)
+  func(mesh, sbp, eqn, opts, t)
+  println("after residual evaluation, eqn.res = \n", eqn.res)
 
   #----------------------------------------------------------------------
   # Calculate Jacobian using selected method 
@@ -594,6 +600,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
 #  eqn.params.use_filter = false  # don't repetatively filter
 
   printbacktrace()
+  println("calculating sparse jacobia, func = ", func)
   println("in calcJacobianSparse, element 1 q = ", eqn.q[:, :, 1])
   # hold misc. data needed for assemble functions
   helper = AssembleData(jac, mesh, sbp, eqn, opts)
