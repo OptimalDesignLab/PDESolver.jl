@@ -86,7 +86,12 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   # do transpose solve
 
   _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
-  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
+  
+  # debugging
+  lo2 = getBaseLO(lo)
+  jacT = lo2.A.'
+  _adjoint_vec = jacT\real(func_deriv)
+#  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
 
 #=

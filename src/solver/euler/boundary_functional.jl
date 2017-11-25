@@ -148,6 +148,8 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     ∂J∂aoa = functionalData.dDragdaoa
   end
 
+  println("norm(adjoint_vec) = ", norm(adjoint_vec))
+  println("partial J partial alpha = ", ∂J∂aoa)
   pert = 1e-20im
   eqn.params.aoa += pert # Imaginary perturbation
   fill!(eqn.res_vec, 0.0)
@@ -159,6 +161,9 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   # Get the contribution from all MPI ranks
   local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
   ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
+
+  println("norm(partial R partial alpha) = ", norm(∂R∂aoa))
+  println("norm of adjoint contribution = ", norm(ψT∂R∂aoa))
 
   dJdaoa = ∂J∂aoa + ψT∂R∂aoa
 
