@@ -45,6 +45,8 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
       "-ksp_gmres_restart", "30" ])
   end
 =#
+  println("computing adjoint")
+  println("vecnorm(eqn.q) = ", vecnorm(eqn.q))
   # This doesn't work in parallel?  paralle_type == 2 if calculating the
   # jacobian
   if opts["parallel_type"] == 1
@@ -86,7 +88,9 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   # do transpose solve
 
   _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
-  
+ 
+  println("vecnorm(func_deriv) = ", vecnorm(real(func_deriv)))
+
   # debugging
   lo2 = getBaseLO(lo)
   jacT = lo2.A.'
@@ -94,6 +98,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 #  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
 
+  println("norm(adjoint_vec) = ", norm(adjoint_vec))
 #=
   # Solve for adjoint vector. residual jacobian needs to be transposed first.
   jac_type = typeof(res_jac)
