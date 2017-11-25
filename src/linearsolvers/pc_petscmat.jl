@@ -171,9 +171,8 @@ end
 
 """
   This internal function is used to setup the PC, including setting the flag.
-  Users only need to do this if they did not call [`setupPC`](@ref)
-
-  The matrix pc.A must be assembled before this function is called.
+  This function doesn't actually compute the preconditioner, but it tells Petsc
+  to do it the next time it is needed
 
   **Inputs**
 
@@ -181,12 +180,15 @@ end
 """
 function setupPC(pc::PetscMatPC)
 
-  tsetup = @elapsed PCSetUp(pc.pc)
-  println(BSTDOUT, "PCSetup time = ", tsetup)
+  println("setting up PC from julia")
+  PCSetReusePreconditioner(pc.pc, PETSC_FALSE)
+#  tsetup = @elapsed PCSetUp(pc.pc)
+#  tsetup = @elapsed PCSetUp(pc.pc)
+#  println(BSTDOUT, "PCSetup time = ", tsetup)
   # this is potentially bad because Petsc will *never* recompute the 
   # preconditioner on its own.  Using higher level functionality like TS
   # or Petsc nonlinear solvers likely won't work in this case
-  PCSetReusePreconditioner(pc.pc, PETSC_FALSE)
+#  PCSetReusePreconditioner(pc.pc, PETSC_TRUE)
   pc.nsetups += 1
   pc.is_setup = true
 

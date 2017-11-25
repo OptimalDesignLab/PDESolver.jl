@@ -176,6 +176,8 @@ function test_adjoint()
       eqn.params.aoa -= pert
 
       dJdaoa_fd = (lift_pert - lift_val)/pert
+      println("dJdaoa = ", dJdaoa)
+      println("dJdaoa_fd = ", dJdaoa_fd)
       err_val = norm(dJdaoa - dJdaoa_fd, 2)
 
       @fact err_val --> roughly(0.0, atol = 1e-6)

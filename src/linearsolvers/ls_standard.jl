@@ -264,6 +264,7 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
                       ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
 
+  PetscOptionsView()
   myrank = ls.myrank
   pc2 = getBasePC(ls.pc)
   lo2 = getBaseLO(ls.lo)
@@ -283,7 +284,7 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
   KSPSetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
   println("setting tolerances: reltol = ", ls.reltol, ", abstol = ", ls.abstol)
 
-
+  println("before solve, reuse_preconditioner = ", PCGetReusePreconditioner(pc2.pc) == PETSC_TRUE)
   if trans
     KSPSolveTranspose(ksp, lo2.btmp, lo2.xtmp)
     lo2.ntsolves += 1
@@ -307,6 +308,8 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
 
   println("norm(x) = ", norm(x))
 
+  # Reuse preconditionre until next time setupPC() is called
+  PCSetReusePreconditioner(pc2.pc, PETSC_TRUE)
   
 
   return nothing

@@ -210,9 +210,10 @@ if !isdefined(:TestFinalizeMPI)
   TestFinalizeMPI = true
 end
 
-
+#=
 if MPI.Initialized() && TestFinalizeMPI
   MPI.Finalize()
 end
+=#
 
 FactCheck.exitstatus()
