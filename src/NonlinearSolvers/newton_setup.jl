@@ -12,6 +12,7 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
   myrank::Int
   commsize::Int
 
+  #TODO: add newton tolerances here, remove them as keyword args to newtonInner
   # inexact Newton-Krylov parameters
   reltol::Float64
   abstol::Float64
@@ -32,7 +33,6 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
                     ls::LinearSolver)
 
   println("entered NewtonData constructor")
-  println("typeof(eqn) = ", typeof(eqn))
 
   myrank = mesh.myrank
   commsize = mesh.commsize
@@ -43,10 +43,10 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
   itermax = opts["krylov_itermax"]
   krylov_gamma = opts["krylov_gamma"]
 
+
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
 
-  println("finishing NewtonData constructor")
   return NewtonData{Tsol, Tres, typeof(ls)}(myrank, commsize, reltol, abstol,
                     dtol, itermax, krylov_gamma, res_norm_i, res_norm_i_1, ls)
 end
@@ -75,9 +75,7 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp,
                      eqn::AbstractSolutionData{Tsol, Tres}, opts,
                      ls::LinearSolver; alloc_rhs=true)
 
-  println("entered setupNewton")
   newton_data = NewtonData(mesh, sbp, eqn, opts, ls)
-  println("finished constructing NewtonData")
   # For simple cases, especially for Newton's method as a steady solver,
   #   having rhs_vec and eqn.res_vec pointing to the same memory
   #   saves us from having to copy back and forth

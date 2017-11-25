@@ -281,6 +281,7 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
   # do the solve
   ksp = ls.ksp
   KSPSetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
+  println("setting tolerances: reltol = ", ls.reltol, ", abstol = ", ls.abstol)
 
 
   if trans
@@ -294,14 +295,19 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
   # print convergence info
   @mpi_master begin
     reason = KSPGetConvergedReason(ksp)
-    println(BSTDOUT, "KSP converged reason = "< KSPConvergedReasonDict[reason])
+    println(BSTDOUT, "KSP converged reason = ", KSPConvergedReasonDict[reason])
     rnorm = KSPGetResidualNorm(ksp)
     @mpi_master println("Linear residual = ", rnorm)
   end
   # copy result back to x
   xtmp, x_ptr = PetscVecGetArrayRead(lo2.xtmp)
+  println("norm(xtmp) = ", norm(xtmp))
   copy!(x, xtmp)
   PetscVecRestoreArrayRead(lo2.xtmp, x_ptr)
+
+  println("norm(x) = ", norm(x))
+
+  
 
   return nothing
 end

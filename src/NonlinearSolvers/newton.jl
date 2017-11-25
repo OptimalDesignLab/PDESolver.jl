@@ -209,6 +209,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   # reset Euler globalization
   clearEulerConstants()
 
+  # copy the initial tolerances
+  setTolerances(newton_data.ls, newton_data.reltol, newton_data.abstol, newton_data.dtol, newton_data.itermax)
+
   #=
   # set the ctx pointer for the matrix-free matrix
   if jac_type == 4
@@ -431,7 +434,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     flush(BSTDOUT)
     linearSolve(ls, res_0, delta_q_vec, verbose)
 #    step_norm = matrixSolve(newton_data, eqn, mesh, opts, jac, delta_q_vec, res_0, BSTDOUT, verbose=verbose)
-    
+    step_norm = norm(delta_q_vec) 
     # perform Newton update
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
@@ -556,6 +559,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
       updateKrylov(newton_data)
     end
 =#
+    updateKrylov(newton_data)
     @verbose5 @mpi_master print(BSTDOUT, "\n")
     step_norm_1 = step_norm
     

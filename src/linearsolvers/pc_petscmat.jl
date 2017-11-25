@@ -181,11 +181,12 @@ end
 """
 function setupPC(pc::PetscMatPC)
 
-  PCSetUp(pc.pc)
+  tsetup = @elapsed PCSetUp(pc.pc)
+  println(BSTDOUT, "PCSetup time = ", tsetup)
   # this is potentially bad because Petsc will *never* recompute the 
   # preconditioner on its own.  Using higher level functionality like TS
   # or Petsc nonlinear solvers likely won't work in this case
-  PCSetReusePreconditioner(pc.pc, PETSC_TRUE)
+  PCSetReusePreconditioner(pc.pc, PETSC_FALSE)
   pc.nsetups += 1
   pc.is_setup = true
 

@@ -22,7 +22,7 @@ function updateKrylov(newton_data::NewtonData)
   norm_i_1 = newton_data.res_norm_i_1
   gamma = newton_data.krylov_gamma
   newton_data.reltol = newton_data.reltol*(norm_i/norm_i_1)^gamma
-  setTolerances(newton_data.ls, newton_data.reltol, -1, -1, -1, -1)
+  setTolerances(newton_data.ls, newton_data.reltol, -1, -1, -1)
 #  println("updating krylov reltol to ", newton_data.reltol)
 
   return nothing
