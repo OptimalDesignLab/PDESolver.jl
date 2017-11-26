@@ -79,15 +79,15 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
       numNodesPerElement_f = numNodesPerElement_s
     end
 
-    qL_s = Array(Tsol, numNodesPerElement_s)
-    qR_s = Array(Tsol, numNodesPerElement_s)
-    qL_f = Array(Tsol, numNodesPerElement_f)
-    qR_f = Array(Tsol, numNodesPerElement_f)
+    qL_s = zeros(Tsol, numNodesPerElement_s)
+    qR_s = zeros(Tsol, numNodesPerElement_s)
+    qL_f = zeros(Tsol, numNodesPerElement_f)
+    qR_f = zeros(Tsol, numNodesPerElement_f)
 
-    resL_s = Array(Tsol, numNodesPerElement_s)
-    resR_s = Array(Tsol, numNodesPerElement_s)
-    resL_f = Array(Tsol, numNodesPerElement_f)
-    resR_f = Array(Tsol, numNodesPerElement_f)
+    resL_s = zeros(Tsol, numNodesPerElement_s)
+    resR_s = zeros(Tsol, numNodesPerElement_s)
+    resL_f = zeros(Tsol, numNodesPerElement_f)
+    resR_f = zeros(Tsol, numNodesPerElement_f)
 
     # needed for the runtype=660 (CN uadj) objective
     sin_amplitude = 2.0
@@ -191,7 +191,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.aux_vars = Array(Tsol, 0, 0, 0)
+    eqn.aux_vars = zeros(Tsol, 0, 0, 0)
 
     if opts["precompute_volume_flux"]
       eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl,
@@ -201,7 +201,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     end
 
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.res_edge = Array(Tres, 0, 0, 0, 0)
+    eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
     if mesh.isDG
       eqn.q_vec = reshape(eqn.q, mesh.numDof)
       eqn.res_vec = reshape(eqn.res, mesh.numDof)
@@ -227,7 +227,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     if opts["precompute_q_bndry"]
       eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
     else
-      eqn.q_bndry = Array(Tsol, 0, 0, 0)
+      eqn.q_bndry = zeros(Tsol, 0, 0, 0)
     end
 
     if opts["precompute_face_flux"]
@@ -244,7 +244,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       end  # end if isDG
 
     else
-      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.flux_face = zeros(Tres, 0, 0, 0)
       eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
     end  # end if precompute_face_flux
 

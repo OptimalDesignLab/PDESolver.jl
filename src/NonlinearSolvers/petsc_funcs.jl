@@ -1,5 +1,5 @@
 # petc_funcs.jl: function used to create, solve, and destroy petsc object
-
+#=
 @doc """
 ### NonlinearSolver.createPetscData
 
@@ -398,3 +398,5 @@ function petscSolve(newton_data::NewtonData, A::PetscMat, Ap::PetscMat, x::Petsc
   return nothing
 
 end
+
+=#
