@@ -507,6 +507,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
      for j=1:m
        rhs_vec[j] = res_0[j]
      end
+     clearEulerConstants()
 
      @mpi_master println("Iteration count: $i")
      @verbose5 @mpi_master close(fconv)
@@ -524,6 +525,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
       for j=1:m
         rhs_vec[j] = res_0[j]
       end
+      clearEulerConstants()
       @verbose5 @mpi_master close(fconv)
       
       flush(BSTDOUT)
@@ -580,7 +582,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
    for j=1:m
      rhs_vec[j] = res_0[j]
    end
- 
+   clearEulerConstants()
   return nothing
 
 end               # end of function newton()

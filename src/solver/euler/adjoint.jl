@@ -92,10 +92,10 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   println("vecnorm(func_deriv) = ", vecnorm(real(func_deriv)))
 
   # debugging
-  lo2 = getBaseLO(lo)
-  jacT = lo2.A.'
-  _adjoint_vec = jacT\real(func_deriv)
-#  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
+#  lo2 = getBaseLO(lo)
+#  jacT = lo2.A.'
+#  _adjoint_vec = jacT\real(func_deriv)
+  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
 
   println("norm(adjoint_vec) = ", norm(adjoint_vec))

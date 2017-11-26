@@ -70,6 +70,17 @@ function getEulerConstants()
   return EulerConstants[1], EulerConstants[2]
 end
 
+"""
+  Check if Euler globalization is initialized
+"""
+function isEulerInitialized()
+  if EulerConstants[1] == EulerConstants[2] == 0
+    return false
+  else
+    return true
+  end
+end
+
 
 @doc """
 ### NonlinearSolvers.initEuler
@@ -209,6 +220,9 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
 # maybe something in lo?
 # for explicitly stored jacobian only
 
+  if !isEulerInitialized()
+    return nothing
+  end
 
   lo2 = getBaseLO(lo)
 #  println("euler globalization tau = ", lo.tau_l)
@@ -249,6 +263,11 @@ end
 function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, 
                     lo, b::AbstractArray)
 # apply the diagonal update term to the jacobian vector product
+
+  if !isEulerInitialized()
+    return nothing
+  end
+
 
   for i=1:mesh.numDof
     b[i] -= eqn.M[i]*(1/lo.tau_vec[i])*vec[i]
