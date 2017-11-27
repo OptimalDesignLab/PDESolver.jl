@@ -1,5 +1,4 @@
 
-abstract AbstractBoundaryValueType
 
 @doc """
 

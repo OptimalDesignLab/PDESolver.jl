@@ -271,7 +271,6 @@ global const SRCDict = Dict{ASCIIString, SRCType}(
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
 "SRCTrigonometric" => SRCTrigonometric(),
-"SRCTrigWall" => SRCTrigWall(),
 "SRCDoubleSquare" => SRCDoubleSquare(),
 "SRCPolynomial" => SRCPolynomial(),
 "SRCChannel" => SRCChannel(),

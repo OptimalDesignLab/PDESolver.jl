@@ -41,7 +41,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   sat_type = opts["SAT_type"]
   # this one is Harmann's definition
   const_tii = (p + 1.0)*(p + Tdim)/(2.0*Tdim)
-  const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
+  # const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
   area_sum = sview(eqn.area_sum, :)
 
   params = eqn.params
@@ -88,19 +88,37 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     calcGradient(mesh, sbp, elemL, q_elemL, dqdx_elemL)
     calcGradient(mesh, sbp, elemR, q_elemR, dqdx_elemR)
 
-    for d = 1 : Tdim
-      dqdxL = slice(dqdx_elemL, d, :, :)
-      dqdxR = slice(dqdx_elemR, d, :, :)
-      dqdx_f = slice(dqdx_face, d, :, :, :)
-      interiorfaceinterpolate(sbpface, face, dqdxL, dqdxR, dqdx_f)
-    end
+    #
+    # TODO: we can consider the first 2 dimension as a single dimension,
+    # then we will not need slice here any more.
+    #
+    # for d = 1 : Tdim
+      # dqdxL = slice(dqdx_elemL, d, :, :)
+      # dqdxR = slice(dqdx_elemR, d, :, :)
+      # dqdx_f = slice(dqdx_face, d, :, :, :)
+      # interiorfaceinterpolate(sbpface, face, dqdxL, dqdxR, dqdx_f)
+    # end
 
-    # Now both G and dqdx are avaiable at face nodes  
-    dqdx_faceL = slice(dqdx_face, :, :, 1, :)
-    dqdx_faceR = slice(dqdx_face, :, :, 2, :)
-    calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
-    calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
+    # # Now both G and dqdx are avaiable at face nodes  
+    # dqdx_faceL = slice(dqdx_face, :, :, 1, :)
+    # dqdx_faceR = slice(dqdx_face, :, :, 2, :)
+    # calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
+    # calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
 
+    Fv_face = zeros(Tsol, Tdim, mesh.numDofPerNode, 2, mesh.numNodesPerFace)
+    jacL = ro_sview(mesh.jac, :, elemL)
+    jacR = ro_sview(mesh.jac, :, elemR)
+    dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
+    dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
+    calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
+    Fv_faceL = sview(Fv_face, :,:,1,:)
+    Fv_faceR = sview(Fv_face, :,:,2,:)
+    # diffL = maximum(abs(real(slice(Fv_face, :, :, 1, :) - Fv_faceL)))
+    # diffR = maximum(abs(real(slice(Fv_face, :, :, 2, :) - Fv_faceR)))
+    # if (diffL > 1.e-8)
+        # println(diffL)
+    # end
+    
     cmptIPMat(mesh, sbp, eqn, opts, f, GtL, GtR, pMat)
 
     # Start to compute fluxes. We have 3 terms on interfaces:
@@ -112,9 +130,6 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     for n = 1 : mesh.numNodesPerFace
       for iDof = 1 : mesh.numDofPerNode
         dq[iDof, n] = q_faceL[iDof, n] - q_faceR[iDof, n]
-        # factor 0.5 comes from the average operator {G^T ∇ϕ}
-        # dqn[1, iDof, n] = -0.5*dq[iDof, n]*nrm_xy[1,n] 
-        # dqn[2, iDof, n] = -0.5*dq[iDof, n]*nrm_xy[2,n]
       end
     end
 
@@ -127,12 +142,12 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       end
     end
 
-    # finally, everything is ready, let's compute fluxes, or penalties
+    # Finally, everything is ready, let's compute fluxes, or penalties
 
     # This part computes the contribution of
-    # ∫ {G^T∇ϕ}:[q] dΓ = ∫ ∇ϕ⋅F dΓ , 
+    #     ∫ {G^T∇ϕ}:[q] dΓ = ∫ ∇ϕ⋅F dΓ , 
     # where 
-    # [q] = (q+ - q-) ⊗ n = Δq⊗n , 
+    #     [q] = (q+ - q-) ⊗ n = Δq⊗n , 
     # Then we can consider Δq⊗n as ∇q and F as viscous flux.
     for n = 1 : mesh.numNodesPerFace
       for iDof = 1 : mesh.numDofPerNode
@@ -145,8 +160,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
             tmpL = 0.0
             tmpR = 0.0
             for jDof = 1 : mesh.numDofPerNode
-              tmpL += GtL[iDof, jDof, iDim, jDim]
-              tmpR += GtR[iDof, jDof, iDim, jDim]
+              tmpL += GtL[iDof, jDof, iDim, jDim, n]
+              tmpR += GtR[iDof, jDof, iDim, jDim, n]
             end
             vecfluxL[iDim, iDof, n] += tmpL * nrm_xy[jDim, n]
             vecfluxR[iDim, iDof, n] += tmpR * nrm_xy[jDim, n]
@@ -160,7 +175,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # δ{G}[q]:n, contributing to  δ{G}[q]:[ϕ]
     for n = 1:mesh.numNodesPerFace
       for iDof = 1 : mesh.numDofPerNode
-        for jDof = 1:mesh.numDofPerNode
+        for jDof = 1 : mesh.numDofPerNode
           flux[iDof, n] +=  pMat[iDof, jDof, n]*dq[jDof, n]
         end
       end
@@ -206,13 +221,13 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
   const_tii = (p + 1.0)*(p + Tdim)/Tdim
   sbpface = mesh.sbpface
   dq      = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)    
-  dqn      = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)    
+  dqn     = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)    
   q_bnd = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)    
-  pMat = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  Gt = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
-  Gt_bnd = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
+  pMat  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+  Gt    = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
+  Gt_bnd  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
   Fv_face = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-  Fv_bnd = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  Fv_bnd  = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
   vecflux = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
@@ -222,7 +237,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
   # sigma = calcTraceInverseInequalityConst(sbp, sbpface)
   dqdx_elem = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement )
   dqdx_face = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace )
-  for iBC = 1:mesh.numBC
+  for iBC = 1 : mesh.numBC
     indx0 = mesh.bndry_offsets[iBC]
     indx1 = mesh.bndry_offsets[iBC+1] - 1
 
@@ -232,16 +247,16 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
     key_i = string("BC", iBC, "_name")
     val = opts[key_i]
     calcGt_functor = calcDiffusionTensor
-    if "FreeStreamBC" ==  val
+    if val == "FreeStreamBC"
       bnd_functor = Farfield()
-    elseif "ExactChannelBC" ==  val
+    elseif val == "ExactChannelBC"
       bnd_functor = ExactChannel()
-    elseif "nonslipBC" == val
+    elseif val == "nonslipBC"
       bnd_functor = AdiabaticWall()
       calcGt_functor = calcDiffusionTensor_adiabaticWall
-    elseif "noPenetrationBC" ==  val
+    elseif val == "noPenetrationBC"
       continue
-    elseif "zeroPressGradientBC" ==  val
+    elseif val == "zeroPressGradientBC"
       bnd_functor = Farfield()
     else
       error("iBC = ", iBC, ", Only 'FreeStreamBC' and 'nonslipBC' available")
@@ -264,7 +279,6 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         for i = 1 : Tdim
           nrm1[i,n] = nrm_xy[i,n] / area[n]
         end
-
       end
 
       # We need viscous flux and diffusion tensor on interfaces, and there
@@ -283,6 +297,10 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       q_elem = sview(eqn.q, :, :, elem)
       calcGradient(mesh, sbp, elem, q_elem, dqdx_elem)
 
+      #
+      # TODO: we can consider the first 2 dimension as a single dimension,
+      # then we will not need slice here any more.
+      #
       for d = 1 : Tdim
         q_x_node = slice(dqdx_elem, d, :, :)
         q_x_face = slice(dqdx_face, d, :, :)
@@ -325,7 +343,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
             for jDim = 1 : Tdim
               tmp = 0.0
               for jDof = 1 : mesh.numDofPerNode
-                tmp += Gt[iDof, jDof, iDim, jDim]
+                tmp += Gt[iDof, jDof, iDim, jDim, n]
               end
               vecflux[iDim, iDof, n] += tmp * nrm_xy[jDim, n]
             end

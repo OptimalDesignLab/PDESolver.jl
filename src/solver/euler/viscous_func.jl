@@ -14,8 +14,8 @@ function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
   Tref = 460.0
   cstar = 198.6/Tref
 
-  rMuK[1] = (1.0 + cstar)/(temp + cstar)*temp^1.5
-  # rMuK[1] = 1.0
+  # rMuK[1] = (1.0 + cstar)/(temp + cstar)*temp^1.5
+  rMuK[1] = 1.0
   rMuK[2] = 1.0
 
   return nothing
@@ -38,8 +38,8 @@ function getMuK{Tsol}(temp::AbstractArray{Tsol, 1}, rMuK::AbstractArray{Tsol, 2}
   cstar = 198.6/Tref
 
   for n = 1:length(temp)
-    rMuK[1, n] = (1.0 + cstar)/(temp[n] + cstar)*temp[n]^1.5
-    # rMuK[1, n] = 1.0
+    # rMuK[1, n] = (1.0 + cstar)/(temp[n] + cstar)*temp[n]^1.5
+    rMuK[1, n] = 1.0
     rMuK[2, n] = 1.0
   end
 
@@ -71,24 +71,25 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{2, :conservative},
   @assert(size(q, 2) == sbp.numnodes)        # number of element nodes
   @assert(size(dxidx, 1) == size(dxidx, 2))  # dimension
   @assert(size(dxidx, 3) == size(q, 2))      # node
+  @assert(size(dxidx, 3) == sbp.numnodes)      # node
   @assert(size(Fv, 1) == size(dxidx, 2))     # dimension
   @assert(size(Fv, 2) == size(q, 1))         # dof
   @assert(size(Fv, 3) == size(q, 2))         # node
 
-  Pr          = 0.72
-  gamma       = 1.4
-  gamma_1     = gamma - 1.0
-  coef_nondim = 1.0/(Pr*gamma_1)
-  two3rd  = 2.0/3.0
-  four3rd = 4.0/3.0
-  numNodes = size(dxidx, 3)
   dim = 2
+  Pr      = 0.72
+  gamma   = params.gamma
+  gamma_1 = gamma - 1.0
+  coef_nondim = 1.0/(Pr*gamma_1)
+  two3rd   = 2.0/3.0
+  four3rd  = 4.0/3.0
+  numNodes = size(dxidx, 3)
   #
   # we need μ, κ, V, dVdx, dTdx
   #
-  rMuK    = Array(Tsol, 2, numNodes)          # dynamic viscousity
-  dVdx    = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
-  dTdx    = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
+  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscousity
+  dVdx = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
+  dTdx = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
   tau = Array(Tsol, dim, dim, numNodes)       # stress    
   Dx  = Array(Tmsh, numNodes, numNodes, dim)  # derivative operators in physical domain
 
@@ -179,11 +180,11 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
   #
   # we need μ, κ, V, dVdx, dTdx
   #
-  rMuK    = Array(Tsol, 2, numNodes)          # dynamic viscousity
-  dVdx    = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
-  dTdx    = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
-  tau = Array(Tsol, dim, dim, numNodes)       # stress    
-  Dx  = Array(Tmsh, numNodes, numNodes, dim)  # derivative operators in physical domain
+  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscousity
+  dVdx = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
+  dTdx = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
+  tau  = Array(Tsol, dim, dim, numNodes)       # stress    
+  Dx   = Array(Tmsh, numNodes, numNodes, dim)  # derivative operators in physical domain
 
   #
   # primitive variables
@@ -195,7 +196,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
     v[2, n] = q[3, n]/q[1, n]
     v[3, n] = q[4, n]/q[1, n]
     vel2 = (v[1,n]*v[1,n] + v[2,n]*v[2,n] + v[3,n]*v[3,n])
-    T[n] = gamma*gamma_1*(q[4, n]/q[1, n] - 0.5*vel2)
+    T[n] = gamma*gamma_1*(q[5, n]/q[1, n] - 0.5*vel2)
   end
 
   # Compute viscousity and conductivity coefficients
@@ -220,9 +221,9 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
     tau[1,1,n] = rMuK[1,n] * two3rd * (2 * dVdx[1,1,n] - dVdx[2,2,n] - dVdx[3,3,n])
     tau[2,2,n] = rMuK[1,n] * two3rd * (2 * dVdx[2,2,n] - dVdx[1,1,n] - dVdx[3,3,n])
     tau[3,3,n] = rMuK[1,n] * two3rd * (2 * dVdx[3,3,n] - dVdx[1,1,n] - dVdx[2,2,n])
-    tau[1,2,n] = rMuK[1,n] * (dVdx[1,2] + dVdx[2,1])
-    tau[1,3,n] = rMuK[1,n] * (dVdx[1,3] + dVdx[3,1])
-    tau[2,3,n] = rMuK[1,n] * (dVdx[2,3] + dVdx[3,2])
+    tau[1,2,n] = rMuK[1,n] * (dVdx[1,2,n] + dVdx[2,1,n])
+    tau[1,3,n] = rMuK[1,n] * (dVdx[1,3,n] + dVdx[3,1,n])
+    tau[2,3,n] = rMuK[1,n] * (dVdx[2,3,n] + dVdx[3,2,n])
   end
 
   # start to compute viscous flux
@@ -259,8 +260,8 @@ end
     1). interpolate the solution and gradient operator from element to interface, and then compute the flux.
     2). compute the elememt flux directly, and then interpolate the flux instead of solution to interface.
     3). compute the elememt flux throught F = G∇q, and then interpolate the flux to interface.
-  The experiments show suble difference between three approaches. But the theoretical
-  proof in the journal paper uses the third one.
+  The experiments show subtle difference between three approaches. But the theoretical
+  proof in the journal paper (https://doi.org/10.1007%2Fs10915-017-0563-zv) uses the third one.
 
   **Input**
    * params
@@ -279,7 +280,7 @@ end
 """
 function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
                                         sbp::AbstractSBP,
-                                        sbpface::AbstractSBP,
+                                        sbpface::AbstractFace,
                                         qL::AbstractArray{Tsol, 2},
                                         qR::AbstractArray{Tsol, 2},
                                         dxidxL::AbstractArray{Tmsh, 3},
@@ -288,41 +289,71 @@ function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
                                         jacR::AbstractArray{Tmsh, 1},
                                         face::Interface,
                                         Fv_face::AbstractArray{Tsol, 4})
-  numDofs = mesh.numDofPerNode
-  numNodes = mesh.numNodesPerElement
-  Fv_eL = zeros(Tsol, Tdim, numDofs, numNodes)
-  Fv_eR = zeros(Tsol, Tdim, numDofs, numNodes)
 
+  #
   # method-1 NOT FINISHED!!!
+  #
   # elemL = face.elementL
   # elemR = face.elementL
   # dqdx_eL = Array(Tsol, Tdim, numDofs, numNodes)
   # dqdx_eR = Array(Tsol, Tdim, numDofs, numNodes)
   # calcGradient(mesh, sbp, elemL, qL, dqdx_eL)
   # calcGradient(mesh, sbp, elemR, qR, dqdx_eR)
+  # for d = 1 : Tdim
+    # dqdxL = slice(dqdx_elemL, d, :, :)
+    # dqdxR = slice(dqdx_elemR, d, :, :)
+    # dqdx_f = slice(dqdx_face, d, :, :, :)
+    # interiorfaceinterpolate(sbpface, face, dqdxL, dqdxR, dqdx_f)
+  # end
+  # # Now both G and dqdx are avaiable at face nodes  
+  # dqdx_faceL = slice(dqdx_face, :, :, 1, :)
+  # dqdx_faceR = slice(dqdx_face, :, :, 2, :)
+  # Fv_faceL = slice(Fv_face, :, :, 1, :)
+  # Fv_faceR = slice(Fv_face, :, :, 2, :)
+  # calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
+  # calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
+  # return nothing
 
+  numDofs = size(qL, 1)
+  numNodes = size(qL, 2)
+  Fv_eL = zeros(Tsol, Tdim, numDofs, numNodes)
+  Fv_eR = zeros(Tsol, Tdim, numDofs, numNodes)
+  #
   # method-2
+  #
   # calcFvis_elem_direct(params, sbp, qL, dxidxL, jacL, Fv_eL)
   # calcFvis_elem_direct(params, sbp, qR, dxidxR, jacR, Fv_eR)
+  # for d = 1 : Tdim
+    # Fv_eL_d = slice(Fv_eL, d, :, :)
+    # Fv_eR_d = slice(Fv_eR, d, :, :)
+    # Fv_face_d = slice(Fv_face, d, :, :, :)
+    # interiorfaceinterpolate(sbpface, face, Fv_eL_d, Fv_eR_d, Fv_face_d)
+  # end
+
+  #
   # method-3
+  #
   calcFvis_elem(params, sbp, qL, dxidxL, jacL, Fv_eL)
   calcFvis_elem(params, sbp, qR, dxidxR, jacR, Fv_eR)
 
+  #
+  # TODO: we can combine the first 2 dimension as a single 
+  # dimension, then we will not need slice here any more.
+  #
   for d = 1 : Tdim
     Fv_eL_d = slice(Fv_eL, d, :, :)
     Fv_eR_d = slice(Fv_eR, d, :, :)
-    Fv_face_d = slice(Fv_fL, d, :, :, :)
+    Fv_face_d = slice(Fv_face, d, :, :, :)
     interiorfaceinterpolate(sbpface, face, Fv_eL_d, Fv_eR_d, Fv_face_d)
   end
-
 
   return nothing
 end
 
-  # @doc """
+# @doc """
 
 # Another version of calculating viscous flux. Fv = G(q)∇q
-# Since    ∇q is available, we compute G(q) then do the multiplication
+# Since ∇q is available, we compute G(q) then do the multiplication
 
 # Input:
 #   q       : conservative variable
@@ -410,6 +441,8 @@ function calcFvis{Tsol}(params::ParamType{2, :conservative},
                  + Gv[4, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[4, 2, 2, 2,n]*dqdx[2, 2, n] 
                  + Gv[4, 3, 2, 2,n]*dqdx[2, 3, n] + Gv[4, 4, 2, 2,n]*dqdx[2, 4, n] )
   end
+
+
 
   return nothing
 end
@@ -1561,6 +1594,7 @@ function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{3, :conservat
   return nothing
 end
 
+abstract AbstractBoundaryValueType
 
 @doc """
 
@@ -1790,6 +1824,10 @@ function call{Tsol, Tmsh}(obj::Farfield,
   return nothing
 end
 
+#
+# TODO: combine this with the 2D version. The only difference
+# between 2D and 3D is the freestream conditions.
+#
 function call{Tsol, Tmsh}(obj::Farfield,
                           q_in::AbstractArray{Tsol, 2},
                           xy::AbstractArray{Tmsh, 2},

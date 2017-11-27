@@ -289,8 +289,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # # + nrm1[3,n]*nrm1[2,n] * (GtL[2,5,3,2,n] + GtR[2,5,3,2,n]) 
                   # # + nrm1[3,n]*nrm1[3,n] * (GtL[2,5,3,3,n] + GtR[2,5,3,3,n]) )
 
-    pMat[3,1,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[3,1,1,1,n] + GtR[3,1,1,1,n])
+    pMat[3,1,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[3,1,1,1,n] + GtR[3,1,1,1,n])
                   + nrm1[1,n]*nrm1[2,n] * (GtL[3,1,1,2,n] + GtR[3,1,1,2,n])
                   # + nrm1[1,n]*nrm1[3,n] * (GtL[3,1,1,3,n] + GtR[3,1,1,3,n])
                   + nrm1[2,n]*nrm1[1,n] * (GtL[3,1,2,1,n] + GtR[3,1,2,1,n])
@@ -313,8 +312,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # + nrm1[3,n]*nrm1[3,n] * (GtL[3,2,3,3,n] + GtR[3,2,3,3,n]) 
                  ) * coef
 
-    pMat[3,3,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[3,3,1,1,n] + GtR[3,3,1,1,n])
+    pMat[3,3,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[3,3,1,1,n] + GtR[3,3,1,1,n])
                   # + nrm1[1,n]*nrm1[2,n] * (GtL[3,3,1,2,n] + GtR[3,3,1,2,n])
                   # + nrm1[1,n]*nrm1[3,n] * (GtL[3,3,1,3,n] + GtR[3,3,1,3,n])
                   # + nrm1[2,n]*nrm1[1,n] * (GtL[3,3,2,1,n] + GtR[3,3,2,1,n])
@@ -349,8 +347,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # # + nrm1[3,n]*nrm1[3,n] * (GtL[3,5,3,3,n] + GtR[3,5,3,3,n]) 
                  # )
 
-    pMat[4,1,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[4,1,1,1,n] + GtR[4,1,1,1,n])
+    pMat[4,1,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[4,1,1,1,n] + GtR[4,1,1,1,n])
                   # + nrm1[1,n]*nrm1[2,n] * (GtL[4,1,1,2,n] + GtR[4,1,1,2,n])
                   + nrm1[1,n]*nrm1[3,n] * (GtL[4,1,1,3,n] + GtR[4,1,1,3,n])
                   # + nrm1[2,n]*nrm1[1,n] * (GtL[4,1,2,1,n] + GtR[4,1,2,1,n])
@@ -385,8 +382,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # + nrm1[3,n]*nrm1[3,n] * (GtL[4,3,3,3,n] + GtR[4,3,3,3,n]) 
                  ) * coef
 
-    pMat[4,4,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[4,4,1,1,n] + GtR[4,4,1,1,n])
+    pMat[4,4,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[4,4,1,1,n] + GtR[4,4,1,1,n])
                   # + nrm1[1,n]*nrm1[2,n] * (GtL[4,4,1,2,n] + GtR[4,4,1,2,n])
                   # + nrm1[1,n]*nrm1[3,n] * (GtL[4,4,1,3,n] + GtR[4,4,1,3,n])
                   # + nrm1[2,n]*nrm1[1,n] * (GtL[4,4,2,1,n] + GtR[4,4,2,1,n])
@@ -409,8 +405,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # # + nrm1[3,n]*nrm1[3,n] * (GtL[4,5,3,3,n] + GtR[4,5,3,3,n]) 
                  # )
 
-    pMat[5,1,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[5,1,1,1,n] + GtR[5,1,1,1,n])
+    pMat[5,1,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[5,1,1,1,n] + GtR[5,1,1,1,n])
                   + nrm1[1,n]*nrm1[2,n] * (GtL[5,1,1,2,n] + GtR[5,1,1,2,n])
                   + nrm1[1,n]*nrm1[3,n] * (GtL[5,1,1,3,n] + GtR[5,1,1,3,n])
                   + nrm1[2,n]*nrm1[1,n] * (GtL[5,1,2,1,n] + GtR[5,1,2,1,n])
@@ -422,8 +417,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                  ) * coef
 
 
-    pMat[5,2,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[5,2,1,1,n] + GtR[5,2,1,1,n])
+    pMat[5,2,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[5,2,1,1,n] + GtR[5,2,1,1,n])
                   + nrm1[1,n]*nrm1[2,n] * (GtL[5,2,1,2,n] + GtR[5,2,1,2,n])
                   + nrm1[1,n]*nrm1[3,n] * (GtL[5,2,1,3,n] + GtR[5,2,1,3,n])
                   + nrm1[2,n]*nrm1[1,n] * (GtL[5,2,2,1,n] + GtR[5,2,2,1,n])
@@ -434,8 +428,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * (GtL[5,2,3,3,n] + GtR[5,2,3,3,n]) 
                  ) * coef
 
-    pMat[5,3,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[5,3,1,1,n] + GtR[5,3,1,1,n])
+    pMat[5,3,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[5,3,1,1,n] + GtR[5,3,1,1,n])
                   + nrm1[1,n]*nrm1[2,n] * (GtL[5,3,1,2,n] + GtR[5,3,1,2,n])
                   # + nrm1[1,n]*nrm1[3,n] * (GtL[5,3,1,3,n] + GtR[5,3,1,3,n])
                   + nrm1[2,n]*nrm1[1,n] * (GtL[5,3,2,1,n] + GtR[5,3,2,1,n])
@@ -446,8 +439,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * (GtL[5,3,3,3,n] + GtR[5,3,3,3,n]) 
                  ) * coef
 
-    pMat[5,4,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[5,4,1,1,n] + GtR[5,4,1,1,n])
+    pMat[5,4,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[5,4,1,1,n] + GtR[5,4,1,1,n])
                   # + nrm1[1,n]*nrm1[2,n] * (GtL[5,4,1,2,n] + GtR[5,4,1,2,n])
                   + nrm1[1,n]*nrm1[3,n] * (GtL[5,4,1,3,n] + GtR[5,4,1,3,n])
                   # + nrm1[2,n]*nrm1[1,n] * (GtL[5,4,2,1,n] + GtR[5,4,2,1,n])
@@ -458,8 +450,7 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * (GtL[5,4,3,3,n] + GtR[5,4,3,3,n]) 
                  ) * coef
 
-    pMat[5,5,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * (GtL[5,5,1,1,n] + GtR[5,5,1,1,n])
+    pMat[5,5,n] = ( nrm1[1,n]*nrm1[1,n] * (GtL[5,5,1,1,n] + GtR[5,5,1,1,n])
                   # + nrm1[1,n]*nrm1[2,n] * (GtL[5,5,1,2,n] + GtR[5,5,1,2,n])
                   # + nrm1[1,n]*nrm1[3,n] * (GtL[5,5,1,3,n] + GtR[5,5,1,3,n])
                   # + nrm1[2,n]*nrm1[1,n] * (GtL[5,5,2,1,n] + GtR[5,5,2,1,n])
@@ -750,8 +741,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # # + nrm1[3,n]*nrm1[2,n] * Gt[2,5,3,2,n] 
                   # # + nrm1[3,n]*nrm1[3,n] * Gt[2,5,3,3,n] )
 
-    pMat[3,1,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[3,1,1,1,n]
+    pMat[3,1,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[3,1,1,1,n]
                   + nrm1[1,n]*nrm1[2,n] * Gt[3,1,1,2,n]
                   # + nrm1[1,n]*nrm1[3,n] * Gt[3,1,1,3,n]
                   + nrm1[2,n]*nrm1[1,n] * Gt[3,1,2,1,n]
@@ -762,8 +752,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * Gt[3,1,3,3,n] 
                  ) * coef
 
-    pMat[3,2,n] = ( 
-                    # nrm1[1,n]*nrm1[1,n] * Gt[3,2,1,1,n]
+    pMat[3,2,n] = ( # nrm1[1,n]*nrm1[1,n] * Gt[3,2,1,1,n]
                   + nrm1[1,n]*nrm1[2,n] * Gt[3,2,1,2,n]
                   # + nrm1[1,n]*nrm1[3,n] * Gt[3,2,1,3,n]
                   + nrm1[2,n]*nrm1[1,n] * Gt[3,2,2,1,n]
@@ -774,8 +763,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # + nrm1[3,n]*nrm1[3,n] * Gt[3,2,3,3,n] 
                  ) * coef
 
-    pMat[3,3,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[3,3,1,1,n]
+    pMat[3,3,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[3,3,1,1,n]
                   # + nrm1[1,n]*nrm1[2,n] * Gt[3,3,1,2,n]
                   # + nrm1[1,n]*nrm1[3,n] * Gt[3,3,1,3,n]
                   # + nrm1[2,n]*nrm1[1,n] * Gt[3,3,2,1,n]
@@ -786,8 +774,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * Gt[3,3,3,3,n] 
                  ) * coef
 
-    pMat[3,4,n] = ( 
-                    # nrm1[1,n]*nrm1[1,n] * Gt[3,4,1,1,n]
+    pMat[3,4,n] = ( # nrm1[1,n]*nrm1[1,n] * Gt[3,4,1,1,n]
                   # + nrm1[1,n]*nrm1[2,n] * Gt[3,4,1,2,n]
                   # + nrm1[1,n]*nrm1[3,n] * Gt[3,4,1,3,n]
                   # + nrm1[2,n]*nrm1[1,n] * Gt[3,4,2,1,n]
@@ -810,8 +797,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # # + nrm1[3,n]*nrm1[3,n] * Gt[3,5,3,3,n] 
                  # )
 
-    pMat[4,1,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[4,1,1,1,n]
+    pMat[4,1,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[4,1,1,1,n]
                   # + nrm1[1,n]*nrm1[2,n] * Gt[4,1,1,2,n]
                   + nrm1[1,n]*nrm1[3,n] * Gt[4,1,1,3,n]
                   # + nrm1[2,n]*nrm1[1,n] * Gt[4,1,2,1,n]
@@ -846,8 +832,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # + nrm1[3,n]*nrm1[3,n] * Gt[4,3,3,3,n] 
                  ) * coef
 
-    pMat[4,4,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[4,4,1,1,n]
+    pMat[4,4,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[4,4,1,1,n]
                   # + nrm1[1,n]*nrm1[2,n] * Gt[4,4,1,2,n]
                   # + nrm1[1,n]*nrm1[3,n] * Gt[4,4,1,3,n]
                   # + nrm1[2,n]*nrm1[1,n] * Gt[4,4,2,1,n]
@@ -870,8 +855,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   # # + nrm1[3,n]*nrm1[3,n] * Gt[4,5,3,3,n] 
                  # )
 
-    pMat[5,1,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[5,1,1,1,n]
+    pMat[5,1,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[5,1,1,1,n]
                   + nrm1[1,n]*nrm1[2,n] * Gt[5,1,1,2,n]
                   + nrm1[1,n]*nrm1[3,n] * Gt[5,1,1,3,n]
                   + nrm1[2,n]*nrm1[1,n] * Gt[5,1,2,1,n]
@@ -883,8 +867,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                  ) * coef
 
 
-    pMat[5,2,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[5,2,1,1,n]
+    pMat[5,2,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[5,2,1,1,n]
                   + nrm1[1,n]*nrm1[2,n] * Gt[5,2,1,2,n]
                   + nrm1[1,n]*nrm1[3,n] * Gt[5,2,1,3,n]
                   + nrm1[2,n]*nrm1[1,n] * Gt[5,2,2,1,n]
@@ -895,8 +878,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * Gt[5,2,3,3,n] 
                  ) * coef
 
-    pMat[5,3,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[5,3,1,1,n]
+    pMat[5,3,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[5,3,1,1,n]
                   + nrm1[1,n]*nrm1[2,n] * Gt[5,3,1,2,n]
                   # + nrm1[1,n]*nrm1[3,n] * Gt[5,3,1,3,n]
                   + nrm1[2,n]*nrm1[1,n] * Gt[5,3,2,1,n]
@@ -907,8 +889,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * Gt[5,3,3,3,n] 
                  ) * coef
 
-    pMat[5,4,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[5,4,1,1,n]
+    pMat[5,4,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[5,4,1,1,n]
                   # + nrm1[1,n]*nrm1[2,n] * Gt[5,4,1,2,n]
                   + nrm1[1,n]*nrm1[3,n] * Gt[5,4,1,3,n]
                   # + nrm1[2,n]*nrm1[1,n] * Gt[5,4,2,1,n]
@@ -919,8 +900,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                   + nrm1[3,n]*nrm1[3,n] * Gt[5,4,3,3,n] 
                  ) * coef
 
-    pMat[5,5,n] = ( 
-                    nrm1[1,n]*nrm1[1,n] * Gt[5,5,1,1,n]
+    pMat[5,5,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[5,5,1,1,n]
                   # + nrm1[1,n]*nrm1[2,n] * Gt[5,5,1,2,n]
                   # + nrm1[1,n]*nrm1[3,n] * Gt[5,5,1,3,n]
                   # + nrm1[2,n]*nrm1[1,n] * Gt[5,5,2,1,n]

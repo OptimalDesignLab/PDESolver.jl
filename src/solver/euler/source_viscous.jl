@@ -67,7 +67,7 @@ function calcMmsSource{Tsrc}(params::ParamType{3, :conservative},
   q_xx[3,1,4] = q_xx[1,3,4]
   q_xx[3,2,4] = q_xx[2,3,4]
 
-
+  # tau
   txx = rmu * two3rd * (2*q_x[1,2] - q_x[2,3] - q_x[3,4])
   tyy = rmu * two3rd * (2*q_x[2,3] - q_x[1,2] - q_x[3,4])
   tzz = rmu * two3rd * (2*q_x[3,4] - q_x[1,2] - q_x[2,3])
@@ -78,7 +78,7 @@ function calcMmsSource{Tsrc}(params::ParamType{3, :conservative},
   tzx = txz
   tzy = tyz
 
-
+  # gradient of tau
   txx_x = rmu*two3rd*(2*q_xx[1,1,2] - q_xx[2,1,3] - q_xx[3,1,4])
   txx_y = rmu*two3rd*(2*q_xx[1,2,2] - q_xx[2,2,3] - q_xx[3,2,4])
   txx_z = rmu*two3rd*(2*q_xx[1,3,2] - q_xx[2,3,3] - q_xx[3,3,4])
@@ -736,83 +736,6 @@ function call(obj::SRCDoubleSquare,
   return nothing
 end
 
-type SRCTrigWall <: SRCType
-end
-function call(obj::SRCTrigWall, 
-              src::AbstractVector,
-              coords::AbstractVector, 
-              params::ParamType{2}, 
-              t)
-  Tdim = 2
-  pi = 3.14159265358979323846264338
-  sigma = 0.01
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
-  aoa = params.aoa
-  q = zeros(typeof(src[1]), Tdim+2)
-  q_x = zeros(typeof(src[1]), Tdim, Tdim+2)
-  q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
-  qRef = zeros(typeof(src[1]), Tdim+2)
-  qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
-  qRef[4] = 1.0
-  sigma = 0.01
-  x = coords[1]*pi
-  y = coords[2]*pi
-
-  x2 = 2*x
-  y2 = 2*y 
-  x4 = 4*x
-  y4 = 4*y
-  sx  = sin(x)
-  sy  = sin(y)
-  cx  = cos(x)
-  cy  = cos(y)
-  sx2 = sin(x2)
-  sy2 = sin(y2)
-  cx2 = cos(x2)
-  cy2 = cos(y2)
-  sx4 = sin(x4)
-  sy4 = sin(y4)
-  cx4 = cos(x4)
-  cy4 = cos(y4)
-  #
-  # Exact solution in form of primitive variables
-  #
-  q[1] = qRef[1] * ( 1.0 + sigma*exp(x)*exp(y) )
-  q[2] = qRef[2] * sx2 * sy2 
-  q[3] = qRef[3] * sx2 * sy2 
-  q[4] = qRef[4]
-  q_x[1,1] = qRef[1] * sigma * exp(x) * exp(y)
-  q_x[2,1] = qRef[1] * sigma * exp(x) * exp(y)
-  q_x[1,2] = qRef[2] * 2*pi * cx2 * sy2
-  q_x[2,2] = qRef[2] * 2*pi * sx2 * cy2 
-  q_x[1,3] = qRef[3] * 2*pi * cx2 * sy2
-  q_x[2,3] = qRef[3] * 2*pi * sx2 * cy2 
-  q_x[1,4] = 0  
-  q_x[2,4] = 0 
-
-
-  if !params.isViscous 
-    calcMmsSource(params, q, q_x, q_xx, src)
-    return nothing
-  end
-
-  q_xx[1,1,2] = -4*pi*pi * sx2 * sy2 * qRef[2]
-  q_xx[1,2,2] =  4*pi*pi * cx2 * cy2 * qRef[2]
-  q_xx[2,2,2] = -4*pi*pi * sx2 * sy2 * qRef[2]
-  q_xx[2,1,2] = q_xx[1,2,2]
-  q_xx[1,1,3] = -4*pi*pi * sx2 * sy2 * qRef[3]
-  q_xx[1,2,3] =  4*pi*pi * cx2 * cy2 * qRef[3]
-  q_xx[2,2,3] = -4*pi*pi * sx2 * sy2 * qRef[3]
-  q_xx[2,1,3] = q_xx[1,2,3]
-  q_xx[1,1,4] = 0.0 
-  q_xx[2,2,4] = 0.0 
-
-  calcMmsSource(params, q, q_x, q_xx, src)
-  return nothing
-end
 
 type SRCTrigonometric <: SRCType
 end
@@ -846,29 +769,29 @@ function call(obj::SRCTrigonometric,
   sin_val_4 = sin(xyz4)
   cos_val_4 = cos(xyz4)
 
-  q[1] = 0.125 * sin_val_2[1] * sin_val_2[2] * sin_val_2[3] 
-  q[2] = 0.125 * sin_val_4[1] * sin_val_4[2] * sin_val_4[3]
-  q[3] = 0.125 * sin_val_2[1] * sin_val_2[2] * sin_val_2[3]
-  q[4] = 0.125 * sin_val_1[1] * sin_val_1[2] * sin_val_1[3] 
-  q[5] = 0.125 * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[2]) * (1.0 - cos_val_4[3])
+  q[1] = sin_val_2[1] * sin_val_2[2] * sin_val_2[3] 
+  q[2] = sin_val_4[1] * sin_val_4[2] * sin_val_4[3]
+  q[3] = sin_val_2[1] * sin_val_2[2] * sin_val_2[3]
+  q[4] = sin_val_1[1] * sin_val_1[2] * sin_val_1[3] 
+  q[5] = (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[2]) * (1.0 - cos_val_4[3])
 
-  q_x[1,1] = 0.25*pi * cos_val_2[1] * sin_val_2[2] * sin_val_2[3] 
-  q_x[1,2] = 0.50*pi * cos_val_4[1] * sin_val_4[2] * sin_val_4[3] 
-  q_x[1,3] = 0.25*pi * cos_val_2[1] * sin_val_2[2] * sin_val_2[3] 
-  q_x[1,4] = 0.125*pi* cos_val_1[1] * sin_val_1[2] * sin_val_1[3] 
-  q_x[1,5] = 0.50*pi * sin_val_4[1] * (1.0 - cos_val_4[2]) * (1.0 - cos_val_4[3])  
+  q_x[1,1] = 2*pi * cos_val_2[1] * sin_val_2[2] * sin_val_2[3] 
+  q_x[1,2] = 4*pi * cos_val_4[1] * sin_val_4[2] * sin_val_4[3] 
+  q_x[1,3] = 2*pi * cos_val_2[1] * sin_val_2[2] * sin_val_2[3] 
+  q_x[1,4] =   pi * cos_val_1[1] * sin_val_1[2] * sin_val_1[3] 
+  q_x[1,5] = 4*pi * sin_val_4[1] * (1.0 - cos_val_4[2]) * (1.0 - cos_val_4[3])  
 
-  q_x[2,1] = 0.25*pi * cos_val_2[2] * sin_val_2[1] * sin_val_2[3] 
-  q_x[2,2] = 0.50*pi * cos_val_4[2] * sin_val_4[1] * sin_val_4[3] 
-  q_x[2,3] = 0.25*pi * cos_val_2[2] * sin_val_2[1] * sin_val_2[3] 
-  q_x[2,4] = 0.125*pi* cos_val_1[2] * sin_val_1[1] * sin_val_1[3] 
-  q_x[2,5]   = 0.50*pi * sin_val_4[2] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[3])
+  q_x[2,1] = 2*pi * cos_val_2[2] * sin_val_2[1] * sin_val_2[3] 
+  q_x[2,2] = 4*pi * cos_val_4[2] * sin_val_4[1] * sin_val_4[3] 
+  q_x[2,3] = 2*pi * cos_val_2[2] * sin_val_2[1] * sin_val_2[3] 
+  q_x[2,4] =   pi * cos_val_1[2] * sin_val_1[1] * sin_val_1[3] 
+  q_x[2,5] = 4*pi * sin_val_4[2] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[3])
 
-  q_x[3,1] = 0.25*pi * cos_val_2[3] * sin_val_2[1] * sin_val_2[2] 
-  q_x[3,2] = 0.50*pi * cos_val_4[3] * sin_val_4[1] * sin_val_4[2] 
-  q_x[3,3] = 0.25*pi * cos_val_2[3] * sin_val_2[1] * sin_val_2[2] 
-  q_x[3,4] = 0.125*pi* cos_val_1[3] * sin_val_1[1] * sin_val_1[2] 
-  q_x[3,5] = 0.50*pi * sin_val_4[3] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[2])
+  q_x[3,1] = 2*pi * cos_val_2[3] * sin_val_2[1] * sin_val_2[2] 
+  q_x[3,2] = 4*pi * cos_val_4[3] * sin_val_4[1] * sin_val_4[2] 
+  q_x[3,3] = 2*pi * cos_val_2[3] * sin_val_2[1] * sin_val_2[2] 
+  q_x[3,4] =    pi* cos_val_1[3] * sin_val_1[1] * sin_val_1[2] 
+  q_x[3,5] = 4*pi * sin_val_4[3] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[2])
 
 
   q[1] = (sigma*q[1] + 1.0)*qRef[1] 
@@ -902,32 +825,32 @@ function call(obj::SRCTrigonometric,
     return nothing
   end
 
-  q_xx[1,1,2] = -2.0*pi*pi  * sin_val_4[1] * sin_val_4[2] * sin_val_4[3]
-  q_xx[1,1,3] = -0.5*pi*pi  * sin_val_2[1] * sin_val_2[2] * sin_val_2[3] 
-  q_xx[1,1,4] = -0.125*pi*pi* sin_val_1[1] * sin_val_1[2] * sin_val_1[3] 
-  q_xx[1,1,5] =  2.0*pi*pi  * cos_val_4[1] * (1.0 - cos_val_4[2]) * (1.0 - cos_val_4[3])
+  q_xx[1,1,2] = -16*pi*pi * sin_val_4[1] * sin_val_4[2] * sin_val_4[3]
+  q_xx[1,1,3] = - 4*pi*pi * sin_val_2[1] * sin_val_2[2] * sin_val_2[3] 
+  q_xx[1,1,4] =    -pi*pi * sin_val_1[1] * sin_val_1[2] * sin_val_1[3] 
+  q_xx[1,1,5] =  16*pi*pi * cos_val_4[1] * (1.0 - cos_val_4[2]) * (1.0 - cos_val_4[3])
 
-  q_xx[2,2,2] = -2.0*pi*pi  * sin_val_4[2] * sin_val_4[1] * sin_val_4[3]
-  q_xx[2,2,3] = -0.5*pi*pi  * sin_val_2[2] * sin_val_2[1] * sin_val_2[3] 
-  q_xx[2,2,4] = -0.125*pi*pi* sin_val_1[2] * sin_val_1[1] * sin_val_1[3] 
-  q_xx[2,2,5] =  2.0*pi*pi  * cos_val_4[2] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[3])
+  q_xx[2,2,2] = -16*pi*pi * sin_val_4[2] * sin_val_4[1] * sin_val_4[3]
+  q_xx[2,2,3] =  -4*pi*pi * sin_val_2[2] * sin_val_2[1] * sin_val_2[3] 
+  q_xx[2,2,4] =    -pi*pi * sin_val_1[2] * sin_val_1[1] * sin_val_1[3] 
+  q_xx[2,2,5] =  16*pi*pi * cos_val_4[2] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[3])
 
-  q_xx[3,3,2] = -2.0*pi*pi  * sin_val_4[3] * sin_val_4[1] * sin_val_4[2]
-  q_xx[3,3,3] = -0.5*pi*pi  * sin_val_2[3] * sin_val_2[1] * sin_val_2[2] 
-  q_xx[3,3,4] = -0.125*pi*pi* sin_val_1[3] * sin_val_1[1] * sin_val_1[2] 
-  q_xx[3,3,5] =  2.0*pi*pi  * cos_val_4[3] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[2])
+  q_xx[3,3,2] = -16*pi*pi * sin_val_4[3] * sin_val_4[1] * sin_val_4[2]
+  q_xx[3,3,3] =  -4*pi*pi * sin_val_2[3] * sin_val_2[1] * sin_val_2[2] 
+  q_xx[3,3,4] =    -pi*pi * sin_val_1[3] * sin_val_1[1] * sin_val_1[2] 
+  q_xx[3,3,5] =  16*pi*pi * cos_val_4[3] * (1.0 - cos_val_4[1]) * (1.0 - cos_val_4[2])
 
-  q_xx[1,2,2] = 2.0*pi*pi  * cos_val_4[1] * cos_val_4[2] * sin_val_4[3] 
-  q_xx[1,2,3] = 0.5*pi*pi  * cos_val_2[1] * cos_val_2[2] * sin_val_2[3]
-  q_xx[1,2,4] = 0.125*pi*pi* cos_val_1[1] * cos_val_1[2] * sin_val_1[3]
+  q_xx[1,2,2] = 16*pi*pi * cos_val_4[1] * cos_val_4[2] * sin_val_4[3] 
+  q_xx[1,2,3] =  4*pi*pi * cos_val_2[1] * cos_val_2[2] * sin_val_2[3]
+  q_xx[1,2,4] =    pi*pi * cos_val_1[1] * cos_val_1[2] * sin_val_1[3]
 
-  q_xx[1,3,2] = 2.0*pi*pi  * cos_val_4[1] * cos_val_4[3] * sin_val_4[2] 
-  q_xx[1,3,3] = 0.5*pi*pi  * cos_val_2[1] * cos_val_2[3] * sin_val_2[2]
-  q_xx[1,3,4] = 0.125*pi*pi* cos_val_1[1] * cos_val_1[3] * sin_val_1[2]
+  q_xx[1,3,2] = 16*pi*pi * cos_val_4[1] * cos_val_4[3] * sin_val_4[2] 
+  q_xx[1,3,3] =  4*pi*pi * cos_val_2[1] * cos_val_2[3] * sin_val_2[2]
+  q_xx[1,3,4] =    pi*pi * cos_val_1[1] * cos_val_1[3] * sin_val_1[2]
 
-  q_xx[2,3,2] = 2.0*pi*pi  * cos_val_4[2] * cos_val_4[3] * sin_val_4[1] 
-  q_xx[2,3,3] = 0.5*pi*pi  * cos_val_2[2] * cos_val_2[3] * sin_val_2[1]
-  q_xx[2,3,4] = 0.125*pi*pi* cos_val_1[2] * cos_val_1[3] * sin_val_1[1]
+  q_xx[2,3,2] = 16*pi*pi * cos_val_4[2] * cos_val_4[3] * sin_val_4[1] 
+  q_xx[2,3,3] =  4*pi*pi * cos_val_2[2] * cos_val_2[3] * sin_val_2[1]
+  q_xx[2,3,4] =    pi*pi * cos_val_1[2] * cos_val_1[3] * sin_val_1[1]
 
   q_xx[1,1,2] *= sigma*qRef[2]
   q_xx[2,2,2] *= sigma*qRef[2]
@@ -978,50 +901,52 @@ function call(obj::SRCTrigonometric,
   Tdim = 2
   sigma = 0.01
   pi = 3.14159265358979323846264338
-  gamma = 1.4
+  gamma = params.gamma
   gamma_1 = gamma - 1.0
   aoa = params.aoa
-  q = zeros(typeof(src[1]), Tdim+2)
-  q_x = zeros(typeof(src[1]), Tdim, Tdim+2)
+  q    = zeros(typeof(src[1]), Tdim+2)
+  q_x  = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef = zeros(typeof(src[1]), Tdim+2)
   qRef[1] = 1.0
   qRef[2] = params.Ma*cos(aoa)
   qRef[3] = params.Ma*sin(aoa)
   qRef[4] = 1.0
-  x = coords[1]*pi
-  y = coords[2]*pi
-  x2 = 2*x
-  y2 = 2*y 
-  x4 = 4*x
-  y4 = 4*y
-  sx  = sin(x)
-  sy  = sin(y)
-  cx  = cos(x)
-  cy  = cos(y)
+  x = coords[1]
+  y = coords[2]
+  x2 = 2*x*pi
+  y2 = 2*y*pi
+  x3 = 3*x*pi
+  y3 = 3*y*pi
+  x4 = 4*x*pi
+  y4 = 4*y*pi
   sx2 = sin(x2)
   sy2 = sin(y2)
-  cx2 = cos(x2)
-  cy2 = cos(y2)
+  sx3 = sin(x3)
+  sy3 = sin(y3)
   sx4 = sin(x4)
   sy4 = sin(y4)
+  cx2 = cos(x2)
+  cx3 = cos(x3)
   cx4 = cos(x4)
+  cy2 = cos(y2)
+  cy3 = cos(y3)
   cy4 = cos(y4)
   #
   # Exact solution in form of primitive variables
   #
-  q[1] = 0.25 * sx2 * sy2
-  q[2] = 0.25 * sx4 * sy4
-  q[3] = 0.25 * (cx4  + 1.0) * (cy4 + 1.0)
-  q[4] = 0.25 * (1.0 - cx4) * (1.0 - cy4)
-  q_x[1,1] = 0.5*pi * cx2 * sy2
-  q_x[2,1] = 0.5*pi * sx2 * cy2
-  q_x[1,2] = pi* cx4 * sy4
-  q_x[2,2] = pi* sx4 * cy4
-  q_x[1,3] = -pi* sx4 * (cy4 + 1.0)
-  q_x[2,3] = -pi* (cx4  + 1) * sy4
-  q_x[1,4] = pi* sx4 * (1.0 - cy4)
-  q_x[2,4] = pi* (1.0 - cx4) * sy4
+  q[1] = sx2 * sy2
+  q[2] = sx4 * sy4
+  q[3] = sx3 * sy3
+  q[4] = (1.0 - cx2) * (1.0 - cy2)
+  q_x[1,1] = 2*pi * cx2 * sy2
+  q_x[2,1] = 2*pi * sx2 * cy2
+  q_x[1,2] = 4*pi* cx4 * sy4
+  q_x[2,2] = 4*pi* sx4 * cy4
+  q_x[1,3] = 3*pi* cx3 * sy3
+  q_x[2,3] = 3*pi* cy3 * sx3
+  q_x[1,4] = 2*pi* sx2 * (1.0 - cy2)
+  q_x[2,4] = 2*pi* sy2 * (1.0 - cx2) 
 
   q[1] = (sigma*q[1] + 1.0)*qRef[1] 
   q[2] = (sigma*q[2] + 1.0)*qRef[2]
@@ -1042,14 +967,14 @@ function call(obj::SRCTrigonometric,
     return nothing
   end
 
-  q_xx[1,1,2] = -4*pi*pi * sx4 * sy4
-  q_xx[1,2,2] =  4*pi*pi * cx4 * cy4
-  q_xx[2,2,2] = -4*pi*pi * sx4 * sy4
-  q_xx[1,1,3] = -4*pi*pi * cx4 * (cy4 + 1.0)
-  q_xx[1,2,3] =  4*pi*pi * sx4 * sy4
-  q_xx[2,2,3] = -4*pi*pi * (cx4 + 1) * cy4
-  q_xx[1,1,4] =  4*pi*pi * cx4 * (1.0 - cy4)
-  q_xx[2,2,4] =  4*pi*pi * (1.0 - cx4) * cy4
+  q_xx[1,1,2] = -16*pi*pi * q[2]
+  q_xx[2,2,2] = -16*pi*pi * q[2]
+  q_xx[1,2,2] =  16*pi*pi * cx4 * cy4
+  q_xx[1,1,3] = -9*pi*pi * q[3]
+  q_xx[2,2,3] = -9*pi*pi * q[3]
+  q_xx[1,2,3] =  9*pi*pi * cx3 * cy3
+  q_xx[1,1,4] =  4*pi*pi * cx2 * (1.0 - cy2)
+  q_xx[2,2,4] =  4*pi*pi * cy2 * (1.0 - cx2)
   q_xx[1,1,2] = q_xx[1,1,2] * qRef[2] * sigma
   q_xx[1,2,2] = q_xx[1,2,2] * qRef[2] * sigma
   q_xx[2,2,2] = q_xx[2,2,2] * qRef[2] * sigma
