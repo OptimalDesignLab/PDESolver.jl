@@ -109,7 +109,7 @@ arg_dict = Dict{ASCIIString,Any}(
 "write_sol" => false,
 "write_interfaces" => false,
 "write_finalresidual" => false,
-"finalize_mpi" => false,
+
 "write_edge_vertnums" => false,
 "vortex_strength" => 1.0,
 "exact_soln_func" => "ICp5",
