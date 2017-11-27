@@ -3,11 +3,6 @@
 push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using MPI
-if !MPI.Initialized()
-  MPI.Init()
-end
-
-
 using PDESolver
 #using Base.Test
 using FactCheck
@@ -81,15 +76,4 @@ println("finished running tests")
 #------------------------------------------------------------------------------
 # cleanup
 
-# define global variable if needed
-# this trick allows running the test files for multiple physics in the same
-# session without finalizing MPI too soon
-if !isdefined(:TestFinalizeMPI)
-  TestFinalizeMPI = true
-end
-#=
-if MPI.Initialized() && TestFinalizeMPI
-  MPI.Finalize()
-end
-=#
 FactCheck.exitstatus()
