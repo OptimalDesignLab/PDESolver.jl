@@ -1,5 +1,5 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
-# includes residual_evaluation.jl and petsc_funcs.jl
+# includes residual_evaluation.jl
 
 export newton
 import Utils.free
@@ -64,10 +64,8 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP,
 
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
 
-  # physicsRhs and physicsJac are defined in newton.jl
-  # They evaluate the basic Jac & RHS of only the physics function, such as evalEuler
+  # physicsRhs is defind in residual_evaluation.jl
   rhs_func = physicsRhs
-  jac_func = physicsJac
   ctx_residual = (func, )
 
   pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
@@ -76,7 +74,6 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP,
   # allocate jac & rhs, and construct newton_data
   newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls, alloc_rhs=false)
 
-  #TODO: get rid of jac_func, jac
   newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls,
               rhs_vec, ctx_residual, t, itermax=itermax, step_tol=step_tol,
               res_abstol=res_abstol, res_reltol=res_reltol, 
@@ -210,30 +207,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   clearEulerConstants()
 
   # copy the initial tolerances
-  setTolerances(newton_data.ls, newton_data.reltol, newton_data.abstol, newton_data.dtol, newton_data.itermax)
+  setTolerances(newton_data.ls, newton_data.reltol, newton_data.abstol, 
+                newton_data.dtol, newton_data.itermax)
 
-  #=
-  # set the ctx pointer for the matrix-free matrix
-  if jac_type == 4
-    ctx_petsc = (mesh, sbp, eqn, opts, newton_data, rhs_func, ctx_residual, t)
-    newton_data.ctx_petsc = ctx_petsc
-    ctx_ptr = pointer_from_objref(ctx_petsc)
-    MatShellSetContext(jac, ctx_ptr)
-  end
-
-  if opts["use_volume_preconditioner"]
-    pc = newton_data.pc
-    ctx_petsc_pc = (mesh, sbp, eqn, opts, newton_data, rhs_func, ctx_residual, t)
-    newton_data.ctx_petsc_pc = ctx_petsc_pc
-    ctx_ptr_pc = pointer_from_objref(ctx_petsc_pc)
-    PCShellSetContext(pc, ctx_ptr_pc)
-  end
-
-
-  if jac_type == 3 || jac_type == 4
-    jacp = newton_data.ctx_newton[2]
-  end
-  =#
   Tjac = typeof(real(rhs_vec[1]))  # type of jacobian, residual
   m = length(rhs_vec)
 
@@ -337,23 +313,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     else  # only recalculate the linear operator
       calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
     end
-#=
-    # apply globalization
-    if globalize_euler
-
-      if jac_type == 3 || jac_type == 4
-        @verbose5 @mpi_master println(BSTDOUT, "applying Euler globalization to jacp")
-        @verbose5 @mpi_master println(BSTDOUT, "tau = ", newton_data.tau_l)
-        applyEuler(mesh, sbp, eqn, opts, newton_data, jacp)
-      end
-
-      if jac_type != 4
-        @verbose5 @mpi_master println(BSTDOUT, "applying Euler gloablization to jac")
-        applyEuler(mesh, sbp, eqn, opts, newton_data, jac)
-      end
-    end
-=#
-#    checkJacVecProd(newton_data, mesh, sbp, eqn, opts, func, pert)
 
     #TODO: move this stuff to a separate function
     # print as determined by options 
@@ -371,8 +330,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     if print_cond && ( jac_type == 1 || jac_type == 2)
       jac = getBaseLO(ls.lo).A
       println(BSTDOUT, "calculating condition number of jacobian"); flush(BSTDOUT)
-#      singular_vals = svdvals(full(jac))
-#      writedlm("svd_vals.dat", singular_vals)
       cond_j = cond(full(jac))
       println(BSTDOUT, "Condition number of jacobian = ", cond_j); flush(BSTDOUT);
     end
@@ -433,8 +390,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     # calculate Newton step
     flush(BSTDOUT)
     linearSolve(ls, res_0, delta_q_vec, verbose)
-#    step_norm = matrixSolve(newton_data, eqn, mesh, opts, jac, delta_q_vec, res_0, BSTDOUT, verbose=verbose)
     step_norm = norm(delta_q_vec) 
+
     # perform Newton update
     for j=1:m
       eqn.q_vec[j] += step_fac*delta_q_vec[j]
@@ -534,6 +491,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     end
 
 #=
+    #TODO: do this somewhere else
     # adjust step size limiter
     if (step_norm < step_norm_1)  # decreasing step size
       step_fac *= 1.2
@@ -549,16 +507,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     if step_norm < 0.001
       step_fac = 1.0
-    end
-=#
-#=
-    # update globalization parameters
-    if globalize_euler
-      updateEuler(newton_data)
-    end
-
-    if jac_type == 3 || jac_type == 4
-      updateKrylov(newton_data)
     end
 =#
     updateKrylov(newton_data)
@@ -578,11 +526,12 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   end
   flush(BSTDOUT)
 
-   # put residual into rhs_vec
-   for j=1:m
-     rhs_vec[j] = res_0[j]
-   end
-   clearEulerConstants()
+  # put residual into rhs_vec
+  for j=1:m
+    rhs_vec[j] = res_0[j]
+  end
+  clearEulerConstants()
+
   return nothing
 
 end               # end of function newton()

@@ -91,10 +91,6 @@ function test_eqn_copy()
     @fact (eqn_copy.params.v_vals == eqn.params.v_vals) --> true
     @fact (eqn_copy.params.v_vals2 == eqn.params.v_vals2) --> true
     @fact (eqn_copy.params.Lambda == eqn.params.Lambda) --> true
-    println("w_vals2 = ", eqn.params.w_vals2_stencil)
-    println("w_vals2 copy = ", eqn_copy.params.w_vals2_stencil)
-    println("norm(diff) = ", vecnorm(eqn.params.w_vals2_stencil - eqn_copy.params.w_vals2_stencil))
-    println("equality check = ", eqn.params.w_vals2_stencil == eqn_copy.params.w_vals2_stencil)
     @fact (eqn_copy.params.w_vals_stencil == eqn.params.w_vals_stencil) --> true
     @fact (eqn_copy.params.w_vals2_stencil == eqn.params.w_vals2_stencil) --> true
     @fact (eqn_copy.params.res_vals1 == eqn.params.res_vals1) --> true
@@ -158,11 +154,6 @@ function test_eqn_copy()
     @fact (eqn_copy.params_entropy.v_vals2 == eqn.params_entropy.v_vals2) --> true
     @fact (eqn_copy.params_entropy.Lambda == eqn.params_entropy.Lambda) --> true
     @fact (eqn_copy.params_entropy.w_vals_stencil == eqn.params_entropy.w_vals_stencil) --> true
-    println("w_vals2 = ", eqn.params_entropy.w_vals2_stencil)
-    println("w_vals2 copy = ", eqn_copy.params_entropy.w_vals2_stencil)
-    println("norm(diff) = ", vecnorm(eqn.params_entropy.w_vals2_stencil - eqn_copy.params_entropy.w_vals2_stencil))
-    println("equality check = ", eqn.params_entropy.w_vals2_stencil == eqn_copy.params_entropy.w_vals2_stencil)
-
     @fact (eqn_copy.params_entropy.w_vals2_stencil == eqn.params_entropy.w_vals2_stencil) --> true
     @fact (eqn_copy.params_entropy.res_vals1 == eqn.params_entropy.res_vals1) --> true
     @fact (eqn_copy.params_entropy.res_vals2 == eqn.params_entropy.res_vals2) --> true

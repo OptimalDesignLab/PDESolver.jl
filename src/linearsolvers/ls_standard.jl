@@ -264,15 +264,15 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
                       ls::StandardLinearSolver{Tpc, Tlo},
                       b::AbstractVector, x::AbstractVector; trans=false)
 
-  PetscOptionsView()
   myrank = ls.myrank
   pc2 = getBasePC(ls.pc)
   lo2 = getBaseLO(ls.lo)
   @assert !(typeof(pc2) <: PCNone)
   
   # prepare the data structures
-  t_assem = @elapsed assemblePetscData(ls, b, lo2.btmp)
-  println(BSTDOUT, "Final matrix assembly time = ", t_assem)
+  #TODO: copy x into xtmp to support initial guess non-zero
+  t_assem = @elapsed assemblePetscData(ls, b, lo2.btmp, x, lo2.xtmp)
+  @mpi_master println(BSTDOUT, "Final matrix assembly time = ", t_assem)
 
   if !isPCMatFree(ls) && !pc2.is_setup
     setupPC(pc2)
@@ -282,9 +282,7 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
   # do the solve
   ksp = ls.ksp
   KSPSetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
-  println("setting tolerances: reltol = ", ls.reltol, ", abstol = ", ls.abstol)
 
-  println("before solve, reuse_preconditioner = ", PCGetReusePreconditioner(pc2.pc) == PETSC_TRUE)
   if trans
     KSPSolveTranspose(ksp, lo2.btmp, lo2.xtmp)
     lo2.ntsolves += 1
@@ -300,13 +298,11 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
     rnorm = KSPGetResidualNorm(ksp)
     @mpi_master println("Linear residual = ", rnorm)
   end
+
   # copy result back to x
   xtmp, x_ptr = PetscVecGetArrayRead(lo2.xtmp)
-  println("norm(xtmp) = ", norm(xtmp))
   copy!(x, xtmp)
   PetscVecRestoreArrayRead(lo2.xtmp, x_ptr)
-
-  println("norm(x) = ", norm(x))
 
   # Reuse preconditionre until next time setupPC() is called
   PCSetReusePreconditioner(pc2.pc, PETSC_TRUE)
@@ -320,7 +316,8 @@ end
   A, and Ap, and copies b into the local part of the petsc vector for b.
 """
 function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
-                           b_petsc::PetscVec)
+                           b_petsc::PetscVec, x::AbstractVector,
+                           x_petsc::PetscVec)
 
   lo_matfree = isLOMatFree(ls)
   pc_matfree = isPCMatFree(ls)
@@ -342,6 +339,12 @@ function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
   btmp, b_ptr = PetscVecGetArray(b_petsc)
   copy!(btmp, b)
   PetscVecRestoreArray(b_petsc, b_ptr)
+  
+  xtmp, x_ptr = PetscVecGetArray(x_petsc)
+  copy!(xtmp, x)
+  PetscVecRestoreArray(x_petsc, x_ptr)
+
+
 
   # end assembly
   if !lo_matfree && !getIsSetup(lo2)

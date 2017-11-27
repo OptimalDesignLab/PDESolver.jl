@@ -36,17 +36,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                   functionalData::AbstractOptimizationData,
                   adjoint_vec::Array{Tsol,1}; functional_number::Int=1)
                   #functor, functional_number, adjoint_vec::Array{Tsol, 1})
-#=
-  # Check if PETSc is initialized
-  if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
-      "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels", "4",
-      "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side", "right",
-      "-ksp_gmres_restart", "30" ])
-  end
-=#
-  println("computing adjoint")
-  println("vecnorm(eqn.q) = ", vecnorm(eqn.q))
+  
   # This doesn't work in parallel?  paralle_type == 2 if calculating the
   # jacobian
   if opts["parallel_type"] == 1
@@ -59,15 +49,6 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   ctx_residual = (evalResidual,)
   calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
-#=
-  # Allocate space for adjoint solve
-  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn,
-                                             opts, alloc_rhs=true)
-
-  # Get the residual jacobian
-  ctx_residual = (evalResidual,)
-  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
-=#
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -83,38 +64,13 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
   # Assemble func_deriv
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
-  func_deriv[:] = -func_deriv[:]
+  scale(func_deriv, -1.0)
 
   # do transpose solve
-
   _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
- 
-  println("vecnorm(func_deriv) = ", vecnorm(real(func_deriv)))
-
-  # debugging
-#  lo2 = getBaseLO(lo)
-#  jacT = lo2.A.'
-#  _adjoint_vec = jacT\real(func_deriv)
   linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
-
-  println("norm(adjoint_vec) = ", norm(adjoint_vec))
-#=
-  # Solve for adjoint vector. residual jacobian needs to be transposed first.
-  jac_type = typeof(res_jac)
-  if jac_type <: Array || jac_type <: SparseMatrixCSC
-    res_jac = res_jac.'
-  elseif  jac_type <: PetscMat
-    PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
-    PetscMatAssemblyEnd(res_jac)
-    res_jac = MatTranspose(res_jac, inplace=true)
-  else
-    error("Unsupported jacobian type")
-  end
-  step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
-                                         adjoint_vec, real(func_deriv), BSTDOUT)
-
-=#
+  
   # Output/Visualization options for Adjoint
   if opts["write_adjoint"]
     outname = string("adjoint_vec_", mesh.myrank,".dat")

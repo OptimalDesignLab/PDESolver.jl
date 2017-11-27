@@ -53,7 +53,6 @@ end
 
 include("residual_evaluation.jl")  # some functions for residual evaluation
 include("jacobian.jl")
-include("petsc_funcs.jl")  # Petsc related functions
 
 @doc """
 ### NonlinearSolvers.setupNewton
@@ -207,47 +206,6 @@ function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
-
-#=
-type NewtonMatFreePC <: AbstractPetscMatFreePC
-  pc_inner::PetscMatFreePC
-  @newtonfields
-end
-
-function NewtonMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
-                    eqn::AbstractSolutionData, opts::Dict)
-
-
-  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
-
-
-  return NewtonMatFreePC(pc_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
-end
-
-function calcPC(pc::NewtonMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
-                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
-
-  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  if opts["newton_globalize_euler"]
-    # TODO: updating the Euler parameter here is potentially wrong if we
-    #       are not updating the Jacobian at every newton step
-    updateEuler(pc)
-#    applyEuler(mesh, sbp, eqn, opts, pc)
-  end
-
-
-  return nothing
-end
-=#
 
 #------------------------------------------------------------------------------
 # linear operator
