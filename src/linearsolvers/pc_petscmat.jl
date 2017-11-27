@@ -180,7 +180,6 @@ end
 """
 function setupPC(pc::PetscMatPC)
 
-  println("setting up PC from julia")
   PCSetReusePreconditioner(pc.pc, PETSC_FALSE)
 #  tsetup = @elapsed PCSetUp(pc.pc)
 #  tsetup = @elapsed PCSetUp(pc.pc)
