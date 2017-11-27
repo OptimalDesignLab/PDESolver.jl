@@ -175,11 +175,12 @@ end
 function calcPC(pc::ExamplePetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
+  # do any setup operations, storing data into the "other fields..." of the pc
+
   # these arguments will be passed into applyPC() the next time it is called
   # by Petsc
+  # always do this last
   setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  # do any setup operations, storing data into the "other fields..." of the pc
 
   return nothing
 end
