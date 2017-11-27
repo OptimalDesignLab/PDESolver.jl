@@ -114,7 +114,7 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
   end
 
 
-  return NewtonData{Tsol, Tres, typeof(ls)}(itr, myrank, commsize, 
+  return NewtonData{Tsol, Tres, typeof(ls)}(myrank, commsize, itr,
                     res_norm_i, res_norm_i_1, step_norm_i, step_norm_i_1,
                     res_norm_rel, set_rel_norm, step_fac,
                     res_reltol, res_abstol, step_tol, itermax,
