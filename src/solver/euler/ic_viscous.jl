@@ -204,7 +204,7 @@ function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   # this is a template for all other initial conditions
   sigma = 0.01
   pi = 3.14159265358979323846264338
-  gamma = 1.4
+  gamma = eqn.params.gamma
   gamma_1 = gamma - 1.0
   aoa = eqn.params.aoa
   rhoInf = 1.0
@@ -215,17 +215,13 @@ function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   numEl = mesh.numEl
   nnodes = mesh.numNodesPerElement
   dofpernode = mesh.numDofPerNode
-  sol = zeros(Tsol, 4)
 
-  for i=1:numEl
-    for j=1:nnodes
-      coords_j = sview(mesh.coords, :, j, i)
+  for i=1 : numEl
+    for j=1 : nnodes
       dofnums_j = sview(mesh.dofs, :, j, i)
 
-      x = coords_j[1]
-      y = coords_j[2]
-
-      calcFreeStream(eqn.params, coords_j, sol)
+      x = mesh.coords[1, j, i]
+      y = mesh.coords[2, j, i]
 
       rho = rhoInf
       # rho = rhoInf * (0.1*sin(2*pi*x) + 0.1*y +  1.0)

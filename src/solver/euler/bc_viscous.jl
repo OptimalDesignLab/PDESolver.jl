@@ -108,12 +108,13 @@ function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC,
 
   pi = 3.14159265358979323846264338
   gamma = params.gamma
-  gamma_1 = params.gamma_1
-  qInf = Array(Tsol, 4)
-  calcFreeStream(params, x, qInf)
+  gamma_1 = params.gamma - 1
+  # qInf = zeros(Tsol, 4)
+  # calcFreeStream(params, x, qInf)
+  aoa = params.aoa
   rhoInf = 1.0
-  uInf = qInf[2] / qInf[1]
-  vInf = qInf[3] / qInf[1]
+  uInf = params.Ma*cos(aoa)
+  vInf = params.Ma*sin(aoa)
   TInf = 1.0
   rho = rhoInf
   # rho = rhoInf * (0.1*sin(2*pi*x[1]) + 0.1*x[2] +  1.0)

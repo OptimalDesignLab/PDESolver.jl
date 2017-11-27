@@ -1711,11 +1711,9 @@ function call{Tsol, Tmsh}(obj::ExactChannel,
   gamma = params.gamma
   gamma_1 = params.gamma_1
 
-  qInf = Array(Tsol, 4)
-  calcFreeStream(params, xy[:,1], qInf)
   rhoInf = 1.0
-  uInf = qInf[2] / qInf[1]
-  vInf = qInf[3] / qInf[1]
+  uInf = eqn.params.Ma*cos(aoa)
+  vInf = eqn.params.Ma*sin(aoa)
   TInf = 1.0
 
   for n = 1 : numNodes

@@ -186,7 +186,14 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
   end
-
+  
+  # res_vec = zeros(Float64, length(eqn.res))
+  # for i = 1 : length(eqn.res)
+    # res_vec[i] = real(eqn.res[i])
+  # end
+  # saveSolutionToMesh(mesh, res_vec)
+  # writeVisFiles(mesh, "residual")
+  # exit()
   return nothing
 end  # end evalResidual
 
