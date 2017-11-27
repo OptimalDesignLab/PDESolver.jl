@@ -390,7 +390,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     # calculate Newton step
     flush(BSTDOUT)
     linearSolve(ls, res_0, delta_q_vec, verbose)
-    step_norm = norm(delta_q_vec) 
+    step_norm = norm(delta_q_vec)  #TODO: use calcNorm()
 
     # perform Newton update
     for j=1:m
@@ -516,8 +516,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   end  # end loop over newton iterations
 
   @mpi_master begin
-    println(STDERR, "Warning: Newton iteration did not converge")
-
     println(BSTDOUT, "Warning: Newton iteration did not converge in ", itermax, " iterations")
     println(BSTDOUT, "  Final step size: ", step_norm)
     println(BSTDOUT, "  Final residual: ", res_0_norm)

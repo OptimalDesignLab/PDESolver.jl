@@ -354,7 +354,6 @@ Note that any values associated with these options are shared with the regular
 "write_timing" : write timings for each part of calculation to file
                  timing_breakdown.dat, and the name of each time to
                  timing_breakdown_names.dat, (Bool), default false
-"finalize_mpi" : whether or not to finalize MPI, (Bool), default false
 
 # Unsteady adjoint computation options. CN UADJ CODE DOES NOT RETURN CORRECT RESULTS
 "revolve"      : whether or not to use revolve adjoint checkpointing, default false

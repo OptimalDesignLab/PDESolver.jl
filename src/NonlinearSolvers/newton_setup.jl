@@ -13,6 +13,8 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
   commsize::Int
 
   #TODO: add newton tolerances here, remove them as keyword args to newtonInner
+
+
   # inexact Newton-Krylov parameters
   reltol::Float64
   abstol::Float64
