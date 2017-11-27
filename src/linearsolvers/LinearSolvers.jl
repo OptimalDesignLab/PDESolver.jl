@@ -94,10 +94,17 @@ end
    * pc: an [`AbstractPC`](@ref), fully initialized
    * lo: an [`AbstractLO`](@ref), fully initialized
    * comm: the MPI communicator the pc and lo are defined on
+   * opts: options dictionary
 
   This function throws exceptions if incompatible pc and lo types are used.
+
+  **Options Keys**
+
+  This function uses: "krylov_reltol", "krylov_abstol", "krylov_dtol", and
+  "krylov_itermax"
+
 """
-function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
+function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm, opts)
 
   if typeof(lo) <: DirectLO
     @assert typeof(pc) <: PCNone
@@ -130,10 +137,10 @@ function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm)
 
   is_finalized = false
 
-  reltol = 1e-8
-  abstol = 1e-8
-  dtol = 1e50
-  itermax = 1000
+  reltol = opts["krylov_reltol"]
+  abstol = opts["krylov_abstol"]
+  dtol = opts["krylov_dtol"]
+  itermax = opts["krylov_itermax"]
 
   ls = StandardLinearSolver{T1, T2}(pc, lo, shared_mat, comm, myrank,
                                     commsize, ksp, is_finalized,

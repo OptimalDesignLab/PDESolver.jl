@@ -14,18 +14,25 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
 
   #TODO: add newton tolerances here, remove them as keyword args to newtonInner
 
-
-  # inexact Newton-Krylov parameters
-  reltol::Float64
-  abstol::Float64
-  dtol::Float64
-  itermax::Int
-  krylov_gamma::Float64  # update parameter for krylov tolerance
-
+  # working variables
   res_norm_i::Float64  # current step residual norm
   res_norm_i_1::Float64  # previous step residual norm
+  step_norm_i::Float64
+  step_norm_i_1::Float64
+  res_norm_rel::Float64  # norm of the residual used for the relative residual
+                         # tolerance
+  step_fac::Float64
 
-  ls::Tsolver  # non-concrete type
+  # tolerances (newton)
+  res_reltol::Float64
+  res_abstol::Float64
+  step_tol::Float64
+  itermax::Int
+
+  # inexact Newton-Krylov parameters
+  krylov_gamma::Float64  # update parameter for krylov tolerance
+
+  ls::Tsolver
 
 end
 
@@ -39,18 +46,27 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
   myrank = mesh.myrank
   commsize = mesh.commsize
 
-  reltol = opts["krylov_reltol"]
-  abstol = opts["krylov_abstol"]
-  dtol = opts["krylov_dtol"]
-  itermax = opts["krylov_itermax"]
-  krylov_gamma = opts["krylov_gamma"]
 
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
+  step_norm_i = 0.0
+  step_norm_i_1 = 0.0
+  res_norm_rel = opts["res_reltol0"]
+  step_fac = 1.0
 
-  return NewtonData{Tsol, Tres, typeof(ls)}(myrank, commsize, reltol, abstol,
-                    dtol, itermax, krylov_gamma, res_norm_i, res_norm_i_1, ls)
+  res_reltol = opts["res_reltol"]
+  res_abstol = opts["res_abstol"]
+  step_tol = opts["step_tol"]
+  itermax = opts["itermax"]
+
+  krylov_gamma = opts["krylov_gamma"]
+
+  return NewtonData{Tsol, Tres, typeof(ls)}(myrank, commsize, 
+                    res_norm_i, res_norm_i_1, step_norm_i, step_norm_i_1,
+                    res_norm_rel, step_fac,
+                    res_reltol, res_abstol, step_tol, itermax,
+                    krylov_gamma, ls)
 end
 
 include("residual_evaluation.jl")  # some functions for residual evaluation
@@ -58,7 +74,11 @@ include("jacobian.jl")
 
 @doc """
 ### NonlinearSolvers.setupNewton
-  
+  Performs setup work for [`newtonInner`](@ref), including creating a 
+  [`NewtonData`](@ref) object.
+
+  This function also reset the implicit Euler globalization.
+
   alloc_rhs: keyword arg to allocate a new object or not for rhs_vec
                 true (default) allocates a new vector
                 false will use eqn.res_vec
@@ -77,6 +97,8 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp,
                      ls::LinearSolver; alloc_rhs=true)
 
   newton_data = NewtonData(mesh, sbp, eqn, opts, ls)
+
+  clearEulerConstants()
   # For simple cases, especially for Newton's method as a steady solver,
   #   having rhs_vec and eqn.res_vec pointing to the same memory
   #   saves us from having to copy back and forth
@@ -104,6 +126,43 @@ end   # end of setupNewton
 function free(newton_data::NewtonData)
 
   free(newton_data.ls)
+
+  return nothing
+end
+
+"""
+  Records the most recent nonlinear residual norm in the NewtonData object.
+  Also updates the implicit Euler globalization
+
+  **Inputs**
+
+   * newton_data: the NewtonData
+   * res_norm: the residual norm
+"""
+function recordResNorm(newton_data::NewtonData, res_norm::Number)
+
+  newton_data.res_norm_i_1 = newton_data.res_norm_i
+  newton_data.res_norm_i = res_norm
+  
+  # update implicit Euler globalization
+  recordEulerResidual(res_norm)
+
+  return nothing
+end
+
+"""
+  Records norm of the most recent newton step (ie. the norm of delta q)
+  in the NewtonData object
+
+  **Inputs**
+
+   * newton_data: the NewtonData object
+   * step_norm: the norm of the step
+"""
+function recordStepNorm(newton_data::NewtonData, step_norm::Number)
+
+  newton_data.step_norm_i_1 = newton_data.step_norm_i
+  newton_data.step_norm_i = step_norm
 
   return nothing
 end

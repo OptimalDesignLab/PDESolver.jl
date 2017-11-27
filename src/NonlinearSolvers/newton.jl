@@ -69,7 +69,7 @@ function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP,
   ctx_residual = (func, )
 
   pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
   # allocate jac & rhs, and construct newton_data
   newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls, alloc_rhs=false)
@@ -203,24 +203,15 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     pert = complex(0, epsilon)
   end
 
-  # reset Euler globalization
-  clearEulerConstants()
-
-  # copy the initial tolerances
-  setTolerances(newton_data.ls, newton_data.reltol, newton_data.abstol, 
-                newton_data.dtol, newton_data.itermax)
-
-  Tjac = typeof(real(rhs_vec[1]))  # type of jacobian, residual
   m = length(rhs_vec)
-
-  step_fac = 1.0 # step size limiter
+#  step_fac = 1.0 # step size limiter
 #  jac_recal = 0  # number of iterations since jacobian was recalculated
   Tsol = typeof(rhs_vec[1])
-  res_0 = zeros(Tjac, m)  # function evaluated at u0
+  res_0 = zeros(PetscScalar, m)  # function evaluated at u0
   res_0_norm = 0.0  # norm of res_0
-  delta_q_vec = zeros(Tjac, m)  # newton update
-  step_norm = zero(Tjac)  # norm of newton update
-  step_norm_1 = zero(Tjac) # norm of previous newton update
+  delta_q_vec = zeros(PetscScalar, m)  # newton update
+#  step_norm = zero(PetscScalar)  # norm of newton update
+#  step_norm_1 = zero(PetscScalar) # norm of previous newton update
 
 
   ##### Write iteration 0 output #####
@@ -232,8 +223,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   end
   # evaluating residual at initial condition
   @verbose5 @mpi_master println(BSTDOUT, "evaluating residual at initial condition"); flush(BSTDOUT)
-  res_0_norm = newton_data.res_norm_i = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
-  recordEulerResidual(res_0_norm)
+  res_0_norm = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
+  recordResNorm(newton_data, res_0_norm)
 
   @verbose5 @mpi_master println(BSTDOUT, "res_0_norm = ", res_0_norm); flush(BSTDOUT)
 
@@ -391,10 +382,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     flush(BSTDOUT)
     linearSolve(ls, res_0, delta_q_vec, verbose)
     step_norm = norm(delta_q_vec)  #TODO: use calcNorm()
+    recordStepNorm(newton_data, step_norm)
 
     # perform Newton update
     for j=1:m
-      eqn.q_vec[j] += step_fac*delta_q_vec[j]
+      eqn.q_vec[j] += newton_data.step_fac*delta_q_vec[j]
     end
    
 #    saveSolutionToMesh(mesh, eqn.q_vec)
@@ -414,10 +406,10 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     end
 
     # calculate residual at updated location, used for next iteration rhs
-    newton_data.res_norm_i_1 = newton_data.res_norm_i
+    res_0_norm = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
+    recordResNorm(newton_data, res_0_norm)
+    
     # extract real component to res_0
-    res_0_norm = newton_data.res_norm_i = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
-    recordEulerResidual(res_0_norm)
     for j=1:m
       res_0[j] = real(rhs_vec[j])
     end
@@ -511,13 +503,12 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 =#
     updateKrylov(newton_data)
     @verbose5 @mpi_master print(BSTDOUT, "\n")
-    step_norm_1 = step_norm
     
   end  # end loop over newton iterations
 
   @mpi_master begin
     println(BSTDOUT, "Warning: Newton iteration did not converge in ", itermax, " iterations")
-    println(BSTDOUT, "  Final step size: ", step_norm)
+    println(BSTDOUT, "  Final step size: ", newton_data.step_norm_i)
     println(BSTDOUT, "  Final residual: ", res_0_norm)
     println(BSTDOUT, "  Final relative residual: ", res_0_norm/res_reltol_0)
     @verbose5 close(fconv); 

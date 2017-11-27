@@ -142,7 +142,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   rhs_func = physicsRhs
   ctx_residual = (homotopyPhysics,)
   pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
 
   newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls)
@@ -182,13 +182,14 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     if abs(lambda - lambda_min) <= eps()
       @mpi_master println(BSTDOUT, "tightening homotopy tolerance")
       homotopy_tol = res_reltol
-      newton_data.reltol = res_reltol*1e-3  # smaller than newton tolerance
-      newton_data.abstol = res_abstol*1e-3  # smaller than newton tolerance
+      reltol = res_reltol*1e-3  # smaller than newton tolerance
+      abstol = res_abstol*1e-3  # smaller than newton tolerance
+      setTolerances(newton_data,ls, reltol, abstol, -1, -1)
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
-        println(BSTDOUT, "ksp reltol = ", newton_data.reltol)
-        println(BSTDOUT, "ksp abstol = ", newton_data.abstol)
+        println(BSTDOUT, "ksp reltol = ", reltol)
+        println(BSTDOUT, "ksp abstol = ", abstol)
       end
     end
 

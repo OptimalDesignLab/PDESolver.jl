@@ -21,7 +21,7 @@ function test_dense(mesh, sbp, eqn, opts)
 
   pc = PCNone(mesh, sbp, eqn, opts)
   lo = DenseLO(pc, mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
   ctx_residual = (evalResidual,)
   t = 0.0
@@ -106,7 +106,7 @@ function test_sparsedirect(mesh, sbp, eqn, opts)
   println("testing sparse direct linear solver")
   pc = PCNone(mesh, sbp, eqn, opts)
   lo = SparseDirectLO(pc, mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
   ctx_residual = (evalResidual,)
   t = 0.0
@@ -205,7 +205,7 @@ function test_petscmat(mesh, sbp, eqn, opts)
 
   pc = PetscMatPC(mesh, sbp, eqn, opts)
   lo = PetscMatLO(pc, mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   ctx_residual = (evalResidual,)
   t = 0.0
 
@@ -298,7 +298,7 @@ function test_petscmatfree(mesh, sbp, eqn, opts)
 
   pc = TestMatFreePC(mesh, sbp, eqn, opts)
   lo = TestMatFreeLO(pc, mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   ctx_residual = (evalResidual, vals)
   t = 0.0
 
@@ -406,7 +406,7 @@ function test_petscmat_matfree(mesh, sbp, eqn, opts)
 
   pc = TestMatPC(mesh, sbp, eqn, opts)
   lo = TestMatFreeLO(pc, mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   ctx_residual = (evalResidual, vals)
   t = 0.0
 

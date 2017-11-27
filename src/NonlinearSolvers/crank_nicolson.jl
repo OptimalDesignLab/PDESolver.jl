@@ -107,7 +107,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   # NOTE: eqn_nextstep changed to eqn 20161013
   pc, lo = getCNPCandLO(mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   newton_data, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
 
   # this loop is 2:(t_steps+1) when not restarting

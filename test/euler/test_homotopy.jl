@@ -42,13 +42,13 @@ function test_homotopy(mesh, sbp, eqn, opts)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
   pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
-  ls_dense = StandardLinearSolver(pc, lo, eqn.comm)
+  ls_dense = StandardLinearSolver(pc, lo, eqn.comm, opts)
   newton_data_dense, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, ls_dense)
 
   opts2 = copy(opts)
   opts2["jac_type"] = 2  # SparseMatrixCSC
   pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts2)
-  ls_sparse = StandardLinearSolver(pc, lo, eqn.comm)
+  ls_sparse = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
   newton_data_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2, ls_sparse)
 

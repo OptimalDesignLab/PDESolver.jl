@@ -42,7 +42,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Allocate space for adjoint solve
   pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   ctx_residual = (evalResidual,)
   calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
