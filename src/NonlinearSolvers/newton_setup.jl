@@ -2,15 +2,44 @@
 # linear operator, newton data etc.
 
 @doc """
-  This type holds all the data the might be needed for Newton's method,
-  including globalization.  This simplifies the data handling and 
-  the C callback used by Petsc
+  This type holds the data required by [`newtonInner`](@ref) as well as
+  configuration settings.
+
+  **Public Fields**
+
+   * myrank: MPI rank
+   * commsize: MPI communicator size
+   * itr: number of iterations
+   * res_norm_i: current iteration residual norm
+   * res_norm_i_1: previous iteration residual norm
+   * step_norm_i: current iteration newton step norm
+   * step_norm_i_1: previous iteration newton step norm
+   * res_norm_rel: norm of residual used as the reference point when computing
+                   relative residuals.  If this is -1 on entry to newtonInner,
+                   then the norm of the initial residual is used.
+   * step_fac: factor used in step size limiter
+   * res_reltol: nonlinear relative residual tolerance
+   * res_abstol: nonlinear residual absolute tolerance
+   * step_tol: step norm tolerance
+   * itermax: maximum number of newton iterations
+   * krylov_gamma: parameter used by inexact newton-krylov
+   * ls: a [`LinearSolver`](@ref)
+   * fconv: convergence.dat file handle (or DevNull if not used)
+   * verbose: how much logging/output to do
+
+  **Options Keys**
+
+  If `res_reltol0` is negative, the residual of the initial condition will be
+  used for res_norm_rel
+
+  `newton_verbosity` is used to the `verbose` field
 """->
 type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
 
   # MPI info
   myrank::Int
   commsize::Int
+  itr::Int  # newton iteration number
 
   #TODO: add newton tolerances here, remove them as keyword args to newtonInner
 
@@ -21,6 +50,8 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
   step_norm_i_1::Float64
   res_norm_rel::Float64  # norm of the residual used for the relative residual
                          # tolerance
+  set_rel_norm::Bool # whether or not to use the initial residual as the
+                     # res_norm_rel
   step_fac::Float64
 
   # tolerances (newton)
@@ -33,6 +64,10 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
   krylov_gamma::Float64  # update parameter for krylov tolerance
 
   ls::Tsolver
+  res_0::Array{PetscScalar, 1}
+  delta_q_vec::Array{PetscScalar, 1}
+  fconv::IO  # convergence.dat, rank 0 only
+  verbose::Int
 
 end
 
@@ -45,14 +80,15 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
 
   myrank = mesh.myrank
   commsize = mesh.commsize
-
-
+  itr = 0
+  verbose = opts["newton_verbosity"]
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
   step_norm_i = 0.0
   step_norm_i_1 = 0.0
   res_norm_rel = opts["res_reltol0"]
+  set_rel_norm = res_norm_rel < 1
   step_fac = 1.0
 
   res_reltol = opts["res_reltol"]
@@ -62,11 +98,27 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
 
   krylov_gamma = opts["krylov_gamma"]
 
-  return NewtonData{Tsol, Tres, typeof(ls)}(myrank, commsize, 
+  # temporary vectors
+  res_0 = zeros(PetscScalar, mesh.numDof)  # function evaluated at u0
+  delta_q_vec = zeros(PetscScalar, mesh.numDof)  # newton update
+
+  # convergence.dat
+  if verbose >= 5
+    if myrank == 0
+      fconv = BufferedIO("convergence.dat", "a+")
+    else
+      fconv = DevNull
+    end
+  else
+    fconv = DevNull
+  end
+
+
+  return NewtonData{Tsol, Tres, typeof(ls)}(itr, myrank, commsize, 
                     res_norm_i, res_norm_i_1, step_norm_i, step_norm_i_1,
-                    res_norm_rel, step_fac,
+                    res_norm_rel, set_rel_norm, step_fac,
                     res_reltol, res_abstol, step_tol, itermax,
-                    krylov_gamma, ls)
+                    krylov_gamma, ls, res_0, delta_q_vec, fconv, verbose)
 end
 
 include("residual_evaluation.jl")  # some functions for residual evaluation
@@ -77,7 +129,7 @@ include("jacobian.jl")
   Performs setup work for [`newtonInner`](@ref), including creating a 
   [`NewtonData`](@ref) object.
 
-  This function also reset the implicit Euler globalization.
+  This function also resets the implicit Euler globalization.
 
   alloc_rhs: keyword arg to allocate a new object or not for rhs_vec
                 true (default) allocates a new vector
@@ -116,6 +168,25 @@ function setupNewton{Tsol, Tres}(mesh, pmesh, sbp,
 end   # end of setupNewton
 
 """
+  Reinitialized the NewtonData object for a new solve.
+
+  Note that this does not reset the linear solver, which might be a problem
+  if inexact newton-krylov was used for the previous solve
+"""
+function reinitNewtonData(newton_data::NewtonData)
+
+  clearEulerConstants()
+  newton_data.itr = 0
+  newton_data.res_norm_i = 0
+  newton_data.res_norm_i_1 = 0
+  newton_data.step_norm_i = 0
+  newton_data.step_norm_i_1 = 0
+  newton_data.step_fac = 1.0
+
+  return nothing
+end
+
+"""
   Cleans up after running Newton's method.
 
   **Inputs**
@@ -126,6 +197,7 @@ end   # end of setupNewton
 function free(newton_data::NewtonData)
 
   free(newton_data.ls)
+  close(newton_data.fconv)
 
   return nothing
 end

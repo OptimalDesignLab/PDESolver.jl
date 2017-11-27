@@ -109,6 +109,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   pc, lo = getCNPCandLO(mesh, sbp, eqn, opts)
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   newton_data, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
+  newton_data.itermax = 30
 
   # this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
@@ -157,9 +158,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       ctx_residual = (f, eqn, h, newton_data)
       newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, ls, 
-                  rhs_vec, ctx_residual, t_nextstep, itermax=30, 
-                  step_tol=opts["step_tol"], 
-                  res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"],                   res_reltol0=opts["res_reltol0"])
+                  rhs_vec, ctx_residual, t_nextstep)
     end
 
     # do the callback using the current eqn object at time t

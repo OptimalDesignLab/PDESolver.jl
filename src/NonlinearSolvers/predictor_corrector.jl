@@ -145,7 +145,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
 
+  # configure NewtonData
   newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls)
+  newton_data.itermax = 30
  
   # calculate physics residual
   res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,)))
@@ -195,8 +197,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
     # do corrector steps
     newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
-                rhs_vec, ctx_residual, res_reltol=homotopy_tol, 
-                res_abstol=res_abstol, itermax=30)
+                rhs_vec, ctx_residual)
 
     # compute delta_q
     for i=1:length(eqn.q)
