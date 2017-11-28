@@ -186,7 +186,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       homotopy_tol = res_reltol
       reltol = res_reltol*1e-3  # smaller than newton tolerance
       abstol = res_abstol*1e-3  # smaller than newton tolerance
-      setTolerances(newton_data,ls, reltol, abstol, -1, -1)
+      setTolerances(newton_data.ls, reltol, abstol, -1, -1)
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
