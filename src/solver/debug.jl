@@ -3,7 +3,7 @@
 
 # global variable that determines debug level
 # must be a literal value
-global const DB_LEVEL = 1
+global const DB_LEVEL = 0
 # global const DB_LEVEL = 1
 
 @doc """
