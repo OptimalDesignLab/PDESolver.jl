@@ -46,6 +46,7 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   println("computing adjoint")
   println("vecnorm(eqn.q) = ", vecnorm(eqn.q))
   println("sum(eqn.q) = ", sum(eqn.q))
+  println("vecnorm(eqn.res) = ", vecnorm(eqn.res))
   weights = collect(1:mesh.numDof)
   println("weighted sum(eqn.res) = ", sum(weights.*vec(eqn.res)))
 
@@ -55,6 +56,11 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   ctx_residual = (evalResidual,)
   calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+
+  if typeof(lo) <: AbstractSparseDirectLO
+    lo2 = getBaseLO(lo)
+    println("sum(A.nzval) = ", sum(lo2.A.nzval))
+  end
 
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
@@ -74,12 +80,15 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   scale(func_deriv, -1.0)
 
   println("vecnorm(func_deriv) = ", vecnorm(real(func_deriv)))
+  println("sum(func_deriv) = ", sum(func_deriv))
+
   # do transpose solve
   _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
   linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
   
   println("norm(adjoint_vec) = ", norm(adjoint_vec))
+  println("sum(adjoint_vec) = ", sum(adjoint_vec))
 
   # Output/Visualization options for Adjoint
   if opts["write_adjoint"]
