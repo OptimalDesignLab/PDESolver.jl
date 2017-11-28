@@ -12,15 +12,19 @@ import MPI
 using PETSc
 using Utils
 using SummationByParts
+using LinearSolvers
+
+import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
+                      applyLinearOperator, applyLinearOperatorTranspose
 
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
 include("lserk.jl")
   export lserk54
 
-include("crank_nicolson.jl")
 include("preconditioning_types.jl")
 include("newton.jl")
+include("crank_nicolson.jl")
 include("preconditioning.jl")
 include("globalization.jl")
 include("predictor_corrector.jl")

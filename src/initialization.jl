@@ -479,9 +479,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       # dRdx here
 
     elseif flag == 4 || flag == 5 || flag == 11
-      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh)
 
       printSolution("newton_solution.dat", eqn.res_vec)
 
@@ -540,9 +538,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
-     @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+     @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")

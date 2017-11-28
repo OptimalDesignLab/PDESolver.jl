@@ -360,7 +360,7 @@ get!(arg_dict, "use_jac_precond", false)
 get!(arg_dict, "res_abstol", 1e-6)
 get!(arg_dict, "res_reltol", 1e-6)
 get!(arg_dict, "res_reltol0", -1.0)
-get!(arg_dict, "step_tol", -1.0)
+get!(arg_dict, "step_tol", 0.0)
 get!(arg_dict, "print_eigs", false)
 get!(arg_dict, "write_eigs", false)
 get!(arg_dict, "write_eigdecomp", false)
@@ -405,7 +405,6 @@ get!(arg_dict, "solve", true)
 get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 get!(arg_dict, "write_timing", false)
-get!(arg_dict, "finalize_mpi", false)
 
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
@@ -449,13 +448,20 @@ petsc_opts = Dict{AbstractString, AbstractString}(
   "-sub_pc_factor_levels" => "4",
   "-ksp_gmres_modifiedgramschmidt" => "",
   "-ksp_pc_side" => "right",
-  "-ksp_gmres_restart" => "30"
+  "-ksp_gmres_restart" => "30",
+  "-log_summary" => "petsc_log"
 )
-
-petsc_opts = get!(arg_dict, "petsc_options", petsc_opts)
 
 if arg_dict["use_volume_preconditioner"]
   get!(petsc_opts, "-pc_type", "shell")
+end
+
+
+petsc_opts = get!(arg_dict, "petsc_options", petsc_opts)
+
+# set the options in Petsc, if Petsc will be used
+if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
+  PetscSetOptions(arg_dict["petsc_options"])
 end
 
 # Advection specific options

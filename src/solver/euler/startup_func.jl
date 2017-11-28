@@ -42,10 +42,6 @@ end
 """
 function createObjects(input_file::AbstractString)
 
-  if !MPI.Initialized()
-    MPI.Init()
-  end
-
   opts = read_input(input_file)  # read input file and get default values
   checkOptions(opts)  # physics specific options checking
   #opts = read_input("input_vals_channel2.jl")
@@ -280,9 +276,6 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   cleanup(mesh, sbp, eqn, opts)
 
   MPI.Barrier(mesh.comm)
-  if opts["finalize_mpi"]
-    MPI.Finalize()
-  end
 
   return mesh, sbp, eqn, opts
 end  # end function

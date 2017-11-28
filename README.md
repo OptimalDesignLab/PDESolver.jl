@@ -73,6 +73,10 @@ v0.3: curvilinear entropy stable works (requires PumiInterface v0.3, SBP tag tic
 
 v0.4: curvilinear works (both entropy stable and Roe scheme)
 
+introduced AbstractLinearOperator, AbstractPreconditioner, LinearSolver abstractions
+
+Changed MPI initialization/finalization (PETSc too)
+
 Master branch:
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg?branch=master)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 

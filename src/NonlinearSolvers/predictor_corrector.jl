@@ -111,6 +111,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
+  krylov_reltol0 = opts["krylov_reltol"]::Float64
 
 
   # counters/loop variables
@@ -137,11 +138,17 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
 
   # stuff for newtonInner
+  # because the homotopy function is a pseudo-physics, we can reuse the
+  # Newton PC and LO stuff, supplying homotopyPhysics in ctx_residual
   rhs_func = physicsRhs
-  jac_func = physicsJac
   ctx_residual = (homotopyPhysics,)
+  pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
-  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts)
+
+  # configure NewtonData
+  newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls)
+  newton_data.itermax = 30
  
   # calculate physics residual
   res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,)))
@@ -178,20 +185,22 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     if abs(lambda - lambda_min) <= eps()
       @mpi_master println(BSTDOUT, "tightening homotopy tolerance")
       homotopy_tol = res_reltol
-      newton_data.reltol = res_reltol*1e-3  # smaller than newton tolerance
-      newton_data.abstol = res_abstol*1e-3  # smaller than newton tolerance
+      reltol = res_reltol*1e-3  # smaller than newton tolerance
+      abstol = res_abstol*1e-3  # smaller than newton tolerance
+      setTolerances(newton_data.ls, reltol, abstol, -1, -1)
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
-        println(BSTDOUT, "ksp reltol = ", newton_data.reltol)
-        println(BSTDOUT, "ksp abstol = ", newton_data.abstol)
+        println(BSTDOUT, "ksp reltol = ", reltol)
+        println(BSTDOUT, "ksp abstol = ", abstol)
       end
     end
 
     # do corrector steps
-    newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, 
-                rhs_vec, ctx_residual, res_reltol=homotopy_tol, 
-                res_abstol=res_abstol, itermax=30)
+    newton_data.res_reltol = homotopy_tol
+    setTolerances(newton_data.ls, krylov_reltol0, -1, -1, -1)
+    newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
+                rhs_vec, ctx_residual)
 
     # compute delta_q
     for i=1:length(eqn.q)
@@ -212,9 +221,11 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
       # calculate tangent vector dH/dq * t = dH/dLambda
       @mpi_master println(BSTDOUT, "solving for tangent vector")
-      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
+      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
-      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
+#      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
+      linearSolve(ls, dHdLambda_real, tan_vec)
+#      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
 
       # normalize tangent vector
       tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
@@ -274,7 +285,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
 
-  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
+  free(newton_data)
+#  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
 
   flush(BSTDOUT)
   flush(BSTDERR)
@@ -327,5 +339,6 @@ function calcdHdLambda(mesh, sbp, eqn, opts, lambda, physics_func, g_func, res_v
 
   return nothing
 end
+
 
 

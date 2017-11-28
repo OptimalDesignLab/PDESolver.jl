@@ -41,10 +41,6 @@ end
 """
 function createObjects(input_file::AbstractString)
 
-  if !MPI.Initialized()
-    MPI.Init()
-  end
-
   #function runtest(flag::Int)
   opts = read_input(input_file)  # read input file and gets default values
   checkOptions(opts)  # physics specific options checking
@@ -188,9 +184,6 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
   postproc(mesh, sbp, eqn, opts)
 
   MPI.Barrier(mesh.comm)
-  if opts["finalize_mpi"]
-    MPI.Finalize()
-  end
 
   return mesh, sbp, eqn, opts
 end  # end function

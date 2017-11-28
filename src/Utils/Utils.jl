@@ -25,6 +25,7 @@ include("curvilinear.jl")
 include("area.jl")
 include("checkpoint.jl")
 
+export free
 export disassembleSolution, writeQ, assembleSolution, assembleArray
 export calcNorm, calcMeshH, calcEuclidianNorm
 #export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
@@ -74,6 +75,16 @@ export Checkpointer, AbstractCheckpointData, readCheckpointData,
        countFreeCheckpoints,
        getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
        freeCheckpoint, getNextFreeCheckpoint
+
+"""
+  Generic function to free any memory belonging to other libraries
+"""
+function free(x)
+
+  error("generic free() reached")
+
+  return nothing
+end
 
 @doc """
 ### Utils.disassembleSolution

@@ -28,59 +28,10 @@ always call this function in order to compute the adjoint.
 *  None
 
 """->
-#=
-function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractCGMesh{Tmsh},
-                    sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                    opts, functor, functional_number, adjoint_vec::Array{Tsol,1})
-
-  # Get information corresponding to functional_number
-  key = string("geom_edges_functional", functional_number)
-  functional_edges = opts[key]
-
-  # Calculate the Jacobian of the residual
-  newton_data = NonlinearSolvers.NewtonData(mesh, sbp, eqn, opts)
-  res_jac = zeros(Tres, mesh.numDof, mesh.numDof)
-  pert = complex(0, opts["epsilon"])
-  NonlinearSolvers.calcJacobianComplex(newton_data, mesh, sbp, eqn, opts,
-                                       evalResidual, pert, res_jac)
-
-  func_deriv = zeros(Tsol, mesh.numDof)
-  func_deriv_arr = zeros(eqn.q)
-
-  # Calculate df/dq_bndry on edges where the functional is calculated and put
-  # it back in func_deriv_arr
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functor, functional_edges,
-                      func_deriv_arr)  # populate df_dq_bndry
-
-  # Assemble func_deriv
-  assembleArray(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
-
-  # Solve for adjoint vector
-
-  # TODO: The following operation creates a temporary copy of adjoint_vec, does
-  #       the '\' computation and then puts it back into adjoint_vec. This
-  #       needs to change.
-  adjoint_vec[:] = (res_jac.')\func_deriv # There is no negative sign because
-                                          # the weak residual is computed on
-                                          # the right hand side
-
-  return nothing
-end
-=#
-
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                      eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
                      functionalData::AbstractOptimizationData, adjoint_vec::Array{Tsol,1};
                      functional_number::Int=1)
-
-  # Check if PETSc is initialized
-  #!!! No, don't do this here!, 
-  if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize(["-malloc", "-malloc_debug", "-ksp_monitor",  "-pc_type",
-                    "bjacobi", "-sub_pc_type", "ilu", "-sub_pc_factor_levels",
-                    "4", "ksp_gmres_modifiedgramschmidt", "-ksp_pc_side",
-                    "right", "-ksp_gmres_restart", "30" ])
-  end
 
   if opts["parallel_type"] == 1
 
@@ -90,11 +41,10 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   end
 
   # Allocate space for adjoint solve
-  jacData, res_jac, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, alloc_rhs=true)
-
-  # Get the residual jacobian
+  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   ctx_residual = (evalResidual,)
-  NonlinearSolvers.physicsJac(jacData, mesh, sbp, eqn, opts, res_jac, ctx_residual)
+  calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
   # Re-interpolate interior q to q_bndry. This is done because the above step
   # pollutes the existing eqn.q_bndry with complex values.
@@ -111,22 +61,12 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   # Assemble func_deriv
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
-  func_deriv[:] = -func_deriv[:]
+  scale!(func_deriv, -1.0)
 
-  # Solve for adjoint vector. residual jacobian needs to be transposed first.
-  jac_type = typeof(res_jac)
-  if jac_type <: Array || jac_type <: SparseMatrixCSC
-    res_jac = res_jac.'
-  elseif  jac_type <: PetscMat
-    PetscMatAssemblyBegin(res_jac) # Assemble residual jacobian
-    PetscMatAssemblyEnd(res_jac)
-    res_jac = MatTranspose(res_jac, inplace=true)
-  else
-    error("Unsupported jacobian type")
-  end
-  step_norm = NonlinearSolvers.matrixSolve(jacData, eqn, mesh, opts, res_jac,
-                                           adjoint_vec, real(func_deriv), BSTDOUT)
-
+  # do transpose solve
+  _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
+  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
+  copy!(adjoint_vec, _adjoint_vec)
 
   # Output/Visualization options for Adjoint
   if opts["write_adjoint"]

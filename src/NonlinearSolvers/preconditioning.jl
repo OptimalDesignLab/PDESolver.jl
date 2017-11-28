@@ -1,4 +1,31 @@
 # functions for calculating various preconditioners
+
+#------------------------------------------------------------------------------
+# AbstractPC Interface
+function calcPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+  pert = Complex128(0, opts["epsilon"])
+  func = ctx_residual[1]
+  calcVolumePreconditioner(pc, mesh, sbp, eqn, opts, pert, func, t)
+  factorVolumePreconditioner(pc, mesh, sbp, eqn, opts)
+end
+
+function applyPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector)
+
+  applyVolumePreconditioner(pc, mesh, sbp, eqn, opts, b, x)
+
+  return nothing
+end
+
+# we could define applyPCTranspose, but this PC is ineffective so don't bother
+
+#------------------------------------------------------------------------------
+# Volume preconditioner implementation
+
 """
   This function computes the jacobian of the volume integrals for use as a
   preconditioner.  Boundary integrals are also included because it is easy
@@ -125,6 +152,7 @@ function factorVolumePreconditioner(newton_data::NewtonData, mesh, sbp, eqn, opt
   return nothing
 end
 
+#=
 """
   This function is a wrapper around [`applyVolumePreconditioner`](@ref)
   that is passed into Petsc as a callback
@@ -162,7 +190,7 @@ function applyVolumePC_wrapper(pc::PC, x::PetscVec, b::PetscVec)
 
   return PetscErrorCode(0)
 end
-
+=#
 
 
 

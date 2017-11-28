@@ -160,6 +160,7 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
   ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
 
+
   dJdaoa = ∂J∂aoa + ψT∂R∂aoa
 
   return dJdaoa

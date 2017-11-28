@@ -7,6 +7,7 @@ using SummationByParts
 using PdePumiInterface
 using ForwardDiff
 using NonlinearSolvers
+using LinearSolvers
 using MPI
 using Utils
 using PETSc
