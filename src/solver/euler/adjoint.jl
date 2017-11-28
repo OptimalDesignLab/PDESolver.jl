@@ -43,6 +43,13 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
+  println("computing adjoint")
+  println("vecnorm(eqn.q) = ", vecnorm(eqn.q))
+  println("sum(eqn.q) = ", sum(eqn.q))
+  weights = collect(1:mesh.numDof)
+  println("weighted sum(eqn.res) = ", sum(weights.*vec(eqn.res)))
+
+
   # Allocate space for adjoint solve
   pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
@@ -66,11 +73,14 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
   scale(func_deriv, -1.0)
 
+  println("vecnorm(func_deriv) = ", vecnorm(real(func_deriv)))
   # do transpose solve
   _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
   linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
   
+  println("norm(adjoint_vec) = ", norm(adjoint_vec))
+
   # Output/Visualization options for Adjoint
   if opts["write_adjoint"]
     outname = string("adjoint_vec_", mesh.myrank,".dat")
