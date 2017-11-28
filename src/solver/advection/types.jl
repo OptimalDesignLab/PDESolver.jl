@@ -57,7 +57,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
-      _f = open("log_$myrank.dat", "a")
+      _f = open("log_$myrank.dat", "w")
       f = BufferedIO(_f)
     else
       f = BufferedIO()  # create a dummy IOStream

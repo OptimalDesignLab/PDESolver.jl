@@ -40,6 +40,9 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   end
 
+  println(eqn.params.f, "computing adjoint")
+  println(eqn.params.f, "vecnorm(eqn.q) = ", vecnorm(eqn.q))
+
   # Allocate space for adjoint solve
   pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
@@ -63,10 +66,16 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
   scale!(func_deriv, -1.0)
 
+  println(eqn.params.f, "vecnorm(func_deriv) = ", vecnorm(func_deriv))
+
   # do transpose solve
   _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
   linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
+
+  lo2 = getBaseLO(lo)
+  println(eqn.params.f, "matrix norm = ", PetscMatNorm(lo2.A, NORM_FROBENIUS))
+
 
 
   # Output/Visualization options for Adjoint
