@@ -196,6 +196,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end
 
     # do corrector steps
+    newton_data.res_reltol = homotopy_tol
     newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
                 rhs_vec, ctx_residual)
 
