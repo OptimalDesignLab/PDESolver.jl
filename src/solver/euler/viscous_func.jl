@@ -1711,9 +1711,10 @@ function call{Tsol, Tmsh}(obj::ExactChannel,
   gamma = params.gamma
   gamma_1 = params.gamma_1
 
+  aoa = params.aoa
   rhoInf = 1.0
-  uInf = eqn.params.Ma*cos(aoa)
-  vInf = eqn.params.Ma*sin(aoa)
+  uInf = params.Ma*cos(aoa)
+  vInf = params.Ma*sin(aoa)
   TInf = 1.0
 
   for n = 1 : numNodes
@@ -1770,7 +1771,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
   numNodes = size(q_in, 2)
   lambda   = zeros(Float64, 3) 
   gamma    = params.gamma
-  gamma_1  = params.gamma_1
+  gamma_1  = params.gamma - 1
   aoa      = params.aoa
   gg_1     = (gamma*gamma_1)
   MaInf    = params.Ma    

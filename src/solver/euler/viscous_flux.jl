@@ -49,8 +49,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   # println("rho_max = ", sigma)
 
   for f = 1:nfaces    # loop over faces
-    flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
 
+    flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
     face = interfaces[f]
     elemL = face.elementL
     elemR = face.elementR
@@ -149,13 +149,16 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # where 
     #     [q] = (q+ - q-) ⊗ n = Δq⊗n , 
     # Then we can consider Δq⊗n as ∇q and F as viscous flux.
+    fill!(vecfluxL, 0.0)
+    fill!(vecfluxR, 0.0)
     for n = 1 : mesh.numNodesPerFace
       for iDof = 1 : mesh.numDofPerNode
         #
         # sum up columns of each row
         #
         for iDim = 1 : Tdim
-          vecfluxL[iDim, iDof, n] = 0.0
+          # vecfluxL[iDim, iDof, n] = 0.0
+          # vecfluxR[iDim, iDof, n] = 0.0
           for jDim = 1 : Tdim
             tmpL = 0.0
             tmpR = 0.0
@@ -174,7 +177,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     # δ{G}[q]:n, contributing to  δ{G}[q]:[ϕ]
     for n = 1:mesh.numNodesPerFace
-      for iDof = 1 : mesh.numDofPerNode
+      for iDof = 2 : mesh.numDofPerNode
         for jDof = 1 : mesh.numDofPerNode
           flux[iDof, n] +=  pMat[iDof, jDof, n]*dq[jDof, n]
         end
@@ -220,8 +223,8 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
   sat_type = opts["SAT_type"]
   const_tii = (p + 1.0)*(p + Tdim)/Tdim
   sbpface = mesh.sbpface
-  dq      = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)    
-  dqn     = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)    
+  dq    = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)    
+  dqn   = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)    
   q_bnd = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)    
   pMat  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
   Gt    = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
@@ -235,8 +238,8 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
   area_sum = sview(eqn.area_sum, :)
 
   # sigma = calcTraceInverseInequalityConst(sbp, sbpface)
-  dqdx_elem = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement )
-  dqdx_face = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace )
+  dqdx_elem = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement )
+  dqdx_face = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace )
   for iBC = 1 : mesh.numBC
     indx0 = mesh.bndry_offsets[iBC]
     indx1 = mesh.bndry_offsets[iBC+1] - 1
@@ -263,8 +266,8 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
     end
 
     for f = indx0 : indx1
-      flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
 
+      flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
       bndry = mesh.bndryfaces[f]
       elem = bndry.element
       face = bndry.face
@@ -334,12 +337,11 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       # -----------------------------------------------
 
       # calcFvis(Gt, dqn, vecflux)
+      fill!(vecflux, 0.0)
       for n = 1 : mesh.numNodesPerFace
         for iDof = 1 : mesh.numDofPerNode
-          vecflux[1,iDof,n] *=  dq[iDof,n]
-          vecflux[2,iDof,n] *=  dq[iDof,n]
           for iDim = 1 : Tdim
-            vecflux[iDim, iDof, n] = 0.0
+            # vecflux[iDim, iDof, n] = 0.0
             for jDim = 1 : Tdim
               tmp = 0.0
               for jDof = 1 : mesh.numDofPerNode
@@ -353,7 +355,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       end
 
       for n = 1 : mesh.numNodesPerFace
-        for iDof = 1 : mesh.numDofPerNode
+        for iDof = 2 : mesh.numDofPerNode
           for iDim = 1 : Tdim
             flux[iDof, n] -= Fv_face[iDim, iDof, n]*nrm_xy[iDim,n] 
           end
@@ -361,7 +363,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       end
 
       for n = 1 : mesh.numNodesPerFace
-        for iDof = 1 : mesh.numDofPerNode
+        for iDof = 2 : mesh.numDofPerNode
           for jDof = 1: mesh.numDofPerNode
             flux[iDof, n] +=  pMat[iDof, jDof, n]*dq[jDof, n]
           end
