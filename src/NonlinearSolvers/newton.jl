@@ -386,11 +386,6 @@ function checkConvergence(newton_data::NewtonData)
   res_norm_rel = newton_data.res_norm_rel
   step_norm = newton_data.step_norm_i
 
-  println(BSTDOUT, "checking convergence")
-  println(BSTDOUT, "itr = ", itr)
-  println(BSTDOUT, "step_norm = ", step_norm)
-  println(BSTDOUT, "step_tol = ", newton_data.step_tol)
-
   is_converged = false
 
   # absolute tolerance

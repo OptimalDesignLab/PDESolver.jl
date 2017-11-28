@@ -76,8 +76,6 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
                     eqn::AbstractSolutionData{Tsol, Tres}, opts,
                     ls::LinearSolver)
 
-  println("entered NewtonData constructor")
-
   myrank = mesh.myrank
   commsize = mesh.commsize
   itr = 0
