@@ -417,8 +417,8 @@ function checkConvergence(newton_data::NewtonData)
     @mpi_master println(BSTDOUT, "Final residual = ", res_norm)
   end
 
-  @mpi_master if is_converged
-    if itr == 0
+  if is_converged
+    @mpi_master if itr == 0
       println(BSTDOUT, "Not entering Newton iteration loop")
     else
       println(BSTDOUT, "Iteration count: ", itr)
