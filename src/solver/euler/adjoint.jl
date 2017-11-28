@@ -75,8 +75,11 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   # it back in func_deriv_arr
   calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
 
+  println("sum(func_deriv_arr) = ", sum(func_deriv_arr))
+
   # Assemble func_deriv
   assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  println("before negation, sum(func_deriv) = ", sum(func_deriv))
   scale(func_deriv, -1.0)
 
   println("vecnorm(func_deriv) = ", vecnorm(real(func_deriv)))
