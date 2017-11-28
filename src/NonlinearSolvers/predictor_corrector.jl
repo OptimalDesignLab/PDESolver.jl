@@ -111,6 +111,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
+  krylov_reltol0 = opts["krylov_reltol"]::Float64
 
 
   # counters/loop variables
@@ -197,6 +198,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
     # do corrector steps
     newton_data.res_reltol = homotopy_tol
+    setTolerances(newton_data.ls, krylov_reltol0, -1, -1, -1)
     newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
                 rhs_vec, ctx_residual)
 

@@ -85,7 +85,7 @@ where input_file_name.jl is in your current directory.
 "res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
 "res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
 "step_tol" : step size tolerance for Newton methods (floating point), default -1
-"itermax" : maximum number of iterations for Newton methods or rk4 (integer), for rk4, it is ignored if note specified
+"itermax" : maximum number of iterations for Newton methods or rk4 (integer), for rk4, it is ignored if not specified
 "Reltol_funcs"  : an initial condition function name, the residual of the equation using this as the input is used for the relative residual calculation, (ASCIIString), defualt "none".  Note that this function will override res_reltol0 = -1.0
 "Relfunc_name": the name of an initial condtion, the residual of which is used
                 for computing the relative residual for solver stopping

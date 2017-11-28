@@ -386,15 +386,20 @@ function checkConvergence(newton_data::NewtonData)
   res_norm_rel = newton_data.res_norm_rel
   step_norm = newton_data.step_norm_i
 
+  println(BSTDOUT, "checking convergence")
+  println(BSTDOUT, "itr = ", itr)
+  println(BSTDOUT, "step_norm = ", step_norm)
+  println(BSTDOUT, "step_tol = ", newton_data.step_tol)
+
   is_converged = false
 
   # absolute tolerance
   if res_norm < newton_data.res_abstol
     is_converged = true
     @mpi_master if itr == 0
-      println(BSTDOUT, "Initial condition satisfies res_tol with residual norm ", res_norm)
+      println(BSTDOUT, "Initial condition satisfies res_tol with residual norm ", res_norm, " < ", newton_data.res_abstol)
     else
-      println(BSTDOUT, "Newton iteration converged with residual norm ", res_norm)
+      println(BSTDOUT, "Newton iteration converged with residual norm ", res_norm, " < ", newton_data.res_abstol)
     end
   end
 
@@ -403,19 +408,21 @@ function checkConvergence(newton_data::NewtonData)
   if rel_norm < newton_data.res_reltol
     is_converged = true
     if itr == 0
-      println(BSTDOUT, "Initial condition satisfied res_reltol with relative residual ", rel_norm)
+      println(BSTDOUT, "Initial condition satisfied res_reltol with relative residual ", rel_norm, " < ", newton_data.res_reltol)
     else
-      println(BSTDOUT, "Newton iteration converged with relative residual norm ", rel_norm)
+      println(BSTDOUT, "Newton iteration converged with relative residual norm ", rel_norm, " < ", newton_data.res_reltol)
     end
   end
 
   # step tolerance
-  if step_norm < newton_data.step_tol && itr > 0
+  if step_norm <= newton_data.step_tol && itr > 0
+    println("step tolerance satisfied")
     is_converged = true
-    @mpi_master println(BSTDOUT, "Newton iteration converged with step_norm = ", step_norm)
+    @mpi_master println(BSTDOUT, "Newton iteration converged with step_norm = ", step_norm, " < ", newton_data.step_tol)
     @mpi_master println(BSTDOUT, "Final residual = ", res_norm)
   end
 
+  println(BSTDOUT, "is_converged = ", is_converged)
   @mpi_master if is_converged
     if itr == 0
       println(BSTDOUT, "Not entering Newton iteration loop")
