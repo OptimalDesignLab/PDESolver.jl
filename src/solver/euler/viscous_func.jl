@@ -410,16 +410,6 @@ function calcFvis{Tsol}(params::ParamType{2, :conservative},
   numNodes = size(Gv, 5)
 
   for n = 1 : numNodes
-    # brutal loop
-    # for d = 1 : dim
-    # for d2 = 1 : dim
-    # for row = 1 : numDofs
-    # for col = 1 : numDofs
-    # Fv[d, row, n] += Gv[row, col, d, d2, n]*dqdx[d2, col, n]
-    # end
-    # end
-    # end
-    # end
 
     Fv[1, 1, n] = 0.0
     Fv[1, 2, n] = (Gv[2, 1, 1, 1,n]*dqdx[1, 1, n] + Gv[2, 2, 1, 1,n]*dqdx[1, 2, n]
@@ -440,9 +430,26 @@ function calcFvis{Tsol}(params::ParamType{2, :conservative},
                  + Gv[4, 3, 2, 1,n]*dqdx[1, 3, n] 
                  + Gv[4, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[4, 2, 2, 2,n]*dqdx[2, 2, n] 
                  + Gv[4, 3, 2, 2,n]*dqdx[2, 3, n] + Gv[4, 4, 2, 2,n]*dqdx[2, 4, n] )
+
+    # DEBUG ONLY
+    # brutal loop
+    # Fv0 = zeros(Tsol, 2, 4)
+    # for d = 1 : dim
+      # for d2 = 1 : dim
+        # for row = 1 : numDofs
+          # for col = 1 : numDofs
+            # Fv0[d, row] += Gv[row, col, d, d2, n]*dqdx[d2, col, n]
+          # end
+        # end
+      # end
+    # end
+    # diff = maximum(abs(real(Fv0 - ro_sview(Fv, :,:,n))))
+    # if diff > 1.e-14
+      # println(Fv0)
+      # println(Fv)
+    # end
+    # DEBUG END
   end
-
-
 
   return nothing
 end
@@ -463,16 +470,6 @@ function calcFvis{Tsol}(params::ParamType{3, :conservative},
   numNodes = size(Gv, 5)
 
   for n = 1 : numNodes
-    # brutal loop
-    # for d = 1 : dim
-    # for d2 = 1 : dim
-    # for row = 1 : numDofs
-    # for col = 1 : numDofs
-    # Fv[d, row, n] += Gv[row, col, d, d2, n]*dqdx[d2, col, n]
-    # end
-    # end
-    # end
-    # end
 
     Fv[1, 1, n] = 0.0
 
@@ -525,6 +522,24 @@ function calcFvis{Tsol}(params::ParamType{3, :conservative},
                  + Gv[5, 1, 3, 2,n]*dqdx[2, 1, n] + Gv[5, 3, 3, 2,n]*dqdx[2, 3, n] + Gv[5, 4, 3, 2,n]*dqdx[2, 4, n]
                  + Gv[5, 1, 3, 3,n]*dqdx[3, 1, n] + Gv[5, 2, 3, 3,n]*dqdx[3, 2, n] + Gv[5, 3, 3, 3,n]*dqdx[3, 3, n] 
                  + Gv[5, 4, 3, 3,n]*dqdx[3, 4, n] + Gv[5, 5, 3, 3,n]*dqdx[3, 5, n]  )
+    # DEBUG ONLY
+    # brutal loop
+    # Fv0 = zeros(Tsol, 3, 5)
+    # for d = 1 : dim
+      # for d2 = 1 : dim
+        # for row = 1 : numDofs
+          # for col = 1 : numDofs
+            # Fv0[d, row] += Gv[row, col, d, d2, n]*dqdx[d2, col, n]
+          # end
+        # end
+      # end
+    # end
+    # diff = maximum(abs(real(Fv0 - ro_sview(Fv, :,:,n))))
+    # if diff > 1.e-14
+      # println(Fv0)
+      # println(Fv)
+    # end
+    # DEBUG END
   end
 
   return nothing
@@ -589,7 +604,7 @@ function calcDiffusionTensor{Tsol}(params::ParamType{2, :conservative},
   @assert(size(Gv, 2) == 2+2)
   @assert(size(Gv, 1) == 2+2)
   numNodes = size(q, 2)
-  gamma = 1.4
+  gamma = params.gamma
   gamma_1 = gamma - 1.0
   Pr = 0.72
   gamma_pr = gamma/Pr
@@ -1626,10 +1641,7 @@ function call{Tsol, Tmsh, Tdim}(obj::AdiabaticWall,
     q_bnd[1, n] = q_in[1, n]
     # noslip condition
     q_bnd[2:dim+1, n] = 0.0
-    q_bnd[dim+2, n] = q_in[4, n]
-    # rhoV2 = (q_in[2,n]*q_in[2,n] + q_in[3,n]*q_in[3,n])/q_in[1,n]
-    # q_bnd[2:dim+1, n] = 0.0
-    # q_bnd[dim+2, n] = q_in[4, n] - 0.5*rhoV2
+    q_bnd[dim+2, n] = q_in[dim+2, n]
   end
 
   return nothing
@@ -1709,7 +1721,7 @@ function call{Tsol, Tmsh}(obj::ExactChannel,
   numNodes = size(q_in, 2)
 
   gamma = params.gamma
-  gamma_1 = params.gamma_1
+  gamma_1 = gamma - 1
 
   aoa = params.aoa
   rhoInf = 1.0
@@ -1787,10 +1799,10 @@ function call{Tsol, Tmsh}(obj::Farfield,
     #
     # contravariant velocity
     #
-    vn = q_in[2, n]*norm[1, n] + q_in[3, n]*norm[2, n]
-    vn = vn/q_in[1,n]
-    v2 = q_in[2,n]*q_in[2,n] + q_in[3,n]*q_in[3,n]
-    v2 /= q_in[1,n]*q_in[1,n]
+    u = q_in[2,n] / q_in[1,n]
+    v = q_in[3,n] / q_in[1,n]
+    vn = u*norm[1, n] + v*norm[2, n]
+    v2 = u*u + v*v 
     T = gg_1*(q_in[4,n]/q_in[1,n] - 0.5*v2)
     a = sqrt(T)
     #
@@ -1867,7 +1879,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
     vn = vn/q_in[1,n]
     v2 = q_in[2,n]*q_in[2,n] + q_in[3,n]*q_in[3,n] + q_in[4,n]*q_in[4,n]
     v2 /= q_in[1,n]*q_in[1,n]
-    T = gg_1*(q_in[4,n]/q_in[1,n] - 0.5*v2)
+    T = gg_1*(q_in[5,n]/q_in[1,n] - 0.5*v2)
     a = sqrt(T)
     #
     # eigenvalues
