@@ -562,7 +562,7 @@ function call(obj::SRCChannel,
               t)
   Tdim = 2
   pi = 3.14159265358979323846264338
-  sigma = 0.01
+  sigma = 0.1
   gamma = params.gamma
   gamma_1 = params.gamma_1
   aoa = params.aoa
@@ -578,46 +578,60 @@ function call(obj::SRCChannel,
   y = coords[2]
 
   # Exact solution in form of primitive variables
-  q[1] = qRef[1]
-  ux = qRef[2] * (0.1*sin(2*pi*x) + 0.2)
-  uy = sin(pi*y) 
-  q[2] = ux * uy
 
-  if !params.isViscous
-    q[2] += 0.2 * qRef[2]
-  end
-  q[3]  = qRef[3] 
-  q[4]  = qRef[4]
+  q[1] = qRef[1] * (exp(sin(0.5*pi*(x+y))) *sigma +  1.0)
+  ux  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[2]
+  uy   = exp(y) * sin(pi*y) 
+  q[2] = ux * uy
+  vx  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[3]
+  vy   = exp(y) * sin(pi*y) 
+  q[3] = vx * vy
+  q[4] = (1 + sigma* exp(x+y)) * qRef[4]
 
   #
   # contribution from inviscid terms
   #
-  q_x[1,1] = 0.0
-  q_x[2,1] = 0.0
-  q_x[1,2] = qRef[2] * 0.2*pi*cos(2*pi*x) * uy
-  q_x[2,2] = ux * pi * cos(pi*y) 
-  q_x[1,3] = 0.0 
-  q_x[2,3] = 0.0 
-  q_x[1,4] = 0.0 
-  q_x[2,4] = 0.0 
+  q_x[1,1] = qRef[1] * exp(sin(0.5*pi*(x+y))) * 0.5*pi*cos(0.5*pi*(x+y)) * sigma
+  q_x[2,1] = qRef[1] * exp(sin(0.5*pi*(x+y))) * 0.5*pi*cos(0.5*pi*(x+y)) * sigma
+  ux_x = qRef[2] * exp(x) * (sin(pi*x) + pi* cos(pi*x)) * sigma
+  uy_y = exp(y) * (sin(pi*y) + pi * cos(pi*y))
+  q_x[1,2] = ux_x * uy 
+  q_x[2,2] = ux * uy_y
+  vx_x = qRef[3] * exp(x) * (sin(pi*x) + pi* cos(pi*x)) * sigma
+  vy_y = exp(y) * (sin(pi*y) + pi * cos(pi*y))
+  q_x[1,3] = vx_x * vy 
+  q_x[2,3] = vx * vy_y
+  q_x[1,4] = exp(x+y) * qRef[4] * sigma
+  q_x[2,4] = exp(x+y) * qRef[4] * sigma
 
   if !params.isViscous 
+    q[2] += qRef[2] * 0.2
     calcMmsSource(params, q, q_x, q_xx, src)
     return nothing
   end
 
-  q_xx[1,1,2] = qRef[2] * -0.4 * pi * pi * sin(2*pi*x) * uy
-  q_xx[1,2,2] = qRef[2] * 0.2*pi* cos(2*pi*x) * pi* cos(pi*y)
-  q_xx[2,2,2] = ux * -pi*pi*sin(pi*y)
+  ux_xx  = qRef[2] * exp(x) * (sin(pi*x) + pi*cos(pi*x))
+  ux_xx += qRef[2] * exp(x) * (cos(pi*x) - pi*sin(pi*x)) * pi 
+  ux_xx *= sigma
+  uy_yy  = exp(y) * (sin(pi*y) + pi*cos(pi*y))
+  uy_yy += exp(y) * (cos(pi*y) - pi*sin(pi*y)) * pi
+  q_xx[1,1,2] = ux_xx * uy
+  q_xx[1,2,2] = ux_x * uy_y
+  q_xx[2,2,2] = ux * uy_yy
   q_xx[2,1,2] = q_xx[1,2,2]
 
-  q_xx[1,1,3] = 0.0 
-  q_xx[1,2,3] = 0.0
-  q_xx[2,2,3] = 0.0
+  vx_xx  = qRef[3] * exp(x) * (sin(pi*x) + pi*cos(pi*x))
+  vx_xx += qRef[3] * exp(x) * (cos(pi*x) - pi*sin(pi*x)) * pi
+  vx_xx *= sigma
+  vy_yy  = exp(y) * (sin(pi*y) + pi*cos(pi*y))
+  vy_yy += exp(y) * (cos(pi*y) - pi*sin(pi*y)) * pi
+  q_xx[1,1,3] = vx_xx * vy
+  q_xx[1,2,3] = vx_x * vy_y
+  q_xx[2,2,3] = vx * vy_yy
   q_xx[2,1,3] = q_xx[1,2,3]
 
-  q_xx[1,1,4] = 0.0
-  q_xx[2,2,4] = 0.0
+  q_xx[1,1,4] = exp(x+y) * qRef[4] * sigma
+  q_xx[2,2,4] = exp(x+y) * qRef[4] * sigma
 
   calcMmsSource(params, q, q_x, q_xx, src)
 
@@ -900,7 +914,6 @@ function call(obj::SRCTrigonometric,
               t)
   Tdim = 2
   sigma = 0.01
-  pi = 3.14159265358979323846264338
   gamma = params.gamma
   gamma_1 = gamma - 1.0
   aoa = params.aoa
@@ -967,11 +980,11 @@ function call(obj::SRCTrigonometric,
     return nothing
   end
 
-  q_xx[1,1,2] = -16*pi*pi * q[2]
-  q_xx[2,2,2] = -16*pi*pi * q[2]
+  q_xx[1,1,2] = -16*pi*pi * sx4 * sy4
+  q_xx[2,2,2] = -16*pi*pi * sx4 * sy4
   q_xx[1,2,2] =  16*pi*pi * cx4 * cy4
-  q_xx[1,1,3] = -9*pi*pi * q[3]
-  q_xx[2,2,3] = -9*pi*pi * q[3]
+  q_xx[1,1,3] = -9*pi*pi * sx3 * sy3
+  q_xx[2,2,3] = -9*pi*pi * sx3 * sy3
   q_xx[1,2,3] =  9*pi*pi * cx3 * cy3
   q_xx[1,1,4] =  4*pi*pi * cx2 * (1.0 - cy2)
   q_xx[2,2,4] =  4*pi*pi * cy2 * (1.0 - cx2)

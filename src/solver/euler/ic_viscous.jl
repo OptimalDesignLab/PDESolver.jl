@@ -202,15 +202,18 @@ function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                                      u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
-  sigma = 0.01
+  dim = 2
+  params = eqn.params
+  sigma = 0.1
   pi = 3.14159265358979323846264338
   gamma = eqn.params.gamma
   gamma_1 = gamma - 1.0
   aoa = eqn.params.aoa
-  rhoInf = 1.0
-  uInf = eqn.params.Ma*cos(aoa)
-  vInf = eqn.params.Ma*sin(aoa)
-  TInf = 1.0
+  qRef = zeros(Float64, dim+2)
+  qRef[1] = 1.0
+  qRef[2] = params.Ma*cos(aoa)
+  qRef[3] = params.Ma*sin(aoa)
+  qRef[4] = 1.0
 
   numEl = mesh.numEl
   nnodes = mesh.numNodesPerElement
@@ -223,16 +226,14 @@ function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
       x = mesh.coords[1, j, i]
       y = mesh.coords[2, j, i]
 
-      rho = rhoInf
-      # rho = rhoInf * (0.1*sin(2*pi*x) + 0.1*y +  1.0)
-      # u   = uInf * (-4.0 * y * (y-1.0)) + 0.1*uInf
-      # u   = uInf * (-4.0 * y * (y-1.0)) 
-      ux = (0.1*sin(2*pi*x) + 0.2) * uInf
-      uy = sin(pi*y) 
-      # uy = -4.0 * y * (y-1.0)
-      u  = ux * uy
-      v  = vInf 
-      T  = TInf 
+      rho = qRef[1] * (sigma*exp(sin(0.5*pi*(x+y))) +  1.0)
+      ux  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[2]
+      uy  = exp(y) * sin(pi*y)
+      u   = ux * uy
+      vx  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[3]
+      vy  = exp(y) * sin(pi*y)
+      v   = vx * vy
+      T   = (1 + sigma*exp(x+y)) * qRef[4]
 
       if !eqn.params.isViscous
         u += 0.2 * uInf
@@ -337,7 +338,6 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   # populate u0 with initial values
   # this is a template for all other initial conditions
   sigma = 0.01
-  pi = 3.14159265358979323846264338
   gamma = 1.4
   gamma_1 = gamma - 1.0
   aoa = eqn.params.aoa
@@ -391,7 +391,7 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
       u0[dofnums_j[2]] = rho*u
       u0[dofnums_j[3]] = rho*v
       u0[dofnums_j[4]] = T/(gamma*gamma_1) + 0.5*(u*u + v*v)
-      u0[dofnums_j[4]]  = u0[dofnums_j[4]] * rho
+      u0[dofnums_j[4]] = u0[dofnums_j[4]] * rho
     end
   end
 

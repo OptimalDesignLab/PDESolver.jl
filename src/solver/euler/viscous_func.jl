@@ -1719,29 +1719,29 @@ function call{Tsol, Tmsh}(obj::ExactChannel,
   @assert( size(q_in, 2) == size(norm,  2))
   dim = size(norm, 1)
   numNodes = size(q_in, 2)
+  sigma = 0.1
 
   gamma = params.gamma
   gamma_1 = gamma - 1
 
   aoa = params.aoa
-  rhoInf = 1.0
-  uInf = params.Ma*cos(aoa)
-  vInf = params.Ma*sin(aoa)
-  TInf = 1.0
+  qRef = zeros(Float64, dim+2)
+  qRef[1] = 1.0
+  qRef[2] = params.Ma*cos(aoa)
+  qRef[3] = params.Ma*sin(aoa)
+  qRef[4] = 1.0
 
   for n = 1 : numNodes
     x = xy[1, n]
     y = xy[2, n]
-    rho = rhoInf
-    # rho = rhoInf * (0.1*sin(2*pi*x) + 0.1*y +  1.0)
-    # u   = uInf * (-4.0 * y * (y-1.0)) + 0.1*uInf
-    # u   = uInf * (-4.0 * y * (y-1.0)) 
-    ux = (0.1*sin(2*pi*x) + 0.2) * uInf
-    # uy = -4.0 * y * (y-1.0)
-    uy = sin(pi*y)
-    u  = ux * uy
-    v  = vInf 
-    T  = TInf 
+    rho = qRef[1] * (sigma*exp(sin(0.5*pi*(x+y))) +  1.0)
+    ux  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[2]
+    uy  = exp(y) * sin(pi*y)
+    u   = ux * uy
+    vx  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[3]
+    vy  = exp(y) * sin(pi*y)
+    v   = vx * vy
+    T   = (1 + sigma*exp(x+y)) * qRef[4]
     if !params.isViscous
       u += 0.2 * uInf
     end
