@@ -170,6 +170,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   S::Array{Float64, 3}  # SBP S matrix
 
+  x_design::Array{Tsol, 1}  # design variables
+
   #=
   # timings
   t_volume::Float64  # time for volume integrals
@@ -341,6 +343,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
       S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
     end
 
+    x_design = zeros(Tsol, 0)  # this can be resized later
+
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
@@ -360,7 +364,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
-               S, time)
+               S, x_design,  time)
 
     end   # end of ParamType function
 

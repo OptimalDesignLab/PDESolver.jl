@@ -20,12 +20,6 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   sin_amplitude::Complex128
   omega::Complex128
 
-  x_design::Array{Tres, 1}  # array of design variables
-                            # This is *not* the official place where design
-                            # variables are stored, meerly a copy that is
-                            # accessible to all the parts of the solver
-                            # that might need them
-
   qL_s::Array{Tsol, 1}  # solution vector for a solution grid element
   qR_s::Array{Tsol, 1}  # solution vector for a solution grid element
   qL_f::Array{Tsol, 1}  # solution vector for flux grid element
@@ -35,6 +29,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   resL_f::Array{Tsol, 1}  # residual for a flux grid element
   resR_f::Array{Tsol, 1}  
   f::BufferedIO
+  x_design::Array{Tres, 1}  # design variables
   time::Timings
   #=
   # timings
@@ -93,14 +88,14 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     sin_amplitude = 2.0
     omega = 1.0
 
-    x_design = zeros(Tres, 1)  # TODO: get proper size information
+    x_design = zeros(Tres, 0)  # TODO: get proper size information
 
     t = Timings()
 
     return new(LFalpha, alpha_x, alpha_y, alpha_z,
-               sin_amplitude, omega, x_design,
+               sin_amplitude, omega,
                qL_s, qR_s, qL_f, qR_f, resL_s, resR_s, resL_f, resR_f,
-               f, t)
+               f, x_design, t)
   end
 end
 
