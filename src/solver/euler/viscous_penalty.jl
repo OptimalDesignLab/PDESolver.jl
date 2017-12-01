@@ -620,6 +620,7 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                  ) * coef 
 
     pMat[4,4,n] = ( nrm1[1,n]*nrm1[1,n] * Gt[4,4,1,1,n]
+                  + nrm1[2,n]*nrm1[1,n] * Gt[4,4,2,1,n] 
                   + nrm1[2,n]*nrm1[2,n] * Gt[4,4,2,2,n] 
                  ) * coef 
 

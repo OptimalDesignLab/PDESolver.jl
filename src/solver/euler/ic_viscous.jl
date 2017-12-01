@@ -233,10 +233,11 @@ function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
       vx  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[3]
       vy  = exp(y) * sin(pi*y)
       v   = vx * vy
-      T   = (1 + sigma*exp(x+y)) * qRef[4]
+      T   = (1 + sigma*exp(0.1*x+0.1*y)) * qRef[4]
+      # T   = qRef[4]
 
       if !eqn.params.isViscous
-        u += 0.2 * uInf
+        u += 0.2 * qRef[2]
       end
 
       u0[dofnums_j[1]] = rho

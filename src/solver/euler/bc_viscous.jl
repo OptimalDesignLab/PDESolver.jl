@@ -99,48 +99,24 @@ type ExactChannelBC <: BCType
 end
 # low level function
 function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC, 
-                                params::ParamType{2},
+                                params::ParamType{2, :conservative},
                                 q::AbstractArray{Tsol,1},  
                                 aux_vars::AbstractArray{Tres, 1},  
                                 x::AbstractArray{Tmsh,1}, 
                                 nrm_xy::AbstractArray{Tmsh,1}, 
                                 bndryflux::AbstractArray{Tres, 1})
 
-  pi = 3.14159265358979323846264338
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
-  # qInf = zeros(Tsol, 4)
-  # calcFreeStream(params, x, qInf)
-  aoa = params.aoa
-  rhoInf = 1.0
-  uInf = params.Ma*cos(aoa)
-  vInf = params.Ma*sin(aoa)
-  TInf = 1.0
-  rho = rhoInf
-  # rho = rhoInf * (0.1*sin(2*pi*x[1]) + 0.1*x[2] +  1.0)
-  # u   = uInf * (-4.0 * y * (y-1.0)) + 0.1*uInf
-  # u   = uInf * (-4.0 * y * (y-1.0)) 
-  ux = (0.1*sin(2*pi*x[1]) + 0.2) * uInf
-  # uy = -4.0 * x[2] * (x[2]-1.0)
-  uy = sin(pi*x[2]) 
-  u  = ux * uy
-  v  = vInf 
-  T  = TInf 
-  if !params.isViscous
-    u += 0.2 * uInf
-  end
-
-  qg = Array(Tsol, 4)
-	qg[1] = rho
-	qg[2] = rho*u
-	qg[3] = rho*v
-  qg[4] = T/(gamma * gamma_1) + 0.5 * (u*u + v*v)
-  qg[4] *= rho
+  # functor ExactChannel takes varibales on multiple nodes, so we need to reshape some variables
+  xy = reshape(x, length(x), 1)
+  norm = reshape(nrm_xy, length(nrm_xy), 1)
+  q_in = reshape(q, length(q), 1)
+  q_bnd = zeros(Tsol, 4, 1)
+  bnd_functor = ExactChannel()
+  bnd_functor(q_in, xy, norm, params, q_bnd)
+  qg = reshape(q_bnd, length(q_bnd))
 
 	v_vals = params.v_vals
 	convertFromNaturalToWorkingVars(params, qg, v_vals)
-	# this is a problem: q is in conservative variables even if
-	# params says we are using entropy variables
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
 	return nothing

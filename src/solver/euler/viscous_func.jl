@@ -427,7 +427,7 @@ function calcFvis{Tsol}(params::ParamType{2, :conservative},
     Fv[2, 3, n] = (Gv[3, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[3, 2, 2, 1,n]*dqdx[1, 2, n]
                  + Gv[3, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[3, 3, 2, 2,n]*dqdx[2, 3, n] )
     Fv[2, 4, n] = (Gv[4, 1, 2, 1,n]*dqdx[1, 1, n] + Gv[4, 2, 2, 1,n]*dqdx[1, 2, n]
-                 + Gv[4, 3, 2, 1,n]*dqdx[1, 3, n] 
+                 + Gv[4, 3, 2, 1,n]*dqdx[1, 3, n] + Gv[4, 4, 2, 1,n]*dqdx[1, 4, n] 
                  + Gv[4, 1, 2, 2,n]*dqdx[2, 1, n] + Gv[4, 2, 2, 2,n]*dqdx[2, 2, n] 
                  + Gv[4, 3, 2, 2,n]*dqdx[2, 3, n] + Gv[4, 4, 2, 2,n]*dqdx[2, 4, n] )
 
@@ -453,7 +453,6 @@ function calcFvis{Tsol}(params::ParamType{2, :conservative},
 
   return nothing
 end
-
 function calcFvis{Tsol}(params::ParamType{3, :conservative},
                         Gv::AbstractArray{Tsol, 5},
                         dqdx::AbstractArray{Tsol, 3},
@@ -1104,9 +1103,10 @@ Input:
 Output
   jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{2, :conservative},
-                                                 q::AbstractArray{Tsol, 2},
-                                                 Gv::AbstractArray{Tsol, 5})
+function calcDiffusionTensorOnAdiabaticWall{Tmsh, Tsol}(params::ParamType{2, :conservative},
+                                                       q::AbstractArray{Tsol, 2},
+                                                       nrm::AbstractArray{Tmsh, 2},
+                                                       Gv::AbstractArray{Tsol, 5})
 
   Tdim = 2
   @assert(size(q, 2) == size(Gv, 5))
@@ -1119,11 +1119,6 @@ function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{2, :conservat
   gamma_1 = gamma - 1.0
   Pr = 0.72
   gamma_pr = gamma/Pr
-  #
-  # set this coefficient to zero to enforce ∇T=0
-  # TODO: remove everything in Gv directly.
-  # 
-  gamma_pr = 0.0
 
   one3rd = 1.0/3.0
   two3rd = 2.0/3.0
@@ -1147,6 +1142,18 @@ function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{2, :conservat
   getMuK(T, rmuk)
 
   for n = 1 : numNodes
+    #
+    # cx and cy are use to impose n⋅∇T = 0.0
+    # 
+    # 
+    cx = gamma_pr
+    cy = 0.0
+    if abs(cy) < 1.e-13
+      cx = 0
+      cy = 0
+    else
+      cy = -nrm[1,n] / nrm[2,n] * gamma_pr
+    end
     # Gv[1,1,1,1,n] = 0.0
     # Gv[1,2,1,1,n] = 0.0
     # Gv[1,3,1,1,n] = 0.0
@@ -1162,10 +1169,10 @@ function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{2, :conservat
     Gv[3,3,1,1,n] = 1.0
     # Gv[3,4,1,1,n] = 0.0
 
-    Gv[4,1,1,1,n] = -(four3rd*v[1,n]*v[1,n] + v[2,n]*v[2,n] + gamma_pr*(E[n] - v2[n]))
-    Gv[4,2,1,1,n] = (four3rd - gamma_pr)*v[1,n]
-    Gv[4,3,1,1,n] = (1.0 - gamma_pr)*v[2,n]
-    Gv[4,4,1,1,n] = gamma_pr
+    Gv[4,1,1,1,n] = -(four3rd*v[1,n]*v[1,n] + v[2,n]*v[2,n] + cx*(E[n] - v2[n]))
+    Gv[4,2,1,1,n] = (four3rd - cx)*v[1,n]
+    Gv[4,3,1,1,n] = (1.0 - cx)*v[2,n]
+    Gv[4,4,1,1,n] = cx
 
     #
     # G12
@@ -1207,10 +1214,10 @@ function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{2, :conservat
     # Gv[3,3,2,1,n] = 0.0
     # Gv[3,4,2,1,n] = 0.0
 
-    Gv[4,1,2,1,n] = -one3rd*v1v2[n]
-    Gv[4,2,2,1,n] = -two3rd*v[2,n]
-    Gv[4,3,2,1,n] = v[1,n] 
-    # Gv[4,4,2,1,n] = 0.0
+    Gv[4,1,2,1,n] = -one3rd*v1v2[n] - cy*(E[n] - v2[n])
+    Gv[4,2,2,1,n] = -two3rd*v[2,n] - cy*v[1,n]
+    Gv[4,3,2,1,n] = v[1,n] - cy*v[2,n]
+    Gv[4,4,2,1,n] = cy 
     #
     # G22
     #
@@ -1229,10 +1236,10 @@ function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{2, :conservat
     Gv[3,3,2,2,n] = four3rd
     # Gv[3,4,2,2,n] = 0.0
 
-    Gv[4,1,2,2,n] = -(v[1,n]*v[1,n] + four3rd*v[2,n]*v[2,n] + gamma_pr*(E[n] - v2[n]))
-    Gv[4,2,2,2,n] = (1.0 - gamma_pr)*v[1,n]
-    Gv[4,3,2,2,n] = (four3rd - gamma_pr)*v[2,n]
-    Gv[4,4,2,2,n] = gamma_pr
+    Gv[4,1,2,2,n] = -(v[1,n]*v[1,n] + four3rd*v[2,n]*v[2,n])
+    Gv[4,2,2,2,n] = v[1,n]
+    Gv[4,3,2,2,n] = four3rd*v[2,n]
+    Gv[4,4,2,2,n] = 0.0
 
     coef = rmuk[1,n]/q[1,n]
     for iDof = 1: 4
@@ -1741,9 +1748,10 @@ function call{Tsol, Tmsh}(obj::ExactChannel,
     vx  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[3]
     vy  = exp(y) * sin(pi*y)
     v   = vx * vy
-    T   = (1 + sigma*exp(x+y)) * qRef[4]
+    T   = (1 + sigma*exp(0.1*x+0.1*y)) * qRef[4]
+    # T   = qRef[4]
     if !params.isViscous
-      u += 0.2 * uInf
+      u += 0.2 * qRef[2]
     end
     q_bnd[1, n] = rho 
     q_bnd[2, n] = rho * u
@@ -1818,17 +1826,20 @@ function call{Tsol, Tmsh}(obj::Farfield,
       q_bnd[:, n] = q_in[:, n]
     elseif lambda[1] <= 0.0        # subsonic inflow
       p = q_in[1,n]*T/gamma 
-      q_bnd[1:dim+1, n] = qInf[1:dim+1]
-      q_bnd[dim+2, n] = p/gamma_1 + 0.5*MaInf*MaInf*qInf[1]
+      q_bnd[1, n] = qInf[1]
+      q_bnd[2, n] = qInf[2]
+      q_bnd[3, n] = qInf[3]
+      q_bnd[4, n] = p/gamma_1 + 0.5*MaInf*MaInf*qInf[1]
     else                        # subsonic outflow
       pInf = 1.0/gamma
-      q_bnd[1:dim+1, n] = q_in[1:dim+1, n]
-      rhoV2 = q_in[1, n] * v2
-      q_bnd[dim+2, n] = pInf/gamma_1 + 0.5*rhoV2
+      q_bnd[1, n] = q_in[1, n]
+      q_bnd[2, n] = q_in[2, n]
+      q_bnd[3, n] = q_in[3, n]
+      q_bnd[4, n] = pInf/gamma_1 + 0.5*q_in[1,n] * v2
     end    
     
     # DEBUB ONLY
-    q_bnd[:,n] = qInf[:]
+    # q_bnd[:,n] = qInf[:]
     # DEBUG END
   end
 

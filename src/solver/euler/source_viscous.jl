@@ -586,7 +586,7 @@ function call(obj::SRCChannel,
   vx  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[3]
   vy   = exp(y) * sin(pi*y) 
   q[3] = vx * vy
-  q[4] = (1 + sigma* exp(x+y)) * qRef[4]
+  q[4] = (1 + sigma* exp(0.1*x+0.1*y)) * qRef[4]
 
   #
   # contribution from inviscid terms
@@ -601,8 +601,10 @@ function call(obj::SRCChannel,
   vy_y = exp(y) * (sin(pi*y) + pi * cos(pi*y))
   q_x[1,3] = vx_x * vy 
   q_x[2,3] = vx * vy_y
-  q_x[1,4] = exp(x+y) * qRef[4] * sigma
-  q_x[2,4] = exp(x+y) * qRef[4] * sigma
+  q_x[1,4] = exp(0.1*x+0.1*y) * qRef[4] * sigma * 0.1
+  q_x[2,4] = exp(0.1*x+0.1*y) * qRef[4] * sigma * 0.1
+  # q_x[1,4] = 0.0
+  # q_x[2,4] = 0.0
 
   if !params.isViscous 
     q[2] += qRef[2] * 0.2
@@ -610,9 +612,9 @@ function call(obj::SRCChannel,
     return nothing
   end
 
-  ux_xx  = qRef[2] * exp(x) * (sin(pi*x) + pi*cos(pi*x))
-  ux_xx += qRef[2] * exp(x) * (cos(pi*x) - pi*sin(pi*x)) * pi 
-  ux_xx *= sigma
+  ux_xx  = exp(x) * (sin(pi*x) + pi*cos(pi*x))
+  ux_xx += exp(x) * (cos(pi*x) - pi*sin(pi*x)) * pi 
+  ux_xx *= sigma * qRef[2]
   uy_yy  = exp(y) * (sin(pi*y) + pi*cos(pi*y))
   uy_yy += exp(y) * (cos(pi*y) - pi*sin(pi*y)) * pi
   q_xx[1,1,2] = ux_xx * uy
@@ -620,9 +622,9 @@ function call(obj::SRCChannel,
   q_xx[2,2,2] = ux * uy_yy
   q_xx[2,1,2] = q_xx[1,2,2]
 
-  vx_xx  = qRef[3] * exp(x) * (sin(pi*x) + pi*cos(pi*x))
-  vx_xx += qRef[3] * exp(x) * (cos(pi*x) - pi*sin(pi*x)) * pi
-  vx_xx *= sigma
+  vx_xx  = exp(x) * (sin(pi*x) + pi*cos(pi*x))
+  vx_xx += exp(x) * (cos(pi*x) - pi*sin(pi*x)) * pi
+  vx_xx *= sigma * qRef[3]
   vy_yy  = exp(y) * (sin(pi*y) + pi*cos(pi*y))
   vy_yy += exp(y) * (cos(pi*y) - pi*sin(pi*y)) * pi
   q_xx[1,1,3] = vx_xx * vy
@@ -630,8 +632,10 @@ function call(obj::SRCChannel,
   q_xx[2,2,3] = vx * vy_yy
   q_xx[2,1,3] = q_xx[1,2,3]
 
-  q_xx[1,1,4] = exp(x+y) * qRef[4] * sigma
-  q_xx[2,2,4] = exp(x+y) * qRef[4] * sigma
+  q_xx[1,1,4] = exp(0.1*x+0.1*y) * qRef[4] * sigma * 0.01
+  q_xx[2,2,4] = exp(0.1*x+0.1*y) * qRef[4] * sigma * 0.01
+  # q_xx[1,1,4] = 0.0
+  # q_xx[2,2,4] = 0.0
 
   calcMmsSource(params, q, q_x, q_xx, src)
 
