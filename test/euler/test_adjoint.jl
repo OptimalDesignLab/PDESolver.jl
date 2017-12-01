@@ -26,8 +26,7 @@ function test_adjoint()
 
       lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts,
                                                    opts["num_functionals"])
-      @fact lift.is_objective_fn --> false
-      @fact lift.geom_faces_functional --> [3]
+      @fact lift.bcnums --> [4]
       @fact lift.ndof --> 2
       @fact lift.bndry_force --> Complex{Float64}[0.0, 0.0]
       @fact lift.lift_val --> zero(Complex{Float64})
@@ -41,8 +40,7 @@ function test_adjoint()
 
     context("Checking Objective Functional Object Creation") do
 
-      @fact drag.is_objective_fn --> true
-      @fact drag.geom_faces_functional --> [3]
+      @fact drag.bcnums --> [4]
       @fact drag.ndof --> 2
       @fact drag.bndry_force --> Complex{Float64}[0.0, 0.0]
       @fact drag.lift_val --> zero(Complex{Float64})

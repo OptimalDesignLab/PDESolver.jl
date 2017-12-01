@@ -39,12 +39,12 @@ arg_dict = Dict{ASCIIString, Any}(
 # "functional_error" => true,
 "num_functionals" => 1,
 "functional_name1" => "lift",
-"geom_faces_functional1" => [3],
+"functional_bcs1" => [4],
 # "analytical_functional_val" => -1/1.4,
 
 # Objective Functional computation keys
 "objective_function" => "drag",
-"geom_faces_objective" => [3],
+"objective_bcs" => [4],
 
 # Adjoint computation keys
 "calc_adjoint" => false,

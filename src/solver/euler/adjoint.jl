@@ -15,7 +15,7 @@ For parallel meshes, a PETSc solve is done using ILU factorization.
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
 *  `functionalData` : Object corresponding the boundary functional being
-                      computed. It must be a subtype of `AbstractOptimizationData`
+                      computed. It must be a subtype of `AbstractFunctional`
 *  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint
                    vector is distributed over the processors similar to
                    eqn.q_vec i.e. every rank has its
@@ -33,7 +33,7 @@ For parallel meshes, a PETSc solve is done using ILU factorization.
 
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                   sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts,
-                  functionalData::AbstractOptimizationData,
+                  functionalData::AbstractFunctional,
                   adjoint_vec::Array{Tsol,1}; functional_number::Int=1)
                   #functor, functional_number, adjoint_vec::Array{Tsol, 1})
   
@@ -173,7 +173,7 @@ mesh nodes.
 *  `sbp`  : Summation-By-parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Functional object of super-type AbstractOptimizationData
+*  `functionalData` : Functional object of super-type AbstractFunctional
                       that is needed for computing the adjoint vector.
                       Depending on the functional being computed, a different
                       method based on functional type may be needed to be
@@ -189,23 +189,16 @@ mesh nodes.
 
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::AbstractIntegralOptimizationData, func_deriv_arr)
+                           functionalData::AbstractIntegralFunctional, func_deriv_arr)
 
   integrand = zeros(eqn.q_bndry)
-  functional_edges = functionalData.geom_faces_functional
 
   # Populate integrand
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    # get the boundary array associated with the geometric edge
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-        break
-      end
-    end
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
+  for itr = 1:length(functionalData.bcnums)
+    bcnum = functionalData.bcnums[itr]
+
+    start_index = mesh.bndry_offsets[bcnum]
+    end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
@@ -251,7 +244,7 @@ degrees of freedom at the node.
 *  `nrm`    : normal vector in the physical space
 *  `integrand_deriv` : Derivative of the integrand at that particular node
 *  `node_info` : Tuple containing information about the node
-*  `functionalData` : Functional object that is a subtype of AbstractOptimizationData.
+*  `functionalData` : Functional object that is a subtype of AbstractFunctional.
 
 **Outputs**
 

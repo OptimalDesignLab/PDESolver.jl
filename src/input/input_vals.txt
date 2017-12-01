@@ -344,7 +344,10 @@ Note that any values associated with these options are shared with the regular
                          writing the file a numerical suffix and .dat extension is added
 "analytical_functional_val" : The analytical functional value of the functional over
                               the specified geometric edges.
-"geom_faces_functionali" : Array of geometric edges (2D)/faces (3D) where functional is being calculated
+"functional_bci" : the boundary condition groups that have (ie. BC1, BC2, etc.)
+                   that have this functional on it (where i is the functional
+                   number)
+
 "functional_namei" : Name of the ith functional that needs to be computed over specified
                      geometric edges(2D)/faces(3D), (ASCIIString)
 
@@ -374,8 +377,8 @@ Note that any values associated with these options are shared with the regular
 "objective_function" : name of the objective function being evalueated. There is an implicit assumption
                        a boundary functional has already been specified and that the objective functiom
                        acts on the same faces as the boundary functional.
-"geom_faces_objective": Geometric faces on which an objective is being computed. Similar to
-                        geom_edges_functional$i
+"objective_bcs": boundary conditions the objective functional is defined on
+                 (ie. BC1, BC2, etc.), (Array{Int, 1})
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved

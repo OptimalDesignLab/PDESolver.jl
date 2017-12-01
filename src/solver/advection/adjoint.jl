@@ -13,7 +13,7 @@ always call this function in order to compute the adjoint.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Advection equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractOptimizationData. This is the type
+*  `functionalData` : Object of type AbstractFunctional. This is the type
                       associated with the adjoint of the functional being
                       computed and holds all the necessary data.
 *  `adjoint_vec` : Adjoint vector corresponding to the particular functional
@@ -30,7 +30,7 @@ always call this function in order to compute the adjoint.
 """->
 function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                      eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
-                     functionalData::AbstractOptimizationData, adjoint_vec::Array{Tsol,1};
+                     functionalData::AbstractFunctional, adjoint_vec::Array{Tsol,1};
                      functional_number::Int=1)
 
   if opts["parallel_type"] == 1
@@ -99,7 +99,7 @@ mesh nodes.
 *  `sbp`   : Summation-By-Parts operator
 *  `eqn`   : Advection equation object
 *  `opts`  : Options dictionary
-*  `functionalData` : Object of subtype of AbstractOptimizationData. This is
+*  `functionalData` : Object of subtype of AbstractFunctional. This is
                       the type associated with the adjoint of the functional
                       being computed and holds all the necessary data.
 *  `func_deriv_arr` : 3D array that stors the derivative of functional w.r.t
@@ -167,7 +167,7 @@ end
 # DG Version
 function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                              eqn::AdvectionData{Tsol}, opts,
-                             functionalData::AbstractIntegralOptimizationData,
+                             functionalData::AbstractIntegralFunctional,
                              func_deriv_arr)
 
   alpha_x = eqn.params.alpha_x
@@ -175,23 +175,14 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::Abstra
 
   # Obtain the derivative of the integrand at all mesh.bndry
   integrand = zeros(eqn.q_bndry)
-  functional_edges = functionalData.geom_faces_functional
   # Populate integrand
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    # get the boundary array associated with the geometric edge
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-        break
-      end
-    end
+  for itr = 1:length(functionalData.bcnums)
+    bcnum = functionalData.bcnums[itr]
 
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
+    start_index = mesh.bndry_offsets[bcnum]
+    end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
-    bndry_facenums = ro_sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
-
+    bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
     nfaces = length(bndry_facenums)
 
     for i = 1:nfaces
@@ -236,7 +227,7 @@ step to compute the derivative
 """->
 
 function calcIntegrandDeriv(opts, params::ParamType2, nx, ny, q,
-                            functionalData::AbstractIntegralOptimizationData)
+                            functionalData::AbstractIntegralFunctional)
 
   pert = complex(0, 1e-20)  # complex perturbation
   q += pert

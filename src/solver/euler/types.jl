@@ -732,54 +732,6 @@ typealias ParamType2 ParamType{2}
 typealias ParamType3 ParamType{3}
 
 
-@doc """
-###EulerEquationMod.BoundaryForceData
-
-Composite data type for storing data pertaining to the boundaryForce. It holds
-lift and drag values
-
-"""->
-
-type BoundaryForceData{Topt, fname} <: AbstractIntegralOptimizationData
-  is_objective_fn::Bool
-  geom_faces_functional::AbstractArray{Int,1}
-  ndof::Int
-  bndry_force::AbstractArray{Topt,1}
-  lift_val::Topt
-  drag_val::Topt
-  dLiftdaoa::Topt # Partial derivative of lift w.r.t. angle of attack
-  dDragdaoa::Topt # Partial derivative of drag w.r.t. angle of attack
-
-  function BoundaryForceData(mesh, sbp, eqn, opts, geom_faces_functional)
-
-    functional = new()
-    functional.is_objective_fn = false
-    functional.geom_faces_functional = geom_faces_functional
-    functional.ndof = mesh.dim
-    functional.bndry_force = zeros(Topt, mesh.dim)
-    functional.lift_val = 0.0
-    functional.drag_val = 0.0
-    functional.dLiftdaoa = 0.0
-    functional.dDragdaoa = 0.0
-
-    return functional
-  end
-end
-
-"""
-  Type for computing the mass flow rate over a boundary (integral rho*u dot n
-  dGamma)
-"""
-type MassFlowData{Topt, fname} <: AbstractIntegralOptimizationData
-  geom_faces_functional::Array{Int, 1}
-  ndof::Int
-  val::Topt
-
-  function MassFlowData(mesh, sbp, eqn, opts, geom_faces_functional)
-    return new(geom_faces_functional, 1, 0.0)
-  end
-end
-
 """
   This function opens all used for logging data.  In particular, every data
   file that has data appended to it in majorIterationCallback should be

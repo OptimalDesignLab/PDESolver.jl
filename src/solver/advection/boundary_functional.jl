@@ -23,7 +23,7 @@ mid level type specific function for the actual functional evaluation.
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
-                        functionalData::AbstractOptimizationData;
+                        functionalData::AbstractFunctional;
                         functional_number::Int=1)
 
   if opts["parallel_type"] == 1
@@ -128,7 +128,7 @@ end
 
 function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
                             eqn::AdvectionData{Tsol}, opts,
-                            functionalData::AbstractIntegralOptimizationData{Topt})
+                            functionalData::AbstractIntegralFunctional{Topt})
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary
@@ -140,31 +140,21 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
   alpha_x = eqn.params.alpha_x
   alpha_y = eqn.params.alpha_y
 
-  functional_edges = functionalData.geom_faces_functional
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
+  for itr = 1:length(functionalData.bcnums)
+    bcnum = functionalData.bcnums[itr]
 
-    # get the boundary array associated with the geometric edge
-    #TODO: describe functionals in terms of which *group* of edges they are 
-    #      applied to, (ie opts["BC1"}), not the geometry directly
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-        break
-      end
-    end
-
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
+    start_index = mesh.bndry_offsets[bcnum]
+    end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
 
     nfaces = length(bndry_facenums)
     boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
 
     for i = 1:nfaces
-      bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
+      
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
         coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
@@ -183,7 +173,7 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
     # Add contributions of multiple geometric edges to the final functional value
     local_functional_val += val_per_geom_edge[1]
 
-  end   # End for itr = 1:length(functional_edges)
+  end  # end loop itr
 
   functionalData.val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
 
@@ -241,7 +231,7 @@ type qflux <: FunctionalType
 end
 
 function call(obj::qflux, params::ParamType2, nx, ny, q,
-              functionalData::AbstractOptimizationData)
+              functionalData::AbstractFunctional)
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
