@@ -22,7 +22,7 @@ end
 """
   Constructor for BoundaryForceData{Topt, :lift}
 """
-function LiftForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums, geom_regions)
+function LiftForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums)
 
   ndof = mesh.dim
   bndry_force = zeros(Topt, mesh.dim)
@@ -40,7 +40,7 @@ end
   Constructor for BoundaryForceData{Topt, :drag}
 """
 function DragForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
-                             bcnums, geom_region_nums)
+                             bcnums)
 
   ndof = mesh.dim
   bndry_force = zeros(Topt, mesh.dim)
@@ -70,7 +70,7 @@ end
   the type so it can be put in a dictionary
 """
 function MassFlowDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, 
-                            bcnums, geom_regions)
+                            bcnums)
   return MassFlowData{Topt}(bcnums, 1, 0.0)
 end
 
@@ -94,11 +94,8 @@ function createObjectiveFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSB
 
   functional_name = opts["objective_function"]
   functional_bcs = opts["objective_bcs"]
-#  functional_regions = opts["geom_regions_objective"]
-  functional_regions = Int[]
   func_constructor = FunctionalDict[functional_name]
-  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs,
-                               functional_regions)
+  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
 
   return objective
 #=
@@ -135,13 +132,10 @@ function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
 
   dict_val = string("functional_name", functional_number)
   key = string("functional_bcs", functional_number)
-  key2 = string("geom_regions_functional", functional_number)
   functional_name = opts[dict_val]
   functional_bcs = opts[key]
-#  functional_regions = opts[key2]
-  functional_regions = Int[]
   func_constructor = FunctionalDict[functional_name]
-  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs, functional_regions)
+  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
 
   return objective
 #=
@@ -161,17 +155,16 @@ end
 
   All outer constructors must have the signature
 
-  MyTypeNameConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums, geom_regions)
+  MyTypeNameConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums)
 
   where MyTypeName is the name of the type, bcnums are the
   boundary conditions that the functional is
   defined on (Array{Int, 1}), 
-  and geom_regions are the geometric face numbers (or region numbers
-  in 3D) that that the functional is defined on (Array{Int, 1}, not currently used).
-  For boundary functionals
-  `geom_regions` is not needed and should be an array of zero length.  For
-  interior functions, the `geom_regions` is used to identify the which of the
-  two possible elements to use as the parent element of the face.
+
+  Currently only boundary functionals are supported.
+
+  For non-boundary functionals
+  the region numbers associated with the faces would also be needed.
   Consider:
 
                 | -> edge 1
@@ -182,8 +175,6 @@ end
   The mesh edges lying on geometric edge 1 have two possible parent elements,
   one of face 1 and one on face 2.  `geom_regions` picks between them.  This
   effectively determines the direction of the normal vector.
-
-  Interior functionals are not currently supported but may be in the future.
 
   Note that the outer constructor name is the type name with the suffix "Constructor"
 """

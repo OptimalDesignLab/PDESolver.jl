@@ -74,7 +74,7 @@ function test_adjoint()
       @fact functional_error --> roughly(0.0, atol=1e-12)
 
       # test another functional
-      func = AdvectionEquationMod.IntegralQDataConstructor(Complex128, mesh, sbp, eqn, opts, opts["functional_bcs1"], Int[])
+      func = AdvectionEquationMod.IntegralQDataConstructor(Complex128, mesh, sbp, eqn, opts, opts["functional_bcs1"])
       AdvectionEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, func)
       @fact func.val --> roughly(analytical_val, atol=1e-13)
 

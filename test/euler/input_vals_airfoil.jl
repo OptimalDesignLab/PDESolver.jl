@@ -41,7 +41,7 @@ arg_dict = Dict{Any, Any}(
 
 # Objective functional options
 "objective_function" => "lift",
-"geom_faces_objective" => [5],
+"objective_bcs" => [2],
 
 "exact_soln_func" => "ICFreeStream",
 )

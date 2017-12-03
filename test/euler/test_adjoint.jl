@@ -52,7 +52,7 @@ function test_adjoint()
     end # context("Checking Objective Functional Object Creation")
 
     context("Checking Functional Computation Before Solve") do
-      massflow = EulerEquationMod.MassFlowData{Complex128, :mass}(mesh, sbp, eqn, opts, [3])
+      massflow = EulerEquationMod.MassFlowDataConstructor(Complex128, mesh, sbp, eqn, opts, [3])
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, massflow)
       @fact massflow.val --> roughly(0.0, atol=1e-13)
 

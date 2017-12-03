@@ -1,9 +1,13 @@
 # Newton's method
 
+```@meta
+CurrentModule = NonlinearSolvers
+```
+
 Newton's method is intended to compute updates to some q by solving the following equation.
 
 \begin{equation}
-\frac{\partial f(q)}{\partial q} \Delta q = -f(q)
+\frac{\partial R(q)}{\partial q} \Delta q = -R(q)
 \end{equation}
 
 In the most basic implementation of Newton's method in PDESolver, q corresponds to the solution, 
@@ -13,24 +17,55 @@ An example of a more sophisticated use of Newton's method is within the Crank-Ni
   which adds another layer on top of the physics residual:
 
 \begin{equation}
-\frac{\partial g(f(q)}{\partial q} \Delta q = -g(f(q))
+\frac{\partial g(R(q))}{\partial q} \Delta q = -g(R(q))
 \end{equation}
 
 ## Features
 
 PDESolver's Newton's method has a wide variety of features. 
 It contains the Jacobian calculation routines, which can be performed currently using:
+
 * finite-differencing 
 * complex-step
 
 The Jacobian functions can act upon any arbitrary residual.
 
 Additionally, the following matrix forms are supported:
+
 * Julia dense
 * Julia sparse
 * PETSc sparse
 * Matrix-free
 
+The function that performs the Newton iteration is 
+
+```@docs
+newtonInner
+```
+
 ## Jacobian calculation
 
-Special mention of calcJacobianComplex
+Special mention of calcJacobianComplex.
+
+One of the most involved parts of Newton's method is forming the Jacobian.
+The NonlinearSolvers module contains the function [`physicsJac`](@ref) to
+compute the Jacobian of the physics $\frac{\partial R(q)}{\partial q}$, where
+$R$ is [`evalResidual`](@ref).  This function can be used by other methods
+as a starting point for computing the residual of $g(R(q))$ described at the
+top of this page.
+
+```@docs
+physicsJac
+```
+
+`physicsJac` calls one of several functions to compute the Jacobian.  Users
+should not call these functions directly, they should use `physicsJac`.
+
+```@docs
+calcJacFD
+calcJacobianComplex
+calcJacobianSparse
+applyPerturbation
+assembleElement
+calcJacCol
+```

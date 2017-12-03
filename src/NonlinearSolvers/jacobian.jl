@@ -30,23 +30,26 @@
  
   **Implementation Notes:**
 
-  This function should not have to do any parallel communication. newtonInner
-  ensures that the rhs_func is called before jac_func, and rhs_func handles
+  This function should not have to do any parallel communication. `newtonInner`
+  ensures that the `rhs_func` is called before `jac_func`, and `rhs_func` 
+  handles
   the parallel communication.
 
-  Implementations of this function may perform either (eqn.q -> jacobian) or
-  (eqn.q_vec -> jacobian).  The first may be more computationally efficient,
-  but the second can be simpler for some time-marching methods.
+  Implementations of this function may perform either (`eqn.q -> jacobian`) or
+  (`eqn.q_vec -> jacobian`).  The first may be more computationally efficient,
+  but the second can be simpler for debugging.
 
   This function supportes several types of jacobians (dense arrays,
   SparseMatrixCSC, PetscMat), and several methods for calculating them
-  (finite difference and complex step).  All implementations of this function
-  should support them as well.  For this reason, it is strongly recommneded to
+  (finite difference and complex step).  Any function calling this function
+  should support them as well.
+  
+  It is strongly recommneded to
   use this function to compute the spatial jacobian and them modify the
-  resulting matrix.
+  resulting matrix (this function zeros the Jacobian matrix)
 
   When using Petsc matrices, the function may do intermediate assemblies
-  (PETSC_FLUSH_ASSEMBLY), but does not need to do the final assembly.
+  (`PETSC_FLUSH_ASSEMBLY`), but does not need to do the final assembly.
 
 """
 function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,

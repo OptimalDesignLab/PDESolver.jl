@@ -52,7 +52,7 @@ arg_dict = Dict{Any, Any}(
 "calc_functional" => false,
 
 "objective_function" => "lift",
-"geom_faces_objective" => [5],
+"objective_bcs" => [2],
 "num_functionals" => 1,
 "need_adjoint" => false, # Necessary for reverse mode
 

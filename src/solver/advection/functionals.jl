@@ -23,7 +23,7 @@ end # End type OfluxData
 """
   Constructor for QfluxData
 """
-function QfluxDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums, geom_regions)
+function QfluxDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums)
 
   val = zero(Topt)
   target_qflux = zero(Topt)
@@ -49,10 +49,10 @@ end
   Constructor for IntegralQData
 """
 function IntegralQDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
-                                        bcnums, geom_regions)
+                                        bcnums)
 
   val = 0.0
-  bndries = getBoundaries(mesh, bcnums, geom_regions)
+  bndries = getBoundaries(mesh, bcnums)
   return IntegralQData{Topt}(bcnums, val, bndries)
 end
 
@@ -78,10 +78,8 @@ function createObjectiveFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSB
   functional_name = opts["objective_function"]
   functional_bcs = opts["objective_bcs"]
 #  functional_regions = opts["geom_regions_objective"]
-  functional_regions = Int[]
   func_constructor = FunctionalDict[functional_name]
-  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs,
-                               functional_regions)
+  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
 
   #=
   if opts["objective_function"] == "qflux"
@@ -114,15 +112,11 @@ function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
 
   dict_key = string("functional_name", functional_number)
   key = string("functional_bcs", functional_number)
-#  key2 = string("geom_regions_functional", functional_number)
   func_name = opts[dict_key]
   functional_faces = opts[key]
-#  functional_regions = opts["geom_regions_objective"]
-  functional_regions = Int[]
 
   func_constructor = FunctionalDict[func_name]
-  functional = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_faces,
-                                functional_regions)
+  functional = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_faces)
 #=
   if func_name == "qflux"
     functional = QfluxData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
