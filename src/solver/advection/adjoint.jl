@@ -1,4 +1,6 @@
 # Adjoint Computation
+
+#=
 @doc """
 ### AdvectionEquationMod.calcAdjoint
 
@@ -86,6 +88,29 @@ function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh}, sbp::Ab
 
   return nothing
 end # End function calcAdjoint
+=#
+
+import PDESolver.evalFunctionalDeriv
+
+"""
+  evalFunctionalDeriv for Advection
+"""
+function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractSBP,
+                           eqn::AdvectionData{Tsol}, opts,
+                           functionalData::AbstractIntegralFunctional,
+                           func_deriv_arr::Abstract3DArray)
+
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
+
+  return nothing
+end
+
 
 @doc """
 ### AdvectionEquationMod.calcFunctionalDeriv

@@ -1,97 +1,5 @@
 # Adjoint for Euler Equations
-
-@doc """
-### EulerEquationMod.calcAdjoint
-
-Calculates the adjoint vector, ψ, for a single functional. The user must always
-call this function in order to compute the adjoint vector. Currently only DG meshes
-are supported. The function performs a direct solve using Julia's  `\\` operator.
-For parallel meshes, a PETSc solve is done using ILU factorization.
-
-**Inputs**
-
-*  `mesh` : Abstract DG mesh type
-*  `sbp`  : Summation-By-parts operator
-*  `eqn`  : Euler equation object
-*  `opts` : Options dictionary
-*  `functionalData` : Object corresponding the boundary functional being
-                      computed. It must be a subtype of `AbstractFunctional`
-*  `adjoint_vec` : Resulting adjoint vector. In the parallel case, the adjoint
-                   vector is distributed over the processors similar to
-                   eqn.q_vec i.e. every rank has its
-                   share of the adjoint vector corresponding to the dofs on the
-                   rank.
-
-*  `functional_number` : Numerical identifier to obtain geometric edges on
-                         which a functional acts
-
-**Outputs**
-
-*  None
-
-"""->
-
-function calcAdjoint{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts,
-                  functionalData::AbstractFunctional,
-                  adjoint_vec::Array{Tsol,1}; functional_number::Int=1)
-                  #functor, functional_number, adjoint_vec::Array{Tsol, 1})
-  
-  # This doesn't work in parallel?  paralle_type == 2 if calculating the
-  # jacobian
-  if opts["parallel_type"] == 1
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-  end
-
-  weights = collect(1:mesh.numDof)
-
-  # Allocate space for adjoint solve
-  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
-  ctx_residual = (evalResidual,)
-  calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
-
-  # Re-interpolate interior q to q_bndry. This is done because the above step
-  # pollutes the existing eqn.q_bndry with complex values.
-  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-  # calculate the derivative of the function w.r.t q_vec
-  func_deriv = zeros(Tsol, mesh.numDof)
-
-  # 3D array into which func_deriv_arr gets interpolated
-  func_deriv_arr = zeros(eqn.q)
-
-  # Calculate df/dq_bndry on edges where the functional is calculated and put
-  # it back in func_deriv_arr
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
-
-  # Assemble func_deriv
-  assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
-  scale!(func_deriv, -1.0)
-
-  # do transpose solve
-  _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
-  linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
-  copy!(adjoint_vec, _adjoint_vec)
-  
-  # Output/Visualization options for Adjoint
-  if opts["write_adjoint"]
-    outname = string("adjoint_vec_", mesh.myrank,".dat")
-    f = open(outname, "w")
-    for i = 1:length(adjoint_vec)
-      println(f, real(adjoint_vec[i]))
-    end
-    close(f)
-  end
-  
-  if opts["write_adjoint_vis"]
-    saveSolutionToMesh(mesh, adjoint_vec)
-    fname = "adjoint_field"
-    writeVisFiles(mesh, fname)
-  end
-
-  return nothing
-end
-
+#=
 @doc """
 ###EulerEquationMod.calcResidualJacobian
 
@@ -160,6 +68,48 @@ function calcResidualJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   return jac, jacData
 end
+=#
+
+import PDESolver.evalFunctionalDeriv
+
+"""
+  Computes a 3D array of hte derivative of a functional wrt eqn.q.
+
+  The derivative is evaluated at the state in eqn.q_vec.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functionalData: AbstractIntegralFunctional to evaluate
+
+  **Inputs/Outputs**
+
+   * func_deriv_arr: array to hold derivative of function wrt eqn.q, same
+                     size as equation.q
+
+  **Options Keys**
+
+  This funciton is not compatible with `precompute_q_bndry` = false
+"""
+function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol}, opts,
+                           functionalData::AbstractIntegralFunctional,
+                           func_deriv_arr::Abstract3DArray)
+
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  if mesh.isDG
+    boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  end
+
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
+
+  return nothing
+end
+
 
 @doc """
 ### EulerEquationMod. calcFunctionalDeriv
@@ -186,10 +136,11 @@ mesh nodes.
 *  None
 
 """->
-
-function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional, func_deriv_arr)
+                           functionalData::AbstractIntegralFunctional,
+                           func_deriv_arr::Abstract3DArray)
 
   integrand = zeros(eqn.q_bndry)
 
@@ -318,25 +269,3 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
 
   return nothing
 end
-  
-
-
-#=
-function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params, q::AbstractArray{Tsol,1},
-                          aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-                          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                          functor, functionalData)
-
-
-  pert = complex(0, opts["epsilon"])
-
-  for i = 1:length(q)
-    q[i] += pert
-    val = functor(params, q, aux_vars, nrm, node_info, functionalData)
-    integrand_deriv[i] = imag(val)/norm(pert)
-    q[i] -= pert
-  end
-
-  return nothing
-end  # End function calcIntegrandDeriv
-=#

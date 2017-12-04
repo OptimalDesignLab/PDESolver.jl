@@ -23,7 +23,7 @@ using PETSc
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
-export AbstractEulerData, EulerData, EulerData_, run_euler
+export AbstractEulerData, EulerData, EulerData_, run_euler, eval_dJdaoa
 
 # add a layer of abstraction
 @doc """

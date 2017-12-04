@@ -64,7 +64,7 @@ function test_adjoint()
       for i=1:length(eqn.q)
         eqn.q[i] += pert
         boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        calcBndryFunctional(mesh, sbp, eqn, opts, massflow)
+        EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, massflow)
         func_deriv[i] = imag(massflow.val)/h
         eqn.q[i] -= pert
       end

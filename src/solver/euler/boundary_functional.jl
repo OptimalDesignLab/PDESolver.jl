@@ -1,4 +1,5 @@
-export evalFunctional, calcBndryFunctional, eval_dJdaoa
+
+import PDESolver.evalFunctional
 
 @doc """
 ### EulerEquationMod.evalFunctional
@@ -17,30 +18,30 @@ evaluation.
 *  `functionalData` : Object of type AbstractFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
-*  `functional_number` : A number identifying which functional is being computed.
-                         This is important when multiple functions, that aren't
-                         objective functions are being evaluated. Default value
-                         is 1.
+
+**Outputs**
+
+ * val: functional value
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functionalData::AbstractFunctional;
-                        functional_number::Int=1)
-
+                        functionalData::AbstractFunctional)
+#=
   if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
-
+=#
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
   # Calculate functional over edges
+  #TODO: have this return the value, get rid of functionalData.val field
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
   #TODO: return functional value as well
-  return nothing
+  return functionalData.val
 end
 
 @doc """

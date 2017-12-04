@@ -11,6 +11,7 @@ using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 using Utils
 using Input

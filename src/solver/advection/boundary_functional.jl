@@ -1,5 +1,6 @@
 # Calculate boundary "forces" in advection
-export evalFunctional, calcBndryfunctional, getFunctionalName
+
+import PDESolver.evalFunctional
 
 @doc """
 ### AdvectionEquationMod.evalFunctional
@@ -13,26 +14,21 @@ mid level type specific function for the actual functional evaluation.
 
 *  `mesh` :  Abstract mesh object
 *  `sbp`  : Summation-By-Parts operator
-*  `eqn`  : Euler equation object
+*  `eqn`  : Advection equation object
 *  `opts` : Options dictionary
 *  `functionalData` : Object of the functional being computed.
-*  `functional_number` : Optional argument. This needs to be specified for all
-                         non-objective functionals being computed, if there are
-                         more than 1 of them. Default = 1
-
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
-                        functionalData::AbstractFunctional;
-                        functional_number::Int=1)
-
+                        functionalData::AbstractFunctional)
+#=
   if opts["parallel_type"] == 1
 
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
 
   end
-
+=#
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -126,7 +122,8 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
 end
 =#
 
-function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP,
                             eqn::AdvectionData{Tsol}, opts,
                             functionalData::AbstractIntegralFunctional{Topt})
 

@@ -12,6 +12,7 @@ using Utils
 using EulerEquationMod
 using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 import MPI
 using Input

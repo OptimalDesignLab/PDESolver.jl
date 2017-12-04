@@ -42,7 +42,6 @@ end
 type IntegralQData{Topt} <: AbstractIntegralFunctional{Topt}
   bcnums::Array{Int, 1}
   val::Topt
-  bndries::Array{Boundary, 1}
 end
 
 """
@@ -52,8 +51,7 @@ function IntegralQDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
                                         bcnums)
 
   val = 0.0
-  bndries = getBoundaries(mesh, bcnums)
-  return IntegralQData{Topt}(bcnums, val, bndries)
+  return IntegralQData{Topt}(bcnums, val)
 end
 
 
