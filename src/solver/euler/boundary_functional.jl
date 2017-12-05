@@ -38,10 +38,11 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   # Calculate functional over edges
   #TODO: have this return the value, get rid of functionalData.val field
-  calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
+  val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
-  #TODO: return functional value as well
-  return functionalData.val
+  return val
+  # return functionalData.val  # this doesn't work because val does not
+                                   # always exist
 end
 
 @doc """
@@ -139,29 +140,34 @@ Compute the complete derivative of a functional w.r.t angle of attack
 
 function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                  eqn::EulerData{Tsol}, opts,
-                                 functionalData::AbstractFunctional,
+                                 functionalData::BoundaryForceData,
                                  functionalName::ASCIIString,
                                  adjoint_vec::AbstractArray{Tsol,1})
 
+  println(eqn.params.f, "evaluating dJdaoa")
   if functionalName == "lift"
     ∂J∂aoa = functionalData.dLiftdaoa
   elseif functionalName == "drag"
     ∂J∂aoa = functionalData.dDragdaoa
   end
 
+  println(eqn.params.f, "norm(adjoint_vec) = ", norm(adjoint_vec))
   pert = 1e-20im
   eqn.params.aoa += pert # Imaginary perturbation
   fill!(eqn.res_vec, 0.0)
   fill!(eqn.res, 0.0)
   res_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
+  println(eqn.params.f, "res_norm = ", res_norm)
   ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
+  println(eqn.params.f, "norm(dRdaoa) = ", norm(∂R∂aoa))
   eqn.params.aoa -= pert # Remove perturbation
 
   # Get the contribution from all MPI ranks
   local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
+  println(eqn.params.f, "local, psiT dRdaoa = ", local_ψT∂R∂aoa)
   ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
-
-
+  println(eqn.params.f, "global psiT dRdaoa = ", ψT∂R∂aoa)
+  println(eqn.params.f, "partial J partial aoa = ", ∂J∂aoa)
   dJdaoa = ∂J∂aoa + ψT∂R∂aoa
 
   return dJdaoa
@@ -209,7 +215,7 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   # global sum
   functionalData.val = MPI.allreduce(functional_val, MPI.SUM, eqn.comm)[1]
 
-  return nothing
+  return functionalData.val
 end  # function calcBndryFunctional
 
 @doc """
@@ -232,7 +238,6 @@ boundary functional type or parameters.
                       computed and holds all the relevant data.
 
 """->
-
 function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                              opts, functionalData::BoundaryForceData)
@@ -298,7 +303,11 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
   end
 
-  return nothing
+  if functionalData.isLift
+    return functionalData.lift_val
+  else
+    return functionalData.drag_val
+  end
 end
 
 @doc """

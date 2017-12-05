@@ -25,6 +25,8 @@ include("lserk.jl")
 
 include("preconditioning_types.jl")
 include("newton.jl")
+export getNewtonPCandLO
+
 include("crank_nicolson.jl")
 include("preconditioning.jl")
 include("globalization.jl")

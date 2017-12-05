@@ -26,8 +26,10 @@ function test_parallel_derivatives()
     end # End context("Checking ∂J/∂aoa")
 
     lift = objective.lift_val
+    pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+    ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
     adjoint_vec = zeros(Complex128, mesh.numDof)
-    EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+    calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
     dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, objective, "lift", adjoint_vec)
 
     # Check complete derivatives w.r.t alpha using finite difference
@@ -42,6 +44,8 @@ function test_parallel_derivatives()
     dJdaoa_fd = (lift_pert - lift)/pert
 
     context("Check complete derivative dJ/daoa") do
+      println(eqn.params.f, "dJdaoa_fd = ", dJdaoa_fd)
+      println(eqn.params.f, "dJdaoa = ", dJdaoa)
       deriv_err = norm(dJdaoa_fd - dJdaoa, 2)
       @fact deriv_err --> roughly(0.0, atol=1e-6)
     end
@@ -51,4 +55,4 @@ function test_parallel_derivatives()
   return nothing
 end
 
-add_func1!(EulerTests, test_parallel_derivatives, [TAG_PARALLEL_DERIVATIVES, TAG_LONGTEST])
+add_func1!(EulerTests, test_parallel_derivatives, [TAG_PARALLEL_DERIVATIVES, TAG_LONGTEST, TAG_TMP])

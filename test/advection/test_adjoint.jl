@@ -84,7 +84,9 @@ function test_adjoint()
     context("Checking Adjoint Computation on DG mesh") do
 
       adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
-      AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+      pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+      ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+      calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
 
       for i = 1:length(adjoint_vec)
         @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)

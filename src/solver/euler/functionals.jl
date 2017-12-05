@@ -12,6 +12,7 @@ type BoundaryForceData{Topt, fname} <: AbstractIntegralFunctional
   bcnums::Array{Int,1}  #TODO: make this non-abstract
   ndof::Int
   bndry_force::Array{Topt,1}
+  isLift::Bool
   lift_val::Topt
   drag_val::Topt
   dLiftdaoa::Topt # Partial derivative of lift w.r.t. angle of attack
@@ -26,13 +27,14 @@ function LiftForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnu
 
   ndof = mesh.dim
   bndry_force = zeros(Topt, mesh.dim)
+  isLift = true
   lift_val = 0.0
   drag_val = 0.0
   dLiftdaoa = 0.0
   dDragdaoa = 0.0
 
   return BoundaryForceData{Topt, :lift}(bcnums, ndof,
-                           bndry_force, lift_val, drag_val, dLiftdaoa,
+                           bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
                            dDragdaoa)
 end
 
@@ -44,13 +46,14 @@ function DragForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
 
   ndof = mesh.dim
   bndry_force = zeros(Topt, mesh.dim)
+  isLift = false
   lift_val = 0.0
   drag_val = 0.0
   dLiftdaoa = 0.0
   dDragdaoa = 0.0
 
   return BoundaryForceData{Topt, :drag}(bcnums, ndof,
-                           bndry_force, lift_val, drag_val, dLiftdaoa,
+                           bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
                            dDragdaoa)
 end
 

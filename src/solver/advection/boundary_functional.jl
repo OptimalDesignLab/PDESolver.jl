@@ -36,7 +36,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
-  return nothing
+  return functionalData.val
 end
 
 
@@ -221,51 +221,3 @@ function calcBoundaryFunctionalIntegrand(params::ParamType2, nx, ny, q,
   fac = sqrt(nx*nx + ny*ny)
   return q*fac
 end
-
-
-#=
-type qflux <: FunctionalType
-end
-
-function call(obj::qflux, params::ParamType2, nx, ny, q,
-              functionalData::AbstractFunctional)
-
-  alpha_x = params.alpha_x
-  alpha_y = params.alpha_y
-  return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
-end
-
-@doc """
-### AdvectionEquationMod.FunctionalDict
-
-It stores the names of all possible functional options that can be computed.
-Whenever a new functional is created, it should be added to FunctionalDict.
-
-"""->
-global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
-"qflux" => qflux(),
-)
-
-@doc """
-### AdvectionEquationMod.getFunctionalName
-
-Gets the name of the functional that needs to be computed at a particular point
-
-**Inputs**
-
-*  `opts`     : Input dictionary
-*  `f_number` : Number of the functional in the input dictionary
-
-**Outputs**
-
-*  `functional` : Returns the functional name in the dictionary
-
-"""->
-function getFunctionalName(opts, f_number)
-
-  key = string("functional_name", f_number)
-  val = opts[key]
-
-  return functional = FunctionalDict[val]
-end
-=#

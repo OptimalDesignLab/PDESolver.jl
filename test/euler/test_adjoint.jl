@@ -159,8 +159,10 @@ function test_adjoint()
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
       lift_val = lift.lift_val
 
+      pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+      ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
       adjoint_vec = zeros(Complex128, mesh.numDof)
-      EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, lift, adjoint_vec)
+      calcAdjoint(mesh, sbp, eqn, opts, ls, lift, adjoint_vec, recalc_jac=true, recalc_pc=true)
 
       # Get the complete derivative of the function
       dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, lift, "lift", adjoint_vec)

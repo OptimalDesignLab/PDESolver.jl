@@ -20,22 +20,23 @@
 
   **Keyword Arguments**
 
-   * recompute_jac: recompute the linear operator inside `ls`, default false
-   * recompute_pc: recompute the preconditioner inside `ls`, default false
+   * recalc_jac: recalc the linear operator inside `ls`, default false
+   * recalc_pc: recalc the preconditioner inside `ls`, default false
 """
 function calcAdjoint{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
                   sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol, Tres}, opts,
                   ls::LinearSolver, functionalData::AbstractFunctional,
-                  adjoint_vec::Array{Tsol,1}; recompute_jac=false,
-                  recompute_pc=false)
+                  adjoint_vec::Array{Tsol,1}; recalc_jac=false,
+                  recalc_pc=false)
  
 
-  # recompute operators if requested
-  if recompute_jac && recompute_pc
+  # recalc operators if requested
+  ctx_residual = (evalResidual,)
+  if recalc_jac && recalc_pc
     calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=true)
-  elseif recompute_jac
+  elseif recalc_jac
     calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=true)
-  elseif recompute_pc
+  elseif recalc_pc
     calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=true)
   end
 
