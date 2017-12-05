@@ -1,4 +1,5 @@
-export evalFunctional, calcBndryFunctional, eval_dJdaoa
+
+import PDESolver.evalFunctional
 
 @doc """
 ### EulerEquationMod.evalFunctional
@@ -14,33 +15,34 @@ evaluation.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+*  `functionalData` : Object of type AbstractFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
-*  `functional_number` : A number identifying which functional is being computed.
-                         This is important when multiple functions, that aren't
-                         objective functions are being evaluated. Default value
-                         is 1.
+
+**Outputs**
+
+ * val: functional value
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functionalData::AbstractOptimizationData;
-                        functional_number::Int=1)
-
+                        functionalData::AbstractFunctional)
+#=
   if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
-
+=#
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
   # Calculate functional over edges
-  calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
+  #TODO: have this return the value, get rid of functionalData.val field
+  val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
-  #TODO: return functional value as well
-  return nothing
+  return val
+  # return functionalData.val  # this doesn't work because val does not
+                                   # always exist
 end
 
 @doc """
@@ -56,7 +58,7 @@ to the if statement to further extend this function.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+*  `functionalData` : Object of type AbstractFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 *  `functionalName` : Name of the functional being evaluated.
@@ -65,7 +67,7 @@ to the if statement to further extend this function.
 
 function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functionalData::AbstractOptimizationData,
+                        functionalData::AbstractFunctional,
                         functionalName::ASCIIString)
 
 
@@ -123,7 +125,7 @@ Compute the complete derivative of a functional w.r.t angle of attack
 * `sbp`  : Summation-By-Parts operator
 * `eqn`  : Euler equation object
 * `opts` : Options dictionary
-* `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+* `functionalData` : Object of type AbstractFunctional. This is type is associated
                      with the functional being computed and holds all the
                      relevant data.
 * `functionalName` : Name of the functional being evaluated
@@ -138,7 +140,7 @@ Compute the complete derivative of a functional w.r.t angle of attack
 
 function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                  eqn::EulerData{Tsol}, opts,
-                                 functionalData::AbstractOptimizationData,
+                                 functionalData::BoundaryForceData,
                                  functionalName::ASCIIString,
                                  adjoint_vec::AbstractArray{Tsol,1})
 
@@ -159,8 +161,6 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   # Get the contribution from all MPI ranks
   local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
   ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
-
-
   dJdaoa = ∂J∂aoa + ψT∂R∂aoa
 
   return dJdaoa
@@ -171,25 +171,16 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                              opts, functionalData::MassFlowData)
 
   functional_val = zeros(Tres, 1)
-  # Get bndry_offsets for the functional edge concerned
-  #!!!: no, this gives wrong results if there is more than one geometric edge in
-  #     the group containing the specified edge
 
-  functional_edges = functionalData.geom_faces_functional
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    # get the boundary array associated with the geometric edge
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-        break
-      end
-    end
+  # loop over boundary conditions that have this functional
+  for itr = 1:length(functionalData.bcnums)
+    bcnum = functionalData.bcnums[itr]
 
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
+    start_index = mesh.bndry_offsets[bcnum]
+    end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
 
     nfaces = length(bndry_facenums)
     boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
@@ -217,7 +208,7 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   # global sum
   functionalData.val = MPI.allreduce(functional_val, MPI.SUM, eqn.comm)[1]
 
-  return nothing
+  return functionalData.val
 end  # function calcBndryFunctional
 
 @doc """
@@ -240,7 +231,6 @@ boundary functional type or parameters.
                       computed and holds all the relevant data.
 
 """->
-
 function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                              opts, functionalData::BoundaryForceData)
@@ -248,24 +238,14 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
   bndry_force = functionalData.bndry_force
   fill!(bndry_force, 0.0)
-  functional_edges = functionalData.geom_faces_functional
 #  phys_nrm = zeros(Tmsh, Tdim)
 
-  # Get bndry_offsets for the functional edge concerned
-  #!!!: no, this gives wrong results if there is more than one geometric edge in
-  #     the group containing the specified edge
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
-    # get the boundary array associated with the geometric edge
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-        break
-      end
-    end
+  # loop over boundary conditions that have this functional
+  for itr = 1:length(functionalData.bcnums)
+    bcnum = functionalData.bcnums[itr]
 
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
+    start_index = mesh.bndry_offsets[bcnum]
+    end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
@@ -316,7 +296,11 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
   end
 
-  return nothing
+  if functionalData.isLift
+    return functionalData.lift_val
+  else
+    return functionalData.drag_val
+  end
 end
 
 @doc """
@@ -331,7 +315,7 @@ lines indicate the line being reverse diffed.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractOptimizationData. This is type is associated
+*  `functionalData` : Object of type AbstractFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 *  `bndry_force_bar`: Seed for the reverse mode. This is typically the adjoint
@@ -346,7 +330,6 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
                                        opts, functionalData::BoundaryForceData,
                                        bndry_force_bar::AbstractArray{Tsol, 1})
 
-  functional_faces = functionalData.geom_faces_functional
 #  phys_nrm = zeros(Tmsh, Tdim)
   aoa = eqn.params.aoa # Angle of attack
 
@@ -360,22 +343,15 @@ function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   # end
   local_functional_val_bar[:] += bndry_force_bar[:]
 
-  # Loop over geometrical functional faces
-  for itr = 1:length(functional_faces)
+  # loop over boundary conditions that have this functional
+  for itr = 1:length(functionalData.bcnums)
+    bcnum = functionalData.bcnums[itr]
 
-    g_face_number = functional_faces[itr] # Extract geometric edge number
-    # get the boundary array associated with the geometric edge
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_face_number) > 0
-        break
-      end
-    end
-
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
+    start_index = mesh.bndry_offsets[bcnum]
+    end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
 
     nfaces = length(bndry_facenums)
     boundary_integrand_bar = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
@@ -421,7 +397,7 @@ end
 Computes the integrand for boundary functional at a surface SBP node. Every
 functional of a different type may need a corresponding method to compute the
 integrand. The type of the functional object, which is a subtype of
-`AbstractOptimizationData`.
+`AbstractFunctional`.
 
 **Arguments**
 

@@ -24,17 +24,19 @@
     eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
     opts: the options dictionary
     t: the current time value, defaults to 0.0
+
+  #TODO: list required options keys
 """
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
 
-  throw(ErrorException("Generic fallback evalResidual reached: did you forget to extend evalResidual with a new method for your AbstractSolutionData?"))
+  throw(ErrorException("Generic fallback evalResidual reached: did you forget to extend evalResidual() with a new method for your AbstractSolutionData?"))
 
   return nothing
 end
 
 function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, res::Abstract3DArray, t = 0.0)
 
-  throw(ErrorException("Generic fallback evalHomotopy reached: did you forget to extend evalResidual with a new method for your AbstractSolutionData?"))
+  throw(ErrorException("Generic fallback evalHomotopy reached: did you forget to extend evalHomotopy() with a new method for your AbstractSolutionData?"))
 
   return nothing
 end
@@ -47,3 +49,61 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
   return nothing
 end
 
+"""
+  High level function that evaluates the given functional
+  This function is agnostic to the type of the functional being
+  computed and calls a mid level functional-type specific function for the 
+  actual evaluation.
+
+  The functional is evaluated at the state in eqn.q_vec.
+
+  **Arguments**
+
+  *  `mesh` :  Abstract mesh object
+  *  `sbp`  : Summation-By-Parts operator
+  *  `eqn`  : AbstractSolutionData object
+  *  `opts` : Options dictionary
+  *  `functionalData` : Object of type AbstractFunctional. 
+                        This type determines the functional being computed and
+                        holds all the relevant data.
+"""
+function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
+                        sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
+                        functionalData::AbstractFunctional)
+
+  error("Generic fallback for evalFunctional() reached: did you forget to extend evalFunctional() with a new method for you AbstractSolutionData")
+
+end
+
+
+"""
+  Computes a 3D array of hte derivative of a functional wrt eqn.q.
+
+  The derivative is evaluated at the state in eqn.q_vec.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functionalData: AbstractIntegralFunctional to evaluate
+
+  **Inputs/Outputs**
+
+   * func_deriv_arr: array to hold derivative of function wrt eqn.q, same
+                     size as equation.q
+
+  **Options Keys**
+
+  This funciton is not compatible with `precompute_q_bndry` = false
+"""
+function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::AbstractSolutionData{Tsol}, opts,
+                           functionalData::AbstractIntegralFunctional,
+                           func_deriv_arr::Abstract3DArray)
+
+  error("Generic fallback for evalFunctionalDeriv() reached: did you forget to extend evalFunctionalDeriv() with a new method for you AbstractSolutionData")
+
+end

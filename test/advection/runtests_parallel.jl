@@ -10,7 +10,9 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 using Utils
 using Input
@@ -137,8 +139,11 @@ function test_adjoint_parallel()
 
     objective = AdvectionEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+    ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+
     adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
-    AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+    calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
 
     for i = 1:length(adjoint_vec)
       @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)

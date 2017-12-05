@@ -185,6 +185,9 @@ The purpose of this type is to store any variables that need to be quickly acces
 The only required fields are:
 * `t::Float64`: hold the current time value
 * `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
+* `x_design`: vector of design variables that don't fit into any other catagory
+              (ie. shape variables or other aerodynamic variables like angle of
+              attack)
 *  `time::Timings`: an object to record how long different parts of the code take,
   defined in the Utils module.
 

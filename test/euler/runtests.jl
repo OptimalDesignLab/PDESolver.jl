@@ -12,6 +12,7 @@ using EulerEquationMod
 using ForwardDiff
 using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 using EulerEquationMod
 using Utils

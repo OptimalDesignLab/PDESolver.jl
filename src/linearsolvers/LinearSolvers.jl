@@ -17,7 +17,8 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
        AbstractPetscPC,
        AbstractLO, AbstractDenseLO, AbstractSparseDirectLO, # Abstrac LO types
        AbstractPetscMatLO, AbstractPetscMatFreeLO,
-       setPCCtx, setLOCtx  # matrix-free specific functions
+       setPCCtx, setLOCtx,  # matrix-free specific functions
+       needParallelData
 
 
 
@@ -303,6 +304,24 @@ function getBasePC(pc::AbstractPC)
 end
 
 """
+  Returns `true` if `calcPC` needs parallel communication started before
+  it is called, false otherwise.  Defaults to true.  Users should extend this
+  function with a new method if that particular PC does not require parallel
+  communication.
+
+  **Inputs**
+
+   * pc:  an `AbstractPC
+
+  **Outputs**
+
+   * Bool
+"""
+function needParallelData(pc::AbstractPC)
+  return true
+end
+
+"""
   This function frees any memory belonging to external libraries.  Users must
   call this function when they are finished with an AbstractPC
   object.
@@ -493,6 +512,34 @@ function getBaseLO(lo::AbstractLO)
   # this will recurse down to the underlying linear operator
   return getBaseLO(lo.lo_inner)
 end
+
+"""
+  Returns `true` if [`calcLinearOperator`](@ref) needs parallel communication
+  started before
+  it is called, false otherwise.  Defaults to true for non-matrix-free
+  linear operators.  
+  Users should extend this function with a new method if the default value is
+  not correct for a particular linear operator.
+
+  **Inputs**
+
+   * lo:  an `AbstractLO
+
+  **Outputs**
+
+   * Bool
+"""
+function needParallelData(pc::AbstractLO)
+  return true
+end
+
+function needParallelData(lo::AbstractPetscMatFreeLO)
+  return false
+end
+
+
+
+
 
 """
   This function frees any memory belonging to external libraries.  Users must

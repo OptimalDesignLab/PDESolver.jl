@@ -10,7 +10,9 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 using Utils
 using Input

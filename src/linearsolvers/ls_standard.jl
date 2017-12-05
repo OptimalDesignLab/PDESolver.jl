@@ -17,13 +17,26 @@
    * opts
    * ctx_residual: the ctx required by [`physicsRhs`](@ref) like functions
    * t: current time
+
+  **Keyword Arguments**
+
+   * start_comm: start parallel communication (if required by the PC), default
+                  false.  This means the user is generally required to make sure
+                  parallel communication is started before calling this
+                  function.
 """
 function calcPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractSBP,
-                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t; start_comm=false)
 
   if typeof(ls.pc) <: PCNone
+    if start_comm && needParallelData(ls.lo)
+      startSolutionExchange(mesh, sbp, eqn, opts)
+    end
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   else
+    if start_comm && needParallelData(ls.pc)
+      startSolutionExchange(mesh, sbp, eqn, opts)
+    end
     calcPC(ls.pc, mesh, sbp, eqn, opts, ctx_residual, t)
   end
 
@@ -45,12 +58,24 @@ end
    * opts
    * ctx_residual: the ctx required by [`physicsRhs`](@ref) like functions
    * t: current time
+
+  **Keyword Arguments**
+
+   * start_comm: start parallel communication (if required by the lo), default
+                  false.  This means the user is generally required to make sure
+                  parallel communication is started before calling this
+                  function.
+
 """
 function calcLinearOperator(ls::StandardLinearSolver, mesh::AbstractMesh,
                          sbp::AbstractSBP,
-                         eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+                         eqn::AbstractSolutionData, opts::Dict, ctx_residual, t;
+                         start_comm=false)
 
 
+  if start_comm && needParallelData(ls.lo)
+    startSolutionExchange(mesh, sbp, eqn, opts)
+  end
   calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
 end
@@ -71,20 +96,41 @@ end
    * opts
    * ctx_residual: the ctx required by [`physicsRhs`](@ref) like functions
    * t: current time
+
+  **Keyword Arguments**
+
+   * start_comm: start parallel communication (if required by the lo), default
+                  false.  This means the user is generally required to make sure
+                  parallel communication is started before calling this
+                  function.  Note that it is not possible to interleave
+                  communication and computation in this case, so performing
+                  communication will be very expensive.
+
+
 """
 function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
                      sbp::AbstractSBP,
-                     eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+                     eqn::AbstractSolutionData, opts::Dict, ctx_residual, t;
+                     start_comm=false)
 
 
   if typeof(ls.pc) <: PCNone
+    if start_comm && needParallelData(ls.lo)
+      startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
+    end
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif ls.shared_mat
+    if start_comm && needParallelData(ls.lo)
+      startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
+    end
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
     pc2 = getBasePC(ls.pc)
     pc2.is_setup = false  # we don't call calcPC but this flag still needs to
                           # be set
   else
+    if start_comm && ( needParallelData(ls.lo) || needParallelData(ls.pc))
+      startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
+    end
     calcPC(ls.pc, mesh, sbp, eqn, opts, ctx_residual, t)
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   end

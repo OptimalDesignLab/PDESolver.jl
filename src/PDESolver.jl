@@ -5,7 +5,7 @@ module PDESolver
 export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
-export evalResidual, evalHomotopy
+export evalResidual, evalHomotopy, evalFunctional, evalFunctionalDeriv
 
 # from initialization.jl
 export createMeshAndOperator, loadRestartState, call_nlsolver
@@ -29,7 +29,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
-
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/optimization"))
 
 # load the modules
 using ODLCommonTools

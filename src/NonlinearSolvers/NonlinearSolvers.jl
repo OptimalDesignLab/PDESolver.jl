@@ -15,7 +15,8 @@ using SummationByParts
 using LinearSolvers
 
 import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
-                      applyLinearOperator, applyLinearOperatorTranspose
+                      applyLinearOperator, applyLinearOperatorTranspose,
+                      needParallelData
 
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
@@ -24,6 +25,8 @@ include("lserk.jl")
 
 include("preconditioning_types.jl")
 include("newton.jl")
+export getNewtonPCandLO
+
 include("crank_nicolson.jl")
 include("preconditioning.jl")
 include("globalization.jl")

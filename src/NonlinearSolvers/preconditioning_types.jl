@@ -31,6 +31,10 @@ type NewtonVolumePC <: AbstractPetscMatFreePC
   is_factored::Bool
 end  # end type definition
 
+function needParallelData(pc::NewtonVolumePC)
+  return false
+end
+
 """
   Regular constructor
 

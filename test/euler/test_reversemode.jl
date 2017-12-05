@@ -198,20 +198,14 @@ function test_reversemode()
       local_functional_val = zeros(Complex128, drag.ndof) # Local processor share
       bndry_force = drag.bndry_force
       fill!(bndry_force, 0.0)
-      functional_faces = drag.geom_faces_functional
+      functional_bcs = drag.bcnums
       phys_nrm = zeros(Complex128, mesh.dim)
 
       # Get bndry_offsets for the functional edge concerned
-      for itr = 1:length(functional_faces)
-        g_edge_number = functional_faces[itr] # Extract geometric edge number
-        itr2 = 0
-        for itr2 = 1:mesh.numBC
-          if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-            break
-          end
-        end
-        start_index = mesh.bndry_offsets[itr2]
-        end_index = mesh.bndry_offsets[itr2+1]
+      for itr = 1:length(functional_bcs)
+        bcnum = functional_bcs[itr]
+        start_index = mesh.bndry_offsets[bcnum]
+        end_index = mesh.bndry_offsets[bcnum+1]
         idx_range = start_index:(end_index-1)
         bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
         nfaces = length(bndry_facenums)
@@ -246,20 +240,14 @@ function test_reversemode()
       local_functional_val = zeros(Complex128, drag.ndof) # Local processor share
       bndry_force = drag.bndry_force
       fill!(bndry_force, 0.0)
-      functional_faces = drag.geom_faces_functional
+      functional_bcs = drag.bcnums
       phys_nrm = zeros(Complex128, 2)
 
       # Get bndry_offsets for the functional edge concerned
-      for itr = 1:length(functional_faces)
-        g_edge_number = functional_faces[itr] # Extract geometric edge number
-        itr2 = 0
-        for itr2 = 1:mesh.numBC
-          if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-            break
-          end
-        end
-        start_index = mesh.bndry_offsets[itr2]
-        end_index = mesh.bndry_offsets[itr2+1]
+      for itr = 1:length(functional_bcs)
+        bcnum = functional_bcs[itr]
+        start_index = mesh.bndry_offsets[bcnum]
+        end_index = mesh.bndry_offsets[bcnum+1]
         idx_range = start_index:(end_index-1)
         bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
         nfaces = length(bndry_facenums)

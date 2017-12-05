@@ -92,7 +92,7 @@ end
   On exit, rhs_vec will have the residual corresponding to eqn.q_vec in it,
   with the imaginary part set to zero.
 
-  The [`AbstractLinearOperator`](@ref) and [`AbstractPC`](@ref) supplied
+  The [`LinearOperator`](@ref) and [`AbstractPC`](@ref) supplied
   inside the [`LinearSolver`](@ref) object must match the `jac_type`.
 
   **Inputs:**

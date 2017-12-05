@@ -30,23 +30,26 @@
  
   **Implementation Notes:**
 
-  This function should not have to do any parallel communication. newtonInner
-  ensures that the rhs_func is called before jac_func, and rhs_func handles
+  This function should not have to do any parallel communication. `newtonInner`
+  ensures that the `rhs_func` is called before `jac_func`, and `rhs_func` 
+  handles
   the parallel communication.
 
-  Implementations of this function may perform either (eqn.q -> jacobian) or
-  (eqn.q_vec -> jacobian).  The first may be more computationally efficient,
-  but the second can be simpler for some time-marching methods.
+  Implementations of this function may perform either (`eqn.q -> jacobian`) or
+  (`eqn.q_vec -> jacobian`).  The first may be more computationally efficient,
+  but the second can be simpler for debugging.
 
   This function supportes several types of jacobians (dense arrays,
   SparseMatrixCSC, PetscMat), and several methods for calculating them
-  (finite difference and complex step).  All implementations of this function
-  should support them as well.  For this reason, it is strongly recommneded to
+  (finite difference and complex step).  Any function calling this function
+  should support them as well.
+  
+  It is strongly recommneded to
   use this function to compute the spatial jacobian and them modify the
-  resulting matrix.
+  resulting matrix (this function zeros the Jacobian matrix)
 
   When using Petsc matrices, the function may do intermediate assemblies
-  (PETSC_FLUSH_ASSEMBLY), but does not need to do the final assembly.
+  (`PETSC_FLUSH_ASSEMBLY`), but does not need to do the final assembly.
 
 """
 function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
@@ -81,6 +84,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
     pert = epsilon
   elseif jac_method == 2  # complex step
     pert = complex(0, epsilon)
+    removeComplex(mesh, sbp, eqn, opts)
   end
 
   # ctx_residual: func must be the first element
@@ -358,8 +362,9 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
   f = eqn.params.f
   time = eqn.params.time
   time.t_color += @elapsed for color=1:mesh.maxColors  # loop over max colors, 
-                                                       # only do calculation for numColors
-    for j=1:mesh.numNodesPerElement  # loop over nodes 
+                                                       # only do calculation for
+                                                       # numColors
+    for j=1:mesh.numNodesPerElement  # loop over nodes
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
         # apply perturbation to q
@@ -449,7 +454,7 @@ end  # end function
 """->
 function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray,
                            shared_data::Array{SharedFaceData{T}, 1},  
-                           color::Integer, pert, i, j, f=STDOUT; 
+                           color::Integer, pert, i, j, f=BSTDOUT; 
                            perturb_shared=true)
   # applys perturbation pert to array arr according to a mask
   # color is the color currently being perturbed, used to select the mask
