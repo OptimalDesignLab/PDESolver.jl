@@ -144,30 +144,23 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                  functionalName::ASCIIString,
                                  adjoint_vec::AbstractArray{Tsol,1})
 
-  println(eqn.params.f, "evaluating dJdaoa")
   if functionalName == "lift"
     ∂J∂aoa = functionalData.dLiftdaoa
   elseif functionalName == "drag"
     ∂J∂aoa = functionalData.dDragdaoa
   end
 
-  println(eqn.params.f, "norm(adjoint_vec) = ", norm(adjoint_vec))
   pert = 1e-20im
   eqn.params.aoa += pert # Imaginary perturbation
   fill!(eqn.res_vec, 0.0)
   fill!(eqn.res, 0.0)
   res_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
-  println(eqn.params.f, "res_norm = ", res_norm)
   ∂R∂aoa = imag(eqn.res_vec)/imag(pert)
-  println(eqn.params.f, "norm(dRdaoa) = ", norm(∂R∂aoa))
   eqn.params.aoa -= pert # Remove perturbation
 
   # Get the contribution from all MPI ranks
   local_ψT∂R∂aoa = dot(adjoint_vec, ∂R∂aoa)
-  println(eqn.params.f, "local, psiT dRdaoa = ", local_ψT∂R∂aoa)
   ψT∂R∂aoa = MPI.Allreduce(local_ψT∂R∂aoa, MPI.SUM, eqn.comm)
-  println(eqn.params.f, "global psiT dRdaoa = ", ψT∂R∂aoa)
-  println(eqn.params.f, "partial J partial aoa = ", ∂J∂aoa)
   dJdaoa = ∂J∂aoa + ψT∂R∂aoa
 
   return dJdaoa

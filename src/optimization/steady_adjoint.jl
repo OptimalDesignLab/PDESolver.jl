@@ -1,5 +1,7 @@
 # calculation of steady adjoint
 
+using PETSc
+
 """
   Use an existing [`LinearSolver`](@ref) to compute the adjoint.
   A preconditioner and linear operator can be obtained from 
@@ -22,22 +24,24 @@
 
    * recalc_jac: recalc the linear operator inside `ls`, default false
    * recalc_pc: recalc the preconditioner inside `ls`, default false
+   * start_comm: do parallel communication before recomputing the pc and/or jac,
+                 default false
 """
 function calcAdjoint{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
                   sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol, Tres}, opts,
                   ls::LinearSolver, functionalData::AbstractFunctional,
                   adjoint_vec::Array{Tsol,1}; recalc_jac=false,
-                  recalc_pc=false)
+                  recalc_pc=false, start_comm=false)
  
 
   # recalc operators if requested
   ctx_residual = (evalResidual,)
   if recalc_jac && recalc_pc
-    calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=true)
+    calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=start_comm)
   elseif recalc_jac
-    calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=true)
+    calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=start_comm)
   elseif recalc_pc
-    calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=true)
+    calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0, start_comm=start_comm)
   end
 
   #TODO: store this somewhere?
@@ -58,7 +62,7 @@ function calcAdjoint{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
   _adjoint_vec = zeros(real(Tsol), length(adjoint_vec))
   linearSolveTranspose(ls, real(func_deriv), _adjoint_vec)
   copy!(adjoint_vec, _adjoint_vec)
-  
+
   # Output/Visualization options for Adjoint
   if opts["write_adjoint"]
     outname = string("adjoint_vec_", mesh.myrank,".dat")

@@ -84,6 +84,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
     pert = epsilon
   elseif jac_method == 2  # complex step
     pert = complex(0, epsilon)
+    removeComplex(mesh, sbp, eqn, opts)
   end
 
   # ctx_residual: func must be the first element
@@ -361,8 +362,9 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
   f = eqn.params.f
   time = eqn.params.time
   time.t_color += @elapsed for color=1:mesh.maxColors  # loop over max colors, 
-                                                       # only do calculation for numColors
-    for j=1:mesh.numNodesPerElement  # loop over nodes 
+                                                       # only do calculation for
+                                                       # numColors
+    for j=1:mesh.numNodesPerElement  # loop over nodes
       for i=1:mesh.numDofPerNode  # loop over dofs on each node
 
         # apply perturbation to q
@@ -452,7 +454,7 @@ end  # end function
 """->
 function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray,
                            shared_data::Array{SharedFaceData{T}, 1},  
-                           color::Integer, pert, i, j, f=STDOUT; 
+                           color::Integer, pert, i, j, f=BSTDOUT; 
                            perturb_shared=true)
   # applys perturbation pert to array arr according to a mask
   # color is the color currently being perturbed, used to select the mask

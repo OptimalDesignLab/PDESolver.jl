@@ -37,7 +37,7 @@ export calcBCNormal, calcBCNormal_revm, max_deriv_rev
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
-export fastzero!, fastscale!
+export fastzero!, fastscale!, removeComplex
 export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
@@ -301,6 +301,45 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+"""
+  Set the complex part of the solution to zero, including `eqn.q`, `eqn.q_vec`, and
+  the send and receive buffers in `eqn.shared_data`
+
+  **Inputs**
+  
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
+function removeComplex(mesh::AbstractMesh, sbp::AbstractSBP,
+                       eqn::AbstractSolutionData, opts)
+
+  for i=1:mesh.numDof
+    eqn.q_vec[i] = real(eqn.q_vec[i])
+  end
+
+  if pointer(eqn.q_vec) != pointer(eqn.q)
+    for i=1:length(eqn.q)
+      eqn.q[i] = real(eqn.q[i])
+    end
+  end
+
+  # send and receive buffers
+  for i=1:length(eqn.shared_data)
+    arr = eqn.shared_data[i].q_send
+    for j=1:length(arr)
+      arr[j] = real(arr[j])
+    end
+
+    arr = eqn.shared_data[i].q_recv
+    for j=1:length(arr)
+      arr[j] = real(arr[j])
+    end
+  end
+
+  return nothing
+end
 
 @doc """
 ### Utils.calcNorm

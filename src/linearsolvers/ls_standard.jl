@@ -102,7 +102,9 @@ end
    * start_comm: start parallel communication (if required by the lo), default
                   false.  This means the user is generally required to make sure
                   parallel communication is started before calling this
-                  function.
+                  function.  Note that it is not possible to interleave
+                  communication and computation in this case, so performing
+                  communication will be very expensive.
 
 
 """
@@ -114,12 +116,12 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
 
   if typeof(ls.pc) <: PCNone
     if start_comm && needParallelData(ls.lo)
-      startSolutionExchange(mesh, sbp, eqn, opts)
+      startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     end
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif ls.shared_mat
     if start_comm && needParallelData(ls.lo)
-      startSolutionExchange(mesh, sbp, eqn, opts)
+      startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     end
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
     pc2 = getBasePC(ls.pc)
@@ -127,7 +129,7 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
                           # be set
   else
     if start_comm && ( needParallelData(ls.lo) || needParallelData(ls.pc))
-      startSolutionExchange(mesh, sbp, eqn, opts)
+      startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     end
     calcPC(ls.pc, mesh, sbp, eqn, opts, ctx_residual, t)
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
