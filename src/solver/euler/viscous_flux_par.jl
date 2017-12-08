@@ -5,7 +5,7 @@ include("viscous_penalty.jl")
   Actually, relatively identical.
 """
 
-function calcSharedViscousIntegrals{Tmsh, Tsol, Tres}(      # decide on name
+function calcSharedFaceIntegrals_viscous{Tmsh, Tsol, Tres}(
                             mesh::AbstractDGMesh{Tmesh},
                             sbp::AbstractSBP,
                             eqn::EulerData{Tsol, Tres},
@@ -73,4 +73,28 @@ function calcSharedViscousIntegrals{Tmsh, Tsol, Tres}(      # decide on name
 
 end
                       
+function evalSharedFaceIntegrals_viscous(mesh::AbstractDGMesh, sbp, eqn, opts)
 
+  # Notes:
+  #   1) Viscous terms will always require that full element data is shared, not just faces.
+  #      Therefore, opts["parallel_data"] must be "element"
+  #   2) Currently, entropy conservative and entropy stable formulations are not implemented 
+  #      for viscous terms.
+
+  if face_integral_type == 1    # non-entropy variables
+    if opts["parallel_data"] == "face"
+      throw(ErrorException("Viscous terms require shared element and face data, but parallel_data = face. Exiting."))
+    elseif opts["parallel_data"] == "element"
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_viscous)
+    else
+      throw(ErrorException("unsupported parallel_data value: $parallel_data"))
+    end
+  elseif face_integral_type == 2
+    throw(ErrorException("face_integral_type $face_integral_type unsupported for viscous terms currently."))
+  else
+    throw(ErrorException("unsupported face integral type = $face_integral_type"))
+  end
+
+  return nothing
+
+end
