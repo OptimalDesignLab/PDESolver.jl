@@ -9,7 +9,7 @@ using ODLCommonTools
 using Utils
 import ODLCommonTools.sview
 import MPI
-using PETSc
+using PETSc2
 using Utils
 using SummationByParts
 using LinearSolvers

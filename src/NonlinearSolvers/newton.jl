@@ -457,8 +457,8 @@ function doMatrixCalculations(newton_data::NewtonData, opts)
   if write_jac && jac_type != 4
     jac = getBaseLO(ls.lo).A
     if jac_type == 3
-      PetscMatAssemblyBegin(jac, PETSC_MAT_FINAL_ASSEMBLY)
-      PetscMatAssemblyEnd(jac, PETSC_MAT_FINAL_ASSEMBLY)
+      MatAssemblyBegin(jac, MAT_FINAL_ASSEMBLY)
+      MatAssemblyEnd(jac, MAT_FINAL_ASSEMBLY)
     end
     writedlm("jacobian$itr.dat", full(jac))
     @mpi_master println(BSTDOUT, "finished printing jacobian"); flush(BSTDOUT)

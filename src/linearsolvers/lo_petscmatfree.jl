@@ -42,10 +42,10 @@ function PetscMatFreeLO(pc::Union{AbstractPetscMatPC, AbstractPetscMatFreePC},
 
   # set operations:
   fptr = cfunction(applyLinearOperator_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
-  MatShellSetOperation(A, PETSc.MATOP_MULT, fptr)
+  MatShellSetOperation(A, PETSc2.MATOP_MULT, fptr)
 
   fptr = cfunction(applyLinearOperatorTranspose_wrapper, PetscErrorCode, (PetscMat, PetscVec, PetscVec))
-  MatShellSetOperation(A, PETSc.MATOP_MULT_TRANSPOSE, fptr)
+  MatShellSetOperation(A, PETSc2.MATOP_MULT_TRANSPOSE, fptr)
 
 
   pc2 = getBasePC(pc)
@@ -138,13 +138,13 @@ function applyLinearOperator_wrapper(A::PetscMat, x::PetscVec, b::PetscVec)
   ctx_residual = ctx[6]
   t = ctx[7]
 
-  btmp, b_ptr = PetscVecGetArray(b)
-  xtmp, x_ptr = PetscVecGetArrayRead(x)
+  btmp = VecGetArray(b)
+  xtmp = VecGetArrayRead(x)
 
   applyLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t, xtmp, btmp)
 
-  PetscVecRestoreArray(b, b_ptr)
-  PetscVecRestoreArrayRead(x, x_ptr)
+  VecRestoreArray(b, btmp)
+  VecRestoreArrayRead(x, xtmp)
 
   return PetscErrorCode(0)
 end
@@ -164,14 +164,14 @@ function applyLinearOperatorTranspose_wrapper(A::PetscMat, x::PetscVec,
   ctx_residual = ctx[6]
   t = ctx[7]
 
-  btmp, b_ptr = PetscVecGetArray(b)
-  xtmp, x_ptr = PetscVecGetArrayRead(x)
+  btmp = VecGetArray(b)
+  xtmp = VecGetArrayRead(x)
 
   applyLinearOperatorTranspose(lo, mesh, sbp, eqn, opts, ctx_residual, t, 
                                xtmp, btmp)
 
-  PetscVecRestoreArray(b, b_ptr)
-  PetscVecRestoreArrayRead(x, x_ptr)
+  VecRestoreArray(b, btmp)
+  VecRestoreArrayRead(x, xtmp)
 
   return PetscErrorCode(0)
 end

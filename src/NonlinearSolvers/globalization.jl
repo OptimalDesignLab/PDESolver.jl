@@ -231,8 +231,8 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
     idx[1] = i + mesh.dof_offset
     idy[1] = i + mesh.dof_offset
     val[1] = -eqn.M[i]/lo.tau_vec[i]
-    set_values1!(lo2.A, idx, idy, val, PETSC_ADD_VALUES)
-#    PetscMatSetValues(jac, idx, idy, val, PETSC_ADD_VALUES)
+    set_values1!(lo2.A, idx, idy, val, ADD_VALUES)
+#    PetscMatSetValues(jac, idx, idy, val, ADD_VALUES)
   end
 
 
@@ -284,7 +284,7 @@ function addDiagonal(mesh, sbp, eqn, jac)
     vals = [100*eqn.M[i]]
 
 #     println("adding ", vals, " to jacobian entry ", i, ",", i)
-    PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
+    PetscMatSetValues(jac, idx, idy, vals, ADD_VALUES)
   end
 
   return nothing

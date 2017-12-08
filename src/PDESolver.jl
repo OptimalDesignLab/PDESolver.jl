@@ -43,7 +43,7 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 using Input
-using PETSc
+using PETSc2
 
 if !MPI.Initialized()
   MPI.Init()
