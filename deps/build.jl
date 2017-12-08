@@ -87,7 +87,7 @@ function installPDESolver()
   git_url = petsc_git
   already_installed = haskey(pkg_dict, pkg_name) 
   force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
-=#
+
 
   if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS") && !already_installed  || force_specific  || FORCE_INSTALL_ALL
     println(f, "Installing package $pkg_name")
@@ -130,7 +130,7 @@ function installPDESolver()
     println(f, "Skipping installation of package $pkg_name")
     println(f, "  already installed: ", already_installed, ", specifically forced: ", force_specific, ", force general: ", FORCE_INSTALL_ALL)
   end
-
+=#
 
   println(f, "\n---Finished installing non METADATA packages---\n")
   #------------------------------------------------------------------------------
