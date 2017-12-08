@@ -152,14 +152,14 @@ function applyPC_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
 
 
   # get the local parts of the vectors
-  btmp, b_ptr = PetscVecGetArrayRead(b)
-  xtmp, x_ptr = PetscVecGetArray(x)
+  btmp = VecGetArrayRead(b)
+  xtmp = VecGetArray(x)
 
 
   applyPC(pc, mesh, sbp, eqn, opts, t, btmp, xtmp)
 
-  PetscVecRestoreArrayRead(b, b_ptr)
-  PetscVecRestoreArray(x, x_ptr)
+  VecRestoreArrayRead(b, btmp)
+  VecRestoreArray(x, xtmp)
 
   return PetscErrorCode(0)
 end
@@ -179,14 +179,14 @@ function applyPCTranspose_wrapper(_pc::PC, b::PetscVec, x::PetscVec)
   t = ctx[7]
 
   # get the local parts of the vectors
-  btmp, b_ptr = PetscVecGetArrayRead(b)
-  xtmp, x_ptr = PetscVecGetArray(x)
+  btmp = VecGetArrayRead(b)
+  xtmp = VecGetArray(x)
 
 
   applyPCTranspose(pc, mesh, sbp, eqn, opts, t, btmp, xtmp)
 
-  PetscVecRestoreArrayRead(b, b_ptr)
-  PetscVecRestoreArray(x, x_ptr)
+  VecRestoreArrayRead(b, btmp)
+  VecRestoreArray(x, xtmp)
 
   return PetscErrorCode(0)
 end

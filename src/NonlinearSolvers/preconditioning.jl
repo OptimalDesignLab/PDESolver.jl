@@ -152,48 +152,6 @@ function factorVolumePreconditioner(newton_data::NewtonData, mesh, sbp, eqn, opt
   return nothing
 end
 
-#=
-"""
-  This function is a wrapper around [`applyVolumePreconditioner`](@ref)
-  that is passed into Petsc as a callback
-
-  The PC ctx must be: (mesh, sbp, eqn, opts, newton_data, func, ctx_residual,
-  t), where ctx_residual is the ctx used by all the CN functions and
-  func is the right hand side function passed into [`newtonInner`](@ref)
-
-"""
-function applyVolumePC_wrapper(pc::PC, x::PetscVec, b::PetscVec)
-
-  println("applying volume PC")
-  ctx_petsc_pc_ptr = PCShellGetContext(pc)
-  ctx_petsc_pc = unsafe_pointer_to_objref(ctx_petsc_pc_ptr)
-
-  # the ctx_petsc_pc is the same as for a shell matrix for convenience
-  mesh = ctx_petsc_pc[1]
-  sbp = ctx_petsc_pc[2]
-  eqn = ctx_petsc_pc[3]
-  opts = ctx_petsc_pc[4]
-  newton_data = ctx_petsc_pc[5]
-  func = ctx_petsc_pc[6]  # rhs_func from newtonInner
-  ctx_residual = ctx_petsc_pc[7]
-  t = ctx_petsc_pc[8]
-
-  # get the arrays underlying x and b
-  x_arr, xptr = PetscVecGetArrayRead(x)  # read only
-  b_arr, bptr = PetscVecGetArray(b)  # writeable
-
-  applyVolumePreconditioner(newton_data, mesh, sbp, eqn, opts, x_arr, b_arr)
-
-  println("diffnorm = ", norm(x_arr - b_arr))
-  PetscVecRestoreArrayRead(x, xptr)
-  PetscVecRestoreArray(b, bptr)
-
-  return PetscErrorCode(0)
-end
-=#
-
-
-
 """
   Apply the preconditioner, ie. do inv(A)*x = b, where A is calculated by
   [`calcVolumePreconditioner`](@ref).

@@ -1,6 +1,6 @@
 # calculation of steady adjoint
 
-using PETSc
+using PETSc2
 
 """
   Use an existing [`LinearSolver`](@ref) to compute the adjoint.

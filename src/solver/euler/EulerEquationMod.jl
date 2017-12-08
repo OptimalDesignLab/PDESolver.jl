@@ -16,7 +16,7 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 using Input  # input file processing
-using PETSc
+#using PETSc
 # using FreeFormDeformation
 # using MeshMovement
 

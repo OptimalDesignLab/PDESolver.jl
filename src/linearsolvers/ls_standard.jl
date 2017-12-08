@@ -327,7 +327,7 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
 
   # do the solve
   ksp = ls.ksp
-  KSPSetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
+  SetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
   if trans
     KSPSolveTranspose(ksp, lo2.btmp, lo2.xtmp)
@@ -339,16 +339,16 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
 
   # print convergence info
   @mpi_master begin
-    reason = KSPGetConvergedReason(ksp)
+    reason = GetConvergedReason(ksp)
     println(BSTDOUT, "KSP converged reason = ", KSPConvergedReasonDict[reason])
-    rnorm = KSPGetResidualNorm(ksp)
+    rnorm = GetResidualNorm(ksp)
     @mpi_master println("Linear residual = ", rnorm)
   end
 
   # copy result back to x
-  xtmp, x_ptr = PetscVecGetArrayRead(lo2.xtmp)
+  xtmp = VecGetArrayRead(lo2.xtmp)
   copy!(x, xtmp)
-  PetscVecRestoreArrayRead(lo2.xtmp, x_ptr)
+  VecRestoreArrayRead(lo2.xtmp, xtmp)
 
   # Reuse preconditionre until next time setupPC() is called
   PCSetReusePreconditioner(pc2.pc, PETSC_TRUE)
@@ -374,40 +374,40 @@ function assemblePetscData(ls::StandardLinearSolver, b::AbstractVector,
 
   # assemble things
   if !lo_matfree && !getIsSetup(lo2)
-    PetscMatAssemblyBegin(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyBegin(lo2.A, MAT_FINAL_ASSEMBLY)
   end
 
   if !pc_matfree && !ls.shared_mat
-    PetscMatAssemblyBegin(pc2.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyBegin(pc2.A, MAT_FINAL_ASSEMBLY)
   end
 
   # copy values into the vector
-  btmp, b_ptr = PetscVecGetArray(b_petsc)
+  btmp = VecGetArray(b_petsc)
   copy!(btmp, b)
-  PetscVecRestoreArray(b_petsc, b_ptr)
+  VecRestoreArray(b_petsc, btmp)
   
-  xtmp, x_ptr = PetscVecGetArray(x_petsc)
+  xtmp = VecGetArray(x_petsc)
   copy!(xtmp, x)
-  PetscVecRestoreArray(x_petsc, x_ptr)
+  VecRestoreArray(x_petsc, xtmp)
 
 
 
   # end assembly
   if !lo_matfree && !getIsSetup(lo2)
-    PetscMatAssemblyEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyEnd(lo2.A, MAT_FINAL_ASSEMBLY)
     setIsSetup(lo2, true)
     lo2.nassemblies[1] += 1
-    matinfo = PetscMatGetInfo(lo2.A, PETSc.MAT_LOCAL)
+    matinfo = MatGetInfo(lo2.A, PETSc2.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
     end
   end
 
   if !pc_matfree && !ls.shared_mat
-    PetscMatAssemblyEnd(pc2.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyEnd(pc2.A, MAT_FINAL_ASSEMBLY)
     setIsAssembled(pc2, true)
     pc2.nassemblies[1] += 1
-    matinfo = PetscMatGetInfo(pc2.A, PETSc.MAT_LOCAL)
+    matinfo = MatGetInfo(pc2.A, PETSc2.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for Ap on process $myrank: $(matinfo.mallocs) mallocs")
     end

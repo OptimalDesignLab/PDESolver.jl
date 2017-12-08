@@ -10,7 +10,7 @@ using NonlinearSolvers
 using LinearSolvers
 using MPI
 using Utils
-using PETSc
+#using PETSc
 
 import ODLCommonTools.sview
 using Input

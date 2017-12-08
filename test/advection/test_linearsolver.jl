@@ -210,12 +210,12 @@ function test_petscmat(mesh, sbp, eqn, opts)
   t = 0.0
 
   # for testing
-  MatSetOption(lo.A, PETSc.MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE)
+  MatSetOption(lo.A, PETSc2.MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE)
 
   calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
   idx = collect(PetscInt, 1:mesh.numDof)
   idy = copy(idx)
-  set_values1!(lo.A, idx, idy, vals, PETSC_ADD_VALUES)
+  set_values1!(lo.A, idx, idy, vals, ADD_VALUES)
 
   b = rand(mesh.numDof)
 
@@ -413,7 +413,7 @@ function test_petscmat_matfree(mesh, sbp, eqn, opts)
   setTolerances(ls, 1e-16, 1e-16, -1, -1)
 
   # for testing
-  MatSetOption(getBasePC(pc).A, PETSc.MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE)
+  MatSetOption(getBasePC(pc).A, PETSc2.MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE)
 
 
   calcPC(ls, mesh ,sbp, eqn, opts, ctx_residual, t)
@@ -556,7 +556,7 @@ function calcPC(pc::TestMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
 
   idx = collect(PetscInt, 1:mesh.numDof)
   idy = copy(idx)
-  set_values1!(pc2.A, idx, idy, vals, PETSC_ADD_VALUES)
+  set_values1!(pc2.A, idx, idy, vals, ADD_VALUES)
 
   return nothing
 end

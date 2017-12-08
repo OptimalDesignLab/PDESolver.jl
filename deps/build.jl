@@ -42,6 +42,7 @@ function installPDESolver()
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "new_parallel";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
+              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "master"
               ]
 
 
@@ -80,12 +81,13 @@ function installPDESolver()
     end
   end
 
-
+#=
   # now install PETSc
   pkg_name = "PETSc"
   git_url = petsc_git
   already_installed = haskey(pkg_dict, pkg_name) 
   force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
+=#
 
   if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS") && !already_installed  || force_specific  || FORCE_INSTALL_ALL
     println(f, "Installing package $pkg_name")

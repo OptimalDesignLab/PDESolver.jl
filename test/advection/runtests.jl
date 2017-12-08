@@ -18,7 +18,7 @@ using ArrayViews
 import ODLCommonTools.sview
 using Input
 using LinearSolvers
-using PETSc
+using PETSc2
 
 function clean_dict(collection)
   for i in keys(collection)

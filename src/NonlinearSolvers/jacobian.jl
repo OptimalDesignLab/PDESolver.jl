@@ -92,7 +92,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
   #----------------------------------------------------------------------
   # Calculate Jacobian using selected method 
-  PetscMatZeroEntries(jac)
+  fill_zero!(jac)
   print_jacobian_timing = true
   eqn.params.time.t_jacobian += @elapsed if jac_method == 1
     @verbose5 @mpi_master println(BSTDOUT, "calculating finite difference jacobian")
@@ -375,7 +375,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
         end
 
         if !(color == 1 && j == 1 && i == 1) 
-          PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
+          assembly_end(jac, MAT_FLUSH_ASSEMBLY)
         end
 
         # assemble res into jac
@@ -408,7 +408,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
           end  # end loop over local edges
         end
 
-        PetscMatAssemblyBegin(jac, PETSC_MAT_FLUSH_ASSEMBLY)
+        assembly_begin(jac, MAT_FLUSH_ASSEMBLY)
 
         # undo perturbation
         if color <= mesh.numColors
@@ -418,7 +418,7 @@ function calcJacobianSparse(mesh, sbp, eqn, opts, func,
     end  # end loop j
   end  # end loop over colors
 
-  PetscMatAssemblyEnd(jac, PETSC_MAT_FLUSH_ASSEMBLY)
+  assembly_end(jac, MAT_FLUSH_ASSEMBLY)
 #  flush(f)
   # now jac is complete
 #  eqn.params.use_filter = filter_orig # reset filter
@@ -553,7 +553,7 @@ function assembleElement{Tsol <: Real}(helper::AssembleData, mesh,
     end
   end
 
-  set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
+  set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, ADD_VALUES)
   
   return nothing
 end
@@ -624,8 +624,8 @@ function assembleElement{Tsol <: Complex}(helper::AssembleData, mesh,
     end
   end
 
-  set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
-#  PetscMatSetValues(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, PETSC_ADD_VALUES)
+  set_values1!(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, ADD_VALUES)
+#  PetscMatSetValues(jac, helper.idx_tmp, helper.idy_tmp, helper.vals_tmp, ADD_VALUES)
 
   return nothing
 

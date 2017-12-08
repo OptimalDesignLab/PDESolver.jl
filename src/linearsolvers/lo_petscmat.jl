@@ -44,7 +44,9 @@ function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
   pc2 = getBasePC(pc)
-  if !opts["use_jac_precond"] && !(typeof(pc) <: PetscMatFreeLO) # share matrix if possible
+
+  # share matrix if possible
+  if !opts["use_jac_precond"] && !(typeof(pc) <: PetscMatFreeLO) 
     A = pc2.A
     is_setup = pc2.is_assembled  # share the indicator array
     nassemblies = pc2.nassemblies
@@ -122,11 +124,11 @@ function applyLinearOperator(lo::AbstractPetscMatLO, mesh::AbstractMesh,
   # assemble Ap (if needed)
   assemblePetscData(lo, x, lo.xtmp)
 
-  PetscMatMult(lo2.A, lo2.xtmp, lo2.btmp)
+  MatMult(lo2.A, lo2.xtmp, lo2.btmp)
 
-  btmp, b_ptr = PetscVecGetArrayRead(lo2.btmp)
+  btmp = VecGetArrayRead(lo2.btmp)
   copy!(b, btmp)
-  PetscVecRestoreArrayRead(lo2.btmp, b_ptr)
+  VecRestoreArrayRead(lo2.btmp, btmp)
 
   return nothing
 end
@@ -143,11 +145,11 @@ function applyLinearOperatorTranspose(lo::AbstractPetscMatLO,
   assemblePetscData(lo, x, lo.xtmp)
 
 
-  PetscMatMultTranspose(lo2.A, lo2.xtmp, lo2.btmp)
+  MatMultTranspose(lo2.A, lo2.xtmp, lo2.btmp)
 
-  btmp, b_ptr = PetscVecGetArrayRead(lo2.btmp)
+  btmp = VecGetArrayRead(lo2.btmp)
   copy!(b, btmp)
-  PetscVecRestoreArrayRead(lo2.btmp, b_ptr)
+  VecRestoreArrayRead(lo2.btmp, btmp)
 
   return nothing
 end
@@ -160,19 +162,19 @@ function assemblePetscData(lo::PetscMatLO, b::AbstractVector,
 
   # assemble things
   if !getIsSetup(lo)
-    PetscMatAssemblyBegin(lo.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyBegin(lo.A, MAT_FINAL_ASSEMBLY)
   end
 
   # copy values into the vector
-  btmp, b_ptr = PetscVecGetArray(b_petsc)
+  btmp = VecGetArray(b_petsc)
   copy!(btmp, b)
-  PetscVecRestoreArray(b_petsc, b_ptr)
+  VecRestoreArray(b_petsc, btmp)
 
   if !getIsSetup(lo)
-    PetscMatAssemblyEnd(lo.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyEnd(lo.A, MAT_FINAL_ASSEMBLY)
     setIsSetup(lo, true)
     lo.nassemblies[1] += 1
-    matinfo = PetscMatGetInfo(lo.A, PETSc.MAT_LOCAL)
+    matinfo = MatGetInfo(lo.A, PETSc2.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
     end

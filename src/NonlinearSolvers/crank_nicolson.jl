@@ -139,7 +139,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #   this works for both PETSc and Julia matrices.
     #   when jac is a Julia matrix, this is effectively wrapping: fill!(jac, 0.0)
     if jac_type != 4
-      PetscMatZeroEntries(jac)
+      MatZeroEntries(jac)
     end
 =#
     # TODO: Allow for some kind of stage loop: ES-Dirk
@@ -489,16 +489,16 @@ function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
   lo2 = getBaseLO(lo)
   h = ctx_residual[3]
 
-  PetscMatAssemblyBegin(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(lo2.A, PETSC_MAT_FINAL_ASSEMBLY)
+  assembly_begin(lo2.A, MAT_FINAL_ASSEMBLY)
+  assembly_end(lo2.A, MAT_FINAL_ASSEMBLY)
 
   # scale jac by -delta_t/2
 #  scale_factor = h*-0.5
   petsc_scale_factor = PetscScalar(-h*0.5)
-  PetscMatScale(lo2.A, petsc_scale_factor)
+  scale!(lo2.A, petsc_scale_factor)
 
   # add the identity
-  PetscMatShift(lo2.A, PetscScalar(1))
+  diagonal_shift!(lo2.A, 1)
 
   return nothing
 end

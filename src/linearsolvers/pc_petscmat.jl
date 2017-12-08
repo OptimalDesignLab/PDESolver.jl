@@ -125,9 +125,9 @@ function applyPC(pc::AbstractPetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
   PCApply(pc2.pc, pc2.btmp, pc2.xtmp)
 
   # copy back to x
-  xtmp, x_ptr = PetscVecGetArrayRead(pc2.xtmp)
+  xtmp = VecGetArrayRead(pc2.xtmp)
   copy!(x, xtmp)
-  PetscVecRestoreArrayRead(pc2.xtmp, x_ptr)
+  VecRestoreArrayRead(pc2.xtmp, xtmp)
 
   pc2.napplies += 1
 
@@ -160,9 +160,9 @@ function applyPCTranspose(pc::AbstractPetscMatPC, mesh::AbstractMesh,
   PCApplyTranspose(pc2.pc, pc2.btmp, pc2.xtmp)
 
   # copy back to x
-  xtmp, x_ptr = PetscVecGetArrayRead(pc2.xtmp)
+  xtmp = VecGetArrayRead(pc2.xtmp)
   copy!(x, xtmp)
-  PetscVecRestoreArrayRead(pc2.xtmp, x_ptr)
+  VecRestoreArrayRead(pc2.xtmp, xtmp)
 
   pc2.ntapplies += 1
   return nothing
@@ -199,19 +199,19 @@ function assemblePetscData(pc::PetscMatPC, b::AbstractVector, b_petsc::PetscVec)
   myrank = pc.myrank
 
   if !getIsAssembled(pc)
-    PetscMatAssemblyBegin(pc.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyBegin(pc.A, MAT_FINAL_ASSEMBLY)
   end
 
   # copy values into the vector
-  btmp, b_ptr = PetscVecGetArray(b_petsc)
+  btmp = VecGetArray(b_petsc)
   copy!(btmp, b)
-  PetscVecRestoreArray(b_petsc, b_ptr)
+  VecRestoreArray(b_petsc, btmp)
 
   if !getIsAssembled(pc)
-    PetscMatAssemblyEnd(pc.A, PETSC_MAT_FINAL_ASSEMBLY)
+    MatAssemblyEnd(pc.A, MAT_FINAL_ASSEMBLY)
     setIsAssembled(pc, true)
     pc.nassemblies[1] += 1
-    matinfo = PetscMatGetInfo(pc.A, PETSc.MAT_LOCAL)
+    matinfo = MatGetInfo(pc.A, PETSc2.MAT_LOCAL)
     if matinfo.mallocs > 0.5  # if any mallocs
       println(BSTDERR, "Warning: non-zero number of mallocs for A on process $myrank: $(matinfo.mallocs) mallocs")
     end

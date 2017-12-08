@@ -16,7 +16,7 @@ using OptimizationInterface
 using ArrayViews
 using Utils
 using Input
-using PETSc
+using PETSc2
 
 
 #------------------------------------------------------------------------------
