@@ -222,7 +222,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     # calculate Newton step
     flush(BSTDOUT)
-    linearSolve(ls, res_0, delta_q_vec, verbose)
+    tsolve = @elapsed linearSolve(ls, res_0, delta_q_vec, verbose)
+    eqn.params.time.t_solve += tsolve
     step_norm = norm(delta_q_vec)  #TODO: use calcNorm()
     recordStepNorm(newton_data, step_norm)
 

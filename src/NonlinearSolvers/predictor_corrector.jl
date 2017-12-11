@@ -224,7 +224,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
 #      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
-      linearSolve(ls, dHdLambda_real, tan_vec)
+      tsolve = @elapsed linearSolve(ls, dHdLambda_real, tan_vec)
+      eqn.params.time.t_solve += tsolve
 #      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
 
       # normalize tangent vector
