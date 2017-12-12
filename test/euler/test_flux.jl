@@ -328,6 +328,22 @@ function testRoe(mesh, sbp, eqn, opts)
   functor(eqn.params, qL, qR, aux_vars, -nrm, flux2)
   @fact norm(flux + flux2) --> roughly(0.0, atol=1e-13)
 
+  # indefinite flux jacobian
+  if mesh.numDofPerNode == 4
+    qL = [1.0, 1.0, 1.0, 7.0]
+    qR = qL + 1
+    nrm = [1.0, 0.0]
+  else
+    qL =  [1., 1, 1, 1, 15]
+    qR =  qL + 1
+    nrm = [1.0, 0.0, 0.0]
+  end
+
+  functor(eqn.params, qL, qR, aux_vars, nrm, flux)
+  functor(eqn.params, qR, qL, aux_vars, -nrm, flux2)
+  @fact norm(flux + flux2) --> roughly(0.0, atol=1e-13)
+
+
 
   return nothing
 end
