@@ -669,7 +669,9 @@ end # ends the function eulerRoeSAT_revm
 ###EulerEquationMod.calcSAT
 
 Computes the simultaneous approximation term for use in computing the numerical
-flux
+flux, namely:
+
+  0.5*(|A_hat| - A)(qL - qR)
 
 **Arguments**
 

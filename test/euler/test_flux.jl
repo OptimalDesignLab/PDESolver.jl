@@ -279,6 +279,7 @@ function test_flux_2d()
     @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
 
 
+    testRoe(mesh, sbp, eqn, opts)
 
   end  # end facts block
 
@@ -286,7 +287,50 @@ function test_flux_2d()
 end  # end function
 
 #test_flux_2d()
-add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILINEAR, TAG_SHORTTEST])
+add_func1!(EulerTests, test_flux_2d, [TAG_TMP, TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILINEAR, TAG_SHORTTEST])
+
+
+"""
+  Test the Roe solver.  This function is called by test_flux_2d()
+"""
+function testRoe(mesh, sbp, eqn, opts)
+
+  if mesh.numDofPerNode == 4
+    qL = [1.0, 2.0, 3.0, 7.0]
+    qR = qL + 1
+    nrm = [1.0, 0.0]
+  else
+    qL =  [1., 2, 3, 4, 15]
+    qR =  qL + 1
+    nrm = [1.0, 0.0, 0.0]
+  end
+
+
+  aux_vars = [EulerEquationMod.calcPressure(eqn.params, qL)]
+  flux = zeros(mesh.numDofPerNode)
+  flux2 = zeros(flux)
+
+  # qL and qR have all positive eigenvalues, so the Roe solver should use
+  # the left state only
+
+  functor = EulerEquationMod.FluxDict["RoeFlux"]
+
+  functor(eqn.params, qL, qR, aux_vars, nrm, flux)
+  EulerEquationMod.calcEulerFlux(eqn.params, qL, aux_vars, nrm, flux2)
+  @fact norm(flux - flux2) --> roughly(0.0, atol=1e-13)
+
+  # right state only
+  functor(eqn.params, qR, qL, aux_vars, nrm, flux)
+  EulerEquationMod.calcEulerFlux(eqn.params, qR, aux_vars, nrm, flux2)
+  @fact norm(flux - flux2) --> roughly(0.0, atol=1e-13)
+
+  # reverse states, reverse norm -> negative flux
+  functor(eqn.params, qL, qR, aux_vars, -nrm, flux2)
+  @fact norm(flux + flux2) --> roughly(0.0, atol=1e-13)
+
+
+  return nothing
+end
 
 """
   Test calculation of numerical flux functions in 3D
@@ -362,6 +406,7 @@ function test_flux_3d()
       end
     end
 
+    testRoe(mesh, sbp, eqn, opts)
   end  # end facts block
 
   return nothing
@@ -369,4 +414,4 @@ end
 
 
 #test_flux_3d()
-add_func1!(EulerTests, test_flux_3d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_SHORTTEST])
+add_func1!(EulerTests, test_flux_3d, [TAG_TMP, TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_SHORTTEST])

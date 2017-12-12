@@ -55,4 +55,4 @@ function test_parallel_derivatives()
   return nothing
 end
 
-add_func1!(EulerTests, test_parallel_derivatives, [TAG_PARALLEL_DERIVATIVES, TAG_LONGTEST, TAG_TMP])
+add_func1!(EulerTests, test_parallel_derivatives, [TAG_PARALLEL_DERIVATIVES, TAG_LONGTEST])
