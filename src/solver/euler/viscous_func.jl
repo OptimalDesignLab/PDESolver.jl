@@ -1,11 +1,11 @@
 @doc """
 
-Compute dynamic viscousity for an element using Sutherland's Law
+Compute dynamic viscosity for an element using Sutherland's Law
 
 Input:
   temp        : temperature
 Output:
-  rmu         : dynamic viscousity
+  rmu         : dynamic viscosity
 
 """->
 function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
@@ -22,12 +22,12 @@ function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
 end
 
 @doc """
-Compute dynamic viscousity for an element using Sutherland's Law
+Compute dynamic viscosity for an element using Sutherland's Law
 
 Input:
   temp        : temperature
 Output:
-  rmu         : dynamic viscousity
+  rmu         : dynamic viscosity
 
 """->
 function getMuK{Tsol}(temp::AbstractArray{Tsol, 1}, rMuK::AbstractArray{Tsol, 2})
@@ -87,7 +87,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{2, :conservative},
   #
   # we need μ, κ, V, dVdx, dTdx
   #
-  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscousity
+  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscosity
   dVdx = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
   dTdx = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
   tau = Array(Tsol, dim, dim, numNodes)       # stress    
@@ -104,7 +104,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{2, :conservative},
     T[n] = gamma*gamma_1*(q[4, n]/q[1, n] - 0.5*(v[1, n]*v[1, n] + v[2, n]*v[2, n]))
   end
 
-  # Compute viscousity and conductivity coefficients
+  # Compute viscosity and conductivity coefficients
   getMuK(T, rMuK)
 
   # First we compute derivatives, dudx, dudy, dTdx, dTdy
@@ -587,7 +587,7 @@ end
 
 @doc """
 
-Compute the viscous diffusion matrix, only work for 2D
+Compute the viscous diffusion matrix. 2D version
 
 Input: 
 q = conservative variable at a node
@@ -732,7 +732,7 @@ end
 
 @doc """
 
-Compute the viscous diffusion matrix, only work for 2D
+Compute the viscous diffusion matrix. 3D version TODO: check w/ JF
 
 Input: 
 q = conservative variable at a node
@@ -1838,7 +1838,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
       q_bnd[4, n] = pInf/gamma_1 + 0.5*q_in[1,n] * v2
     end    
     
-    # DEBUB ONLY
+    # DEBUG ONLY
     # q_bnd[:,n] = qInf[:]
     # DEBUG END
   end
@@ -1915,7 +1915,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
     end    
     
     # debug only
-    q_bnd[:,n] = qInf[:]
+    q_bnd[:,n] = qInf[:]        # TODO: Ask Jianfeng
     # end
   end
 

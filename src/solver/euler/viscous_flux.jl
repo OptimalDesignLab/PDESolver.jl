@@ -71,7 +71,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     # compute viscous flux and diffusion tensor
     q_faceL = slice(eqn.q_face, :, 1, :, f)
-    q_faceR = slice(eqn.q_face, :, 2, :, f)
+    q_faceR = slice(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
     q_elemL = sview(eqn.q, :, :, elemL)
     q_elemR = sview(eqn.q, :, :, elemR)
     calcDiffusionTensor(eqn.params, q_faceL, GtL)

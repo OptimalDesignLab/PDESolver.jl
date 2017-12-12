@@ -1,12 +1,39 @@
 include("viscous_penalty.jl")
 
 """
+  This function is a thin wrapper around
+  [`calcSharedFaceIntegrals_viscous_inner`](@ref).
+  It presents the interface required by [`finishExchangeData`](@ref)
+"""
+function calcSharedFaceIntegrals_viscous{Tmsh, Tsol, Tres}(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP,
+                            eqn::EulerData{Tsol, Tres},
+                            opts,
+                            data::SharedFaceData)
+
+  if opts["precompute_face_flux"]                            
+    error("precompute_face_flux is not implemented for viscous flux")
+  else
+    calcSharedFaceIntegrals_viscous_inner(mesh, sbp, eqn, opts, data, eqn.viscous_flux_func)
+  end
+
+end                            
+
+"""
   Similar to euler's calcSharedFaceIntegrals_nopre_element_inner.
   Actually, relatively identical.
-"""
 
-function calcSharedFaceIntegrals_viscous{Tmsh, Tsol, Tres}(
-                            mesh::AbstractDGMesh{Tmesh},
+  **Inputs**:
+    * mesh
+    * sbp
+    * eqn
+    * opts
+    * data
+    * functor
+"""
+function calcSharedFaceIntegrals_viscous_inner{Tmsh, Tsol, Tres}(
+                            mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP,
                             eqn::EulerData{Tsol, Tres},
                             opts,
@@ -60,7 +87,12 @@ function calcSharedFaceIntegrals_viscous{Tmsh, Tsol, Tres}(
 
       parent(aux_vars)[1] = calcPressure(params, qL_k)
 
-      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
+      # functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
+      # TODO: verify that this different functor signature is OK
+      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)   
+      # TODO: required: 
+      #   calcFaceFvis(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
+      #   calcFvis_elem(params, sbp, q, dxidx, jac, Fv)
     end   # end of loop: k = 1:mesh.numNodesPerFace
 
     # do the integration
@@ -73,6 +105,24 @@ function calcSharedFaceIntegrals_viscous{Tmsh, Tsol, Tres}(
 
 end
                       
+"""
+  This function does the computation that needs the parallel communication to have
+    finished already, namely the face integrals for the shared faces.
+
+  It passes [`calcSharedFaceIntegrals_viscous`](@ref) into finishExchangeData.
+  `calcSharedFaceIntegrals_viscous` should read eqn.viscous_flux_func and pass 
+  the proper flux function into `calcSharedFaceIntegrals_viscous_inner` as a functor.
+
+  The inviscid counterparts to this are in euler.jl, but for readability the viscous version 
+    is placed here.
+
+  **Inputs**:
+    * mesh
+    * sbp
+    * eqn
+    * opts
+
+"""
 function evalSharedFaceIntegrals_viscous(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   # Notes:
@@ -97,4 +147,24 @@ function evalSharedFaceIntegrals_viscous(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 
+end
+
+"""
+  This is a wrapper that is called by the functor in the type SIPGViscousFlux <: FluxType
+
+  **Inputs**:
+    * params
+    * uL
+    * uR
+    * aux_vars
+    * nrm
+    * F
+
+"""
+
+function calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)
+
+  # calcFaceFvis(params, sbp, sbpface, qL, qR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
+  calcFaceFvis(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
+   
 end

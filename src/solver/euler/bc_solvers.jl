@@ -42,7 +42,6 @@ end
   q  : conservative variables of the fluid
   qg : conservative variables of the boundary
   aux_vars : vector of all auxiliary variables at this node
-  dxidx : dxidx matrix at the node
   nrm : sbp face normal vector
   params : ParamType
   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)
@@ -78,7 +77,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   gami = params.gamma_1
   sat_fac = 1  # multiplier for SAT term
 
-  # Begin main executuion
+  # Begin main execution
   nx = nrm[1]
   ny = nrm[2]
 

@@ -960,7 +960,8 @@ global const FluxDict = Dict{ASCIIString, FluxType}(
 "StandardFlux" => StandardFlux(),
 "DucrosFlux" => DucrosFlux(),
 "IRFlux" => IRFlux(),
-"IRSLFFlux" => IRSLFFlux()
+"IRSLFFlux" => IRSLFFlux(),
+"SIPGViscousFlux" => SIPGViscousFlux()
 )
 
 @doc """
@@ -981,6 +982,9 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   eqn.flux_func = FluxDict[name]
   name = opts["Volume_flux_name"]
   eqn.volume_flux_func = FluxDict[name]
+  # note, don't want SAT type, we want the viscous flux.  only SIPG exists now
+  name = opts["Viscous_flux_name"]
+  eqn.viscous_flux_func = FluxDict[name]
   return nothing
 end
 
@@ -1008,3 +1012,21 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end # End function getFluxFunctors_revm
+
+
+"""
+  Calls the [`SIPG`](@ref) (viscous) flux
+"""
+type SIPGViscousFlux <: FluxType
+end
+
+function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F::AbstractVector{Tres})
+
+  calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)
+  return nothing
+end
