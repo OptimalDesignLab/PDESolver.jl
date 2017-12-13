@@ -1020,13 +1020,25 @@ end # End function getFluxFunctors_revm
 type SIPGViscousFlux <: FluxType
 end
 
+# function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+              # uL::AbstractArray{Tsol,1},
+              # uR::AbstractArray{Tsol,1},
+              # aux_vars::AbstractVector{Tres},
+              # nrm::AbstractVector{Tmsh},
+              # F::AbstractVector{Tres})
 function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+              sbp::AbstractSBP,
+              sbpface,    # TODO: type
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
-              aux_vars::AbstractVector{Tres},
-              nrm::AbstractVector{Tmsh},
+              dxidxL,     # TODO: type
+              jacL,       # TODO: type
+              dxidxR,     # TODO: type
+              jacR,       # TODO: type
+              face,       # TODO: type
               F::AbstractVector{Tres})
 
-  calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)
+  # calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)    # this is the inviscid flux signature, needs to be changed
+  calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
   return nothing
 end

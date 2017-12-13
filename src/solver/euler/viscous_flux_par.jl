@@ -162,7 +162,8 @@ end
 
 """
 
-function calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)
+# function calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)
+function calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
 
   # calcFaceFvis(params, sbp, sbpface, qL, qR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
   calcFaceFvis(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
