@@ -1899,6 +1899,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
     lambda[2] = real(vn + a)
     lambda[3] = real(vn - a)
 
+    # depending on eigenvalue, set state boundary value to exterior or interior (depending on field)
     if lambda[2] <= 0.0            # supersonic inflow
       q_bnd[:, n] = qInf[:]
     elseif lambda[3] >= 0.0        # supersonic outflow
@@ -1915,7 +1916,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
     end    
     
     # debug only
-    q_bnd[:,n] = qInf[:]        # TODO: Ask Jianfeng
+    q_bnd[:,n] = qInf[:]        # for MMS
     # end
   end
 
