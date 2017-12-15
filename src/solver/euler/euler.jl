@@ -185,6 +185,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   if eqn.params.isViscous == true
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
+
+    evalSharedFaceIntegrals_viscous(mesh, sbp, eqn, opts)
   end
   
   # DEBUG BEGIN

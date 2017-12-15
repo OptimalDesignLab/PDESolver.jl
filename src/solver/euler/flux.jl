@@ -598,8 +598,6 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   # TODO: make these fields of params
   q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  workarr = zeros(q_faceR)
-
 
   idx = data.peeridx
   interfaces = data.interfaces
@@ -664,7 +662,7 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
   q = eqn.q
   params = eqn.params
 
-  @debug1 begin
+  @debug1 begin       # probably don't work anymore. only used for sharedFaceLogging at the end of this function
     qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])
     qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
@@ -674,15 +672,16 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
   # TODO: make these fields of params
   q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  workarr = zeros(q_faceR)
-
 
   idx = data.peeridx
   interfaces = data.interfaces
   bndries_local = data.bndries_local
   bndries_remote = data.bndries_remote
-#    qL_arr = eqn.q_face_send[i]
-  qR_arr = data.q_recv
+#    qL_arr = eqn.q_face_send[i]      # we don't need this because we need el data (unlike face data
+                                      #    above), so we don't want the interpolated values. 
+                                      #   (note, eqn.q_face_send should actually contain el
+                                      #    data, but we want to use eqn.q because that's the canonical source)
+  qR_arr = data.q_recv              # AA: used below to set qR
   nrm_arr = mesh.nrm_sharedface[idx]
   aux_vars_arr = eqn.aux_vars_sharedface[idx]
   flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -720,7 +719,9 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
 
      # do the integration
      res_j = sview(eqn.res, :, :, bndryL_j.element)
-     boundaryFaceIntegrate!(mesh.sbpface, fL, flux_face, res_j, SummationByParts.Subtract())
+     boundaryFaceIntegrate!(mesh.sbpface, fL, flux_face, res_j, SummationByParts.Subtract())      
+        # AA: subtract b/c of the negative sign resulting from integration by parts
+        # AA: why boundary over interior? because boundaryFaceIntegrate is the one-sided version of interiorFaceIntegrate
    end  # end loop over interfaces
 
   @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
@@ -959,7 +960,8 @@ global const FluxDict = Dict{ASCIIString, FluxType}(
 "StandardFlux" => StandardFlux(),
 "DucrosFlux" => DucrosFlux(),
 "IRFlux" => IRFlux(),
-"IRSLFFlux" => IRSLFFlux()
+"IRSLFFlux" => IRSLFFlux(),
+"SIPGViscousFlux" => SIPGViscousFlux()
 )
 
 @doc """
@@ -980,6 +982,9 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   eqn.flux_func = FluxDict[name]
   name = opts["Volume_flux_name"]
   eqn.volume_flux_func = FluxDict[name]
+  # note, don't want SAT type, we want the viscous flux.  only SIPG exists now
+  name = opts["Viscous_flux_name"]
+  eqn.viscous_flux_func = FluxDict[name]
   return nothing
 end
 
@@ -1007,3 +1012,33 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end # End function getFluxFunctors_revm
+
+
+"""
+  Calls the [`SIPG`](@ref) (viscous) flux
+"""
+type SIPGViscousFlux <: FluxType
+end
+
+# function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+              # uL::AbstractArray{Tsol,1},
+              # uR::AbstractArray{Tsol,1},
+              # aux_vars::AbstractVector{Tres},
+              # nrm::AbstractVector{Tmsh},
+              # F::AbstractVector{Tres})
+function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+              sbp::AbstractSBP,
+              sbpface,    # TODO: type
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              dxidxL,     # TODO: type
+              jacL,       # TODO: type
+              dxidxR,     # TODO: type
+              jacR,       # TODO: type
+              face,       # TODO: type
+              F::AbstractVector{Tres})
+
+  # calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)    # this is the inviscid flux signature, needs to be changed
+  calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
+  return nothing
+end

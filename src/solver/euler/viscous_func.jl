@@ -1,11 +1,11 @@
 @doc """
 
-Compute dynamic viscousity for an element using Sutherland's Law
+Compute dynamic viscosity for an element using Sutherland's Law
 
 Input:
   temp        : temperature
 Output:
-  rmu         : dynamic viscousity
+  rmu         : dynamic viscosity
 
 """->
 function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
@@ -22,12 +22,12 @@ function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
 end
 
 @doc """
-Compute dynamic viscousity for an element using Sutherland's Law
+Compute dynamic viscosity for an element using Sutherland's Law
 
 Input:
   temp        : temperature
 Output:
-  rmu         : dynamic viscousity
+  rmu         : dynamic viscosity
 
 """->
 function getMuK{Tsol}(temp::AbstractArray{Tsol, 1}, rMuK::AbstractArray{Tsol, 2})
@@ -87,7 +87,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{2, :conservative},
   #
   # we need μ, κ, V, dVdx, dTdx
   #
-  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscousity
+  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscosity
   dVdx = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
   dTdx = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
   tau = Array(Tsol, dim, dim, numNodes)       # stress    
@@ -104,7 +104,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{2, :conservative},
     T[n] = gamma*gamma_1*(q[4, n]/q[1, n] - 0.5*(v[1, n]*v[1, n] + v[2, n]*v[2, n]))
   end
 
-  # Compute viscousity and conductivity coefficients
+  # Compute viscosity and conductivity coefficients
   getMuK(T, rMuK)
 
   # First we compute derivatives, dudx, dudy, dTdx, dTdy
@@ -261,7 +261,7 @@ end
     2). compute the elememt flux directly, and then interpolate the flux instead of solution to interface.
     3). compute the elememt flux throught F = G∇q, and then interpolate the flux to interface.
   The experiments show subtle difference between three approaches. But the theoretical
-  proof in the journal paper (https://doi.org/10.1007%2Fs10915-017-0563-zv) uses the third one.
+  proof in the journal paper (Jianfeng's journal paper on SBP parabolic) uses the third one.
 
   **Input**
    * params
@@ -587,7 +587,7 @@ end
 
 @doc """
 
-Compute the viscous diffusion matrix, only work for 2D
+Compute the viscous diffusion matrix. 2D version
 
 Input: 
 q = conservative variable at a node
@@ -732,7 +732,7 @@ end
 
 @doc """
 
-Compute the viscous diffusion matrix, only work for 2D
+Compute the viscous diffusion matrix. 3D version TODO: check w/ JF
 
 Input: 
 q = conservative variable at a node
@@ -1254,6 +1254,9 @@ function calcDiffusionTensorOnAdiabaticWall{Tmsh, Tsol}(params::ParamType{2, :co
   return nothing
 end
 
+# NOTE: this is incorrect. states that grad T = 0 always by setting gamma_pr to 0, but what actually is
+#       necessary is that n dot grad T = 0.
+# TODO: extend the correct version of cDTOnAdiabaticWall (above) to 3D
 function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{3, :conservative},
                                                  q::AbstractArray{Tsol, 2},
                                                  Gv::AbstractArray{Tsol, 5})
@@ -1838,7 +1841,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
       q_bnd[4, n] = pInf/gamma_1 + 0.5*q_in[1,n] * v2
     end    
     
-    # DEBUB ONLY
+    # DEBUG ONLY
     # q_bnd[:,n] = qInf[:]
     # DEBUG END
   end
@@ -1899,6 +1902,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
     lambda[2] = real(vn + a)
     lambda[3] = real(vn - a)
 
+    # depending on eigenvalue, set state boundary value to exterior or interior (depending on field)
     if lambda[2] <= 0.0            # supersonic inflow
       q_bnd[:, n] = qInf[:]
     elseif lambda[3] >= 0.0        # supersonic outflow
@@ -1915,7 +1919,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
     end    
     
     # debug only
-    q_bnd[:,n] = qInf[:]
+    q_bnd[:,n] = qInf[:]        # for MMS in which q at boundary equals to qInf
     # end
   end
 
