@@ -189,13 +189,15 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalSharedFaceIntegrals_viscous(mesh, sbp, eqn, opts)
   end
   
+  # DEBUG BEGIN
   # res_vec = zeros(Float64, length(eqn.res))
   # for i = 1 : length(eqn.res)
-    # res_vec[i] = real(eqn.res[i])
+    # res_vec[i] = abs( real(eqn.res[i]))
   # end
   # saveSolutionToMesh(mesh, res_vec)
   # writeVisFiles(mesh, "residual")
   # exit()
+  # # DEBUG END
   return nothing
 end  # end evalResidual
 

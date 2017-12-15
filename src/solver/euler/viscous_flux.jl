@@ -249,14 +249,14 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
     bnd_functor::AbstractBoundaryValueType
     key_i = string("BC", iBC, "_name")
     val = opts[key_i]
-    calcGt_functor = calcDiffusionTensor
+    Gt_functor = calcDiffusionTensor
     if val == "FreeStreamBC"
       bnd_functor = Farfield()
     elseif val == "ExactChannelBC"
       bnd_functor = ExactChannel()
     elseif val == "nonslipBC"
       bnd_functor = AdiabaticWall()
-      calcGt_functor = calcDiffusionTensor_adiabaticWall
+      Gt_functor = calcDiffusionTensorOnAdiabaticWall
     elseif val == "noPenetrationBC"
       continue
     elseif val == "zeroPressGradientBC"
@@ -296,7 +296,11 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       bnd_functor(q_face, xy, nrm1, eqn.params, q_bnd)
 
       # diffusion matrix used in penalty term should be computed from q_face rather than q_bnd
-      calcGt_functor(eqn.params, q_bnd, Gt)
+      if val == "nonslipBC"
+        Gt_functor(eqn.params, q_bnd, nrm1, Gt)
+      else
+        Gt_functor(eqn.params, q_bnd, Gt)
+      end
       q_elem = sview(eqn.q, :, :, elem)
       calcGradient(mesh, sbp, elem, q_elem, dqdx_elem)
 
@@ -326,6 +330,12 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
           # dqn[2, iDof, n] = -dq[iDof, n]*nrm_xy[2, n]
         end
       end
+      # DEBUG BEGIN
+      # if maximum(abs(real(dq))) > 1.e-11
+        # println(real(dq))
+      # end
+      # DEBUG END
+
 
       # -----------------------------------------------
       # This part computes the contribution of
@@ -341,7 +351,6 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       for n = 1 : mesh.numNodesPerFace
         for iDof = 1 : mesh.numDofPerNode
           for iDim = 1 : Tdim
-            # vecflux[iDim, iDof, n] = 0.0
             for jDim = 1 : Tdim
               tmp = 0.0
               for jDof = 1 : mesh.numDofPerNode
