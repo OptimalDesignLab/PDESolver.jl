@@ -261,7 +261,7 @@ end
     2). compute the elememt flux directly, and then interpolate the flux instead of solution to interface.
     3). compute the elememt flux throught F = G∇q, and then interpolate the flux to interface.
   The experiments show subtle difference between three approaches. But the theoretical
-  proof in the journal paper (https://doi.org/10.1007%2Fs10915-017-0563-zv) uses the third one.
+  proof in the journal paper (Jianfeng's journal paper on SBP parabolic) uses the third one.
 
   **Input**
    * params
@@ -1254,6 +1254,9 @@ function calcDiffusionTensorOnAdiabaticWall{Tmsh, Tsol}(params::ParamType{2, :co
   return nothing
 end
 
+# NOTE: this is incorrect. states that grad T = 0 always by setting gamma_pr to 0, but what actually is
+#       necessary is that n dot grad T = 0.
+# TODO: extend the correct version of cDTOnAdiabaticWall (above) to 3D
 function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{3, :conservative},
                                                  q::AbstractArray{Tsol, 2},
                                                  Gv::AbstractArray{Tsol, 5})
@@ -1916,7 +1919,7 @@ function call{Tsol, Tmsh}(obj::Farfield,
     end    
     
     # debug only
-    q_bnd[:,n] = qInf[:]        # for MMS
+    q_bnd[:,n] = qInf[:]        # for MMS in which q at boundary equals to qInf
     # end
   end
 
