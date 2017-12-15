@@ -794,6 +794,23 @@ end
 #------------------------------------------------------------------------------
 
 """
+  This flux function throws an error. Useful for defaults.
+"""
+type ErrorFlux <: FluxType
+end
+
+function call{Tsol, Tres}(obj::ErrorFlux, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray,
+              F::AbstractArray{Tres})
+
+  error("ErrorFlux called.")
+  return nothing
+end
+
+"""
   This flux function sets F = q.  Useful for testing
 """
 type IdentityFlux <: FluxType
@@ -933,6 +950,35 @@ function call{Tsol, Tres}(obj::IRSLFFlux, params::ParamType,
   return nothing
 end
 
+"""
+  Calls the [`SIPG`](@ref) (viscous) flux
+"""
+type SIPGViscousFlux <: FluxType
+end
+
+# function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+              # uL::AbstractArray{Tsol,1},
+              # uR::AbstractArray{Tsol,1},
+              # aux_vars::AbstractVector{Tres},
+              # nrm::AbstractVector{Tmsh},
+              # F::AbstractVector{Tres})
+# function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+function call{Tsol, Tres}(obj::SIPGViscousFlux, params::ParamType,
+              sbp::AbstractSBP,
+              sbpface,    # TODO: type
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              dxidxL,     # TODO: type
+              jacL,       # TODO: type
+              dxidxR,     # TODO: type
+              jacR,       # TODO: type
+              face,       # TODO: type
+              F::AbstractVector{Tres})
+
+  # calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)    # this is the inviscid flux signature, needs to be changed
+  calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
+  return nothing
+end
 
 
 
@@ -954,6 +1000,7 @@ end
 
 """->
 global const FluxDict = Dict{ASCIIString, FluxType}(
+"ErrorFlux" => ErrorFlux(),
 "IdentityFlux" => IdentityFlux(),
 "RoeFlux" => RoeFlux(),
 "LFFlux" => LFFlux(),
@@ -1014,31 +1061,3 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 end # End function getFluxFunctors_revm
 
 
-"""
-  Calls the [`SIPG`](@ref) (viscous) flux
-"""
-type SIPGViscousFlux <: FluxType
-end
-
-# function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
-              # uL::AbstractArray{Tsol,1},
-              # uR::AbstractArray{Tsol,1},
-              # aux_vars::AbstractVector{Tres},
-              # nrm::AbstractVector{Tmsh},
-              # F::AbstractVector{Tres})
-function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
-              sbp::AbstractSBP,
-              sbpface,    # TODO: type
-              uL::AbstractArray{Tsol,1},
-              uR::AbstractArray{Tsol,1},
-              dxidxL,     # TODO: type
-              jacL,       # TODO: type
-              dxidxR,     # TODO: type
-              jacR,       # TODO: type
-              face,       # TODO: type
-              F::AbstractVector{Tres})
-
-  # calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)    # this is the inviscid flux signature, needs to be changed
-  calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
-  return nothing
-end

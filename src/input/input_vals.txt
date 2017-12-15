@@ -67,6 +67,9 @@ where input_file_name.jl is in your current directory.
 "Volume_flux_name" : name of the numerical flux function to use for the 
                      split form volume integrals, (ASCIIString), default
                      "StandardFlux"
+"Viscous_flux_name" : name of the numerical flux function to use for the 
+                     viscous flux, (ASCIIString), default "ErrorFlux" (which should be defined somewhere)
+                     TODO
 
 "FaceElementIntegral_name": name of integral type for "face_integral_type" == 2,
                             (ASCIIString), default "EDissipativeFaceIntegral",
