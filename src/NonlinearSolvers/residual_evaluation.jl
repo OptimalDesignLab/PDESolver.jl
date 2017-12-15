@@ -107,7 +107,7 @@ function calcResidual(mesh, sbp, eqn, opts, func_rhs, rhs_vec, ctx_residual, t=0
   # TODO: have func_rhs compute res (the 3D array), and call assembleResidual here?
   #       It is much more symmetric to have func_rhs compute eqn.q -> eqn.res
   #       rather than eqn.q -> eqn.res_vec
-  rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
+  rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=false)
 
   return rhs_0_norm
 
