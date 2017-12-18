@@ -2,6 +2,7 @@
 
 push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
+using MPI
 using PDESolver
 #using Base.Test
 using FactCheck
@@ -11,10 +12,13 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
-using NonlinearSolvers   # non-linear solvers
+using NonlinearSolvers   # non-linear solversa
+using OptimizationInterface
 using ArrayViews
 import ODLCommonTools.sview
 using Input
+using LinearSolvers
+using PETSc2
 
 function clean_dict(collection)
   for i in keys(collection)
@@ -32,6 +36,7 @@ include("../tags.jl")
 global const AdvectionTests = TestList()
 
 include("test_frontend.jl")
+include("test_linearsolver.jl")
 include("test_lowlevel.jl")
 include("test_eqn_deepcopy.jl")
 include("test_3d.jl")
@@ -67,19 +72,9 @@ facts("----- Running Advection tests -----") do
   run_testlist(AdvectionTests, run_advection, tags)
 end
 
+println("finished running tests")
 
 #------------------------------------------------------------------------------
 # cleanup
-
-# define global variable if needed
-# this trick allows running the test files for multiple physics in the same
-# session without finalizing MPI too soon
-if !isdefined(:TestFinalizeMPI)
-  TestFinalizeMPI = true
-end
-
-if MPI.Initialized() && TestFinalizeMPI
-  MPI.Finalize()
-end
 
 FactCheck.exitstatus()

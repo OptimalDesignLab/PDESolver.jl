@@ -117,7 +117,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   # be a cache miss, so we recalculate the Euler flux
   v_vals = params.q_vals
   nrm2 = params.nrm
-  nrm2[1] = nx
+  nrm2[1] = nx   # why are we assigning to nrm2?
   nrm2[2] = ny
 
   convertFromNaturalToWorkingVars(params, q, v_vals)
@@ -668,7 +668,9 @@ end # ends the function eulerRoeSAT_revm
 ###EulerEquationMod.calcSAT
 
 Computes the simultaneous approximation term for use in computing the numerical
-flux
+flux, namely:
+
+  0.5*(|A_hat| - A)(qL - qR)
 
 **Arguments**
 

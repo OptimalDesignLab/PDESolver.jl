@@ -16,6 +16,7 @@ usable independent of `PDESolver`.
            "logging.md"
            "projections.md"
            "parallel.md"
+           "misc.md"
           ]
   Depth = 1
 ```

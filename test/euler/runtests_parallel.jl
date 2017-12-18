@@ -11,7 +11,9 @@ using SummationByParts  # SBP operators
 using Utils
 using EulerEquationMod
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 import MPI
 using Input
@@ -201,18 +203,6 @@ facts("----- Running Euler 2 process tests -----") do
   resize!(ARGS, 1)
   ARGS[1] = ""
   run_testlist(EulerTests, run_euler, tags)
-end
-
-# define global variable if needed
-# this trick allows running the test files for multiple physics in the same
-# session without finalizing MPI too soon
-if !isdefined(:TestFinalizeMPI)
-  TestFinalizeMPI = true
-end
-
-
-if MPI.Initialized() && TestFinalizeMPI
-  MPI.Finalize()
 end
 
 FactCheck.exitstatus()

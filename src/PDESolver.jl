@@ -5,7 +5,7 @@ module PDESolver
 export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
-export evalResidual, evalHomotopy
+export evalResidual, evalHomotopy, evalFunctional, evalFunctionalDeriv
 
 # from initialization.jl
 export createMeshAndOperator, loadRestartState, call_nlsolver
@@ -19,6 +19,7 @@ export printICNames, printBCNames
 # load paths for all the components of PDESolver
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/linearsolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
@@ -30,13 +31,14 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
-
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/optimization"))
 
 # load the modules
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
@@ -44,6 +46,41 @@ import ODLCommonTools.sview
 using MPI
 using Input
 using Debug
+using PETSc2
+
+if !MPI.Initialized()
+  MPI.Init()
+  mpi_inited = true
+else
+  mpi_inited =false
+end
+
+if PetscInitialized() == 0
+  PetscInitialize()
+  petsc_inited = true
+else
+  petsc_inited = false
+end
+
+function finalizePetsc()
+  if PetscInitialized() == 0
+    PetscFinalize()
+  end
+end
+
+function finalizeMPI()
+  if MPI.Initialized()
+    MPI.Finalize()
+  end
+end
+
+if petsc_inited
+  atexit( () -> finalizePetsc() )
+end
+
+if mpi_inited
+  atexit( () -> finalizeMPI() )
+end
 
 include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement

@@ -175,7 +175,7 @@ end
 """->
 function ode_pre_func(mesh, sbp, eqn, opts)
   
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 end
 
 @doc """
@@ -198,7 +198,7 @@ end
 """->
 function ode_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   # IN pde_post_func:  eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   # IN pde_post_func:  for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   if calc_norm
 

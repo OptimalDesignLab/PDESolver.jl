@@ -10,7 +10,9 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 using Utils
 using Input
@@ -137,8 +139,11 @@ function test_adjoint_parallel()
 
     objective = AdvectionEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+    ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+
     adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
-    AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+    calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
 
     for i = 1:length(adjoint_vec)
       @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)
@@ -170,36 +175,4 @@ end
 #------------------------------------------------------------------------------
 # cleanup
 
-#=
-facts("----- Testing Functional Computation On Boundary In Parallel -----") do
-
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_functional_DG_parallel.jl"
-  include(STARTUP_PATH)
-
-  @fact mesh.isDG --> true
-  @fact opts["functional_name1"] --> "qflux"
-  @fact opts["functional_error"] --> true
-  @fact opts["smb_name"] --> "src/mesh_files/gsquare2np2.smb"
-  @fact opts["analytical_functional_val"] --> roughly(2*(exp(1) - 1), atol=1e-12)
-  @fact opts["geom_edges_functional1"] --> [1,2]
-
-  fname = "./functional_error1.dat"
-  error = readdlm(fname)
-
-  @fact error[1] --> roughly(0.00681567877682826, atol=1e-6)
-
-end
-=#
-
-# define global variable if needed
-# this trick allows running the test files for multiple physics in the same
-# session without finalizing MPI too soon
-if !isdefined(:TestFinalizeMPI)
-  TestFinalizeMPI = true
-end
-
-if MPI.Initialized() && TestFinalizeMPI
-  MPI.Finalize()
-end
 FactCheck.exitstatus()

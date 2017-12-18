@@ -319,3 +319,63 @@ end
 function print_time_all(f, t_elapsed, t_gc, alloc)
     println(f, t_elapsed, " seconds, ", t_gc, " GC seconds, ", alloc, " bytes allocated")
 end
+
+#------------------------------------------------------------------------------
+# Debugging functions
+
+"""
+  Verify the contents of the receive buffers are current by doing a parallel
+  communication and comparing the new contents of the buffers with the old
+  ones.
+
+  Throws an error if contents are not consistent.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * f: IO, defaults to STDOUT
+"""
+function checkBufferConsistency{Tsol}(mesh, sbp, eqn::AbstractSolutionData{Tsol}, opts, f::IO=STDOUT)
+
+  println(f, "\nChecking buffer consistency")
+
+  # make sure communication is finished
+  assertReceivesWaited(eqn.shared_data)
+
+  # copy buffers
+  nbufs = length(eqn.shared_data)
+  old_bufs = Array(Array{Tsol, 3}, nbufs)
+  for i=1:nbufs
+    old_bufs[i] = copy(eqn.shared_data[i].q_recv)
+    println(f, "initially, norm of buffer ", i, " = ", vecnorm(old_bufs[i]))
+  end
+
+  # do the parallel communications
+  startSolutionExchange(mesh, sbp, eqn, opts)
+
+  # finish the communication
+  finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, tmpCalcFunc)
+
+  # compare buffers
+  for i=1:nbufs
+    buf1 = old_bufs[i]
+    buf2 = eqn.shared_data[i].q_recv
+    nrm_i = vecnorm(buf1 - buf2)
+    println(f, "buffer ", i, " diffnorm = ", nrm_i)
+    println(f, "buffer ", i, " diffnorm real real = ", vecnorm(real(buf1) - real(buf2)))
+    println(f, "buffer ", i, " diffnorm real complex = ", vecnorm(real(buf1) - buf2))
+    println(f, "buffer ", i, " diffnorm complex real = ", vecnorm(buf1 - real(buf2)))
+#    @assert abs(nrm_i) < 1e-13
+  end
+
+  return nothing
+end
+
+# used for debugging
+function tmpCalcFunc(mesh, sbp, eqn, opts, data::SharedFaceData)
+
+  return nothing
+end

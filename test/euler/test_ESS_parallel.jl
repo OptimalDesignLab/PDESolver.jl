@@ -5,10 +5,6 @@
 function test_ESS_parallel()
   facts("----- testing ESS parallel -----") do
 
-    if !MPI.Initialized()
-      MPI.Init()
-    end
-
     if MPI.Comm_rank(MPI.COMM_WORLD) == 1
       rmfile("./entropy.dat")
     end

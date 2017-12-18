@@ -13,7 +13,7 @@
   inexact Newton-Krylov.
 
   Inputs/Outputs:
-    newton_data: the object storing the data for Newton's method
+    newton_data: the NewtonData object
 
 """->
 function updateKrylov(newton_data::NewtonData)
@@ -21,8 +21,9 @@ function updateKrylov(newton_data::NewtonData)
   norm_i = newton_data.res_norm_i
   norm_i_1 = newton_data.res_norm_i_1
   gamma = newton_data.krylov_gamma
-  newton_data.reltol = newton_data.reltol*(norm_i/norm_i_1)^gamma
-#  println("updating krylov reltol to ", newton_data.reltol)
+  reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+  setTolerances(newton_data.ls, reltol, -1, -1, -1)
+#  println("updating krylov reltol to ", reltol)
 
   return nothing
 end
@@ -31,6 +32,55 @@ end
 #------------------------------------------------------------------------------
 # Psuedo-Transient Continuation (aka. Implicit Euler)
 #------------------------------------------------------------------------------
+
+# res_norm_i_1 and res_norm_i, updated inside newton's method
+# This is a bad way to pass parameters to updateEuler(), but I can't find a
+# better way that retains the composability of the linear operator abstraction.
+global const EulerConstants = Float64[0, 0]
+
+"""
+  Reinitailize the underlying data.  This function should be called every
+  time newtonInner() is entered
+"""
+function clearEulerConstants()
+  fill!(EulerConstants, 0.0)
+end
+
+"""
+  Record the most recent residual norm
+
+  **Inputs**
+
+   * res_norm_i: must be a real number
+"""
+function recordEulerResidual(res_norm_i)
+  EulerConstants[1] = EulerConstants[2]
+  EulerConstants[2] = res_norm_i
+end
+
+"""
+  Get the two most recent residual norms
+
+  **Outputs**
+
+   * res_norm_i_1: second most recent residual norm
+   * res_norm_i: most recent residual norm
+"""
+function getEulerConstants()
+  return EulerConstants[1], EulerConstants[2]
+end
+
+"""
+  Check if Euler globalization is initialized
+"""
+function isEulerInitialized()
+  if EulerConstants[1] == EulerConstants[2] == 0
+    return false
+  else
+    return true
+  end
+end
+
 
 @doc """
 ### NonlinearSolvers.initEuler
@@ -115,23 +165,28 @@ end
   globalization.  tau_vec is also updated
 
   Inputs/Outputs:
-    newton_data: object holding the necessary data
+    lo: any kind of Newton PC or LO object
 
 """->
-function updateEuler(newton_data)
+function updateEuler(lo::NewtonLinearObject)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
 
+  tau_l_old = lo.tau_l
+  res_norm_i_1, res_norm_i = getEulerConstants()
 
-  tau_l_old = newton_data.tau_l
+  # on the first Jacobian calculate, don't update
+  if res_norm_i_1 == 0
+    return nothing
+  end
 
   # update tau
-  newton_data.tau_l = newton_data.tau_l * newton_data.res_norm_i_1/newton_data.res_norm_i
+  lo.tau_l = lo.tau_l * res_norm_i_1/res_norm_i
   
-  tau_update = newton_data.tau_l/tau_l_old
-  println("tau_update factor = ", tau_update)
-  for i=1:length(newton_data.tau_vec)
-    newton_data.tau_vec[i] *= tau_update
+  tau_update = lo.tau_l/tau_l_old
+  println(BSTDOUT, "tau_update factor = ", tau_update)
+  for i=1:length(lo.tau_vec)
+    lo.tau_vec[i] *= tau_update
   end
 
   return nothing
@@ -144,61 +199,73 @@ end
   Euler globalization.  The term is eqn.M/tau_vec.  Methods are available for
   dense, sparse, Petsc jacobians, as well as jacobian-vector products.
 
-  Inputs
+ ** Inputs**
     mesh
     sbp
     eqn
     opts
-    newton_data:  the object contaiing tau_vec
 
-  Inputs/Outputs
-    jac: the jacobian matrix
+  **Inputs/Outputs**
+    lo:  a [`NewtonHasMat`](@ref) t contaiing tau_vec and the Jacobian matrix
 
 """->
-function applyEuler(mesh, sbp, eqn, opts, newton_data, 
-                    jac::Union{Array, SparseMatrixCSC})
-# updates the jacobian with a diagonal term, as though the jac was the 
-
-  for i=1:mesh.numDof
-    jac[i,i] -= eqn.M[i]/newton_data.tau_vec[i]
-  end
-
-  return nothing
-end
-
-function applyEuler(mesh, sbp, eqn, opts, newton_data::NewtonData, 
-                    jac::PetscMat)
+function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
 # this allocations memory every time
 # should there be a reusable array for this?
-# maybe something in newton_data?
+# maybe something in lo?
 # for explicitly stored jacobian only
 
-  mat_type = MatGetType(jac)
-  @assert mat_type != PETSc.MATSHELL
+  if !isEulerInitialized()
+    return nothing
+  end
 
-#  println("euler globalization tau = ", newton_data.tau_l)
+  lo2 = getBaseLO(lo)
+#  println("euler globalization tau = ", lo.tau_l)
   # create the indices
 
-  val = [1/newton_data.tau_l]
+  val = [1/lo.tau_l]
   idx = PetscInt[0]
   idy = PetscInt[0]
+  #TODO: replace this with MatDiagonalSet
   for i=1:mesh.numDof
-    idx[1] = i-1 + mesh.dof_offset
-    idy[1] = i-1 + mesh.dof_offset
-    val[1] = -eqn.M[i]/newton_data.tau_vec[i]
-    PetscMatSetValues(jac, idx, idy, val, PETSC_ADD_VALUES)
+    idx[1] = i + mesh.dof_offset
+    idy[1] = i + mesh.dof_offset
+    val[1] = -eqn.M[i]/lo.tau_vec[i]
+    set_values1!(lo2.A, idx, idy, val, ADD_VALUES)
+#    PetscMatSetValues(jac, idx, idy, val, ADD_VALUES)
   end
 
 
   return nothing
 end
 
+"""
+  Updates a jacobian-vector product with the effects of the globalization
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * vec: vector that the jacobian is being multiplied by
+   * lo: a linaer operator or preconditioner, usually a matrix-free one
+
+  **Inputs/Outputs**
+
+   * b: result vector, updated
+"""
 function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, 
-                    newton_data::NewtonData, b::AbstractArray)
+                    lo, b::AbstractArray)
 # apply the diagonal update term to the jacobian vector product
 
+  if !isEulerInitialized()
+    return nothing
+  end
+
+
   for i=1:mesh.numDof
-    b[i] -= eqn.M[i]*(1/newton_data.tau_vec[i])*vec[i]
+    b[i] -= eqn.M[i]*(1/lo.tau_vec[i])*vec[i]
   end
 
   return nothing
@@ -212,17 +279,17 @@ function addDiagonal(mesh, sbp, eqn, jac)
 # add the mass matrix to the jacobian
 
   for i=1:mesh.numDof
-     idx = PetscInt[i-1]
-     idy = PetscInt[i-1]
-     vals = [100*eqn.M[i]]
+    idx = PetscInt[i-1]
+    idy = PetscInt[i-1]
+    vals = [100*eqn.M[i]]
 
 #     println("adding ", vals, " to jacobian entry ", i, ",", i)
-     PetscMatSetValues(jac, idx, idy, vals, PETSC_ADD_VALUES)
-   end
+    PetscMatSetValues(jac, idx, idy, vals, ADD_VALUES)
+  end
 
-   return nothing
+  return nothing
 
- end
+end
 
 
 #------------------------------------------------------------------------------

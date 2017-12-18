@@ -42,10 +42,6 @@ end
 """
 function createObjects(input_file::AbstractString)
 
-  if !MPI.Initialized()
-    MPI.Init()
-  end
-
   opts = read_input(input_file)
 
   dim = opts["dimensions"]
@@ -144,11 +140,11 @@ function solve_simpleODE(mesh::AbstractMesh, sbp, eqn::SimpleODEData, opts, pmes
 
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     evalResidual(mesh, sbp, eqn, opts, eqn.params.t)
 
     eqn.res_vec[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     # printing solution and residual to file
     writedlm("solution_final.dat", real(eqn.q_vec))
@@ -164,9 +160,6 @@ function solve_simpleODE(mesh::AbstractMesh, sbp, eqn::SimpleODEData, opts, pmes
   end   # end of if opts["solve"]
 
   MPI.Barrier(mesh.comm)
-  if opts["finalize_mpi"]
-    MPI.Finalize()
-  end
 
   return mesh, sbp, eqn, opts
 end  # end function

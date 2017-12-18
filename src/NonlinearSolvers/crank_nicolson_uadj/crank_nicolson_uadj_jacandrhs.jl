@@ -38,8 +38,8 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
 
   # need to flush assembly cache before performing the scale operation.
   #   These are defined for Julia matrices; they're just noops
-  PetscMatAssemblyBegin(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
+  MatAssemblyBegin(jac, PETSc.MAT_FINAL_ASSEMBLY)
+  MatAssemblyEnd(jac, PETSc.MAT_FINAL_ASSEMBLY)
 
   #--------------------------
   # applying dt/2 to jac
@@ -60,7 +60,7 @@ function cnAdjJac(newton_data, mesh, sbp, adj_nextstep, opts, jac, ctx, t)
   ix_petsc_col = zeros(PetscInt, 1)
   value_to_add = zeros(PetscScalar, 1, 1)
   value_to_add[1,1] = 1.0
-  flag = PETSc.PETSC_ADD_VALUES
+  flag = PETSc.ADD_VALUES
 
   for i = 1:mesh.numDof
     ix_petsc_row[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
@@ -116,8 +116,8 @@ function cnJac_uadj(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
 
   # need to flush assembly cache before performing the scale operation.
   #   These are defined for Julia matrices; they're just noops
-  PetscMatAssemblyBegin(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyBegin(jac, PETSc.MAT_FINAL_ASSEMBLY)
+  PetscMatAssemblyEnd(jac, PETSc.MAT_FINAL_ASSEMBLY)
 
   #--------------------------
   # applying dt/2 to jac
@@ -138,7 +138,7 @@ function cnJac_uadj(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t)
   ix_petsc_col = zeros(PetscInt, 1)
   value_to_add = zeros(PetscScalar, 1, 1)
   value_to_add[1,1] = 1.0
-  flag = PETSc.PETSC_ADD_VALUES
+  flag = PETSc.ADD_VALUES
 
   for i = 1:mesh.numDof
     ix_petsc_row[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset

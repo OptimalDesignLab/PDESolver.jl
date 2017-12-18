@@ -323,7 +323,7 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
 end
 
 """
-  Like [`calcSharedFaceElementIntegrals_inner`](@ref), but for staggered grid.
+  Like [`calcSharedFaceElementIntegrals_element_inner`](@ref), but for staggered grid.
 
   data.q_recv is the solution grid data.  This function interpolates it to the
   flux grid on the fly.
@@ -486,7 +486,7 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   # do the integration
   boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res, SummationByParts.Subtract())
 
-  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_arr, qR_arr)
+  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_arr, qR_arr)
 
   return nothing
 end
@@ -588,7 +588,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   q = eqn.q
   params = eqn.params
 
-  @debug1 begin
+  @debug2 begin
     qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])
     qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
@@ -611,7 +611,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
   start_elnum = mesh.shared_element_offsets[idx]
 
-  @debug1 flush(params.f)
+  @debug2 flush(params.f)
   for j=1:length(interfaces)
     iface_j = interfaces[j]
     bndryL_j = bndries_local[j]
@@ -624,8 +624,8 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     qR = ro_sview(qR_arr, :, :, el_r)
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
 
-    @debug1 qL_face_arr[:, :, j] = q_faceL
-    @debug1 qR_face_arr[:, :, j] = q_faceR
+    @debug2 qL_face_arr[:, :, j] = q_faceL
+    @debug2 qR_face_arr[:, :, j] = q_faceR
 
     # calculate flux
     for k=1:mesh.numNodesPerFace
@@ -644,7 +644,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   # evaluate integral
   boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res, SummationByParts.Subtract())
 
-  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
+  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 
   return nothing
 end
@@ -662,7 +662,7 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
   q = eqn.q
   params = eqn.params
 
-  @debug1 begin       # probably don't work anymore. only used for sharedFaceLogging at the end of this function
+  @debug2 begin       # probably don't work anymore. only used for sharedFaceLogging at the end of this function
     qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])
     qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
@@ -688,7 +688,7 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
 
   start_elnum = mesh.shared_element_offsets[idx]
 
-  @debug1 flush(params.f)
+  @debug2 flush(params.f)
   for j=1:length(interfaces)
     iface_j = interfaces[j]
     bndryL_j = bndries_local[j]
@@ -701,8 +701,8 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
     qR = ro_sview(qR_arr, :, :, el_r)
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
 
-    @debug1 qL_face_arr[:, :, j] = q_faceL
-    @debug1 qR_face_arr[:, :, j] = q_faceR
+    @debug2 qL_face_arr[:, :, j] = q_faceL
+    @debug2 qR_face_arr[:, :, j] = q_faceR
 
     # calculate flux
     for k=1:mesh.numNodesPerFace
@@ -724,7 +724,7 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
         # AA: why boundary over interior? because boundaryFaceIntegrate is the one-sided version of interiorFaceIntegrate
    end  # end loop over interfaces
 
-  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
+  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 
   return nothing
 end

@@ -95,6 +95,11 @@ The required fields of an `AbstractSolutionData` are:
 
 ### Field Meanings
 
+```@meta
+  CurrentModule = Utils
+```
+
+
 The purpose of these fields are:
 
 `q`: to hold the solution variables in an element-based array.
@@ -110,7 +115,8 @@ many other operations, so it is allocated here so the memory can be reused.
 There are functions to facilitate the scattering of values from `q_vec` to `q`.
 Note that for Continuous Galerkin type discretization (as opposed to
 Discontinuous Galerkin discretizations), there is not a corresponding "gather"
-operation (ie. `q` -> `q_vec`).
+operation (ie. `q` -> `q_vec`).  See [`Utils.disassembleSolution`](@ref) 
+and [`Utils.assembleSolution`](@ref).
 
 `shared_data` is a vector of length `npeers`.  Each element contains the data
               needed send and receive the `q` variables to/from other
@@ -166,6 +172,11 @@ The function must have the signature:
 
 `params`:  user defined type that inherits from `AbstractParamType`:
 
+```@meta
+  CurrentModule = ODLCommonTools
+```
+
+
 ```@docs
 AbstractParamType
 ```
@@ -174,6 +185,9 @@ The purpose of this type is to store any variables that need to be quickly acces
 The only required fields are:
 * `t::Float64`: hold the current time value
 * `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
+* `x_design`: vector of design variables that don't fit into any other catagory
+              (ie. shape variables or other aerodynamic variables like angle of
+              attack)
 *  `time::Timings`: an object to record how long different parts of the code take,
   defined in the Utils module.
 

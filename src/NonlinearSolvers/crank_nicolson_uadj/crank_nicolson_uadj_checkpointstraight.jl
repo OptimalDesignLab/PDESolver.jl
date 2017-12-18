@@ -72,7 +72,7 @@ function cnAdjCalcdRdu:
 """
 function cnAdjCalcdRdu(mesh, sbp, opts, eqn_dummy, physics_func, i_fwd, t)
   # Note: probably don't need to allocate another jac, but this should cause no problems aside from allocation cost
-  newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func)
+  newton_data_discard, jac, rhs_vec_discard = setupNewton(mesh, mesh, sbp, eqn_dummy, opts, physics_func, () )
 
   # make sure we're doing complex step! since res_copy is zeros, it would mess up the FD calc
   assert(opts["jac_method"] == 2)

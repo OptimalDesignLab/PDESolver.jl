@@ -1,4 +1,5 @@
 arg_dict = Dict{Any, Any}(
+"physics" => "Euler",
 "run_type" => 5,
 "jac_type" => 2,
 "jac_method" => 2,
@@ -40,7 +41,7 @@ arg_dict = Dict{Any, Any}(
 
 # Objective functional options
 "objective_function" => "lift",
-"geom_faces_objective" => [5],
+"objective_bcs" => [2],
 
 "exact_soln_func" => "ICFreeStream",
 )

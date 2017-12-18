@@ -58,6 +58,34 @@ function test_CN_parallel()
 
   end
 
+  facts("--- Testing matrix-free Petsc -----") do
+    cd("./m1")
+    opts = read_input("input_vals1.jl")
+    
+    # clear out the old options
+#    PetscClearOptions(opts["petsc_options"])
+    opts["petsc_options"] = Dict{AbstractString, AbstractString}(
+                                "-pc_type" => "none",
+                                "-malloc" => "",
+                                "-malloc_debug" => "",
+                                "-ksp_monitor" => "",
+                                "-ksp_gmres_modifiedgramschmidt" => "",
+                                "-ksp_gmres_restart" => "30",
+                                )
+
+    mesh, sbp, eqn, opts = run_advection("input_vals_restart")
+    MPI.Barrier(mesh.comm)
+    data = readdlm("error_calc.dat")
+    datas = readdlm("../../crank_nicolson_PETSc_serial/m1/error_calc.dat")
+
+    @fact data[1] --> roughly(datas[1], atol=1e-13)
+    @fact data[2] --> roughly(datas[2], atol=1e-13)
+
+    cd("..")
+
+
+  end
+
   cd(start_dir)
 
   return nothing

@@ -26,8 +26,12 @@ function test_parallel_derivatives()
     end # End context("Checking ∂J/∂aoa")
 
     lift = objective.lift_val
+    pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+    ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
     adjoint_vec = zeros(Complex128, mesh.numDof)
-    EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+
+
+    calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
     dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, objective, "lift", adjoint_vec)
 
     # Check complete derivatives w.r.t alpha using finite difference

@@ -27,7 +27,7 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
   myrank = mesh.myrank
   params = eqn.params
-  #println(BSTDOUT, "----- entered evalResidual -----")
+  #println("----- entered evalResidual -----")
 
   eqn.t = t
 #  params.time.t_barriers[1] += @elapsed MPI.Barrier(mesh.comm) 
@@ -384,7 +384,6 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
    end
 #   println("    calcBoundaryflux @time printed above")
   end
-
 
   if opts["precompute_boundary_flux"]
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res)

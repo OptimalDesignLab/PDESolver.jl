@@ -13,6 +13,10 @@
 """
 function checkOptions(opts)
 
+  if opts["physics"] != PhysicsName
+    error("physics not specified as $PhysicsName, are you lost?")
+  end
+
   if opts["use_edge_res"]
     error("use_edge_res does not work correctly, do not use")
   end

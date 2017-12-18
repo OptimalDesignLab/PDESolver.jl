@@ -1,4 +1,4 @@
-# NonlinearSolvers Introduction
+# [NonlinearSolvers Introduction](@id sec:nonlinearsolvers)
 
 This module contains both the time-stepping methods and the methods for solving
 steady problems.

@@ -1,6 +1,7 @@
 module Input
 
   import MPI
+  using PETSc2
   export read_input, make_input
 
   include("read_input.jl")

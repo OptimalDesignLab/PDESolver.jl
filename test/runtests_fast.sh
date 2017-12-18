@@ -21,6 +21,10 @@ err=0
 $jj ./runtests.jl $tags
 tmp=$?
 err=$((err + tmp))
+if [[ $err -gt 0 ]];
+then
+  exit $err
+fi
 
 echo "after serial tests, err = $err"
 
@@ -29,12 +33,22 @@ mpirun -np 2 $jj ./runtests_parallel2.jl $tags
 tmp=$?
 err=$((err + tmp))
 
+if [[ $err -gt 0 ]];
+then
+  exit $err
+fi
+
 echo "after parallel2 tests, err = $err"
 
 # 4 processor tests, all in a single session
 mpirun -np 4 $jj ./runtests_parallel4.jl $tags
 tmp=$?
 err=$((err + tmp))
+
+if [[ $err -gt 0 ]];
+then
+  exit $err
+fi
 
 echo "after parallel4 tests err = $err"
 

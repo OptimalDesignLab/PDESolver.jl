@@ -48,8 +48,7 @@ function test_adjoint()
       functional = AdvectionEquationMod.createFunctionalData(mesh, sbp, eqn,
                    opts, opts["num_functionals"])
 
-      @fact functional.is_objective_fn --> false
-      @fact functional.geom_faces_functional --> [1,2]
+      @fact functional.bcnums --> [2,3]
       @fact functional.val --> zero(Complex{Float64})
       @fact functional.target_qflux --> zero(Complex{Float64})
 
@@ -59,8 +58,7 @@ function test_adjoint()
 
     context("Checking Objective Functional Object Creation") do
 
-      @fact objective.is_objective_fn --> true
-      @fact objective.geom_faces_functional --> [1,2]
+      @fact objective.bcnums --> [2,3]
       @fact objective.val --> zero(Complex{Float64})
       @fact objective.target_qflux --> zero(Complex{Float64})
 
@@ -75,12 +73,20 @@ function test_adjoint()
       functional_error = norm(real(objective.val) - analytical_val,2)
       @fact functional_error --> roughly(0.0, atol=1e-12)
 
+      # test another functional
+      func = AdvectionEquationMod.IntegralQDataConstructor(Complex128, mesh, sbp, eqn, opts, opts["functional_bcs1"])
+      AdvectionEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, func)
+      @fact func.val --> roughly(analytical_val, atol=1e-13)
+
+
     end # End context("Checking Functional Computation")
 
     context("Checking Adjoint Computation on DG mesh") do
 
       adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
-      AdvectionEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+      pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+      ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+      calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
 
       for i = 1:length(adjoint_vec)
         @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)

@@ -158,6 +158,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   vortex_x0::Float64  # vortex center x coordinate at t=0
   vortex_strength::Float64  # strength of the vortex
 
+  #TODO: get rid of these, move to NewtonData
   krylov_itr::Int  # Krylov iteration number for iterative solve
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
 
@@ -169,6 +170,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   iperm::Array{Int, 1}
 
   S::Array{Float64, 3}  # SBP S matrix
+
+  x_design::Array{Tsol, 1}  # design variables
 
   #=
   # timings
@@ -207,51 +210,51 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     myrank = mesh.myrank
     #TODO: don't open a file in non-debug mode
     if DB_LEVEL >= 1
-      f = BufferedIO("log_$myrank.dat", "a")
+      f = BufferedIO("log_$myrank.dat", "w")
     else
       f = BufferedIO(DevNull)
     end
-    q_vals = Array(Tsol, Tdim + 2)
-    q_vals2 = Array(Tsol, Tdim + 2)
-    q_vals3 = Array(Tsol, Tdim + 2)
-    qg = Array(Tsol, Tdim + 2)
-    v_vals = Array(Tsol, Tdim + 2)
-    v_vals2 = Array(Tsol, Tdim + 2)
-    Lambda = Array(Tsol, Tdim + 2)
+    q_vals = zeros(Tsol, Tdim + 2)
+    q_vals2 = zeros(Tsol, Tdim + 2)
+    q_vals3 = zeros(Tsol, Tdim + 2)
+    qg = zeros(Tsol, Tdim + 2)
+    v_vals = zeros(Tsol, Tdim + 2)
+    v_vals2 = zeros(Tsol, Tdim + 2)
+    Lambda = zeros(Tsol, Tdim + 2)
 
-    q_el1 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el2 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el3 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el4 = Array(Tsol, mesh.numDofPerNode, numNodesPerElement)
+    q_el1 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
+    q_el2 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
+    q_el3 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
+    q_el4 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
 
-    res_el1 = Array(Tres, mesh.numDofPerNode, numNodesPerElement)
-    res_el2 = Array(Tres, mesh.numDofPerNode, numNodesPerElement)
+    res_el1 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
+    res_el2 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
 
-    qs_el1 = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
-    qs_el2 = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+    qs_el1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+    qs_el2 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
 
-    ress_el1 = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-    ress_el2 = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+    ress_el1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+    ress_el2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
 
-    w_vals_stencil = Array(Tsol, Tdim + 2, stencilsize)
-    w_vals2_stencil = Array(Tsol, Tdim + 2, stencilsize)
+    w_vals_stencil = zeros(Tsol, Tdim + 2, stencilsize)
+    w_vals2_stencil = zeros(Tsol, Tdim + 2, stencilsize)
 
-    res_vals1 = Array(Tres, Tdim + 2)
-    res_vals2 = Array(Tres, Tdim + 2)
-    res_vals3 = Array(Tres, Tdim + 2)
+    res_vals1 = zeros(Tres, Tdim + 2)
+    res_vals2 = zeros(Tres, Tdim + 2)
+    res_vals3 = zeros(Tres, Tdim + 2)
 
-    flux_vals1 = Array(Tres, Tdim + 2)
-    flux_vals2 = Array(Tres, Tdim + 2)
-    flux_valsD = Array(Tres, Tdim + 2, Tdim)
+    flux_vals1 = zeros(Tres, Tdim + 2)
+    flux_vals2 = zeros(Tres, Tdim + 2)
+    flux_valsD = zeros(Tres, Tdim + 2, Tdim)
 
-    sat_vals = Array(Tres, Tdim + 2)
+    sat_vals = zeros(Tres, Tdim + 2)
 
     A0 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A0inv = zeros(Tsol, Tdim + 2, Tdim + 2)
     A1 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A2 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A_mats = zeros(Tsol, Tdim + 2, Tdim + 2, Tdim)
-    S2 = Array(Tsol, Tdim + 2)
+    S2 = zeros(Tsol, Tdim + 2)
 
     Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
     Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
@@ -265,10 +268,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
     nrm_face2 = zeros(Tmsh, Tdim, mesh.sbpface.numnodes)
 
-    dxidx_element = Array(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
-    velocities = Array(Tsol, Tdim, mesh.numNodesPerElement)
-    velocity_deriv = Array(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
-    velocity_deriv_xy = Array(Tres, Tdim, Tdim, mesh.numNodesPerElement)
+    dxidx_element = zeros(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
+    velocities = zeros(Tsol, Tdim, mesh.numNodesPerElement)
+    velocity_deriv = zeros(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
+    velocity_deriv_xy = zeros(Tres, Tdim, Tdim, mesh.numNodesPerElement)
 
 
     h = maximum(mesh.jac)
@@ -308,7 +311,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
       filter_fname = opts["filter_name"]
       filter_mat = calcFilter(sbp, filter_fname, opts)
     else
-      filter_mat = Array(Float64, 0,0)
+      filter_mat = zeros(Float64, 0,0)
     end
 
     use_dissipation = opts["use_dissipation"]
@@ -343,10 +346,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     iperm = zeros(Int, size(sbpface.perm, 1))
 
     stencil_size = size(sbp.Q, 1)
-    S = Array(Float64, stencil_size, stencil_size, Tdim)
+    S = zeros(Float64, stencil_size, stencil_size, Tdim)
     for i=1:Tdim
       S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
     end
+
+    x_design = zeros(Tsol, 0)  # this can be resized later
 
     time = Timings()
 
@@ -381,7 +386,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
-               S, time,
+               S, x_design, time,
                isViscous, penalty_relaxation, const_tii)
 
     end   # end of ParamType function
@@ -499,8 +504,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # TODO: consider overloading getField instead of having function as
   #       fields
-  disassembleSolution::Function   # function: q_vec -> eqn.q
-  assembleSolution::Function      # function : eqn.res -> res_vec
   multiplyA0inv::Function         # multiply an array by inv(A0), where A0
                                   # is the coefficient matrix of the time derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
@@ -558,8 +561,6 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     else
       println(BSTDERR, "Warning: variable_type not recognized")
     end
-    eqn.disassembleSolution = disassembleSolution
-    eqn.assembleSolution = assembleSolution
     eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
 
@@ -574,7 +575,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.dissipation_mat = calcDissipationOperator(mesh, sbp, eqn, opts,
                                                     dissipation_name)
     else
-      eqn.dissipation_mat = Array(Tmsh, 0, 0, 0)
+      eqn.dissipation_mat = zeros(Tmsh, 0, 0, 0)
     end
 
     # Must initialize them because some datatypes (BigFloat)
@@ -646,8 +647,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
       eqn.aux_vars_bndry = zeros(Tres, 1, numfacenodes, mesh.numBoundaryFaces)
     else
-      eqn.q_face = Array(Tres, 0, 0, 0, 0)
-      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.q_face = zeros(Tres, 0, 0, 0, 0)
+      eqn.flux_face = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_face = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry = zeros(Tres, 0, 0, 0)
     end
@@ -670,10 +671,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     if mesh.isDG
       for i=1:mesh.npeers
         if opts["precompute_face_flux"]
-          eqn.flux_sharedface[i] = Array(Tres, mesh.numDofPerNode, numfacenodes,
+          eqn.flux_sharedface[i] = zeros(Tres, mesh.numDofPerNode, numfacenodes,
                                          mesh.peer_face_counts[i])
         end
-        eqn.aux_vars_sharedface[i] = Array(Tres, mesh.numDofPerNode,
+        eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end
       eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
@@ -686,8 +687,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.edgestab_alpha = zeros(Tmsh,Tdim,Tdim,sbp.numnodes, mesh.numEl)
       calcEdgeStabAlpha(mesh, sbp, eqn)
     else
-      eqn.stabscale = Array(Tres, 0, 0)
-      eqn.edgestab_alpha = Array(Tmsh, 0, 0, 0, 0)
+      eqn.stabscale = zeros(Tres, 0, 0)
+      eqn.edgestab_alpha = zeros(Tmsh, 0, 0, 0, 0)
     end
 
     # functor defaults. functorThatErrors() is defined in ODLCommonTools
@@ -717,14 +718,14 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
       eqn.shared_data_bar = getSharedFaceData(Tsol, mesh, sbp, opts)
       else
-        eqn.shared_data_bar = Array(SharedFaceData, 0)
+        eqn.shared_data_bar = zeros(SharedFaceData, 0)
       end
 
       eqn.flux_face_bar = zeros(eqn.flux_face)
       eqn.bndryflux_bar = zeros(eqn.bndryflux)
       eqn.res_bar = zeros(eqn.res)
     else  # don't allocate arrays if they are not needed
-      eqn.q_bar = Array(Tsol, 0, 0, 0)
+      eqn.q_bar = zeros(Tsol, 0, 0, 0)
       eqn.q_face_bar = zeros(Tsol, 0, 0, 0, 0)
       eqn.q_bndry_bar = zeros(Tsol, 0, 0, 0)
       eqn.flux_parametric_bar = zeros(Tsol, 0, 0, 0, 0)
@@ -782,40 +783,6 @@ typealias ParamType2 ParamType{2}
 """
 typealias ParamType3 ParamType{3}
 
-
-@doc """
-###EulerEquationMod.BoundaryForceData
-
-Composite data type for storing data pertaining to the boundaryForce. It holds
-lift and drag values
-
-"""->
-
-type BoundaryForceData{Topt, fname} <: AbstractOptimizationData
-  is_objective_fn::Bool
-  geom_faces_functional::AbstractArray{Int,1}
-  ndof::Int
-  bndry_force::AbstractArray{Topt,1}
-  lift_val::Topt
-  drag_val::Topt
-  dLiftdaoa::Topt # Partial derivative of lift w.r.t. angle of attack
-  dDragdaoa::Topt # Partial derivative of drag w.r.t. angle of attack
-
-  function BoundaryForceData(mesh, sbp, eqn, opts, geom_faces_functional)
-
-    functional = new()
-    functional.is_objective_fn = false
-    functional.geom_faces_functional = geom_faces_functional
-    functional.ndof = mesh.dim
-    functional.bndry_force = zeros(Topt, mesh.dim)
-    functional.lift_val = 0.0
-    functional.drag_val = 0.0
-    functional.dLiftdaoa = 0.0
-    functional.dDragdaoa = 0.0
-
-    return functional
-  end
-end
 
 """
   This function opens all used for logging data.  In particular, every data

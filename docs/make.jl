@@ -84,6 +84,12 @@ makedocs(
                   "Introduction" => "input/input.md"
                   "Important Keys" => "input/keys.md"
                  ]
+              "LinearSolvers" => Any[
+                "Introduction" => "linearsolvers/linearsolvers.md"
+                "Preconditioners" => "linearsolvers/pc.md"
+                "Linear Operators" => "linearsolvers/lo.md"
+                "Linear Solvers" => "linearsolvers/ls.md"
+                ]  # end LinearSolvers
               "NonlinearSolvers" => Any[
                   "Introduction" => "NonlinearSolvers/nonlinearsolvers.md"
                   "Steady" => "NonlinearSolvers/steady.md"
@@ -104,6 +110,8 @@ makedocs(
                   "Projections" => "Utils/projections.md"
                   "Logging" => "Utils/logging.md"
                   "Input/Output" => "Utils/io.md"
+                  "Checkpointing" => "Utils/checkpoint.md"
+                  "Misccellaneous" => "Utils/misc.md"
                  ]
              ] # end Home
 )  # end mkdocs

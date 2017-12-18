@@ -328,6 +328,10 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
 
   dmg_name = opts["dmg_name"]
   smb_name = opts["smb_name"]
+  # the mesh constructor looks at the order option, so temporarily make
+  # order = order$suffix
+  order_orig = opts["order"]
+  opts["order"] = opts["order$suffix"]
   order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
@@ -335,15 +339,19 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
   if opts["use_DG"]
     println("constructing DG mesh")
     if dim == 2
-      mesh = PumiMeshDG2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface; 
-                               dofpernode=dofpernode, 
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
+      mesh = PumiMeshDG2(Tmsh, sbp, opts, sbpface, dofpernode=dofpernode,
+                                                   shape_type=shape_type)
+#      mesh = PumiMeshDG2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface; 
+#                               dofpernode=dofpernode, 
+#                               coloring_distance=opts["coloring_distance"],
+#                               shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface,
-                               topo; dofpernode=dofpernode,
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
+      mesh = PumiMeshDG3(Tmsh, sbp, opts, sbpface, topo, dofpernode=dofpernode,
+                                                   shape_type=shape_type)
+#      mesh = PumiMeshDG3{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface,
+#                               topo; dofpernode=dofpernode,
+#                               coloring_distance=opts["coloring_distance"],
+#                               shape_type=shape_type)
     end
 
     # create preconditioning mesh
@@ -376,6 +384,9 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
     end
   end  # end if DG
 
+
+  # reset order
+  opts["order"] = order_orig
 
   return mesh, pmesh
 end
@@ -463,9 +474,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       # dRdx here
 
     elseif flag == 4 || flag == 5 || flag == 11
-      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh)
 
       printSolution("newton_solution.dat", eqn.res_vec)
 
@@ -492,7 +501,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     elseif flag == 10
       function test_pre_func(mesh, sbp, eqn, opts)
 
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       end
 
       function test_post_func(mesh, sbp, eqn, opts, calc_norm=true)
@@ -524,9 +533,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
-      @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+      @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
@@ -623,7 +630,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     # evaluate residual at final q value
     need_res = true
     if need_res
-      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       # this will make sure the t value is stored into the equation object
       # this is important for calculating error norms later, to make sure
       # they exact solution is calculated at the right time
@@ -631,7 +638,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       evalResidual(mesh, sbp, eqn, opts, t)
 
       eqn.res_vec[:] = 0.0
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     end
 
     if opts["write_finalsolution"]
