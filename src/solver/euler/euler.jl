@@ -488,6 +488,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     if opts["precompute_q_face"]
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
     end
+
     if opts["precompute_face_flux"]
       calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
     end

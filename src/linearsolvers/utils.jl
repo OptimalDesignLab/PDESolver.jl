@@ -92,9 +92,8 @@ end
 function createPetscVec(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
-  if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize()
-  end
+  @assert PetscInitialized()
+
   comm = eqn.comm
   const vectype = VECMPI
   obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
@@ -121,9 +120,7 @@ end
 function createPetscPC(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
-  if PetscInitialized() == 0 # PETSc Not initialized before
-    PetscInitialize()
-  end
+  @assert PetscInitialized()
   comm = eqn.comm
 
   pc = PC(comm)
