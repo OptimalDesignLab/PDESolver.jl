@@ -131,6 +131,7 @@ function evalSharedFaceIntegrals_viscous(mesh::AbstractDGMesh, sbp, eqn, opts)
   #   2) Currently, entropy conservative and entropy stable formulations are not implemented 
   #      for viscous terms.
 
+  face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1    # non-entropy variables
     if opts["parallel_data"] == "face"
       throw(ErrorException("Viscous terms require shared element and face data, but parallel_data = face. Exiting."))
