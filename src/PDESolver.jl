@@ -34,6 +34,35 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/optimization"))
 
 # load the modules
+using MPI
+
+function finalizeMPI()
+  if MPI.Initialized()
+    MPI.Finalize()
+  end
+end
+
+if !MPI.Initialized()
+  MPI.Init()
+  atexit(finalizeMPI)
+end
+
+using PETSc2
+
+function finalizePetsc()
+  if PetscInitialized()
+    PetscFinalize()
+  end
+end
+
+if !PetscInitialized()
+  PetscInitialize()
+  atexit(finalizePetsc)
+end
+
+
+using Input
+using Debug
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -43,44 +72,7 @@ using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
 import ODLCommonTools.sview
-using MPI
 using Input
-using Debug
-using PETSc2
-
-if !MPI.Initialized()
-  MPI.Init()
-  mpi_inited = true
-else
-  mpi_inited =false
-end
-
-if PetscInitialized() == 0
-  PetscInitialize()
-  petsc_inited = true
-else
-  petsc_inited = false
-end
-
-function finalizePetsc()
-  if PetscInitialized() == 0
-    PetscFinalize()
-  end
-end
-
-function finalizeMPI()
-  if MPI.Initialized()
-    MPI.Finalize()
-  end
-end
-
-if petsc_inited
-  atexit( () -> finalizePetsc() )
-end
-
-if mpi_inited
-  atexit( () -> finalizeMPI() )
-end
 
 include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement

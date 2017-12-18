@@ -450,7 +450,6 @@ petsc_opts = Dict{AbstractString, AbstractString}(
   "-ksp_gmres_modifiedgramschmidt" => "",
   "-ksp_pc_side" => "right",
   "-ksp_gmres_restart" => "30",
-  "-log_summary" => "petsc_log"
 )
 
 if arg_dict["use_volume_preconditioner"]
