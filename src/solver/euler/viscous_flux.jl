@@ -99,7 +99,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       # interiorfaceinterpolate(sbpface, face, dqdxL, dqdxR, dqdx_f)
     # end
 
-    # # Now both G and dqdx are avaiable at face nodes  
+    # # Now both G and dqdx are available at face nodes
     # dqdx_faceL = slice(dqdx_face, :, :, 1, :)
     # dqdx_faceR = slice(dqdx_face, :, :, 2, :)
     # calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
@@ -110,6 +110,10 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     jacR = ro_sview(mesh.jac, :, elemR)
     dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
     dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
+    # TODO: Here is where we need to decide where dxidxL, dxidxR, jacL, and jacR come from.
+    #       If this interface is between elements on the same partition, then the former method
+    #       (using ro_sview of mesh.jac and mesh.dxidx) works. If it is between partitions,
+    #       we need to obtain the data from RemoteMetrics.
     calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
     Fv_faceL = sview(Fv_face, :,:,1,:)
     Fv_faceR = sview(Fv_face, :,:,2,:)

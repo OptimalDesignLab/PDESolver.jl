@@ -366,7 +366,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     const_tii = 0.0
     if isViscous
-      const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
+      # const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
+      # NOTE: this is a parameter used in the journal SBP parabolic paper.
+      #       Currently, since diagE operator does not have the interpolation operator,
+      #       this parameter cannot be computed. Instead, we are using
+      #       Shahbazi's parameter, defined outside of this constructor.
     end
 
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
