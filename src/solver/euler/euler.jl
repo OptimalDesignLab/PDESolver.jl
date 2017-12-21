@@ -186,7 +186,14 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
 
-    evalSharedFaceIntegrals_viscous(mesh, sbp, eqn, opts)
+    # Notes:
+    #   1) the below is commented out b/c the route we want to go is to have evalSharedFaceIntegrals
+    #       call the viscous fluxes, not have a separate function
+    #   2) viscous contributions are computed in two stages:
+    #       a) fluxes, in calcViscousFlux_interior    (q -> flux)
+    #       b) residual contribution, in evalFaceIntegrals_vector   (flux -> res)
+
+    # evalSharedFaceIntegrals_viscous(mesh, sbp, eqn, opts)
   end
   
   # DEBUG BEGIN
@@ -524,7 +531,8 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 		fill!(eqn.vecflux_faceL, 0.0)
 		fill!(eqn.vecflux_faceR, 0.0)
 
-		calcViscousFlux_interior(mesh, sbp, eqn, opts)
+		calcViscousFlux_interior(mesh, sbp, eqn, opts)      # AA: needs that index argument to indicate
+                                                        #     whether on interior or iface between peers
 
 		fill!(eqn.vecflux_bndry, 0.0)
 		calcViscousFlux_boundary(mesh, sbp, eqn, opts)

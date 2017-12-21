@@ -240,8 +240,10 @@ function interiorfaceinterpolate{Tsbp, Tsol}(sbpface::AbstractFace{Tsbp},
   @assert(size(qvolR, 1) == size(qvolL, 1))
   @assert(size(qvolR, 2) == size(qvolL, 2))
   @assert(size(qvolR, 1) == size(qface, 1))
-  @assert(size(sbpface.interp, 1) <= size(qvolL, 2))
-  @assert(size(sbpface.interp, 2) == size(qface, 3))
+  # @assert(size(sbpface.interp, 1) <= size(qvolL, 2))
+  # @assert(size(sbpface.interp, 2) == size(qface, 3))
+  # See comment in types.jl! TODO TODO We'll need to figure out how to fix the other calls to
+  #   sbpface.interp elsewhere in this function (and others)
 
   numDofs = size(qvolL, 1)    
 

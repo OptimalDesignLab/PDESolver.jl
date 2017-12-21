@@ -277,6 +277,8 @@ end
    * FvL : viscous flux on left side of interface
    * FvR : viscous flux on left side of interface
 
+   # Fv_face indices: (dimension, numDofPerNode, 1 or 2, numNodesPerFace)
+
 """
 function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
                                         sbp::AbstractSBP,
