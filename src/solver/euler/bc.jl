@@ -1331,6 +1331,84 @@ function call{Tmsh, Tsol, Tres}(obj::defaultBC, params::ParamType,
   return nothing
 end
 
+type SubsonicInflowBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+  #See NASA/TM-2011-217181: Inflow/Outflow Boundary Conditions with Application
+  #                         to FUN3D by Carlson 
+
+  println("\nComputing subsonic inflow BC")
+  println("params.p_free = ", params.p_free)
+  println("params.T_free = ", params.T_free)
+
+  pt = 100/params.p_free  # boundary stagnation pressure
+  Tt = 100/params.T_free  # boundary stagnation temperature
+  # assume flow is in the [0, 1] direction
+  # i = interior quantity
+  # b = boundary state
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  pressi = calcPressure(params, q)
+  vi = q[3]/q[1]
+  ai2 = gamma*pressi/q[1]  # speed of sound squared
+
+  # stagnation enthalpy (specific)
+  hti = ai2/gamma_1 + vi*vi
+
+  # Riemann invarient for the characteristic exiting the domain
+  Ri = vi - 2*sqrt(ai2)/gamma_1
+
+  # this step uses the adiabatic assumption + the Riemann invarient Rb to
+  # form a quandratic equation for ab
+  # pick the larger of the two roots
+
+  a = 0.5 + 2/gamma_1
+  b = 2*Ri
+  c = 0.5*gamma_1*(Ri*Ri - hti)
+
+  tmp1 = -0.5*b/a
+  tmp2 = 0.5*sqrt(b*b - 4*a*c)/a
+  ab1 = tmp1 + tmp2
+  ab2 = tmp1 - tmp2
+
+  ab = max(ab1, ab2)  # maximum root is the physically correct one
+
+  # use Riemann invarient to find velocity magnitude on the boundary side
+  vb = Ri + 2*ab/gamma_1
+  Mb = vb/ab
+
+  @assert Mb < 1.0
+
+  operand = 1/(1 + 0.5*gamma_1*Mb*Mb)
+  pb = pt*(operand)^(gamma/gamma_1)
+  Tb = Tt*operand
+
+
+  # convert back to conservative variables
+  qg = params.qg
+  rho1 = gamma*pb/(ab*ab)  # this is numerically equivalent to rho2 below,
+                           # which is weuird because in this case Tb is never
+                           # used
+  rho2 = pb/(params.R_ND*Tb)
+  qg[1] = rho2  # R is not nondimenstionalized
+  qg[2] = 0
+  qg[3] = qg[1]*vb
+  qg[4] = pb/gamma_1 + 0.5*qg[1]*vb*vb
+
+  R_computed = pb/(qg[1]*Tb)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+
+  return nothing
+end
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -1351,6 +1429,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "ExpBC" => ExpBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
 "ChannelMMSBC" => ChannelMMSBC(),
+"subsonicInflowBC" => SubsonicInflowBC(),
 "defaultBC" => defaultBC(),
 )
 

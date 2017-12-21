@@ -133,6 +133,8 @@ aoa = get!(arg_dict, "aoa", -1.0)
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
+get!(arg_dict, "p_free", 1.0)
+get!(arg_dict, "T_free", 1.0)
 get!(arg_dict, "vortex_x0", 0.0)
 get!(arg_dict, "vortex_strength", 1.0)
 
