@@ -370,6 +370,9 @@ get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
 get!(arg_dict, "use_volume_preconditioner", false)
 
+# majorIterationCallback options
+get!(arg_dict, "callback_write_qvec", false)
+
 if arg_dict["run_type"] == 5  # steady newton
   get!(arg_dict, "newton_verbosity", 5)
 else

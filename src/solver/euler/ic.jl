@@ -659,7 +659,35 @@ return nothing
 
 end  # end function
 
+"""
+  Initial condition for SU2 bump in inviscid channel case.  See also
+  The subsonic inflow and subsonic outflow boundary conditions.
+"""
+function ICInvChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                          operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+                          opts, u0::AbstractArray{Tsol})
 
+  rho = 1.22531
+  rhou = rho*170.104
+  rhov = 0
+  E = 101300/eqn.params.gamma_1 + 0.5*rho*(rhou*rhou + rhov*rhov)
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dof_rho = mesh.dofs[1, j, i]
+      dof_rhou = mesh.dofs[2, j, i]
+      dof_rhov = mesh.dofs[3, j, i]
+      dof_E = mesh.dofs[4, j, i]
+
+      u0[dof_rho] = rho
+      u0[dof_rhou] = rhou
+      u0[dof_rhov] = rhov
+      u0[dof_E] = E
+    end
+  end
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod.ICFile
@@ -888,6 +916,7 @@ global const ICDict = Dict{Any, Function}(
 "ICUnsteadyVortex" => ICUnsteadyVortex,
 "ICUnsteadyVortex2" => ICUnsteadyVortex2,
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
+"ICInvChannel" => ICInvChannel,
 "ICFile" => ICFile,
 "ICExp" => ICExp,
 "ICPeriodicMMS" => ICPeriodicMMS,

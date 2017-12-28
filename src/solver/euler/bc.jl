@@ -535,7 +535,8 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
   # params says we are using entropy variables
 
 
-  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+#  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
@@ -1342,29 +1343,31 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
 
   #See NASA/TM-2011-217181: Inflow/Outflow Boundary Conditions with Application
   #                         to FUN3D by Carlson 
+  # The derivation has some algebraic mistakes, but the approach is correct
 
-  println("\nComputing subsonic inflow BC")
-  println("params.p_free = ", params.p_free)
-  println("params.T_free = ", params.T_free)
-
-  pt = 100/params.p_free  # boundary stagnation pressure
-  Tt = 100/params.T_free  # boundary stagnation temperature
-  # assume flow is in the [0, 1] direction
+  pt = 102010.0/params.p_free  # boundary stagnation pressure
+  Tt = 288.6/params.T_free  # boundary stagnation temperature
   # i = interior quantity
   # b = boundary state
+
+  # need normalized outward normal vector
+  nrm_fac = 1/sqrt(nrm_xy[1]*nrm_xy[1] + nrm_xy[2]*nrm_xy[2])
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
 
   pressi = calcPressure(params, q)
-  vi = q[3]/q[1]
+  # magnitude of velocity (negative sign because the normal is outward but
+  # the velocity should be inward
+  Ui = -nrm_fac*(q[2]*nrm_xy[1] + q[3]*nrm_xy[2])/q[1]
+#  vi = q[3]/q[1]
   ai2 = gamma*pressi/q[1]  # speed of sound squared
 
   # stagnation enthalpy (specific)
-  hti = ai2/gamma_1 + vi*vi
+  hti = ai2/gamma_1 + Ui*Ui
 
   # Riemann invarient for the characteristic exiting the domain
-  Ri = vi - 2*sqrt(ai2)/gamma_1
+  Ri = Ui - 2*sqrt(ai2)/gamma_1
 
   # this step uses the adiabatic assumption + the Riemann invarient Rb to
   # form a quandratic equation for ab
@@ -1382,8 +1385,8 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
   ab = max(ab1, ab2)  # maximum root is the physically correct one
 
   # use Riemann invarient to find velocity magnitude on the boundary side
-  vb = Ri + 2*ab/gamma_1
-  Mb = vb/ab
+  Ub = Ri + 2*ab/gamma_1
+  Mb = Ub/ab
 
   @assert Mb < 1.0
 
@@ -1399,13 +1402,49 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
                            # used
   rho2 = pb/(params.R_ND*Tb)
   qg[1] = rho2  # R is not nondimenstionalized
-  qg[2] = 0
-  qg[3] = qg[1]*vb
-  qg[4] = pb/gamma_1 + 0.5*qg[1]*vb*vb
+  qg[2] = -Ub*nrm_xy[1]*nrm_fac*qg[1]  # negative sign because the normal is neg
+  qg[3] = -Ub*nrm_xy[2]*nrm_fac*qg[1]
+  qg[4] = pb/gamma_1 + 0.5*qg[1]*Ub*Ub
 
-  R_computed = pb/(qg[1]*Tb)
+#  R_computed = pb/(qg[1]*Tb)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
+
+  return nothing
+end
+
+type SubsonicOutflowBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+  pb = 101300.0/params.p_free  # nondimensionalized pressure
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  pressi = calcPressure(params, q)
+  # verify Mach number < 1
+  ai2 = gamma*pressi/q[1]  # speed of sound squared
+  # need normalized outward normal vector
+  nrm_fac = 1/sqrt(nrm_xy[1]*nrm_xy[1] + nrm_xy[2]*nrm_xy[2])
+  Un = (q[2]*nrm_xy[1] + q[3]*nrm_xy[2])*nrm_fac/q[1]
+
+  @assert Un > 0  # this should be outflow, not inflow
+  @assert (Un*Un)/ai2 < 1
+
+  qg = params.qg
+  qg[1] = q[1]
+  qg[2] = q[2]
+  qg[3] = q[3]
+  # compute energy from the specified pressure
+  qg[4] = pb/gamma_1 + 0.5*(q[2]*q[2] + q[3]*q[3])/q[1]
+#  qg[4] = pb/gamma_1 + 0.5*q[1]*(q[2]*q[2]
+
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
@@ -1430,6 +1469,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "PeriodicMMSBC" => PeriodicMMSBC(),
 "ChannelMMSBC" => ChannelMMSBC(),
 "subsonicInflowBC" => SubsonicInflowBC(),
+"subsonicOutflowBC" => SubsonicOutflowBC(),
 "defaultBC" => defaultBC(),
 )
 

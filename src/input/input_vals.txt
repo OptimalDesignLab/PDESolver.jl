@@ -321,6 +321,13 @@ Note that any values associated with these options are shared with the regular
                     another method in NonlinearSolvers).  When 4 or less,
                     Newton does not call majorIterationCallback
 
+# majorIterationCallback options
+"callback_write_qvec": write eqn.q_vec to a file named 
+                        "callback_q_vec_i_$myrank.dat", where `i` is the
+                       iteration number and `myrank` is the MPI rank of the
+                       process.  This file is suitable for use with ICFile,
+                       (Bool), default false
+
 # Newton-Krylov options
 "krylov_reltol"  : relative residual tolerance for krylov solver, (Float64),
                    default 1e-2
