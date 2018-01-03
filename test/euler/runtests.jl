@@ -41,7 +41,7 @@ include("test_dg.jl")
 include("test_GLS3.jl")
 include("test_modes.jl")
 include("test_3d.jl")
-
+include("test_bc.jl")
 include("test_adjoint.jl")
 include("test_reversemode.jl")
 include("test_flux.jl")

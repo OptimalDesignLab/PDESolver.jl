@@ -137,6 +137,10 @@ where input_file_name.jl is in your current directory.
 "aoa" : angle of attack in degrees (floating point)
 #"rho_free" : free stream density
 #"E_free" : free stream energy
+"p_free": dimensional free stream pressure, used for non-dimensionalization,
+          (FloatingPoint), default 1.0
+"T_free": dimensional free stream temperature, used for non-dimensionalization,
+          (FloatingPoint), default 1.0
 "edgestab_gamma"  : edge stabilization parameter, (floatingpoint), default -0.1
 "perturb_ic" : add random noise to initial condition, (Bool), default false
 "perturb_mag" : magnitude of perturbation (perturbation could be + or -), (Float64), default 0.0
@@ -316,6 +320,13 @@ Note that any values associated with these options are shared with the regular
                     if steady newton, 4 otherwise (ie. when Newton is used by
                     another method in NonlinearSolvers).  When 4 or less,
                     Newton does not call majorIterationCallback
+
+# majorIterationCallback options
+"callback_write_qvec": write eqn.q_vec to a file named 
+                        "callback_q_vec_i_$myrank.dat", where `i` is the
+                       iteration number and `myrank` is the MPI rank of the
+                       process.  This file is suitable for use with ICFile,
+                       (Bool), default false
 
 # Newton-Krylov options
 "krylov_reltol"  : relative residual tolerance for krylov solver, (Float64),
