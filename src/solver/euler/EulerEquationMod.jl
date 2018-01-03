@@ -213,6 +213,10 @@ include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")
 
+# Jacobian calculation
+include("euler_funcs_diff.jl")
+include("bc_solvers_diff.jl")
+
 """
   This physics is named `Euler`
 """
