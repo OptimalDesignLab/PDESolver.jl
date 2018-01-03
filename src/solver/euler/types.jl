@@ -86,7 +86,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
   flux_valsD::Array{Tres, 2}  # numDofPerNode x Tdim for flux vals 3 directions
 
+  # Roe solver storage
   sat_vals::Array{Tres, 1}  # reusable storage for SAT term
+  euler_fluxjac::Array{Tres, 2}  # euler flux jacobian
+  p_dot::Array{Tsol, 1}  # derivative of pressure wrt q
+  roe_vars::Array{Tres, 1}  # Roe average state
+  roe_vars_dot::Array{Tres, 1}  # derivatives of Roe vars wrt q, packed
+
 
   A0::Array{Tsol, 2}  # reusable storage for the A0 matrix
   A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
@@ -243,7 +249,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     flux_vals2 = zeros(Tres, Tdim + 2)
     flux_valsD = zeros(Tres, Tdim + 2, Tdim)
 
+    # Roe solver storage
     sat_vals = zeros(Tres, Tdim + 2)
+    euler_fluxjac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
+    p_dot = zeros(Tsol, mesh.numDofPerNode)
+    roe_vars = zeros(Tres, Tdim + 1)
+    roe_vars_dot = zeros(Tres, 22)  # number needed in 3D
 
     A0 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A0inv = zeros(Tsol, Tdim + 2, Tdim + 2)
@@ -352,7 +363,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                qs_el1, qs_el2, ress_el1, ress_el2,
                w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3,  flux_vals1, 
-               flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
+               flux_vals2, flux_valsD,
+               sat_vals, euler_fluxjac, p_dot, roe_vars, roe_vars_dot,
+               A0, A0inv, A1, A2, S2, 
                A_mats, Rmat1, Rmat2, P,
                nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
                velocity_deriv, velocity_deriv_xy,

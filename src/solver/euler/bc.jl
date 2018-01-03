@@ -334,12 +334,16 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
   phi = 0.5*(u*u + v*v)
   H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
 
-  dq = zeros(Tsol, 4)
+#  dq = zeros(Tsol, 4)
   dq = v_vals - qg  #!!! this allocates a new vector dq every time
 #  nrm2 = params.nrm2
 #  calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
-  calcSAT(params, nrm_xy, dq, sat, u, v, H)
+  roe_vars = params.roe_vars
+  roe_vars[1] = u
+  roe_vars[2] = v
+  roe_vars[3] = H
+  calcSAT(params, roe_vars, dq, nrm_xy, sat)
 
   euler_flux = zeros(Tsol, 4) # params.flux_vals1
   calcEulerFlux(params, v_vals, aux_vars, nrm_xy, euler_flux)
