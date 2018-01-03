@@ -271,6 +271,11 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       writeVisFiles(mesh, fname)
     end
 
+    vals = real(eqn.res_vec)  # remove unneded imaginary part
+    saveSolutionToMesh(mesh, vals)
+    fname = string("residual_", itr)
+    writeVisFiles(mesh, fname)
+
 
 #=
     # DEBUGGING: write error to file
@@ -283,6 +288,29 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     writeVisFiles(mesh, fname)
 =#
   end
+
+  if opts["callback_write_qvec"]
+    fname = string("callback_q_vec", itr, "_", myrank, ".dat")
+    writedlm(fname, real(eqn.q_vec))
+  end
+
+  # compute max residual of rho and E
+  max_rho = 0.0
+  max_E = 0.0
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    if abs(eqn.res_vec[i]) > max_rho
+      max_rho = abs(eqn.res_vec[i])
+    end
+  end
+
+  for i=4:mesh.numDofPerNode:mesh.numDof
+    if abs(eqn.res_vec[i]) > max_E
+      max_E = abs(eqn.res_vec[i])
+    end
+  end
+
+  println(BSTDOUT, "iteration", itr, " Res[Rho] = ", max_rho, " Res[E] = ", max_E)
+
 
     # add an option on control this or something.  Large blocks of commented
     # out code are bad

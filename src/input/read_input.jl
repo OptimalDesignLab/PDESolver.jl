@@ -133,6 +133,8 @@ aoa = get!(arg_dict, "aoa", -1.0)
 arg_dict["aoa"] = aoa*pi/180  # convert to radians
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
+get!(arg_dict, "p_free", 1.0)
+get!(arg_dict, "T_free", 1.0)
 get!(arg_dict, "vortex_x0", 0.0)
 get!(arg_dict, "vortex_strength", 1.0)
 
@@ -367,6 +369,9 @@ get!(arg_dict, "write_eigdecomp", false)
 get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
 get!(arg_dict, "use_volume_preconditioner", false)
+
+# majorIterationCallback options
+get!(arg_dict, "callback_write_qvec", false)
 
 if arg_dict["run_type"] == 5  # steady newton
   get!(arg_dict, "newton_verbosity", 5)

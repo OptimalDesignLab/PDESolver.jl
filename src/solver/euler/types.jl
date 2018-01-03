@@ -134,14 +134,20 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
+  R_ND::Float64  # specific gas constant, nondimensionalized
   gamma::Float64 # ratio of specific heats
   gamma_1::Float64 # = gamma - 1
 
   Ma::Float64  # free stream Mach number
   Re::Float64  # free stream Reynolds number
+
+  # these quantities are dimensional (ie. used for non-dimensionalization)
   aoa::Tsol  # angle of attack
   rho_free::Float64  # free stream density
+  p_free::Float64  # free stream pressure
+  T_free::Float64 # free stream temperature
   E_free::Float64 # free stream energy (4th conservative variable)
+  a_free::Float64 # free stream speed of sound (computed from p_free and rho_free)
 
   edgestab_gamma::Float64  # edge stabilization parameter
   # debugging options
@@ -291,8 +297,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     Ma = opts[ "Ma"]
     Re = opts[ "Re"]
     aoa = opts[ "aoa"]
-    E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
     rho_free = 1.0
+    p_free = opts["p_free"]
+    T_free = opts["T_free"]
+    E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
+    a_free = sqrt(p_free/rho_free)  # free stream speed of sound
+    R_ND = R*a_free*a_free/T_free
 
     edgestab_gamma = opts["edgestab_gamma"]
 
@@ -369,8 +379,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                A_mats, Rmat1, Rmat2, P,
                nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
                velocity_deriv, velocity_deriv_xy,
-               h, cv, R, gamma, gamma_1, Ma, Re, aoa,
-               rho_free, E_free,
+               h, cv, R, R_ND, gamma, gamma_1, Ma, Re, aoa,
+               rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
                use_dissipation, dissipation_const, tau_type, vortex_x0,

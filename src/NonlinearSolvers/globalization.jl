@@ -153,6 +153,8 @@ function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
     end
   end
 
+  println(BSTDOUT, "average tau value = ", mean(tau_vec))
+
   return nothing
 
 end
@@ -218,6 +220,9 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
   if !isEulerInitialized()
     return nothing
   end
+
+  println(BSTDOUT, "applying Implicit Euler globalization")
+  println(BSTDOUT, "average tau value = ", mean(lo.tau_vec))
 
   lo2 = getBaseLO(lo)
 #  println("euler globalization tau = ", lo.tau_l)

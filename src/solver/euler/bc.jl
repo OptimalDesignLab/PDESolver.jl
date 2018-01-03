@@ -539,6 +539,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
   # params says we are using entropy variables
 
 
+#  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
   calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 
   return nothing
@@ -1335,6 +1336,122 @@ function call{Tmsh, Tsol, Tres}(obj::defaultBC, params::ParamType,
   return nothing
 end
 
+type SubsonicInflowBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+  #See NASA/TM-2011-217181: Inflow/Outflow Boundary Conditions with Application
+  #                         to FUN3D by Carlson 
+  # The derivation has some algebraic mistakes, but the approach is correct
+
+  pt = 102010.0/params.p_free  # boundary stagnation pressure
+  Tt = 288.6/params.T_free  # boundary stagnation temperature
+  # i = interior quantity
+  # b = boundary state
+
+  # need normalized outward normal vector
+  nrm_fac = 1/sqrt(nrm_xy[1]*nrm_xy[1] + nrm_xy[2]*nrm_xy[2])
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  pressi = calcPressure(params, q)
+  # magnitude of velocity (negative sign because the normal is outward but
+  # the velocity should be inward
+  Ui = -nrm_fac*(q[2]*nrm_xy[1] + q[3]*nrm_xy[2])/q[1]
+#  vi = q[3]/q[1]
+  ai2 = gamma*pressi/q[1]  # speed of sound squared
+
+  # stagnation enthalpy (specific)
+  hti = ai2/gamma_1 + Ui*Ui
+
+  # Riemann invarient for the characteristic exiting the domain
+  Ri = Ui - 2*sqrt(ai2)/gamma_1
+
+  # this step uses the adiabatic assumption + the Riemann invarient Rb to
+  # form a quandratic equation for ab
+  # pick the larger of the two roots
+
+  a = 0.5 + 2/gamma_1
+  b = 2*Ri
+  c = 0.5*gamma_1*(Ri*Ri - hti)
+
+  tmp1 = -0.5*b/a
+  tmp2 = 0.5*sqrt(b*b - 4*a*c)/a
+  ab1 = tmp1 + tmp2
+  ab2 = tmp1 - tmp2
+
+  ab = max(ab1, ab2)  # maximum root is the physically correct one
+
+  # use Riemann invarient to find velocity magnitude on the boundary side
+  Ub = Ri + 2*ab/gamma_1
+  Mb = Ub/ab
+
+  @assert Mb < 1.0
+
+  operand = 1/(1 + 0.5*gamma_1*Mb*Mb)
+  pb = pt*(operand)^(gamma/gamma_1)
+  Tb = Tt*operand
+
+
+  # convert back to conservative variables
+  qg = params.qg
+  rho1 = gamma*pb/(ab*ab)  # this is numerically equivalent to rho2 below,
+                           # which is weuird because in this case Tb is never
+                           # used
+  rho2 = pb/(params.R_ND*Tb)
+  qg[1] = rho2  # R is not nondimenstionalized
+  qg[2] = -Ub*nrm_xy[1]*nrm_fac*qg[1]  # negative sign because the normal is neg
+  qg[3] = -Ub*nrm_xy[2]*nrm_fac*qg[1]
+  qg[4] = pb/gamma_1 + 0.5*qg[1]*Ub*Ub
+
+#  R_computed = pb/(qg[1]*Tb)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+
+  return nothing
+end
+
+type SubsonicOutflowBC <: BCType
+end
+
+function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+  pb = 101300.0/params.p_free  # nondimensionalized pressure
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  pressi = calcPressure(params, q)
+  # verify Mach number < 1
+  ai2 = gamma*pressi/q[1]  # speed of sound squared
+  # need normalized outward normal vector
+  nrm_fac = 1/sqrt(nrm_xy[1]*nrm_xy[1] + nrm_xy[2]*nrm_xy[2])
+  Un = (q[2]*nrm_xy[1] + q[3]*nrm_xy[2])*nrm_fac/q[1]
+
+  @assert Un > 0  # this should be outflow, not inflow
+  @assert (Un*Un)/ai2 < 1
+
+  qg = params.qg
+  qg[1] = q[1]
+  qg[2] = q[2]
+  qg[3] = q[3]
+  # compute energy from the specified pressure
+  qg[4] = pb/gamma_1 + 0.5*(q[2]*q[2] + q[3]*q[3])/q[1]
+#  qg[4] = pb/gamma_1 + 0.5*q[1]*(q[2]*q[2]
+
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -1355,6 +1472,8 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "ExpBC" => ExpBC(),
 "PeriodicMMSBC" => PeriodicMMSBC(),
 "ChannelMMSBC" => ChannelMMSBC(),
+"subsonicInflowBC" => SubsonicInflowBC(),
+"subsonicOutflowBC" => SubsonicOutflowBC(),
 "defaultBC" => defaultBC(),
 )
 
