@@ -84,6 +84,8 @@ function test_jac_terms()
   test_ad_inner(eqn3.params, q, qg, nrm2)
 
   test_jac_assembly(mesh, sbp, eqn, opts)
+
+  println("testing 3d")
   test_jac_assembly(mesh3, sbp3, eqn3, opts3)
 
   return nothing

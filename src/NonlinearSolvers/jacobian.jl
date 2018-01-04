@@ -796,102 +796,23 @@ function assembleInterface{T}(helper::AssembleElementData, mesh::AbstractMesh,
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
 
-  for p=1:numNodesPerElement
-    println("p = ", p)
-    for q=1:numNodesPerElement
-      println("\n  q = ", q)
+  for q=1:numNodesPerElement
 
-      # LL block
+    # get indices for q
+    for j=1:numDofPerNode
+      helper.idy_i[j] = mesh.dofs[j, q, iface.elementL]
+      helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR]
+    end
+
+    for p=1:numNodesPerElement
+
+      # get indices for p
       for i=1:numDofPerNode
-        helper.idx[i] = mesh.dofs[i, p, iface.elementL]
-      end
-      for j=1:numDofPerNode
-        helper.idy[j] = mesh.dofs[j, q, iface.elementL]
+        helper.idx_i[i] = mesh.dofs[i, p, iface.elementL]
+        helper.idx_i[i + numDofPerNode] = mesh.dofs[i, p, iface.elementR]
       end
 
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
-          helper.vals[i, j] = jacLL[i, j, p, q]
-        end
-      end
-
-      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
-                   ADD_VALUES)
-
-
-      # LR block
-      for i=1:numDofPerNode
-        helper.idx[i] = mesh.dofs[i, p, iface.elementL]
-      end
-      for j=1:numDofPerNode
-        helper.idy[j] = mesh.dofs[j, q, iface.elementR]
-      end
-
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
-          helper.vals[i, j] = jacLR[i, j, p, q]
-        end
-      end
-
-      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
-                   ADD_VALUES)
-
-
-      # RL block
-      for i=1:numDofPerNode
-        helper.idx[i] = mesh.dofs[i, p, iface.elementR]
-      end
-      for j=1:numDofPerNode
-        helper.idy[j] = mesh.dofs[j, q, iface.elementL]
-      end
-
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
-          helper.vals[i, j] = jacRL[i, j, p, q]
-        end
-      end
-
-
-      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
-                   ADD_VALUES)
-
-
-      # RR block
-      for i=1:numDofPerNode
-        helper.idx[i] = mesh.dofs[i, p, iface.elementR]
-      end
-      for j=1:numDofPerNode
-        helper.idy[j] = mesh.dofs[j, q, iface.elementR]
-      end
-
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
-          helper.vals[i, j] = jacRR[i, j, p, q]
-        end
-      end
-
-      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
-                   ADD_VALUES)
-
-
-      #=
-      #TODO: move some of the index computations out out loop
-      # get row indices
-      for i=1:numDofPerNode
-        helper.idx_i[i]                 = mesh.dofs[i, p, iface.elementL]
-        helper.idx_i[i + numDofPerNode] = mesh.dofs[i, q, iface.elementR]
-      end
-
-      # get column indicies
-      for j=1:numDofPerNode
-        helper.idy_i[j]                 = mesh.dofs[j, p, iface.elementL]
-        helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR]
-      end
-
-      println("idx_i = ", helper.idx_i)
-      println("idy_i = ", helper.idy_i)
-
-
+      # put values into 2 x 2 block matrix
       for j=1:numDofPerNode
         for i=1:numDofPerNode
           helper.vals_i[i,                 j]                 = real(jacLL[i, j, p, q])
@@ -901,16 +822,7 @@ function assembleInterface{T}(helper::AssembleElementData, mesh::AbstractMesh,
         end
       end
 
-      println("vals_i = \n", helper.vals_i)
-      println("jacLL[:, :, p, q] = ", jacLL[:, :, p, q])
-      println("jacLR[:, :, p, q] = ", jacLR[:, :, p, q])
-      println("jacRL[:, :, p, q] = ", jacRL[:, :, p, q])
-      println("jacRR[:, :, p, q] = ", jacRR[:, :, p, q])
-
-
-      set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, 
-                   ADD_VALUES)
-      =#
+      set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, ADD_VALUES)
     end  # end loop q
   end  # end loop p
 
