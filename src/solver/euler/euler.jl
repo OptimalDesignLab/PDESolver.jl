@@ -117,7 +117,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   myrank = mesh.myrank
 
 #  println("entered evalResidual")
-#  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
@@ -131,27 +130,9 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #    println("volume integral @time printed above")
   end
 
-  # delete this if unneeded or put it in a function.  It doesn't belong here,
-  # in a high level function.
-  #----------------------------------------------------------------------------
-  #=
-  bndryfluxPhysical = zeros(eqn.bndryflux)
-  getPhysBCFluxes(mesh, sbp, eqn, opts, bndryfluxPhysical)
-  #println("bndryfluxPhysical = \n", bndryfluxPhysical)
-  #println("eqn.bndryflux = \n", eqn.bndryflux)
-  bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
-  =#
-
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
-
-  #=
-  bndryfluxPhysical = -1*bndryfluxPhysical
-  boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, bndryfluxPhysical, eqn.res, SummationByParts.Subtract())
-  =#
-  #----------------------------------------------------------------------------
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
@@ -209,6 +190,7 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if mesh.isDG
     getFluxFunctors(mesh, sbp, eqn, opts)
     getFaceElementFunctors(mesh, sbp, eqn, opts)
+    getFluxFunctors_diff(mesh, sbp, eqn, opts)
   end
 
   if opts["use_staggered_grid"]
@@ -678,11 +660,11 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     if opts["precompute_boundary_flux"]
       boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
     # else do nothing
-  else
-    # when precompute_boundary_flux == false, this fuunction does the
-    # integration too, updating res
-    getBCFluxes(mesh, sbp, eqn, opts)
-  end
+    else
+      # when precompute_boundary_flux == false, this fuunction does the
+      # integration too, updating res
+      getBCFluxes(mesh, sbp, eqn, opts)
+    end
 
   else
     boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux, eqn.res, SummationByParts.Subtract())
@@ -692,6 +674,7 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   return nothing
 
 end  # end evalBoundaryIntegrals
+
 
 
 

@@ -29,8 +29,7 @@ function RoeSolver_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
                                      aux_vars::AbstractArray{Tres, 1},
                                      nrm::AbstractArray{Tmsh,1},
                                      fluxL_dot::AbstractArray{Tres, 2},
-                                     fluxR_dot::AbstractArray{Tres, 2},
-                                     use_efix::Int=1)
+                                     fluxR_dot::AbstractArray{Tres, 2})
 
   # SAT terms are used for ensuring consistency with the physical problem. Its
   # similar to upwinding which adds dissipation to the problem. SATs on the
@@ -192,7 +191,7 @@ function RoeSolver_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
   fill!(fluxR_dot, 0.0)
   # pass in fluxL_dot and fluxR_dot here, then add the Euler flux
   # contribution below
-  calcSAT_diff(params, roe_vars, roe_vars_dot,  dq, nrm, fluxL_dot, fluxR_dot, use_efix)
+  calcSAT_diff(params, roe_vars, roe_vars_dot,  dq, nrm, fluxL_dot, fluxR_dot)
 
 #  calcSAT(params, nrm, dq, sat, u, v, H, use_efix)
   
@@ -443,8 +442,7 @@ function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
                              dq::AbstractArray{Tsol,1},
                              nrm::AbstractArray{Tmsh,1},
                              sat_jacL::AbstractArray{Tsol,2},
-                             sat_jacR::AbstractArray{Tsol,2},
-                             use_efix::Int=1)
+                             sat_jacR::AbstractArray{Tsol,2})
 # roe_vars = [u, v, H] at Roe average 
 # roe_vars_dot contains all the non-zero derivatives of the roe_vars packed
 # into a vector
@@ -600,8 +598,6 @@ function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
   # As a result, the eigen values are limited by the following expressions.
 
 
-  #TODO: this does not handle use_efix = 0 case correctly
-
   # see lambda1 expression below
   if absvalue(lambda1) > sat_Vn*rhoA
 #    println("lambda1 is used")
@@ -615,37 +611,37 @@ function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
 
     t1 = tau*fac
     #TODO: lambda1_dotL1 - lambgda1_dotL1 = 0, so simplify this
-    lambda1_dotL1 = use_efix * 0.5 * (t1 * lambda1_dotL1 - lambda1_dotL1) + (1-use_efix)*lambda1_dotL1
-    lambda1_dotR1 = use_efix * 0.5 * (t1 * lambda1_dotR1 - lambda1_dotR1) + (1-use_efix)*lambda1_dotR1
+    lambda1_dotL1 = 0.5 * (t1 * lambda1_dotL1 - lambda1_dotL1) 
+    lambda1_dotR1 = 0.5 * (t1 * lambda1_dotR1 - lambda1_dotR1) 
 
-    lambda1_dotL2 = use_efix * 0.5 * (t1 * lambda1_dotL2 - lambda1_dotL2) + (1-use_efix)*lambda1_dotL2
-    lambda1_dotR2 = use_efix * 0.5 * (t1 * lambda1_dotR2 - lambda1_dotR2) + (1-use_efix)*lambda1_dotR2
+    lambda1_dotL2 = 0.5 * (t1 * lambda1_dotL2 - lambda1_dotL2) 
+    lambda1_dotR2 = 0.5 * (t1 * lambda1_dotR2 - lambda1_dotR2) 
 
-    lambda1_dotL3 = use_efix * 0.5 * (t1 * lambda1_dotL3 - lambda1_dotL3) + (1-use_efix)*lambda1_dotL3
-    lambda1_dotR3 = use_efix * 0.5 * (t1 * lambda1_dotR3 - lambda1_dotR3) + (1-use_efix)*lambda1_dotR3
+    lambda1_dotL3 = 0.5 * (t1 * lambda1_dotL3 - lambda1_dotL3) 
+    lambda1_dotR3 = 0.5 * (t1 * lambda1_dotR3 - lambda1_dotR3) 
 
-    lambda1_dotL4 = use_efix * 0.5 * (t1 * lambda1_dotL4 - lambda1_dotL4) + (1-use_efix)*lambda1_dotL4
-    lambda1_dotR4 = use_efix * 0.5 * (t1 * lambda1_dotR4 - lambda1_dotR4) + (1-use_efix)*lambda1_dotR4
+    lambda1_dotL4 = 0.5 * (t1 * lambda1_dotL4 - lambda1_dotL4) 
+    lambda1_dotR4 = 0.5 * (t1 * lambda1_dotR4 - lambda1_dotR4) 
 
 
   else
 #    println("not using lambda1")
     t1 = sat_Vn*tau
-    lambda1_dotL1 = use_efix * 0.5 * (t1 * rhoA_dotL1 - lambda1_dotL1) + (1-use_efix)*lambda1_dotL1
-    lambda1_dotR1 = use_efix * 0.5 * (t1 * rhoA_dotR1 - lambda1_dotR1) + (1-use_efix)*lambda1_dotR1
+    lambda1_dotL1 =  0.5 * (t1 * rhoA_dotL1 - lambda1_dotL1) 
+    lambda1_dotR1 =  0.5 * (t1 * rhoA_dotR1 - lambda1_dotR1) 
  
-    lambda1_dotL2 = use_efix * 0.5 * (t1 * rhoA_dotL2 - lambda1_dotL2) + (1-use_efix)*lambda1_dotL2
-    lambda1_dotR2 = use_efix * 0.5 * (t1 * rhoA_dotR2 - lambda1_dotR2) + (1-use_efix)*lambda1_dotR2
+    lambda1_dotL2 =  0.5 * (t1 * rhoA_dotL2 - lambda1_dotL2) 
+    lambda1_dotR2 =  0.5 * (t1 * rhoA_dotR2 - lambda1_dotR2) 
     
-    lambda1_dotL3 = use_efix * 0.5 * (t1 * rhoA_dotL3 - lambda1_dotL3) + (1-use_efix)*lambda1_dotL3
-    lambda1_dotR3 = use_efix * 0.5 * (t1 * rhoA_dotR3 - lambda1_dotR3) + (1-use_efix)*lambda1_dotR3
+    lambda1_dotL3 =  0.5 * (t1 * rhoA_dotL3 - lambda1_dotL3) 
+    lambda1_dotR3 =  0.5 * (t1 * rhoA_dotR3 - lambda1_dotR3) 
  
-    lambda1_dotL4 = use_efix * 0.5 * (t1 * rhoA_dotL4 - lambda1_dotL4) + (1-use_efix)*lambda1_dotL4
-    lambda1_dotR4 = use_efix * 0.5 * (t1 * rhoA_dotR4 - lambda1_dotR4) + (1-use_efix)*lambda1_dotR4
+    lambda1_dotL4 =  0.5 * (t1 * rhoA_dotL4 - lambda1_dotL4) 
+    lambda1_dotR4 =  0.5 * (t1 * rhoA_dotR4 - lambda1_dotR4) 
  
   end
 
-  lambda1 = use_efix*0.5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1) + (1-use_efix)*lambda1
+  lambda1 = 0.5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
 
   # see lambda2 expression below
   if absvalue(lambda2) > sat_Vn*rhoA
@@ -656,35 +652,35 @@ function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
     end
 
     t1 = tau*fac
-    lambda2_dotL1 = use_efix * 0.5 * (t1 * lambda2_dotL1 - lambda2_dotL1) + (1-use_efix)*lambda2_dotL1
-    lambda2_dotR1 = use_efix * 0.5 * (t1 * lambda2_dotR1 - lambda2_dotR1) + (1-use_efix)*lambda2_dotR1
+    lambda2_dotL1 = 0.5 * (t1 * lambda2_dotL1 - lambda2_dotL1)
+    lambda2_dotR1 = 0.5 * (t1 * lambda2_dotR1 - lambda2_dotR1)
 
-    lambda2_dotL2 = use_efix * 0.5 * (t1 * lambda2_dotL2 - lambda2_dotL2) + (1-use_efix)*lambda2_dotL2
-    lambda2_dotR2 = use_efix * 0.5 * (t1 * lambda2_dotR2 - lambda2_dotR2) + (1-use_efix)*lambda2_dotR2
+    lambda2_dotL2 = 0.5 * (t1 * lambda2_dotL2 - lambda2_dotL2)
+    lambda2_dotR2 = 0.5 * (t1 * lambda2_dotR2 - lambda2_dotR2)
 
-    lambda2_dotL3 = use_efix * 0.5 * (t1 * lambda2_dotL3 - lambda2_dotL3) + (1-use_efix)*lambda2_dotL3
-    lambda2_dotR3 = use_efix * 0.5 * (t1 * lambda2_dotR3 - lambda2_dotR3) + (1-use_efix)*lambda2_dotR3
+    lambda2_dotL3 = 0.5 * (t1 * lambda2_dotL3 - lambda2_dotL3)
+    lambda2_dotR3 = 0.5 * (t1 * lambda2_dotR3 - lambda2_dotR3)
 
-    lambda2_dotL4 = use_efix * 0.5 * (t1 * lambda2_dotL4 - lambda2_dotL4) + (1-use_efix)*lambda2_dotL4
-    lambda2_dotR4 = use_efix * 0.5 * (t1 * lambda2_dotR4 - lambda2_dotR4) + (1-use_efix)*lambda2_dotR4
+    lambda2_dotL4 = 0.5 * (t1 * lambda2_dotL4 - lambda2_dotL4)
+    lambda2_dotR4 = 0.5 * (t1 * lambda2_dotR4 - lambda2_dotR4)
 
   else
 
     t1 = sat_Vn*tau
-    lambda2_dotL1 = use_efix * 0.5 * (t1 * rhoA_dotL1 - lambda2_dotL1) + (1-use_efix)*lambda2_dotL1
-    lambda2_dotR1 = use_efix * 0.5 * (t1 * rhoA_dotR1 - lambda2_dotR1) + (1-use_efix)*lambda2_dotR1
+    lambda2_dotL1 = 0.5 * (t1 * rhoA_dotL1 - lambda2_dotL1)
+    lambda2_dotR1 = 0.5 * (t1 * rhoA_dotR1 - lambda2_dotR1)
  
-    lambda2_dotL2 = use_efix * 0.5 * (t1 * rhoA_dotL2 - lambda2_dotL2) + (1-use_efix)*lambda2_dotL2
-    lambda2_dotR2 = use_efix * 0.5 * (t1 * rhoA_dotR2 - lambda2_dotR2) + (1-use_efix)*lambda2_dotR2
+    lambda2_dotL2 = 0.5 * (t1 * rhoA_dotL2 - lambda2_dotL2)
+    lambda2_dotR2 = 0.5 * (t1 * rhoA_dotR2 - lambda2_dotR2)
     
-    lambda2_dotL3 = use_efix * 0.5 * (t1 * rhoA_dotL3 - lambda2_dotL3) + (1-use_efix)*lambda2_dotL3
-    lambda2_dotR3 = use_efix * 0.5 * (t1 * rhoA_dotR3 - lambda2_dotR3) + (1-use_efix)*lambda2_dotR3
+    lambda2_dotL3 = 0.5 * (t1 * rhoA_dotL3 - lambda2_dotL3)
+    lambda2_dotR3 = 0.5 * (t1 * rhoA_dotR3 - lambda2_dotR3)
  
-    lambda2_dotL4 = use_efix * 0.5 * (t1 * rhoA_dotL4 - lambda2_dotL4) + (1-use_efix)*lambda2_dotL4
-    lambda2_dotR4 = use_efix * 0.5 * (t1 * rhoA_dotR4 - lambda2_dotR4) + (1-use_efix)*lambda2_dotR4
+    lambda2_dotL4 = 0.5 * (t1 * rhoA_dotL4 - lambda2_dotL4)
+    lambda2_dotR4 = 0.5 * (t1 * rhoA_dotR4 - lambda2_dotR4)
  
   end
-  lambda2 = use_efix*0.5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2) + (1-use_efix)*lambda2
+  lambda2 = 0.5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
 
 
   # see lambda3 expression below
@@ -696,14 +692,14 @@ function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
     end
 
     t1 = tau*fac
-    lambda3_dotL1 = use_efix * 0.5 * (t1 * lambda3_dotL1 - lambda3_dotL1) + (1-use_efix)*lambda3_dotL1
-    lambda3_dotR1 = use_efix * 0.5 * (t1 * lambda3_dotR1 - lambda3_dotR1) + (1-use_efix)*lambda3_dotR1
+    lambda3_dotL1 = 0.5 * (t1 * lambda3_dotL1 - lambda3_dotL1)
+    lambda3_dotR1 = 0.5 * (t1 * lambda3_dotR1 - lambda3_dotR1)
 
-    lambda3_dotL2 = use_efix * 0.5 * (t1 * lambda3_dotL2 - lambda3_dotL2) + (1-use_efix)*lambda3_dotL2
-    lambda3_dotR2 = use_efix * 0.5 * (t1 * lambda3_dotR2 - lambda3_dotR2) + (1-use_efix)*lambda3_dotR2
+    lambda3_dotL2 = 0.5 * (t1 * lambda3_dotL2 - lambda3_dotL2)
+    lambda3_dotR2 = 0.5 * (t1 * lambda3_dotR2 - lambda3_dotR2)
 
-    lambda3_dotL3 = use_efix * 0.5 * (t1 * lambda3_dotL3 - lambda3_dotL3) + (1-use_efix)*lambda3_dotL3
-    lambda3_dotR3 = use_efix * 0.5 * (t1 * lambda3_dotR3 - lambda3_dotR3) + (1-use_efix)*lambda3_dotR3
+    lambda3_dotL3 = 0.5 * (t1 * lambda3_dotL3 - lambda3_dotL3)
+    lambda3_dotR3 = 0.5 * (t1 * lambda3_dotR3 - lambda3_dotR3)
 
     lambda3_dotL4 = 0.0
     lambda3_dotR4 = 0.0
@@ -711,22 +707,22 @@ function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
 
   else
     t1 = sat_Vn*tau
-    lambda3_dotL1 = use_efix * 0.5 * (t1 * rhoA_dotL1 - lambda3_dotL1) + (1-use_efix)*lambda3_dotL1
-    lambda3_dotR1 = use_efix * 0.5 * (t1 * rhoA_dotR1 - lambda3_dotR1) + (1-use_efix)*lambda3_dotR1
+    lambda3_dotL1 = 0.5 * (t1 * rhoA_dotL1 - lambda3_dotL1)
+    lambda3_dotR1 = 0.5 * (t1 * rhoA_dotR1 - lambda3_dotR1)
  
-    lambda3_dotL2 = use_efix * 0.5 * (t1 * rhoA_dotL2 - lambda3_dotL2) + (1-use_efix)*lambda3_dotL2
-    lambda3_dotR2 = use_efix * 0.5 * (t1 * rhoA_dotR2 - lambda3_dotR2) + (1-use_efix)*lambda3_dotR2
+    lambda3_dotL2 = 0.5 * (t1 * rhoA_dotL2 - lambda3_dotL2)
+    lambda3_dotR2 = 0.5 * (t1 * rhoA_dotR2 - lambda3_dotR2)
     
-    lambda3_dotL3 = use_efix * 0.5 * (t1 * rhoA_dotL3 - lambda3_dotL3) + (1-use_efix)*lambda3_dotL3
-    lambda3_dotR3 = use_efix * 0.5 * (t1 * rhoA_dotR3 - lambda3_dotR3) + (1-use_efix)*lambda3_dotR3
+    lambda3_dotL3 = 0.5 * (t1 * rhoA_dotL3 - lambda3_dotL3)
+    lambda3_dotR3 = 0.5 * (t1 * rhoA_dotR3 - lambda3_dotR3)
  
 
-    lambda3_dotL4 = use_efix * 0.5 * t1 * rhoA_dotL4 + (1-use_efix)*0.0
-    lambda3_dotR4 = use_efix * 0.5 * t1 * rhoA_dotR4 + (1-use_efix)*0.0
+    lambda3_dotL4 = 0.5 * t1 * rhoA_dotL4
+    lambda3_dotR4 = 0.5 * t1 * rhoA_dotR4
  
   end
 
-  lambda3 = use_efix*0.5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3) + (1-use_efix)*lambda3
+  lambda3 = 0.5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
 
 #  println("after entropy fix")
 #  @printit lambda1 lambda2 lambda3 lambda1_dotR1 lambda2_dotR1 lambda3_dotR1

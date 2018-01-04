@@ -51,6 +51,7 @@ function checkOptions(opts)
     error("cannot use staggered grid Advection in parallel (yet)")
   end
 
+  get!(opts, "calc_jac_explicit", false)
 
   return nothing
 end

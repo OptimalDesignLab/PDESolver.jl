@@ -1,4 +1,55 @@
 # differentiated version of functions in euler_funcs.jl
+
+function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
+                                   mesh::AbstractMesh{Tmsh},
+                                   sbp::AbstractSBP,
+                                   eqn::EulerData{Tsol, Tres, Tdim},
+                                   opts,
+                                   assembler::AssembleElementData)
+
+
+
+  # flux jacobian at every node in each direction
+  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  nrm = eqn.params.nrm  # vector in parametric direction
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+      # compute dF/dq
+      for k=1:Tdim
+        fluxjac_k = sview(flux_jac, :, :, j, k)
+
+        # get the direction vector
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+        calcEulerFlux_diff(eqn.params, q_j, aux_vars_j, nrm, fluxjac_k)
+      end  # end loop k
+    end  # end loop j
+
+    # compute dR/dq
+    for k=1:Tdim
+      weakDifferentiateElement_jac!(sbp, k, sview(flux_jac, :, :, :, k), res_jac, SummationByParts.Add(), true)
+    end
+
+    # assemble element level jacobian into the residual
+    assembleElement(assembler, mesh, i, res_jac)
+    fill!(res_jac, 0.0)
+    # flux_jac gets overwritten, so no need to zero it 
+
+  end  # end loop i
+
+  return nothing
+end  # end function
+
+
+
+
+
 """
   Computes the jacobian of [`calcEulerFlux`](@ref) with respect to `q`.
   Methods are available for 2D and 3D

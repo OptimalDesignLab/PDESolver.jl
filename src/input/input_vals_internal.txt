@@ -64,3 +64,8 @@
 
 "is_restart": if this input file is restarting a run from a checkpont, (Bool),
               default false
+
+
+"calc_jac_explicit": compute the jacobian explicitly if true, otherwise use
+                     coloring, (Bool), default false.  This option must be set
+                     by the physics modules.

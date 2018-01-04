@@ -511,12 +511,15 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
   flux_func_bar::FluxType_revm # Functor for the reverse mode of face flux
+  flux_func_diff::FluxType_diff
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
+
+  assembler::AssembleElementData  # temporary place to stash the assembler
 
   file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
 
@@ -732,6 +735,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
+   eqn.assembler = NullAssembleElementData
    if open_files
      eqn.file_dict = openLoggingFiles(mesh, opts)
    else

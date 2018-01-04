@@ -41,6 +41,55 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
   return nothing
 end
 
+"""
+  Similar function to [`evalResidual`](@ref), but instead of computing the
+  residual, it computes and assembles the Jacobian of the residual with
+  respect to `eqn.q` into the system matrix.
+
+  The functions [`assembleElement`](@ref) and [`assembleInterface`](@ref)
+  in `NonlinearSolvers` should be used to assembles the Jacobians of
+  individual elements and interfaces into the system matrix.
+
+  Physics modules that can compute element Jacobians directly
+  should extend this function with a new method, otherwise the coloring
+  algorithm with be used with [`evalResidual`](@ref) to compute the
+  system matrix.  For physics modules that support multiple formuations,
+  this function should throw an exception if called with an unsupported
+  formulation.
+
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * eqn: AbstractSolutionData (physics modules should specialize this
+          argument)
+   * opts: options dictionary
+   * assembler: object that must be passed to `assembleElement` and 
+                `assembleInterface`
+
+  **Keyword Arguments**
+
+   * start_comm: whether or not to start parallel communication,
+                 default false because the functions Nonlinear solvers
+                 have already done parallel communication when this
+                 function gets called.
+
+  **Options Keys**
+
+  TODO: describe the key that controls whether this function gets called
+        or not.
+"""
+function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::AbstractSolutionData, opts::Dict, 
+                      assembler::AssembleElementData;
+                      start_comm=false)
+
+
+  throw(ErrorException("Generic fallback evalJacobian reached: did you forget to extend evalJacobian() with a new method for your AbstractSolutionData?"))
+  return nothing
+end
+
+
 #TODO: debugging
 function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
 

@@ -49,6 +49,7 @@ function checkOptions(opts)
   end
 
 
+  get!(opts, "calc_jac_explicit", false)
 
   return nothing
 end

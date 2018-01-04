@@ -5,7 +5,8 @@ module PDESolver
 export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
-export evalResidual, evalHomotopy, evalFunctional, evalFunctionalDeriv
+export evalResidual, evalJacobian, evalHomotopy, evalFunctional, 
+       evalFunctionalDeriv
 
 # from initialization.jl
 export createMeshAndOperator, loadRestartState, call_nlsolver

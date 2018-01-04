@@ -83,6 +83,8 @@ function test_jac_terms()
   test_ad_inner(eqn3.params, q, qg, nrm)
   test_ad_inner(eqn3.params, q, qg, nrm2)
 
+  test_jac_assembly(mesh, sbp, eqn, opts)
+  test_jac_assembly(mesh3, sbp3, eqn3, opts3)
 
   return nothing
 end
@@ -221,4 +223,53 @@ function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)
   return nothing
 end
 
+function test_jac_assembly(mesh, sbp, eqn, opts)
 
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  # test volume terms
+  opts["addBoundaryIntegrals"] = false
+  opts["addFaceIntegrals"] = false
+  
+  jac1 = SparseMatrixCSC(mesh, Float64)
+  jac2 = zeros(mesh.numDof, mesh.numDof)
+  assembler = AssembleElementData(jac2, mesh, sbp, eqn, opts)
+
+  # compute jacobian via coloring
+  opts["calc_jac_explicit"] = false
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+
+  # compute jacobian explicitly
+  opts["calc_jac_explicit"] = true
+  evalJacobian(mesh, sbp, eqn, opts, assembler)
+
+  jac1d = full(jac1)
+
+  @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+
+
+  # test face integrals
+  opts["addVolumeIntegrals"] = false
+  opts["addFaceIntegrals"] = true
+  fill!(jac1, 0.0)
+  fill!(jac2, 0.0)
+  # compute jacobian via coloring
+  opts["calc_jac_explicit"] = false
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+
+  # compute jacobian explicitly
+  opts["calc_jac_explicit"] = true
+  evalJacobian(mesh, sbp, eqn, opts, assembler)
+
+  jac1d = full(jac1)
+
+  @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+
+
+  return nothing
+end

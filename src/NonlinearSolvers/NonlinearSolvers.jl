@@ -45,4 +45,8 @@ include("crank_nicolson_uadj/crank_nicolson_uadj_checkpointstraight.jl")
 # predictor_corrector.jl
 export predictorCorrectorHomotopy
 
+# jacobian.jl
+export AssembleElementData, assembleElement, assembleInterface,
+       NullAssembleElementData
+
 end

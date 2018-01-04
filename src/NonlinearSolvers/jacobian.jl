@@ -56,6 +56,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
                     ctx_residual, t=0.0; is_preconditioned::Bool=false)
 
   #TODO: get rid of is_preconditioned
+  #TODO: add start_comm option
   verbose = opts["newton_verbosity"]::Int
 
   myrank = mesh.myrank
@@ -660,3 +661,260 @@ function calcJacCol{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
   return nothing
 
 end
+
+
+#------------------------------------------------------------------------------
+# explicitly computed jacobian
+
+"""
+  Helper object for assembling element and interface jacobians into the
+  system matrix.
+
+  **Fields**
+
+   * A: the matrix (can be Array, SparseMatrixCSC, or PetscMat)
+   * idx: temporary array for row indices, length numDofPerNode
+   * idy: temporary array for column indices, length numDofPerNode
+   * vals: temporary array for matrix entries, size numDofPerNode square
+   * idx_i: temporary array for row indices when assembling interface 
+            jacobians, length 2 x numDofPerNode
+   * idy_i: like idx_i, but for column indices
+   * vals_i: temporary array for storing matrix entries when assembling
+             interface jacobians, size 2 x numDofPerNode square
+"""
+type AssembleElementData{T <: AbstractMatrix}
+  A::T
+
+  # temporary array for element jacobian assembly
+  idx::Array{PetscInt, 1}
+  idy::Array{PetscInt, 1}
+  vals::Array{PetscScalar, 2}
+
+  # temporary arrays for interface jacobian assembly
+  idx_i::Array{PetscInt, 1}  # 2x normal length
+  idy_i::Array{PetscInt, 1}  # 2x normal length
+  vals_i::Array{PetscScalar, 2}  # 2x by 2x normal size
+                                 # note: this must be sized according the
+                                 #       sparsity of the interface jacobian
+end
+
+
+"""
+  Outer constructor for [`AssembleElementData`](@ref)
+"""
+function AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
+
+  idx = zeros(PetscInt, mesh.numDofPerNode)
+  idy = zeros(PetscInt, mesh.numDofPerNode)
+  vals = zeros(PetscScalar, mesh.numDofPerNode, mesh.numDofPerNode)
+
+  idx_i = zeros(PetscInt, 2*mesh.numDofPerNode)
+  idy_i = zeros(PetscInt, 2*mesh.numDofPerNode)
+  vals_i = zeros(PetscScalar, 2*mesh.numDofPerNode, 2*mesh.numDofPerNode)
+
+  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i)
+end
+
+function AssembleElementData()
+  A = Array(PetscScalar, 0, 0)
+  idx = Array(PetscInt, 0)
+  idy = Array(PetscInt, 0)
+  vals = Array(PetscScalar, 0, 0)
+
+  idx_i = Array(PetscInt, 0)
+  idy_i = Array(PetscInt, 0)
+  vals_i = Array(PetscScalar, 0, 0)
+
+  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i)
+end
+
+"""
+  An empty [`AssembleElementData`](@ref).  Useful for giving a default value
+  to fields.
+"""
+const NullAssembleElementData = AssembleElementData()
+
+"""
+  jac contains the data for the jacobian of the volume terms for a given
+  element.  jac[i, j, p, q] = \\partial R[i, p, elnum] / \\partial eqn.q[j, q, elnum].
+  Its size is numDofPerNode x numDofPerNode x numNodesPerElement x numNodesPerElement.
+
+
+
+"""
+function assembleElement{T}(helper::AssembleElementData, mesh::AbstractMesh,
+                            elnum::Integer, jac::AbstractArray{T, 4})
+
+  #TODO: make a specialized version of this for block Petsc matrices
+
+  numNodesPerElement = size(jac, 4)
+  numDofPerNode = size(jac, 1)
+
+  for q=1:numNodesPerElement
+
+    # get dofs for node q
+    for j=1:numDofPerNode
+      helper.idy[j] = mesh.dofs[j, q, elnum]
+    end
+    for p=1:numNodesPerElement
+
+      # get dofs for node p
+      for i=1:numDofPerNode
+        helper.idx[i] = mesh.dofs[i, p, elnum]
+      end
+
+      # get values
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals[i, j] = real(jac[i, j, p, q])
+        end
+      end
+
+      # assemble them into matrix
+      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, ADD_VALUES)
+
+    end  # end loop p
+  end  # end loop q
+
+  return nothing
+end
+
+"""
+  jacAB where A = L or R and B = L or R, is the jacobian of the residual of
+  element A with respect to the solution of element B.
+
+  jacAB has the same size/layout as `jac` in [`assembleElement`](@ref).
+"""
+function assembleInterface{T}(helper::AssembleElementData, mesh::AbstractMesh,
+                              iface::Interface,
+                              jacLL::AbstractArray{T, 4},
+                              jacLR::AbstractArray{T, 4},
+                              jacRL::AbstractArray{T, 4},
+                              jacRR::AbstractArray{T, 4})
+
+
+  numNodesPerElement = size(jacLL, 4)
+  numDofPerNode = size(jacLL, 1)
+
+  for p=1:numNodesPerElement
+    println("p = ", p)
+    for q=1:numNodesPerElement
+      println("\n  q = ", q)
+
+      # LL block
+      for i=1:numDofPerNode
+        helper.idx[i] = mesh.dofs[i, p, iface.elementL]
+      end
+      for j=1:numDofPerNode
+        helper.idy[j] = mesh.dofs[j, q, iface.elementL]
+      end
+
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals[i, j] = jacLL[i, j, p, q]
+        end
+      end
+
+      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
+                   ADD_VALUES)
+
+
+      # LR block
+      for i=1:numDofPerNode
+        helper.idx[i] = mesh.dofs[i, p, iface.elementL]
+      end
+      for j=1:numDofPerNode
+        helper.idy[j] = mesh.dofs[j, q, iface.elementR]
+      end
+
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals[i, j] = jacLR[i, j, p, q]
+        end
+      end
+
+      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
+                   ADD_VALUES)
+
+
+      # RL block
+      for i=1:numDofPerNode
+        helper.idx[i] = mesh.dofs[i, p, iface.elementR]
+      end
+      for j=1:numDofPerNode
+        helper.idy[j] = mesh.dofs[j, q, iface.elementL]
+      end
+
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals[i, j] = jacRL[i, j, p, q]
+        end
+      end
+
+
+      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
+                   ADD_VALUES)
+
+
+      # RR block
+      for i=1:numDofPerNode
+        helper.idx[i] = mesh.dofs[i, p, iface.elementR]
+      end
+      for j=1:numDofPerNode
+        helper.idy[j] = mesh.dofs[j, q, iface.elementR]
+      end
+
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals[i, j] = jacRR[i, j, p, q]
+        end
+      end
+
+      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, 
+                   ADD_VALUES)
+
+
+      #=
+      #TODO: move some of the index computations out out loop
+      # get row indices
+      for i=1:numDofPerNode
+        helper.idx_i[i]                 = mesh.dofs[i, p, iface.elementL]
+        helper.idx_i[i + numDofPerNode] = mesh.dofs[i, q, iface.elementR]
+      end
+
+      # get column indicies
+      for j=1:numDofPerNode
+        helper.idy_i[j]                 = mesh.dofs[j, p, iface.elementL]
+        helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR]
+      end
+
+      println("idx_i = ", helper.idx_i)
+      println("idy_i = ", helper.idy_i)
+
+
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals_i[i,                 j]                 = real(jacLL[i, j, p, q])
+          helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, p, q])
+          helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, p, q])
+          helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, p, q])
+        end
+      end
+
+      println("vals_i = \n", helper.vals_i)
+      println("jacLL[:, :, p, q] = ", jacLL[:, :, p, q])
+      println("jacLR[:, :, p, q] = ", jacLR[:, :, p, q])
+      println("jacRL[:, :, p, q] = ", jacRL[:, :, p, q])
+      println("jacRR[:, :, p, q] = ", jacRR[:, :, p, q])
+
+
+      set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, 
+                   ADD_VALUES)
+      =#
+    end  # end loop q
+  end  # end loop p
+
+  return nothing
+end
+
+ 
