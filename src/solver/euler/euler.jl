@@ -276,6 +276,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     writedlm(fname, real(eqn.q_vec))
   end
 
+  #=
   # compute max residual of rho and E
   max_rho = 0.0
   max_E = 0.0
@@ -293,7 +294,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 
   println(BSTDOUT, "iteration", itr, " Res[Rho] = ", max_rho, " Res[E] = ", max_E)
 
-
+  =#
     # add an option on control this or something.  Large blocks of commented
     # out code are bad
 #=
