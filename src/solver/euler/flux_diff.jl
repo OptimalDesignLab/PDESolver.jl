@@ -84,7 +84,7 @@ function calcSharedFaceIntegrals_element_diff{Tmsh, Tsol}(
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
                             opts, data::SharedFaceData)
 
-    calcSharedFaceIntegrals_nopre_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func, eqn.assembler)
+    calcSharedFaceIntegrals_nopre_element_inner_diff(mesh, sbp, eqn, opts, data, eqn.flux_func_diff, eqn.assembler)
 
   return nothing
 end
@@ -109,7 +109,12 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
   q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
   flux_dotR = zeros(flux_dotL)
-  res_jacL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+  res_jacLL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  res_jacLR = zeros(res_jacLL)
+  res_jacRL = zeros(res_jacLL)  # TODO: create a NoOp array for these
+  res_jacRR = zeros(res_jacLL)
+
 
   # get data
   idx = data.peeridx
@@ -143,18 +148,23 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
       aux_vars = ro_sview(aux_vars_arr, :, k, j)
       nrm_xy = ro_sview(nrm_arr, :, k, j)
 #      flux_k = sview(flux_face, :, k)
+      flux_dotL_k = sview(flux_dotL, :, :, k)
+      flux_dotR_k = sview(flux_dotR, :, :, k)
 
       parent(aux_vars)[1] = calcPressure(params, qL_k)
 
-      #TODO: consider using Dual numbers for this because we only need the
-      #      left jacobian
-      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_dotL, flux_dotR)
+      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_dotL_k, flux_dotR_k)
      end
 
-     boundaryFaceIntegrate_jac!(mesh.sbpface, fL, flux_dotL, res_jacL, SummationByParts.Subtract())
+     # this is excessive because we don't need jacRL, jacRR, but
+     # boundaryFaceIntegrate_jac can't handle jacLR
+     interiorFaceIntegrate_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
+                                res_jacLL, res_jacLR, res_jacRL, res_jacRR,
+                                SummationByParts.Subtract())
 
-     # TODO: this routine is not specialized to the sparsity of the face
-     assembleElement(assembler, mesh, bndryL_j.element, res_jacL)
+     assembleSharedFace(assembler, mesh, iface_j, res_jacLL, res_jacLR)
+     fill!(res_jacLL, 0.0)
+     fill!(res_jacLR, 0.0)
 
    end  # end loop over interfaces
 

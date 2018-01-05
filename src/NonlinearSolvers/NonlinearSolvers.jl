@@ -47,6 +47,6 @@ export predictorCorrectorHomotopy
 
 # jacobian.jl
 export AssembleElementData, assembleElement, assembleInterface,
-       NullAssembleElementData
+       assembleSharedFace, NullAssembleElementData
 
 end

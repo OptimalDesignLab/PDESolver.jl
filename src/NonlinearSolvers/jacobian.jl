@@ -696,6 +696,9 @@ type AssembleElementData{T <: AbstractMatrix}
   vals_i::Array{PetscScalar, 2}  # 2x by 2x normal size
                                  # note: this must be sized according the
                                  #       sparsity of the interface jacobian
+
+  # temporary arrays for shared face jacobian assembly
+  vals_sf::Array{PetscScalar, 2}  # normal length x 2x normal length
 end
 
 
@@ -712,7 +715,10 @@ function AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
   idy_i = zeros(PetscInt, 2*mesh.numDofPerNode)
   vals_i = zeros(PetscScalar, 2*mesh.numDofPerNode, 2*mesh.numDofPerNode)
 
-  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i)
+  vals_sf = zeros(PetscScalar, mesh.numDofPerNode, 2*mesh.numDofPerNode)
+
+  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i,
+                                        vals_sf)
 end
 
 function AssembleElementData()
@@ -725,7 +731,10 @@ function AssembleElementData()
   idy_i = Array(PetscInt, 0)
   vals_i = Array(PetscScalar, 0, 0)
 
-  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i)
+  vals_sf = Array(PetscScalar, 0, 0)
+
+  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i,
+                                        vals_sf)
 end
 
 """
@@ -733,6 +742,10 @@ end
   to fields.
 """
 const NullAssembleElementData = AssembleElementData()
+
+#TODO: specialize for sparsity of sbpface
+#TODO: use Petsc block matrix
+#TODO: do flush assembly occasionally?
 
 """
   jac contains the data for the jacobian of the volume terms for a given
@@ -754,13 +767,13 @@ function assembleElement{T}(helper::AssembleElementData, mesh::AbstractMesh,
 
     # get dofs for node q
     for j=1:numDofPerNode
-      helper.idy[j] = mesh.dofs[j, q, elnum]
+      helper.idy[j] = mesh.dofs[j, q, elnum] + mesh.dof_offset
     end
     for p=1:numNodesPerElement
 
       # get dofs for node p
       for i=1:numDofPerNode
-        helper.idx[i] = mesh.dofs[i, p, elnum]
+        helper.idx[i] = mesh.dofs[i, p, elnum] + mesh.dof_offset
       end
 
       # get values
@@ -800,16 +813,16 @@ function assembleInterface{T}(helper::AssembleElementData, mesh::AbstractMesh,
 
     # get indices for q
     for j=1:numDofPerNode
-      helper.idy_i[j] = mesh.dofs[j, q, iface.elementL]
-      helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR]
+      helper.idy_i[j] = mesh.dofs[j, q, iface.elementL] + mesh.dof_offset
+      helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR] + mesh.dof_offset
     end
 
     for p=1:numNodesPerElement
 
       # get indices for p
       for i=1:numDofPerNode
-        helper.idx_i[i] = mesh.dofs[i, p, iface.elementL]
-        helper.idx_i[i + numDofPerNode] = mesh.dofs[i, p, iface.elementR]
+        helper.idx_i[i] = mesh.dofs[i, p, iface.elementL] + mesh.dof_offset
+        helper.idx_i[i + numDofPerNode] = mesh.dofs[i, p, iface.elementR] + mesh.dof_offset
       end
 
       # put values into 2 x 2 block matrix
@@ -823,6 +836,48 @@ function assembleInterface{T}(helper::AssembleElementData, mesh::AbstractMesh,
       end
 
       set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, ADD_VALUES)
+    end  # end loop q
+  end  # end loop p
+
+  return nothing
+end
+
+"""
+  Assemble one half of an interface, used by shared face integrals.
+  See [`assembleInterface`](@ref).
+"""
+function assembleSharedFace{T}(helper::AssembleElementData, mesh::AbstractMesh,
+                               iface::Interface,
+                               jacLL::AbstractArray{T, 4},
+                               jacLR::AbstractArray{T, 4})
+
+  numNodesPerElement = size(jacLL, 4)
+  numDofPerNode = size(jacLL, 1)
+
+  for q=1:numNodesPerElement
+
+    # get indices for q
+    for j=1:numDofPerNode
+      helper.idy_i[j] = mesh.dofs[j, q, iface.elementL] + mesh.dof_offset
+      helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR] + mesh.dof_offset
+    end
+
+    for p=1:numNodesPerElement
+
+      # get indices for p
+      for i=1:numDofPerNode
+        helper.idx[i] = mesh.dofs[i, p, iface.elementL] + mesh.dof_offset
+      end
+
+      # put values into 2 x 2 block matrix
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals_sf[i, j]                 = real(jacLL[i, j, p, q])
+          helper.vals_sf[i, j + numDofPerNode] = real(jacLR[i, j, p, q])
+        end
+      end
+
+      set_values1!(helper.A, helper.idx, helper.idy_i, helper.vals_sf, ADD_VALUES)
     end  # end loop q
   end  # end loop p
 

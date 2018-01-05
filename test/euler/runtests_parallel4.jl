@@ -17,6 +17,7 @@ using OptimizationInterface
 using ArrayViews
 import MPI
 using Input
+using PETSc2
 
 #------------------------------------------------------------------------------
 # define test list
@@ -29,6 +30,7 @@ global const EulerTests = TestList()
 
 
 include("test_ESS_parallel.jl")
+include("test_jacp.jl")
 
 #------------------------------------------------------------------------------
 # run tests
@@ -42,7 +44,6 @@ facts("----- Running Euler 4 process tests -----") do
     copy!(tags, ARGS)
   end
 
-  tags = ASCIIString[TAG_DEFAULT]
   resize!(ARGS, 1)
   ARGS[1] = ""
   run_testlist(EulerTests, run_euler, tags)

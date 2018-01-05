@@ -122,7 +122,7 @@ function applyLinearOperator(lo::AbstractPetscMatLO, mesh::AbstractMesh,
   lo2 = getBaseLO(lo)
 
   # assemble Ap (if needed)
-  assemblePetscData(lo, x, lo.xtmp)
+  assemblePetscData(lo2, x, lo2.xtmp)
 
   MatMult(lo2.A, lo2.xtmp, lo2.btmp)
 
@@ -142,7 +142,7 @@ function applyLinearOperatorTranspose(lo::AbstractPetscMatLO,
   lo2 = getBaseLO(lo)
 
   # assemble Ap (if needed)
-  assemblePetscData(lo, x, lo.xtmp)
+  assemblePetscData(lo2, x, lo.xtmp)
 
 
   MatMultTranspose(lo2.A, lo2.xtmp, lo2.btmp)
