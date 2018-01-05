@@ -26,7 +26,7 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
-    idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
+    idx_range = start_index:(end_index - 1)
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
 
     if opts["precompute_boundary_flux"]
@@ -266,6 +266,7 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     for j = 1:mesh.numNodesPerFace
 
       # get components
+      #TODO: this doesn't work if precompute_q_bndr == false ?
       q = ro_sview(eqn.q_bndry, :, j, global_facenum)
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)

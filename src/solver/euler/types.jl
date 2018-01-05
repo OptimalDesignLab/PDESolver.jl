@@ -64,6 +64,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   q_el3::Array{Tsol, 2}
   q_el4::Array{Tsol, 2}
 
+  # temporary storage for solution interpolated to face
+  q_faceL::Array{Tsol, 2}
+  q_faceR::Array{Tsol, 2}
+
   res_el1::Array{Tsol, 2}
   res_el2::Array{Tsol, 2}
 
@@ -235,6 +239,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     q_el3 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
     q_el4 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
 
+    q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    q_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+
     res_el1 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
     res_el2 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
 
@@ -369,7 +376,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda,q_el1, q_el2, q_el3, q_el4, res_el1, res_el2,
+               Lambda, q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
+               res_el1, res_el2,
                qs_el1, qs_el2, ress_el1, ress_el2,
                w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3,  flux_vals1, 
@@ -443,6 +451,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # params (above) typically points to the same object as one of these
   params_conservative::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}
   params_entropy::ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}
+
+  # used for complex-stepping the boundary conditions
+  # this should really be Complex{Tsol}, but that isn't allowed
+  # once we switch to dual number this can be improved
+  params_complex::ParamType{Tdim, :conservative, Complex128, Complex128, Tmsh}
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
@@ -541,7 +554,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
     vars_orig = opts["variable_type"]
     opts["variable_type"] = :conservative
-    eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}(
+    eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}( 
                                        mesh, sbp, opts, mesh.order)
     opts["variable_type"] = :entropy
     eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
@@ -555,6 +568,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     else
       println(BSTDERR, "Warning: variable_type not recognized")
     end
+
+    eqn.params_complex = ParamType{Tdim, :conservative, Complex128, Complex128, Tmsh}(
+                                       mesh, sbp, opts, mesh.order)
+
+
     eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
 

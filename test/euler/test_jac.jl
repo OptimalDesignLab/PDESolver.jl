@@ -272,6 +272,26 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
 
+  # test boundary integral
+  # test face integrals
+  opts["addVolumeIntegrals"] = false
+  opts["addFaceIntegrals"] = false
+  opts["addBoundaryIntegrals"] = true
+  fill!(jac1, 0.0)
+  fill!(jac2, 0.0)
+  # compute jacobian via coloring
+  opts["calc_jac_explicit"] = false
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+
+  # compute jacobian explicitly
+  opts["calc_jac_explicit"] = true
+  evalJacobian(mesh, sbp, eqn, opts, assembler)
+
+  jac1d = full(jac1)
+
+  @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+
 
   return nothing
 end

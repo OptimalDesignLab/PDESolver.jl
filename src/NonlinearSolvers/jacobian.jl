@@ -884,4 +884,42 @@ function assembleSharedFace{T}(helper::AssembleElementData, mesh::AbstractMesh,
   return nothing
 end
 
- 
+ function assembleBoundary{T}(helper::AssembleElementData,
+                               mesh::AbstractMesh,
+                               bndry::Boundary,
+                               jac::AbstractArray{T, 4})
+
+  elnum = bndry.element
+  numNodesPerElement = size(jac, 4)
+  numDofPerNode = size(jac, 1)
+
+  for q=1:numNodesPerElement
+
+    # get dofs for node q
+    for j=1:numDofPerNode
+      helper.idy[j] = mesh.dofs[j, q, elnum] + mesh.dof_offset
+    end
+    for p=1:numNodesPerElement
+
+      # get dofs for node p
+      for i=1:numDofPerNode
+        helper.idx[i] = mesh.dofs[i, p, elnum] + mesh.dof_offset
+      end
+
+      # get values
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          helper.vals[i, j] = real(jac[i, j, p, q])
+        end
+      end
+
+      # assemble them into matrix
+      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, ADD_VALUES)
+
+    end  # end loop p
+  end  # end loop q
+
+  return nothing
+end
+
+

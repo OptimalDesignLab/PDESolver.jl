@@ -218,6 +218,8 @@ include("evalJacobian.jl")
 include("euler_funcs_diff.jl")
 include("flux_diff.jl")
 include("bc_solvers_diff.jl")
+include("bc_diff.jl")
+
 
 """
   This physics is named `Euler`
