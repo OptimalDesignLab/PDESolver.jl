@@ -791,8 +791,8 @@ end
 
   jacAB has the same size/layout as `jac` in [`assembleElement`](@ref).
 """
-function assembleInterface{T}(helper::_AssembleElementData, mesh::AbstractMesh,
-                              iface::Interface,
+function assembleInterface{T}(helper::_AssembleElementData, sbpface::DenseFace,
+                              mesh::AbstractMesh, iface::Interface,
                               jacLL::AbstractArray{T, 4},
                               jacLR::AbstractArray{T, 4},
                               jacRL::AbstractArray{T, 4},
@@ -802,7 +802,10 @@ function assembleInterface{T}(helper::_AssembleElementData, mesh::AbstractMesh,
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
 
-  for q=1:numNodesPerElement
+  permL = sview(sbpface.perm, :, iface.faceL)
+  permR = sview(sbpface.perm, :, iface.faceR)
+
+  for q in permL  # =1:numNodesPerElement
 
     # get indices for q
     for j=1:numDofPerNode
@@ -810,7 +813,7 @@ function assembleInterface{T}(helper::_AssembleElementData, mesh::AbstractMesh,
       helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR] + mesh.dof_offset
     end
 
-    for p=1:numNodesPerElement
+    for p in permR # =1:numNodesPerElement
 
       # get indices for p
       for i=1:numDofPerNode
@@ -819,8 +822,8 @@ function assembleInterface{T}(helper::_AssembleElementData, mesh::AbstractMesh,
       end
 
       # put values into 2 x 2 block matrix
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
           helper.vals_i[i,                 j]                 = real(jacLL[i, j, p, q])
           helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, p, q])
           helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, p, q])
@@ -839,7 +842,8 @@ end
   Assemble one half of an interface, used by shared face integrals.
   See [`assembleInterface`](@ref).
 """
-function assembleSharedFace{T}(helper::_AssembleElementData, mesh::AbstractMesh,
+function assembleSharedFace{T}(helper::_AssembleElementData, sbpface::DenseFace,
+                               mesh::AbstractMesh,
                                iface::Interface,
                                jacLL::AbstractArray{T, 4},
                                jacLR::AbstractArray{T, 4})
@@ -847,7 +851,11 @@ function assembleSharedFace{T}(helper::_AssembleElementData, mesh::AbstractMesh,
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
 
-  for q=1:numNodesPerElement
+  permL = sview(sbpface.perm, :, iface.faceL)
+  permR = sview(sbpface.perm, :, iface.faceR)
+
+
+  for q in permL  # =1:numNodesPerElement
 
     # get indices for q
     for j=1:numDofPerNode
@@ -855,7 +863,7 @@ function assembleSharedFace{T}(helper::_AssembleElementData, mesh::AbstractMesh,
       helper.idy_i[j + numDofPerNode] = mesh.dofs[j, q, iface.elementR] + mesh.dof_offset
     end
 
-    for p=1:numNodesPerElement
+    for p in permR # =1:numNodesPerElement
 
       # get indices for p
       for i=1:numDofPerNode
@@ -877,7 +885,7 @@ function assembleSharedFace{T}(helper::_AssembleElementData, mesh::AbstractMesh,
   return nothing
 end
 
- function assembleBoundary{T}(helper::_AssembleElementData,
+ function assembleBoundary{T}(helper::_AssembleElementData, sbpface::DenseFace,
                                mesh::AbstractMesh,
                                bndry::Boundary,
                                jac::AbstractArray{T, 4})
@@ -886,13 +894,16 @@ end
   numNodesPerElement = size(jac, 4)
   numDofPerNode = size(jac, 1)
 
-  for q=1:numNodesPerElement
+  permL = sview(sbpface.perm, :, bndry.face)
+
+
+  for q in permL # =1:numNodesPerElement
 
     # get dofs for node q
     for j=1:numDofPerNode
       helper.idy[j] = mesh.dofs[j, q, elnum] + mesh.dof_offset
     end
-    for p=1:numNodesPerElement
+    for p in permL  # =1:numNodesPerElement
 
       # get dofs for node p
       for i=1:numDofPerNode

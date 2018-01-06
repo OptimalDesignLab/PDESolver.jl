@@ -15,8 +15,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
 
-  time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  @time time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
+  println("dataPrep @time printed above")
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
@@ -39,8 +39,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#    println("face integral @time printed above")
+    @time evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
+    println("face integral @time printed above")
   end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
@@ -81,8 +81,8 @@ function dataPrep_diff{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   end
 
   # zero out res
-  fill!(eqn.res, 0.0)
-  fill!(eqn.res_edge, 0.0)
+#  fill!(eqn.res, 0.0)
+#  fill!(eqn.res_edge, 0.0)
 
   getAuxVars(mesh, eqn)
 #  println("  getAuxVars @time printed above")

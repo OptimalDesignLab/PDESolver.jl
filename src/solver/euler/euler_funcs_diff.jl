@@ -10,8 +10,10 @@ function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
 
 
   # flux jacobian at every node in each direction
-  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
-  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  flux_jac = eqn.params.flux_jac
+  res_jac = eqn.params.res_jac
+#  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+#  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
   nrm = eqn.params.nrm  # vector in parametric direction
 
   for i=1:mesh.numEl

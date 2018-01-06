@@ -78,8 +78,13 @@ function calcBoundaryFlux_nopre_diff{Tsol1, Tres1, Tmsh}(mesh::AbstractDGMesh{Tm
 #  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   aux_vars = Array(Tres, 1)
   flux_k = zeros(Tres, mesh.numDofPerNode)
+  flux_jac = params.flux_dotL
+  res_jac = params.res_jacLL
+
+  #=
   flux_jac = zeros(Tres1, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
   res_jac = zeros(Tres1, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  =#
 
   h = 1e-20
   pert = Tsol(0, h)
@@ -120,7 +125,7 @@ function calcBoundaryFlux_nopre_diff{Tsol1, Tres1, Tmsh}(mesh::AbstractDGMesh{Tm
     boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_jac, res_jac,
                                SummationByParts.Subtract())
 
-    assembleBoundary(assembler, mesh, bndry_i, res_jac)
+    assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
     fill!(res_jac, 0.0)
 
   end  # end loop i

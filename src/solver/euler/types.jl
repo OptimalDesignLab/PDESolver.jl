@@ -135,6 +135,18 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                                     # dim is derivative direction, 3rd is node
 
 
+  # volume term jacobian arrays
+  flux_jac::Array{Tres, 4}
+  res_jac::Array{Tres, 4}
+
+  # face term jacobian arrays
+  flux_dotL::Array{Tres, 3}
+  flux_dotR::Array{Tres, 3}
+  res_jacLL::Array{Tres, 4}
+  res_jacLR::Array{Tres, 4}
+  res_jacRL::Array{Tres, 4}
+  res_jacRR::Array{Tres, 4}
+
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -293,6 +305,19 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     velocity_deriv = zeros(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
     velocity_deriv_xy = zeros(Tres, Tdim, Tdim, mesh.numNodesPerElement)
 
+    # volume term jacobian storage
+    flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                           mesh.numNodesPerElement, Tdim)
+    res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                          mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    # face term jacobian storage
+    flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+    flux_dotR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+    res_jacLL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+    res_jacLR = zeros(res_jacLL)
+    res_jacRL = zeros(res_jacLL)
+    res_jacRR = zeros(res_jacLL)
 
     h = maximum(mesh.jac)
 
@@ -387,6 +412,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                A_mats, Rmat1, Rmat2, P,
                nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
                velocity_deriv, velocity_deriv_xy,
+               flux_jac, res_jac,
+               flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                h, cv, R, R_ND, gamma, gamma_1, Ma, Re, aoa,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,

@@ -56,7 +56,7 @@ function calcFaceIntegral_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
                              SummationByParts.Subtract())
 
     # assemble into the Jacobian
-    assembleInterface(assembler, mesh, iface_i, res_jacLL, res_jacLR,
+    assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL, res_jacLR,
                                                 res_jacRL, res_jacRR)
 
     #TODO: for sparse faces, only zero out the needed entries, to avoid loading
@@ -104,6 +104,15 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
   q = eqn.q
   params = eqn.params
 
+  q_faceL = params.q_faceL
+  q_faceR = params.q_faceR
+  flux_dotL = params.flux_dotL
+  flux_dotR = params.flux_dotR
+  res_jacLL = params.res_jacLL
+  res_jacLR = params.res_jacLR
+  res_jacRL = params.res_jacRL
+  res_jacRR = params.res_jacRR
+  #=
   # TODO: make these fields of params
   q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -114,7 +123,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
   res_jacLR = zeros(res_jacLL)
   res_jacRL = zeros(res_jacLL)  # TODO: create a NoOp array for these
   res_jacRR = zeros(res_jacLL)
-
+  =#
 
   # get data
   idx = data.peeridx
@@ -162,7 +171,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
 
-     assembleSharedFace(assembler, mesh, iface_j, res_jacLL, res_jacLR)
+     assembleSharedFace(assembler, mesh.sbpface, mesh, iface_j, res_jacLL, res_jacLR)
      fill!(res_jacLL, 0.0)
      fill!(res_jacLR, 0.0)
 
