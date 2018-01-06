@@ -58,8 +58,8 @@ end
   face via complex step (using eqn.params_complex).  This should be replaced
   with dual numbers eventually
 """
-function calcBoundaryFlux_nopre_diff{Tmsh}(mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData,
+function calcBoundaryFlux_nopre_diff{Tsol1, Tres1, Tmsh}(mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP, eqn::EulerData{Tsol1, Tres1},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1},
                           assembler::AssembleElementData)
@@ -78,8 +78,8 @@ function calcBoundaryFlux_nopre_diff{Tmsh}(mesh::AbstractDGMesh{Tmsh},
 #  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   aux_vars = Array(Tres, 1)
   flux_k = zeros(Tres, mesh.numDofPerNode)
-  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  flux_jac = zeros(Tres1, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res_jac = zeros(Tres1, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
 
   h = 1e-20
   pert = Tsol(0, h)

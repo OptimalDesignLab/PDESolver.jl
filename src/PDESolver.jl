@@ -1,15 +1,15 @@
 __precompile__(false)
 module PDESolver
 
+# defs.jl
+export AssembleElementData
+
 # from registration.jl
 export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
 export evalResidual, evalJacobian, evalHomotopy, evalFunctional, 
        evalFunctionalDeriv
-
-# from initialization.jl
-export createMeshAndOperator, loadRestartState, call_nlsolver
 
 # from startup_func
 export run_solver
@@ -19,7 +19,7 @@ export printICNames, printBCNames
 
 # load paths for all the components of PDESolver
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
-push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/linearsolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
@@ -65,15 +65,15 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using ForwardDiff
 using LinearSolvers
-using NonlinearSolvers   # non-linear solvers
+#using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 using Utils
 import ODLCommonTools.sview
 using Input
 
+include("defs.jl")  # common definitions
 include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement
-include("initialization.jl")  # startup related functions
 include("startup_func.jl")  # unified solver invokation
 include("interactive.jl")
 # package code goes here

@@ -28,4 +28,5 @@ arg_dict = Dict{ASCIIString, Any}(
 "use_DG" => true, 
 "p_free" => 2.0, #2.0,
 "T_free" => 50.0, #50,
+"calc_jac_explicit" => false,
 )

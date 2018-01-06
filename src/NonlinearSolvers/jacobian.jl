@@ -53,7 +53,7 @@
 
 """
 function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
-                    ctx_residual, t=0.0; is_preconditioned::Bool=false)
+                    ctx_residual, t=0.0;)
 
   #TODO: get rid of is_preconditioned
   #TODO: add start_comm option
@@ -62,24 +62,10 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
   myrank = mesh.myrank
 
   #TODO: figure out which of these are actually needed
-  write_rhs = opts["write_rhs"]::Bool
-  write_jac = opts["write_jac"]::Bool
-  print_cond = opts["print_cond"]::Bool
-  print_eigs = opts["print_eigs"]::Bool
-  write_eigs = opts["write_eigs"]::Bool
-  write_eigdecomp = opts["write_eigdecomp"]::Bool
-  write_sol = opts["write_sol"]::Bool
-  write_vis = opts["write_vis"]::Bool
-  output_freq = opts["output_freq"]::Int
-  write_qic = opts["write_qic"]::Bool
-  write_res = opts["write_res"]::Bool
-  write_q = opts["writeq"]::Bool
   jac_method = opts["jac_method"]::Int  # finite difference or complex step
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
   epsilon = opts["epsilon"]::Float64
-  globalize_euler = opts["newton_globalize_euler"]::Bool
-  recalc_prec_freq = opts["recalc_prec_freq"]::Int
-  use_jac_precond = opts["use_jac_precond"]::Bool
+  calc_jac_explicit = opts["calc_jac_explicit"]::Bool
 
   if jac_method == 1  # finite difference
     pert = epsilon
@@ -133,25 +119,28 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
       tmp, t_jac, t_gc, alloc = @time_all calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac, t)
     elseif jac_type == 2  # Julia sparse jacobian 
       @verbose5 @mpi_master println(BSTDOUT, "calculating sparse complex step jacobian")
-      res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
-    elseif jac_type == 3 # Petsc sparse jacobian
-      res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
-      @verbose5 @mpi_master println(BSTDOUT, "calculating explicit Petsc jacobian")
 
-      @verbose5 @mpi_master println(BSTDOUT, "calculating main jacobain")
-      tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
-
-    elseif jac_type == 4 # Petsc jacobian-vector product
-      # calculate preconditioner matrix only
-      res_dummy = Array(Float64, 0, 0, 0)
-      print_jacobian_timing = false
-
-      # if jac_method == 2 (CS) and jac_type == 4 (Petsc mat-free), only calc the jac if it is a preconditioned jac
-      if is_preconditioned
-        print_jacobian_timing = true
-        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
+      if calc_jac_explicit
+        assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
+        tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
+      else
+        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, 
+                                            opts, func, res_dummy, pert, jac, t)
       end
+    elseif jac_type == 3 # Petsc sparse jacobian
+
+       @verbose5 @mpi_master println(BSTDOUT, "calculating Petsc jacobian")
+      if calc_jac_explicit
+        assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
+        tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
+      else
+        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+
+        tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn,
+                                            opts, func, res_dummy, pert, jac, t)
+      end
+
 
     end   # end of jac_type check
 
@@ -291,6 +280,10 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac, t=0.0)
 end
 
 global const insert_freq = 1
+
+"""
+  Helper type for [`calcJacobianSparse`](@ref)
+"""
 type AssembleData{T <: AbstractMatrix}
   A::T
   # temporary arrays used to for Petsc MatSetValues
@@ -682,7 +675,7 @@ end
    * vals_i: temporary array for storing matrix entries when assembling
              interface jacobians, size 2 x numDofPerNode square
 """
-type AssembleElementData{T <: AbstractMatrix}
+type _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
   A::T
 
   # temporary array for element jacobian assembly
@@ -703,9 +696,9 @@ end
 
 
 """
-  Outer constructor for [`AssembleElementData`](@ref)
+  Outer constructor for [`_AssembleElementData`](@ref)
 """
-function AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
+function _AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
 
   idx = zeros(PetscInt, mesh.numDofPerNode)
   idy = zeros(PetscInt, mesh.numDofPerNode)
@@ -717,11 +710,11 @@ function AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
 
   vals_sf = zeros(PetscScalar, mesh.numDofPerNode, 2*mesh.numDofPerNode)
 
-  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i,
+  return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i,
                                         vals_sf)
 end
 
-function AssembleElementData()
+function _AssembleElementData()
   A = Array(PetscScalar, 0, 0)
   idx = Array(PetscInt, 0)
   idy = Array(PetscInt, 0)
@@ -733,15 +726,15 @@ function AssembleElementData()
 
   vals_sf = Array(PetscScalar, 0, 0)
 
-  return AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i,
+  return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i, vals_i,
                                         vals_sf)
 end
 
 """
-  An empty [`AssembleElementData`](@ref).  Useful for giving a default value
+  An empty [`_AssembleElementData`](@ref).  Useful for giving a default value
   to fields.
 """
-const NullAssembleElementData = AssembleElementData()
+const NullAssembleElementData = _AssembleElementData()
 
 #TODO: specialize for sparsity of sbpface
 #TODO: use Petsc block matrix
@@ -755,7 +748,7 @@ const NullAssembleElementData = AssembleElementData()
 
 
 """
-function assembleElement{T}(helper::AssembleElementData, mesh::AbstractMesh,
+function assembleElement{T}(helper::_AssembleElementData, mesh::AbstractMesh,
                             elnum::Integer, jac::AbstractArray{T, 4})
 
   #TODO: make a specialized version of this for block Petsc matrices
@@ -798,7 +791,7 @@ end
 
   jacAB has the same size/layout as `jac` in [`assembleElement`](@ref).
 """
-function assembleInterface{T}(helper::AssembleElementData, mesh::AbstractMesh,
+function assembleInterface{T}(helper::_AssembleElementData, mesh::AbstractMesh,
                               iface::Interface,
                               jacLL::AbstractArray{T, 4},
                               jacLR::AbstractArray{T, 4},
@@ -846,7 +839,7 @@ end
   Assemble one half of an interface, used by shared face integrals.
   See [`assembleInterface`](@ref).
 """
-function assembleSharedFace{T}(helper::AssembleElementData, mesh::AbstractMesh,
+function assembleSharedFace{T}(helper::_AssembleElementData, mesh::AbstractMesh,
                                iface::Interface,
                                jacLL::AbstractArray{T, 4},
                                jacLR::AbstractArray{T, 4})
@@ -884,7 +877,7 @@ function assembleSharedFace{T}(helper::AssembleElementData, mesh::AbstractMesh,
   return nothing
 end
 
- function assembleBoundary{T}(helper::AssembleElementData,
+ function assembleBoundary{T}(helper::_AssembleElementData,
                                mesh::AbstractMesh,
                                bndry::Boundary,
                                jac::AbstractArray{T, 4})

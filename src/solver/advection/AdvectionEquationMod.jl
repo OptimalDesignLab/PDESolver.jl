@@ -1,6 +1,7 @@
 module AdvectionEquationMod
 
 using PDESolver  # setupf LOAD_PATH to find PDESolver components
+using SolverCommon
 using ArrayViews
 using ODLCommonTools
 using SummationByParts

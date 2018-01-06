@@ -5,6 +5,7 @@
 module EulerEquationMod
 
 using PDESolver  # setup LOAD_PATH to find all PDESolver components
+using SolverCommon
 using ArrayViews
 using ODLCommonTools  # abstract type definitions + common functions
 using SummationByParts

@@ -98,6 +98,8 @@ function getDataTypes(opts::Dict)
     jac_method = opts["jac_method"]
   end
 
+  calc_jac_explicit = opts["calc_jac_explicit"]
+
   if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
     Tmsh = Float64
     Tsbp = Float64
@@ -124,8 +126,14 @@ function getDataTypes(opts::Dict)
       # println("========== utils/initialization: flag 5, jac_method 2")
       Tmsh = Float64
       Tsbp = Float64
-      Tsol = Complex128
-      Tres = Complex128
+
+      if calc_jac_explicit
+        Tsol = Float64
+        Tres = Float64
+      else
+        Tsol = Complex128
+        Tres = Complex128
+      end
     else
       throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
     end
@@ -145,7 +153,11 @@ function getDataTypes(opts::Dict)
       # println("========== utils/initialization: flag 11, jac_method 2")
       Tmsh = Complex128
       Tsbp = Float64
-      Tsol = Complex128
+      if calc_jac_explicit
+        Tsol = Float64
+      else
+        Tsol = Complex128
+      end
       Tres = Complex128
     else
       throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
@@ -159,8 +171,13 @@ function getDataTypes(opts::Dict)
     elseif jac_method == 2 # Crank-Nicolson, CS Jac
       Tmsh = Float64
       Tsbp = Float64
-      Tsol = Complex128
-      Tres = Complex128
+      if calc_jac_explicit
+        Tsol = Float64
+        Tres = Float64
+      else
+        Tsol = Complex128
+        Tres = Complex128
+      end
     else
       throw(ErrorException("Illegal or no jac_method specified for CN initialization."))
     end
@@ -667,3 +684,4 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+

@@ -7,6 +7,11 @@ function test_jac_parallel()
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
+
+
   startSolutionExchange(mesh, sbp, eqn, opts)
 
   pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
@@ -15,7 +20,7 @@ function test_jac_parallel()
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
 
-  assembler = AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
 #  opts["addBoundaryIntegrals"] = false #TODO
 
