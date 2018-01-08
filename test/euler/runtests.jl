@@ -18,6 +18,7 @@ using EulerEquationMod
 using Utils
 using MPI
 using Input
+using PETSc2
 
 #------------------------------------------------------------------------------
 # define tests and tags

@@ -7,6 +7,7 @@
 arg_dict = Dict{ASCIIString, Any}(
 "physics" => "Euler",
 "run_type" => 5,
+#"operator_type" => "SBPGamma",
 "jac_method" => 2,
 "jac_type" => 2,
 "order" => 1,

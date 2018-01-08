@@ -13,6 +13,16 @@ function calcFaceIntegral_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
   nfaces = length(interfaces)
   params = eqn.params
 
+  q_faceL = params.q_faceL
+  q_faceR = params.q_faceR
+  flux_dotL = params.flux_dotL
+  flux_dotR = params.flux_dotR
+  res_jacLL = params.res_jacLL
+  res_jacLR = params.res_jacLR
+  res_jacRL = params.res_jacRL
+  res_jacRR = params.res_jacRR
+
+  #=
   q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = zeros(q_faceL)
 
@@ -23,7 +33,7 @@ function calcFaceIntegral_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
   res_jacLR = zeros(res_jacLL)
   res_jacRL = zeros(res_jacLL)
   res_jacRR = zeros(res_jacLL)
-
+  =#
 #  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   for i=1:nfaces
@@ -61,6 +71,7 @@ function calcFaceIntegral_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
 
     #TODO: for sparse faces, only zero out the needed entries, to avoid loading
     #      the entire array into cache
+    # Tests show this doesn't make a difference
     fill!(res_jacLL, 0.0)
     fill!(res_jacLR, 0.0)
     fill!(res_jacRL, 0.0)

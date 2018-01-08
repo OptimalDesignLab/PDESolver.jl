@@ -5,8 +5,33 @@
 """
 function test_jac_terms()
 
+  fname3 = "input_vals_jac3d.jl"
   mesh, sbp, eqn, opts = run_solver("input_vals_jac2d.jl")
-  mesh3, sbp3, eqn3, opts3 = run_solver("input_vals_jac3d.jl")
+  mesh3, sbp3, eqn3, opts3 = run_solver(fname3)
+
+  # SBPGamma, Petsc Mat
+  fname4 = "input_vals_jac_tmp.jl"
+  opts_tmp = read_input_file(fname3)
+  opts_tmp["jac_type"] = 3
+  make_input(opts_tmp, fname4)
+  mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
+
+  # SBPDiagonalE, Petsc Mat
+  fname4 = "input_vals_jac_tmp.jl"
+  opts_tmp = read_input_file(fname3)
+  opts_tmp["jac_type"] = 3
+  opts_tmp["operator_type"] = "SBPDiagonalE"
+  make_input(opts_tmp, fname4)
+  mesh5, sbp5, eqn5, opts5 = run_solver(fname4)
+
+
+  # SBPDiagonalE, SparseMatrixCSC
+  fname4 = "input_vals_jac_tmp.jl"
+  opts_tmp = read_input_file(fname3)
+  opts_tmp["jac_type"] = 2
+  opts_tmp["operator_type"] = "SBPDiagonalE"
+  make_input(opts_tmp, fname4)
+  mesh6, sbp6, eqn6, opts6 = run_solver(fname4)
 
   test_pressure(eqn.params)
   test_pressure(eqn3.params)
@@ -81,11 +106,22 @@ function test_jac_terms()
   test_ad_inner(eqn3.params, q, qg, nrm)
   test_ad_inner(eqn3.params, q, qg, nrm2)
 
+  println("\ntesting jac assembly 2d")
   test_jac_assembly(mesh, sbp, eqn, opts)
 
-  println("testing 3d")
+  println("\ntesting jac assembly 3d")
   test_jac_assembly(mesh3, sbp3, eqn3, opts3)
 
+  # test various matrix and operator combinations
+  println("testing mode 4")
+  test_jac_general(mesh4, sbp4, eqn4, opts4)
+
+  #=
+  println("testing mode 5")
+  test_jac_general(mesh5, sbp5, eqn5, opts5)
+  println("testing mode 6")
+  test_jac_general(mesh6, sbp6, eqn6, opts6)
+  =#
   return nothing
 end
 
@@ -294,6 +330,65 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
 
+
+  return nothing
+end
+
+
+"""
+  Test the entire jacobian assembly, for any type of jacobian matrix
+"""
+function test_jac_general(mesh, sbp, eqn, opts)
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
+
+
+  startSolutionExchange(mesh, sbp, eqn, opts)
+
+  pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+
+  jac1 = getBaseLO(lo1).A
+  jac2 = getBaseLO(lo2).A
+
+  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+
+  opts["calc_jac_explicit"] = false
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+
+  # compute jacobian explicitly
+  opts["calc_jac_explicit"] = true
+  evalJacobian(mesh, sbp, eqn, opts, assembler)
+
+  assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
+  assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
+
+  # multiply against a random vector to make sure the jacobian is
+  # the same
+  for i=1:10
+    x = rand(PetscScalar, mesh.numDof)
+    b1 = zeros(PetscScalar, mesh.numDof)
+    b2 = zeros(PetscScalar, mesh.numDof)
+
+    t = 0.0
+    applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
+    applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
+
+    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-14)
+  end
+
+  free(lo1)
+  free(lo2)
+  free(pc1)
+  free(pc2)
 
   return nothing
 end

@@ -19,6 +19,7 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
   const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
+#  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
   numDofPerNode = mesh.numDofPerNode
 
   comm = eqn.comm
@@ -33,25 +34,51 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
   if mesh.isDG
     MatSetOption(A, PETSc2.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
   end
-  dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
-  onnz = zeros(PetscInt, mesh.numDof)
-  bs = PetscInt(mesh.numDofPerNode)  # block size
+
+  if mattype == PETSc2.MATMPIAIJ
+    bs = 1
+  else
+    bs = PetscInt(mesh.numDofPerNode)  # block size
+  end
+
+  @assert mesh.numDof % bs == 0
+  nblocks = div(mesh.numDof, bs)
+  dnnz = zeros(PetscInt, nblocks)  # diagonal non zeros per row
+  onnz = zeros(PetscInt, nblocks)
 
   # calculate number of non zeros per row for A
-  for i=1:mesh.numDof
-    dnnz[i] = mesh.sparsity_counts[1, i]
-    onnz[i] = mesh.sparsity_counts[2, i]
-  end
+  if bs == 1
+    for i=1:mesh.numDof
+      dnnz[i] = mesh.sparsity_counts[1, i]
+      onnz[i] = mesh.sparsity_counts[2, i]
+    end
+  else
+    for i=1:mesh.numDof
+       # this writes the information bs times to each entry
+       block_i = div(i - 1, bs) + 1
+       @assert mesh.sparsity_counts[1, i] % bs == 0
+       @assert mesh.sparsity_counts[2, i] % bs == 0
+       dnnz[block_i] = div(mesh.sparsity_counts[1, i], bs)
+       onnz[block_i] = div(mesh.sparsity_counts[2, i], bs)
+     end
+   end
+
+
+
 
   # preallocate A
   @mpi_master println(BSTDOUT, "preallocating A")
 
   #TODO: set block size?
-  MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
-  #MatXAIJSetPreallocation(Ap, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
+  if mattype == PETSc2.MATMPIAIJ
+    MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
+  else
+    MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
+  end
   MatZeroEntries(A)
   matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
   @mpi_master println(BSTDOUT, "A block size = ", matinfo.block_size)
+  @mpi_master println(BSTDOUT, "A info = ", matinfo)
 
   # Petsc objects if this comes before preallocation
   MatSetOption(A, PETSc2.MAT_ROW_ORIENTED, PETSC_FALSE)

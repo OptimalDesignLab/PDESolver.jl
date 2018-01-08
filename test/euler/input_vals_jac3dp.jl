@@ -10,6 +10,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "jac_type" => 3,
 "jac_method" => 2,
 "dimensions" => 3,
+"operator_type" => "SBPGamma",
 "order" => 1,
 "IC_name" => "ICRho1E2U3",
 "numBC" => 1,
