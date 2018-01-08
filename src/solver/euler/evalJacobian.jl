@@ -19,8 +19,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   println("dataPrep @time printed above")
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
-    evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#    println("volume integral @time printed above")
+    @time evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
+    println("volume integral @time printed above")
   end
 
   if opts["use_GLS"]

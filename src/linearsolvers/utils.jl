@@ -18,8 +18,8 @@
 function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
-  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
-#  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
+#  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
+  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
   numDofPerNode = mesh.numDofPerNode
 
   comm = eqn.comm
@@ -54,16 +54,14 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
     end
   else
     for i=1:mesh.numDof
-       # this writes the information bs times to each entry
-       block_i = div(i - 1, bs) + 1
-       @assert mesh.sparsity_counts[1, i] % bs == 0
-       @assert mesh.sparsity_counts[2, i] % bs == 0
-       dnnz[block_i] = div(mesh.sparsity_counts[1, i], bs)
-       onnz[block_i] = div(mesh.sparsity_counts[2, i], bs)
-     end
-   end
-
-
+      # this writes the information bs times to each entry
+      block_i = div(i - 1, bs) + 1
+      @assert mesh.sparsity_counts[1, i] % bs == 0
+      @assert mesh.sparsity_counts[2, i] % bs == 0
+      dnnz[block_i] = div(mesh.sparsity_counts[1, i], bs)
+      onnz[block_i] = div(mesh.sparsity_counts[2, i], bs)
+    end
+  end
 
 
   # preallocate A

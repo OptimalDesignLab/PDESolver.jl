@@ -1,6 +1,41 @@
 function test_jac_parallel()
 
-  mesh, sbp, eqn, opts = run_solver("input_vals_jac3dp.jl")
+  # SBPOmega
+  fname = "input_vals_jac3dp.jl"
+  fname2 = "input_vals_jac_tmp.jl"
+  mesh, sbp, eqn, opts = run_solver(fname)
+
+  # SBPGamma
+  if mesh.myrank == 0
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname)
+    opts_tmp["operator_type"] = "SBPGamma"
+    make_input(opts_tmp, fname2)
+  end
+  MPI.Barrier(mesh.comm)
+  mesh4, sbp4, eqn4, opts4 = run_solver(fname2)
+
+  # SBPDiagonalE
+  if mesh.myrank == 0
+    opts_tmp = read_input_file(fname)
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    make_input(opts_tmp, fname2)
+  end
+  MPI.Barrier(mesh.comm)
+  mesh5, sbp5, eqn5, opts5 = run_solver(fname2)
+
+  test_jac_parallel_inner(mesh, sbp, eqn, opts)
+  test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
+  test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+
+  return nothing
+end
+
+
+add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC]) 
+
+
+function test_jac_parallel_inner(mesh, sbp, eqn, opts)
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
@@ -58,8 +93,6 @@ function test_jac_parallel()
   return nothing
 end
 
-
-add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC]) 
 
 
 

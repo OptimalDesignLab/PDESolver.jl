@@ -659,6 +659,7 @@ end
 #------------------------------------------------------------------------------
 # explicitly computed jacobian
 
+global const assem_min_volume_nodes = 3  # minimum number of volume nodes
 """
   Helper object for assembling element and interface jacobians into the
   system matrix.
@@ -683,6 +684,11 @@ type _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
   idy::Array{PetscInt, 1}
   vals::Array{PetscScalar, 2}
 
+  # temporary arrays for block element jacobian assembly
+  idx_b::Array{PetscInt, 1}
+  idy_b::Array{PetscInt, 1}
+  vals_b::Array{PetscScalar, 2}
+
   # temporary arrays for interface jacobian assembly
   idx_i::Array{PetscInt, 1}  # 2x normal length
   idy_i::Array{PetscInt, 1}  # 2x normal length
@@ -693,8 +699,14 @@ type _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
   idx_ib::Array{PetscInt, 1}  # length 2, used for block assembly
   idy_ib::Array{PetscInt, 1}
 
+
   # temporary arrays for shared face jacobian assembly
   vals_sf::Array{PetscScalar, 2}  # normal length x 2x normal length
+
+  # temporary arrays for block boundary face jacobian assembly
+  idx_bb::Array{PetscInt, 1}
+  idy_bb::Array{PetscInt, 1}
+
 end
 
 
@@ -707,6 +719,11 @@ function _AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
   idy = zeros(PetscInt, mesh.numDofPerNode)
   vals = zeros(PetscScalar, mesh.numDofPerNode, mesh.numDofPerNode)
 
+  idx_b = zeros(PetscInt, assem_min_volume_nodes)
+  idy_b = zeros(PetscInt, assem_min_volume_nodes)
+  nentries = assem_min_volume_nodes*mesh.numDofPerNode
+  vals_b = zeros(PetscInt, nentries, nentries)
+
   idx_i = zeros(PetscInt, 2*mesh.numDofPerNode)
   idy_i = zeros(PetscInt, 2*mesh.numDofPerNode)
   vals_i = zeros(PetscScalar, 2*mesh.numDofPerNode, 2*mesh.numDofPerNode)
@@ -715,8 +732,13 @@ function _AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
 
   vals_sf = zeros(PetscScalar, mesh.numDofPerNode, 2*mesh.numDofPerNode)
 
-  return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i,
-                                         vals_i, idx_ib, idy_ib, vals_sf)
+  idx_bb = zeros(PetscInt, 1)
+  idy_bb = zeros(PetscInt, 1)
+
+  return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
+                                         idx_i, idy_i,
+                                         vals_i, idx_ib, idy_ib, vals_sf,
+                                         idx_bb, idy_bb)
 end
 
 function _AssembleElementData()
@@ -724,6 +746,9 @@ function _AssembleElementData()
   idx = Array(PetscInt, 0)
   idy = Array(PetscInt, 0)
   vals = Array(PetscScalar, 0, 0)
+  idx_b = Array(PetscInt, 0)
+  idy_b = Array(PetscInt, 0)
+  vals_b = Array(PetscScalar, 0, 0)
 
   idx_i = Array(PetscInt, 0)
   idy_i = Array(PetscInt, 0)
@@ -733,8 +758,13 @@ function _AssembleElementData()
 
   vals_sf = Array(PetscScalar, 0, 0)
 
-  return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_i, idy_i,
-                                         vals_i, idx_ib, idy_ib, vals_sf)
+  idx_bb = Array(PetscInt, 0)
+  idy_bb = Array(PetscInt, 0)
+
+  return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
+                                         idx_i, idy_i,
+                                         vals_i, idx_ib, idy_ib, vals_sf,
+                                         idx_bb, idy_bb)
 end
 
 """
@@ -777,8 +807,8 @@ function assembleElement{T}(helper::_AssembleElementData, mesh::AbstractMesh,
       end
 
       # get values
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
           helper.vals[i, j] = real(jac[i, j, p, q])
         end
       end
@@ -792,6 +822,139 @@ function assembleElement{T}(helper::_AssembleElementData, mesh::AbstractMesh,
   return nothing
 end
 
+# non-tiled version using MatSetValuesBlocked
+#=
+function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
+                            elnum::Integer, jac::AbstractArray{T, 4})
+
+  numNodesPerElement = size(jac, 4)
+  numDofPerNode = size(jac, 1)
+
+  for q=1:numNodesPerElement
+
+    dof1 = mesh.dofs[1, q, elnum] + mesh.dof_offset
+    helper.idy_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    for p=1:numNodesPerElement
+      dof1 = mesh.dofs[1, p, elnum] + mesh.dof_offset
+      helper.idx_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+
+      # get values
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
+          helper.vals[i, j] = real(jac[i, j, p, q])
+        end
+      end
+
+      # assemble them into matrix
+
+      MatSetValuesBlocked(helper.A, helper.idx_bb, helper.idy_bb, helper.vals, ADD_VALUES)
+#      set_values1!(helper.A, helper.idx, helper.idy, helper.vals, ADD_VALUES)
+
+    end  # end loop p
+  end  # end loop q
+
+  return nothing
+end
+=#
+
+# This tiled version
+function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
+                            elnum::Integer, jac::AbstractArray{T, 4})
+
+  numNodesPerElement = size(jac, 4)
+  numDofPerNode = size(jac, 1)
+
+  # use a tiling approach to do fewer, larger calls to Petsc
+  nblocks = div(numNodesPerElement, assem_min_volume_nodes)
+  nrem = numNodesPerElement - nblocks*assem_min_volume_nodes
+
+  for yblock=1:nblocks
+    yoffset = (yblock-1)*assem_min_volume_nodes
+
+    for j=1:assem_min_volume_nodes
+      idx = yoffset + j
+      dof1 = mesh.dofs[1, idx, elnum] + mesh.dof_offset
+      helper.idy_b[j] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    end
+
+    for xblock=1:nblocks
+      xoffset = (xblock-1)*assem_min_volume_nodes
+
+      for i=1:assem_min_volume_nodes
+        idx = xoffset + i
+        dof1 = mesh.dofs[1, idx, elnum] + mesh.dof_offset
+        helper.idx_b[i] = div(dof1 - 1, numDofPerNode) + 1 - 1
+      end
+
+      # get values
+      for q=1:assem_min_volume_nodes
+        for p=1:assem_min_volume_nodes
+          @simd for i=1:numDofPerNode
+            i_idx = i + (q-1)*numDofPerNode
+            @simd for j=1:numDofPerNode
+              j_idx = j + (p-1)*numDofPerNode
+              helper.vals_b[j_idx, i_idx] = real(jac[j, i, xoffset + p , yoffset + q])
+            end
+          end
+        end
+      end
+
+      MatSetValuesBlocked(helper.A, helper.idx_b, helper.idy_b, helper.vals_b, ADD_VALUES)
+
+    end
+  end
+
+  # cleanup loops
+  for _q=1:nrem
+    q = nblocks*assem_min_volume_nodes + _q
+
+    # get dofs for node q
+    dof1 = mesh.dofs[1, q, elnum] + mesh.dof_offset
+    helper.idy_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    for p=1:numNodesPerElement
+      dof1 = mesh.dofs[1, p, elnum] + mesh.dof_offset
+      helper.idx_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      # get values
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
+          helper.vals[i, j] = real(jac[i, j, p, q])
+        end
+      end
+
+
+      MatSetValuesBlocked(helper.A, helper.idx_bb, helper.idy_bb, helper.vals, ADD_VALUES)
+    end
+  end
+
+  for q=1:(numNodesPerElement-1)
+    # get dofs for node q
+    dof1 = mesh.dofs[1, q, elnum] + mesh.dof_offset
+    helper.idy_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    for _p=1:nrem
+      p = nblocks*assem_min_volume_nodes + _p
+      dof1 = mesh.dofs[1, p, elnum] + mesh.dof_offset
+      helper.idx_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
+          helper.vals[i, j] = real(jac[i, j, p, q])
+        end
+      end
+
+
+      MatSetValuesBlocked(helper.A, helper.idx_bb, helper.idy_bb, helper.vals, ADD_VALUES)
+    end
+  end
+
+
+  return nothing
+end
+
 
 """
   jacAB where A = L or R and B = L or R, is the jacobian of the residual of
@@ -800,7 +963,7 @@ end
   jacAB has the same size/layout as `jac` in [`assembleElement`](@ref).
 """
 function assembleInterface{T}(helper::_AssembleElementData, 
-                              sbpface::AbstractFace,
+                              sbpface::DenseFace,
                               mesh::AbstractMesh, iface::Interface,
                               jacLL::AbstractArray{T, 4},
                               jacLR::AbstractArray{T, 4},
@@ -855,9 +1018,8 @@ function assembleInterface{T}(helper::_AssembleElementData,
 end
 
 
-#=
-function assembleInterface{T}(helper::_AssembleElementData{PetscMat},
-                              sbpface::DenseFace,
+function assembleInterface{T}(helper::_AssembleElementData, 
+                              sbpface::SparseFace,
                               mesh::AbstractMesh, iface::Interface,
                               jacLL::AbstractArray{T, 4},
                               jacLR::AbstractArray{T, 4},
@@ -868,35 +1030,92 @@ function assembleInterface{T}(helper::_AssembleElementData{PetscMat},
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
 
+  for p=1:sbpface.numnodes
+    # row indices
+    iR = sbpface.nbrperm[p, iface.orient]
+    pL = sbpface.perm[p, iface.faceL]
+    pR = sbpface.perm[iR, iface.faceR]
+
+    # column indices
+    # this matches the way SBP puts the data into the jac arrays,
+    # but its a little weird
+    qL = pL
+    qR = pR
+
+    # get indices for p
+    for i=1:numDofPerNode
+      helper.idx_i[i]                 = mesh.dofs[i, pL, iface.elementL] + mesh.dof_offset
+      helper.idx_i[i + numDofPerNode] = mesh.dofs[i, pR, iface.elementR] + mesh.dof_offset
+
+      helper.idy_i[i]                 = mesh.dofs[i, qL, iface.elementL] + mesh.dof_offset
+      helper.idy_i[i + numDofPerNode] = mesh.dofs[i, qR, iface.elementR] + mesh.dof_offset
+    end
+
+    # put values into 2 x 2 block matrix
+    @simd for j=1:numDofPerNode
+      @simd for i=1:numDofPerNode
+        helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
+        helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
+        helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+        helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+      end
+    end
+
+    set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, ADD_VALUES)
+  end  # end loop p
+
+  return nothing
+end
+
+
+
+
+function assembleInterface{T}(helper::_AssembleElementData{PetscMat}, 
+                              sbpface::DenseFace,
+                              mesh::AbstractMesh, iface::Interface,
+                              jacLL::AbstractArray{T, 4},
+                              jacLR::AbstractArray{T, 4},
+                              jacRL::AbstractArray{T, 4},
+                              jacRR::AbstractArray{T, 4})
+
+  numNodesPerElement = size(jacLL, 4)
+  numDofPerNode = size(jacLL, 1)
+
   permL = sview(sbpface.perm, :, iface.faceL)
   permR = sview(sbpface.perm, :, iface.faceR)
 
-  for q in permL  # =1:numNodesPerElement
+#  for q in permL  # =1:numNodesPerElement
+  for q=1:sbpface.stencilsize
+    qL = sbpface.perm[q, iface.faceL]
+    qR = sbpface.perm[q, iface.faceR]
 
-    # compute block indices for q
-    dof1 = mesh.dofs[1, q, iface.elementL] + mesh.dof_offset
-    helper.idy_ib[1] = div(dof1 - 1, numDofPerNode) + 1
-    dofs1 = mesh.dofs[1, q, iface.elementR] + mesh.dof_offset
-    helper.idy_ib[2] = div(dof1 - 1, numDofPerNode) + 1
+    # compute block indices for q (zero-based)
+    dof1 = mesh.dofs[1, qL, iface.elementL] + mesh.dof_offset
+    helper.idy_ib[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, qR, iface.elementR] + mesh.dof_offset
+    helper.idy_ib[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
-    for p in permR # =1:numNodesPerElement
 
-      # get indices for p
-      dof1 = mesh.dofs[1, p, iface.elementL] + mesh.dof_offset
-      helper.idx_ib[1] = div(dof1 - 1, numDofPerNode) + 1
-      dofs2 = mesh.dofs[1, p, iface.elementR] + mesh.dof_offset
-      helper.idx_ib[2] = div(dof1 - 1, numDofPerNode) + 1
+#    for p in permR # =1:numNodesPerElement
+    for p=1:sbpface.stencilsize
+      pL = sbpface.perm[p, iface.faceL]
+      pR = sbpface.perm[p, iface.faceR]
 
+      dof1 = mesh.dofs[1, pL, iface.elementL] + mesh.dof_offset
+      helper.idx_ib[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+      dof1 = mesh.dofs[1, pR, iface.elementR] + mesh.dof_offset
+      helper.idx_ib[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
       # put values into 2 x 2 block matrix
       @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
-          helper.vals_i[i,                 j]                 = real(jacLL[i, j, p, q])
-          helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, p, q])
-          helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, p, q])
-          helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, p, q])
+          helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
+          helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
+          helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+          helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
         end
       end
+
 
       MatSetValuesBlocked(helper.A, helper.idx_ib, helper.idy_ib, helper.vals_i, ADD_VALUES)
 #      set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, ADD_VALUES)
@@ -905,15 +1124,66 @@ function assembleInterface{T}(helper::_AssembleElementData{PetscMat},
 
   return nothing
 end
-=#
 
+
+function assembleInterface{T}(helper::_AssembleElementData{PetscMat}, 
+                              sbpface::SparseFace,
+                              mesh::AbstractMesh, iface::Interface,
+                              jacLL::AbstractArray{T, 4},
+                              jacLR::AbstractArray{T, 4},
+                              jacRL::AbstractArray{T, 4},
+                              jacRR::AbstractArray{T, 4})
+
+  numNodesPerElement = size(jacLL, 4)
+  numDofPerNode = size(jacLL, 1)
+
+  permL = sview(sbpface.perm, :, iface.faceL)
+  permR = sview(sbpface.perm, :, iface.faceR)
+
+  for p=1:sbpface.numnodes
+    iR = sbpface.nbrperm[p, iface.orient]
+    pL = sbpface.perm[p, iface.faceL]
+    pR = sbpface.perm[iR, iface.faceR]
+
+    qL = pL
+    qR = pR
+
+    dof1 = mesh.dofs[1, pL, iface.elementL] + mesh.dof_offset
+    helper.idx_ib[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, pR, iface.elementR] + mesh.dof_offset
+    helper.idx_ib[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    # compute block indices for q (zero-based)
+    dof1 = mesh.dofs[1, qL, iface.elementL] + mesh.dof_offset
+    helper.idy_ib[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, qR, iface.elementR] + mesh.dof_offset
+    helper.idy_ib[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+
+    # put values into 2 x 2 block matrix
+    @simd for j=1:numDofPerNode
+      @simd for i=1:numDofPerNode
+        helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
+        helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
+        helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+        helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+      end
+    end
+
+
+    MatSetValuesBlocked(helper.A, helper.idx_ib, helper.idy_ib, helper.vals_i, ADD_VALUES)
+#      set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, ADD_VALUES)
+  end  # end loop p
+
+  return nothing
+end
 
 
 """
   Assemble one half of an interface, used by shared face integrals.
   See [`assembleInterface`](@ref).
 """
-function assembleSharedFace{T}(helper::_AssembleElementData, sbpface::AbstractFace,
+function assembleSharedFace{T}(helper::_AssembleElementData{PetscMat}, sbpface::DenseFace,
                                mesh::AbstractMesh,
                                iface::Interface,
                                jacLL::AbstractArray{T, 4},
@@ -927,21 +1197,19 @@ function assembleSharedFace{T}(helper::_AssembleElementData, sbpface::AbstractFa
     qL = sbpface.perm[q, iface.faceL]
     qR = sbpface.perm[q, iface.faceR]
 
+    # compute block indices for q (zero-based)
+    dof1 = mesh.dofs[1, qL, iface.elementL] + mesh.dof_offset
+    helper.idy_ib[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, qR, iface.elementR] + mesh.dof_offset
+    helper.idy_ib[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
-    # get indices for q
-    for j=1:numDofPerNode
-      helper.idy_i[j]                 = mesh.dofs[j, qL, iface.elementL] + mesh.dof_offset
-      helper.idy_i[j + numDofPerNode] = mesh.dofs[j, qR, iface.elementR] + mesh.dof_offset
-    end
 
 #    for p in permR # =1:numNodesPerElement
     for p=1:sbpface.stencilsize
       pL = sbpface.perm[p, iface.faceL]
 
-      # get indices for p
-      for i=1:numDofPerNode
-        helper.idx[i] = mesh.dofs[i, pL, iface.elementL] + mesh.dof_offset
-      end
+      dof1 = mesh.dofs[1, pL, iface.elementL] + mesh.dof_offset
+      helper.idx_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
       # put values into 2 x 2 block matrix
       for j=1:numDofPerNode
@@ -951,17 +1219,65 @@ function assembleSharedFace{T}(helper::_AssembleElementData, sbpface::AbstractFa
         end
       end
 
-      set_values1!(helper.A, helper.idx, helper.idy_i, helper.vals_sf, ADD_VALUES)
+      MatSetValuesBlocked(helper.A, helper.idx_bb, helper.idy_ib, helper.vals_sf, ADD_VALUES)
+#      set_values1!(helper.A, helper.idx, helper.idy_i, helper.vals_sf, ADD_VALUES)
     end  # end loop q
   end  # end loop p
 
   return nothing
 end
 
-function assembleBoundary{T}(helper::_AssembleElementData, sbpface::AbstractFace,
+
+function assembleSharedFace{T}(helper::_AssembleElementData{PetscMat}, sbpface::SparseFace,
+                               mesh::AbstractMesh,
+                               iface::Interface,
+                               jacLL::AbstractArray{T, 4},
+                               jacLR::AbstractArray{T, 4})
+
+  numNodesPerElement = size(jacLL, 4)
+  numDofPerNode = size(jacLL, 1)
+
+  for p=1:sbpface.numnodes
+    iR = sbpface.nbrperm[p, iface.orient]
+    qL = sbpface.perm[p, iface.faceL]
+    qR = sbpface.perm[iR, iface.faceR]
+
+    pL = qL
+
+    # compute block indices (zero-based)
+    dof1 = mesh.dofs[1, pL, iface.elementL] + mesh.dof_offset
+    helper.idx_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    dof1 = mesh.dofs[1, qL, iface.elementL] + mesh.dof_offset
+    helper.idy_ib[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, qR, iface.elementR] + mesh.dof_offset
+    helper.idy_ib[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+
+    # put values into 2 x 2 block matrix
+    for j=1:numDofPerNode
+      for i=1:numDofPerNode
+        helper.vals_sf[i, j]                 = real(jacLL[i, j, pL, qL])
+        helper.vals_sf[i, j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+      end
+    end
+
+    MatSetValuesBlocked(helper.A, helper.idx_bb, helper.idy_ib, helper.vals_sf, ADD_VALUES)
+#      set_values1!(helper.A, helper.idx, helper.idy_i, helper.vals_sf, ADD_VALUES)
+  end  # end loop p
+
+  return nothing
+end
+
+
+
+
+function assembleBoundary{T}(helper::_AssembleElementData, sbpface::DenseFace,
                                mesh::AbstractMesh,
                                bndry::Boundary,
                                jac::AbstractArray{T, 4})
+# MatSetValuesBlocked not implemented for boundaries because the performance
+# gain isn't that great
 
   elnum = bndry.element
   numNodesPerElement = size(jac, 4)
@@ -997,6 +1313,40 @@ function assembleBoundary{T}(helper::_AssembleElementData, sbpface::AbstractFace
 
     end  # end loop p
   end  # end loop q
+
+  return nothing
+end
+
+function assembleBoundary{T}(helper::_AssembleElementData, sbpface::SparseFace,
+                               mesh::AbstractMesh,
+                               bndry::Boundary,
+                               jac::AbstractArray{T, 4})
+
+  elnum = bndry.element
+  numNodesPerElement = size(jac, 4)
+  numDofPerNode = size(jac, 1)
+
+  for p=1:sbpface.numnodes
+    pL = sbpface.perm[p, bndry.face]
+    qL = pL
+
+    # get dofs for node p
+    for i=1:numDofPerNode
+      helper.idx[i] = mesh.dofs[i, pL, elnum] + mesh.dof_offset
+      helper.idy[i] = mesh.dofs[i, qL, elnum] + mesh.dof_offset
+    end
+
+    # get values
+    for j=1:numDofPerNode
+      for i=1:numDofPerNode
+        helper.vals[i, j] = real(jac[i, j, pL, qL])
+      end
+    end
+
+    # assemble them into matrix
+    set_values1!(helper.A, helper.idx, helper.idy, helper.vals, ADD_VALUES)
+
+  end  # end loop p
 
   return nothing
 end

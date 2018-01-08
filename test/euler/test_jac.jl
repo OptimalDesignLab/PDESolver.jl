@@ -21,6 +21,7 @@ function test_jac_terms()
   opts_tmp = read_input_file(fname3)
   opts_tmp["jac_type"] = 3
   opts_tmp["operator_type"] = "SBPDiagonalE"
+  opts_tmp["order"] = 2
   make_input(opts_tmp, fname4)
   mesh5, sbp5, eqn5, opts5 = run_solver(fname4)
 
@@ -33,95 +34,97 @@ function test_jac_terms()
   make_input(opts_tmp, fname4)
   mesh6, sbp6, eqn6, opts6 = run_solver(fname4)
 
-  test_pressure(eqn.params)
-  test_pressure(eqn3.params)
+  facts("----- Testing jacobian -----") do
+    test_pressure(eqn.params)
+    test_pressure(eqn3.params)
 
-  test_eulerflux(eqn.params)
-  test_eulerflux(eqn3.params)
+    test_eulerflux(eqn.params)
+    test_eulerflux(eqn3.params)
 
-  nrm = [0.45, 0.55]
-  nrm2 = -nrm
+    nrm = [0.45, 0.55]
+    nrm2 = -nrm
 
-  println("testing all positive eigenvalues")
-  q = Complex128[2.0, 3.0, 4.0, 7.0]
-  qg = q + 1
-  test_ad_inner(eqn.params, q, qg, nrm)
+    println("testing all positive eigenvalues")
+    q = Complex128[2.0, 3.0, 4.0, 7.0]
+    qg = q + 1
+    test_ad_inner(eqn.params, q, qg, nrm)
 
-  println("testing all negative eigenvalues")
-  q = Complex128[2.0, 3.0, 4.0, 7.0]
-  qg = q + 1
-  test_ad_inner(eqn.params, q, qg, nrm2)
-
-
-  println("testing lambda1 entropy fix")
-  q = Complex128[1.1, 0.47, 0.53, 2.2]
-  qg = q + 1
-  test_ad_inner(eqn.params, q, qg, nrm)
- 
-  println("testing lambda2 entropy fix")
-  q = Complex128[1.1, -1.32, -1.34, 2.2] 
-  qg = q + 1
-  test_ad_inner(eqn.params, q, qg, nrm)
-  test_ad_inner(eqn.params, q, qg, nrm2)
-
-  println("testing lambda3 entropy fix")
-  q = Complex128[1.1, -0.42, -0.45, 2.2]
-  qg = q + 1
-  test_ad_inner(eqn.params, q, qg, nrm)
-  test_ad_inner(eqn.params, q, qg, nrm2)
+    println("testing all negative eigenvalues")
+    q = Complex128[2.0, 3.0, 4.0, 7.0]
+    qg = q + 1
+    test_ad_inner(eqn.params, q, qg, nrm2)
 
 
-  nrm = [0.45, 0.55, 0.65]
-  nrm2 = -nrm
+    println("testing lambda1 entropy fix")
+    q = Complex128[1.1, 0.47, 0.53, 2.2]
+    qg = q + 1
+    test_ad_inner(eqn.params, q, qg, nrm)
+   
+    println("testing lambda2 entropy fix")
+    q = Complex128[1.1, -1.32, -1.34, 2.2] 
+    qg = q + 1
+    test_ad_inner(eqn.params, q, qg, nrm)
+    test_ad_inner(eqn.params, q, qg, nrm2)
 
-  println("testing all positive eigenvalues")
-  q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
-  qg = q + 1
-  test_ad_inner(eqn3.params, q, qg, nrm)
-
-  println("testing all negative eigenvalues")
-  q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
-  qg = q + 1
-  test_ad_inner(eqn3.params, q, qg, nrm2)
+    println("testing lambda3 entropy fix")
+    q = Complex128[1.1, -0.42, -0.45, 2.2]
+    qg = q + 1
+    test_ad_inner(eqn.params, q, qg, nrm)
+    test_ad_inner(eqn.params, q, qg, nrm2)
 
 
-  println("testing lambda1 entropy fix")
-  # lambda1 entropy fix active
-  q = Complex128[1.05, -1.1, -1.2, -1.3, 2.5] 
-  qg = q + 1
-  test_ad_inner(eqn3.params, q, qg, nrm)
-  test_ad_inner(eqn3.params, q, qg, nrm2)
+    nrm = [0.45, 0.55, 0.65]
+    nrm2 = -nrm
 
-  println("testing lambda2 entropy fix")
-  # lambda1 entropy fix active
-  q = Complex128[1.05, 0.9, 1.2, -1.3, 2.5]
-  qg = q + 1
-  test_ad_inner(eqn3.params, q, qg, nrm)
-  test_ad_inner(eqn3.params, q, qg, nrm2)
+    println("testing all positive eigenvalues")
+    q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
+    qg = q + 1
+    test_ad_inner(eqn3.params, q, qg, nrm)
 
-  println("testing lambda3 entropy fix")
-  # lambda3 entropy fix active
-  q = Complex128[1.05, -0.52, -0.47, -0.36, 8.5]
-  qg = q + 1
-  test_ad_inner(eqn3.params, q, qg, nrm)
-  test_ad_inner(eqn3.params, q, qg, nrm2)
+    println("testing all negative eigenvalues")
+    q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
+    qg = q + 1
+    test_ad_inner(eqn3.params, q, qg, nrm2)
 
-  println("\ntesting jac assembly 2d")
-  test_jac_assembly(mesh, sbp, eqn, opts)
 
-  println("\ntesting jac assembly 3d")
-  test_jac_assembly(mesh3, sbp3, eqn3, opts3)
+    println("testing lambda1 entropy fix")
+    # lambda1 entropy fix active
+    q = Complex128[1.05, -1.1, -1.2, -1.3, 2.5] 
+    qg = q + 1
+    test_ad_inner(eqn3.params, q, qg, nrm)
+    test_ad_inner(eqn3.params, q, qg, nrm2)
 
-  # test various matrix and operator combinations
-  println("testing mode 4")
-  test_jac_general(mesh4, sbp4, eqn4, opts4)
+    println("testing lambda2 entropy fix")
+    # lambda1 entropy fix active
+    q = Complex128[1.05, 0.9, 1.2, -1.3, 2.5]
+    qg = q + 1
+    test_ad_inner(eqn3.params, q, qg, nrm)
+    test_ad_inner(eqn3.params, q, qg, nrm2)
 
-  #=
-  println("testing mode 5")
-  test_jac_general(mesh5, sbp5, eqn5, opts5)
-  println("testing mode 6")
-  test_jac_general(mesh6, sbp6, eqn6, opts6)
-  =#
+    println("testing lambda3 entropy fix")
+    # lambda3 entropy fix active
+    q = Complex128[1.05, -0.52, -0.47, -0.36, 8.5]
+    qg = q + 1
+    test_ad_inner(eqn3.params, q, qg, nrm)
+    test_ad_inner(eqn3.params, q, qg, nrm2)
+
+    println("\ntesting jac assembly 2d")
+    test_jac_assembly(mesh, sbp, eqn, opts)
+
+    println("\ntesting jac assembly 3d")
+    test_jac_assembly(mesh3, sbp3, eqn3, opts3)
+
+    # test various matrix and operator combinations
+    println("testing mode 4")
+    test_jac_general(mesh4, sbp4, eqn4, opts4)
+    
+    println("testing mode 5")
+    test_jac_general(mesh5, sbp5, eqn5, opts5)
+
+    println("testing mode 6")
+    test_jac_general(mesh6, sbp6, eqn6, opts6)
+  
+  end
   return nothing
 end
 
