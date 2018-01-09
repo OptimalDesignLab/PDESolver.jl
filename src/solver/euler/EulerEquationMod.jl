@@ -214,7 +214,7 @@ include("evaldRdm.jl")
 include("homotopy.jl")
 include("util_viscous.jl")
 include("viscous_flux.jl")
-include("viscous_flux_par.jl")
+# include("viscous_flux_par.jl")    # TODO: verify that this old way of thinking for viscous_flux parallel handling can be removed
 include("viscous_func.jl")
 
 """
