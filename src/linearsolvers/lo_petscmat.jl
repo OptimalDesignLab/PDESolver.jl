@@ -18,6 +18,7 @@ type PetscMatLO <: AbstractPetscMatLO
   btmp::PetscVec
   is_setup::Array{Bool, 1}  # is matrix assembled (shared with PC.is_assembled)
                             # if A is shared
+  is_shared::Bool
   is_finalized::Bool
   nassemblies::Array{Int, 1}
   nsolves::Int
@@ -49,10 +50,12 @@ function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   if !opts["use_jac_precond"] && !(typeof(pc) <: PetscMatFreeLO) 
     A = pc2.A
     is_setup = pc2.is_assembled  # share the indicator array
+    is_shared = true
     nassemblies = pc2.nassemblies
   else
     A = createPetscMat(mesh, sbp, eqn, opts)
     is_setup = Bool[false]
+    is_shared = true
     nassemblies = Int[0]
   end
 
@@ -72,8 +75,8 @@ function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   commsize = eqn.commsize
 
 
-  return PetscMatLO(A, xtmp, btmp, is_setup, is_finalized, nassemblies, nsolves,
-                    ntsolves, comm, myrank, commsize)
+  return PetscMatLO(A, xtmp, btmp, is_setup, is_shared, is_finalized,
+                    nassemblies, nsolves, ntsolves, comm, myrank, commsize)
 end
 
 

@@ -11,6 +11,7 @@ type DenseLO <: AbstractDenseLO
   A::Array{Float64, 2}
   ipiv::Array{BlasInt, 1}
   is_setup::Array{Bool, 1} # true if LO is already setup (ie. factored), false otherwise
+  is_shared::Bool
   nfactorizations::Int
   nsolves::Int  # regular solves
   ntsolves::Int  # transpose solves
@@ -39,6 +40,7 @@ function DenseLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   A = zeros(mesh.numDof, mesh.numDof)
   ipiv = zeros(BlasInt, mesh.numDof)
   is_setup = Bool[false]
+  is_shared = false
   nfactorizations = 0
   nsolves = 0
   ntsolves = 0
@@ -46,8 +48,8 @@ function DenseLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   myrank = eqn.myrank
   commsize = eqn.commsize
 
-  return DenseLO(A, ipiv, is_setup, nfactorizations, nsolves, ntsolves,
-                 comm, myrank, commsize)
+  return DenseLO(A, ipiv, is_setup, is_shared, nfactorizations, nsolves,
+                 ntsolves, comm, myrank, commsize)
 end
 
 

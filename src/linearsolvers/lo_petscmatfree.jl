@@ -12,6 +12,7 @@ type PetscMatFreeLO <: AbstractPetscMatFreeLO
   xtmp::PetscVec  # these are shared with the PC if possible
   btmp::PetscVec
   ctx
+  is_shared::Bool
   is_finalized::Bool
  
   nsolves::Int
@@ -58,6 +59,7 @@ function PetscMatFreeLO(pc::Union{AbstractPetscMatPC, AbstractPetscMatFreePC},
   end
 
   ctx = C_NULL  # this gets set later
+  is_shared = false
   is_finalized = false
   nsolves = 0
   ntsolves = 0
@@ -66,8 +68,8 @@ function PetscMatFreeLO(pc::Union{AbstractPetscMatPC, AbstractPetscMatFreePC},
   commsize = eqn.commsize
 
 
-  return PetscMatFreeLO(A, xtmp, btmp, ctx, is_finalized, nsolves, ntsolves,
-                        comm, myrank, commsize)
+  return PetscMatFreeLO(A, xtmp, btmp, ctx, is_shared, is_finalized, nsolves,
+                        ntsolves, comm, myrank, commsize)
 end
 
 function free(lo::PetscMatFreeLO)

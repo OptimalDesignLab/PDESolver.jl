@@ -17,6 +17,7 @@
 type PetscMatFreePC <: AbstractPetscMatFreePC
   pc::PC
   ctx  # Petsc PC ctx
+  is_shared::Bool
   is_finalized::Bool
 
   nsetups::Int
@@ -56,6 +57,7 @@ function PetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
 
 
   ctx = ()
+  is_shared = false
   is_finalized = false
 
   nsetups = 0
@@ -69,8 +71,8 @@ function PetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
   # only update the PC when explicitly requested
   PCSetReusePreconditioner(pc, PETSC_TRUE)
 
-  return PetscMatFreePC(pc, ctx, is_finalized, nsetups, napplies, ntapplies,
-                        comm, myrank, commsize)
+  return PetscMatFreePC(pc, ctx, is_shared, is_finalized, nsetups, napplies,
+                        ntapplies, comm, myrank, commsize)
 end
 
 function free(pc::PetscMatFreePC)
