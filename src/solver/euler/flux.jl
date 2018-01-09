@@ -662,6 +662,8 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
   q = eqn.q
   params = eqn.params
 
+  # AAAAA TODO: where should the call to calcViscousFlux_interior be
+
   @debug2 begin       # probably don't work anymore. only used for sharedFaceLogging at the end of this function
     qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])

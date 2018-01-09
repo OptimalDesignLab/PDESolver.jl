@@ -10,21 +10,41 @@ Input:
   sbp  :
   eqn  :
   opts :
+  peerflag: 0 for regular interior
+             1-n for face on interface 1-n
+
 Output:
 
 # """->
 function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                                                           sbp::AbstractSBP,
                                                           eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts)
+                                                          opts,
+                                                          peerflag::Int)
+
+  # note about eqn.shared_data: when this function is called by
+  #   calcSharedFaceIntegrals_nopre_element_inner, finishExchangeData will have made the proper
+  #   alterations to eqn.shared_data, so it is safe to call directly. See line 192 in Utils/parallel.jl
 
   Ma      = eqn.params.Ma
   Re      = eqn.params.Re
   gamma_1 = eqn.params.gamma_1
   Pr      = 0.72
   coef_nondim = Ma/Re
-  interfaces  = sview(mesh.interfaces, :)
-  nfaces      = length(mesh.interfaces)
+
+  if peerflag == 0      # if this function is being asked to compute viscous fluxes across interior
+                        #   interfaces, all local to a partition
+    interfaces  = sview(mesh.interfaces, :)
+    nfaces      = length(mesh.interfaces)
+  else                  # if this function is being asked to compute viscous fluxes across interfaces
+                        #   between partitions
+
+    # AAAAA parallelized     # TODO, check w/ JC
+    interfaces = sview(mesh.shared_interfaces, peerflag, :)
+    nfaces = length(mesh.shared_interfaces, peerflag)
+
+  end
+
   p    = opts["order"]
   dq   = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   dqn  = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -37,9 +57,12 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   vecfluxL = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
   vecfluxR = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
 
-  sbpface = mesh.sbpface
+  sbpface = mesh.sbpface            # This should be ok in parallel. sbpface does not change
+                                    #   across partitions or even across the mesh since we do not
+                                    #   have mixed elements. It simply describes the face between
+                                    #   two sbp elements.
   sat_type = opts["SAT_type"]
-  # this one is Harmann's definition
+  # this one is Hartmann's definition
   const_tii = (p + 1.0)*(p + Tdim)/(2.0*Tdim)
   # const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
   area_sum = sview(eqn.area_sum, :)
@@ -51,7 +74,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   for f = 1:nfaces    # loop over faces
 
     flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    face = interfaces[f]
+    face = interfaces[f]          # AA: think this section is OK for parallel, because interfaces is set properly above
     elemL = face.elementL
     elemR = face.elementR
     faceL = face.faceL
@@ -70,10 +93,22 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # It's logically simple but computationally expensive.
 
     # compute viscous flux and diffusion tensor
-    q_faceL = slice(eqn.q_face, :, 1, :, f)
-    q_faceR = slice(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
-    q_elemL = sview(eqn.q, :, :, elemL)
-    q_elemR = sview(eqn.q, :, :, elemR)
+    q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    if peerflag == 0
+      q_faceL = slice(eqn.q_face, :, 1, :, f)
+      q_faceR = slice(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
+      q_elemL = sview(eqn.q, :, :, elemL)
+      q_elemR = sview(eqn.q, :, :, elemR)
+    else            # AAAAA parallelized
+      q_elemL = ro_sview(eqn.q, :, :, elemL)
+      # q_elemR: for comparison, see line 686 & 703 in flux.jl
+      q_elemR = ro_sview(eqn.shared_data.q_recv, :, :, elemR)
+      # q_face*: for comparison, see flux.jl, line 702.
+      interiorFaceInterpolate!(mesh.sbpface, face, qL, qR, q_faceL, q_faceR)
+      # face: same as iface_j in calcSharedFaceIntegral_nopre_element_inner.
+      #   face = interfaces[j] where j = 1:length(mesh.interfaces)
+    end
     calcDiffusionTensor(eqn.params, q_faceL, GtL)
     calcDiffusionTensor(eqn.params, q_faceR, GtR)
 
@@ -106,14 +141,21 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
 
     Fv_face = zeros(Tsol, Tdim, mesh.numDofPerNode, 2, mesh.numNodesPerFace)
-    jacL = ro_sview(mesh.jac, :, elemL)
-    jacR = ro_sview(mesh.jac, :, elemR)
-    dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
-    dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
     # TODO: Here is where we need to decide where dxidxL, dxidxR, jacL, and jacR come from.
     #       If this interface is between elements on the same partition, then the former method
     #       (using ro_sview of mesh.jac and mesh.dxidx) works. If it is between partitions,
     #       we need to obtain the data from RemoteMetrics.
+    jacL = ro_sview(mesh.jac, :, elemL)
+    dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
+    # AAAAA parallelized
+    if peerflag == 0
+      jacR = ro_sview(mesh.jac, :, elemR)
+      dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
+    else
+      jacR = ro_sview(mesh.remote_metrics.jac, :, elemR)
+      dxidxR = ro_sview(mesh.remote_metrics.dxidx, :, :, :, elemR)
+    end
+
     calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
     Fv_faceL = sview(Fv_face, :,:,1,:)
     Fv_faceR = sview(Fv_face, :,:,2,:)
@@ -313,7 +355,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       # then we will not need slice here any more.
       #
       for d = 1 : Tdim
-        q_x_node = slice(dqdx_elem, d, :, :)
+        q_x_node = slice(dqdx_elem, d, :, :)        # TODO: use sview instead of slice, AA
         q_x_face = slice(dqdx_face, d, :, :)
         boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
       end
@@ -439,10 +481,18 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   nrm    = Array(Tmsh, Tdim, mesh.numNodesPerFace)
   dq     =  Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
 
-  nfaces = length(mesh.interfaces)
+  if peerflag == 0
+    nfaces = length(mesh.interfaces)
+  else      # AAAAA parallelized
+    nfaces = length(mesh.shared_interfaces, peerflag)
+  end
 
   for f = 1 : nfaces
-    face = mesh.interfaces[f]
+    if peerflag == 0
+      face = mesh.interfaces[f]     # AAAAA parallelized
+    else
+      face = mesh.shared_interfaces[peerflag][f]    # TODO: AA check
+    end
 
     elemL = face.elementL
     elemR = face.elementR
