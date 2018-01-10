@@ -188,6 +188,9 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
 
    end  # end loop over interfaces
 
+   fill!(res_jacRL, 0.0)
+   fill!(res_jacRR, 0.0)
+
   return nothing
 end
 
