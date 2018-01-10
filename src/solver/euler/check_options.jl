@@ -44,12 +44,10 @@ function checkOptions(opts)
     if opts["operator_type"] == "SBPDiagonalE"    # TODO: fix diagE & viscous soon
       error("DiagE SBP elements not yet implemented for viscous solution.")
     end
-    if opts["face_integral_type"] != 1
-      error("face_integral_type must be 1 for viscous solutions.")
-    end
     if opts["parallel_data"] == "face"
       error("Viscous terms require shared element and face data, but parallel_data = face. Exiting.")
     end
+  end
 
 
   return nothing

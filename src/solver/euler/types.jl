@@ -532,6 +532,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 	vecflux_faceL::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 	vecflux_faceR::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 	vecflux_bndry::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+  vecflux_faceL_shared::Array{Tres, 4}     # same as vecflux_faceL, but for shared calls.
 
   # inner constructor
   function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true)
@@ -762,6 +763,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
      eqn.vecflux_faceL = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
      eqn.vecflux_faceR = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
      eqn.vecflux_bndry = zeros(Tsol, Tdim, numvars, numfacenodes, numBndFaces)
+     # AAAAA2: new array for shared vec flux
+     eqn.vecflux_faceL_shared = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces) # TODO: check dims AAAAA2
      eqn.area_sum = zeros(Tmsh, mesh.numEl)
      calcElemSurfaceArea(mesh, sbp, eqn)
    else

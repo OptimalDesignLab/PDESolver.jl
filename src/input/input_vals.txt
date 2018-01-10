@@ -101,7 +101,7 @@ where input_file_name.jl is in your current directory.
 "precompute_volume_flux": precompute the volume flux or calculate it as needed,
                           (Bool), default true
 "precompute_face_flux": precompute the face flux or calculate it as needed,
-                          (Bool), default true
+                          (Bool), default true. Note that this only applies to inviscid terms.
 "precompute_boundary_flux": precompute the boundary flux or calculate it as
                             needed, (Bool), default true
 "use_Minv" : apply the inverse mass matrix to the residual within the physics module

@@ -717,14 +717,18 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
       parent(aux_vars)[1] = calcPressure(params, qL_k)
 
       functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
-     end
+    end
 
-     # do the integration
-     res_j = sview(eqn.res, :, :, bndryL_j.element)
-     boundaryFaceIntegrate!(mesh.sbpface, fL, flux_face, res_j, SummationByParts.Subtract())      
+    # do the integration
+    res_j = sview(eqn.res, :, :, bndryL_j.element)
+    boundaryFaceIntegrate!(mesh.sbpface, fL, flux_face, res_j, SummationByParts.Subtract())
         # AA: subtract b/c of the negative sign resulting from integration by parts
         # AA: why boundary over interior? because boundaryFaceIntegrate is the one-sided version of interiorFaceIntegrate
-   end  # end loop over interfaces
+  end  # end loop over interfaces
+
+  # start viscous flux calculation
+  calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
+  evalFaceIntegrals_vector(mesh, sbp, eqn, opts, idx)
 
   @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 
