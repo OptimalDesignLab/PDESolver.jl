@@ -182,6 +182,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   tau_type::Int  # type of tau to use for GLS stabilization
 
+  use_Minv::Int  # apply Minv to explicit jacobian calculation, 0 = do not
+                 # apply, 1 = do apply
   vortex_x0::Float64  # vortex center x coordinate at t=0
   vortex_strength::Float64  # strength of the vortex
 
@@ -366,6 +368,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     tau_type = opts["tau_type"]
 
+    use_Minv = opts["use_Minv"] ? 1 : 0
+
     vortex_x0 = opts["vortex_x0"]
     vortex_strength = opts["vortex_strength"]
 
@@ -418,7 +422,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
-               use_dissipation, dissipation_const, tau_type, vortex_x0,
+               use_dissipation, dissipation_const, tau_type, use_Minv, vortex_x0,
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,

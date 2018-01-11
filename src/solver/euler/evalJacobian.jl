@@ -54,8 +54,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   # apply inverse mass matrix to eqn.res, necessary for CN
   #TODO: this will have to be done at the element level
   if opts["use_Minv"]
-    error("use_Minv must be applied at the element level")
-    applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
+#    error("use_Minv must be applied at the element level")
+#    applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
   return nothing

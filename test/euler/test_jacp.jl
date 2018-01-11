@@ -24,9 +24,26 @@ function test_jac_parallel()
   MPI.Barrier(mesh.comm)
   mesh5, sbp5, eqn5, opts5 = run_solver(fname2)
 
+  if mesh.myrank == 0
+    opts_tmp = read_input_file(fname)
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["use_Minv"] = true
+    make_input(opts_tmp, fname2)
+  end
+  MPI.Barrier(mesh.comm)
+  mesh6, sbp6, eqn6, opts6 = run_solver(fname2)
+
+  MPI.Barrier(mesh.comm)
   test_jac_parallel_inner(mesh, sbp, eqn, opts)
+
   test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
+
   test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+
+  # run test twice to make sure arrays are zeroed out correctly
+  test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+
+  test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
 
   return nothing
 end
@@ -57,8 +74,6 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts)
 
   assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
-#  opts["addBoundaryIntegrals"] = false #TODO
-
   # compute jacobian via coloring
   opts["calc_jac_explicit"] = false
   ctx_residual = (evalResidual,)
@@ -82,7 +97,7 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts)
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-14)
+    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
   end
 
   free(lo1)

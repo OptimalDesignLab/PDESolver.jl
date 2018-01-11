@@ -34,6 +34,18 @@ function test_jac_terms()
   make_input(opts_tmp, fname4)
   mesh6, sbp6, eqn6, opts6 = run_solver(fname4)
 
+  # SBPDiagonalE, Petsc Mat, use_Minv
+  fname4 = "input_vals_jac_tmp.jl"
+  opts_tmp = read_input_file(fname3)
+  opts_tmp["jac_type"] = 3
+  opts_tmp["operator_type"] = "SBPDiagonalE"
+  opts_tmp["order"] = 2
+  opts_tmp["use_Minv"] = true
+  make_input(opts_tmp, fname4)
+  mesh7, sbp7, eqn7, opts7 = run_solver(fname4)
+
+
+
   facts("----- Testing jacobian -----") do
     test_pressure(eqn.params)
     test_pressure(eqn3.params)
@@ -120,9 +132,14 @@ function test_jac_terms()
     
     println("testing mode 5")
     test_jac_general(mesh5, sbp5, eqn5, opts5)
+    # run the test twice to make sure the arrays are zeroed out properly
+    test_jac_general(mesh5, sbp5, eqn5, opts5)
 
     println("testing mode 6")
     test_jac_general(mesh6, sbp6, eqn6, opts6)
+ 
+    println("testing mode 7")
+    test_jac_general(mesh7, sbp7, eqn7, opts7)
   
   end
   return nothing
@@ -385,7 +402,7 @@ function test_jac_general(mesh, sbp, eqn, opts)
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-14)
+    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
   end
 
   free(lo1)

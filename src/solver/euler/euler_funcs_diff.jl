@@ -38,6 +38,22 @@ function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
       weakDifferentiateElement_jac!(sbp, k, sview(flux_jac, :, :, :, k), res_jac, SummationByParts.Add(), true)
     end
 
+    
+    if eqn.params.use_Minv == 1
+      # multiply by Minv if needed
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jac[n, m, p, q] *= val
+            end
+          end
+        end
+      end
+    end
+    
+
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
     fill!(res_jac, 0.0)

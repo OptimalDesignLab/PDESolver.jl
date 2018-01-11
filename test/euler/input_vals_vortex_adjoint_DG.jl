@@ -60,5 +60,6 @@ arg_dict = Dict{ASCIIString, Any}(
 "output_freq" => 1,
 "solve" => true,
 "do_postproc" => true,
-"exact_soln_func" => "ICIsentropicVortex"
+"exact_soln_func" => "ICIsentropicVortex",
+"calc_jac_explicit" => false
 )

@@ -50,6 +50,7 @@ arg_dict = Dict{Any, Any}(
 "solve" => true,
 "do_postproc" => true,
 "calc_functional" => false,
+"calc_jac_explicit" => false,
 
 "objective_function" => "lift",
 "objective_bcs" => [2],

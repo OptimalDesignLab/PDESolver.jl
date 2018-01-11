@@ -65,6 +65,27 @@ function calcFaceIntegral_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
 
+    
+    # multiply by Minv if needed
+    if params.use_Minv == 1
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          valL = mesh.jac[p, iface_i.elementL]/sbp.w[p]  # entry in Minv
+          valR = mesh.jac[p, iface_i.elementR]/sbp.w[p]
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jacLL[n, m, p, q] *= valL
+              res_jacLR[n, m, p, q] *= valL
+              res_jacRL[n, m, p, q] *= valR
+              res_jacRR[n, m, p, q] *= valR
+            end
+          end
+        end
+      end
+    end
+    
+
+
     # assemble into the Jacobian
     assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL, res_jacLR,
                                                 res_jacRL, res_jacRR)
@@ -112,7 +133,6 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
                             opts, data::SharedFaceData, functor::FluxType_diff,
                             assembler::AssembleElementData)
 
-  q = eqn.q
   params = eqn.params
 
   q_faceL = params.q_faceL
@@ -156,7 +176,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
     fL = bndryL_j.face
 
     # interpolate to face
-    qL = ro_sview(q, :, :, iface_j.elementL)
+    qL = ro_sview(eqn.q, :, :, iface_j.elementL)
     el_r = iface_j.elementR - start_elnum + 1
     qR = ro_sview(qR_arr, :, :, el_r)
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
@@ -181,6 +201,24 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
      interiorFaceIntegrate_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
+
+    
+    # multiply by Minv if needed
+    if params.use_Minv == 1
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          valL = mesh.jac[p, iface_j.elementL]/sbp.w[p]  # entry in Minv
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jacLL[n, m, p, q] *= valL
+              res_jacLR[n, m, p, q] *= valL
+            end
+          end
+        end
+      end
+    end
+    
+
 
      assembleSharedFace(assembler, mesh.sbpface, mesh, iface_j, res_jacLL, res_jacLR)
      fill!(res_jacLL, 0.0)

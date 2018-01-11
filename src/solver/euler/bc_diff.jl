@@ -99,13 +99,10 @@ function calcBoundaryFlux_nopre_diff{Tsol1, Tres1, Tmsh}(mesh::AbstractDGMesh{Tm
     for j = 1:mesh.numNodesPerFace
 
       # get components
-#      q = ro_sview(eqn.q_bndry, :, j, global_facenum)
+      # q = ro_sview(eqn.q_bndry, :, j, global_facenum)
       q_j = sview(q_face, :, j)
-      # convert to conservative variables if needed
-#      aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
       coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
       nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
-#      bndryflux_i = sview(flux_face, :, j)
 
       # compute the jacobian of the flux wrt q_face
       for k=1:mesh.numDofPerNode
@@ -124,6 +121,23 @@ function calcBoundaryFlux_nopre_diff{Tsol1, Tres1, Tmsh}(mesh::AbstractDGMesh{Tm
 
     boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_jac, res_jac,
                                SummationByParts.Subtract())
+
+    
+    if eqn.params.use_Minv == 1
+      # multiply by Minv if needed
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          val = mesh.jac[p, bndry_i.element]/sbp.w[p]  # entry in Minv
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jac[n, m, p, q] *= val
+            end
+          end
+        end
+      end
+    end
+    
+
 
     assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
     fill!(res_jac, 0.0)
