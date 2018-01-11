@@ -69,3 +69,6 @@
 "calc_jac_explicit": compute the jacobian explicitly if true, otherwise use
                      coloring, (Bool), default false.  This option must be set
                      by the physics modules.
+
+"force_solution_complex": force Tsol and Tres to be complex numbers, even if
+                          not required by other options, (Bool), default false

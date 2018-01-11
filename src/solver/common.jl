@@ -199,6 +199,11 @@ function getDataTypes(opts::Dict)
     throw(ErrorException("Unrecognized run_type: $flag"))
   end
 
+  if opts["force_solution_complex"]
+    Tsol = Complex128
+    Tres = Complex128
+  end
+
   return Tmsh, Tsbp, Tsol, Tres
 end
 
