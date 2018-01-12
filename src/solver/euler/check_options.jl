@@ -38,8 +38,8 @@ function checkOptions(opts)
 
   # viscous options handling
   if opts["isViscous"]
-    if opts["precompute_face_flux"]
-      error("precompute_face_flux is not implemented for viscous flux")
+    if ! opts["precompute_face_flux"]
+      error("precompute_face_flux must be on for viscous flux")
     end
     if opts["operator_type"] == "SBPDiagonalE"    # TODO: fix diagE & viscous soon
       error("DiagE SBP elements not yet implemented for viscous solution.")

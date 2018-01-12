@@ -138,7 +138,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
       res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
       @verbose5 @mpi_master println(BSTDOUT, "calculating explicit Petsc jacobian")
 
-      @verbose5 @mpi_master println(BSTDOUT, "calculating main jacobain")
+      @verbose5 @mpi_master println(BSTDOUT, "calculating main jacobian")
       tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, opts, func, res_dummy, pert, jac, t)
 
     elseif jac_type == 4 # Petsc jacobian-vector product
