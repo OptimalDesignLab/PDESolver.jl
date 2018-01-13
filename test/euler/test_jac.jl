@@ -8,6 +8,15 @@ function test_jac_terms()
   fname3 = "input_vals_jac3d.jl"
   mesh, sbp, eqn, opts = run_solver("input_vals_jac2d.jl")
   mesh3, sbp3, eqn3, opts3 = run_solver(fname3)
+#=
+  # SBPOmega, Petsc Mat
+  fname4 = "input_vals_jac_tmp.jl"
+  opts_tmp = read_input_file(fname3)
+  opts_tmp["jac_type"] = 3
+  opts_tmp["operator_type"] = "SBPOmega"
+  make_input(opts_tmp, fname4)
+  mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
+=#
 
   # SBPGamma, Petsc Mat
   fname4 = "input_vals_jac_tmp.jl"
@@ -16,12 +25,14 @@ function test_jac_terms()
   make_input(opts_tmp, fname4)
   mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 
+
   # SBPDiagonalE, Petsc Mat
   fname4 = "input_vals_jac_tmp.jl"
   opts_tmp = read_input_file(fname3)
   opts_tmp["jac_type"] = 3
   opts_tmp["operator_type"] = "SBPDiagonalE"
   opts_tmp["order"] = 2
+  opts_tmp["write_dofs"] = true
   make_input(opts_tmp, fname4)
   mesh5, sbp5, eqn5, opts5 = run_solver(fname4)
 
@@ -120,11 +131,13 @@ function test_jac_terms()
     test_ad_inner(eqn3.params, q, qg, nrm)
     test_ad_inner(eqn3.params, q, qg, nrm2)
 
+    
     println("\ntesting jac assembly 2d")
     test_jac_assembly(mesh, sbp, eqn, opts)
 
     println("\ntesting jac assembly 3d")
     test_jac_assembly(mesh3, sbp3, eqn3, opts3)
+    
 
     # test various matrix and operator combinations
     println("testing mode 4")
@@ -133,6 +146,7 @@ function test_jac_terms()
     println("testing mode 5")
     test_jac_general(mesh5, sbp5, eqn5, opts5)
     # run the test twice to make sure the arrays are zeroed out properly
+    println("testing mode 5 twice")
     test_jac_general(mesh5, sbp5, eqn5, opts5)
 
     println("testing mode 6")
@@ -372,7 +386,9 @@ function test_jac_general(mesh, sbp, eqn, opts)
 
   startSolutionExchange(mesh, sbp, eqn, opts)
 
+  opts["calc_jac_explicit"] = false
   pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  opts["calc_jac_explicit"] = true
   pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
 
   jac1 = getBaseLO(lo1).A
@@ -381,11 +397,16 @@ function test_jac_general(mesh, sbp, eqn, opts)
   assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   opts["calc_jac_explicit"] = false
+  println("calculating regular jacobian"); flush(STDOUT)
+  println(STDERR, "calculating regular jacobian"); flush(STDERR)
   ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
+  println("calculating explicit jacobian"); flush(STDOUT)
+  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
+
   evalJacobian(mesh, sbp, eqn, opts, assembler)
 
   assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
@@ -403,6 +424,13 @@ function test_jac_general(mesh, sbp, eqn, opts)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
     @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
+  end
+
+  A = getBaseLO(lo2).A
+  if typeof(A) <: PetscMat
+    matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
+    println(matinfo)
+    @fact matinfo.nz_unneeded --> 0
   end
 
   free(lo1)

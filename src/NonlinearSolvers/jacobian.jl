@@ -877,6 +877,7 @@ function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::Abstra
       idx = yoffset + j
       dof1 = mesh.dofs[1, idx, elnum] + mesh.dof_offset
       helper.idy_b[j] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
     end
 
     for xblock=1:nblocks
@@ -886,6 +887,10 @@ function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::Abstra
         idx = xoffset + i
         dof1 = mesh.dofs[1, idx, elnum] + mesh.dof_offset
         helper.idx_b[i] = div(dof1 - 1, numDofPerNode) + 1 - 1
+        
+        if helper.idx_b[i] == 2 && elnum == 1
+          println("assembling y indicies ", helper.idy_b, " into block node 2")
+        end
       end
 
       # get values
@@ -914,9 +919,14 @@ function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::Abstra
     dof1 = mesh.dofs[1, q, elnum] + mesh.dof_offset
     helper.idy_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
+
     for p=1:numNodesPerElement
       dof1 = mesh.dofs[1, p, elnum] + mesh.dof_offset
       helper.idx_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      if helper.idx_bb[1] == 2 && elnum == 1
+        println("assembling y indicies ", helper.idy_bb, " into block node 2")
+      end
 
       # get values
       @simd for j=1:numDofPerNode
@@ -939,6 +949,10 @@ function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::Abstra
       p = nblocks*assem_min_volume_nodes + _p
       dof1 = mesh.dofs[1, p, elnum] + mesh.dof_offset
       helper.idx_bb[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      if helper.idx_bb[1] == 2 && elnum == 1
+        println("assembling y indicies ", helper.idy_bb, " into block node 2")
+      end
 
       @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
@@ -1105,6 +1119,11 @@ function assembleInterface{T}(helper::_AssembleElementData{PetscMat},
       helper.idx_ib[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
       dof1 = mesh.dofs[1, pR, iface.elementR] + mesh.dof_offset
       helper.idx_ib[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      if helper.idx_ib[1] == 2 || helper.idx_ib[2] == 2
+        println("assembling y indicies ", helper.idy_ib, " into block node 2")
+      end
+
 
       # put values into 2 x 2 block matrix
       @simd for j=1:numDofPerNode

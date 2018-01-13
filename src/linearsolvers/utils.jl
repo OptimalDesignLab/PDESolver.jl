@@ -53,25 +53,43 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
       onnz[i] = mesh.sparsity_counts[2, i]
     end
   else
-    for i=1:mesh.numDof
-      # this writes the information bs times to each entry
-      block_i = div(i - 1, bs) + 1
-      @assert mesh.sparsity_counts[1, i] % bs == 0
-      @assert mesh.sparsity_counts[2, i] % bs == 0
-      dnnz[block_i] = div(mesh.sparsity_counts[1, i], bs)
-      onnz[block_i] = div(mesh.sparsity_counts[2, i], bs)
-    end
-  end
+    
+#    if opts["calc_jac_explicit"]
+      disctype = INVISCID  # TODO: update this when merging with viscous
+      face_type = getFaceType(mesh.sbpface)
+      _dnnz, _onnz = getBlockSparsityCounts(mesh, mesh.sbpface, disctype, face_type)
+      dnnz2 = convert(Vector{PetscInt}, _dnnz)
+      onnz2 = convert(Vector{PetscInt}, _onnz)
+    
+#    else  # use coloring
+      
+      for i=1:mesh.numDof
+        # this writes the information bs times to each entry
+        block_i = div(i - 1, bs) + 1
+        @assert mesh.sparsity_counts[1, i] % bs == 0
+        @assert mesh.sparsity_counts[2, i] % bs == 0
+        dnnz[block_i] = div(mesh.sparsity_counts[1, i], bs)
+        onnz[block_i] = div(mesh.sparsity_counts[2, i], bs)
+      end
+#    end  # end if calc_jac_explicit
+   
+    
+    println("dnnz comparison = ", hcat(dnnz, dnnz2))
+    
+  end  # end if bs == 1
 
 
   # preallocate A
   @mpi_master println(BSTDOUT, "preallocating A")
 
-  #TODO: set block size?
   if mattype == PETSc2.MATMPIAIJ
     MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
   else
-    MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
+    if opts["calc_jac_explicit"]
+      MatXAIJSetPreallocation(A, bs, dnnz2, onnz2, PetscIntNullArray, PetscIntNullArray)
+    else
+      MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
+    end
   end
   MatZeroEntries(A)
   matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
@@ -187,3 +205,19 @@ function createKSP(pc::Union{PetscMatPC, PetscMatFreePC},
 
   return ksp
 end
+
+"""
+  Get the integer representing the sbpface type
+"""
+function getFaceType(sbpface::AbstractFace)
+  if typeof(sbpface) <: DenseFace
+    face_type = 1
+  elseif typeof(sbpface) <: SparseFace
+    face_type = 2
+  else
+    error("unrecogized sbpface type $(typeof(sbpface))")
+  end
+
+  return face_type
+end
+

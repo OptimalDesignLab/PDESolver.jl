@@ -35,7 +35,7 @@ function test_jac_parallel()
 
   MPI.Barrier(mesh.comm)
   test_jac_parallel_inner(mesh, sbp, eqn, opts)
-
+#=
   test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
 
   test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
@@ -44,7 +44,7 @@ function test_jac_parallel()
   test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
 
   test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
-
+=#
   return nothing
 end
 
@@ -66,7 +66,9 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts)
 
   startSolutionExchange(mesh, sbp, eqn, opts)
 
+  opts["calc_jac_explicit"] = false
   pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  opts["calc_jac_explicit"] = true
   pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
 
   jac1 = getBaseLO(lo1).A
@@ -99,6 +101,14 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts)
 
     @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
   end
+
+  A = getBaseLO(lo2).A
+  if typeof(A) <: PetscMat
+    matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
+    println(matinfo)
+    @fact matinfo.nz_unneeded --> 0
+  end
+
 
   free(lo1)
   free(lo2)
