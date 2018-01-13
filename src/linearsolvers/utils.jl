@@ -56,15 +56,16 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
     
 #    if opts["calc_jac_explicit"]
       disctype = INVISCID  # TODO: update this when merging with viscous
-      if opts["preallocate_jacobian_edgestab"]
-        disctype = EDGESTAB
+      if opts["preallocate_jacobian_coloring"]
+        disctype = COLORING
       end
       face_type = getFaceType(mesh.sbpface)
       _dnnz, _onnz = getBlockSparsityCounts(mesh, mesh.sbpface, disctype, face_type)
-      dnnz2 = convert(Vector{PetscInt}, _dnnz)
-      onnz2 = convert(Vector{PetscInt}, _onnz)
+      dnnz = convert(Vector{PetscInt}, _dnnz)
+      onnz = convert(Vector{PetscInt}, _onnz)
     
-#    else  # use coloring
+    #=
+    else  # use coloring
       
       for i=1:mesh.numDof
         # this writes the information bs times to each entry
@@ -74,10 +75,8 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
         dnnz[block_i] = div(mesh.sparsity_counts[1, i], bs)
         onnz[block_i] = div(mesh.sparsity_counts[2, i], bs)
       end
-#    end  # end if calc_jac_explicit
-   
-    
-    println("dnnz comparison = ", hcat(dnnz, dnnz2))
+    end  # end if calc_jac_explicit
+    =#
     
   end  # end if bs == 1
 
@@ -88,11 +87,7 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
   if mattype == PETSc2.MATMPIAIJ
     MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
   else
-    if opts["calc_jac_explicit"]
-      MatXAIJSetPreallocation(A, bs, dnnz2, onnz2, PetscIntNullArray, PetscIntNullArray)
-    else
-      MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
-    end
+    MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
   end
   MatZeroEntries(A)
   matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)

@@ -151,8 +151,8 @@ function test_jac_terms()
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
 
-    opts4["preallocate_jacobian_edgestab"] = true
-    test_jac_general(mesh4, sbp4, eqn4, opts4, is_prealloc_exact=false)
+    opts4["preallocate_jacobian_coloring"] = true
+    test_jac_general(mesh4, sbp4, eqn4, opts4, is_prealloc_exact=false, set_prealloc=false)
     
     println("testing mode 5")
     test_jac_general(mesh5, sbp5, eqn5, opts5)
@@ -169,8 +169,8 @@ function test_jac_terms()
     println("testing mode 8")
     test_jac_general(mesh8, sbp8, eqn8, opts8)
   
-    opts4["preallocate_jacobian_edgestab"] = true
-    test_jac_general(mesh8, sbp8, eqn8, opts8, is_prealloc_exact=true)
+    opts4["preallocate_jacobian_coloring"] = true
+    test_jac_general(mesh8, sbp8, eqn8, opts8, is_prealloc_exact=true, set_prealloc=false)
 
   end
   return nothing
@@ -388,8 +388,13 @@ end
 
 """
   Test the entire jacobian assembly, for any type of jacobian matrix
+
+  is_prealloc_exact: test that the jacobian preallocation is exact (Petsc only)
+  set_prealloc: if true, set the preallocation of the jacobian to be tight
+                for the explicitly computed jacobian
+                if false, use the value currently in the dictionary
 """
-function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true)
+function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prealloc=true)
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
@@ -405,8 +410,14 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true)
 
   opts["calc_jac_explicit"] = false
   pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+
   opts["calc_jac_explicit"] = true
+  val_orig = opts["preallocate_jacobian_coloring"]
+  if set_prealloc
+    opts["preallocate_jacobian_coloring"] = false
+  end
   pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  opts["preallocate_jacobian_coloring"] = val_orig
 
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A

@@ -52,6 +52,7 @@ function checkOptions(opts)
   end
 
   get!(opts, "calc_jac_explicit", false)
+  get!(opts, "preallocate_jacobian_coloring", true)
 
   return nothing
 end

@@ -48,5 +48,13 @@ function checkOptions(opts)
     end
   end
 
+  if opts["calc_jac_explicit"]
+    get!(opts, "preallocate_jacobian_coloring", false)
+  else
+    get!(opts, "preallocate_jacobian_coloring", true)
+  end
+
+
+
   return nothing
 end

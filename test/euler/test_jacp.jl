@@ -35,8 +35,8 @@ function test_jac_parallel()
 
   MPI.Barrier(mesh.comm)
   test_jac_parallel_inner(mesh, sbp, eqn, opts)
-  opts["preallocate_jacobian_edgestab"] = true
-  test_jac_parallel_inner(mesh, sbp, eqn, opts, is_prealloc_exact=true)
+  opts["preallocate_jacobian_coloring"] = true
+  test_jac_parallel_inner(mesh, sbp, eqn, opts, is_prealloc_exact=true, set_prealloc=false)
 
   test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
 
@@ -54,7 +54,7 @@ end
 add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC]) 
 
 
-function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true)
+function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prealloc=true)
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
@@ -71,7 +71,12 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true)
   opts["calc_jac_explicit"] = false
   pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
   opts["calc_jac_explicit"] = true
+  val_orig = opts["preallocate_jacobian_coloring"]
+  if set_prealloc
+    opts["preallocate_jacobian_coloring"] = false
+  end
   pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  opts["preallocate_jacobian_coloring"] = val_orig
 
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A

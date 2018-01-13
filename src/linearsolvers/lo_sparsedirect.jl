@@ -41,12 +41,16 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   if typeof(mesh) <: AbstractCGMesh
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   else
-    if opts["calc_jac_explicit"]
+#    if opts["calc_jac_explicit"]
       face_type = getFaceType(mesh.sbpface)
+      disc_type = INVISCID
+      if opts["preallocate_jacobian_coloring"]
+        disc_type = COLORING
+      end
       jac = SparseMatrixCSC(mesh, Float64, INVISCID, face_type)
-    else
-      jac = SparseMatrixCSC(mesh, Float64)
-    end
+#    else
+#      jac = SparseMatrixCSC(mesh, Float64)
+#    end
   end
 
   # Note: colptr and rowval alias A

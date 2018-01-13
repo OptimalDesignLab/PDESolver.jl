@@ -345,9 +345,6 @@ get!(arg_dict, "use_linear_metrics", false)
 get!(arg_dict, "reordering_algorithm", "default")
 get!(arg_dict, "reordering_start_coords", [0.0, 0.0])
 
-# jacobian options
-get!(arg_dict, "preallocate_jacobian_edgestab", false)
-
 # Newton's Method options
 get!(arg_dict, "write_rhs", false)
 get!(arg_dict, "write_jac", false)
