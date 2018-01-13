@@ -325,7 +325,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
   opts["addBoundaryIntegrals"] = false
   opts["addFaceIntegrals"] = false
   
-  jac1 = SparseMatrixCSC(mesh, Float64)
+  jac1 = SparseMatrixCSC(mesh, Float64, COLORING, LinearSolvers.getFaceType(mesh.sbpface))
   jac2 = zeros(mesh.numDof, mesh.numDof)
   assembler = NonlinearSolvers._AssembleElementData(jac2, mesh, sbp, eqn, opts)
 
@@ -457,7 +457,6 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   A = getBaseLO(lo2).A
   if typeof(A) <: PetscMat
     matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
-    println(matinfo)
     if is_prealloc_exact
       @fact matinfo.nz_unneeded --> 0
     else

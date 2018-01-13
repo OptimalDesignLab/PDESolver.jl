@@ -54,30 +54,14 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
     end
   else
     
-#    if opts["calc_jac_explicit"]
-      disctype = INVISCID  # TODO: update this when merging with viscous
-      if opts["preallocate_jacobian_coloring"]
-        disctype = COLORING
-      end
-      face_type = getFaceType(mesh.sbpface)
-      _dnnz, _onnz = getBlockSparsityCounts(mesh, mesh.sbpface, disctype, face_type)
-      dnnz = convert(Vector{PetscInt}, _dnnz)
-      onnz = convert(Vector{PetscInt}, _onnz)
-    
-    #=
-    else  # use coloring
-      
-      for i=1:mesh.numDof
-        # this writes the information bs times to each entry
-        block_i = div(i - 1, bs) + 1
-        @assert mesh.sparsity_counts[1, i] % bs == 0
-        @assert mesh.sparsity_counts[2, i] % bs == 0
-        dnnz[block_i] = div(mesh.sparsity_counts[1, i], bs)
-        onnz[block_i] = div(mesh.sparsity_counts[2, i], bs)
-      end
-    end  # end if calc_jac_explicit
-    =#
-    
+    disctype = INVISCID  # TODO: update this when merging with viscous
+    if opts["preallocate_jacobian_coloring"]
+      disctype = COLORING
+    end
+    face_type = getFaceType(mesh.sbpface)
+    _dnnz, _onnz = getBlockSparsityCounts(mesh, mesh.sbpface, disctype, face_type)
+    dnnz = convert(Vector{PetscInt}, _dnnz)
+    onnz = convert(Vector{PetscInt}, _onnz)
   end  # end if bs == 1
 
 
@@ -90,9 +74,6 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
     MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
   end
   MatZeroEntries(A)
-  matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
-  @mpi_master println(BSTDOUT, "A block size = ", matinfo.block_size)
-  @mpi_master println(BSTDOUT, "A info = ", matinfo)
 
   # Petsc objects if this comes before preallocation
   MatSetOption(A, PETSc2.MAT_ROW_ORIENTED, PETSC_FALSE)

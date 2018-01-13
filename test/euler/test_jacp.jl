@@ -112,7 +112,6 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
   A = getBaseLO(lo2).A
   if typeof(A) <: PetscMat
     matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
-    println(matinfo)
     if is_prealloc_exact
       @fact matinfo.nz_unneeded --> 0
     else
