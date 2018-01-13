@@ -55,6 +55,14 @@ function test_jac_terms()
   make_input(opts_tmp, fname4)
   mesh7, sbp7, eqn7, opts7 = run_solver(fname4)
 
+  # SBPOmega, Petsc Mat
+  fname4 = "input_vals_jac_tmp.jl"
+  opts_tmp = read_input_file(fname3)
+  opts_tmp["jac_type"] = 3
+  opts_tmp["operator_type"] = "SBPOmega"
+  make_input(opts_tmp, fname4)
+  mesh8, sbp8, eqn8, opts8 = run_solver(fname4)
+
 
 
   facts("----- Testing jacobian -----") do
@@ -142,6 +150,9 @@ function test_jac_terms()
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
+
+    opts4["preallocate_jacobian_edgestab"] = true
+    test_jac_general(mesh4, sbp4, eqn4, opts4, is_prealloc_exact=false)
     
     println("testing mode 5")
     test_jac_general(mesh5, sbp5, eqn5, opts5)
@@ -154,7 +165,13 @@ function test_jac_terms()
  
     println("testing mode 7")
     test_jac_general(mesh7, sbp7, eqn7, opts7)
+ 
+    println("testing mode 8")
+    test_jac_general(mesh8, sbp8, eqn8, opts8)
   
+    opts4["preallocate_jacobian_edgestab"] = true
+    test_jac_general(mesh8, sbp8, eqn8, opts8, is_prealloc_exact=true)
+
   end
   return nothing
 end
@@ -372,7 +389,7 @@ end
 """
   Test the entire jacobian assembly, for any type of jacobian matrix
 """
-function test_jac_general(mesh, sbp, eqn, opts)
+function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true)
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
@@ -430,7 +447,13 @@ function test_jac_general(mesh, sbp, eqn, opts)
   if typeof(A) <: PetscMat
     matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
     println(matinfo)
-    @fact matinfo.nz_unneeded --> 0
+    if is_prealloc_exact
+      @fact matinfo.nz_unneeded --> 0
+    else
+      @fact matinfo.nz_unneeded --> greater_than(0)
+    end
+      
+
   end
 
   free(lo1)

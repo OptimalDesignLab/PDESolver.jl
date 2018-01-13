@@ -35,7 +35,9 @@ function test_jac_parallel()
 
   MPI.Barrier(mesh.comm)
   test_jac_parallel_inner(mesh, sbp, eqn, opts)
-#=
+  opts["preallocate_jacobian_edgestab"] = true
+  test_jac_parallel_inner(mesh, sbp, eqn, opts, is_prealloc_exact=true)
+
   test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
 
   test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
@@ -44,7 +46,7 @@ function test_jac_parallel()
   test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
 
   test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
-=#
+
   return nothing
 end
 
@@ -52,7 +54,7 @@ end
 add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC]) 
 
 
-function test_jac_parallel_inner(mesh, sbp, eqn, opts)
+function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true)
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
@@ -106,7 +108,11 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts)
   if typeof(A) <: PetscMat
     matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
     println(matinfo)
-    @fact matinfo.nz_unneeded --> 0
+    if is_prealloc_exact
+      @fact matinfo.nz_unneeded --> 0
+    else
+      @fact matinfo.nz_unneeded --> greater_than(0)
+    end
   end
 
 

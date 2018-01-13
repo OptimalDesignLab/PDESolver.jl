@@ -56,6 +56,9 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
     
 #    if opts["calc_jac_explicit"]
       disctype = INVISCID  # TODO: update this when merging with viscous
+      if opts["preallocate_jacobian_edgestab"]
+        disctype = EDGESTAB
+      end
       face_type = getFaceType(mesh.sbpface)
       _dnnz, _onnz = getBlockSparsityCounts(mesh, mesh.sbpface, disctype, face_type)
       dnnz2 = convert(Vector{PetscInt}, _dnnz)
