@@ -42,7 +42,7 @@ function installPDESolver()
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "new_parallel";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
-              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "master"
+              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.4"
               ]
 
 
