@@ -14,7 +14,7 @@ using ODLCommonTools
 function make_input(dict::Dict, fname::AbstractString)
 
   # add extension if not already present
-  if !contains(fname, ".")
+  if !endswith(fname, ".jl")
     fname_ex = string(fname, ".jl")
     rmfile(fname_ex)
   else
