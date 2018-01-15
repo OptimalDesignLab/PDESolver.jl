@@ -772,6 +772,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
      eqn.vecflux_faceL = Array(Tsol, 0, 0, 0, 0)
      eqn.vecflux_faceR = Array(Tsol, 0, 0, 0, 0)
      eqn.vecflux_bndry = Array(Tsol, 0, 0, 0, 0)
+     eqn.vecflux_faceL_shared = Array(Tsol, 0, 0, 0, 0)
      eqn.area_sum = Array(Tsol, 0)
    end
    return eqn
