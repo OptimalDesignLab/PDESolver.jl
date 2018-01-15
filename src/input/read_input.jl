@@ -155,6 +155,7 @@ get!(arg_dict, "Volume_flux_name", "StandardFlux")
 get!(arg_dict, "Viscous_flux_name", "ErrorFlux")
 get!(arg_dict, "face_integral_type", 1)
 get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
+get!(arg_dict, "isViscous", false)
 
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
