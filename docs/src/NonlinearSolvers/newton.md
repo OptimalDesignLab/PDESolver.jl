@@ -43,29 +43,4 @@ The function that performs the Newton iteration is
 newtonInner
 ```
 
-## Jacobian calculation
 
-Special mention of calcJacobianComplex.
-
-One of the most involved parts of Newton's method is forming the Jacobian.
-The NonlinearSolvers module contains the function [`physicsJac`](@ref) to
-compute the Jacobian of the physics $\frac{\partial R(q)}{\partial q}$, where
-$R$ is [`evalResidual`](@ref).  This function can be used by other methods
-as a starting point for computing the residual of $g(R(q))$ described at the
-top of this page.
-
-```@docs
-physicsJac
-```
-
-`physicsJac` calls one of several functions to compute the Jacobian.  Users
-should not call these functions directly, they should use `physicsJac`.
-
-```@docs
-calcJacFD
-calcJacobianComplex
-calcJacobianSparse
-applyPerturbation
-assembleElement
-calcJacCol
-```
