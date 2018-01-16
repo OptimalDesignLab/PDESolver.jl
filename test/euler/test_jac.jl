@@ -80,12 +80,14 @@ function test_jac_terms()
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm)
     test_lambda(eqn.params, q, nrm)
+    test_lambdasimple(eqn.params, q, qg, nrm)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm2)
     test_lambda(eqn.params, q, nrm2)
+    test_lambdasimple(eqn.params, q, qg, nrm2)
 
 
     println("testing lambda1 entropy fix")
@@ -114,12 +116,14 @@ function test_jac_terms()
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm)
     test_lambda(eqn3.params, q, nrm)
+    test_lambdasimple(eqn3.params, q, qg, nrm)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm2)
     test_lambda(eqn3.params, q, nrm2)
+    test_lambdasimple(eqn3.params, q, qg, nrm2)
 
 
     println("testing lambda1 entropy fix")
@@ -272,6 +276,42 @@ function test_lambda{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
 
   return nothing
 end
+
+function test_lambdasimple{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
+                                 qR::AbstractVector,
+                                 nrm::AbstractVector)
+
+
+  lambda_dotL = zeros(qL)
+  lambda_dotR = zeros(qL)
+  EulerEquationMod.getLambdaMaxSimple_diff(params, qL, qR, nrm, lambda_dotL, lambda_dotR)
+
+  lambda_dotL2 = zeros(qL)
+  lambda_dotR2 = zeros(qL)
+  h = 1e-20
+  pert = Complex128(0, h)
+  for i=1:length(lambda_dotL)
+    qL[i] += pert
+    lambda_dotL2[i] = imag(EulerEquationMod.getLambdaMaxSimple(params, qL, qR, nrm))/h
+    qL[i] -= pert
+  end
+
+  for i=1:length(lambda_dotL)
+    qR[i] += pert
+    lambda_dotR2[i] = imag(EulerEquationMod.getLambdaMaxSimple(params, qL, qR, nrm))/h
+    qR[i] -= pert
+  end
+
+
+  @fact norm(lambda_dotL - lambda_dotL2) --> roughly(0.0, atol=1e-13)
+  @fact norm(lambda_dotR - lambda_dotR2) --> roughly(0.0, atol=1e-13)
+
+
+  return nothing
+end
+
+
+
 
 function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)
 

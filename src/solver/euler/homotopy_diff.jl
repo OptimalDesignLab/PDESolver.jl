@@ -90,24 +90,152 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
         end
       end  # end loop d2
 
+      # negate res_jac for consistency with physics module
+      for i=1:length(res_jac)
+        res_jac[i] = -res_jac[i]
+      end
+
 
       assembleElement(assembler, mesh, el, res_jac)
     end  # end loop d1
   end  # end loop el
 
 
-
-
-
-
-
-
-
-
-
-
   fill!(res_jac, 0.0)
   fill!(t2_dot, 0.0)
+
+
+  #----------------------------------------------------------------------------
+  # interface terms
+
+  q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+#  nrm2 = eqn.params.nrm2
+  flux_jacL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+  flux_jacR = zeros(flux_jacL)
+
+  res_jacLL = params.res_jacLL
+  res_jacLR = params.res_jacLR
+  res_jacRL = params.res_jacRL
+  res_jacRR = params.res_jacRR
+
+  lambda_dotL = zeros(Tres, mesh.numDofPerNode)
+  lambda_dotR = zeros(Tres, mesh.numDofPerNode)
+
+  for i=1:mesh.numInterfaces
+    iface_i = mesh.interfaces[i]
+    qL = sview(eqn.q, :, :, iface_i.elementL)
+    qR = sview(eqn.q, :, :, iface_i.elementR)
+     fill!(res_jacLL, 0.0)
+     fill!(res_jacLR, 0.0)
+     fill!(res_jacRL, 0.0)
+     fill!(res_jacRR, 0.0)
+
+    interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
+
+    # calculate the flux jacobian at each face node
+    for j=1:mesh.numNodesPerFace
+      qL_j = sview(q_faceL, :, j)
+      qR_j = sview(q_faceR, :, j)
+
+      # get the face normal
+      nrm2 = sview(mesh.nrm_face, :, j, i)
+
+      lambda_max = getLambdaMaxSimple_diff(eqn.params, qL_j, qR_j, nrm2,
+                                           lambda_dotL, lambda_dotR)
+
+      for k=1:mesh.numDofPerNode
+        # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
+        for m=1:mesh.numDofPerNode
+          flux_jacL[m, k, j] = qL_j[m]*lambda_dotL[k] - qR_j[m]*lambda_dotL[k]
+          flux_jacR[m, k, j] = qL_j[m]*lambda_dotR[k] - qR_j[m]*lambda_dotR[k]
+        end
+        flux_jacL[k, k, j] += lambda_max
+        flux_jacR[k, k, j] -= lambda_max
+      end
+    end  # end loop j
+
+    # compute dR/dq
+    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
+                             res_jacLL, res_jacLR, res_jacRL, res_jacRR,
+                             SummationByParts.Subtract())
+
+  end  # end loop i
+
+  #----------------------------------------------------------------------------
+  # skipping boundary integrals
+
+  #----------------------------------------------------------------------------
+  
+  # shared face integrals
+  # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_jacL, flux_jacr
+  # from above
+  workarr = zeros(q_faceR)
+  for peer=1:mesh.npeers
+    # get data for this peer
+    bndries_local = mesh.bndries_local[peer]
+    bndries_remote = mesh.bndries_remote[peer]
+    interfaces_peer = mesh.shared_interfaces[peer]
+
+    qR_peer = eqn.shared_data[peer].q_recv
+#    dxidx_peer = mesh.dxidx_sharedface[peer]
+    nrm_peer = mesh.nrm_sharedface[peer]
+    start_elnum = mesh.shared_element_offsets[peer]
+
+    for i=1:length(bndries_local)
+      bndry_i = bndries_local[i]
+      bndryR_i = bndries_remote[i]
+      iface_i = interfaces_peer[i]
+      qL_i = sview(eqn.q, :, :, bndry_i.element)
+      qR_i = sview(qR_peer, :, :, iface_i.elementR - start_elnum + 1)
+      fill!(resLL, 0.0)
+      fill!(resLR, 0.0)
+      fill!(resRL, 0.0)
+      fill!(resRR, 0.0)
+
+      # interpolate to face
+      #TODO:  why not use interiorFaceInterpolate?
+#      interiorFaceInterpolate!(mesh.sbpface, iface_i, qL_i, qR_i, q_faceL, q_faceR)
+      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL_i, q_faceL)
+      boundaryFaceInterpolate!(mesh.sbpface, bndryR_i.face, qR_i, q_faceR)
+
+      # permute elementR
+      permvec = sview(mesh.sbpface.nbrperm, :, iface_i.orient)
+      SummationByParts.permuteface!(permvec, workarr, q_faceR)
+
+      # compute flux at every face node
+      for j=1:mesh.numNodesPerFace
+        qL_j = sview(q_faceL, :, j)
+        qR_j = sview(q_faceR, :, j)
+        nrm2 = sview(nrm_peer, :, j, i)
+
+        # get max wave speed
+        lambda_max = getLambdaMaxSimple_diff(eqn.params, qL_j, qR_j, nrm2,
+                                             lambda_dotL, lambda_dotR)
+
+        # calculate flux
+        for k=1:mesh.numDofPerNode
+          # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
+          for m=1:mesh.numDofPerNode
+            flux_jacL[m, k, j] = qL_j[m]*lambda_dotL[k] - qR_j[m]*lambda_dotL[k]
+            flux_jacR[m, k, j] = qL_j[m]*lambda_dotR[k] - qR_j[m]*lambda_dotR[k]
+          end
+          flux_jacL[k, k, j] += lambda_max
+          flux_jacR[k, k, j] -= lambda_max
+        end
+      end  # end loop j
+
+      # compute dR/dq
+      interiorFaceIntegrate_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
+                                res_jacLL, res_jacLR, res_jacRL, res_jacRR,
+                                SummationByParts.Subtract())
+
+
+     assembleSharedFace(assembler, mesh.sbpface, mesh, iface_i, res_jacLL, res_jacLR)
+    end  # end loop i
+  end  # end loop peer
+ 
+
 
   return nothing
 end
@@ -163,6 +291,8 @@ function getLambdaMax_diff{Tsol, Tres, Tmsh}(params::ParamType{2},
   for i=1:2
     dA += dir[i]*dir[i]
   end
+
+  dA = sqrt(dA)
 
   lambda_max = absvalue(Un) + dA*aL
   lambda_dot[1] = dA*aL_dotL1
@@ -251,7 +381,21 @@ function getLambdaMax_diff{Tsol, Tres, Tmsh}(params::ParamType{3},
   return lambda_max
 end
 
+"""
+  Differentiated version of [`getLambdaMaxSimple`](@ref)
 
+  **Inputs**
+
+   * params
+   * qL
+   * qR
+   * dir
+
+  **Inputs/Outputs**
+
+   * lambda_dotL: derivative of lambda wrt. qL
+   * lambda_dotR: derivative of lambda wrt. qR
+"""
 function getLambdaMaxSimple_diff{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
                       dir::AbstractVector{Tmsh},
