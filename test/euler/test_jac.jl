@@ -79,11 +79,13 @@ function test_jac_terms()
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm)
+    test_lambda(eqn.params, q, nrm)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm2)
+    test_lambda(eqn.params, q, nrm2)
 
 
     println("testing lambda1 entropy fix")
@@ -111,11 +113,13 @@ function test_jac_terms()
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm)
+    test_lambda(eqn3.params, q, nrm)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm2)
+    test_lambda(eqn3.params, q, nrm2)
 
 
     println("testing lambda1 entropy fix")
@@ -245,6 +249,28 @@ function test_eulerflux{Tdim}(params::AbstractParamType{Tdim})
   EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
 
   @fact maximum(abs(res - res2)) --> roughly(0.0, atol=1e-14)
+end
+
+function test_lambda{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
+                           nrm::AbstractVector)
+
+
+  lambda_dot = zeros(qL)
+  EulerEquationMod.getLambdaMax_diff(params, qL, nrm, lambda_dot)
+
+  lambda_dot2 = zeros(qL)
+  h=1e-20
+  pert = Complex128(0, h)
+  for i=1:length(lambda_dot)
+    qL[i] += pert
+    lambda_dot2[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrm))/h
+    qL[i] -= pert
+  end
+
+  @fact norm(lambda_dot - lambda_dot2) --> roughly(0.0, atol=1e-13)
+
+
+  return nothing
 end
 
 function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)

@@ -262,6 +262,8 @@ function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim},
     dA += dir[i]*dir[i]
   end
 
+  dA = sqrt(dA)
+
   lambda_max = absvalue(Un) + dA*aL
 
   return lambda_max
