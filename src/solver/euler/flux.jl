@@ -727,8 +727,10 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
   end  # end loop over interfaces
 
   # start viscous flux calculation
-  calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
-  evalFaceIntegrals_vector(mesh, sbp, eqn, opts, idx)
+  if opts["isViscous"]
+    calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
+    evalFaceIntegrals_vector(mesh, sbp, eqn, opts, idx)
+  end
 
   @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 

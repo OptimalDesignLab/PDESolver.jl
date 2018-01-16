@@ -26,6 +26,10 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   #   calcSharedFaceIntegrals_nopre_element_inner, finishExchangeData will have made the proper
   #   alterations to eqn.shared_data, so it is safe to call directly. See line 192 in Utils/parallel.jl
 
+  #--- for debugging
+  # println(" ~~~~ entering calcViscousFlux_interior ~~~~")
+  # println("   peeridx: ", peeridx)
+
   Ma      = eqn.params.Ma
   Re      = eqn.params.Re
   gamma_1 = eqn.params.gamma_1
@@ -102,9 +106,19 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       q_elemL = sview(eqn.q, :, :, elemL)
       q_elemR = sview(eqn.q, :, :, elemR)
     else            # AAAAA parallelized
+      data = eqn.shared_data[peeridx]
+      #--- for debugging
+      # myrank = mesh.myrank        # required for use by @mpi_master
+      # @mpi_master println(" typeof(data): ", typeof(data))
+      # @mpi_master println(" fieldnames(data): ", fieldnames(data))
+      # @mpi_master println(" typeof(eqn.shared_data): ", typeof(eqn.shared_data))
+      # @mpi_master println(" size(eqn.shared_data): ", size(eqn.shared_data))
+      # @mpi_master println(" typeof(eqn.q): ", typeof(eqn.q))
+      # @mpi_master println(" size(eqn.q): ", size(eqn.q))
+      #--- for debugging
       q_elemL = ro_sview(eqn.q, :, :, elemL)
       # q_elemR: for comparison, see line 686 & 703 in flux.jl
-      q_elemR = ro_sview(eqn.shared_data.q_recv, :, :, elemR)
+      q_elemR = ro_sview(data.q_recv, :, :, elemR)
       # q_face*: for comparison, see flux.jl, line 702.
       interiorFaceInterpolate!(mesh.sbpface, face, q_elemL, q_elemR, q_faceL, q_faceR)
       # face: same as iface_j in calcSharedFaceIntegral_nopre_element_inner.
