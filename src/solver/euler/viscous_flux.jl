@@ -19,7 +19,7 @@ Output:
 function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                                                           sbp::AbstractSBP,
                                                           eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts::Dict;
+                                                          opts::Dict,
                                                           peeridx::Int=0)
 
   # note about eqn.shared_data: when this function is called by
@@ -462,7 +462,7 @@ Output:
 function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                                                           sbp::AbstractSBP,
                                                           eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts::Dict;
+                                                          opts::Dict,
                                                           peeridx::Int=0)
   # This part computes ∫ ∇ϕ⋅F  dΓ, 
   sbpface = mesh.sbpface
