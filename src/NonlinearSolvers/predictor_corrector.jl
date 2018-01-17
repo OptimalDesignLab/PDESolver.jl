@@ -15,7 +15,10 @@
     physics_func: the function to solve, ie. func(q) = 0  mathematically.
                   func must have the signature func(mesh, sbp, eqn, opts)
 
-    g_func: the function that evalutes G(q), the dissipation
+    g_func: the function that evalutes G(q), the dissipation.
+            If explicit jacobian calculation is used, then
+            [`evalHomotopyJacobian`](@ref) must evaluate the jacobian of this 
+            function wrt. q
     sbp: an SBP operator
     eqn: a AbstractSolutionData.  On entry, eqn.q_vec must be the
          initial condition.  On exit, eqn.q_vec will be the solution to
@@ -34,6 +37,14 @@
   it will contain the solution for func(q) = 0.
 
   This function is reentrant.
+
+  **Options Keys**
+
+   * calc_jac_explicit
+   * itermax
+   * res_reltol
+   * res_abstol
+   * krylov_reltol
 """
 function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
                                     g_func::Function,
@@ -48,7 +59,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   # define the homotopy function H and dH/dLambda
   # defines these as nested functions so predictorCorrectorHomotopy is
   # re-entrant
-  res_homotopy = zeros(eqn.res)  # used my homotopyPhysics
+  res_homotopy = zeros(eqn.res)  # used by homotopyPhysics
   """
     This function makes it appear as though the combined homotopy function H
     is a physics.  This works because an elementwise combinations of physics
@@ -142,7 +153,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   # Newton PC and LO stuff, supplying homotopyPhysics in ctx_residual
   rhs_func = physicsRhs
   ctx_residual = (homotopyPhysics,)
-  pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+  pc, lo = getHomotopyPCandLO(mesh, sbp, eqn, opts)
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
 
@@ -259,6 +270,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       end
 
       lambda = max(lambda_min, lambda - h)
+      pc.lambda = lambda
+      lo.lambda = lambda
     end  # end if lambda too large
 
     # calculate physics residual at new state q
@@ -342,4 +355,207 @@ function calcdHdLambda(mesh, sbp, eqn, opts, lambda, physics_func, g_func, res_v
 end
 
 
+function getHomotopyPCandLO(mesh, sbp, eqn, opts)
 
+  # get PC
+  if opts["jac_type"] <= 2
+    pc = PCNone(mesh, sbp, eqn, opts)
+  else
+    pc = HomotopyMatPC(mesh, sbp, eqn, opts)
+  end 
+
+  jactype = opts["jac_type"]
+  if jactype == 1
+    lo = HomotopyDenseLO(pc, mesh, sbp, eqn, opts)
+  elseif jactype == 2
+    lo = HomotopySparseDirectLO(pc, mesh, sbp, eqn, opts)
+  elseif jactype == 3
+    lo = HomotopyPetscMatLO(pc, mesh, sbp, eqn, opts)
+  elseif jactype == 4
+    lo = HomotopyPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
+  end
+
+  return pc, lo
+end
+
+
+
+
+# Define PC and LO objects
+#------------------------------------------------------------------------------
+# PC:
+
+type HomotopyMatPC <: AbstractPetscMatPC
+  pc_inner::NewtonMatPC
+  lambda::Float64  # homotopy parameter
+end
+
+function HomotopyMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+                    eqn::AbstractSolutionData, opts::Dict)
+
+
+  pc_inner = NewtonMatPC(mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopyMatPC(pc_inner, lambda)
+end
+
+function calcPC(pc::HomotopyMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  # compute the Jacobian of the Newton PC
+  calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  if opts["calc_jac_explicit"]
+    A = getBasePC(pc).A
+    assembly_begin(A, MAT_FINAL_ASSEMBLY)
+    assembly_end(A, MAT_FINAL_ASSEMBLY)
+
+    lambda_c = 1 - lambda # complement of lambda
+    scale!(A, lambda_c)
+
+    # compute the homotopy contribution to the Jacobian
+    assembler = AssembleElementData(A, mesh, sbp, eqn, opts)
+    evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lambda)
+  end
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
+# LO:
+
+type HomotopyDenseLO <: AbstractDenseLO
+  lo_inner::NewtonDenseLO
+  lambda::Float64
+end
+
+function HomotopyDenseLO(pc::PCNone, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+  return HomotopyDenseLO(lo_inner, lambda)
+end
+
+type HomotopySparseDirectLO <: AbstractSparseDirectLO
+  lo_inner::NewtonSparseDirectLO
+  lambda::Float64
+end
+
+function HomotopySparseDirectLO(pc::PCNone, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopySparseDirectLO(lo_inner, lambda)
+end
+
+type HomotopyPetscMatLO <: AbstractPetscMatLO
+  lo_inner::NewtonPetscMatLO
+  lambda::Float64
+end
+
+
+function HomotopyPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonPetscMatLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopyPetscMatLO(lo_inner, lambda)
+end
+
+
+type HomotopyPetscMatFreeLO <: AbstractPetscMatFreeLO
+  lo_inner::PetscMatFreeLO
+  lambda::Float64  # this is unused, but needed for consistency
+end
+
+"""
+  Homotopy mat-free linear operator constructor
+
+  **Inputs**
+
+   * pc
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * rhs_func: rhs_func from [`newtonInner`](@ref)
+"""
+function HomotopyPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopyPetscMatFreeLO(lo_inner, lambda)
+end
+
+
+"""
+  Homotopy matrix-explicit linear operators
+"""
+typealias HomotopyMatLO Union{HomotopyDenseLO, HomotopySparseDirectLO, HomotopyPetscMatLO}
+
+
+function calcLinearOperator(lo::HomotopyMatLO, mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            opts::Dict, ctx_residual, t)
+
+   
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  if opts["calc_jac_explicit"]
+    A = getBaseLO(lo).A
+    assembly_begin(A, MAT_FINAL_ASSEMBLY)
+    assembly_end(A, MAT_FINAL_ASSEMBLY)
+
+    lambda_c = 1 - lambda # complement of lambda
+    scale!(A, lambda_c)
+
+    # compute the homotopy contribution to the Jacobian
+    assembler = AssembleElementData(A, mesh, sbp, eqn, opts)
+    evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lambda)
+  end
+
+  return nothing
+end
+
+
+function calcLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            opts::Dict, ctx_residual, t)
+
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  # nothing to do here
+  return nothing
+end
+
+
+function applyLinearOperator{Tsol}(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
+                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             opts::Dict, ctx_residual, t, x::AbstractVector, 
+                             b::AbstractVector)
+
+  @assert !(Tsol <: AbstractFloat)  # complex step only!
+
+  # ctx_residual[1] = homotopyPhysics, so this computes both the physics
+  # and homotopy contribution
+  applyLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+
+  return nothing
+end
+
+function applyLinearOperatorTranspose{Tsol}(lo::HomotopyPetscMatFreeLO, 
+                             mesh::AbstractMesh,
+                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             opts::Dict, ctx_residual, t, x::AbstractVector, 
+                             b::AbstractVector)
+
+  error("applyLinearOperatorTranspose() not supported by HomotopyPetscMatFreeLO")
+
+end

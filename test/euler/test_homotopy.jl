@@ -41,16 +41,16 @@ function test_homotopy(mesh, sbp, eqn, opts)
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
   ls_dense = StandardLinearSolver(pc, lo, eqn.comm, opts)
-  newton_data_dense, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, ls_dense)
+#  newton_data_dense, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, ls_dense)
 
   opts2 = copy(opts)
   opts2["jac_type"] = 2  # SparseMatrixCSC
-  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts2)
+  pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts2)
   ls_sparse = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
-  newton_data_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2, ls_sparse)
+#  newton_data_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2, ls_sparse)
 
   lo2_dense = getBaseLO(ls_dense.lo)
   lo2_sparse = getBaseLO(ls_sparse.lo)

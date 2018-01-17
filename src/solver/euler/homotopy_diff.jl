@@ -3,7 +3,7 @@
 
 function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp, 
                           eqn::EulerData{Tsol, Tres}, opts, 
-                          res::Abstract3DArray{Tres}, assembler)
+                          res::Abstract3DArray{Tres}, assembler, lambda)
 
 #  println("\nentered calcHomotopyDiss")
 
@@ -92,7 +92,7 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
       # negate res_jac for consistency with physics module
       for i=1:length(res_jac)
-        res_jac[i] = -res_jac[i]
+        res_jac[i] = -lambda*res_jac[i]
       end
 
 
@@ -155,6 +155,11 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
       end
     end  # end loop j
 
+    # multiply by lambda here and it will get carried through
+    # interiorFaceIntegrate_jac
+    scale!(flux_dotL, lambda)
+    scale!(flux_dotR, lambda)
+
     # compute dR/dq
     interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
@@ -165,8 +170,7 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   #----------------------------------------------------------------------------
   # skipping boundary integrals
 
-  #----------------------------------------------------------------------------
-  
+  #---------------------------------------------------------------------------- 
   # shared face integrals
   # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_jacL, flux_jacr
   # from above
@@ -224,6 +228,11 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
           flux_jacR[k, k, j] -= lambda_max
         end
       end  # end loop j
+
+      # multiply by lambda here and it will get carried through
+      # interiorFaceIntegrate_jac
+      scale!(flux_dotL, lambda)
+      scale!(flux_dotR, lambda)
 
       # compute dR/dq
       interiorFaceIntegrate_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
