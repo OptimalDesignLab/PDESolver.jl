@@ -328,6 +328,11 @@ Note that any values associated with these options are shared with the regular
                     another method in NonlinearSolvers).  When 4 or less,
                     Newton does not call majorIterationCallback
 
+# Homotopy options
+"homotopy_addBoundaryIntegrals": add boundary term to homotopy, (Bool), default
+                                 false (the boundary terms slow convergence
+                                 in some cases)
+
 # majorIterationCallback options
 "callback_write_qvec": write eqn.q_vec to a file named 
                         "callback_q_vec_i_$myrank.dat", where `i` is the

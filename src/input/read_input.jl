@@ -370,6 +370,9 @@ get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
 get!(arg_dict, "use_volume_preconditioner", false)
 
+# homotopy options
+get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
+
 # majorIterationCallback options
 get!(arg_dict, "callback_write_qvec", false)
 

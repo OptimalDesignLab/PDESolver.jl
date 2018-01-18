@@ -477,7 +477,7 @@ function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   end
 
 
-  return NewtonPetscMatFreeLO(lo_inner, rhs_func, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonPetscMatFreeLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
 """
@@ -547,7 +547,7 @@ function applyLinearOperator{Tsol}(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
 
   # apply perturbation
   for i=1:mesh.numDof
-    eqn.q_vec[i] += pert*vec[i]
+    eqn.q_vec[i] += pert*x[i]
   end
 
   physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, ctx_residual, t)
@@ -561,7 +561,7 @@ function applyLinearOperator{Tsol}(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
 
   # undo perturbation
   for i=1:mesh.numDof
-    eqn.q_vec[i] -= pert*vec[i]
+    eqn.q_vec[i] -= pert*x[i]
   end
 
   return nothing

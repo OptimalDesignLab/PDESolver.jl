@@ -415,13 +415,13 @@ end
 typealias CNHasMat Union{CNMatPC, CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
 
 
-function calcLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
+function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
   
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
-  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual)
+  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
   return nothing
 end

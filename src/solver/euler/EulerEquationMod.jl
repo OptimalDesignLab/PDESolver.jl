@@ -221,6 +221,7 @@ include("euler_funcs_diff.jl")
 include("flux_diff.jl")
 include("bc_solvers_diff.jl")
 include("bc_diff.jl")
+include("homotopy_diff.jl")
 
 
 """

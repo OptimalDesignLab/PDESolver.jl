@@ -79,11 +79,15 @@ function test_jac_terms()
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm)
+    test_lambda(eqn.params, q, nrm)
+    test_lambdasimple(eqn.params, q, qg, nrm)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm2)
+    test_lambda(eqn.params, q, nrm2)
+    test_lambdasimple(eqn.params, q, qg, nrm2)
 
 
     println("testing lambda1 entropy fix")
@@ -111,11 +115,15 @@ function test_jac_terms()
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm)
+    test_lambda(eqn3.params, q, nrm)
+    test_lambdasimple(eqn3.params, q, qg, nrm)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm2)
+    test_lambda(eqn3.params, q, nrm2)
+    test_lambdasimple(eqn3.params, q, qg, nrm2)
 
 
     println("testing lambda1 entropy fix")
@@ -142,6 +150,8 @@ function test_jac_terms()
     
     println("\ntesting jac assembly 2d")
     test_jac_assembly(mesh, sbp, eqn, opts)
+    opts_tmp = copy(opts)
+    test_jac_homotopy(mesh, sbp, eqn, opts_tmp)
 
     println("\ntesting jac assembly 3d")
     test_jac_assembly(mesh3, sbp3, eqn3, opts3)
@@ -246,6 +256,64 @@ function test_eulerflux{Tdim}(params::AbstractParamType{Tdim})
 
   @fact maximum(abs(res - res2)) --> roughly(0.0, atol=1e-14)
 end
+
+function test_lambda{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
+                           nrm::AbstractVector)
+
+
+  lambda_dot = zeros(qL)
+  EulerEquationMod.getLambdaMax_diff(params, qL, nrm, lambda_dot)
+
+  lambda_dot2 = zeros(qL)
+  h=1e-20
+  pert = Complex128(0, h)
+  for i=1:length(lambda_dot)
+    qL[i] += pert
+    lambda_dot2[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrm))/h
+    qL[i] -= pert
+  end
+
+  @fact norm(lambda_dot - lambda_dot2) --> roughly(0.0, atol=1e-13)
+
+
+  return nothing
+end
+
+function test_lambdasimple{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
+                                 qR::AbstractVector,
+                                 nrm::AbstractVector)
+
+
+  lambda_dotL = zeros(qL)
+  lambda_dotR = zeros(qL)
+  EulerEquationMod.getLambdaMaxSimple_diff(params, qL, qR, nrm, lambda_dotL, lambda_dotR)
+
+  lambda_dotL2 = zeros(qL)
+  lambda_dotR2 = zeros(qL)
+  h = 1e-20
+  pert = Complex128(0, h)
+  for i=1:length(lambda_dotL)
+    qL[i] += pert
+    lambda_dotL2[i] = imag(EulerEquationMod.getLambdaMaxSimple(params, qL, qR, nrm))/h
+    qL[i] -= pert
+  end
+
+  for i=1:length(lambda_dotL)
+    qR[i] += pert
+    lambda_dotR2[i] = imag(EulerEquationMod.getLambdaMaxSimple(params, qL, qR, nrm))/h
+    qR[i] -= pert
+  end
+
+
+  @fact norm(lambda_dotL - lambda_dotL2) --> roughly(0.0, atol=1e-13)
+  @fact norm(lambda_dotR - lambda_dotR2) --> roughly(0.0, atol=1e-13)
+
+
+  return nothing
+end
+
+
+
 
 function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)
 
@@ -471,5 +539,101 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   free(pc1)
   free(pc2)
 
+  return nothing
+end
+
+function test_jac_homotopy(mesh, sbp, eqn, opts)
+
+  println("\nTesting homotopy jacobian")
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff["RoeFlux"]
+  opts["homotopy_addBoundaryIntegrals"] = true
+#=
+  res1 = zeros(eqn.res)
+  res2 = zeros(eqn.res)
+  println("\ncomputing regular homotopy dissipation")
+#  EulerEquationMod.calcHomotopyDiss(mesh, sbp, eqn, opts, res1)
+  println("\ncomputing new homotopy dissipation")
+  h = 1e-20
+  pert = Complex128(0, h)
+  eqn.q[1] += pert
+  EulerEquationMod.calcHomotopyDiss(mesh, sbp, eqn, opts, res2)
+  eqn.q[1] -= pert
+=#
+#=
+  println("diffnorm = ", vecnorm(res1 - res2))
+  println("res1 = \n", res1)
+  println("res2 = \n", res2)
+  println("diff = \n", res1 - res2)
+  @assert vecnorm(res1 - res2) < 1e-13
+=#
+  startSolutionExchange(mesh, sbp, eqn, opts)
+
+  println("constructing first operator")
+  opts["calc_jac_explicit"] = false
+  pc1, lo1 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+
+  println("constructing second operator")
+  opts["calc_jac_explicit"] = true
+  pc2, lo2 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+
+  jac1 = getBaseLO(lo1).A
+  jac2 = getBaseLO(lo2).A
+
+  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+
+  function _evalHomotopy(mesh, sbp, eqn, opts, t)
+    evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
+  end
+
+  ctx_residual = (_evalHomotopy,)
+  println("\nevaluating jacobians")
+
+  opts["calc_jac_explicit"] = false
+  println("calculating regular jacobian"); flush(STDOUT)
+  println(STDERR, "calculating regular jacobian"); flush(STDERR)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+
+  # compute jacobian explicitly
+  opts["calc_jac_explicit"] = true
+  println("calculating explicit jacobian"); flush(STDOUT)
+  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
+
+  
+  evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo2.lambda)
+
+  assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
+  assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
+
+  println("jac1 = \n", full(jac1))
+  println("jac2 = \n", full(jac2))
+  println("diff = \n", full(jac1) - full(jac2))
+  # multiply against a random vector to make sure the jacobian is
+  # the same
+  for i=1:10
+    x = rand(PetscScalar, mesh.numDof)
+    b1 = zeros(PetscScalar, mesh.numDof)
+    b2 = zeros(PetscScalar, mesh.numDof)
+
+    t = 0.0
+    applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
+    applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
+
+    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
+  end
+
+  free(lo1)
+  free(lo2)
+  free(pc1)
+  free(pc2)
+
+  println("finished testing Homotopy operators")
   return nothing
 end

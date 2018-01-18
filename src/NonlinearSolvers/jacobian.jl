@@ -27,6 +27,11 @@
    * t: simulation time
 
   **Options Keys:**
+
+   * jac_type
+   * jac_method
+   * epsilon
+   * calc_jac_explicit
  
   **Implementation Notes:**
 
@@ -873,7 +878,7 @@ function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::Abstra
   nblocks = div(numNodesPerElement, assem_min_volume_nodes)
   nrem = numNodesPerElement - nblocks*assem_min_volume_nodes
 
-  @time for yblock=1:nblocks
+  for yblock=1:nblocks
     yoffset = (yblock-1)*assem_min_volume_nodes
 
     for j=1:assem_min_volume_nodes

@@ -89,6 +89,15 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
+function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+                              eqn::AbstractSolutionData, opts::Dict, 
+                              assembler::AssembleElementData, lambda::Number)
+
+
+  throw(ErrorException("Generic fallback evalHomotopyJacobian reached: did you forget to extend evalHomotopyJacobian() with a new method for your AbstractSolutionData?"))
+
+  return nothing
+end
 
 #TODO: debugging
 function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, t = 0.0)

@@ -13,6 +13,7 @@ const test_homotopy_moddict = Dict{ASCIIString, Any}(
 
 function test_homotopy(mesh, sbp, eqn, opts)
 
+  facts("----- Testing Homotopy operators ------") do
   # the initial condition is uniform flow, so the residual of the homotopy
   # should be zero
 
@@ -41,16 +42,16 @@ function test_homotopy(mesh, sbp, eqn, opts)
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
   disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
-  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
   ls_dense = StandardLinearSolver(pc, lo, eqn.comm, opts)
-  newton_data_dense, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, ls_dense)
+#  newton_data_dense, rhs_vec = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts, ls_dense)
 
   opts2 = copy(opts)
   opts2["jac_type"] = 2  # SparseMatrixCSC
-  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts2)
+  pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts2)
   ls_sparse = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
-  newton_data_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2, ls_sparse)
+#  newton_data_sparse, rhs_vec_sparse = NonlinearSolvers.setupNewton(mesh, mesh, sbp, eqn, opts2, ls_sparse)
 
   lo2_dense = getBaseLO(ls_dense.lo)
   lo2_sparse = getBaseLO(ls_sparse.lo)
@@ -72,14 +73,67 @@ function test_homotopy(mesh, sbp, eqn, opts)
     end
   end
 
+  #test matrix-free products
+  opts2["jac_type"] = 4
+  println("constructing mat-free linear operator")
+  pc_free, lo_free = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts2)
+  println("typeof(lo_free) = ", typeof(lo_free))
+  println("calculating linear operaotr")
+  calcLinearOperator(lo_free, mesh, sbp, eqn, opts2, ctx_residual, t)
+  x = rand(mesh.numDof)
+  b = zeros(x)
+  b2 = zeros(x)
 
+  println("applying linear operator")
+  applyLinearOperator(ls_dense.lo, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+  applyLinearOperator(lo_free, mesh, sbp, eqn, opts2, ctx_residual, t, x, b2)
+
+  @fact norm(b - b2) --> roughly(0.0, atol=1e-13)
+
+
+#=
+  # explicit jacobian computation
+  println("testing explicit jacobian calculation")
+  opts2["jac_type"] = 2
+  pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+  pc, lo2 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+
+  calcLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  opts2["calc_jac_explicit"] = true
+  calcLinearOperator(lo2, mesh, sbp, eqn, opts2, ctx_residual, t)
+
+  A = getBaseLO(lo).A
+  A2 = getBaseLO(lo2).A
+  @fact norm(full(A) - full(A2)) --> roughly(0.0, atol=1e-13)
+=#
+
+ 
+end  # end do
   return nothing
 end
 
-add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST])
+add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST, TAG_TMP])
 
 function test_homotopy_convergence()
 
+  println("\ntesting homotopy jacobians")
+  # run for 2 iterations, with explicit, coloring jacobians, make sure
+  # residuals are the same
+  opts_tmp = read_input_file("input_vals_homotopy.jl")
+  opts_tmp["calc_jac_explicit"] = true
+  opts_tmp["itermax"] = 2
+  make_input(opts_tmp, "input_vals_homotopy_tmp.jl")
+  opts_tmp["calc_jac_explicit"] = false
+  make_input(opts_tmp, "input_vals_homotopy_tmp2.jl")
+
+  mesh, sbp, eqn, opts = run_solver("input_vals_homotopy_tmp.jl")
+  mesh2, sbp2, eqn2, opts2 = run_solver("input_vals_homotopy_tmp2.jl")
+
+  @fact calcNorm(eqn, eqn.q) --> roughly(calcNorm(eqn2, eqn2.q), atol=1e-13)
+
+
+  # now run a full case
+  println("\nTesting homotopy")
   rmfile("convergence.dat")
   mesh, sbp, eqn, opts = run_solver("input_vals_homotopy.jl")
 
