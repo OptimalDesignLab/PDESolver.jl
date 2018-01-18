@@ -79,8 +79,6 @@ end
   TODO: describe the key that controls whether this function gets called
         or not.
 """
-
-
 function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
                       eqn::AbstractSolutionData, opts::Dict, 
                       assembler::AssembleElementData, t=0.0;

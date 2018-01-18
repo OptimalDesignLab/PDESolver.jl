@@ -439,17 +439,17 @@ end  # end type declaration
   This type is an implementation of the abstract EulerData.  It is
   parameterized by the residual datatype Tres and the mesh datatype Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
-  Tsol and Tmsh, where Tsol is the type of the conservative variables.
-  It is also paremterized by var_type, which should be a symbol describing
+  Tsol and Tmsh, where Tsol is the type of the solution variables.
+  It is also paramterized by `var_type`, which should be a symbol describing
   the set of variables stored in eqn.q.  Currently supported values are
-  :conservative and :entropy, which indicate the conservative variables and
+  `:conservative` and `:entropy`, which indicate the conservative variables and
   the entropy variables described in:
   
   'A New Finite Element Formulation for
   Computational Fluid Dynamics: Part I' by Hughes et al.`
 
-  Eventually there will be additional implementations of EulerData,
-  specifically a 3D one.
+  *Note*: this constructor does not fully populate all fields.  The
+          [`init`])@ref) function must be called to finish initialization.
 
   **Static Parameters**:
 
@@ -463,6 +463,28 @@ end  # end type declaration
                or :entropy)
 
 
+  **Fields**
+
+  This type has many fields, not all of them are documented here.  A few
+  of the most important ones are:
+
+   * comm: MPI communicator
+   * commsize: size of MPI communicator
+   * myrank: MPI rank of this process
+
+
+  When computing the jacobian explicitly (options key `calc_jac_explicit`),
+  Tsol and Tres are typically `Float64`, however node-level operations 
+  sometime use complex numbers or dual numbers.  Also, some operations on
+  entropy variables require doing parts of the computation with
+  conservative variables.  To support these use-cases, the fields
+
+   * params: ParamType object with `Tsol`, `Tres`, `Tmsh`, and `var_type` matching the equation object
+   * params_conservative: ParamType object with `Tsol, Tres`, and `Tmsh` matching the `EulerData_` object, but `var_type = :conservative`
+   * params_entropy: similar to `param_conservative`, but `var_type = :entropy`
+   * params_complex: ParamType object with `Tmsh` and `var_type` matching the `EulerData_` object, but `Tsol = Tres = Complex128` 
+
+ exist.
 """->
 type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
 # hold any constants needed for euler equation, as well as solution and data
