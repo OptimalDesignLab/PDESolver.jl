@@ -44,6 +44,7 @@ makedocs(
               "Solver" => Any[
                   "solver/Readme.md"
                   "solver/misc.md"
+                  "solver/SolverCommon.md"
                   "Advection" => Any[
                       "Introduction" => "$advec/advection.md"
                       "Datatypes" => "$advec/types.md"

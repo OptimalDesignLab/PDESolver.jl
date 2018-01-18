@@ -16,6 +16,9 @@ module while being defined by the physics modules.
 
 ```@docs
 evalResidual
+evalHomotopy
+evalJacobian
+evalHomotopyJacobian
 ```
 
 ## Registration Functions
