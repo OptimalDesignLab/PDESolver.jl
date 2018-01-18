@@ -13,6 +13,7 @@ const test_homotopy_moddict = Dict{ASCIIString, Any}(
 
 function test_homotopy(mesh, sbp, eqn, opts)
 
+  facts("----- Testing Homotopy operators ------") do
   # the initial condition is uniform flow, so the residual of the homotopy
   # should be zero
 
@@ -72,11 +73,46 @@ function test_homotopy(mesh, sbp, eqn, opts)
     end
   end
 
+  #test matrix-free products
+  opts2["jac_type"] = 4
+  println("constructing mat-free linear operator")
+  pc_free, lo_free = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts2)
+  println("typeof(lo_free) = ", typeof(lo_free))
+  println("calculating linear operaotr")
+  calcLinearOperator(lo_free, mesh, sbp, eqn, opts2, ctx_residual, t)
+  x = rand(mesh.numDof)
+  b = zeros(x)
+  b2 = zeros(x)
 
+  println("applying linear operator")
+  applyLinearOperator(ls_dense.lo, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+  applyLinearOperator(lo_free, mesh, sbp, eqn, opts2, ctx_residual, t, x, b2)
+
+  @fact norm(b - b2) --> roughly(0.0, atol=1e-13)
+
+
+#=
+  # explicit jacobian computation
+  println("testing explicit jacobian calculation")
+  opts2["jac_type"] = 2
+  pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+  pc, lo2 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+
+  calcLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  opts2["calc_jac_explicit"] = true
+  calcLinearOperator(lo2, mesh, sbp, eqn, opts2, ctx_residual, t)
+
+  A = getBaseLO(lo).A
+  A2 = getBaseLO(lo2).A
+  @fact norm(full(A) - full(A2)) --> roughly(0.0, atol=1e-13)
+=#
+
+ 
+end  # end do
   return nothing
 end
 
-add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST])
+add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST, TAG_TMP])
 
 function test_homotopy_convergence()
 

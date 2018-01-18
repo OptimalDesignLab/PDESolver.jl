@@ -17,7 +17,7 @@ function test_jac_terms()
   make_input(opts_tmp, fname4)
   mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 =#
-
+#=
   # SBPGamma, Petsc Mat
   fname4 = "input_vals_jac_tmp.jl"
   opts_tmp = read_input_file(fname3)
@@ -62,7 +62,7 @@ function test_jac_terms()
   opts_tmp["operator_type"] = "SBPOmega"
   make_input(opts_tmp, fname4)
   mesh8, sbp8, eqn8, opts8 = run_solver(fname4)
-
+=#
 
 
   facts("----- Testing jacobian -----") do
@@ -150,6 +150,8 @@ function test_jac_terms()
     
     println("\ntesting jac assembly 2d")
     test_jac_assembly(mesh, sbp, eqn, opts)
+    opts_tmp = copy(opts)
+    test_jac_homotopy(mesh, sbp, eqn, opts_tmp)
 
     println("\ntesting jac assembly 3d")
     test_jac_assembly(mesh3, sbp3, eqn3, opts3)
@@ -537,5 +539,99 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   free(pc1)
   free(pc2)
 
+  return nothing
+end
+
+function test_jac_homotopy(mesh, sbp, eqn, opts)
+
+  println("\nTesting homotopy jacobian")
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff["RoeFlux"]
+
+  res1 = zeros(eqn.res)
+  res2 = zeros(eqn.res)
+  println("\ncomputing regular homotopy dissipation")
+#  EulerEquationMod.calcHomotopyDiss(mesh, sbp, eqn, opts, res1)
+  println("\ncomputing new homotopy dissipation")
+  h = 1e-20
+  pert = Complex128(0, h)
+  eqn.q[1] += pert
+  EulerEquationMod.calcHomotopyDiss2(mesh, sbp, eqn, opts, res2)
+  eqn.q[1] -= pert
+#=
+  println("diffnorm = ", vecnorm(res1 - res2))
+  println("res1 = \n", res1)
+  println("res2 = \n", res2)
+  println("diff = \n", res1 - res2)
+  @assert vecnorm(res1 - res2) < 1e-13
+=#
+  startSolutionExchange(mesh, sbp, eqn, opts)
+
+  println("constructing first operator")
+  opts["calc_jac_explicit"] = false
+  pc1, lo1 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+
+  println("constructing second operator")
+  opts["calc_jac_explicit"] = true
+  pc2, lo2 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+
+  jac1 = getBaseLO(lo1).A
+  jac2 = getBaseLO(lo2).A
+
+  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+
+  function _evalHomotopy(mesh, sbp, eqn, opts, t)
+    evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
+  end
+
+  ctx_residual = (_evalHomotopy,)
+  println("\nevaluating jacobians")
+
+  opts["calc_jac_explicit"] = false
+  println("calculating regular jacobian"); flush(STDOUT)
+  println(STDERR, "calculating regular jacobian"); flush(STDERR)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+
+  # compute jacobian explicitly
+  opts["calc_jac_explicit"] = true
+  println("calculating explicit jacobian"); flush(STDOUT)
+  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
+
+  
+  evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo2.lambda)
+
+  assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
+  assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
+
+  println("jac1 = \n", full(jac1))
+  println("jac2 = \n", full(jac2))
+  println("diff = \n", full(jac1) - full(jac2))
+  # multiply against a random vector to make sure the jacobian is
+  # the same
+  for i=1:10
+    x = rand(PetscScalar, mesh.numDof)
+    b1 = zeros(PetscScalar, mesh.numDof)
+    b2 = zeros(PetscScalar, mesh.numDof)
+
+    t = 0.0
+    applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
+    applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
+
+    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
+  end
+
+  free(lo1)
+  free(lo2)
+  free(pc1)
+  free(pc2)
+
+  println("finished testing Homotopy operators")
   return nothing
 end

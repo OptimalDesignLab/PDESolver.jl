@@ -1,11 +1,17 @@
 # differentiated version of homotopy.jl
+import PDESolver.evalHomotopyJacobian
 
+function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+                              eqn::EulerData, opts::Dict, 
+                              assembler::AssembleElementData, lambda::Number)
+
+  calcHomotopyDiss_jac(mesh, sbp, eqn, opts, assembler, lambda)
+end
 
 function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp, 
-                          eqn::EulerData{Tsol, Tres}, opts, 
-                          res::Abstract3DArray{Tres}, assembler, lambda)
+                          eqn::EulerData{Tsol, Tres}, opts, assembler, lambda)
 
-#  println("\nentered calcHomotopyDiss")
+  println("\nentered calcHomotopyDiss_jac")
 
   # some checks for when parallelism is enabled
   @assert opts["parallel_data"] == "element"
@@ -13,6 +19,7 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     @assert eqn.shared_data[i].recv_waited
   end
 
+  params = eqn.params
   #----------------------------------------------------------------------------
   # volume dissipation
 
@@ -31,8 +38,10 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   for el=1:mesh.numEl
     q_el = sview(eqn.q, :, :, el)
     fill!(res_jac, 0.0)
-    fill!(t2_dot, 0.0)
     for d1=1:mesh.dim
+      fill!(t1, 0.0)
+      fill!(t2_dot, 0.0)
+
       differentiateElement!(sbp, d1, q_el, t1)
 
       # t2 = t1*lambda_p
@@ -42,16 +51,16 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
         # get vector in xi direction defined by dim
         for k=1:mesh.dim
-          nrm[k] = mesh.dxidx[dim, k, p, el]
+          nrm[k] = mesh.dxidx[d1, k, p, el]
         end
 
         lambda_max = getLambdaMax(eqn.params, q_p, nrm)
 
         for q=1:mesh.numNodesPerElement
           for j=1:mesh.numDofPerNode
-            for i=1:mesh.numDofPerNode
-              t2_dot[i, j, p, q] += lambda_max*D[p, q, d1]
-            end
+#            for i=1:mesh.numDofPerNode
+              t2_dot[j, j, p, q] += lambda_max*D[p, q, d1]
+#            end
           end
         end
       end   # end loop p
@@ -62,7 +71,7 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
         # get vector in xi direction defined by dim
         for k=1:mesh.dim
-          nrm[k] = mesh.dxidx[dim, k, p, el]
+          nrm[k] = mesh.dxidx[d1, k, p, el]
         end
 
         getLambdaMax_diff(eqn.params, q_p, nrm, lambda_dot)
@@ -76,28 +85,32 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
 
       # apply Q^T
-      for d2=1:mesh.dim
+#      for d2=1:mesh.dim
         for p=1:mesh.numNodesPerElement
           for q=1:mesh.numNodesPerElement
             for c=1:mesh.numNodesPerElement
               for j=1:mesh.numDofPerNode
                 for i=1:mesh.numDofPerNode
-                  res_jac[i, j, p, q] += sbp.Q[p, c, d2]*t2_dot[i, j, c, q]
+                  res_jac[i, j, p, q] += sbp.Q[c, p, d1]*t2_dot[i, j, c, q]
                 end
               end
             end
           end
         end
-      end  # end loop d2
+#      end  # end loop d2
 
-      # negate res_jac for consistency with physics module
-      for i=1:length(res_jac)
-        res_jac[i] = -lambda*res_jac[i]
-      end
+    println("res_jac = ", res_jac[:, 1, :, 1])
 
 
-      assembleElement(assembler, mesh, el, res_jac)
     end  # end loop d1
+ 
+    # negate res_jac for consistency with physics module
+    for i=1:length(res_jac)
+      res_jac[i] = -lambda*res_jac[i]
+    end
+
+     
+    assembleElement(assembler, mesh, el, res_jac)
   end  # end loop el
 
 
@@ -126,10 +139,10 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     iface_i = mesh.interfaces[i]
     qL = sview(eqn.q, :, :, iface_i.elementL)
     qR = sview(eqn.q, :, :, iface_i.elementR)
-     fill!(res_jacLL, 0.0)
-     fill!(res_jacLR, 0.0)
-     fill!(res_jacRL, 0.0)
-     fill!(res_jacRR, 0.0)
+    fill!(res_jacLL, 0.0)
+    fill!(res_jacLR, 0.0)
+    fill!(res_jacRL, 0.0)
+    fill!(res_jacRR, 0.0)
 
     interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
 
@@ -147,38 +160,46 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
       for k=1:mesh.numDofPerNode
         # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
         for m=1:mesh.numDofPerNode
-          flux_jacL[m, k, j] = qL_j[m]*lambda_dotL[k] - qR_j[m]*lambda_dotL[k]
-          flux_jacR[m, k, j] = qL_j[m]*lambda_dotR[k] - qR_j[m]*lambda_dotR[k]
+          flux_jacL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
+          flux_jacR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
         end
-        flux_jacL[k, k, j] += lambda_max
-        flux_jacR[k, k, j] -= lambda_max
+        flux_jacL[k, k, j] += 0.5*lambda_max
+        flux_jacR[k, k, j] -= 0.5*lambda_max
       end
     end  # end loop j
 
     # multiply by lambda here and it will get carried through
     # interiorFaceIntegrate_jac
-    scale!(flux_dotL, lambda)
-    scale!(flux_dotR, lambda)
+    scale!(flux_jacL, lambda)
+    scale!(flux_jacR, lambda)
 
     # compute dR/dq
-    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
+    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_jacL, flux_jacR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
+    # assemble into the Jacobian
+    assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL, res_jacLR,
+                                                res_jacRL, res_jacRR)
 
   end  # end loop i
+
+  fill!(res_jacLL, 0.0)
+  fill!(res_jacLR, 0.0)
+  fill!(res_jacRL, 0.0)
+  fill!(res_jacRR, 0.0)
+
 
   #----------------------------------------------------------------------------
   # skipping boundary integrals
 
   #---------------------------------------------------------------------------- 
   # shared face integrals
-  # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_jacL, flux_jacr
+  # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_jacL, flux_jacR
   # from above
+
   workarr = zeros(q_faceR)
   for peer=1:mesh.npeers
     # get data for this peer
-    bndries_local = mesh.bndries_local[peer]
-    bndries_remote = mesh.bndries_remote[peer]
     interfaces_peer = mesh.shared_interfaces[peer]
 
     qR_peer = eqn.shared_data[peer].q_recv
@@ -186,27 +207,15 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     nrm_peer = mesh.nrm_sharedface[peer]
     start_elnum = mesh.shared_element_offsets[peer]
 
-    for i=1:length(bndries_local)
-      bndry_i = bndries_local[i]
-      bndryR_i = bndries_remote[i]
+    for i=1:length(interfaces_peer)
       iface_i = interfaces_peer[i]
-      qL_i = sview(eqn.q, :, :, bndry_i.element)
+      qL_i = sview(eqn.q, :, :, iface_i.elementL)
       qR_i = sview(qR_peer, :, :, iface_i.elementR - start_elnum + 1)
-      fill!(resLL, 0.0)
-      fill!(resLR, 0.0)
-      fill!(resRL, 0.0)
-      fill!(resRR, 0.0)
+      fill!(res_jacLL, 0.0)
+      fill!(res_jacLR, 0.0)
 
       # interpolate to face
-      #TODO:  why not use interiorFaceInterpolate?
-#      interiorFaceInterpolate!(mesh.sbpface, iface_i, qL_i, qR_i, q_faceL, q_faceR)
-      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL_i, q_faceL)
-      boundaryFaceInterpolate!(mesh.sbpface, bndryR_i.face, qR_i, q_faceR)
-
-      # permute elementR
-      permvec = sview(mesh.sbpface.nbrperm, :, iface_i.orient)
-      SummationByParts.permuteface!(permvec, workarr, q_faceR)
-
+      interiorFaceInterpolate!(mesh.sbpface, iface_i, qL_i, qR_i, q_faceL, q_faceR)
       # compute flux at every face node
       for j=1:mesh.numNodesPerFace
         qL_j = sview(q_faceL, :, j)
@@ -221,21 +230,21 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
         for k=1:mesh.numDofPerNode
           # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
           for m=1:mesh.numDofPerNode
-            flux_jacL[m, k, j] = qL_j[m]*lambda_dotL[k] - qR_j[m]*lambda_dotL[k]
-            flux_jacR[m, k, j] = qL_j[m]*lambda_dotR[k] - qR_j[m]*lambda_dotR[k]
+            flux_jacL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
+            flux_jacR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
           end
-          flux_jacL[k, k, j] += lambda_max
-          flux_jacR[k, k, j] -= lambda_max
+          flux_jacL[k, k, j] += 0.5*lambda_max
+          flux_jacR[k, k, j] -= 0.5*lambda_max
         end
       end  # end loop j
 
       # multiply by lambda here and it will get carried through
       # interiorFaceIntegrate_jac
-      scale!(flux_dotL, lambda)
-      scale!(flux_dotR, lambda)
+      scale!(flux_jacL, lambda)
+      scale!(flux_jacR, lambda)
 
       # compute dR/dq
-      interiorFaceIntegrate_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
+      interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_jacL, flux_jacR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
 
@@ -243,7 +252,13 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
      assembleSharedFace(assembler, mesh.sbpface, mesh, iface_i, res_jacLL, res_jacLR)
     end  # end loop i
   end  # end loop peer
- 
+  
+  fill!(res_jacLL, 0.0)
+  fill!(res_jacLR, 0.0)
+  fill!(res_jacRL, 0.0)
+  fill!(res_jacRR, 0.0)
+
+
 
 
   return nothing

@@ -8,8 +8,8 @@ export AssembleElementData
 export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
-export evalResidual, evalJacobian, evalHomotopy, evalFunctional, 
-       evalFunctionalDeriv
+export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
+       evalFunctional, evalFunctionalDeriv
 
 # from startup_func
 export run_solver

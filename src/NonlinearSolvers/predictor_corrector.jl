@@ -469,7 +469,7 @@ end
 
 
 type HomotopyPetscMatFreeLO <: AbstractPetscMatFreeLO
-  lo_inner::PetscMatFreeLO
+  lo_inner::NewtonPetscMatFreeLO
   lambda::Float64  # this is unused, but needed for consistency
 end
 
@@ -531,7 +531,10 @@ function calcLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
 
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
+  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+
   # nothing to do here
+
   return nothing
 end
 

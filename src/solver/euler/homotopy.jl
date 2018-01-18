@@ -78,6 +78,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
       end  # end loop j
     end  # end loop i
+
   end  # end loop over parametric directions
 
   # apply D^T * H
@@ -116,6 +117,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
       lambda_max = getLambdaMaxSimple(eqn.params, qL_j, qR_j, nrm2)
 
+
       for k=1:mesh.numDofPerNode
         flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
       end
@@ -124,6 +126,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     # integrate over the face
     interiorFaceIntegrate!(mesh.sbpface, iface_i, flux, resL, resR)
   end  # end loop i
+
 #=
 # the boundary term makes the predictor-corrector algorithm converge slower
   #----------------------------------------------------------------------------
@@ -170,11 +173,12 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   
   # shared face integrals
   # use q_faceL, q_faceR, flux from above
+
   workarr = zeros(q_faceR)
   for peer=1:mesh.npeers
     # get data for this peer
     bndries_local = mesh.bndries_local[peer]
-    bndries_remote = mesh.bndries_remote[peer]
+#    bndries_remote = mesh.bndries_remote[peer]
     interfaces_peer = mesh.shared_interfaces[peer]
 
     qR_peer = eqn.shared_data[peer].q_recv
@@ -184,20 +188,20 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
     for i=1:length(bndries_local)
       bndry_i = bndries_local[i]
-      bndryR_i = bndries_remote[i]
+#      bndryR_i = bndries_remote[i]
       iface_i = interfaces_peer[i]
       qL_i = sview(eqn.q, :, :, bndry_i.element)
       qR_i = sview(qR_peer, :, :, iface_i.elementR - start_elnum + 1)
       resL = sview(res, :, :, bndry_i.element)
 
       # interpolate to face
-#      interiorFaceInterpolate!(mesh.sbpface, iface_i, qL_i, qR_i, q_faceL, q_faceR)
-      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL_i, q_faceL)
-      boundaryFaceInterpolate!(mesh.sbpface, bndryR_i.face, qR_i, q_faceR)
+      interiorFaceInterpolate!(mesh.sbpface, iface_i, qL_i, qR_i, q_faceL, q_faceR)
+#      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL_i, q_faceL)
+#      boundaryFaceInterpolate!(mesh.sbpface, bndryR_i.face, qR_i, q_faceR)
 
       # permute elementR
-      permvec = sview(mesh.sbpface.nbrperm, :, iface_i.orient)
-      SummationByParts.permuteface!(permvec, workarr, q_faceR)
+#      permvec = sview(mesh.sbpface.nbrperm, :, iface_i.orient)
+#      SummationByParts.permuteface!(permvec, workarr, q_faceR)
 
       # compute flux at every face node
       for j=1:mesh.numNodesPerFace
@@ -218,7 +222,7 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
       boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux, resL)
     end  # end loop i
   end  # end loop peer
-  
+
 
 
   # negate for consistency with the physics module
@@ -230,6 +234,68 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
   return nothing
 end
+
+function calcHomotopyDiss2{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp, 
+                          eqn::EulerData{Tsol, Tres}, opts, 
+                          res::Abstract3DArray{Tres})
+
+  t1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  t2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  fill!(res, 0.0)
+  nrm2 = zeros(Tmsh, mesh.dim)
+  # compute the D operator in each direction
+  D = zeros(mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+  for d=1:mesh.dim
+    D[:, :, d] = inv(diagm(sbp.w))*sbp.Q[:, :, d]
+  end
+
+
+  for el=1:mesh.numEl
+    println("el = ", el)
+    q_el = sview(eqn.q, :, :, el)
+    println("q = \n", q_el)
+    res_el = sview(res, :, :, el)
+    for d1=1:mesh.dim
+      println("d1 = ", d1)
+         fill!(t1, 0.0)
+      fill!(t2, 0.0)
+      differentiateElement!(sbp, d1, q_el, t1)
+      println("t1 = \n", t1)
+
+      for j=1:mesh.numNodesPerElement
+        println("  j = ", j)
+        q_j = sview(eqn.q, :, j, el)
+        for k=1:mesh.dim
+          nrm2[k] = mesh.dxidx[d1, k, j, el]
+        end
+
+        lambda_max = getLambdaMax(eqn.params, q_j, nrm2)
+        println("  lambda_max = ", lambda_max)
+
+        for k=1:mesh.numDofPerNode
+          t2[k, j] = lambda_max*t1[k, j]
+        end
+
+
+      end  # end loop j
+     println("t2 = \n", t2)
+
+     weakDifferentiateElement!(sbp, d1, t2, res_el, SummationByParts.Add(), true)
+     println("res_el = \n", res_el)
+
+
+      # apply Q^T
+#      for d2=1:mesh.dim
+#        println("d2 = ", d2)
+#      end
+    end  # end loop dim
+  end  # end loop el
+
+  scale!(res, -1)
+
+  return nothing
+end
+
 
 """
   Calculate the maximum wave speed for a given state
