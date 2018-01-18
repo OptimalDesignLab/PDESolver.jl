@@ -9,6 +9,10 @@ julia:
 notifications:
   email: false
 
+cache:
+  directories:
+  - $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug
+
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
@@ -25,7 +29,8 @@ script:
   - cd ~/.julia/v0.4/PumiInterface/src
   - source ./use_julialib.sh
   - cd ~/.julia/v0.4/PDESolver/test
-  - ./runtests_fast.sh
+#  - ./runtests_fast.sh
+#  - ./runtests_serial.sh
 #  - julia ./runtests.jl
 #  - cd ./Advection
 #  - julia ./runtests_advection.jl
