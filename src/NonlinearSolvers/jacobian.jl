@@ -126,9 +126,11 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
       @verbose5 @mpi_master println(BSTDOUT, "calculating sparse complex step jacobian")
 
       if calc_jac_explicit
+        println(BSTDOUT, "calculating jacobian explicitly")
         assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
       else
+        println(BSTDOUT, "calculating jacobian with coloring")
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, 
                                             opts, func, res_dummy, pert, jac, t)
@@ -137,6 +139,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
        @verbose5 @mpi_master println(BSTDOUT, "calculating Petsc jacobian")
       if calc_jac_explicit
+        println("calculating Jacobian explicitly")
         assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
       else
