@@ -563,7 +563,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   h = 1e-20
   pert = Complex128(0, h)
   eqn.q[1] += pert
-  EulerEquationMod.calcHomotopyDiss2(mesh, sbp, eqn, opts, res2)
+  EulerEquationMod.calcHomotopyDiss(mesh, sbp, eqn, opts, res2)
   eqn.q[1] -= pert
 #=
   println("diffnorm = ", vecnorm(res1 - res2))

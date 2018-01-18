@@ -99,9 +99,6 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
         end
 #      end  # end loop d2
 
-    println("res_jac = ", res_jac[:, 1, :, 1])
-
-
     end  # end loop d1
  
     # negate res_jac for consistency with physics module

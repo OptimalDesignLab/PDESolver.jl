@@ -50,41 +50,42 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   #----------------------------------------------------------------------------
   # volume dissipation
 
-  dudxi = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl, mesh.dim)
 
-  for i=1:mesh.dim
-    differentiate!(sbp, i, eqn.q, sview(dudxi, :, :, :, i))
+  t1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  t2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  fill!(res, 0.0)
+  nrm2 = zeros(Tmsh, mesh.dim)
+
+  # compute the D operator in each direction
+  D = zeros(mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+  for d=1:mesh.dim
+    D[:, :, d] = inv(diagm(sbp.w))*sbp.Q[:, :, d]
   end
 
-  # scale by maximum wave speed
-  nrm = zeros(Tmsh, mesh.dim)
-  for dim=1:mesh.dim  # loop over parametric directions
-    for i=1:mesh.numEl
-      for j=1:mesh.numNodesPerElement
-        q_j = sview(eqn.q, :, j, i)
 
-        # get vector in xi direction defind by dim
+  for el=1:mesh.numEl
+    q_el = sview(eqn.q, :, :, el)
+    res_el = sview(res, :, :, el)
+    for d1=1:mesh.dim
+      fill!(t1, 0.0)
+      fill!(t2, 0.0)
+      differentiateElement!(sbp, d1, q_el, t1)
+
+      for j=1:mesh.numNodesPerElement
+        q_j = sview(eqn.q, :, j, el)
         for k=1:mesh.dim
-          nrm[k] = mesh.dxidx[dim, k, j, i]
+          nrm2[k] = mesh.dxidx[d1, k, j, el]
         end
 
-        # get maximum eigenvalue
-        lambda_max = getLambdaMax(eqn.params, q_j, nrm)
-
-        # scale by maximum eigenvalue
+        lambda_max = getLambdaMax(eqn.params, q_j, nrm2)
         for k=1:mesh.numDofPerNode
-          dudxi[k, j, i, dim] *= lambda_max
+          t2[k, j] = lambda_max*t1[k, j]
         end
 
       end  # end loop j
-    end  # end loop i
-
-  end  # end loop over parametric directions
-
-  # apply D^T * H
-  for i=1:mesh.dim
-    weakdifferentiate!(sbp, i, sview(dudxi, :, :, :, i), res, trans=true)
-  end
+     weakDifferentiateElement!(sbp, d1, t2, res_el, SummationByParts.Add(), true)
+    end  # end loop dim
+  end  # end loop el
 
   #----------------------------------------------------------------------------
   # interface dissipation
@@ -178,17 +179,14 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   for peer=1:mesh.npeers
     # get data for this peer
     bndries_local = mesh.bndries_local[peer]
-#    bndries_remote = mesh.bndries_remote[peer]
     interfaces_peer = mesh.shared_interfaces[peer]
 
     qR_peer = eqn.shared_data[peer].q_recv
-#    dxidx_peer = mesh.dxidx_sharedface[peer]
     nrm_peer = mesh.nrm_sharedface[peer]
     start_elnum = mesh.shared_element_offsets[peer]
 
     for i=1:length(bndries_local)
       bndry_i = bndries_local[i]
-#      bndryR_i = bndries_remote[i]
       iface_i = interfaces_peer[i]
       qL_i = sview(eqn.q, :, :, bndry_i.element)
       qR_i = sview(qR_peer, :, :, iface_i.elementR - start_elnum + 1)
@@ -196,13 +194,6 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
       # interpolate to face
       interiorFaceInterpolate!(mesh.sbpface, iface_i, qL_i, qR_i, q_faceL, q_faceR)
-#      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL_i, q_faceL)
-#      boundaryFaceInterpolate!(mesh.sbpface, bndryR_i.face, qR_i, q_faceR)
-
-      # permute elementR
-#      permvec = sview(mesh.sbpface.nbrperm, :, iface_i.orient)
-#      SummationByParts.permuteface!(permvec, workarr, q_faceR)
-
       # compute flux at every face node
       for j=1:mesh.numNodesPerFace
         qL_j = sview(q_faceL, :, j)
@@ -231,67 +222,6 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
   end
 
 #  println("homotopy residual norm = ", norm(vec(res)))
-
-  return nothing
-end
-
-function calcHomotopyDiss2{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp, 
-                          eqn::EulerData{Tsol, Tres}, opts, 
-                          res::Abstract3DArray{Tres})
-
-  t1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
-  t2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-  fill!(res, 0.0)
-  nrm2 = zeros(Tmsh, mesh.dim)
-  # compute the D operator in each direction
-  D = zeros(mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
-  for d=1:mesh.dim
-    D[:, :, d] = inv(diagm(sbp.w))*sbp.Q[:, :, d]
-  end
-
-
-  for el=1:mesh.numEl
-    println("el = ", el)
-    q_el = sview(eqn.q, :, :, el)
-    println("q = \n", q_el)
-    res_el = sview(res, :, :, el)
-    for d1=1:mesh.dim
-      println("d1 = ", d1)
-         fill!(t1, 0.0)
-      fill!(t2, 0.0)
-      differentiateElement!(sbp, d1, q_el, t1)
-      println("t1 = \n", t1)
-
-      for j=1:mesh.numNodesPerElement
-        println("  j = ", j)
-        q_j = sview(eqn.q, :, j, el)
-        for k=1:mesh.dim
-          nrm2[k] = mesh.dxidx[d1, k, j, el]
-        end
-
-        lambda_max = getLambdaMax(eqn.params, q_j, nrm2)
-        println("  lambda_max = ", lambda_max)
-
-        for k=1:mesh.numDofPerNode
-          t2[k, j] = lambda_max*t1[k, j]
-        end
-
-
-      end  # end loop j
-     println("t2 = \n", t2)
-
-     weakDifferentiateElement!(sbp, d1, t2, res_el, SummationByParts.Add(), true)
-     println("res_el = \n", res_el)
-
-
-      # apply Q^T
-#      for d2=1:mesh.dim
-#        println("d2 = ", d2)
-#      end
-    end  # end loop dim
-  end  # end loop el
-
-  scale!(res, -1)
 
   return nothing
 end
