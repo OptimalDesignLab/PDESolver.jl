@@ -116,6 +116,24 @@ add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_mod
 
 function test_homotopy_convergence()
 
+  println("\ntesting homotopy jacobians")
+  # run for 2 iterations, with explicit, coloring jacobians, make sure
+  # residuals are the same
+  opts_tmp = read_input_file("input_vals_homotopy.jl")
+  opts_tmp["calc_jac_explicit"] = true
+  opts_tmp["itermax"] = 2
+  make_input(opts_tmp, "input_vals_homotopy_tmp.jl")
+  opts_tmp["calc_jac_explicit"] = false
+  make_input(opts_tmp, "input_vals_homotopy_tmp2.jl")
+
+  mesh, sbp, eqn, opts = run_solver("input_vals_homotopy_tmp.jl")
+  mesh2, sbp2, eqn2, opts2 = run_solver("input_vals_homotopy_tmp2.jl")
+
+  @fact calcNorm(eqn, eqn.q) --> roughly(calcNorm(eqn2, eqn2.q), atol=1e-13)
+
+
+  # now run a full case
+  println("\nTesting homotopy")
   rmfile("convergence.dat")
   mesh, sbp, eqn, opts = run_solver("input_vals_homotopy.jl")
 

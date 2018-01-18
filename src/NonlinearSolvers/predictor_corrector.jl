@@ -154,6 +154,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   rhs_func = physicsRhs
   ctx_residual = (homotopyPhysics,)
   pc, lo = getHomotopyPCandLO(mesh, sbp, eqn, opts)
+  pc.lambda = lambda
+  lo.lambda = lambda
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
 
@@ -513,12 +515,12 @@ function calcLinearOperator(lo::HomotopyMatLO, mesh::AbstractMesh,
     assembly_begin(A, MAT_FINAL_ASSEMBLY)
     assembly_end(A, MAT_FINAL_ASSEMBLY)
 
-    lambda_c = 1 - lambda # complement of lambda
+    lambda_c = 1 - lo.lambda # complement of lambda
     scale!(A, lambda_c)
 
     # compute the homotopy contribution to the Jacobian
-    assembler = AssembleElementData(A, mesh, sbp, eqn, opts)
-    evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lambda)
+    assembler = _AssembleElementData(A, mesh, sbp, eqn, opts)
+    evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo.lambda)
   end
 
   return nothing

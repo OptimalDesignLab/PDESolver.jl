@@ -17,7 +17,7 @@ function test_jac_terms()
   make_input(opts_tmp, fname4)
   mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 =#
-#=
+
   # SBPGamma, Petsc Mat
   fname4 = "input_vals_jac_tmp.jl"
   opts_tmp = read_input_file(fname3)
@@ -62,7 +62,7 @@ function test_jac_terms()
   opts_tmp["operator_type"] = "SBPOmega"
   make_input(opts_tmp, fname4)
   mesh8, sbp8, eqn8, opts8 = run_solver(fname4)
-=#
+
 
 
   facts("----- Testing jacobian -----") do
@@ -555,7 +555,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   # input file set calc_jac_explicit = false
   eqn.flux_func_diff = EulerEquationMod.FluxDict_diff["RoeFlux"]
   opts["homotopy_addBoundaryIntegrals"] = true
-
+#=
   res1 = zeros(eqn.res)
   res2 = zeros(eqn.res)
   println("\ncomputing regular homotopy dissipation")
@@ -566,6 +566,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   eqn.q[1] += pert
   EulerEquationMod.calcHomotopyDiss(mesh, sbp, eqn, opts, res2)
   eqn.q[1] -= pert
+=#
 #=
   println("diffnorm = ", vecnorm(res1 - res2))
   println("res1 = \n", res1)

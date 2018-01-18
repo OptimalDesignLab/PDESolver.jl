@@ -10,6 +10,7 @@ import PDESolver.evalHomotopy
 """
 function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
 
+  
   calcHomotopyDiss(mesh, sbp, eqn, opts, res)
 
   return nothing
