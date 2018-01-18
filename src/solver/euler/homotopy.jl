@@ -128,47 +128,49 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
     interiorFaceIntegrate!(mesh.sbpface, iface_i, flux, resL, resR)
   end  # end loop i
 
-#=
+
 # the boundary term makes the predictor-corrector algorithm converge slower
   #----------------------------------------------------------------------------
   # boundary dissipation
   # use q_faceL, nrm2, flux  from interface dissipation
-  qg = eqn.params.qg  # boundary state
-  for i=1:mesh.numBoundaryFaces
-    bndry_i = mesh.bndryfaces[i]
-    qL = sview(eqn.q, :, :, bndry_i.element)
-    resL = sview(res, :, :, bndry_i.element)
-    fill!(q_faceL, 0.0)
+  if opts["homotopy_addBoundaryIntegrals"]
+    qg = eqn.params.qg  # boundary state
+    for i=1:mesh.numBoundaryFaces
+      bndry_i = mesh.bndryfaces[i]
+      qL = sview(eqn.q, :, :, bndry_i.element)
+      resL = sview(res, :, :, bndry_i.element)
+      fill!(q_faceL, 0.0)
 
-    boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL, q_faceL)
+      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL, q_faceL)
 
-#    q_faceL = sview(eqn.q_bndry, :, :, i)
-    for j=1:mesh.numNodesPerFace
-      q_j = sview(q_faceL, :, j)
-#      dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
+  #    q_faceL = sview(eqn.q_bndry, :, :, i)
+      for j=1:mesh.numNodesPerFace
+        q_j = sview(q_faceL, :, j)
+  #      dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
 
-      # calculate boundary state
-      coords = sview(mesh.coords_bndry, :, j, i)
-      calcFreeStream(coords, eqn.params, qg)
+        # calculate boundary state
+        coords = sview(mesh.coords_bndry, :, j, i)
+        calcFreeStream(eqn.params, coords, qg)
 
-      # calculate face normal
-      nrm2 = sview(mesh.nrm_bndry, :, j, i)
+        # calculate face normal
+        nrm2 = sview(mesh.nrm_bndry, :, j, i)
 
-      # calculate lambda_max
-      lambda_max = getLambdaMaxSimple(eqn.params, q_j, qg, nrm2)
+        # calculate lambda_max
+        lambda_max = getLambdaMaxSimple(eqn.params, q_j, qg, nrm2)
 
-      # calculate dissipation
-      for k=1:mesh.numDofPerNode
-        flux[k, j] = 0.5*lambda_max*(q_j[k] - qg[k])
-      end
+        # calculate dissipation
+        for k=1:mesh.numDofPerNode
+          flux[k, j] = 0.5*lambda_max*(q_j[k] - qg[k])
+        end
 
-    end  # end loop j
+      end  # end loop j
 
-    
-    # integrate over the face
-    boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux, resL)
-  end  # end loop i
-=#
+      
+      # integrate over the face
+      boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux, resL)
+    end  # end loop i
+  end  # end if addBoundaryIntegrals
+
   
   #----------------------------------------------------------------------------
   

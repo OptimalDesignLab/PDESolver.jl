@@ -188,6 +188,57 @@ function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
   #----------------------------------------------------------------------------
   # skipping boundary integrals
+  # use nrm2, flux_jfacL from interface terms above
+  if opts["homotopy_addBoundaryIntegrals"]
+    qg = eqn.params_complex.qg  # boundary state
+    q_faceLc = eqn.params_complex.q_faceL
+    h = 1e-20
+    pert = Complex128(0, h)
+    for i=1:mesh.numBoundaryFaces
+      bndry_i = mesh.bndryfaces[i]
+      qL = sview(eqn.q, :, :, bndry_i.element)
+#      resL = sview(res, :, :, bndry_i.element)
+      fill!(q_faceLc, 0.0)
+      fill!(res_jac, 0.0)
+
+      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, qL, q_faceLc)
+
+      # compute flux jacobian at each node
+      for j=1:mesh.numNodesPerFace
+        q_j = sview(q_faceLc, :, j)
+        for m=1:mesh.numDofPerNode
+          q_j[m] += pert
+    #      dxidx_j = sview(mesh.dxidx_bndry, :, :, j, i)
+
+          # calculate boundary state
+          coords = sview(mesh.coords_bndry, :, j, i)
+          calcFreeStream(eqn.params_complex, coords, qg)
+
+          # calculate face normal
+          nrm2 = sview(mesh.nrm_bndry, :, j, i)
+
+          # calculate lambda_max
+          lambda_max = getLambdaMaxSimple(eqn.params_complex, q_j, qg, nrm2)
+
+          # calculate dissipation
+          for k=1:mesh.numDofPerNode
+            flux_jacL[k, m, j] = lambda*imag(0.5*lambda_max*(q_j[k] - qg[k]))/h
+          end
+
+          q_j[m] -= pert
+        end  # end loop m
+      end  # end loop j
+
+      
+      boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_jacL, res_jac,
+                               SummationByParts.Subtract())
+
+      assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
+    end  # end loop i
+
+    fill!(res_jac, 0.0)
+  end
+
 
   #---------------------------------------------------------------------------- 
   # shared face integrals

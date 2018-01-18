@@ -554,6 +554,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   # get the correct differentiated flux function (this is needed because the
   # input file set calc_jac_explicit = false
   eqn.flux_func_diff = EulerEquationMod.FluxDict_diff["RoeFlux"]
+  opts["homotopy_addBoundaryIntegrals"] = true
 
   res1 = zeros(eqn.res)
   res2 = zeros(eqn.res)
