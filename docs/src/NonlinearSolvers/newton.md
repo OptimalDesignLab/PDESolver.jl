@@ -43,29 +43,49 @@ The function that performs the Newton iteration is
 newtonInner
 ```
 
-## Jacobian calculation
-
-Special mention of calcJacobianComplex.
-
-One of the most involved parts of Newton's method is forming the Jacobian.
-The NonlinearSolvers module contains the function [`physicsJac`](@ref) to
-compute the Jacobian of the physics $\frac{\partial R(q)}{\partial q}$, where
-$R$ is [`evalResidual`](@ref).  This function can be used by other methods
-as a starting point for computing the residual of $g(R(q))$ described at the
-top of this page.
+The private data required by Newtons method is stored in the `NewtonData`
+object.
 
 ```@docs
-physicsJac
+setupNewton
+free(::NewtonData)
+getNewtonPCandLO
 ```
 
-`physicsJac` calls one of several functions to compute the Jacobian.  Users
-should not call these functions directly, they should use `physicsJac`.
+## Newton internals
+
+
+# NewtonData API
+
+[`NewtonData`](@ref) has a small API used by Newton's method.
 
 ```@docs
-calcJacFD
-calcJacobianComplex
-calcJacobianSparse
-applyPerturbation
-assembleElement
-calcJacCol
+NewtonData
+reinitNewtonData
+recordResNorm
+recordStepNorm
 ```
+
+### Linear Operators and Preconditioners
+
+A full set of linear operators and preconditioners are provided for
+solving a linear system where the linear operator is the jacobian of the
+physics..  These often are a good start for constructing
+linear operators for unsteady problems or more advanced methods for solving
+steady problems.
+
+```@docs
+NewtonMatPC
+NewtonMatPC(::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)
+NewtonVolumePC
+NewtonVolumePreconditioner(::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)
+NewtonDenseLO
+NewtonDenseLO(::PCNone, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)
+NewtonSparseDirectLO
+NewtonSparseDirectLO(::PCNone, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)
+NewtonPetscMatLO
+NewtonPetscMatLO(::AbstractPetscPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)
+NewtonPetscMatFreeLO
+NewtonPetscMatFreeLO(::AbstractPetscPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)
+```
+

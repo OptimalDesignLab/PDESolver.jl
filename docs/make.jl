@@ -101,6 +101,8 @@ makedocs(
                       "Crank-Nicolson: Unsteady Adjoint" => "NonlinearSolvers/unsteady/cn_uadj.md"
                     ]
                   "Newton's Method" => "NonlinearSolvers/newton.md"
+                  "Jacobian Calculation" => "NonlinearSolvers/jacobian.md"
+                  "Residual Evalution" => "NonlinearSolvers/residual_evaluation.md"
                   "Matrix Interface" => "NonlinearSolvers/matrix.md"
                   "Newton Inner" => "NonlinearSolvers/newton_inner.md"
                  ]

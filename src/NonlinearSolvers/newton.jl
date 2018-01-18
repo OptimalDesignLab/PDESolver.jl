@@ -92,8 +92,12 @@ end
   On exit, rhs_vec will have the residual corresponding to eqn.q_vec in it,
   with the imaginary part set to zero.
 
-  The [`LinearOperator`](@ref) and [`AbstractPC`](@ref) supplied
+  The [`AbstractLO`](@ref) and [`AbstractPC`](@ref) supplied
   inside the [`LinearSolver`](@ref) object must match the `jac_type`.
+
+  When doing inexact Newton-Krylov, `newonInner` modifies the tolerances
+  of the linear solver.  Users calling `newtonInner` repeatedly with the
+  same linear solver object should reset the initial tolerances as needed.
 
   **Inputs:**
 

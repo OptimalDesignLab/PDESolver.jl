@@ -781,11 +781,16 @@ const NullAssembleElementData = _AssembleElementData()
 #TODO: do flush assembly occasionally?
 
 """
+  **Inputs**
+
+   * helper: an _AssembleElementData
+   * mesh: a mesh
+   * elnum: element number
+   * jac: 4 dimensional array containing the jacobian of the element
+
   jac contains the data for the jacobian of the volume terms for a given
-  element.  jac[i, j, p, q] = \\partial R[i, p, elnum] / \\partial eqn.q[j, q, elnum].
+  element.  \$jac[i, j, p, q] = \\partial R[i, p, elnum] / \\partial eqn.q[j, q, elnum]\$.
   Its size is numDofPerNode x numDofPerNode x numNodesPerElement x numNodesPerElement.
-
-
 
 """
 function assembleElement{T}(helper::_AssembleElementData, mesh::AbstractMesh,
@@ -962,6 +967,20 @@ end
 
 
 """
+  Assembles the jacobian of an interface into the matrix.  Specialized
+  versions take advantage of the sparsity of the `sbpface`.
+
+  **Inputs**
+
+   * helper: _AssembleElementData
+   * sbpface: an SBP face object
+   * mesh: a mesh
+   * iface: an Interface object identify the interface to be assembled
+   * jacLL: see below
+   * jacLR:
+   * jacRL
+   * jacRR
+
   jacAB where A = L or R and B = L or R, is the jacobian of the residual of
   element A with respect to the solution of element B.
 
@@ -1187,6 +1206,14 @@ end
 """
   Assemble one half of an interface, used by shared face integrals.
   See [`assembleInterface`](@ref).
+
+  **Inputs**
+
+   * helper: _AssembleElementData
+   * sbpface: an SBP face object
+   * mesh: a mesh
+   * jacLL
+   * jacLR
 """
 function assembleSharedFace{T}(helper::_AssembleElementData{PetscMat}, sbpface::DenseFace,
                                mesh::AbstractMesh,
@@ -1276,7 +1303,17 @@ end
 
 
 
+"""
+  Assembles the jacobian of a boundary integral into the matrix.
+  Specialized versions take advantage of the sparsity of the `sbpface`.
 
+  **Inputs**
+
+   * helper: _AssembleElementData
+   * sbpface: an SBP face object
+   * mesh: a mesh
+   * jac: a jac, same layout as [`assembleElement`](@ref)
+"""
 function assembleBoundary{T}(helper::_AssembleElementData, sbpface::DenseFace,
                                mesh::AbstractMesh,
                                bndry::Boundary,

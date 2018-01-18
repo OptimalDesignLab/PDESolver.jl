@@ -11,9 +11,3 @@
 ## setupNewton
 
 ## newtonInner
-
-```@docs
-physicsRhs
-```
-
-
