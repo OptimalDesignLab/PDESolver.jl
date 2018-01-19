@@ -36,7 +36,7 @@ script:
   - cd ~/.julia/v0.4/PumiInterface/src
   - source ./use_julialib.sh
   - cd ~/.julia/v0.4/PDESolver/test
-#  - ./runtests_fast.sh
+  - ./runtests_fast.sh
 #  - ./runtests_serial.sh
 #  - julia ./runtests.jl
 #  - cd ./Advection
