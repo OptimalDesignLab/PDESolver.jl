@@ -32,31 +32,31 @@ function test_jac_parallel_long()
     myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
     # SBPGamma
-    if mesh.myrank == 0
+    if myrank == 0
       fname4 = "input_vals_jac_tmp.jl"
       opts_tmp = read_input_file(fname)
       opts_tmp["operator_type"] = "SBPGamma"
       make_input(opts_tmp, fname2)
     end
-    MPI.Barrier(mesh.comm)
+    MPI.Barrier(MPI.COMM_WORLD)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname2)
 
     # SBPDiagonalE
-    if mesh.myrank == 0
+    if myrank == 0
       opts_tmp = read_input_file(fname)
       opts_tmp["operator_type"] = "SBPDiagonalE"
       make_input(opts_tmp, fname2)
     end
-    MPI.Barrier(mesh.comm)
+    MPI.Barrier(MPI.COMM_WORLD)
     mesh5, sbp5, eqn5, opts5 = run_solver(fname2)
 
-    if mesh.myrank == 0
+    if myrank == 0
       opts_tmp = read_input_file(fname)
       opts_tmp["operator_type"] = "SBPDiagonalE"
       opts_tmp["use_Minv"] = true
       make_input(opts_tmp, fname2)
     end
-    MPI.Barrier(mesh.comm)
+    MPI.Barrier(MPI.COMM_WORLD)
     mesh6, sbp6, eqn6, opts6 = run_solver(fname2)
 
     opts4_tmp = copy(opts4)
