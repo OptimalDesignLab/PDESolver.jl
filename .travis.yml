@@ -32,8 +32,8 @@ script:
 #  - ./install_cmake3.sh
 #  - source ./use_cmake.sh
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
-  - ls $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/
-  - ls $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug
+#  - ls $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/
+#  - ls $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug
   # move the cached files back
   - mkdir -pv $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug
   - mv -v $HOME/petsc_lib $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib
@@ -43,7 +43,7 @@ script:
   - source ./use_julialib.sh
   - cd ~/.julia/v0.4/PDESolver/test
 #  - ./runtests_fast.sh
-#  - ./runtests_serial.sh
+  - ./runtests_serial.sh
 #  - julia ./runtests.jl
 #  - cd ./Advection
 #  - julia ./runtests_advection.jl
