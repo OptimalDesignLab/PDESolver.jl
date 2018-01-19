@@ -1,3 +1,6 @@
+"""
+  Does basic testing of explicit jacobian calculation in parallel
+"""
 function test_jac_parallel()
 
   # SBPOmega
@@ -5,56 +8,76 @@ function test_jac_parallel()
   fname2 = "input_vals_jac_tmp.jl"
   mesh, sbp, eqn, opts = run_solver(fname)
 
-  # SBPGamma
-  if mesh.myrank == 0
-    fname4 = "input_vals_jac_tmp.jl"
-    opts_tmp = read_input_file(fname)
-    opts_tmp["operator_type"] = "SBPGamma"
-    make_input(opts_tmp, fname2)
-  end
-  MPI.Barrier(mesh.comm)
-  mesh4, sbp4, eqn4, opts4 = run_solver(fname2)
-
-  # SBPDiagonalE
-  if mesh.myrank == 0
-    opts_tmp = read_input_file(fname)
-    opts_tmp["operator_type"] = "SBPDiagonalE"
-    make_input(opts_tmp, fname2)
-  end
-  MPI.Barrier(mesh.comm)
-  mesh5, sbp5, eqn5, opts5 = run_solver(fname2)
-
-  if mesh.myrank == 0
-    opts_tmp = read_input_file(fname)
-    opts_tmp["operator_type"] = "SBPDiagonalE"
-    opts_tmp["use_Minv"] = true
-    make_input(opts_tmp, fname2)
-  end
-  MPI.Barrier(mesh.comm)
-  mesh6, sbp6, eqn6, opts6 = run_solver(fname2)
-
   MPI.Barrier(mesh.comm)
   test_jac_parallel_inner(mesh, sbp, eqn, opts)
   opts["preallocate_jacobian_coloring"] = true
   test_jac_parallel_inner(mesh, sbp, eqn, opts, is_prealloc_exact=true, set_prealloc=false)
-
-  opts4_tmp = copy(opts4)
-  test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
-  test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
-
-
-  test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
-
-  # run test twice to make sure arrays are zeroed out correctly
-  test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
-
-  test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
 
   return nothing
 end
 
 
 add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC]) 
+
+
+"""
+  Does more thorough testing of jacobian calculation in parallel
+"""
+function test_jac_parallel_long()
+
+  facts("----- Testing jacobian assembly long -----") do
+    fname = "input_vals_jac3dp.jl"
+    fname2 = "input_vals_jac_tmp.jl"
+
+    myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+
+    # SBPGamma
+    if myrank == 0
+      fname4 = "input_vals_jac_tmp.jl"
+      opts_tmp = read_input_file(fname)
+      opts_tmp["operator_type"] = "SBPGamma"
+      make_input(opts_tmp, fname2)
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+    mesh4, sbp4, eqn4, opts4 = run_solver(fname2)
+
+    # SBPDiagonalE
+    if myrank == 0
+      opts_tmp = read_input_file(fname)
+      opts_tmp["operator_type"] = "SBPDiagonalE"
+      make_input(opts_tmp, fname2)
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+    mesh5, sbp5, eqn5, opts5 = run_solver(fname2)
+
+    if myrank == 0
+      opts_tmp = read_input_file(fname)
+      opts_tmp["operator_type"] = "SBPDiagonalE"
+      opts_tmp["use_Minv"] = true
+      make_input(opts_tmp, fname2)
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+    mesh6, sbp6, eqn6, opts6 = run_solver(fname2)
+
+    opts4_tmp = copy(opts4)
+    test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
+    test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
+
+
+    test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+
+    # run test twice to make sure arrays are zeroed out correctly
+    test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+
+    test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
+
+  end
+
+  return nothing
+end
+
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
+
 
 
 function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prealloc=true)

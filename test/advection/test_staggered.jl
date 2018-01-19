@@ -48,9 +48,6 @@ function test_staggered()
 
     Hinv = inv(diagm(sbp.w))
     D_exact = Hinv*sbp.Q[:, :, d]
-    println("D_exact = \n", D_exact)
-    println("D_tilde = \n", D_tilde)
-    println("diff = \n", D_exact - D_tilde)
   end
 
   println("checking different operators")

@@ -1,7 +1,8 @@
 # test jacobian calculation functions
 
 """
-  Test the jacobian of individual terms
+  Test the jacobian of individual terms.  This only tests the SBP Omega
+  operators due to test time limits.
 """
 function test_jac_terms()
 
@@ -17,51 +18,6 @@ function test_jac_terms()
   make_input(opts_tmp, fname4)
   mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 =#
-
-  # SBPGamma, Petsc Mat
-  fname4 = "input_vals_jac_tmp.jl"
-  opts_tmp = read_input_file(fname3)
-  opts_tmp["jac_type"] = 3
-  make_input(opts_tmp, fname4)
-  mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
-
-
-  # SBPDiagonalE, Petsc Mat
-  fname4 = "input_vals_jac_tmp.jl"
-  opts_tmp = read_input_file(fname3)
-  opts_tmp["jac_type"] = 3
-  opts_tmp["operator_type"] = "SBPDiagonalE"
-  opts_tmp["order"] = 2
-  opts_tmp["write_dofs"] = true
-  make_input(opts_tmp, fname4)
-  mesh5, sbp5, eqn5, opts5 = run_solver(fname4)
-
-
-  # SBPDiagonalE, SparseMatrixCSC
-  fname4 = "input_vals_jac_tmp.jl"
-  opts_tmp = read_input_file(fname3)
-  opts_tmp["jac_type"] = 2
-  opts_tmp["operator_type"] = "SBPDiagonalE"
-  make_input(opts_tmp, fname4)
-  mesh6, sbp6, eqn6, opts6 = run_solver(fname4)
-
-  # SBPDiagonalE, Petsc Mat, use_Minv
-  fname4 = "input_vals_jac_tmp.jl"
-  opts_tmp = read_input_file(fname3)
-  opts_tmp["jac_type"] = 3
-  opts_tmp["operator_type"] = "SBPDiagonalE"
-  opts_tmp["order"] = 2
-  opts_tmp["use_Minv"] = true
-  make_input(opts_tmp, fname4)
-  mesh7, sbp7, eqn7, opts7 = run_solver(fname4)
-
-  # SBPOmega, Petsc Mat
-  fname4 = "input_vals_jac_tmp.jl"
-  opts_tmp = read_input_file(fname3)
-  opts_tmp["jac_type"] = 3
-  opts_tmp["operator_type"] = "SBPOmega"
-  make_input(opts_tmp, fname4)
-  mesh8, sbp8, eqn8, opts8 = run_solver(fname4)
 
 
 
@@ -157,6 +113,67 @@ function test_jac_terms()
     test_jac_assembly(mesh3, sbp3, eqn3, opts3)
     
 
+  end
+  return nothing
+end
+
+
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+
+
+"""
+  Tests assembling the jacobian of all the different operators
+"""
+function test_jac_terms_long()
+
+  facts("----- Testing additional Jacobian calculation -----") do
+
+    fname3 = "input_vals_jac3d.jl"
+    # SBPGamma, Petsc Mat
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 3
+    make_input(opts_tmp, fname4)
+    mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
+
+
+    # SBPDiagonalE, Petsc Mat
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 3
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["order"] = 2
+    opts_tmp["write_dofs"] = true
+    make_input(opts_tmp, fname4)
+    mesh5, sbp5, eqn5, opts5 = run_solver(fname4)
+
+
+    # SBPDiagonalE, SparseMatrixCSC
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 2
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    make_input(opts_tmp, fname4)
+    mesh6, sbp6, eqn6, opts6 = run_solver(fname4)
+
+    # SBPDiagonalE, Petsc Mat, use_Minv
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 3
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["order"] = 2
+    opts_tmp["use_Minv"] = true
+    make_input(opts_tmp, fname4)
+    mesh7, sbp7, eqn7, opts7 = run_solver(fname4)
+
+    # SBPOmega, Petsc Mat
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 3
+    opts_tmp["operator_type"] = "SBPOmega"
+    make_input(opts_tmp, fname4)
+    mesh8, sbp8, eqn8, opts8 = run_solver(fname4)
+
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
@@ -183,11 +200,12 @@ function test_jac_terms()
     test_jac_general(mesh8, sbp8, eqn8, opts8, is_prealloc_exact=true, set_prealloc=false)
 
   end
+
   return nothing
 end
 
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
 
 function test_pressure{Tdim}(params::AbstractParamType{Tdim})
 
