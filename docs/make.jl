@@ -4,6 +4,8 @@ using Documenter, PDESolver, ODLCommonTools
 using AdvectionEquationMod
 using EulerEquationMod
 using SimpleODEMod
+include("../test/TestSystem.jl")
+using TestSystem
 
 # some abbreviations
 advec = "solver/advection"
@@ -122,5 +124,11 @@ makedocs(
                   "Checkpointing" => "Utils/checkpoint.md"
                   "Misccellaneous" => "Utils/misc.md"
                  ]
+                "Testing" => Any[
+                    "Introduction" => "test/Testing.md"
+                    "Local Testing" => "test/Readme.md"
+                    "CI Testing" => "test/Travis.md"
+                    "Test API" => "test/TestSystem.md"
+                  ]
              ] # end Home
 )  # end mkdocs

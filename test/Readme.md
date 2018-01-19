@@ -83,6 +83,7 @@ the required tags.  TestSet.jl provides an API for adding tests to the list.
 
 All tests must be enclosed in functions.  These functions must fit into
 one of three catagories:
+
   1. zero argument functions
   2. functions that take the arguments `(mesh, sbp, eqn, opts)` as produced by
      an input file which already exists
