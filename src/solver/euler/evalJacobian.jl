@@ -15,12 +15,12 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
 
-  @time time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
-  println("dataPrep @time printed above")
+  time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
+#  println("dataPrep @time printed above")
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
-    @time evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    println("volume integral @time printed above")
+    evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
+#    println("volume integral @time printed above")
   end
 
   if opts["use_GLS"]
@@ -39,11 +39,11 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    @time evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    println("face integral @time printed above")
+    evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
+#    println("face integral @time printed above")
   end
 
-  time.t_sharedface += @elapsed if mesh.commsize > 1
+  time.t_sharedface_diff += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("evalSharedFaceIntegrals @time printed above")
   end
