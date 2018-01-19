@@ -31,6 +31,7 @@ script:
 #  - source ./use_cmake.sh
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
   # move the cached files back
+  - mkdir -v $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6
   - mv -v $HOME/arch-linux2-c-debug $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug
   - cd ~/.julia/v0.4/PumiInterface/src
   - source ./use_julialib.sh
