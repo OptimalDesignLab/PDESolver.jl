@@ -24,6 +24,9 @@ before_install:
   - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
   - sudo apt-get install -y libblas-dev libblas-doc libblas3gf
   # move the cached files so they don't intefere with the build
+  # NOTE: to re-enable this, uncomment the cache section above, do a build,
+  #       then add PETSC_DIR and PETS_ARCH as environment variables in
+  #       Travis
 #  - ls $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/
 #  - mv -v $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib $HOME/petsc_lib
 #  - ls $HOME/petsc_lib

@@ -15,7 +15,7 @@ then
   mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
   err=$(( err + $?))
 
-  mpirun -np 4 julia ./runtests_parallel.jl tag_shorttest
+  mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
   err=$(( err + $?))
 
   cd ..
@@ -30,7 +30,7 @@ then
   mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
   err=$(( err + $?))
 
-  mpirun -np 4 julia ./runtests_parallel.jl tag_shorttest
+  mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
   err=$(( err + $?))
 
   cd ..
