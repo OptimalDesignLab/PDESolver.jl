@@ -11,7 +11,7 @@ notifications:
 
 cache:
   directories:
-  - $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/libpetsc.so/3.7.6
+  - $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/
 
 before_install:
   - sudo apt-get update -qq
