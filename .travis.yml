@@ -38,6 +38,8 @@ script:
   - cd ~/.julia/v0.4/PDESolver/deps
   - ./travis-install-mpi.sh mpich3
   # the cached files interfere with the build system, move them temporarily
+  - ls ~/.julia/v0.4/
+  - ls ~/.julia/v0.4/PETSc2/deps
   - source ./move_petsccache.sh remove
 #  - ./install_cmake3.sh
 #  - source ./use_cmake.sh
