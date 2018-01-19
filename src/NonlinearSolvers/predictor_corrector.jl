@@ -154,7 +154,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   rhs_func = physicsRhs
   ctx_residual = (homotopyPhysics,)
   pc, lo = getHomotopyPCandLO(mesh, sbp, eqn, opts)
-  pc.lambda = lambda
+  if !(typeof(pc) <: PCNone)
+    pc.lambda = lambda
+  end
   lo.lambda = lambda
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
@@ -272,7 +274,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       end
 
       lambda = max(lambda_min, lambda - h)
-      pc.lambda = lambda
+      if !(typeof(pc) <: PCNone)
+        pc.lambda = lambda
+      end
       lo.lambda = lambda
     end  # end if lambda too large
 
