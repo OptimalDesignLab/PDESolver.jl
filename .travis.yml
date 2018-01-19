@@ -42,7 +42,7 @@ script:
 #  - ./install_cmake3.sh
 #  - source ./use_cmake.sh
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
- - source ./move_petsccache.sh restore  # move files back
+  - source ./move_petsccache.sh restore  # move files back
 #  - ls $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/
 #  - ls $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug
   # move the cached files back
