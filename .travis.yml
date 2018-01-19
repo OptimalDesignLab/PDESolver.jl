@@ -18,6 +18,10 @@ before_install:
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
   - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
   - sudo apt-get install -y libblas-dev libblas-doc libblas3gf
+  # move the cached files so they don't intefere with the build
+  - mv -v $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug $HOME/arch-linux2-c-debug
+  - rm -vr ~/.julia/v0.4/PETSc2
+
 script:
   -  if [[ -a .git/shallow ]]; then git fetch --unshallow; fi 
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd())'
@@ -26,6 +30,8 @@ script:
 #  - ./install_cmake3.sh
 #  - source ./use_cmake.sh
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
+  # move the cached files back
+#  - mv -v $HOME/arch-linux2/c-debug $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug
   - cd ~/.julia/v0.4/PumiInterface/src
   - source ./use_julialib.sh
   - cd ~/.julia/v0.4/PDESolver/test
