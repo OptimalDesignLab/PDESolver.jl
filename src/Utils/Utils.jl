@@ -13,9 +13,9 @@ using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
 using Input
 
-include("output.jl")
 include("parallel_types.jl")
 include("parallel.jl")
+include("output.jl")      # Note: MUST be after parallel.jl, as this uses the @mpi_master macro.
 include("io.jl")
 include("logging.jl")
 include("projections.jl")

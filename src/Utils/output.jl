@@ -146,8 +146,11 @@ end
 # This will print out a table of all dof's, with the below columns. Useful for debugging.
 #
 # Assumes you have eqn and mesh properly initialized.
+# Note: MUST be included in Utils.jl after parallel.jl, as this function uses the @mpi_master macro.
 
-function print_qvec_coords(mesh, sbp, eqn, opts; to_file=false, filename="null", other_field=0)
+function print_qvec_coords(mesh, eqn; to_file=false, filename="null", other_field=0)
+
+  myrank = mesh.myrank  # required for @mpi_master
 
   if to_file
     if filename == "null"
@@ -156,7 +159,7 @@ function print_qvec_coords(mesh, sbp, eqn, opts; to_file=false, filename="null",
     fh = open(filename, "w")
     write(fh,"x-coord    y-coord    elnum    nodenum  dofnum   val\n")
   else
-    println("x-coord    y-coord    elnum    nodenum  dofnum   val")
+    @mpi_master println("x-coord    y-coord    elnum    nodenum  dofnum   val")
   end
 
   for dof_ix = 1:mesh.numDof
@@ -187,7 +190,7 @@ function print_qvec_coords(mesh, sbp, eqn, opts; to_file=false, filename="null",
       str = @sprintf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
       write(fh, str)
     else
-      @printf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
+      @mpi_master @printf("%-8.5f   %-8.5f   %-6d   %-6d   %-6d   %s\n", x_coord, y_coord, elnum, nodenum, dofnum, val_this_dof)
     end
 
   end

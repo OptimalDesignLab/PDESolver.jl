@@ -277,6 +277,10 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
 
   MPI.Barrier(mesh.comm)
 
+  @mpi_master println("-------------------------------")
+  @mpi_master println("--- PDESolver run completed ---")
+  @mpi_master println("-------------------------------")
+
   return mesh, sbp, eqn, opts
 end  # end function
 #runtest(1)

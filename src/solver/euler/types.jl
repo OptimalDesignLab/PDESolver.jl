@@ -929,7 +929,7 @@ function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{T
 end
 
 @doc """
-### EulerEquationMod.calcElemFurfaceArea
+### EulerEquationMod.calcElemSurfaceArea
 This function calculates the wet area of each element. A weight of 2 is given to
 faces with Dirichlet boundary conditions.
 Arguments:
@@ -975,6 +975,15 @@ function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     indx0 = mesh.bndry_offsets[bc]
     indx1 = mesh.bndry_offsets[bc+1] - 1
 
+    # Uncomment the below for debugging output
+    # println("------------------- setting indx0 & indx1")
+    # println(" mesh.bndry_offsets: ", mesh.bndry_offsets)
+    # println(" bc: ", bc)
+    # println(" indx0: ", indx0)
+    # println(" indx1: ", indx1)
+    # print_qvec_coords(mesh, eqn)
+    # println("------------------- entering loop over f = indx0:indx1")
+
     for f = indx0 : indx1
       face = mesh.bndryfaces[f].face
       elem = mesh.bndryfaces[f].element
@@ -982,7 +991,8 @@ function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       # Compute the size of face
       face_area = 0.0
       for n=1:mesh.numNodesPerFace
-        nrm_xy = ro_sview(mesh.nrm_face, :, n, f)
+        nrm_xy = ro_sview(mesh.nrm_bndry, :, n, f)     # problem! this field corresponds to interfaces, 
+                                                      #   but this is in a loop over BC
         area[n] = norm(nrm_xy)
         face_area += sbpface.wface[n]*area[n]
       end
