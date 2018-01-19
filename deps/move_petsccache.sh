@@ -14,14 +14,17 @@ pth=$PETSC_DIR1/$PETSC_ARCH1
 if [[ $1 == "remove" ]];
 then
   
-  if file $pth/lib/libpetsc.so ;
+  if file $pth/lib/libpetsc.so ;  # if cache loaded successfully
   then
     export PETSC_DIR=$PETSC_DIR1
     export PETSC_ARCH=$PETSC_ARCH1
     ls $pth/lib
     mv -v $pth/lib $HOME/petsc_lib
-    rm -r $HOME/.julia/v0.4/PETSc2
   fi
+
+  # do this in either case because the directory gets created even if
+  # the cache does not exist
+  rm -r $HOME/.julia/v0.4/PETSc2
 fi
 
 
@@ -29,7 +32,7 @@ fi
 if [[ $1 == "restore" ]];
 then
 
-  if file $HOME/petsc_lib/libpetsc.so ;
+  if file $HOME/petsc_lib/libpetsc.so ;  # if cache loaded successfully
   then
     mkdir -vp $pth
     mv -v $HOME/petsc_lib/ $pth/lib
