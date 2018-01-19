@@ -14,8 +14,21 @@ where input_file_name.jl is in your current directory.
 
 "run_type"  : what type of run:
               1 = rk4
+              2 = forward diff dR/du? see call_nlsolvers() 
+              3 = not used.
+              4 = retired, was steady Newton using FD. during this time 5 was steady Newton using CS.
               5 = steady Newton, FD or CS is specified with jac_method
+              6 = not specified in call_nlsolvers() but specified in getDataTypes()
+              7 = not specified in call_nlsolvers() but specified in getDataTypes()
+              8 = not specified in call_nlsolvers() but specified in getDataTypes()
+              9 = non pde rk4 run? see call_nlsolvers()
+              10 = some kind of rk4. see call_nlsolvers, line 503
+              11 = same as 5, but Tmsh is complex. Sometimes? See call_nlsolvers()
               20 = Crank-Nicolson
+              30 = LSERK54
+              40 = Predictor-corrector newton
+              41 = Use regular Newton to solve homotopy
+              660 = CN unsteady adjoint (experimental, unverified)
 "jac_method" : what method to use for computing the Jacobian (finite difference,
                or complex step, determined from "run_type", 1 finite difference
                2 = complex step

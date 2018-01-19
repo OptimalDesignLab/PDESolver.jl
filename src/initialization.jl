@@ -98,7 +98,9 @@ function getDataTypes(opts::Dict)
     jac_method = opts["jac_method"]
   end
 
-  if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
+  # flag == 1: RK4 run
+  # TODO: flag == 8, 9, 10, 30
+  if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30
     Tmsh = Float64
     Tsbp = Float64
     Tsol = Float64
@@ -444,7 +446,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
   # stepper returns a new t value
   if opts["solve"]
 
-    t_nlsolve = @elapsed if flag == 1 # normal run
+    t_nlsolve = @elapsed if flag == 1 # RK4 run
       # RK4 solver
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
