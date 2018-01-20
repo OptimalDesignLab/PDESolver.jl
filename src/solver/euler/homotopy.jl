@@ -151,7 +151,8 @@ function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp,
 
         # calculate boundary state
         coords = sview(mesh.coords_bndry, :, j, i)
-        calcFreeStream(eqn.params, coords, qg)
+#        calcFreeStream(eqn.params, coords, qg)
+        calcInvChannelIC(eqn.params, coords, qg)
 
         # calculate face normal
         nrm2 = sview(mesh.nrm_bndry, :, j, i)
