@@ -13,6 +13,8 @@ env:
   - TEST_ADVECTION=1; MPI_IMPL="mpich3"
   - TEST_EULER=1; MPI_IMPL="mpich3"
   - TEST_SIMPLEODE=1; MPI_IMPL="mpich3"
+  - TEST_ADVECTION=1; MPI_IMPL="openmpi"
+  - TEST_EULER=1; MPI_IMPL="openmpi"
 
 cache:
   directories:
