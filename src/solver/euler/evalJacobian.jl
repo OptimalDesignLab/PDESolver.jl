@@ -1,6 +1,9 @@
 import PDESolver: evalJacobian
 
-
+"""
+  Euler implementation of `evalJacobian`.  Currently only supports the
+  Roe scheme.
+"""
 function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
@@ -62,6 +65,19 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 end
 
 
+"""
+  Differentiated version of [`dataPrep`](@ref).  The Jacobian computation
+  does use any of the arrays of precomputed values (options keys 
+  `precompute_*`).  Those keys can be specified by the user and will affect
+  [`evalResidual`](@ref), but not [`evalJacobian`](@ref).
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
 function dataPrep_diff{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP,
                        eqn::AbstractEulerData{Tsol, Tres}, opts)
@@ -116,6 +132,18 @@ function dataPrep_diff{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 end # end function dataPrep
 
 
+"""
+  Differentiated version of [`evalVolumeIntegrals`](@ref).  Throws an error
+  for unsupported schemes.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler
+"""
 function evalVolumeIntegrals_diff{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                              opts, assembler::AssembleElementData)
@@ -139,7 +167,17 @@ end  # end evalVolumeIntegrals
 
 
 
+"""
+  Differentiated version of [`evalBoundaryIntegrals`](@ref).
 
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler.
+"""
 function evalBoundaryIntegrals_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts,
@@ -157,7 +195,17 @@ function evalBoundaryIntegrals_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{T
 
 end  # end evalBoundaryIntegrals
 
+"""
+  Differentiated version of [`addStabilization`](@ref).
 
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler
+"""
 function addStabilization_diff{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
                           assembler::AssembleElementData)
@@ -193,7 +241,18 @@ function addStabilization_diff{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+"""
+  Differentiated version of [`evalFaceIntegrals_diff`](@ref).  Throws an
+  error for unsupported schemes.
 
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler
+"""
 function evalFaceIntegrals_diff{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                                 sbp::AbstractSBP,
                                 eqn::EulerData{Tsol}, opts,
@@ -212,7 +271,19 @@ function evalFaceIntegrals_diff{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+"""
+  Differentiated version of [`evalSharedFaceIntegrals`](@ref).
+  Currently only supports `opts[parallel_data] == element` because it is
+  used for Jacobian calculation.
 
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler
+"""
 function evalSharedFaceIntegrals_diff(mesh::AbstractDGMesh, sbp, eqn, opts,
                                       assembler::AssembleElementData)
 
@@ -235,6 +306,18 @@ function evalSharedFaceIntegrals_diff(mesh::AbstractDGMesh, sbp, eqn, opts,
   return nothing
 end
 
+"""
+  Differentiated version of [`evalSourceTerm`](@ref).  Currently, source
+  terms are not supported.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler
+"""
 function evalSourceTerm_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts, assembler::AssembleElementData)

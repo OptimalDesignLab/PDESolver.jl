@@ -273,7 +273,10 @@ function call{Tsol, Tres, Tmsh}(obj::ErrorFlux_diff, params::ParamType,
 
 end
 
-
+"""
+  Container for all differentiated flux functors.  Maps name to object.
+  The names are exactly the same as the non-differentiated functor.
+"""
 global const FluxDict_diff = Dict{ASCIIString, FluxType_diff}(
 "RoeFlux" => RoeFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),

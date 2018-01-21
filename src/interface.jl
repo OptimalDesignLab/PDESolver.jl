@@ -89,6 +89,20 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
+"""
+  Evaluates the Jacobian of the [`evalHomotopy`](@ref) multiplied by the
+  homotopy parameter lambda.  Conceptually similar to [`evalJacobian`](@ref).
+
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an AbstractSBP
+   * eqn: an AbstractSolutionData (physics modules should specialize this
+          argument)
+   * opts: options dictionary
+   * assembler: an object used to assemble contributions into the Jacobian
+   * lambda: the homotopy parameter
+"""
 function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
                               eqn::AbstractSolutionData, opts::Dict, 
                               assembler::AssembleElementData, lambda::Number)

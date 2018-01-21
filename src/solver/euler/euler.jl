@@ -600,7 +600,7 @@ end
 #------------------------------------------------------------------------------
 # functions that evaluate terms in the weak form
 #------------------------------------------------------------------------------
-@doc """
+"""
 ### EulerEquationMod.evalVolumeIntegrals
 
   This function evaluates the volume integrals of the Euler equations by
@@ -611,7 +611,6 @@ end
 
   This is a mid level function.
 """
-# mid level function
 function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
 
