@@ -370,6 +370,9 @@ get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
 get!(arg_dict, "use_volume_preconditioner", false)
 
+# homotopy options
+get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
+
 # majorIterationCallback options
 get!(arg_dict, "callback_write_qvec", false)
 
@@ -442,6 +445,8 @@ get!(arg_dict, "is_restart", false)
 get!(arg_dict, "ncheckpoints", 2)
 get!(arg_dict, "checkpoint_freq", 200)
 get!(arg_dict, "use_checkpointing", false)
+
+get!(arg_dict, "force_solution_complex", false)
 
 # Options passed directly to Petsc
 petsc_opts = Dict{AbstractString, AbstractString}(

@@ -472,6 +472,16 @@ type Timings
   t_dataprep::Float64  # time spent preparing data
   t_stab::Float64  # time spent adding stabilization
   t_send::Float64  # time spent sending data
+
+  t_volume_diff::Float64  # time for volume integrals
+  t_face_diff::Float64 # time for surface integrals (interior)
+  t_source_diff::Float64  # time spent doing source term
+  t_sharedface_diff::Float64  # time for shared face integrals
+  t_bndry_diff::Float64  # time spent doing boundary integrals
+  t_dataprep_diff::Float64  # time spent preparing data
+  t_stab_diff::Float64  # time spent adding stabilization
+
+
   t_wait::Float64  # time spent in MPI_Wait
   t_allreduce::Float64 # time spent in allreduce
   t_pert::Float64  # time spent applying peraturbation
@@ -494,7 +504,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 

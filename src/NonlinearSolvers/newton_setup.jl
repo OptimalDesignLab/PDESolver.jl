@@ -297,12 +297,18 @@ macro newtonfields()
   end
 end
 
+"""
+  Matrix-based Petsc preconditioner for Newton's method
+"""
 type NewtonMatPC <: AbstractPetscMatPC
   pc_inner::PetscMatPC
   @newtonfields
 
 end
 
+"""
+  Outer constructor for [`NewtonMatPC`](@ref)
+"""
 function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
                     eqn::AbstractSolutionData, opts::Dict)
 
@@ -344,11 +350,19 @@ end
 # because Julia lack multiple inheritance, we have to define 4 of these
 # make sure they share the same fields whenever needed
 
+"""
+  Dense linear operator for Newton's method.
+    
+  Subtype of [`AbstractDenseLO`](@ref)
+"""
 type NewtonDenseLO <: AbstractDenseLO
   lo_inner::DenseLO
   @newtonfields 
 end
 
+"""
+  Outer constructor for [`NewtonDenseLO`](@ref)
+"""
 function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
@@ -366,11 +380,18 @@ function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
   return NewtonDenseLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
+"""
+  Sparse direct linear operator for Newton's method.  Subtype of
+  [`AbstractSparseDirectLO`](@ref)
+"""
 type NewtonSparseDirectLO <: AbstractSparseDirectLO
   lo_inner::SparseDirectLO
   @newtonfields
 end
 
+"""
+  Outer constructor for [`NewtonSparseDirectLO`](@ref)
+"""
 function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
@@ -389,11 +410,19 @@ function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
   return NewtonSparseDirectLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
+"""
+  Petsc matrix based linear operator for Newton's method.
+
+  Subtype of [`AbstractPetscMatLO`](@ref)
+"""
 type NewtonPetscMatLO <: AbstractPetscMatLO
   lo_inner::PetscMatLO
   @newtonfields
 end
 
+"""
+  Outer constructor for [`NewtonPetscMatLO`](@ref)
+"""
 function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
 
@@ -412,6 +441,11 @@ function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   return NewtonPetscMatLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
+"""
+  Petsc matrix-free linear operator for Newton's method.
+
+  Subtype of [`AbstractPetscMatFreeLO`](@ref)
+"""
 type NewtonPetscMatFreeLO <: AbstractPetscMatFreeLO
   lo_inner::PetscMatFreeLO
   @newtonfields
@@ -443,7 +477,7 @@ function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   end
 
 
-  return NewtonPetscMatFreeLO(lo_inner, rhs_func, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonPetscMatFreeLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
 """
@@ -513,7 +547,7 @@ function applyLinearOperator{Tsol}(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
 
   # apply perturbation
   for i=1:mesh.numDof
-    eqn.q_vec[i] += pert*vec[i]
+    eqn.q_vec[i] += pert*x[i]
   end
 
   physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, ctx_residual, t)
@@ -527,7 +561,7 @@ function applyLinearOperator{Tsol}(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
 
   # undo perturbation
   for i=1:mesh.numDof
-    eqn.q_vec[i] -= pert*vec[i]
+    eqn.q_vec[i] -= pert*x[i]
   end
 
   return nothing

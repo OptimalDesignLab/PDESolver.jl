@@ -43,6 +43,7 @@ end
 function createObjects(input_file::AbstractString)
 
   opts = read_input(input_file)
+  checkOptions(opts)
 
   dim = opts["dimensions"]
   dofpernode = 1

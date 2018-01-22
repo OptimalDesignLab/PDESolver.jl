@@ -64,6 +64,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   q_el3::Array{Tsol, 2}
   q_el4::Array{Tsol, 2}
 
+  # temporary storage for solution interpolated to face
+  q_faceL::Array{Tsol, 2}
+  q_faceR::Array{Tsol, 2}
+
   res_el1::Array{Tsol, 2}
   res_el2::Array{Tsol, 2}
 
@@ -86,7 +90,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
   flux_valsD::Array{Tres, 2}  # numDofPerNode x Tdim for flux vals 3 directions
 
+  # Roe solver storage
   sat_vals::Array{Tres, 1}  # reusable storage for SAT term
+  euler_fluxjac::Array{Tres, 2}  # euler flux jacobian
+  p_dot::Array{Tsol, 1}  # derivative of pressure wrt q
+  roe_vars::Array{Tres, 1}  # Roe average state
+  roe_vars_dot::Array{Tres, 1}  # derivatives of Roe vars wrt q, packed
+
 
   A0::Array{Tsol, 2}  # reusable storage for the A0 matrix
   A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
@@ -125,6 +135,18 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                                     # dim is derivative direction, 3rd is node
 
 
+  # volume term jacobian arrays
+  flux_jac::Array{Tres, 4}
+  res_jac::Array{Tres, 4}
+
+  # face term jacobian arrays
+  flux_dotL::Array{Tres, 3}
+  flux_dotR::Array{Tres, 3}
+  res_jacLL::Array{Tres, 4}
+  res_jacLR::Array{Tres, 4}
+  res_jacRL::Array{Tres, 4}
+  res_jacRR::Array{Tres, 4}
+
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -160,6 +182,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
   tau_type::Int  # type of tau to use for GLS stabilization
 
+  use_Minv::Int  # apply Minv to explicit jacobian calculation, 0 = do not
+                 # apply, 1 = do apply
   vortex_x0::Float64  # vortex center x coordinate at t=0
   vortex_strength::Float64  # strength of the vortex
 
@@ -229,6 +253,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     q_el3 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
     q_el4 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
 
+    q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    q_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+
     res_el1 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
     res_el2 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
 
@@ -249,7 +276,12 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     flux_vals2 = zeros(Tres, Tdim + 2)
     flux_valsD = zeros(Tres, Tdim + 2, Tdim)
 
+    # Roe solver storage
     sat_vals = zeros(Tres, Tdim + 2)
+    euler_fluxjac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
+    p_dot = zeros(Tsol, mesh.numDofPerNode)
+    roe_vars = zeros(Tres, Tdim + 1)
+    roe_vars_dot = zeros(Tres, 22)  # number needed in 3D
 
     A0 = zeros(Tsol, Tdim + 2, Tdim + 2)
     A0inv = zeros(Tsol, Tdim + 2, Tdim + 2)
@@ -275,6 +307,19 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     velocity_deriv = zeros(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
     velocity_deriv_xy = zeros(Tres, Tdim, Tdim, mesh.numNodesPerElement)
 
+    # volume term jacobian storage
+    flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                           mesh.numNodesPerElement, Tdim)
+    res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                          mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    # face term jacobian storage
+    flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+    flux_dotR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+    res_jacLL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+    res_jacLR = zeros(res_jacLL)
+    res_jacRL = zeros(res_jacLL)
+    res_jacRR = zeros(res_jacLL)
 
     h = maximum(mesh.jac)
 
@@ -323,6 +368,8 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     tau_type = opts["tau_type"]
 
+    use_Minv = opts["use_Minv"] ? 1 : 0
+
     vortex_x0 = opts["vortex_x0"]
     vortex_strength = opts["vortex_strength"]
 
@@ -358,19 +405,24 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda,q_el1, q_el2, q_el3, q_el4, res_el1, res_el2,
+               Lambda, q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
+               res_el1, res_el2,
                qs_el1, qs_el2, ress_el1, ress_el2,
                w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3,  flux_vals1, 
-               flux_vals2, flux_valsD, sat_vals,A0, A0inv, A1, A2, S2, 
+               flux_vals2, flux_valsD,
+               sat_vals, euler_fluxjac, p_dot, roe_vars, roe_vars_dot,
+               A0, A0inv, A1, A2, S2, 
                A_mats, Rmat1, Rmat2, P,
                nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
                velocity_deriv, velocity_deriv_xy,
+               flux_jac, res_jac,
+               flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                h, cv, R, R_ND, gamma, gamma_1, Ma, Re, aoa,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
-               use_dissipation, dissipation_const, tau_type, vortex_x0,
+               use_dissipation, dissipation_const, tau_type, use_Minv, vortex_x0,
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
@@ -387,17 +439,17 @@ end  # end type declaration
   This type is an implementation of the abstract EulerData.  It is
   parameterized by the residual datatype Tres and the mesh datatype Tmsh
   because it stores some arrays of those types.  Tres is the 'maximum' type of
-  Tsol and Tmsh, where Tsol is the type of the conservative variables.
-  It is also paremterized by var_type, which should be a symbol describing
+  Tsol and Tmsh, where Tsol is the type of the solution variables.
+  It is also paramterized by `var_type`, which should be a symbol describing
   the set of variables stored in eqn.q.  Currently supported values are
-  :conservative and :entropy, which indicate the conservative variables and
+  `:conservative` and `:entropy`, which indicate the conservative variables and
   the entropy variables described in:
   
   'A New Finite Element Formulation for
   Computational Fluid Dynamics: Part I' by Hughes et al.`
 
-  Eventually there will be additional implementations of EulerData,
-  specifically a 3D one.
+  *Note*: this constructor does not fully populate all fields.  The
+          [`init`])@ref) function must be called to finish initialization.
 
   **Static Parameters**:
 
@@ -411,6 +463,28 @@ end  # end type declaration
                or :entropy)
 
 
+  **Fields**
+
+  This type has many fields, not all of them are documented here.  A few
+  of the most important ones are:
+
+   * comm: MPI communicator
+   * commsize: size of MPI communicator
+   * myrank: MPI rank of this process
+
+
+  When computing the jacobian explicitly (options key `calc_jac_explicit`),
+  Tsol and Tres are typically `Float64`, however node-level operations 
+  sometime use complex numbers or dual numbers.  Also, some operations on
+  entropy variables require doing parts of the computation with
+  conservative variables.  To support these use-cases, the fields
+
+   * params: ParamType object with `Tsol`, `Tres`, `Tmsh`, and `var_type` matching the equation object
+   * params_conservative: ParamType object with `Tsol, Tres`, and `Tmsh` matching the `EulerData_` object, but `var_type = :conservative`
+   * params_entropy: similar to `param_conservative`, but `var_type = :entropy`
+   * params_complex: ParamType object with `Tmsh` and `var_type` matching the `EulerData_` object, but `Tsol = Tres = Complex128` 
+
+ exist.
 """->
 type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
 # hold any constants needed for euler equation, as well as solution and data
@@ -430,6 +504,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # params (above) typically points to the same object as one of these
   params_conservative::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}
   params_entropy::ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}
+
+  # used for complex-stepping the boundary conditions
+  # this should really be Complex{Tsol}, but that isn't allowed
+  # once we switch to dual number this can be improved
+  params_complex::ParamType{Tdim, :conservative, Complex128, Complex128, Tmsh}
 
   # the following arrays hold data for all nodes
   q::Array{Tsol,3}  # holds conservative variables for all nodes
@@ -498,12 +577,15 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
   flux_func_bar::FluxType_revm # Functor for the reverse mode of face flux
+  flux_func_diff::FluxType_diff
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
+
+  assembler::AssembleElementData  # temporary place to stash the assembler
 
   file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
 
@@ -525,7 +607,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
     vars_orig = opts["variable_type"]
     opts["variable_type"] = :conservative
-    eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}(
+    eqn.params_conservative = ParamType{Tdim, :conservative, Tsol, Tres, Tmsh}( 
                                        mesh, sbp, opts, mesh.order)
     opts["variable_type"] = :entropy
     eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
@@ -539,6 +621,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     else
       println(BSTDERR, "Warning: variable_type not recognized")
     end
+
+    eqn.params_complex = ParamType{Tdim, :conservative, Complex128, Complex128, Tmsh}(
+                                       mesh, sbp, opts, mesh.order)
+
+
     eqn.multiplyA0inv = matVecA0inv
     eqn.majorIterationCallback = majorIterationCallback
 
@@ -719,6 +806,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
+   eqn.assembler = NullAssembleElementData
    if open_files
      eqn.file_dict = openLoggingFiles(mesh, opts)
    else

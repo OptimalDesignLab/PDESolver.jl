@@ -51,6 +51,8 @@ function checkOptions(opts)
     error("cannot use staggered grid Advection in parallel (yet)")
   end
 
+  get!(opts, "calc_jac_explicit", false)
+  get!(opts, "preallocate_jacobian_coloring", true)
 
   return nothing
 end

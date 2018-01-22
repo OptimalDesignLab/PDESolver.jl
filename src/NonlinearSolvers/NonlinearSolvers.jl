@@ -3,6 +3,7 @@ module NonlinearSolvers
 pde_pumi_interface_path = joinpath(Pkg.dir("PumiInterface"), "src")
 push!(LOAD_PATH, pde_pumi_interface_path)
 using ArrayViews
+using PDESolver
 using Debug
 using PdePumiInterface  # needed to write vtk files
 using ODLCommonTools
@@ -44,5 +45,9 @@ include("crank_nicolson_uadj/crank_nicolson_uadj_checkpointstraight.jl")
 
 # predictor_corrector.jl
 export predictorCorrectorHomotopy
+
+# jacobian.jl
+export AssembleElementData, assembleElement, assembleInterface,
+       assembleSharedFace, assembleBoundary, NullAssembleElementData
 
 end

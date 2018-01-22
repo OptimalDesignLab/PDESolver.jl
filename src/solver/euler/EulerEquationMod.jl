@@ -5,6 +5,7 @@
 module EulerEquationMod
 
 using PDESolver  # setup LOAD_PATH to find all PDESolver components
+using SolverCommon
 using ArrayViews
 using ODLCommonTools  # abstract type definitions + common functions
 using SummationByParts
@@ -16,6 +17,7 @@ using Utils
 import ODLCommonTools.sview
 using MPI
 using Input  # input file processing
+using PETSc2
 #using PETSc
 # using FreeFormDeformation
 # using MeshMovement
@@ -212,6 +214,15 @@ include("startup_func.jl")  # function for invoking the solver
 include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")
+
+# Jacobian calculation
+include("evalJacobian.jl")
+include("euler_funcs_diff.jl")
+include("flux_diff.jl")
+include("bc_solvers_diff.jl")
+include("bc_diff.jl")
+include("homotopy_diff.jl")
+
 
 """
   This physics is named `Euler`

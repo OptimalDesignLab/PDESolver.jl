@@ -294,7 +294,11 @@ function test_reversemode()
             nrm2_bar)
     for k = 1:length(nrm2)
       nrm2[k] += pert
-      EulerEquationMod.calcSAT(eqn.params, nrm2, q, sat, u, v, H)
+      roe_vars = eqn.params.roe_vars
+      roe_vars[1] = u
+      roe_vars[2] = v
+      roe_vars[3] = H
+      EulerEquationMod.calcSAT(eqn.params, roe_vars, q, nrm2, sat)
       dSat = imag(sat[:])/imag(pert)
       complex_valbar_SAT = dot(psi, dSat)
       nrm2[k] -= pert

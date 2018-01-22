@@ -667,22 +667,17 @@ function ICInvChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                           operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
                           opts, u0::AbstractArray{Tsol})
 
-  rho = 1.22531
-  rhou = rho*170.104
-  rhov = 0
-  E = 101300/eqn.params.gamma_1 + 0.5*rho*(rhou*rhou + rhov*rhov)
+  sol = zeros(Tsol, mesh.numDofPerNode)
 
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
-      dof_rho = mesh.dofs[1, j, i]
-      dof_rhou = mesh.dofs[2, j, i]
-      dof_rhov = mesh.dofs[3, j, i]
-      dof_E = mesh.dofs[4, j, i]
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      calcInvChannelIC(eqn.params, coords_j, sol)
 
-      u0[dof_rho] = rho
-      u0[dof_rhou] = rhou
-      u0[dof_rhov] = rhov
-      u0[dof_E] = E
+      for k=1:mesh.numDofPerNode
+        u0[dofnums_j[k]] = sol[k]
+      end
     end
   end
 

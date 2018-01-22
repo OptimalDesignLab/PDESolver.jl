@@ -44,6 +44,7 @@ arg_dict = Dict{Any, Any}(
 #"write_entropy" => true,
 #"write_entropy_freq" => 1,
 "newton_verbosity" => 4,
+#"calc_jac_explicit" => true,
 )
 
 

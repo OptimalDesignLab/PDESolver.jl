@@ -75,5 +75,5 @@ function test_bcs()
   return nothing
 end
 
-add_func1!(EulerTests, test_bcs, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_bcs, [TAG_SHORTTEST])
 

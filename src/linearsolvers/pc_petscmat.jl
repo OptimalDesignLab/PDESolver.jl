@@ -14,6 +14,7 @@ type PetscMatPC <: AbstractPetscMatPC
   btmp::PetscVec
   is_assembled::Array{Bool, 1}  # is A assembled
   is_setup::Bool  # is PC already set up
+  is_shared::Bool
   is_finalized::Bool
   nassemblies::Array{Int, 1}  # number of matrix assemblies, shared with lo
                               # if A is shared
@@ -46,6 +47,12 @@ function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   btmp = createPetscVec(mesh, sbp, eqn, opts)
   is_assembled = Bool[false]
   is_setup = false
+  if opts["use_jac_precond"]  # this must match the condition in LOPetscMat
+    is_shared = false
+  else
+    is_shared = true
+  end
+
   is_finalized = false
   nassemblies = Int[0]
   nsetups = 0
@@ -56,9 +63,9 @@ function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   myrank = eqn.myrank
   commsize = eqn.commsize
 
-  return PetscMatPC(pc, A, xtmp, btmp, is_assembled, is_setup, is_finalized,
-                    nassemblies, nsetups, napplies, ntapplies, comm, myrank,
-                    commsize)
+  return PetscMatPC(pc, A, xtmp, btmp, is_assembled, is_setup, is_shared,
+                    is_finalized, nassemblies, nsetups, napplies, ntapplies,
+                    comm, myrank, commsize)
 end
 
 function free(pc::PetscMatPC)

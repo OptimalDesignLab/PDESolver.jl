@@ -5,6 +5,8 @@ use new version of SBP (includig Optim dependency), curvilinear branch of PumiIn
 
 use ODLCommonTools branch `new_parallel`
 
+update LinearSolvers to allocate the jacobian correctly for viscous terms
+
 change log:
   Better interface between Utils and the physics modules for handling of parallel
   computations (all MPI calls now encapsulated in Utils)
@@ -20,3 +22,5 @@ change log:
 
 change argument order for common_funcs.jl, BCs, flux functions to be
 (params, q, coords, nrm, flux)
+
+

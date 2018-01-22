@@ -18,7 +18,8 @@
 function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
-  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
+#  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
+  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
   numDofPerNode = mesh.numDofPerNode
 
   comm = eqn.comm
@@ -33,25 +34,46 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
   if mesh.isDG
     MatSetOption(A, PETSc2.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
   end
-  dnnz = zeros(PetscInt, mesh.numDof)  # diagonal non zeros per row
-  onnz = zeros(PetscInt, mesh.numDof)
-  bs = PetscInt(mesh.numDofPerNode)  # block size
+
+  if mattype == PETSc2.MATMPIAIJ
+    bs = 1
+  else
+    bs = PetscInt(mesh.numDofPerNode)  # block size
+  end
+
+  @assert mesh.numDof % bs == 0
+  nblocks = div(mesh.numDof, bs)
+  dnnz = zeros(PetscInt, nblocks)  # diagonal non zeros per row
+  onnz = zeros(PetscInt, nblocks)
 
   # calculate number of non zeros per row for A
-  for i=1:mesh.numDof
-    dnnz[i] = mesh.sparsity_counts[1, i]
-    onnz[i] = mesh.sparsity_counts[2, i]
-  end
+  if bs == 1
+    for i=1:mesh.numDof
+      dnnz[i] = mesh.sparsity_counts[1, i]
+      onnz[i] = mesh.sparsity_counts[2, i]
+    end
+  else
+    
+    disctype = INVISCID  # TODO: update this when merging with viscous
+    if opts["preallocate_jacobian_coloring"]
+      disctype = COLORING
+    end
+    face_type = getFaceType(mesh.sbpface)
+    _dnnz, _onnz = getBlockSparsityCounts(mesh, mesh.sbpface, disctype, face_type)
+    dnnz = convert(Vector{PetscInt}, _dnnz)
+    onnz = convert(Vector{PetscInt}, _onnz)
+  end  # end if bs == 1
+
 
   # preallocate A
   @mpi_master println(BSTDOUT, "preallocating A")
 
-  #TODO: set block size?
-  MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
-  #MatXAIJSetPreallocation(Ap, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
+  if mattype == PETSc2.MATMPIAIJ
+    MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
+  else
+    MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
+  end
   MatZeroEntries(A)
-  matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
-  @mpi_master println(BSTDOUT, "A block size = ", matinfo.block_size)
 
   # Petsc objects if this comes before preallocation
   MatSetOption(A, PETSc2.MAT_ROW_ORIENTED, PETSC_FALSE)
@@ -162,3 +184,19 @@ function createKSP(pc::Union{PetscMatPC, PetscMatFreePC},
 
   return ksp
 end
+
+"""
+  Get the integer representing the sbpface type
+"""
+function getFaceType(sbpface::AbstractFace)
+  if typeof(sbpface) <: DenseFace
+    face_type = 1
+  elseif typeof(sbpface) <: SparseFace
+    face_type = 2
+  else
+    error("unrecogized sbpface type $(typeof(sbpface))")
+  end
+
+  return face_type
+end
+

@@ -12,6 +12,7 @@ type SparseDirectLO <: AbstractSparseDirectLO
   A::SparseMatrixCSC{Float64, Int64}
   fac::UmfpackLU{Float64, Int64}
   is_setup::Array{Bool, 1}
+  is_shared::Bool
   is_finalized::Bool
   nfactorizations::Int
   nsolves::Int
@@ -40,7 +41,12 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   if typeof(mesh) <: AbstractCGMesh
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   else
-    jac = SparseMatrixCSC(mesh, Float64)
+    face_type = getFaceType(mesh.sbpface)
+    disc_type = INVISCID
+    if opts["preallocate_jacobian_coloring"]
+      disc_type = COLORING
+    end
+    jac = SparseMatrixCSC(mesh, Float64, INVISCID, face_type)
   end
 
   # Note: colptr and rowval alias A
@@ -54,6 +60,7 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   make_onebased(jac)
 
   is_setup = Bool[false]
+  is_shared = false
   nfactorizations = 0
   nsolves = 0
   ntsolves = 0
@@ -62,8 +69,8 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
   myrank = eqn.myrank
   commsize = eqn.commsize
 
-  return SparseDirectLO(jac, fac, is_setup, false, nfactorizations, nsolves,
-                        ntsolves, comm, myrank, commsize)
+  return SparseDirectLO(jac, fac, is_setup, is_shared, false, nfactorizations,
+                        nsolves, ntsolves, comm, myrank, commsize)
 end
 
 

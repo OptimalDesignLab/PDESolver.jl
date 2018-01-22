@@ -9,6 +9,7 @@
    * none
 """
 type PCNone <: AbstractPC
+  is_shared::Bool
 end
 
 """
@@ -24,7 +25,8 @@ end
 function PCNone(mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict)
 
-  return PCNone()
+  is_shared = false
+  return PCNone(is_shared)
 end
 
 function free(pc::PCNone)

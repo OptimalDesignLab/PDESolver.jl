@@ -26,7 +26,7 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     functor_i = mesh.bndry_funcs[i]
     start_index = mesh.bndry_offsets[i]
     end_index = mesh.bndry_offsets[i+1]
-    idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
+    idx_range = start_index:(end_index - 1)
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
 
     if opts["precompute_boundary_flux"]
@@ -266,6 +266,7 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     for j = 1:mesh.numNodesPerFace
 
       # get components
+      #TODO: this doesn't work if precompute_q_bndr == false ?
       q = ro_sview(eqn.q_bndry, :, j, global_facenum)
       # convert to conservative variables if needed
       convertToConservative(eqn.params, q, q2)
@@ -334,12 +335,16 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
   phi = 0.5*(u*u + v*v)
   H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
 
-  dq = zeros(Tsol, 4)
+#  dq = zeros(Tsol, 4)
   dq = v_vals - qg  #!!! this allocates a new vector dq every time
 #  nrm2 = params.nrm2
 #  calcBCNormal(params, dxidx, nrm, nrm2)
   sat = params.sat_vals
-  calcSAT(params, nrm_xy, dq, sat, u, v, H)
+  roe_vars = params.roe_vars
+  roe_vars[1] = u
+  roe_vars[2] = v
+  roe_vars[3] = H
+  calcSAT(params, roe_vars, dq, nrm_xy, sat)
 
   euler_flux = zeros(Tsol, 4) # params.flux_vals1
   calcEulerFlux(params, v_vals, aux_vars, nrm_xy, euler_flux)

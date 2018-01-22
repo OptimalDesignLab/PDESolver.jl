@@ -274,6 +274,13 @@ Note that any values associated with these options are shared with the regular
                       used with the specified stabilization
 "coloring_distance_prec" : coloring distance for preconditioning, see above.
 
+"preallocate_jacobian_coloring": preallocate jacobian as though coloring is 
+                                 used (all nodes of
+                                 element connected to all nodes of neighbours),
+                                 (Bool), default true if coloring will be used,
+                                 false otherwise.  Users generally should not
+                                 need to set the option.
+
 # Newton's Method debugging options
 "write_rhs"  : write rhs (residual) to a file (rhs$i.dat) each iteration, (Bool), default false
 "write_jac"  : write the Jacobian to a file (jacobian$i.dat) each iteration, (Bool), default false
@@ -320,6 +327,11 @@ Note that any values associated with these options are shared with the regular
                     if steady newton, 4 otherwise (ie. when Newton is used by
                     another method in NonlinearSolvers).  When 4 or less,
                     Newton does not call majorIterationCallback
+
+# Homotopy options
+"homotopy_addBoundaryIntegrals": add boundary term to homotopy, (Bool), default
+                                 false (the boundary terms slow convergence
+                                 in some cases)
 
 # majorIterationCallback options
 "callback_write_qvec": write eqn.q_vec to a file named 

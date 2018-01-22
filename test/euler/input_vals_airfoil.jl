@@ -38,6 +38,7 @@ arg_dict = Dict{Any, Any}(
 "output_freq" => 100000,
 "solve" => true,
 "do_postproc" => true,
+"force_solution_complex" => true,
 
 # Objective functional options
 "objective_function" => "lift",

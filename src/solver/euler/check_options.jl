@@ -37,6 +37,24 @@ function checkOptions(opts)
   end
 
 
+  run_type = opts["run_type"]
+  #TODO: what to do for jac_type 4?
+  if opts["use_DG"] && opts["face_integral_type"] == 1 && opts["Flux_name"] == "RoeFlux" && (run_type == 5 || run_type == 40 || run_type == 20) && opts["jac_type"] >= 2 && !opts["use_src_term"]
+    get!(opts, "calc_jac_explicit", true)
+  else
+    get!(opts, "calc_jac_explicit", false)
+    if opts["calc_jac_explicit"]
+      error("cannot calculate jacobian explicitly with given options")
+    end
+  end
+
+  if opts["calc_jac_explicit"]
+    get!(opts, "preallocate_jacobian_coloring", false)
+  else
+    get!(opts, "preallocate_jacobian_coloring", true)
+  end
+
+
 
   return nothing
 end
