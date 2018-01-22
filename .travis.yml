@@ -10,9 +10,6 @@ notifications:
   email: false
 
 before_install:
-  - unset PETSC_DIR
-  - unset PETSC_ARCH
-  - rm -rf $HOME/.julia/v0.4/PETSc2
   - sudo apt-get update -qq
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
   - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
