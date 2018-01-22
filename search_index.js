@@ -245,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Field Meanings",
     "category": "section",
-    "text": "  CurrentModule = UtilsThe purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).  See Utils.disassembleSolution  and Utils.assembleSolution.shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.disassembleSolution:  Function that takes the a vector such as q_vec and                         scatters it to an array such as q.                         This function must have the signature:                         disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})                         Because this variable is a field of a type, it will be dynamically dispatched.                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.assembleSolution:  Function that takes an array such as res and performs an additive reduction to a vector such as res_vec.                      This function must have the signature:                      assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)                      The argument zero_resvec determines whether res_vec is zeroed before the reduction is performed.                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.                      Thus the default is true.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:  CurrentModule = ODLCommonToolsAbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
+    "text": "  CurrentModule = UtilsThe purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).  See Utils.disassembleSolution  and Utils.assembleSolution.shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.disassembleSolution:  Function that takes the a vector such as q_vec and                         scatters it to an array such as q.                         This function must have the signature:                         disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})                         Because this variable is a field of a type, it will be dynamically dispatched.                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.assembleSolution:  Function that takes an array such as res and performs an additive reduction to a vector such as res_vec.                      This function must have the signature:                      assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)                      The argument zero_resvec determines whether res_vec is zeroed before the reduction is performed.                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.                      Thus the default is true.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:  CurrentModule = ODLCommonToolsAbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) * x_design: vector of design variables that don't fit into any other catagory               (ie. shape variables or other aerodynamic variables like angle of               attack) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
 },
 
 {
@@ -629,7 +629,31 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Physics Interface",
     "title": "PDESolver.evalResidual",
     "category": "Function",
-    "text": "This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)   at some state q.  The state is stored in eqn.q, and eqn.res is populated with   R(q).  Note that these are 3 dimensional arrays.  The physics modules only   interact with the 3 dimensional arrays, never the vectors eqn.q_vec and   eqn.res_vec.  Each physics module must implement this function for its   own subtype of AbstractSolutionData (ie. with a more specific type for   the eqn argument and equallty specific types for the other arguments).   This is important because evalResidual is common to all physics modules,   so a user or some other part of the code can call evalResidual(mesh, sbp   eqn, opts), and Julia's multiple dispatch will figure out the right method   to call based on the type of the eqn argument.\n\nThe evaluation of the residual R(q) should depend only on the data stored in   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated   every time the function is called.  This function is used as a building block   by other parts of the solver, particularly the NonlinearSolvers.  See   interfaces.md for details\n\nInputs:     mesh: an AbstractMesh describing the mesh on which to solve the physics     sbp: an SBP operator     eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module     opts: the options dictionary     t: the current time value, defaults to 0.0\n\n\n\nAdvectionEquationMod.evalResidual\n\nThis function evaluates the Advection equation.\n\nInputs\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nEffectively updates eqn.res – not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec\n\nOutputs\n\n None\n\n\n\nEulerEquationMod.evalResidual\n\nThis function drives the evaluation of the EulerEquations.   It is agnostic to the dimension of the equation. and the types the arguments   are paramaterized on.\n\nThe function calls only high level functions, all of which take the same   four arguments.  Mid level function also take the same arguments.\n\nThe input/output variables are eqn.q and eqn.res, respectively.   eqn.q_vec and eqn.res_vec exist for reusable storage outside the residual   evaluation.  They should never be used inside the residual evaluation.\n\nThe function disassembleSolution takes q_vec and puts it into eqn.q   The function assembleSolution takes eqn.res and puts it into res_vec\n\nArguments:     * mesh  : a mesh object     * sbp   : SBP operator object     * eqn   : an EulerData object     * opts  : options dictionary\n\nThe optional time argument is used for unsteady equations\n\n\n\nSimpleODEMod.evalResidual\n\nThis function evaluates the simple ODE equation.\n\n** Inputs **\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Simple ODE equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nOutputs\n\n None\n\n\n\n"
+    "text": "This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)   at some state q.  The state is stored in eqn.q, and eqn.res is populated with   R(q).  Note that these are 3 dimensional arrays.  The physics modules only   interact with the 3 dimensional arrays, never the vectors eqn.q_vec and   eqn.res_vec.  Each physics module must implement this function for its   own subtype of AbstractSolutionData (ie. with a more specific type for   the eqn argument and equallty specific types for the other arguments).   This is important because evalResidual is common to all physics modules,   so a user or some other part of the code can call evalResidual(mesh, sbp   eqn, opts), and Julia's multiple dispatch will figure out the right method   to call based on the type of the eqn argument.\n\nThe evaluation of the residual R(q) should depend only on the data stored in   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated   every time the function is called.  This function is used as a building block   by other parts of the solver, particularly the NonlinearSolvers.  See   interfaces.md for details\n\nInputs:     mesh: an AbstractMesh describing the mesh on which to solve the physics     sbp: an SBP operator     eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module     opts: the options dictionary     t: the current time value, defaults to 0.0\n\n#TODO: list required options keys\n\n\n\nAdvectionEquationMod.evalResidual\n\nThis function evaluates the Advection equation.\n\nInputs\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nEffectively updates eqn.res – not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec\n\nOutputs\n\n None\n\n\n\nEulerEquationMod.evalResidual\n\nThis function drives the evaluation of the EulerEquations.   It is agnostic to the dimension of the equation. and the types the arguments   are paramaterized on.\n\nThe function calls only high level functions, all of which take the same   four arguments.  Mid level function also take the same arguments.\n\nThe input/output variables are eqn.q and eqn.res, respectively.   eqn.q_vec and eqn.res_vec exist for reusable storage outside the residual   evaluation.  They should never be used inside the residual evaluation.\n\nThe function disassembleSolution takes q_vec and puts it into eqn.q   The function assembleSolution takes eqn.res and puts it into res_vec\n\nArguments:     * mesh  : a mesh object     * sbp   : SBP operator object     * eqn   : an EulerData object     * opts  : options dictionary\n\nThe optional time argument is used for unsteady equations\n\n\n\nSimpleODEMod.evalResidual\n\nThis function evaluates the simple ODE equation.\n\n** Inputs **\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Simple ODE equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nOutputs\n\n None\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.evalHomotopy",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.evalHomotopy",
+    "category": "Function",
+    "text": "This function calls the appropriate homotopy function for the Euler module.\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.evalJacobian",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.evalJacobian",
+    "category": "Function",
+    "text": "Similar function to evalResidual, but instead of computing the   residual, it computes and assembles the Jacobian of the residual with   respect to eqn.q into the system matrix.\n\nThe functions assembleElement and assembleInterface   in NonlinearSolvers should be used to assembles the Jacobians of   individual elements and interfaces into the system matrix.\n\nPhysics modules that can compute element Jacobians directly   should extend this function with a new method, otherwise the coloring   algorithm with be used with evalResidual to compute the   system matrix.  For physics modules that support multiple formuations,   this function should throw an exception if called with an unsupported   formulation.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an SBP operator\neqn: AbstractSolutionData (physics modules should specialize this           argument)\nopts: options dictionary\nassembler: object that must be passed to \nassembleElement\n and                  \nassembleInterface\n\nKeyword Arguments\n\nstart_comm: whether or not to start parallel communication,                  default false because the functions Nonlinear solvers                  have already done parallel communication when this                  function gets called.\n\nOptions Keys\n\nTODO: describe the key that controls whether this function gets called         or not.\n\n\n\nEuler implementation of evalJacobian.  Currently only supports the   Roe scheme.\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.evalHomotopyJacobian",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.evalHomotopyJacobian",
+    "category": "Function",
+    "text": "Evaluates the Jacobian of the evalHomotopy multiplied by the   homotopy parameter lambda.  Conceptually similar to evalJacobian.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an AbstractSBP\neqn: an AbstractSolutionData (physics modules should specialize this           argument)\nopts: options dictionary\nassembler: an object used to assemble contributions into the Jacobian\nlambda: the homotopy parameter\n\n\n\n"
 },
 
 {
@@ -637,7 +661,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Physics Interface",
     "title": "Evaluating the Physics",
     "category": "section",
-    "text": "evalResidual"
+    "text": "evalResidual\nevalHomotopy\nevalJacobian\nevalHomotopyJacobian"
 },
 
 {
@@ -678,54 +702,6 @@ var documenterSearchIndex = {"docs": [
     "title": "PDESolver.run_solver",
     "category": "Method",
     "text": "This function provides a way to invoke any physics solver based on the   specification of the physics in the input file.   This requires loading the input file twice, once to figure out the physics,   and a second time when the physics-specific startup function is called\n\nThe physics module must have already been registered using register_physics\n\nInputs:\n\ninput_file: an AbstractString specifying the path to the input file\n\nOutputs:\n\nmesh: the AbstractMesh object used during the solve\nsbp: the SBP operator used by the solver\neqn: the AbstractSolutionData object during the solve.  At exit,\n     eqn.q_vec should have the final solution in it\nopts: the options dictionary\n\n\n\n"
-},
-
-{
-    "location": "pdesolver_structure.html#PDESolver.call_nlsolver",
-    "page": "PDESolver Structure",
-    "title": "PDESolver.call_nlsolver",
-    "category": "Function",
-    "text": "This function takes in the 4 principle object, fully initialized, and calls   a nonlinear solver on them, according to the options in the dictionary.   The evalResidual function is passed to the nonlinear solver\n\nInputs:     mesh: a mesh object     sbp: an SBP operator     eqn: an equation object     opts: options dictionary, used to determine which nonlinear solver to call     pmesh: mesh used for calculating preconditioning jacobian in Newton's            method, default to using mesh if not specified\n\nOutputs:     none\n\nAliasing restrictions: none (specificaly, mesh and pmesh can be the same                          object)\n\n\n\n"
-},
-
-{
-    "location": "pdesolver_structure.html#PDESolver.createMeshAndOperator-Tuple{Any,Any}",
-    "page": "PDESolver Structure",
-    "title": "PDESolver.createMeshAndOperator",
-    "category": "Method",
-    "text": "Create a SBP operator and a mesh.  This is used by all physics modules   to create the right type of operator and mesh based on the input options.   It is type unstable, but that is ok.\n\nIf the options dictionary specifies a second SBP operator type, a second   mesh and SBP operator will be created and stored in the mesh2 and sbp2\n\nInputs:     opts: options dictonary     dofpernode: number of degrees of freedom on each node\n\nOutputs     sbp : an AbstractSBP     mesh : an AbstractMesh     pmesh : an AbstractMesh, used for preconditioning, may be same object as             mesh     Tsol : DataType that should be used for eqn.q     Tres : DataType that should be used for eqn.res     Tmsh : DataType of mesh.dxidx and friends     mesh_time : time in seconds for creation of mesh (Float64)\n\n\n\n"
-},
-
-{
-    "location": "pdesolver_structure.html#PDESolver.loadRestartState",
-    "page": "PDESolver Structure",
-    "title": "PDESolver.loadRestartState",
-    "category": "Function",
-    "text": "This function is used by all physics modules to load the most recently   saved state when restarting.\n\nInputs\n\nmesh: the mesh\nsbp: AbstractSBP\neqn: AbstractSolutionData, eqn.q_vec is overwritten with the saved state\nopts: options dictionary\n\nThe keys described in the Checkpointer    documentation are used to determine the most recent complete checkpoint.\n\nImplementation notes:      currently pmesh isn't used for anything because checkpointing does not      support mesh adaptation.  When this changes, this function will have to      be updated.\n\n\n\n"
-},
-
-{
-    "location": "pdesolver_structure.html#PDESolver.createMesh",
-    "page": "PDESolver Structure",
-    "title": "PDESolver.createMesh",
-    "category": "Function",
-    "text": "This function creates the mesh object and, optionally, a second mesh   used for preconditioning\n\nInputs:     opts: the options dictionary     sbp: an SBP operator     sbpface: an SBP face operator     topo: an ElementTopology describing the SBP reference element.  Only           needed for 3D DG, otherwise can be any value     Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)     dofpernode: number of degrees of freedom on every node     suffix: suffix added to options dictionary keys that describe the SBP             operator.  See createSBPOperator\n\nAll arguments except opts are typically provided by    createSBPOperator and getDataTypes\n\n\n\n"
-},
-
-{
-    "location": "pdesolver_structure.html#PDESolver.createSBPOperator",
-    "page": "PDESolver Structure",
-    "title": "PDESolver.createSBPOperator",
-    "category": "Function",
-    "text": "This function constructs the SBP operator and the associated SBP face   operator, as specified by the options dictionary.  It also determines   the shape_type that PumiInterface uses to describe the SBP operator to   Pumi.\n\nInputs:     opts: the options dictionary     Tsbp: the DataType specifying the Tsbp passed to the SBP operator           constructor     suffix: this suffix is added to all keys accessed in the options dictionary.             Usually the suffix is either the empty string or an integer.  This             provides a convenient way for the input file to specify several             different SBP operator and have this operator construct them.             Default value is the empty string.\n\nOutputs:     sbp: the SBP operator     sbpface: the SBP face operator     shape_type: an integer passed to the mesh constructor to describe the                 operator     topo: in the 3D DG case, an ElementTopology describing the SBP reference           element, otherwise the integer 0.\n\n\n\n"
-},
-
-{
-    "location": "pdesolver_structure.html#PDESolver.getDataTypes-Tuple{Dict{K,V}}",
-    "page": "PDESolver Structure",
-    "title": "PDESolver.getDataTypes",
-    "category": "Method",
-    "text": "This function determines the datatypes of the elements of the arrays of the   mesh quantities, sbp operator, solution variables and residual.\n\nIf the datatypes cannot be determined, an error is thrown.\n\nInputs:     opts: the options dictionary\n\nOutputs     Tmsh     Tsbp     Tsol     Tres\n\n\n\n"
 },
 
 {
@@ -1094,6 +1070,70 @@ var documenterSearchIndex = {"docs": [
     "title": "Boundaries and Interfaces",
     "category": "section",
     "text": "All physics modules need to apply boundary conditions and all DG schemes and some CG schemes need to do face integrals. The types and functions described here assist in identifying them. PDESolver does not track the faces of elements directly, instead it  tracks the element the face belongs to and the local face number, that is, the index of the face in the list of all faces that belong to the element. Using this representation, every interior face has two representations because it is part of two elements.Boundary\nInterface\ngetElementL\ngetFaceL\nshow(::IO, ::Boundary)\nshow(::IO, ::Interface)"
+},
+
+{
+    "location": "solver/SolverCommon.html#",
+    "page": "Solver Common",
+    "title": "Solver Common",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/SolverCommon.html#SolverCommon.call_nlsolver",
+    "page": "Solver Common",
+    "title": "SolverCommon.call_nlsolver",
+    "category": "Function",
+    "text": "This function takes in the 4 principle object, fully initialized, and calls   a nonlinear solver on them, according to the options in the dictionary.   The evalResidual function is passed to the nonlinear solver\n\nInputs:     mesh: a mesh object     sbp: an SBP operator     eqn: an equation object     opts: options dictionary, used to determine which nonlinear solver to call     pmesh: mesh used for calculating preconditioning jacobian in Newton's            method, default to using mesh if not specified\n\nOutputs:     none\n\nAliasing restrictions: none (specificaly, mesh and pmesh can be the same                          object)\n\n\n\n"
+},
+
+{
+    "location": "solver/SolverCommon.html#SolverCommon.createMeshAndOperator-Tuple{Any,Any}",
+    "page": "Solver Common",
+    "title": "SolverCommon.createMeshAndOperator",
+    "category": "Method",
+    "text": "Create a SBP operator and a mesh.  This is used by all physics modules   to create the right type of operator and mesh based on the input options.   It is type unstable, but that is ok.\n\nIf the options dictionary specifies a second SBP operator type, a second   mesh and SBP operator will be created and stored in the mesh2 and sbp2\n\nInputs:     opts: options dictonary     dofpernode: number of degrees of freedom on each node\n\nOutputs     sbp : an AbstractSBP     mesh : an AbstractMesh     pmesh : an AbstractMesh, used for preconditioning, may be same object as             mesh     Tsol : DataType that should be used for eqn.q     Tres : DataType that should be used for eqn.res     Tmsh : DataType of mesh.dxidx and friends     mesh_time : time in seconds for creation of mesh (Float64)\n\n\n\n"
+},
+
+{
+    "location": "solver/SolverCommon.html#SolverCommon.loadRestartState",
+    "page": "Solver Common",
+    "title": "SolverCommon.loadRestartState",
+    "category": "Function",
+    "text": "This function is used by all physics modules to load the most recently   saved state when restarting.\n\nInputs\n\nmesh: the mesh\nsbp: AbstractSBP\neqn: AbstractSolutionData, eqn.q_vec is overwritten with the saved state\nopts: options dictionary\n\nThe keys described in the Checkpointer    documentation are used to determine the most recent complete checkpoint.\n\nImplementation notes:      currently pmesh isn't used for anything because checkpointing does not      support mesh adaptation.  When this changes, this function will have to      be updated.\n\n\n\n"
+},
+
+{
+    "location": "solver/SolverCommon.html#SolverCommon.createMesh",
+    "page": "Solver Common",
+    "title": "SolverCommon.createMesh",
+    "category": "Function",
+    "text": "This function creates the mesh object and, optionally, a second mesh   used for preconditioning\n\nInputs:     opts: the options dictionary     sbp: an SBP operator     sbpface: an SBP face operator     topo: an ElementTopology describing the SBP reference element.  Only           needed for 3D DG, otherwise can be any value     Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)     dofpernode: number of degrees of freedom on every node     suffix: suffix added to options dictionary keys that describe the SBP             operator.  See createSBPOperator\n\nAll arguments except opts are typically provided by    createSBPOperator and getDataTypes\n\n\n\n"
+},
+
+{
+    "location": "solver/SolverCommon.html#SolverCommon.createSBPOperator",
+    "page": "Solver Common",
+    "title": "SolverCommon.createSBPOperator",
+    "category": "Function",
+    "text": "This function constructs the SBP operator and the associated SBP face   operator, as specified by the options dictionary.  It also determines   the shape_type that PumiInterface uses to describe the SBP operator to   Pumi.\n\nInputs:     opts: the options dictionary     Tsbp: the DataType specifying the Tsbp passed to the SBP operator           constructor     suffix: this suffix is added to all keys accessed in the options dictionary.             Usually the suffix is either the empty string or an integer.  This             provides a convenient way for the input file to specify several             different SBP operator and have this operator construct them.             Default value is the empty string.\n\nOutputs:     sbp: the SBP operator     sbpface: the SBP face operator     shape_type: an integer passed to the mesh constructor to describe the                 operator     topo: in the 3D DG case, an ElementTopology describing the SBP reference           element, otherwise the integer 0.\n\n\n\n"
+},
+
+{
+    "location": "solver/SolverCommon.html#SolverCommon.getDataTypes-Tuple{Dict{K,V}}",
+    "page": "Solver Common",
+    "title": "SolverCommon.getDataTypes",
+    "category": "Method",
+    "text": "This function determines the datatypes of the elements of the arrays of the   mesh quantities, sbp operator, solution variables and residual.\n\nIf the datatypes cannot be determined, an error is thrown.\n\nInputs:     opts: the options dictionary\n\nOutputs     Tmsh     Tsbp     Tsol     Tres\n\n\n\n"
+},
+
+{
+    "location": "solver/SolverCommon.html#Solver-Common-1",
+    "page": "Solver Common",
+    "title": "Solver Common",
+    "category": "section",
+    "text": "This page describes some functions that are used by all physics modules as part of initialization of a simulationModules = [SolverCommon]"
 },
 
 {
@@ -2153,30 +2193,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData{Topt},Array{Tsol,1}}",
-    "page": "Adjoint",
-    "title": "AdvectionEquationMod.calcAdjoint",
-    "category": "Method",
-    "text": "AdvectionEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization. The user always call this function in order to compute the adjoint.\n\nInputs\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is the type                       associated with the adjoint of the functional being                       computed and holds all the necessary data.\n \nadjoint_vec\n : Adjoint vector corresponding to the particular functional                    computed. If called in parallel, the vector should be                    distributed across \neqn.comm\n, just like \neqn.q_vec\n \nfunctional_number\n : The functional for which the adjoint vector is being,                          default = 1                          TODO: this is unused?\n\nOutputs\n\n None\n\n\n\n"
-},
-
-{
-    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt},Any}",
-    "page": "Adjoint",
-    "title": "AdvectionEquationMod.calcFunctionalDeriv",
-    "category": "Method",
-    "text": "AdvectionEquationMod.calcFunctionalDeriv\n\nComputes a 3D array of the derivative of a functional w.r.t eqn.q on all mesh nodes.\n\nInputs\n\n \nmesh\n  : Abstract mesh object\n \nsbp\n   : Summation-By-Parts operator\n \neqn\n   : Advection equation object\n \nopts\n  : Options dictionary\n \nfunctionalData\n : Object of subtype of AbstractOptimizationData. This is                       the type associated with the adjoint of the functional                       being computed and holds all the necessary data.\n \nfunc_deriv_arr\n : 3D array that stors the derivative of functional w.r.t                       eqn.q. It has a structure [1, numnodes_per_element, numEl]\n\nOutputs\n\n None\n\n\n\n"
-},
-
-{
-    "location": "solver/advection/adjoint.html#AdvectionEquationMod.calcIntegrandDeriv-Tuple{Any,AdvectionEquationMod.ParamType{Tsol,Tres,2},Any,Any,Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt}}",
-    "page": "Adjoint",
-    "title": "AdvectionEquationMod.calcIntegrandDeriv",
-    "category": "Method",
-    "text": "AdvectionEquationMod.calcIntegrandDeriv\n\nCompute the derivative of the integrand at a point. It presently uses complex step to compute the derivative\n\nInputs\n\n \nopts\n    : Input dictionary\n \nparams\n  : the ParamType for the equation\n \nnx\n & \nny\n : Normal vectors\n \nq\n       : Solution variable\n \nfunctionalData\n : Functional object\n\nOutputs\n\n \nintegrand_deriv\n : derivative of the functor w.r.t q\n\n\n\n"
-},
-
-{
     "location": "solver/advection/adjoint.html#Advection-Equation-Steady-Adjoint-1",
     "page": "Adjoint",
     "title": "Advection Equation Steady Adjoint",
@@ -2193,15 +2209,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractOptimizationData{Topt}}",
-    "page": "Boundary Functional",
-    "title": "AdvectionEquationMod.evalFunctional",
-    "category": "Method",
-    "text": "AdvectionEquationMod.evalFunctional\n\nHight level function that evaluates functionals specified in the options dictionary. The user must call this function for functional evaluation.This function is agnostic which type of a functional is being computed and calls a mid level type specific function for the actual functional evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of the functional being computed.\n \nfunctional_number\n : Optional argument. This needs to be specified for all                          non-objective functionals being computed, if there are                          more than 1 of them. Default = 1\n\n\n\n"
-},
-
-{
-    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.calcBndryFunctional-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt}}",
+    "location": "solver/advection/boundary_functional.html#AdvectionEquationMod.calcBndryFunctional-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractIntegralFunctional{Topt}}",
     "page": "Boundary Functional",
     "title": "AdvectionEquationMod.calcBndryFunctional",
     "category": "Method",
@@ -2225,6 +2233,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/advection/boundary_functional.html#PDESolver.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},AdvectionEquationMod.AdvectionData{Tsol,Tres,Tdim},Any,ODLCommonTools.AbstractFunctional{Topt}}",
+    "page": "Boundary Functional",
+    "title": "PDESolver.evalFunctional",
+    "category": "Method",
+    "text": "AdvectionEquationMod.evalFunctional\n\nHight level function that evaluates functionals specified in the options dictionary. The user must call this function for functional evaluation.This function is agnostic which type of a functional is being computed and calls a mid level type specific function for the actual functional evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of the functional being computed.\n\n\n\n"
+},
+
+{
     "location": "solver/advection/boundary_functional.html#Advection-Boundary-Functional-1",
     "page": "Boundary Functional",
     "title": "Advection Boundary Functional",
@@ -2237,7 +2253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Boundary Functional",
     "title": "AdvectionEquationMod.QfluxData",
     "category": "Type",
-    "text": "###AdvectionEquationMod.QfluxData\n\nData type for storing relevant information pertaining to an a functional or an objective function.\n\nMembers\n\n \nis_objective_fn\n : Bool whether the functional object is an objective                        function or not.\n \ngeom_faces_functional\n : Geometric faces on which the functional is to be                              computed.\n \nval\n : Computed value of the functional\n \ntarget_qFlux\n : Target value for the functional qFlux\n\nThe object is constructed using an inner constructor with the following \n\nArguments\n\n \nmesh\n : Abstract mesh type\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Advection equation object\n \ngeom_faces_functional\n : Geometric faces on which the functional is to be                               computed\n\n\n\n"
+    "text": "###AdvectionEquationMod.QfluxData\n\nData type for storing relevant information pertaining to an a functional or an objective function.\n\nMembers\n\n \nbcnums\n : boundary condition groups on which the functional is to be                              computed.\n \nval\n : Computed value of the functional\n \ntarget_qFlux\n : Target value for the functional qFlux\n\n\n\n"
 },
 
 {
@@ -2245,7 +2261,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Boundary Functional",
     "title": "AdvectionEquationMod.IntegralQData",
     "category": "Type",
-    "text": "Functional that integrates the solution q over the specified boundary(/ies)\n\nFields\n\ngeom_face_functional: the geometric faces the functional is computed over\nval: the value of the functional, initially 0.0\n\nConstructor Argument\n\nmesh\nsbp\neqn\nopts\ngeom_faces_functional: array of faces, used as the field of the same name\n\n\n\n"
+    "text": "Functional that integrates the solution q over the specified boundary(/ies)\n\nFields\n\nbcnums: the boundary condition groups the functional is computed over\nval: the value of the functional, initially 0.0\n\n\n\n"
 },
 
 {
@@ -2293,7 +2309,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Datatypes",
     "title": "EulerEquationMod.EulerData_",
     "category": "Type",
-    "text": "EulerEquationMod.EulerData_\n\nThis type is an implementation of the abstract EulerData.  It is   parameterized by the residual datatype Tres and the mesh datatype Tmsh   because it stores some arrays of those types.  Tres is the 'maximum' type of   Tsol and Tmsh, where Tsol is the type of the conservative variables.   It is also paremterized by var_type, which should be a symbol describing   the set of variables stored in eqn.q.  Currently supported values are   :conservative and :entropy, which indicate the conservative variables and   the entropy variables described in:\n\n'A New Finite Element Formulation for   Computational Fluid Dynamics: Part I' by Hughes et al.`\n\nEventually there will be additional implementations of EulerData,   specifically a 3D one.\n\nStatic Parameters:\n\nTsol : datatype of variables solution variables, ie. the            q vector and array\nTres : datatype of residual. ie. eltype(res_vec)\nTdim : dimensionality of equation, integer, (2 or 3, currently only 2 is            supported).\nTmsh : datatype of mesh related quantities\nvar_type : symbol describing variables used in weak form, (:conservative                or :entropy)\n\n\n\n"
+    "text": "EulerEquationMod.EulerData_\n\nThis type is an implementation of the abstract EulerData.  It is   parameterized by the residual datatype Tres and the mesh datatype Tmsh   because it stores some arrays of those types.  Tres is the 'maximum' type of   Tsol and Tmsh, where Tsol is the type of the solution variables.   It is also paramterized by var_type, which should be a symbol describing   the set of variables stored in eqn.q.  Currently supported values are   :conservative and :entropy, which indicate the conservative variables and   the entropy variables described in:\n\n'A New Finite Element Formulation for   Computational Fluid Dynamics: Part I' by Hughes et al.`\n\nNote: this constructor does not fully populate all fields.  The           [init])@ref) function must be called to finish initialization.\n\nStatic Parameters:\n\nTsol : datatype of variables solution variables, ie. the            q vector and array\nTres : datatype of residual. ie. eltype(res_vec)\nTdim : dimensionality of equation, integer, (2 or 3, currently only 2 is            supported).\nTmsh : datatype of mesh related quantities\nvar_type : symbol describing variables used in weak form, (:conservative                or :entropy)\n\nFields\n\nThis type has many fields, not all of them are documented here.  A few   of the most important ones are:\n\ncomm: MPI communicator\ncommsize: size of MPI communicator\nmyrank: MPI rank of this process\n\nWhen computing the jacobian explicitly (options key calc_jac_explicit),   Tsol and Tres are typically Float64, however node-level operations    sometime use complex numbers or dual numbers.  Also, some operations on   entropy variables require doing parts of the computation with   conservative variables.  To support these use-cases, the fields\n\nparams: ParamType object with \nTsol\n, \nTres\n, \nTmsh\n, and \nvar_type\n matching the equation object\nparams_conservative: ParamType object with \nTsol, Tres\n, and \nTmsh\n matching the \nEulerData_\n object, but \nvar_type = :conservative\nparams_entropy: similar to \nparam_conservative\n, but \nvar_type = :entropy\nparams_complex: ParamType object with \nTmsh\n and \nvar_type\n matching the \nEulerData_\n object, but \nTsol = Tres = Complex128\n \n\nexist.\n\n\n\n"
 },
 
 {
@@ -2310,22 +2326,6 @@ var documenterSearchIndex = {"docs": [
     "title": "EulerEquationMod.EulerData",
     "category": "Type",
     "text": "EulerEquationMod.EulerData\n\nThis type, although abstract, is the type functions should use for their   input arguments if they do any operations on the solution data object.   It stores all data used in evaluting the Euler Equations.\n\nIt is paramaterized on the types Tsol, the type of the   conservative variables q, and Tdim, the dimension of the equation\n\nIt should have the following fields:\n\n* res_type : datatype of residual (depreciated)\n* q  : 3D array holding conservative variables\n* q_vec  : vector to assemble q into\n* aux_vars : 3D array holding auxiliary variables\n* flux_parametric : 4D array [ndof per node, nnodes per element, nelements, Tdim]\n         holding the Euler flux in the xi and eta directions\n* res  : 3D array holding residual\n* res_vec   : vector form of res\n* edgestab_alpha : paramater used for edge stabilization, 4d array\n* bndryflux : 3D array holding boundary flux data\n* stabscale : 2D array holding edge stabilization scale factor\n* M : vector holding the mass matrix\n* Minv :  vector holding inverse mass matrix\n# Minv3D :  3D array holding inverse mass matrix for application to res (not res_vec)\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/types.html#EulerEquationMod.BoundaryForceData",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.BoundaryForceData",
-    "category": "Type",
-    "text": "###EulerEquationMod.BoundaryForceData\n\nComposite data type for storing data pertaining to the boundaryForce. It holds lift and drag values\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/types.html#EulerEquationMod.MassFlowData",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.MassFlowData",
-    "category": "Type",
-    "text": "Type for computing the mass flow rate over a boundary (integral rho*u dot n   dGamma)\n\n\n\n"
 },
 
 {
@@ -2393,51 +2393,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/types.html#EulerEquationMod.DragData",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.DragData",
-    "category": "Type",
-    "text": "EulerEquationMod.DragData\n\nSubtype of AbstractOptimizationData. Stores all the information relevant to computing an objective function pertaining to drag. Presently its an empty type\n\n\n\n"
-},
-
-{
     "location": "solver/euler/types.html#EulerEquationMod.FaceElementIntegralType",
     "page": "Datatypes",
     "title": "EulerEquationMod.FaceElementIntegralType",
     "category": "Type",
     "text": "Functor type for faceElementIntegrals.  These integrals operate on a face,   but require data from the entirety of the elements that make up the   face, rather than data interpolated to the face\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/types.html#EulerEquationMod.LiftData",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.LiftData",
-    "category": "Type",
-    "text": "EulerEquationMod.LiftData\n\nSubtype of AbstractOptimizationData. Stores all the information relevant to computing an objective function pertaining to lift. Presently its an empty type\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/types.html#EulerEquationMod.PressureData",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.PressureData",
-    "category": "Type",
-    "text": "EulerEquationMod.PressureData\n\nSubtype of AbstractOptimizationData. Stores all the information relevant to computing an objective function pertaining to pressure coefficeint\n\nMembers\n\n \ntargetCp_arr\n : An array of arrays that stores the target coefficient of                     pressure. length(targetCp_arr) = number of geometric edges                     over which the functional is being computed. Each sub array                     has dimensions (sbpface.numnodes, nfaces) \n(from calcBoundarFlux                     in bc.jl)\n \nnodal_info\n : 1D array of indices for one node needed to acces \ntargetCp_arr\n                   at a particular data point.                   nodal_info[1] = geometric edge number                   nodal_info[2] = sbpface node number                   nodal_info[3] = element face number on the geometric edge\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/types.html#EulerEquationMod.createFunctionalData",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.createFunctionalData",
-    "category": "Function",
-    "text": "###EulerEquationMod.createFunctionalData\n\nCreates an object for functional computation. This function needs to be called the same number of times as the number of functionals EXCLUDING the objective function are being computed\n\nArguments\n\nmesh\n : Abstract PUMI mesh\nsbp\n  : Summation-by-parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\nfunctional_number\n : Which functional object is being generated. Default = 1\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/types.html#EulerEquationMod.createObjectiveFunctionalData-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.createObjectiveFunctionalData",
-    "category": "Method",
-    "text": "###EulerEquationMod.createObjectiveFunctionalData\n\nFunction for create an object for functional and adjoint computation where the functional is an objective function in an optimization.\n\nArguments\n\nmesh\n : Abstract PUMI mesh\nsbp\n  : Summation-by-parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\n\n\n\n"
 },
 
 {
@@ -2461,7 +2421,79 @@ var documenterSearchIndex = {"docs": [
     "page": "Volume Integrals",
     "title": "Volume Integrals",
     "category": "section",
+    "text": "  CurrentModule = EulerEquationModTODO: finish this page (after euler_funcs.jl has been broken up"
+},
+
+{
+    "location": "solver/euler/volume.html#EulerEquationMod.evalVolumeIntegrals",
+    "page": "Volume Integrals",
+    "title": "EulerEquationMod.evalVolumeIntegrals",
+    "category": "Function",
+    "text": "EulerEquationMod.evalVolumeIntegrals\n\nThis function evaluates the volume integrals of the Euler equations by   calling the appropriate SBP function on the Euler flux stored in   eqn.flux_parametric.   This function knows the dimension of the equation and does the right   thing for all dimensions.  eqn.res is updated with the result\n\nThis is a mid level function.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/volume.html#Entry-Point-1",
+    "page": "Volume Integrals",
+    "title": "Entry Point",
+    "category": "section",
+    "text": "evalVolumeIntegrals"
+},
+
+{
+    "location": "solver/euler/volume_diff.html#",
+    "page": "Volume Integrals Jacobian",
+    "title": "Volume Integrals Jacobian",
+    "category": "page",
     "text": ""
+},
+
+{
+    "location": "solver/euler/volume_diff.html#Volume-Terms-Differentiated-1",
+    "page": "Volume Integrals Jacobian",
+    "title": "Volume Terms Differentiated",
+    "category": "section",
+    "text": "  CurrentModule = EulerEquationModThis page documents the differentiated version of functions used to evaluate the volume integrals"
+},
+
+{
+    "location": "solver/euler/volume_diff.html#EulerEquationMod.evalVolumeIntegrals_diff",
+    "page": "Volume Integrals Jacobian",
+    "title": "EulerEquationMod.evalVolumeIntegrals_diff",
+    "category": "Function",
+    "text": "Differentiated version of evalVolumeIntegrals.  Throws an error   for unsupported schemes.\n\nInputs\n\nmesh\nsbp\neqn\nopts\nassembler\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/volume_diff.html#Entry-Point-1",
+    "page": "Volume Integrals Jacobian",
+    "title": "Entry Point",
+    "category": "section",
+    "text": "evalVolumeIntegrals_diff"
+},
+
+{
+    "location": "solver/euler/volume_diff.html#EulerEquationMod.calcEulerFlux_diff-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Tsol,2}}",
+    "page": "Volume Integrals Jacobian",
+    "title": "EulerEquationMod.calcEulerFlux_diff",
+    "category": "Method",
+    "text": "Computes the jacobian of calcEulerFlux with respect to q.   Methods are available for 2D and 3D\n\nInputs\n\nparams: ParamType, conservative variables only\nq: vector of conservative variables at node\naux_vars: auxiliary variables at the node\ndir: direction vector (possibly scaled) to compute the flux jacobian in\n\nInputs/Outputs\n\nFjac: flux jacobian, numDofPerNode x numDofPerNode\n\nAliasing restrictions: params.p_dot is overwritten\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/volume_diff.html#EulerEquationMod.calcPressure_diff-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Volume Integrals Jacobian",
+    "title": "EulerEquationMod.calcPressure_diff",
+    "category": "Method",
+    "text": "Computes the gradient of pressure with respect to q at a node.   Methods are available in 2D and 3D\n\nInputs\n\nparams: ParamType, conservative variables only\nq: vector of conservative variables at the node\n\nInputs/Outputs\n\npdot: vector of length numDofPerNode, overwritten with derivative of \np\n             wrt \nq\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/volume_diff.html#Functions-1",
+    "page": "Volume Integrals Jacobian",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:function]\n  Pages = [\"euler/euler_funcs_diff.jl\"]"
 },
 
 {
@@ -2694,6 +2726,102 @@ var documenterSearchIndex = {"docs": [
     "title": "Flux Functors",
     "category": "section",
     "text": "TODO: move this to another file (both code and docs)  Modules = [EulerEquationMod]\n  Order = [:type]\n  Pages = [\"euler/flux.jl\"]"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#",
+    "page": "Face Integrals Jacobian",
+    "title": "Face Integrals Jacobian",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/flux_diff.html#sec:euler_face_integrals_diff-1",
+    "page": "Face Integrals Jacobian",
+    "title": "Face Integrals Differentiated",
+    "category": "section",
+    "text": "  CurrentModule = EulerEquationModThis page describes the functions that evaluate the face and shared face integrals."
+},
+
+{
+    "location": "solver/euler/flux_diff.html#EulerEquationMod.evalFaceIntegrals_diff",
+    "page": "Face Integrals Jacobian",
+    "title": "EulerEquationMod.evalFaceIntegrals_diff",
+    "category": "Function",
+    "text": "Differentiated version of evalFaceIntegrals_diff.  Throws an   error for unsupported schemes.\n\nInputs\n\nmesh\nsbp\neqn\nopts\nassembler\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#EulerEquationMod.evalSharedFaceIntegrals_diff",
+    "page": "Face Integrals Jacobian",
+    "title": "EulerEquationMod.evalSharedFaceIntegrals_diff",
+    "category": "Function",
+    "text": "Differentiated version of evalSharedFaceIntegrals.   Currently only supports opts[parallel_data] == element because it is   used for Jacobian calculation.\n\nInputs\n\nmesh\nsbp\neqn\nopts\nassembler\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#Entry-Point-1",
+    "page": "Face Integrals Jacobian",
+    "title": "Entry Point",
+    "category": "section",
+    "text": "evalFaceIntegrals_diff\nevalSharedFaceIntegrals_diff"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#EulerEquationMod.calcSharedFaceIntegrals_element_diff-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T}}",
+    "page": "Face Integrals Jacobian",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals_element_diff",
+    "category": "Method",
+    "text": "Differentiated version of   calcSharedFaceIntegrals_element_inner.   It presents the interface required by finishExchangeData\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#EulerEquationMod.calcSharedFaceIntegrals_nopre_element_inner_diff-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,Utils.SharedFaceData{T},ODLCommonTools.FluxType_diff,PDESolver.AssembleElementData}",
+    "page": "Face Integrals Jacobian",
+    "title": "EulerEquationMod.calcSharedFaceIntegrals_nopre_element_inner_diff",
+    "category": "Method",
+    "text": "Differentiated version of calcSharedFaceIntegrals_nopre_element_inner,\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#EulerEquationMod.getFluxFunctors_diff-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},Any,Any,Any}",
+    "page": "Face Integrals Jacobian",
+    "title": "EulerEquationMod.getFluxFunctors_diff",
+    "category": "Method",
+    "text": "Gets the functor for the differentiated version of the flux function and   stores is to eqn.flux_func_diff\n\nInputs\n\nmesh\nsbp\neqn\nopts\n\nOptions Keys\n\nUses the Flux_name key to get the functor (same as for the non-differentiated   version). \n\nThis function only gets the functor if the jacobian will be computed explicitly   as specified by calc_jac_explicit, otherwise it uses a functor that   will throw an error if used.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#EulerEquationMod.FluxDict_diff",
+    "page": "Face Integrals Jacobian",
+    "title": "EulerEquationMod.FluxDict_diff",
+    "category": "Constant",
+    "text": "Container for all differentiated flux functors.  Maps name to object.   The names are exactly the same as the non-differentiated functor.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#Functions-1",
+    "page": "Face Integrals Jacobian",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:function, :constant, :macro]\n  Pages = [\"euler/flux_diff.jl\"]"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#EulerEquationMod.RoeFlux_diff",
+    "page": "Face Integrals Jacobian",
+    "title": "EulerEquationMod.RoeFlux_diff",
+    "category": "Type",
+    "text": "Calls the RoeSolver_diff\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_diff.html#Flux-Functors-1",
+    "page": "Face Integrals Jacobian",
+    "title": "Flux Functors",
+    "category": "section",
+    "text": "TODO: move this to another file (both code and docs)  Modules = [EulerEquationMod]\n  Order = [:type]\n  Pages = [\"euler/flux_diff.jl\"]"
 },
 
 {
@@ -3081,6 +3209,70 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/bc_diff.html#",
+    "page": "Boundary Integrals Jacobian",
+    "title": "Boundary Integrals Jacobian",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/bc_diff.html#Boundary-Integrals-Differentiated-1",
+    "page": "Boundary Integrals Jacobian",
+    "title": "Boundary Integrals Differentiated",
+    "category": "section",
+    "text": "  CurrentModule = EulerEquationModThis page describes how the boundary integral contribution to the Jacobian is calculated."
+},
+
+{
+    "location": "solver/euler/bc_diff.html#EulerEquationMod.evalBoundaryIntegrals_diff",
+    "page": "Boundary Integrals Jacobian",
+    "title": "EulerEquationMod.evalBoundaryIntegrals_diff",
+    "category": "Function",
+    "text": "Differentiated version of evalBoundaryIntegrals.\n\nInputs\n\nmesh\nsbp\neqn\nopts\nassembler.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc_diff.html#Entry-Point-1",
+    "page": "Boundary Integrals Jacobian",
+    "title": "Entry Point",
+    "category": "section",
+    "text": "evalBoundaryIntegrals_diff"
+},
+
+{
+    "location": "solver/euler/bc_diff.html#EulerEquationMod.calcBoundaryFlux_nopre_diff-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol1,Tres1,Tdim,var_type},ODLCommonTools.BCType,UnitRange{T<:Real},AbstractArray{ODLCommonTools.Boundary,1},PDESolver.AssembleElementData}",
+    "page": "Boundary Integrals Jacobian",
+    "title": "EulerEquationMod.calcBoundaryFlux_nopre_diff",
+    "category": "Method",
+    "text": "Computes the jacobian of the boundary condition terms for a given   BC and assembles it into the Jacobian.  See calcBoundaryFlux_nopre.   Note that this function does not depend on any quatiites being precomputed.\n\nInputs\n\nmesh\nsbp\neqn\nfunctor: this is the regular BCType functor, not BCType_diff\nidx_range: range of indices in mesh.bndryfaces that bndry_facenums                 came from\nbndry_facenums: array of Boundary objects to compute the BC for\nassembler: AssembleElementData needed to assemble the element level                 jacobian into the system jacobian\n\nImplementation Notes\n\nCurrently this computes the jacobian of the flux with respect to the   face via complex step (using eqn.params_complex).  This should be replaced   with dual numbers eventually\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc_diff.html#EulerEquationMod.getBCFluxes_diff-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,PDESolver.AssembleElementData}",
+    "page": "Boundary Integrals Jacobian",
+    "title": "EulerEquationMod.getBCFluxes_diff",
+    "category": "Method",
+    "text": "Computes the jacobian of the boundary condition terms computed by   getBCFluxes and assembles them into the Jacobian\n\nInputs\n\nmesh\nsbp\neqn\nopts\nassembler: AssembleElementData\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc_diff.html#Functions-1",
+    "page": "Boundary Integrals Jacobian",
+    "title": "Functions",
+    "category": "section",
+    "text": "  Modules = [EulerEquationMod]\n  Order = [:function]\n  Pages = [\"euler/bc_diff.jl\"]"
+},
+
+{
+    "location": "solver/euler/bc_diff.html#Boundary-Condition-Functors-1",
+    "page": "Boundary Integrals Jacobian",
+    "title": "Boundary Condition Functors",
+    "category": "section",
+    "text": "The same functors used to compute the boundary integral are also used to compute the Jacobian contribution."
+},
+
+{
     "location": "solver/euler/ic.html#",
     "page": "Initial Conditions",
     "title": "Initial Conditions",
@@ -3142,6 +3334,14 @@ var documenterSearchIndex = {"docs": [
     "title": "EulerEquationMod.ICFreeStream",
     "category": "Method",
     "text": "EulerEquationMod.ICFreeStream\n\nSets all components of the solution to the free stream condition according   to the angle of attack and and Mach number.\n\nInputs:     mesh     sbp     eqn     opts\n\nInputs/Outputs:      u0: vector to populate with the solution\n\nAliasing restrictions: none.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/ic.html#EulerEquationMod.ICInvChannel-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,N}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICInvChannel",
+    "category": "Method",
+    "text": "Initial condition for SU2 bump in inviscid channel case.  See also   The subsonic inflow and subsonic outflow boundary conditions.\n\n\n\n"
 },
 
 {
@@ -3409,6 +3609,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/common.html#EulerEquationMod.calcInvChannelIC-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcInvChannelIC",
+    "category": "Method",
+    "text": "Initial condition for SU2 inviscid channel\n\n\n\n"
+},
+
+{
     "location": "solver/euler/common.html#EulerEquationMod.calcIsentropicVortex-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,N},AbstractArray{Tsol,1}}",
     "page": "Common Functions",
     "title": "EulerEquationMod.calcIsentropicVortex",
@@ -3641,26 +3849,26 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver",
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,1},AbstractArray{Tres,1}}",
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
-    "category": "Function",
-    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs:   q  : conservative variables of the fluid   qg : conservative variables of the boundary   aux_vars : vector of all auxiliary variables at this node   dxidx : dxidx matrix at the node   nrm : sbp face normal vector   params : ParamType   use_efix: 1 = use entropy fix, 0 = do not use entropy fix (integer)\n\nOutputs:     flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
+    "category": "Method",
+    "text": "EulerEquationMod.RoeSolver\n\nThis calculates the Roe flux for boundary conditions at a node. The inputs   must be in conservative variables.\n\nInputs    * params : ParamType    * q  : conservative variables of the fluid    * qg : conservative variables of the boundary    * aux_vars : vector of all auxiliary variables at this node    * nrm : scaled face normal vector (x-y space, outward normal of the face q         lives on)\n\nOutputs    * flux : vector to populate with solution\n\nAliasing restrictions:  none of the inputs can alias params.res_vals1,                           params.res_vals2, params.q_vals, params.flux_vals1, or                           params.sat\n\n\n\n"
 },
 
 {
-    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver",
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver-Tuple{EulerEquationMod.ParamType{3,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,1},AbstractArray{Tres,1}}",
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver",
-    "category": "Function",
+    "category": "Method",
     "text": "The main Roe solver.  Populates flux with the computed flux.\n\n\n\n"
 },
 
 {
-    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver_revm",
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.RoeSolver_revm-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,1},AbstractArray{Tres,1},AbstractArray{Tmsh,1}}",
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.RoeSolver_revm",
-    "category": "Function",
+    "category": "Method",
     "text": "###EulerEquationMod.RoeSolver_revm\n\nReverse mode of EulerEquationMod.RoeSolver. This function computes the reverse mode of the Roe flux w.r.t the mesh metrics\n\nInputs\n\nparams\n : Parameter object\nq\n  : Conservative variable of the fluid\nqg\n : Conservative variable of the boundary or the adjacent element\naux_vars\n : Auxiliary variables\nnrm\n : Element face normal vector in the physical space\nflux_bar\n : Flux value which needs to get differentiated\n\nOutput\n\nnrm_bar\n : derivaitve of the flux_bar w.r.t the mesh metrics\n\nAliasing Restrictions: Same as the forward function\n\n\n\n"
 },
 
@@ -3721,18 +3929,18 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcSAT",
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcSAT-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.calcSAT",
-    "category": "Function",
-    "text": "###EulerEquationMod.calcSAT\n\nComputes the simultaneous approximation term for use in computing the numerical flux\n\nArguments\n\nparams\n : Parameter object of type ParamType\nnrm\n : Normal to face in the physical space\ndq\n  : Boundary condition penalty variable\nsat\n : Simultaneous approximation Term\nu\n   : Velocity in the X-direction in physical space\nv\n   : Velocity in the Y-direction in physical space\nH\n   : Total enthalpy\n\n\n\n"
+    "category": "Method",
+    "text": "###EulerEquationMod.calcSAT\n\nComputes the simultaneous approximation term for use in computing the numerical flux, namely:\n\n0.5*(|A_hat| - A)(qL - qR)\n\nArguments\n\nparams\n : Parameter object of type ParamType\n`roe_vars: [u, v, H] at roe average state\ndq\n  : difference between left and right states\nnrm\n : Normal to face in the physical space\nsat\n : Simultaneous approximation Term\n\n\n\n"
 },
 
 {
-    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcSAT_revm",
+    "location": "solver/euler/flux_functions.html#EulerEquationMod.calcSAT_revm-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1},AbstractArray{Tsol,1},Tsol,AbstractArray{Tsol,1},AbstractArray{Tmsh,1}}",
     "page": "Numerical Flux Functions",
     "title": "EulerEquationMod.calcSAT_revm",
-    "category": "Function",
+    "category": "Method",
     "text": "###EulerEquationMod.calcSAT_revm\n\nReverse mode of calcSAT\n\nInputs * params : Parameter object of type ParamType * nrm : Normal to face in the physical space * dq  : Boundary condition penalty variable * vel : Velocities along X & Y directions in the physical space * H   : Total enthalpy * sat_bar : Inpute seed for sat flux whose derivative needs to be computed\n\nOutput\n\nnrm_bar\n : derivative of \nsat_bar\n w.r.t physical normal vector\n\n\n\n"
 },
 
@@ -3742,6 +3950,30 @@ var documenterSearchIndex = {"docs": [
     "title": "Numerical Flux Functions",
     "category": "section",
     "text": "This page documents the numerical flux functions available in the codebc_solvers.jl should be renamed to this  CurrentModule = EulerEquationModModules = [EulerEquationMod]\nPages = [\"euler/bc_solvers.jl\"]"
+},
+
+{
+    "location": "solver/euler/flux_functions_diff.html#",
+    "page": "Numerical Flux Functions Jacobian",
+    "title": "Numerical Flux Functions Jacobian",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/flux_functions_diff.html#EulerEquationMod.RoeSolver_diff-Tuple{EulerEquationMod.ParamType{2,:conservative,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,1},AbstractArray{Tres,2},AbstractArray{Tres,2}}",
+    "page": "Numerical Flux Functions Jacobian",
+    "title": "EulerEquationMod.RoeSolver_diff",
+    "category": "Method",
+    "text": "Differentiated version of the RoeSolver.  Computes the jacobian   of the flux with respect to q and qg.  Methods are available for 2D   and 3D\n\nInputs\n\nparams: ParamType, conservative variables only\nq: vector of conservative variables for the left state\nqg: vector of conservative variables for the right state\naux_vars: auxiliary variables for the left state\nnrm: scaled normal vector in x-y space (outward wrt the element q lives on\n\nInputs/Outputs\n\nfluxL_dot: flux jacobian wrt \nq\n, numDofPerNode x numDofPerNode\nfluxR_dot: flux jacobian wrt \nqg\n, numDofPerNode x numDofPerNode\n\nAliasing restrictions:\n\nparams: sat, roe_vars, roe_vars_dot, euler_fluxjac, p_dot must not be used\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/flux_functions_diff.html#sec:euler_flux_funcs_diff-1",
+    "page": "Numerical Flux Functions Jacobian",
+    "title": "Numerical Flux Functions Differentiated",
+    "category": "section",
+    "text": "This page documents the differentiated numerical flux functions available in the codebc_solvers_diff.jl should be renamed to this  CurrentModule = EulerEquationModModules = [EulerEquationMod]\nPages = [\"euler/bc_solvers_diff.jl\"]"
 },
 
 {
@@ -3953,38 +4185,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/adjoint.html#EulerEquationMod.calcAdjoint-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt},Array{Tsol,1}}",
-    "page": "Adjoint",
-    "title": "EulerEquationMod.calcAdjoint",
-    "category": "Method",
-    "text": "EulerEquationMod.calcAdjoint\n\nCalculates the adjoint vector, ψ, for a single functional. The user must always call this function in order to compute the adjoint vector. Currently only DG meshes are supported. The function performs a direct solve using Julia's  \\ operator. For parallel meshes, a PETSc solve is done using ILU factorization.\n\nInputs\n\n \nmesh\n : Abstract DG mesh type\n \nsbp\n  : Summation-By-parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object corresponding the boundary functional being                       computed. It must be a subtype of \nAbstractOptimizationData\n \nadjoint_vec\n : Resulting adjoint vector. In the parallel case, the adjoint                    vector is distributed over the processors similar to                    eqn.q_vec i.e. every rank has its                    share of the adjoint vector corresponding to the dofs on the                    rank.\n\n \nfunctional_number\n : Numerical identifier to obtain geometric edges on                          which a functional acts\n\nOutputs\n\n None\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/adjoint.html#EulerEquationMod.calcFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractIntegralOptimizationData{Topt},Any}",
-    "page": "Adjoint",
-    "title": "EulerEquationMod.calcFunctionalDeriv",
-    "category": "Method",
-    "text": "EulerEquationMod. calcFunctionalDeriv\n\nComputes a 3D array of the derivative of a functional w.r.t eqn.q on all mesh nodes.\n\nInputs\n\n \nmesh\n : Abstract DG mesh type\n \nsbp\n  : Summation-By-parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Functional object of super-type AbstractOptimizationData                       that is needed for computing the adjoint vector.                       Depending on the functional being computed, a different                       method based on functional type may be needed to be                       defined.\n \nfunc_deriv_arr\n : 3D array that stores the derivative of the functional                       w.r.t. eqn.q. The array is the same size as eqn.q\n\nOutputs\n\n None\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/adjoint.html#EulerEquationMod.calcIntegrandDeriv-Tuple{Any,EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Tsol,1},Any,EulerEquationMod.BoundaryForceData{Tsol,:lift}}",
-    "page": "Adjoint",
-    "title": "EulerEquationMod.calcIntegrandDeriv",
-    "category": "Method",
-    "text": "EulerEquationMod.calcIntegrandDeriv\n\nCompute the derivative of the functional Integrand at a node w.r.t all the degrees of freedom at the node.\n\nInputs\n\n \nopts\n   : Options dictionary\n \nparams\n : parameter type\n \nq\n      : Solution variable at a node\n \naux_vars\n : Auxiliary variables\n \nnrm\n    : normal vector in the physical space\n \nintegrand_deriv\n : Derivative of the integrand at that particular node\n \nnode_info\n : Tuple containing information about the node\n \nfunctionalData\n : Functional object that is a subtype of AbstractOptimizationData.\n\nOutputs\n\n None\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/adjoint.html#EulerEquationMod.calcResidualJacobian-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any}",
-    "page": "Adjoint",
-    "title": "EulerEquationMod.calcResidualJacobian",
-    "category": "Method",
-    "text": "###EulerEquationMod.calcResidualJacobian\n\nThe function calculates the residual for computing the adjoint vector. The function allows for jacobian to be computed depending on the jacobian type specified in the options dictionary jac_type.\n\nInput\n\nmesh\n : Abstract mesh object\nsbp\n  : Summation-By-parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\n\nOutput\n\njac\n : Jacobian matrix\n\n\n\n"
-},
-
-{
     "location": "solver/euler/adjoint.html#Euler-Equation-Steady-Adjoint-1",
     "page": "Adjoint",
     "title": "Euler Equation Steady Adjoint",
@@ -4001,6 +4201,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.eval_dJdaoa-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,EulerEquationMod.BoundaryForceData{Topt,fname},ASCIIString,AbstractArray{Tsol,1}}",
+    "page": "Boundary Functional",
+    "title": "EulerEquationMod.eval_dJdaoa",
+    "category": "Method",
+    "text": "EulerEquationMod.eval_dJdaoa\n\nCompute the complete derivative of a functional w.r.t angle of attack\n\nInputs\n\nmesh\n : Abstract mesh object\nsbp\n  : Summation-By-Parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\nfunctionalData\n : Object of type AbstractFunctional. This is type is associated                      with the functional being computed and holds all the                      relevant data.\nfunctionalName\n : Name of the functional being evaluated\nadjoint_vec\n : Local portion of the adjoint vector owned by an MPI rank\n\nOutput\n\ndJdaoa\n : Complete derivative of the functional w.r.t angle of attack              This is a scalar value that is the same across all MPI ranks\n\n\n\n"
+},
+
+{
     "location": "solver/euler/boundary_functional.html#EulerEquationMod.calcBndryFunctional-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,EulerEquationMod.BoundaryForceData{Topt,fname}}",
     "page": "Boundary Functional",
     "title": "EulerEquationMod.calcBndryFunctional",
@@ -4009,27 +4217,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt}}",
-    "page": "Boundary Functional",
-    "title": "EulerEquationMod.evalFunctional",
-    "category": "Method",
-    "text": "EulerEquationMod.evalFunctional\n\nHight level function that evaluates all the functionals specified over various edges. This function is agnostic to the type of the functional being computed and calls a mid level functional-type specific function for the actual evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n \nfunctional_number\n : A number identifying which functional is being computed.                          This is important when multiple functions, that aren't                          objective functions are being evaluated. Default value                          is 1.\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/boundary_functional.html#EulerEquationMod.eval_dJdaoa-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt},ASCIIString,AbstractArray{Tsol,1}}",
-    "page": "Boundary Functional",
-    "title": "EulerEquationMod.eval_dJdaoa",
-    "category": "Method",
-    "text": "EulerEquationMod.eval_dJdaoa\n\nCompute the complete derivative of a functional w.r.t angle of attack\n\nInputs\n\nmesh\n : Abstract mesh object\nsbp\n  : Summation-By-Parts operator\neqn\n  : Euler equation object\nopts\n : Options dictionary\nfunctionalData\n : Object of type AbstractOptimizationData. This is type is associated                      with the functional being computed and holds all the                      relevant data.\nfunctionalName\n : Name of the functional being evaluated\nadjoint_vec\n : Local portion of the adjoint vector owned by an MPI rank\n\nOutput\n\ndJdaoa\n : Complete derivative of the functional w.r.t angle of attack              This is a scalar value that is the same across all MPI ranks\n\n\n\n"
-},
-
-{
     "location": "solver/euler/boundary_functional.html#EulerEquationMod.calcBoundaryFunctionalIntegrand-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tres,1},AbstractArray{Tmsh,N},AbstractArray{Int64,N},EulerEquationMod.BoundaryForceData{Topt,fname},AbstractArray{Tsol,1}}",
     "page": "Boundary Functional",
     "title": "EulerEquationMod.calcBoundaryFunctionalIntegrand",
     "category": "Method",
-    "text": "EulerEquationMod.calcBoundaryFunctionalIntegrand\n\nComputes the integrand for boundary functional at a surface SBP node. Every functional of a different type may need a corresponding method to compute the integrand. The type of the functional object, which is a subtype of AbstractOptimizationData.\n\nArguments\n\n \nparams\n : eqn.params object\n \nq\n : Nodal solution\n \naux_vars\n : Auxiliary variables\n \nnrm\n : Face normal vector in the physical space\n \nnode_info\n : Information about the SBP node\n \nobjective\n : Functional data type\n \nval\n : Function output value\n\n\n\n"
+    "text": "EulerEquationMod.calcBoundaryFunctionalIntegrand\n\nComputes the integrand for boundary functional at a surface SBP node. Every functional of a different type may need a corresponding method to compute the integrand. The type of the functional object, which is a subtype of AbstractFunctional.\n\nArguments\n\n \nparams\n : eqn.params object\n \nq\n : Nodal solution\n \naux_vars\n : Auxiliary variables\n \nnrm\n : Face normal vector in the physical space\n \nnode_info\n : Information about the SBP node\n \nobjective\n : Functional data type\n \nval\n : Function output value\n\n\n\n"
 },
 
 {
@@ -4041,11 +4233,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional_revm-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractOptimizationData{Topt},ASCIIString}",
+    "location": "solver/euler/boundary_functional.html#EulerEquationMod.evalFunctional_revm-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractFunctional{Topt},ASCIIString}",
     "page": "Boundary Functional",
     "title": "EulerEquationMod.evalFunctional_revm",
     "category": "Method",
-    "text": "EulerEquationMod.evalFunctional_revm\n\nReverse mode of EulerEquationMod.evalFunctional, It takes in functional value and return mesh.nrm_bndry_bar. Different functionals will need to be added to the if statement to further extend this function.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractOptimizationData. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n \nfunctionalName\n : Name of the functional being evaluated.\n\n\n\n"
+    "text": "EulerEquationMod.evalFunctional_revm\n\nReverse mode of EulerEquationMod.evalFunctional, It takes in functional value and return mesh.nrm_bndry_bar. Different functionals will need to be added to the if statement to further extend this function.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractFunctional. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n \nfunctionalName\n : Name of the functional being evaluated.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/boundary_functional.html#PDESolver.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,ODLCommonTools.AbstractFunctional{Topt}}",
+    "page": "Boundary Functional",
+    "title": "PDESolver.evalFunctional",
+    "category": "Method",
+    "text": "EulerEquationMod.evalFunctional\n\nHight level function that evaluates all the functionals specified over various edges. This function is agnostic to the type of the functional being computed and calls a mid level functional-type specific function for the actual evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractFunctional. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n\nOutputs\n\nval: functional value\n\n\n\n"
 },
 
 {
@@ -4369,6 +4569,78 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/homotopy.html#",
+    "page": "Homotopy",
+    "title": "Homotopy",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/homotopy.html#EulerEquationMod.calcHomotopyDiss-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},Any,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tres,3}}",
+    "page": "Homotopy",
+    "title": "EulerEquationMod.calcHomotopyDiss",
+    "category": "Method",
+    "text": "Calculate a first order accurate dissipation to use as a homotopy function\n\nInputs:     mesh: a DG mesh     sbp: an SBP operator     eqn: an EulerData object     opts: options dictionary\n\nInputs/Outputs:     res: 3D array to store the homotopy function in\n\nNote eqn.res is not modified by this function.\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/homotopy.html#EulerEquationMod.getLambdaMax-Tuple{EulerEquationMod.ParamType{Tdim,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tmsh,1}}",
+    "page": "Homotopy",
+    "title": "EulerEquationMod.getLambdaMax",
+    "category": "Method",
+    "text": "Calculate the maximum wave speed for a given state\n\nInputs:     params: a ParamType     qL: a vector of conservative variables at a node     dir: a direction vector, length 2 in 2D and 3 in 3D\n\nOutputs:     lambda_max: the maximum wave speed\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/homotopy.html#PDESolver.evalHomotopy",
+    "page": "Homotopy",
+    "title": "PDESolver.evalHomotopy",
+    "category": "Function",
+    "text": "This function calls the appropriate homotopy function for the Euler module.\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/homotopy.html#Homotopy-1",
+    "page": "Homotopy",
+    "title": "Homotopy",
+    "category": "section",
+    "text": "This page documents the functions that compute the dissipation function needed by homotopy methods  Modules = [EulerEquationMod]\n  Pages = [\"euler/homotopy.jl\"]"
+},
+
+{
+    "location": "solver/euler/homotopy_diff.html#",
+    "page": "Homotopy Jacobian",
+    "title": "Homotopy Jacobian",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "solver/euler/homotopy_diff.html#EulerEquationMod.getLambdaMaxSimple_diff-Tuple{EulerEquationMod.ParamType{Tdim,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tmsh,1},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "page": "Homotopy Jacobian",
+    "title": "EulerEquationMod.getLambdaMaxSimple_diff",
+    "category": "Method",
+    "text": "Differentiated version of getLambdaMaxSimple\n\nInputs\n\nparams\nqL\nqR\ndir\n\nInputs/Outputs\n\nlambda_dotL: derivative of lambda wrt. qL\nlambda_dotR: derivative of lambda wrt. qR\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/homotopy_diff.html#EulerEquationMod.getLambdaMax_diff-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tmsh,1},AbstractArray{Tres,1}}",
+    "page": "Homotopy Jacobian",
+    "title": "EulerEquationMod.getLambdaMax_diff",
+    "category": "Method",
+    "text": "Differentiated version of getLambdaMax\n\nInputs\n\nparams: ParamType\nqL: vector of conservative variables at a node\ndir: direction vector (can be scaled)\n\nInputs/Outputs\n\nqL_dot: derivative of lambda max wrt qL\n\nOutputs\n\nlambda_max: maximum eigenvalue\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/homotopy_diff.html#Homotopy-Jacobian-1",
+    "page": "Homotopy Jacobian",
+    "title": "Homotopy Jacobian",
+    "category": "section",
+    "text": "This page documents the functions that compute the Jacobian of the  dissipation function needed by homotopy methods  Modules = [EulerEquationMod]\n  Pages = [\"euler/homotopy_diff.jl\"]"
+},
+
+{
     "location": "solver/euler/eigensystem.html#",
     "page": "Eigensystem",
     "title": "Eigensystem",
@@ -4625,6 +4897,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "input/input.html#Input.read_input_file-Tuple{AbstractString}",
+    "page": "Introduction",
+    "title": "Input.read_input_file",
+    "category": "Method",
+    "text": "This function reads an input file and turns it into a dictionary.   Unlike read_input, this function returns the contents of the   input file exactly as a dictionary, without supplying default values.\n\nInputs\n\nfname: a string containing the file name.  If the file name does not             start with a . or .. or /, then fname is treated as relative to             the pwd, otherwise fname is interpreted as an absolute path\n\nOutputs\n\narg_dict: the dictionary containing all the options.\n\nExceptions: if the input file does not contain a dictionary, an exception               is thrown.\n\nNotes: currently, the input file format is a literal dictionary that is          processed using eval().  This is likely to change to change in the          future to support static compilation.\n\n\n\n"
+},
+
+{
     "location": "input/input.html#Input.checkBCOptions-Tuple{Any}",
     "page": "Introduction",
     "title": "Input.checkBCOptions",
@@ -4654,14 +4934,6 @@ var documenterSearchIndex = {"docs": [
     "title": "Input.checkKeys",
     "category": "Method",
     "text": "PDESolver.checkKeys\n\nThis function verifies all the keys in the first argument are also keys   of the second argument and prints a warning to STDERR if they are not.\n\nInputs     arg_dict: first dictonary     known_keys: second dictonary\n\nOutputs:     cnt: number of unrecognized keys\n\n\n\n"
-},
-
-{
-    "location": "input/input.html#Input.read_input_file-Tuple{AbstractString}",
-    "page": "Introduction",
-    "title": "Input.read_input_file",
-    "category": "Method",
-    "text": "This function reads an input file and turns it into a dictionary.   Unlike read_input, this function returns the contents of the   input file exactly as a dictionary, without supplying default values.\n\nInputs\n\nfname: a string containing the file name.  If the file name does not             start with a . or .. or /, then fname is treated as relative to             the pwd, otherwise fname is interpreted as an absolute path\n\nOutputs\n\narg_dict: the dictionary containing all the options.\n\nExceptions: if the input file does not contain a dictionary, an exception               is thrown.\n\nNotes: currently, the input file format is a literal dictionary that is          processed using eval().  This is likely to change to change in the          future to support static compilation.\n\n\n\n"
 },
 
 {
@@ -4793,9 +5065,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "linearsolvers/pc.html#LinearSolvers.free-Tuple{LinearSolvers.AbstractPC}",
+    "location": "linearsolvers/pc.html#Utils.free-Tuple{LinearSolvers.AbstractPC}",
     "page": "Preconditioners",
-    "title": "LinearSolvers.free",
+    "title": "Utils.free",
     "category": "Method",
     "text": "This function frees any memory belonging to external libraries.  Users must   call this function when they are finished with an AbstractPC   object.\n\nUsers do not have to define this function for their   AbstractPC types.\n\nInputs\n\npc: the AbstractPC object\n\n\n\n"
 },
@@ -4829,7 +5101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Preconditioners",
     "title": "LinearSolvers.PetscMatPC",
     "category": "Type",
-    "text": "AbstractPC implementation for Petsc matrix-explicit preconditioners.\n\nPublic Fields\n\nAp: a PetscMat object used to calculate the preconditioner\n\n\n\n"
+    "text": "AbstractPC implementation for Petsc matrix-explicit preconditioners.\n\nPublic Fields\n\nA: a PetscMat object used to calculate the preconditioner\n\n\n\n"
 },
 
 {
@@ -4901,7 +5173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Preconditioners",
     "title": "Matrix Free",
     "category": "section",
-    "text": "An outline of how a matrix free preconditioner should be implemented is:type ExamplePetscMatFreePC <: AbstractPetscMatFreePC\n  pc_inner::PetscMatFreePC\n  # other fields...\nend\n\nfunction ExamplePetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,\n                         eqn::AbstractSolutionData, opts::Dict)\n\n  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)\n\n  return ExamplePetscMatFreePC(pc_inner)\nend\n\nfunction calcPC(pc::ExamplePetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,\n                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)\n\n  # these arguments will be passed into applyPC() the next time it is called\n  # by Petsc\n  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)\n\n  # do any setup operations, storing data into the \"other fields...\" of the pc\n\n  return nothing\nend\n\nfunction applyPC(pc::PetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,\n                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, \n                 x::AbstractVector)\n\n  # use the data in pc to multiply the preconditioner by b, storing result in x\n\n  return nothing\nend\n\nfunction applyPCTranspose(pc::PetscMatFreePC, mesh::AbstractMesh,\n                 sbp::AbstractSBP,\n                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, \n                 x::AbstractVector)\n\n  # use the data in pc to multiply the transpose of the preconditioner by b,\n  # storing result in x\n\n  return nothing\nendMatrix-free preconditioners support the same kind of composition as matrix explicit preconditioners, so it is recommended to add the result into x, rather than overwrite x when pc_inner is not one of the Concrete PC Types."
+    "text": "An outline of how a matrix free preconditioner should be implemented is:type ExamplePetscMatFreePC <: AbstractPetscMatFreePC\n  pc_inner::PetscMatFreePC\n  # other fields...\nend\n\nfunction ExamplePetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,\n                         eqn::AbstractSolutionData, opts::Dict)\n\n  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)\n\n  return ExamplePetscMatFreePC(pc_inner)\nend\n\nfunction calcPC(pc::ExamplePetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,\n                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)\n\n  # do any setup operations, storing data into the \"other fields...\" of the pc\n\n  # these arguments will be passed into applyPC() the next time it is called\n  # by Petsc\n  # always do this last\n  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)\n\n  return nothing\nend\n\nfunction applyPC(pc::PetscMatFreePC, mesh::AbstractMesh, sbp::AbstractSBP,\n                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, \n                 x::AbstractVector)\n\n  # use the data in pc to multiply the preconditioner by b, storing result in x\n\n  return nothing\nend\n\nfunction applyPCTranspose(pc::PetscMatFreePC, mesh::AbstractMesh,\n                 sbp::AbstractSBP,\n                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, \n                 x::AbstractVector)\n\n  # use the data in pc to multiply the transpose of the preconditioner by b,\n  # storing result in x\n\n  return nothing\nendMatrix-free preconditioners support the same kind of composition as matrix explicit preconditioners, so it is recommended to add the result into x, rather than overwrite x when pc_inner is not one of the Concrete PC Types."
 },
 
 {
@@ -4997,7 +5269,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Operators",
     "title": "LinearSolvers.calcLinearOperator",
     "category": "Function",
-    "text": "This function calculates the linear operator.  Every implementation of   AbstractLO should extend this function with a new   method.  For matrix-free operators, this function must exist but need   not perform any actions.\n\nFor matrix-explicit implementations, this function should be called on   lo_inner first and modifications to the Jacobian made subsequently.\n\nInputs\n\nlo: the AbstractLO implementation (fields may be updated)\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\nt: current time\n\nImplementation Notes:     For matrix-free operation, this function sets the Petsc ctx for the     PetscMat, which contains a reference to the mesh, sbp, eqn, opts arguments.     This could lead to unexpected behavior if those arguments are modified and     this function is not called again before the next solve.\n\n\n\nCalculates the linear operator.  Use this function only if you want to   calculate the linear operator and not the preconditioner.   Prefer calcPCandLO, which avoids calculating the matrix twice if   the preconditioner and linear operator share the same matrix\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+    "text": "This function calculates the linear operator.  Every implementation of   AbstractLO should extend this function with a new   method.  For matrix-free operators, this function must exist but need   not perform any actions.\n\nFor matrix-explicit implementations, this function should be called on   lo_inner first and modifications to the Jacobian made subsequently.\n\nInputs\n\nlo: the AbstractLO implementation (fields may be updated)\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\nt: current time\n\nImplementation Notes:     For matrix-free operation, this function sets the Petsc ctx for the     PetscMat, which contains a reference to the mesh, sbp, eqn, opts arguments.     This could lead to unexpected behavior if those arguments are modified and     this function is not called again before the next solve.\n\n\n\nCalculates the linear operator.  Use this function only if you want to   calculate the linear operator and not the preconditioner.   Prefer calcPCandLO, which avoids calculating the matrix twice if   the preconditioner and linear operator share the same matrix\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\nKeyword Arguments\n\nstart_comm: start parallel communication (if required by the lo), default                   false.  This means the user is generally required to make sure                   parallel communication is started before calling this                   function.\n\n\n\n"
 },
 
 {
@@ -5025,9 +5297,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "linearsolvers/lo.html#LinearSolvers.free-Tuple{LinearSolvers.AbstractLO}",
+    "location": "linearsolvers/lo.html#Utils.free-Tuple{LinearSolvers.AbstractLO}",
     "page": "Linear Operators",
-    "title": "LinearSolvers.free",
+    "title": "Utils.free",
     "category": "Method",
     "text": "This function frees any memory belonging to external libraries.  Users must   call this function when they are finished with an AbstractLO   object.\n\nUsers do not have to define this function for their   AbstractLO types.\n\nInputs\n\nlo: the AbstractLO object\n\n\n\n"
 },
@@ -5165,7 +5437,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Solvers",
     "title": "LinearSolvers.StandardLinearSolver",
     "category": "Type",
-    "text": "The most commonly used implementation of LinearSolver.\n\n\n\nConstructor for StandardLinearSolver.\n\nInputs\n\npc: an \nAbstractPC\n, fully initialized\nlo: an \nAbstractLO\n, fully initialized\ncomm: the MPI communicator the pc and lo are defined on\n\nThis function throws exceptions if incompatible pc and lo types are used.\n\n\n\n"
+    "text": "The most commonly used implementation of LinearSolver.\n\n\n\nConstructor for StandardLinearSolver.\n\nInputs\n\npc: an \nAbstractPC\n, fully initialized\nlo: an \nAbstractLO\n, fully initialized\ncomm: the MPI communicator the pc and lo are defined on\nopts: options dictionary\n\nThis function throws exceptions if incompatible pc and lo types are used.\n\nOptions Keys\n\nThis function uses: \"krylov_reltol\", \"krylov_abstol\", \"krylov_dtol\", and   \"krylov_itermax\"\n\n\n\n"
 },
 
 {
@@ -5173,7 +5445,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Solvers",
     "title": "LinearSolvers.StandardLinearSolver",
     "category": "Method",
-    "text": "Constructor for StandardLinearSolver.\n\nInputs\n\npc: an \nAbstractPC\n, fully initialized\nlo: an \nAbstractLO\n, fully initialized\ncomm: the MPI communicator the pc and lo are defined on\n\nThis function throws exceptions if incompatible pc and lo types are used.\n\n\n\n"
+    "text": "Constructor for StandardLinearSolver.\n\nInputs\n\npc: an \nAbstractPC\n, fully initialized\nlo: an \nAbstractLO\n, fully initialized\ncomm: the MPI communicator the pc and lo are defined on\nopts: options dictionary\n\nThis function throws exceptions if incompatible pc and lo types are used.\n\nOptions Keys\n\nThis function uses: \"krylov_reltol\", \"krylov_abstol\", \"krylov_dtol\", and   \"krylov_itermax\"\n\n\n\n"
 },
 
 {
@@ -5189,7 +5461,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Solvers",
     "title": "LinearSolvers.calcPC",
     "category": "Method",
-    "text": "Calculates the preconditioner for the linear solver.  Thsi preconditioner   will be used for all linear solves until this function is called again.\n\nFor direct solvers, this function calculates the linear operator itself.   Prefer calcPCandLO whenever possible.\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+    "text": "Calculates the preconditioner for the linear solver.  Thsi preconditioner   will be used for all linear solves until this function is called again.\n\nFor direct solvers, this function calculates the linear operator itself.   Prefer calcPCandLO whenever possible.\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\nKeyword Arguments\n\nstart_comm: start parallel communication (if required by the PC), default                   false.  This means the user is generally required to make sure                   parallel communication is started before calling this                   function.\n\n\n\n"
 },
 
 {
@@ -5197,7 +5469,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Solvers",
     "title": "LinearSolvers.calcLinearOperator",
     "category": "Method",
-    "text": "Calculates the linear operator.  Use this function only if you want to   calculate the linear operator and not the preconditioner.   Prefer calcPCandLO, which avoids calculating the matrix twice if   the preconditioner and linear operator share the same matrix\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+    "text": "Calculates the linear operator.  Use this function only if you want to   calculate the linear operator and not the preconditioner.   Prefer calcPCandLO, which avoids calculating the matrix twice if   the preconditioner and linear operator share the same matrix\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\nKeyword Arguments\n\nstart_comm: start parallel communication (if required by the lo), default                   false.  This means the user is generally required to make sure                   parallel communication is started before calling this                   function.\n\n\n\n"
 },
 
 {
@@ -5205,7 +5477,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Solvers",
     "title": "LinearSolvers.calcPCandLO",
     "category": "Method",
-    "text": "Calculates both the preconditioner and linear operator.  In the case where   they share the matrix, the calculation is only performed once.  This function   should be preferred to calling calcPC and calcLinearOperator one   after the other\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\n\n\n"
+    "text": "Calculates both the preconditioner and linear operator.  In the case where   they share the matrix, the calculation is only performed once.  This function   should be preferred to calling calcPC and calcLinearOperator one   after the other\n\nInputs\n\nls: StandardLinearSolver\nmesh\nsbp\neqn\nopts\nctx_residual: the ctx required by \nphysicsRhs\n like functions\nt: current time\n\nKeyword Arguments\n\nstart_comm: start parallel communication (if required by the lo), default                   false.  This means the user is generally required to make sure                   parallel communication is started before calling this                   function.  Note that it is not possible to interleave                   communication and computation in this case, so performing                   communication will be very expensive.\n\n\n\n"
 },
 
 {
@@ -5237,7 +5509,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Solvers",
     "title": "LinearSolvers.linearSolveTranspose",
     "category": "Function",
-    "text": "Similar to [linearSolver](@ref), but solves A.'x = v.  See that function   for details.\n\n\n\n"
+    "text": "Similar to [linearSolver](@ref), but solves A.'x = b.  See that function   for details.\n\n\n\n"
 },
 
 {
@@ -5265,9 +5537,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "linearsolvers/ls.html#LinearSolvers.free-Tuple{LinearSolvers.StandardLinearSolver{T1,T2}}",
+    "location": "linearsolvers/ls.html#Utils.free-Tuple{LinearSolvers.StandardLinearSolver{T1,T2}}",
     "page": "Linear Solvers",
-    "title": "LinearSolvers.free",
+    "title": "Utils.free",
     "category": "Method",
     "text": "This function frees any memory owned by external libraries, both in the    StandardLinearSolver object itself and in the pc and lo objects.   Therefore, at the end of a run, all you need to do is free the   StandardLinearSolver and everything will be taken care of.\n\nIt is safe to call this function multiple times.\n\n\n\n"
 },
@@ -5469,7 +5741,39 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton's Method",
     "title": "Newton's method",
     "category": "section",
-    "text": "Newton's method is intended to compute updates to some q by solving the following equation.\\begin{equation} \\frac{\\partial f(q)}{\\partial q} \\Delta q = -f(q) \\end{equation}In the most basic implementation of Newton's method in PDESolver, q corresponds to the solution,    and f(q) corresponds to the residual evaluation of the currently selected physics module.An example of a more sophisticated use of Newton's method is within the Crank-Nicolson timestepper,    which adds another layer on top of the physics residual:\\begin{equation} \\frac{\\partial g(f(q)}{\\partial q} \\Delta q = -g(f(q)) \\end{equation}"
+    "text": "CurrentModule = NonlinearSolversNewton's method is intended to compute updates to some q by solving the following equation.\\begin{equation} \\frac{\\partial R(q)}{\\partial q} \\Delta q = -R(q) \\end{equation}In the most basic implementation of Newton's method in PDESolver, q corresponds to the solution,    and f(q) corresponds to the residual evaluation of the currently selected physics module.An example of a more sophisticated use of Newton's method is within the Crank-Nicolson timestepper,    which adds another layer on top of the physics residual:\\begin{equation} \\frac{\\partial g(R(q))}{\\partial q} \\Delta q = -g(R(q)) \\end{equation}"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.newtonInner",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.newtonInner",
+    "category": "Function",
+    "text": "This function contains the algorithm for Newton's method.  It is intended   to be used by other functions rather than invoked as a solver directly.   For example newton uses newtonInner to solve steady problems while   crank_nicolson uses it to solve the nonlinear problem arising   from the time discretization.\n\nFor reference, Newton's method solves the problem R(q) = 0 using     dR/dq delta q = -R(q)   where R is the rsidual and q is the solution\n\nOn entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec   will contain the solution to f(q) = 0.  eqn.q will also be consistent with   eqn.q_vec, as will the send and receive buffers in eqn.shared_data\n\nOn exit, rhs_vec will have the residual corresponding to eqn.q_vec in it,   with the imaginary part set to zero.\n\nThe AbstractLO and AbstractPC supplied   inside the LinearSolver object must match the jac_type.\n\nWhen doing inexact Newton-Krylov, newonInner modifies the tolerances   of the linear solver.  Users calling newtonInner repeatedly with the   same linear solver object should reset the initial tolerances as needed.\n\nInputs:\n\nnewton_data: NewtonData object, typically obtained from setupNewton\nmesh: a mesh object\nsbp: an SBP operator\neqn: a solution data object\nopts: options dictionary\nls: a LinearSolver with the preconditioner and linear operator fully          initialized.  \nrhs_vec: vector to store R(q) in\nctx_residual: extra data required by rhs_func\n\nThe user must supply tow functions, one to calculate the residual vector   (referred to as rhs_vec), and another to compute the Jacobian.\n\nrhs_func should compute (eqn.q_vec) -> (rhs_vec) and have the signature\n\nrhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t=0.0)\n\nNote that the ctx_residual passed into newtonInner is passed directly   to rhs_func.  The contents of ctx_residual can be whatever is needed by   rhs_func to perform its computation.  See physicsRhs for   the specific requirements on rhs_func and for an example implementation.\n\nThe same ctx_residual passed into newtonInner is passed directly to   calcLinearOperator..\n\nAliasing restrictions: None.  In particular, rhs_vec can alias eqn.res_vec,                          and this leads so some efficiency because it avoids                          needlessly copying data.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.setupNewton",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.setupNewton",
+    "category": "Function",
+    "text": "NonlinearSolvers.setupNewton\n\nPerforms setup work for newtonInner, including creating a    NewtonData object.\n\nThis function also resets the implicit Euler globalization.\n\nalloc_rhs: keyword arg to allocate a new object or not for rhs_vec                 true (default) allocates a new vector                 false will use eqn.res_vec\n\nrhs_func: only used for Petsc in matrix-free mode to do Jac-vec products             should be the rhs_func passed into newtonInner   ctx_residual: ctx_residual passed into newtonInner\n\nAllocates Jac & RHS\n\nSee cleanupNewton to the cleanup function\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#Utils.free-Tuple{NonlinearSolvers.NewtonData{Tsol,Tres,Tsolver<:LinearSolvers.LinearSolver{T1,T2}}}",
+    "page": "Newton's Method",
+    "title": "Utils.free",
+    "category": "Method",
+    "text": "Cleans up after running Newton's method.\n\nInputs\n\nnewton_data: the NewtonData object\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.getNewtonPCandLO",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.getNewtonPCandLO",
+    "category": "Function",
+    "text": "Returns the Newton precondtioner and linear operator specified by the options   dictionary\n\nInputs\n\nmesh\nsbp\neqn\nopts\nrhs_func: rhs_func required by \nnewtonInner\n\n\n\n"
 },
 
 {
@@ -5477,15 +5781,343 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton's Method",
     "title": "Features",
     "category": "section",
-    "text": "PDESolver's Newton's method has a wide variety of features.  It contains the Jacobian calculation routines, which can be performed currently using: * finite-differencing  * complex-stepThe Jacobian functions can act upon any arbitrary residual.Additionally, the following matrix forms are supported: * Julia dense * Julia sparse * PETSc sparse * Matrix-free"
+    "text": "PDESolver's Newton's method has a wide variety of features.  It contains the Jacobian calculation routines, which can be performed currently using:finite-differencing \ncomplex-stepThe Jacobian functions can act upon any arbitrary residual.Additionally, the following matrix forms are supported:Julia dense\nJulia sparse\nPETSc sparse\nMatrix-freeThe function that performs the Newton iteration is newtonInnerThe private data required by Newtons method is stored in the NewtonData object.setupNewton\nfree(::NewtonData)\ngetNewtonPCandLO"
 },
 
 {
-    "location": "NonlinearSolvers/newton.html#Jacobian-calculation-1",
+    "location": "NonlinearSolvers/newton.html#Newton-internals-1",
     "page": "Newton's Method",
+    "title": "Newton internals",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonData",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonData",
+    "category": "Type",
+    "text": "This type holds the data required by newtonInner as well as   configuration settings.\n\nPublic Fields\n\nmyrank: MPI rank\ncommsize: MPI communicator size\nitr: number of iterations\nres_norm_i: current iteration residual norm\nres_norm_i_1: previous iteration residual norm\nstep_norm_i: current iteration newton step norm\nstep_norm_i_1: previous iteration newton step norm\nres_norm_rel: norm of residual used as the reference point when computing                    relative residuals.  If this is -1 on entry to newtonInner,                    then the norm of the initial residual is used.\nstep_fac: factor used in step size limiter\nres_reltol: nonlinear relative residual tolerance\nres_abstol: nonlinear residual absolute tolerance\nstep_tol: step norm tolerance\nitermax: maximum number of newton iterations\nkrylov_gamma: parameter used by inexact newton-krylov\nls: a \nLinearSolver\nfconv: convergence.dat file handle (or DevNull if not used)\nverbose: how much logging/output to do\n\nOptions Keys\n\nIf res_reltol0 is negative, the residual of the initial condition will be   used for res_norm_rel\n\nnewton_verbosity is used to the verbose field\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.reinitNewtonData",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.reinitNewtonData",
+    "category": "Function",
+    "text": "Reinitialized the NewtonData object for a new solve.\n\nNote that this does not reset the linear solver, which might be a problem   if inexact newton-krylov was used for the previous solve\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.recordResNorm",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.recordResNorm",
+    "category": "Function",
+    "text": "Records the most recent nonlinear residual norm in the NewtonData object.   Also updates the implicit Euler globalization\n\nInputs\n\nnewton_data: the NewtonData\nres_norm: the residual norm\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.recordStepNorm",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.recordStepNorm",
+    "category": "Function",
+    "text": "Records norm of the most recent newton step (ie. the norm of delta q)   in the NewtonData object\n\nInputs\n\nnewton_data: the NewtonData object\nstep_norm: the norm of the step\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NewtonData-API-1",
+    "page": "Newton's Method",
+    "title": "NewtonData API",
+    "category": "section",
+    "text": "NewtonData has a small API used by Newton's method.NewtonData\nreinitNewtonData\nrecordResNorm\nrecordStepNorm"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonMatPC",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonMatPC",
+    "category": "Type",
+    "text": "Matrix-based Petsc preconditioner for Newton's method\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonMatPC-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonMatPC",
+    "category": "Method",
+    "text": "Outer constructor for NewtonMatPC\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonVolumePC",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonVolumePC",
+    "category": "Type",
+    "text": "This type holds all the data needed to calculate a preconditioner based only   on the volume integrals.  For DG methods, this matrix is block diagonal and   thus easily invertible.  This preconditioner is applied matrix-free.\n\njac_size is numDofPerNode * numNodesPerElememnt (the total number of unknowns   on an element).\n\nThis preconditioner is not suitable for use as an inner preconditioner, but   the functions calcVolumePC, factorVolumePC, and   applyVolumPC can be easily used to make a new PC.\n\nFields\n\nvolume_jac: jacobian of the volume integrals of each element,                   jac_size x jac_size x numEl\nipiv: permutation information, jac_size x numEl\nis_factored: if true, volume_jac has been factored (LU with partial                   pivoting), false otherwise\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonVolumePreconditioner-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonVolumePreconditioner",
+    "category": "Method",
+    "text": "Regular constructor\n\nInputs\n\nmesh: the mesh\nsbp: the SBP operator\neqn: AbstractSolutionData\nopts: options dictionary\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonDenseLO",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonDenseLO",
+    "category": "Type",
+    "text": "Dense linear operator for Newton's method.\n\nSubtype of AbstractDenseLO\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonDenseLO-Tuple{LinearSolvers.PCNone,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonDenseLO",
+    "category": "Method",
+    "text": "Outer constructor for NewtonDenseLO\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonSparseDirectLO",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonSparseDirectLO",
+    "category": "Type",
+    "text": "Sparse direct linear operator for Newton's method.  Subtype of   AbstractSparseDirectLO\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonSparseDirectLO-Tuple{LinearSolvers.PCNone,ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonSparseDirectLO",
+    "category": "Method",
+    "text": "Outer constructor for NewtonSparseDirectLO\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonPetscMatLO",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonPetscMatLO",
+    "category": "Type",
+    "text": "Petsc matrix based linear operator for Newton's method.\n\nSubtype of AbstractPetscMatLO\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonPetscMatLO-Tuple{Union{LinearSolvers.AbstractPetscMatFreePC,LinearSolvers.AbstractPetscMatPC},ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonPetscMatLO",
+    "category": "Method",
+    "text": "Outer constructor for NewtonPetscMatLO\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonPetscMatFreeLO",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonPetscMatFreeLO",
+    "category": "Type",
+    "text": "Petsc matrix-free linear operator for Newton's method.\n\nSubtype of AbstractPetscMatFreeLO\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#NonlinearSolvers.NewtonPetscMatFreeLO-Tuple{Union{LinearSolvers.AbstractPetscMatFreePC,LinearSolvers.AbstractPetscMatPC},ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V}}",
+    "page": "Newton's Method",
+    "title": "NonlinearSolvers.NewtonPetscMatFreeLO",
+    "category": "Method",
+    "text": "Newton mat-free linear operator constructor\n\nInputs\n\npc\nmesh\nsbp\neqn\nopts\nrhs_func: rhs_func from \nnewtonInner\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/newton.html#Linear-Operators-and-Preconditioners-1",
+    "page": "Newton's Method",
+    "title": "Linear Operators and Preconditioners",
+    "category": "section",
+    "text": "A full set of linear operators and preconditioners are provided for solving a linear system where the linear operator is the jacobian of the physics..  These often are a good start for constructing linear operators for unsteady problems or more advanced methods for solving steady problems.NewtonMatPC\nNewtonMatPC(::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nNewtonVolumePC\nNewtonVolumePreconditioner(::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nNewtonDenseLO\nNewtonDenseLO(::PCNone, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nNewtonSparseDirectLO\nNewtonSparseDirectLO(::PCNone, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nNewtonPetscMatLO\nNewtonPetscMatLO(::AbstractPetscPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)\nNewtonPetscMatFreeLO\nNewtonPetscMatFreeLO(::AbstractPetscPC, ::AbstractMesh, ::AbstractSBP, ::AbstractSolutionData, ::Dict)"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#",
+    "page": "Jacobian Calculation",
+    "title": "Jacobian Calculation",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.physicsJac",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.physicsJac",
+    "category": "Function",
+    "text": "This function computes the Jacobian of an evalResidual-like function.   Specifically, it computes \\partial (eqn.q_vec)/ \\partial (eqn.res_vec).\n\nOther users of newtonInner (for example, implicit time marching   methods) will need to implemnt their own version of this function.  The   documentation for this function describes the requirements for the other   implementations.\n\n`newtonInner guarantees that eqn.q and eqn.q_vec will be consistent   when this function is called.  When using finite differences, eqn.res and   eqn.res_vec must contain the residual of the physics.\n\nInputs:\n\nmesh: an AbstractMesh\nsbp: an SBP operator\neqn: an AbstractSolutionData, eqn.res and eqn.res_vec may be overwritten\nopts: options dictonary\njac: the Jacobian, can be an Array, SparseMatrixCSC, or PetscMat\nctx_residual: a tuple of values.  ctx_residual[1] must be an                     evalResidual-like function (eqn.q -> eqn.res) function                    with signature func(mesh, sbp, eqn, opts, t).                    See \nphysicsRhs\n for a more thorough description                     of ctx_residual.\nt: simulation time\n\nOptions Keys:\n\njac_type\njac_method\nepsilon\ncalc_jac_explicit     \nImplementation Notes:\n\nThis function should not have to do any parallel communication. newtonInner   ensures that the rhs_func is called before jac_func, and rhs_func    handles   the parallel communication.\n\nImplementations of this function may perform either (eqn.q -> jacobian) or   (eqn.q_vec -> jacobian).  The first may be more computationally efficient,   but the second can be simpler for debugging.\n\nThis function supportes several types of jacobians (dense arrays,   SparseMatrixCSC, PetscMat), and several methods for calculating them   (finite difference and complex step).  Any function calling this function   should support them as well.\n\nIt is strongly recommneded to   use this function to compute the spatial jacobian and them modify the   resulting matrix (this function zeros the Jacobian matrix)\n\nWhen using Petsc matrices, the function may do intermediate assemblies   (PETSC_FLUSH_ASSEMBLY), but does not need to do the final assembly.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#Jacobian-calculation-1",
+    "page": "Jacobian Calculation",
     "title": "Jacobian calculation",
     "category": "section",
-    "text": "Special mention of calcJacobianComplex"
+    "text": "CurrentModule = NonlinearSolversSpecial mention of calcJacobianComplex.One of the most involved parts of Newton's method is forming the Jacobian. The NonlinearSolvers module contains the function physicsJac to compute the Jacobian of the physics fracpartial R(q)partial q, where R is evalResidual.  This function can be used by other methods as a starting point for computing the residual of g(R(q)) described in  Newton's method page.physicsJacphysicsJac calls one of several functions to compute the Jacobian.  Users should not call these functions directly, they should use physicsJac. There are two approaches to computing the Jacobian: using finite differences/complex step and calculating the entries of the matrix explicitly. The latter approach is much faster than the former, however the former does not require the physics module differentiate evalResidual."
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.calcJacFD",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.calcJacFD",
+    "category": "Function",
+    "text": "NonlinearSolvers.calcJacFD\n\nThis function calculates the Jacobian using finite differences, perturbing   one degree of freedom at a time.  This is slow and not very accurate.     The Jacobian is calculated about the point in eqn.q_vec.\n\nInputs:     mesh: AbstractMesh     sbp:  SBP operator     eqn:  AbstractEquation object     opts: options dictionary     pert: perturbation to use the finite differences.  Must be of type Tsol.     func: residual evaluation function     res_0: vector containing residual at the point the Jacobian is calculated\n\nInputs/Outputs:     jac:: Jacobian matrix to be populated.  Must be a dense matrix\n\nAliasing restrictions: res_0 must not alias eqn.res_vec\n\nAt the start, calcJacFD assumes:     The Jacobian will be calculated at the state that is specified in eqn.q_vec .     res_0 should have the residual at that state in it\n\nAt exit, eqn.q_vec will have the same values as at the start.\n\neqn.q and eqn.res will be overwritten in the course of this function.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.calcJacobianComplex",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.calcJacobianComplex",
+    "category": "Function",
+    "text": "NonlinearSolvers.calcJacComplex\n\nThis function calculates the Jacobian (dense) using the complex step method,    perturbing one degree of freedom at a time.  This is very slow.  The jacobian   is calculated about the point in eqn.q_vec.\n\nInputs:     mesh: AbstractMesh     sbp:  SBP operator     eqn:  AbstractEquation object     opts: options dictionary     pert: perturbation to use.  Must be of type Tsol.     func: residual evaluation function\n\nInputs/Outputs:     jac:: Jacobian matrix to be populated.  Must be a dense matrix\n\nAliasing restrictions: res_0 must not alias eqn.res_vec\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.calcJacobianSparse",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.calcJacobianSparse",
+    "category": "Function",
+    "text": "NonlinearSolvers.calcJacobianSparse\n\nThis function calculate the Jacobian sparsely (only the entries      within the sparsity bounds), using either finite differences or algorithmic      differentiation.  The jacobian is calculated about the point stored in      eqn.q (not eqn.q_vec).  A mesh coloring approach is used to compute the     jacobian.  Both eqn.q and the MPI send and receive buffers are perturbed     during this process.\n\nInputs:     mesh: AbstractMesh     sbp:  SBP operator     eqn:  AbstractEquation object     opts: options dictionary     pert: perturbation to use for the algorithmic differentiation.  Currently,           only complex numbers are supported.     func: residual evaluation function (eqn.q -> eqn.res)     res_0: element-based (3 dimensional) array containing the residual evaluated           at the point where the Jacobian is being calculated.            This is only used for finite differences (can be a 0 x 0 x 0 array            otherwise).\n\nInputs/Outputs:     jac:  Jacobian matrix.  Must be a sparse matrix type of some kind,            (including PetscMat).\n\nAliasing restrictions: res_0 must not alias eqn.res\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.applyPerturbation",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.applyPerturbation",
+    "category": "Function",
+    "text": "NonlinearSolvers.applyPerturbation\n\nThis function applies a perturbation to a the specified degree of freedom   on each element according to a mask.\n\nBecause this is element based perturbation, opts[\"parallel_data\"] must   be \"element\".\n\nInputs:     mesh: an AbstractMesh     color: the color to perturb     pert: perturbation to apply.  Can be any datatype     i: local degree of freedom number (in range 1:numDofPerNode) to perturb     j: local node number (in range 1:numNodesPerElement) to perturb\n\nInputs/Outputs:     arr: element based (3D) array of values to perturb     shared_data: array of SharedFaceData for ghost elements to be perturbed                  The receive buffers are perturbed according to the masks                  in mesh.shared_element_colormasks, the send buffers are                  perturbed consistently with arr.\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.assembleElement",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.assembleElement",
+    "category": "Function",
+    "text": "This function assembles the jacobian contribution for a single element   into the matrix, when the jacobian is computed using finite differences.   This is used by coloring-based methods for computing the jacobian.\n\nInputs:\n\nhelper: a AssembleData object\nmesh:  AbstractMesh object\neqn:  AbstractEquation\nres_arr: element-based (3D) array of perturbed residual values\nres_0:  element-based (3D) array of non-perturbed residual values\nel_res: element number of the element we are observing the change in\nel_pert: element number of the element that was perturbed\ndof_pert: the degree of freedom number of the perturbed dof\nepsilon: magnitude of perturbation\n\nInputs/Outputs:\n\njac: any kind of matrix (dense, SparseMatrixCSC, PetscMat)\n\nAliasing restrictions: res_arr and res_0 must not alias each other.\n\n\n\nSame as other method, but for complex numbers.  See that method for   details.  res_0 is not used in this case\n\n\n\nInputs\n\nhelper: an _AssembleElementData\nmesh: a mesh\nelnum: element number\njac: 4 dimensional array containing the jacobian of the element\n\njac contains the data for the jacobian of the volume terms for a given   element.  jaci j p q = partial Ri p elnum  partial eqnqj q elnum.   Its size is numDofPerNode x numDofPerNode x numNodesPerElement x numNodesPerElement.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.calcJacCol",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.calcJacCol",
+    "category": "Function",
+    "text": "NonlinearSolvers.calcJacCol\n\nThis function extracts the entries for one column of the Jacobian from two residual evaluates that come from finite differences.\n\nInputs:     res_0: vector of unperturbed residual values     res: vector of perturbed residual values     epsilon: magnitude of perturbation\n\nInputs/Outputs:     jac_row = vector to be populated with the Jacobian entries\n\nAliasing restrictions: res_0 and res cannot alias (obviously).\n\n\n\nNonlinearSolvers.calcJacCol\n\nThis function extracts the entries for one column of the Jacobian from a    complex step residual evaluation\n\nInputs:     res: vector of perturbed residual values     epsilon: magnitude of perturbation\n\nInputs/Outputs:     jac_row = vector to be populated with the Jacobian entries\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#Finite-Differencing/Complex-Step-1",
+    "page": "Jacobian Calculation",
+    "title": "Finite Differencing/Complex Step",
+    "category": "section",
+    "text": "The functions calcJacFD and calcJacobianComplex compute the Jacobian as a dense matrix, one column at a time.  This is very slow and only useful for debugging small cases. A more efficient method is implemented in calcJacobianSparse, which uses a graph coloring approach to perturb the solution at several nodes simultaneously. calcJacFD\ncalcJacobianComplex\ncalcJacobianSparse\napplyPerturbation\nassembleElement\ncalcJacCol"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers._AssembleElementData",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers._AssembleElementData",
+    "category": "Type",
+    "text": "Helper object for assembling element and interface jacobians into the   system matrix.\n\nFields\n\nA: the matrix (can be Array, SparseMatrixCSC, or PetscMat)\nidx: temporary array for row indices, length numDofPerNode\nidy: temporary array for column indices, length numDofPerNode\nvals: temporary array for matrix entries, size numDofPerNode square\nidx_i: temporary array for row indices when assembling interface              jacobians, length 2 x numDofPerNode\nidy_i: like idx_i, but for column indices\nvals_i: temporary array for storing matrix entries when assembling              interface jacobians, size 2 x numDofPerNode square\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers._AssembleElementData-Tuple{AbstractArray{T,2},Any,Any,Any,Any}",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers._AssembleElementData",
+    "category": "Method",
+    "text": "Outer constructor for _AssembleElementData\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.NullAssembleElementData",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.NullAssembleElementData",
+    "category": "Constant",
+    "text": "An empty _AssembleElementData.  Useful for giving a default value   to fields.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.assembleElement-Tuple{NonlinearSolvers._AssembleElementData{T<:AbstractArray{T,2}},ODLCommonTools.AbstractMesh{Tmsh},Integer,Array{Float64,4}}",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.assembleElement",
+    "category": "Method",
+    "text": "Inputs\n\nhelper: an _AssembleElementData\nmesh: a mesh\nelnum: element number\njac: 4 dimensional array containing the jacobian of the element\n\njac contains the data for the jacobian of the volume terms for a given   element.  jaci j p q = partial Ri p elnum  partial eqnqj q elnum.   Its size is numDofPerNode x numDofPerNode x numNodesPerElement x numNodesPerElement.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.assembleInterface",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.assembleInterface",
+    "category": "Function",
+    "text": "Assembles the jacobian of an interface into the matrix.  Specialized   versions take advantage of the sparsity of the sbpface.\n\nInputs\n\nhelper: _AssembleElementData\nsbpface: an SBP face object\nmesh: a mesh\niface: an Interface object identify the interface to be assembled\njacLL: see below\njacLR:\njacRL\njacRR\n\njacAB where A = L or R and B = L or R, is the jacobian of the residual of   element A with respect to the solution of element B.\n\njacAB has the same size/layout as jac in assembleElement.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.assembleSharedFace",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.assembleSharedFace",
+    "category": "Function",
+    "text": "Assemble one half of an interface, used by shared face integrals.   See assembleInterface.\n\nInputs\n\nhelper: _AssembleElementData\nsbpface: an SBP face object\nmesh: a mesh\njacLL\njacLR\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#NonlinearSolvers.assembleBoundary",
+    "page": "Jacobian Calculation",
+    "title": "NonlinearSolvers.assembleBoundary",
+    "category": "Function",
+    "text": "Assembles the jacobian of a boundary integral into the matrix.   Specialized versions take advantage of the sparsity of the sbpface.\n\nInputs\n\nhelper: _AssembleElementData\nsbpface: an SBP face object\nmesh: a mesh\njac: a jac, same layout as \nassembleElement\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jacobian.html#Explicit-Calculation-1",
+    "page": "Jacobian Calculation",
+    "title": "Explicit Calculation",
+    "category": "section",
+    "text": "The most efficient method to compute the Jacobian is to explicitly compute all its entries and assemble them into a matrix. The evalJacobian function must be extended by each physics module for this to work. This function is passed all the same arguments as evalResidual plus an additional _AssembleElementData object which is used to assemble the contribution of each element or interface into the matrix._AssembleElementData\n_AssembleElementData(::AbstractMatrix, ::Any, ::Any, ::Any, ::Any)\nNullAssembleElementData\nassembleElement(::_AssembleElementData, ::AbstractMesh, ::Integer, ::Array{Float64, 4})\nassembleInterface\nassembleSharedFace\nassembleBoundary"
+},
+
+{
+    "location": "NonlinearSolvers/residual_evaluation.html#",
+    "page": "Residual Evalution",
+    "title": "Residual Evalution",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/residual_evaluation.html#NonlinearSolvers.physicsRhs",
+    "page": "Residual Evalution",
+    "title": "NonlinearSolvers.physicsRhs",
+    "category": "Function",
+    "text": "This function computes the vector form of of the residual from the vector   form of the solution, ie. q_vec -> rhs_vec, for a given physics.   This is one of the two functions required by newtonInner.\n\nUsers of newtonInner that are not physics modules (for example, implicit   time marching schemes) will need to implement their own version of this   function.  See the Implimentation Notes section below.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an AbstractSBP\neqn: an AbstractSolutionData (may be modified during this function)\nopts: the options dictionary\nctx_residual: a tuple of values.  ctx_residual[1] must be a function                    that computes (q -> res).  Typically this is evalResidual.                    The other entries of the tuple (if any) are not used.\n\n               The purpose of this argument is to make the signature of\n               the function generic enough so that implict time marching\n               methods can use it.  (If you are confused about this\n               programming pattern, google how callback are implemented\n               in C, this ctx is like a void* in C).\n\nt: the time at which to evalute the residual\n\nInputs/Outputs\n\nrhs_vec: vector to put the residual in\n\nOutput\n\nnorm of the residual vector\n\nImplementation Notes:\n\nThis function is really a wrapper around an evalResidual-like function.   It has to do 5 things:\n\n1. scatter eqn.q_vec -> eqn.q\n2. start parallel communication if needed\n3. call the evalResidual-like function to compute eqn.q -> eqn.res\n4. assemble the residual into the output vector, ie. eqn.res -> rhs_vec\n5. compute the norm of the rhs_vec\n\nAny implementation of this function (used with newtonInner) must have the   following properties:\n\n1. on exit, eqn.q and eqn.q_vec must be consistent\n2. this function start parallel communication if needed\n3. allow for the possibility that rhs_vec and eqn.res_vec alias\n\nIs is recommended to use calcNorm to compute the norm.\n\nOther implementations of this function are encouraged to use this function   to help construct their rhs_vec.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/residual_evaluation.html#NonlinearSolvers.assembleResidual",
+    "page": "Residual Evalution",
+    "title": "NonlinearSolvers.assembleResidual",
+    "category": "Function",
+    "text": "NonlinearSolvers.assembleResidual\n\nThis function takes the residual in eqn.res and performs an additive reduction   into res_vec.   This function wraps assembleSolution.\n\nInputs:     mesh: AbstractMesh     sbp:  SBP operator     eqn:  AbstractEquation object     opts: options dictionary     res_vec: residual vector to put the residual into\n\nOutputs:     none\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/residual_evaluation.html#Utils.disassembleSolution-Tuple{Any,Any,Any,Any,AbstractArray{Float64,1}}",
+    "page": "Residual Evalution",
+    "title": "Utils.disassembleSolution",
+    "category": "Method",
+    "text": "NonlinearSolvers.disassembleSolution\n\nThis function performs the scatter q_vec -> eqn.q\n\nInputs:     mesh: AbstractMesh     sbp:  SBP operator     eqn:  AbstractEquation object     opts: options dictionary     q_vec: vector containing solution variables \n\nOutputs:     none\n\nAliasing Restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/residual_evaluation.html#Residual-Evaluation-1",
+    "page": "Residual Evalution",
+    "title": "Residual Evaluation",
+    "category": "section",
+    "text": "CurrentModule = NonlinearSolversThis page describes some helper functions used by various methods in the NonlinearSolvers module.physicsRhs\nassembleResidual\ndisassembleSolution(::Any, ::Any, ::Any, ::Any, ::AbstractArray{Float64, 1})"
 },
 
 {
@@ -5545,19 +6177,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "NonlinearSolvers/newton_inner.html#NonlinearSolvers.physicsRhs",
-    "page": "Newton Inner",
-    "title": "NonlinearSolvers.physicsRhs",
-    "category": "Function",
-    "text": "This function computes the vector form of of the residual from the vector   form of the solution, ie. q_vec -> rhs_vec, for a given physics.   This is one of the two functions required by newtonInner.\n\nUsers of newtonInner that are not physics modules (for example, implicit   time marching schemes) will need to implement their own version of this   function.  See the Implimentation Notes section below.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an AbstractSBP\neqn: an AbstractSolutionData (may be modified during this function)\nopts: the options dictionary\nctx_residual: a tuple of values.  ctx_residual[1] must be a function                    that computes (q -> res).  Typically this is evalResidual.                    The other entries of the tuple (if any) are not used.\n\n               The purpose of this argument is to make the signature of\n               the function generic enough so that implict time marching\n               methods can use it.  (If you are confused about this\n               programming pattern, google how callback are implemented\n               in C, this ctx is like a void* in C).\n\nt: the time at which to evalute the residual\n\nInputs/Outputs\n\nrhs_vec: vector to put the residual in\n\nOutput\n\nnorm of the residual vector\n\nImplementation Notes:\n\nThis function is really a wrapper around an evalResidual-like function.   It has to do 5 things:\n\n1. scatter eqn.q_vec -> eqn.q\n2. start parallel communication if needed\n3. call the evalResidual-like function to compute eqn.q -> eqn.res\n4. assemble the residual into the output vector, ie. eqn.res -> rhs_vec\n5. compute the norm of the rhs_vec\n\nAny implementation of this function (used with newtonInner) must have the   following properties:\n\n1. on exit, eqn.q and eqn.q_vec must be consistent\n2. this function start parallel communication if needed\n3. allow for the possibility that rhs_vec and eqn.res_vec alias\n\nIs is recommended to use calcNorm to compute the norm.\n\nOther implementations of this function are encouraged to use this function   to help construct their rhs_vec.\n\n\n\n"
-},
-
-{
     "location": "NonlinearSolvers/newton_inner.html#newtonInner-1",
     "page": "Newton Inner",
     "title": "newtonInner",
     "category": "section",
-    "text": "physicsRhs"
+    "text": ""
 },
 
 {
@@ -6337,6 +6961,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "Utils/misc.html#Utils.free-Tuple{Any}",
+    "page": "Misccellaneous",
+    "title": "Utils.free",
+    "category": "Method",
+    "text": "Generic function to free any memory belonging to other libraries\n\n\n\n"
+},
+
+{
     "location": "Utils/misc.html#Utils.inversePerm-Tuple{AbstractArray{T,1},AbstractArray{T,1}}",
     "page": "Misccellaneous",
     "title": "Utils.inversePerm",
@@ -6358,6 +6990,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Utils.permMatrix",
     "category": "Method",
     "text": "Create a permutation matrix from a permutation vector.  The element type   of the returned matrix is Int.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.removeComplex-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any}",
+    "page": "Misccellaneous",
+    "title": "Utils.removeComplex",
+    "category": "Method",
+    "text": "Set the complex part of the solution to zero, including eqn.q, eqn.q_vec, and   the send and receive buffers in eqn.shared_data\n\nInputs\n\nmesh\nsbp\neqn\nopts\n\n\n\n"
 },
 
 {
@@ -6422,6 +7062,150 @@ var documenterSearchIndex = {"docs": [
     "title": "Miscellaneous",
     "category": "section",
     "text": "  CurrentModule = Utils  Modules = [Utils]\n  Pages = [\"Utils/Utils.jl\"]"
+},
+
+{
+    "location": "test/Testing.html#",
+    "page": "Introduction",
+    "title": "Introduction",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "test/Testing.html#Testing-1",
+    "page": "Introduction",
+    "title": "Testing",
+    "category": "section",
+    "text": "PDESolver has a test system to verify the code is working properly. Every feature of the code should have a test that verifies the correctness of the feature.  No exceptions!Tests can take the form of unit tests, which verify the correctness of an individual function, or system integration tests, which verify several pieces of code (which were unit tested individually) are working together correctly.Some examples of unit tests are:testing that a flux function returns a known value (for cases when the numerical scheme is exact)\ntesting that a two-point numerica flux function returns the analytical flux when the left and right state are the same (the consistency property)Some examples of system integration tests are:Testing a uniform flow has zero residual\nTesting convergence rates"
+},
+
+{
+    "location": "test/Testing.html#Contents-1",
+    "page": "Introduction",
+    "title": "Contents",
+    "category": "section",
+    "text": "Pages = [\"Readme.md\", \"Travis.md\", \"TestSystem.md\"]\nDepth = 1"
+},
+
+{
+    "location": "test/Readme.html#",
+    "page": "Local Testing",
+    "title": "Local Testing",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "test/Readme.html#Test-System-1",
+    "page": "Local Testing",
+    "title": "Test System",
+    "category": "section",
+    "text": "The Ticon test system is composed of functions that test different aspects of the code.  The test system allows tags to be associated with each test function, and selective running of tests based on their tags. Currently, each physics module has its own set of tags and test list. The serial tests for a single physics module  are run as follows:  cd test/physics_module\n  julia ./runtests.jl  TAG1 TAG2 ...The parallel tests are run with:  cd test/physics_module\n  mpirun -np 2 julia ./runtests_parallel.jl  TAG1 TAG2 ...  cd test/physics_module\n  mpirun -np 4 julia ./runtests_parallel4.jl  TAG1 TAG2 ...for the 2 and 4 processors tests, respectivelyThe parallel tests for all physics modules are run with:  ./runtests_parallel.sh TAG1 TAG2...and all tests (serial + parallel) for all physics modules are run with  ./runtests.sh TAG1 TAG2Running the tests in a single julia session can be faster because the code does not have to be recompiled for each physics.  The serial tests can be run with:  julia ./runtests.jl TAG1 TAG2 ...the 2 processor tests with  mpirun -np 2 julia ./runtests_parallel2.jl TAG1 TAG2 ...and the 4 processor tests with  mpirun -np 4 julia ./runtests_parallel4.jl TAG1 TAG2 ...All the tests (serial + parallel) can be run with  ./runtests_fast.sh TAG1 TAG2 ...For all scripts except runtests_fast.sh, if no tags are specified, all tests are run. If any tags are specified, only functions matching those tags are run. For runtest_fast.sh only the tests with TAG_SHORTTEST are run by default. If any tags are specified, only tests matching the tags (and not TAG_SHORTTEST are run). The list of currently defined tags can be found in ./tags.jl Note that the serial tests must  be run before the parallel tests. All test must have one of LengthTags associated with them. Any test that takes less than 60 seconds to run should be specified as a TAG_SHORTTEST, otherwise TAG_LONGTEST."
+},
+
+{
+    "location": "test/Readme.html#Adding-Tests-1",
+    "page": "Local Testing",
+    "title": "Adding Tests",
+    "category": "section",
+    "text": "Each physics module maintains a TestSet object which contains a list of tests and their associated tags.  See the previous paragraph for a note about the required tags.  TestSet.jl provides an API for adding tests to the list.All tests must be enclosed in functions.  These functions must fit into one of three catagories:zero argument functions\nfunctions that take the arguments \n(mesh, sbp, eqn, opts)\n as produced by      an input file which already exists\nfunctions that take the arguments \n(mesh, sbp, eqn, opts)\n as produced by      modifying an existing input fileThese catagories correspond to add_funcs1!, add_funcs2!, and add_funcs3! in TestSet.jl.The function run_testlist runs a test list.  See the documentation of these functions for details on how to use them.Note that it is acceptable for a test function to load input files internally. The benefit to type 2 functions over type 1 functions is in the case when several functions share an input file.  The test system will only load the file once if possible, rather than for every test function that uses is. Consequently, each test function must not depend on modifications made to the the (mesh, sbp, eqn,  opts) objects by other test functions, because the objects may or may not be re-initialized between calls to the test functions.  Also, because tags can be used to selectively run tests, it cannot be guaranteed that a particular test will run before another one."
+},
+
+{
+    "location": "test/Travis.html#",
+    "page": "CI Testing",
+    "title": "CI Testing",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "test/Travis.html#Travis-CI-Testing-1",
+    "page": "CI Testing",
+    "title": "Travis CI Testing",
+    "category": "section",
+    "text": "We currently use the Travis CI service to run automated tests on all branches.  This page describes the build system"
+},
+
+{
+    "location": "test/Travis.html#Build-Matrix-1",
+    "page": "CI Testing",
+    "title": "Build Matrix",
+    "category": "section",
+    "text": "A build matrix is used to create one CI build per physics module. Each build sets an environment variable to indicate to the test/runtests_travis.sh script which physics module to run tests on. For example, the environment variablesTEST_ADVECTION=1\nTEST_EULER=1\nTEST_SIMPLEODE=1are used to decide whether or not to run tests for the Advection, Euler, and SimpleODE physics modules. Note that the environment variables set in  the env section of .travis.yml must exactly match the variables used in test/runtests_travis.sh."
+},
+
+{
+    "location": "test/Travis.html#Caching-Dependencies-1",
+    "page": "CI Testing",
+    "title": "Caching Dependencies",
+    "category": "section",
+    "text": "It is possible to have Travis cache some of PDESolvers dependencies to save build time.  In particular, Petsc takes some time to compile and does not change very often, so it would be beneficial to cache it. One downside of caching is that a manual process is required to update the cache if we change version of Petsc.The configuration process is described here.  Most of the work is done in the deps/move_petsccache.sh script.Each branch has its own cache, and the cache needs to be created during the first build on a new branch.  Therefore, Travis must be configured to detect if the cache has been created and build the cache if needed. One additional wrinkle is that the directories created by the cache interfere with the PDESolver build system.  The .travis.yml configuration file executes the following procedure:If \npath/to/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/libpetsc.so\n exists, move the \n/lib\n directory to \n$HOME/lib\n, set \nPETSC_DIR\n and   \nPETSC_ARCH\n, and delete \n/path/to/PETSc2\n.  If the cache did not exist,    the directory will still exist, but will be empty.  Delete \n/path/to/PETSc2\n so the PDESolver build system will install the \nPETSc2\n package.Install PDESolver and its dependenciesIf \nPETSC_DIR\n and \nPETSC_ARCH\n are defined (done in step 1 if cache was retrieved), move \n$HOME/lib\n back to original location, creating any directories in the path as needed.If PETSC_DIR and PETSC_ARCH are not set in step 1, step 2 will build PETSc.  At the end of the Travis run, the /path/to/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib directory will be uploaded to wherever Travis stores cache files.  It will then be available for the next Travis build.If the cache has already been built for a given branch and a different version of PETSc is needed, the cache must be deleted so step 2 can build the new version. The web interface to PETSc can be used to delete the cache."
+},
+
+{
+    "location": "test/TestSystem.html#",
+    "page": "Test API",
+    "title": "Test API",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "test/TestSystem.html#TestSystem.TestList",
+    "page": "Test API",
+    "title": "TestSystem.TestList",
+    "category": "Type",
+    "text": "This type stores all the data that describes a set of tests and their   associated tags.\n\nFields:     funcs: list of functions that contain the tests.  The order in which            the tests run is the same as the order of insertion\n\nfunc_tags: Vector, same length as funcs, where each element is a vector\n           of tags associated with each func.\n\nfunc_type:  Vector, same length as funcs, describing how to run each\n            function. 1 = no arguments, 2 = args = (mesh, sbp, eqn, opts),\n            3 = (mesh, sbp, eqn, opts), using a modified version of an\n            existing input file\ninput_name: Vector, same length as funcs, containing the name of the input\n            file to use with each function.  For func_type == 1 this value\n            is unused, for func type == 2 it is used directly, for \n            func_type == 3 it is modified and written to a new name\n            according to mod_input\n\nmod_input: Vector, same length as funcs, where each element is a dictionary.\n           For func_type == 3 the input file specified by input_name is\n           modified with these keys.  There must also be a key called\n           \"new_fname\" that specifies name to write the modified file\n           to (not including file extension.  \n           This modified file will be loaded before the function \n           is called.\n\ntag_list: collection of all known tags\n\n\n\n"
+},
+
+{
+    "location": "test/TestSystem.html#TestSystem.add_func1!",
+    "page": "Test API",
+    "title": "TestSystem.add_func1!",
+    "category": "Function",
+    "text": "This function adds a new test function of func_type == 1 to the list   (a function that takes no arguments).\n\nInputs     test_list: the list of tests to append the function to     func: the function     tags: an array of tags associated with this function.  The user is free           to modify this array afterwards, but not to mutate the strings within           the array. (optional)\n\n\n\n"
+},
+
+{
+    "location": "test/TestSystem.html#TestSystem.add_func2!",
+    "page": "Test API",
+    "title": "TestSystem.add_func2!",
+    "category": "Function",
+    "text": "This function adds a new test function of func_type == 2 to the list   (a function that takes the arguments (mesh, sbp, eqn, opts), as   obtained from the input file specified).\n\nInputs     test_list: the list of tests to append the function to     func: the function     input_name: name of input file to be used with this function     tags: an array of tags associated with this function.  The user is free           to modify this array afterwards, but not to mutate the strings within           the array. (optional)\n\n\n\n"
+},
+
+{
+    "location": "test/TestSystem.html#TestSystem.add_func3!",
+    "page": "Test API",
+    "title": "TestSystem.add_func3!",
+    "category": "Function",
+    "text": "This function adds a new test function of func_type == 2 to the list   (a function that takes the arguments (mesh, sbp, eqn, opts), as   obtained from modifying the input file specified).\n\nInputs     test_list: the list of tests to append the function to     func: the function     input_name: name of input file to be modified for use with this function     mod_dict: dictionary of keys to be added (or replaced) in the input file     tags: an array of tags associated with this function.  The user is free           to modify this array afterwards, but not to mutate the strings within           the array. (optional)\n\n\n\n"
+},
+
+{
+    "location": "test/TestSystem.html#TestSystem.run_testlist",
+    "page": "Test API",
+    "title": "TestSystem.run_testlist",
+    "category": "Function",
+    "text": "This function runs a test list.  Tests are run in the order they were   loaded into the TestList object.  This implementation handles the case of   several tests sets sharing an input file efficiencly, ie. if several test    functions use the same input file and are placed in the test list    consecutively, the input file will be loaded only once.\n\nA list of tags can be optionally supplied.  In this case, only the tests   that have the specified tags will be run.  If no list is supplied, all tags   are run.\n\nInputs:     testlist: a TestList loaded with functions     prep_func = function used with test functions of type 2 or 3.  It must                 have signature prep_func(fname::ASCIIString). fname is the                 name of hte input file associated with the test function     tags: an array of tags (optional)\n\n\n\n"
+},
+
+{
+    "location": "test/TestSystem.html#TestSystem.check_tags-Tuple{Function,Array{ASCIIString,N}}",
+    "page": "Test API",
+    "title": "TestSystem.check_tags",
+    "category": "Method",
+    "text": "This function checks that all necessary tags are present and throws   an exception is they are not.\n\nCurrently this only verifies that one of LengthTags is present\n\nInputs:     func: the function (only needed to produce error message)     tags: the tags for this function\n\nOutputs: none\n\n\n\n"
+},
+
+{
+    "location": "test/TestSystem.html#TestSystem-API-1",
+    "page": "Test API",
+    "title": "TestSystem API",
+    "category": "section",
+    "text": "CurrentModule = TestSystemModules = [TestSystem]"
 },
 
 ]}
