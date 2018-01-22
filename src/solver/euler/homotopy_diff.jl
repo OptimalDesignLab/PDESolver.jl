@@ -5,14 +5,11 @@ function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
                               eqn::EulerData, opts::Dict, 
                               assembler::AssembleElementData, lambda::Number)
 
-  @time calcHomotopyDiss_jac(mesh, sbp, eqn, opts, assembler, lambda)
-  println("calcHomotopyDiss_jac @time prited above")
+  calcHomotopyDiss_jac(mesh, sbp, eqn, opts, assembler, lambda)
 end
 
 function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp, 
                           eqn::EulerData{Tsol, Tres}, opts, assembler, lambda)
-
-  println(BSTDOUT, "\nentered calcHomotopyDiss_jac, lambda = ", lambda)
 
   # some checks for when parallelism is enabled
   @assert opts["parallel_data"] == "element"
