@@ -347,7 +347,6 @@ function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)
   h = 1e-20
   pert = Complex128(0, h)
   for j=1:numDofPerNode
-#    println("\nj = ", j)
     qL[j] += pert
     EulerEquationMod.RoeSolver(params, qL, qR, aux_vars, nrm, F)
 
@@ -359,7 +358,6 @@ function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)
   end
 
   for j=1:numDofPerNode
-#    println("\nj = ", j + 5)
     qR[j] += pert
     EulerEquationMod.RoeSolver(params, qL, qR, aux_vars, nrm, F)
 
@@ -371,7 +369,6 @@ function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)
   end
 
   # AD version
-#  println("\nTesting AD version")
   resL2 = zeros(resL)
   resR2 = zeros(resR)
 
@@ -630,9 +627,6 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
   assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
 
-  println("jac1 = \n", full(jac1))
-  println("jac2 = \n", full(jac2))
-  println("diff = \n", full(jac1) - full(jac2))
   # multiply against a random vector to make sure the jacobian is
   # the same
   for i=1:10
