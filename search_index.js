@@ -6077,7 +6077,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Jacobian Calculation",
     "title": "Explicit Calculation",
     "category": "section",
-    "text": "The most efficient method to compute the Jacobian is to explicitly compute all its entries and assemble them into a matrix. The evalJacobian function must be extended by each physics module for this to work. This function is passed all the same arguments as evalResidual plus an additional _AssembleElementData object which is used to assemble the contribution of each element or interface into the matrix._AssembleElementData\n_AssembleElementData(::AbstractMatrix, ::Any, ::Any, ::Any, ::Any)\nNullAssembleElementData\nassembleElement(::_AssembleElementData, ::AbstractMesh, ::Integer, ::Array{Float64, 4})\nassembleInterface\nassembleSharedFace\nassembleBoundary"
+    "text": "The most efficient method to compute the Jacobian is to explicitly compute all its entries and assemble them into a matrix. An overview of how this was done for the Euler physics is described here. The evalJacobian function must be extended by each physics module for this to work. This function is passed all the same arguments as evalResidual plus an additional _AssembleElementData object which is used to assemble the contribution of each element or interface into the matrix._AssembleElementData\n_AssembleElementData(::AbstractMatrix, ::Any, ::Any, ::Any, ::Any)\nNullAssembleElementData\nassembleElement(::_AssembleElementData, ::AbstractMesh, ::Integer, ::Array{Float64, 4})\nassembleInterface\nassembleSharedFace\nassembleBoundary"
 },
 
 {
