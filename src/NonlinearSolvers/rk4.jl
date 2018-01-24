@@ -399,9 +399,11 @@ end
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
+  t = rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
       (mesh, sbp, eqn), opts, eqn.params.time;
       majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
+
+  return t
 
 end
 

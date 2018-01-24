@@ -245,7 +245,7 @@ function assertReceivesWaited{T}(shared_data::Vector{SharedFaceData{T}})
   for i=1:length(shared_data)
     data_i = shared_data[i]
     if !shared_data[i].recv_waited
-      throw(ErrorException("Process $(data_i.myrank) has not yet completed receive from proccess $(data_i.peernum)"))
+      throw(ErrorException("Process $(data_i.myrank) has not yet completed receive from process $(data_i.peernum)"))
     end
   end
 

@@ -119,7 +119,9 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #  println("entered evalResidual")
 #  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
-    startSolutionExchange(mesh, sbp, eqn, opts)
+    startSolutionExchange(mesh, sbp, eqn, opts)                       # MAJOR TODO: UNCOMMENT WHEN DONE WITH par debug
+                                                                        # this is required to be commented out when
+                                                                        # evalSharedFaceIntegrals is commented out
   end
 
 
@@ -195,7 +197,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
     # evalSharedFaceIntegrals_viscous(mesh, sbp, eqn, opts)
   end
-  
+
   # DEBUG BEGIN
   # res_vec = zeros(Float64, length(eqn.res))
   # for i = 1 : length(eqn.res)
