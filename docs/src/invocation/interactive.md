@@ -16,7 +16,8 @@ Instead, this document is intended to provide a springing-off point for the deve
 
 ```
 using PDESolver
-using AdvectionEquationMod
+# using AdvectionEquationMod
+# using EulerEquationMod
 using ArrayViews
 using ODLCommonTools
 using SummationByParts
@@ -44,10 +45,10 @@ sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofp
 var_type = opts["variable_type"]
 
 # initialize the eqn object with the desired physics
-# eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
-eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
+eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
+# eqn = AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
 
-init(mesh, sbp, eqn, opts)
+EulerEquationMod.init(mesh, sbp, eqn, opts)
 
 # sample commands for populating some fields of eqn
 rand!(eqn.q)
