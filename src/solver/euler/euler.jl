@@ -198,6 +198,9 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     # evalSharedFaceIntegrals_viscous(mesh, sbp, eqn, opts)
   end
 
+  println(eqn.params.f, " >>>>>>>> End of evalResidual <<<<<<<<< ")
+  print_qvec_coords(mesh, eqn, filename=eqn.params.f)
+
   # DEBUG BEGIN
   # res_vec = zeros(Float64, length(eqn.res))
   # for i = 1 : length(eqn.res)
