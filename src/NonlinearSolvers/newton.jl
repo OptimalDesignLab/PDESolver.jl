@@ -276,7 +276,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     println(BSTDOUT, "  Final step size: ", newton_data.step_norm_i)
     println(BSTDOUT, "  Final residual: ", res_0_norm)
     println(BSTDOUT, "  Final relative residual: ", res_0_norm/newton_data.res_norm_rel)
-    @verbose5 close(fconv); 
+    @verbose5 close(newton_data.fconv); 
   end
   flush(BSTDOUT)
 

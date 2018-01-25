@@ -271,7 +271,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
 =#
   end
 
-  if opts["callback_write_qvec"]
+  if opts["callback_write_qvec"] && (itr % opts["output_freq"] == 0)
     fname = string("callback_q_vec", itr, "_", myrank, ".dat")
     writedlm(fname, real(eqn.q_vec))
   end
@@ -454,6 +454,32 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 #  println("typeof(eqn) = ", typeof(eqn))
 #  println("typeof(eqn.params) = ", typeof(eqn.params))
+#  println("eqn.q[:, :, 10180] = \n", eqn.q[:, :, 10180])
+#  println("coords = \n", mesh.coords[:, :, 10180])
+
+  # replace abnormally small density values with element average
+  # this is a really terrible idea
+  q_tmp = zeros(Tsol, mesh.numDofPerNode)
+
+  for i=1:mesh.numEl
+    avg_val = zero(Tsol)
+    for j=1:mesh.numNodesPerElement
+      avg_val += eqn.q[1, j, i]
+    end
+    avg_val /= mesh.numNodesPerElement
+
+    for j=1:mesh.numNodesPerElement
+      if eqn.q[1, j, i] < 0.5*avg_val
+        coords_j = sview(mesh.coords, :, j, i)
+        calcFreeStream(eqn.params, coords_j, q_tmp)
+        println("replacing value for element ", i, ", node ", j)
+        for k=1:mesh.numDofPerNode
+          eqn.q[k, j, i] = q_tmp[k]
+        end
+      end
+    end
+  end
+
 
   # apply filtering to input
   if eqn.params.use_filter

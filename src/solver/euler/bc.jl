@@ -29,7 +29,12 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     idx_range = start_index:(end_index - 1)
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
 
-    if opts["precompute_boundary_flux"]
+    if opts["use_staggered_grid"]
+
+      calcBoundaryFlux_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, functor_i,
+                             idx_range, bndry_facenums_i)
+      
+    elseif opts["precompute_boundary_flux"]
       bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
 
       # call the function that calculates the flux for this boundary condition
@@ -282,6 +287,69 @@ function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
     boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, flux_face, res_i,
                            SummationByParts.Subtract())
   end
+
+  return nothing
+end
+
+
+"""
+  Staggered grid version
+"""
+function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}(mesh_s::AbstractDGMesh{Tmsh},
+                          mesh_f::AbstractDGMesh{Tmsh},
+                          sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                          eqn::EulerData{Tsol, Tres},
+                          functor::BCType, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1})
+  # calculate the boundary flux for the boundary condition evaluated by the
+  # functor
+
+  nfaces = length(bndry_facenums)
+  q_face = zeros(Tsol, mesh_f.numDofPerNode, mesh_f.numNodesPerFace)
+  params = eqn.params
+  flux_face = zeros(Tres, mesh_f.numDofPerNode, mesh_f.numNodesPerFace)
+  res_f = zeros(Tres, mesh_f.numDofPerNode, mesh_f.numNodesPerElement)
+  res_s = zeros(Tres, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
+  aux_vars = zeros(Tsol, 1)
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+    q_vol = ro_sview(eqn.q_flux, :, :, bndry_i.element)
+    boundaryFaceInterpolate!(mesh_f.sbpface, bndry_i.face, q_vol, q_face)
+
+    # interpolate to face
+    for j = 1:mesh_f.numNodesPerFace
+
+      # get components
+      q_j = sview(q_face, :, j)
+
+      # convert to conservative variables if needed
+      aux_vars[1] = calcPressure(eqn.params, q_j)
+      coords = ro_sview(mesh_f.coords_bndry, :, j, global_facenum)
+      nrm_xy = ro_sview(mesh_f.nrm_bndry, :, j, global_facenum)
+      bndryflux_i = sview(flux_face, :, j)
+
+      functor(params, q_j, aux_vars, coords, nrm_xy, bndryflux_i)
+    end  # end loop j
+
+    # integrate
+    fill!(res_f, 0.0)
+    fill!(res_s, 0.0)
+    boundaryFaceIntegrate!(mesh_f.sbpface, bndry_i.face, flux_face, res_f,
+                           SummationByParts.Subtract())
+
+    # interpolate back
+    smallmatmat!(res_f, mesh_s.I_S2F, res_s)
+
+
+    # accumulate into res
+    @simd for j=1:mesh_s.numNodesPerElement
+      @simd for k=1:mesh_s.numDofPerNode
+        eqn.res[k, j, bndry_i.element] += res_s[k, j]
+      end
+    end
+
+  end  # end loop i
 
   return nothing
 end
@@ -540,8 +608,8 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
   # params says we are using entropy variables
 
 
-#  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
-  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+#  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
@@ -1427,6 +1495,7 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1})
 
+
   pb = 101300.0/params.p_free  # nondimensionalized pressure
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -1438,7 +1507,7 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
   nrm_fac = 1/sqrt(nrm_xy[1]*nrm_xy[1] + nrm_xy[2]*nrm_xy[2])
   Un = (q[2]*nrm_xy[1] + q[3]*nrm_xy[2])*nrm_fac/q[1]
 
-  @assert Un > 0  # this should be outflow, not inflow
+  @assert Un >= 0  # this should be outflow, not inflow
   @assert (Un*Un)/ai2 < 1
 
   qg = params.qg
@@ -1453,6 +1522,32 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
 
   return nothing
 end
+
+type inviscidChannelFreeStreamBC <: BCType
+end
+
+# low level function
+function call{Tmsh, Tsol, Tres}(obj::inviscidChannelFreeStreamBC,
+              params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1})
+
+
+#  println("entered isentropicOvrtexBC (low level)")
+#  println("Tsol = ", Tsol)
+  # getting qg
+  qg = params.qg
+  calcInvChannelFreeStream(params, coords, qg)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+
+end # ends the function unsteadyVortex BC
+
+
+
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -1475,6 +1570,7 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "ChannelMMSBC" => ChannelMMSBC(),
 "subsonicInflowBC" => SubsonicInflowBC(),
 "subsonicOutflowBC" => SubsonicOutflowBC(),
+"inviscidChannelFreeStreamBC" => inviscidChannelFreeStreamBC(),
 "defaultBC" => defaultBC(),
 )
 

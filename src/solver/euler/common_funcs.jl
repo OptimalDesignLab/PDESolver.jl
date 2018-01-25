@@ -932,4 +932,25 @@ function calcInvChannelIC{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end
 
+"""
+  Free stream conditions for SU2 inviscid channel
+"""
+function calcInvChannelFreeStream{Tmsh, Tsol}(params::ParamType2,
+                         coords::AbstractArray{Tmsh,1},
+                         q::AbstractArray{Tsol,1})
+
+
+  rho = 1.22531
+  rhou = rho*170.104
+  rhov = 0
+  E = 101100/params.gamma_1 + 0.5*rho*(rhou*rhou + rhov*rhov)
+
+  q[1] = rho
+  q[2] = rhou
+  q[3] = rhov
+  q[4] = E
+
+  return nothing
+end
+
 

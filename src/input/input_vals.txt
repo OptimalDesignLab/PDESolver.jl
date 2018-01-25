@@ -317,7 +317,8 @@ Note that any values associated with these options are shared with the regular
 "newton_globalize_euler"  : use the Pseudo-Transient Continuation
                             (aka. implicit Euler) globalization, (Bool), default                            false
 "euler_tau": the magnitude factor of the initial pseudo-timestep for the
-             Euler globalization, (FloatingPoint), default 1.0
+             Euler globalization, (FloatingPoint), default 1.0,
+             smaller values -> stronger globalization
 
 "use_volume_preconditioner" : use the jacobian of the volume integrals as a
                               preconditioner (Bool), default false.  Note that
