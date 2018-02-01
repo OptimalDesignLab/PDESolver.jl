@@ -266,6 +266,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
           end
         end
         # There is a reason for doing this, even though it isn't used below in evalFaceIntegrals_vector. Ask JF
+        # TODO TODO: this is used by interiorfaceintegrate! in evalFaceIntegrals.
         eqn.flux_face[iDof, n, f] += flux[iDof, n]*coef_nondim
       end
     end

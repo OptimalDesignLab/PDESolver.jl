@@ -201,6 +201,33 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   println(eqn.params.f, " >>>>>>>> End of evalResidual <<<<<<<<< ")
   print_qvec_coords(mesh, eqn, filename=eqn.params.f)
 
+  if mesh.commsize == 1
+    println(" -------->>>>>>>> End of evalResidual <<<<<<<<<-------- ")
+    println("on interface: q[:, 3, 4]: ")
+    println(eqn.q[:, 3, 4])
+    println("on interface: res[:, 3, 4]: ")
+    println(eqn.res_vec[45:48])
+    println("on RHS: q[:, 2, 7]: ")
+    println(eqn.q[:, 2, 7])
+    println("on RHS: res[:, 2, 7]: ")
+    println(eqn.res_vec[77:80])
+    println(" ")
+  else
+    if myrank == 0
+      println(" -------->>>>>>>> End of evalResidual <<<<<<<<<-------- ")
+      println("on interface: q[:, 3, 1]:")
+      println(eqn.q[:, 3, 1])
+      println("on interface: res[:, 3, 1]: ")
+      println(eqn.res_vec[9:12])
+      println("on RHS: q[:, 2, 2]:")
+      println(eqn.q[:, 2, 2])
+      println("on RHS: res[:, 2, 2]: ")
+      println(eqn.res_vec[17:20])
+      println(" ")
+
+    end
+  end
+
   # DEBUG BEGIN
   # res_vec = zeros(Float64, length(eqn.res))
   # for i = 1 : length(eqn.res)
