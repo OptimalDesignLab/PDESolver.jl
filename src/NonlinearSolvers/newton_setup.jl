@@ -331,7 +331,7 @@ function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-  physicsJac(mesh, sbp, eqn, opts. pc.A, ctx_residual, t)
+  physicsJac(mesh, sbp, eqn, opts, getBasePC(pc).A, ctx_residual, t)
 
   if opts["newton_globalize_euler"]
     # TODO: updating the Euler parameter here is potentially wrong if we

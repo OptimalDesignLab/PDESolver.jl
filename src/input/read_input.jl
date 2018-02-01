@@ -462,7 +462,7 @@ petsc_opts = Dict{AbstractString, AbstractString}(
 )
 
 if arg_dict["use_volume_preconditioner"]
-  get!(petsc_opts, "-pc_type", "shell")
+  petsc_opts["-pc_type"] = "shell"
 end
 
 

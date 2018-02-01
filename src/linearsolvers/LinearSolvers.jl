@@ -10,7 +10,7 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
        linearSolve, linearSolveTranspose, 
        isLOMatFree, isPCMatFree, setTolerances, free,  # utility functions
        applyLinearOperator, applyLinearOperatorTranspose,  # LO functions
-       getBaseLO, getBasePC,
+       getBaseLO, getBasePC, getBaseObject,
        PCNone, PetscMatPC, PetscMatFreePC,  # PC types
        DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO,  # LO types
        AbstractPC, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstract PC types
@@ -511,6 +511,28 @@ function getBaseLO(lo::AbstractLO)
 
   # this will recurse down to the underlying linear operator
   return getBaseLO(lo.lo_inner)
+end
+
+"""
+  This function calls either [`getBasePC`](@ref) or [`getBaseLO`](@ref)
+  depending on the type of its argument.
+
+  **Inputs**
+
+   * lo: either an `AbstractLO` or `AbstractPC` object
+
+  **Outputs**
+
+   * the base PC or LO object
+"""
+function getBaseObject(lo::AbstractLO)
+
+  return getBaseLO(lo)
+end
+
+function getBaseObject(pc::AbstractPC)
+  
+  return getBasePC(pc)
 end
 
 """

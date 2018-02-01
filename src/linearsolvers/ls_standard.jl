@@ -324,7 +324,6 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
     setupPC(pc2)
   end
 
-
   # do the solve
   ksp = ls.ksp
   SetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))

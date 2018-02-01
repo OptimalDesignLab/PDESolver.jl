@@ -225,7 +225,8 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
   println(BSTDOUT, "applying Implicit Euler globalization")
   println(BSTDOUT, "average tau value = ", mean(lo.tau_vec))
 
-  lo2 = getBaseLO(lo)
+  
+  lo2 = getBaseObject(lo)
 #  println("euler globalization tau = ", lo.tau_l)
   # create the indices
 

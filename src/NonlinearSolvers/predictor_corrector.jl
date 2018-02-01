@@ -119,6 +119,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
   # some parameters
   lambda_min = 0.0
+  lambda_cutoff = 0.001
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
@@ -274,6 +275,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       end
 
       lambda = max(lambda_min, lambda - h)
+      if lambda < lambda_cutoff
+        lambda = 0.0
+      end
       if !(typeof(pc) <: PCNone)
         pc.lambda = lambda
       end

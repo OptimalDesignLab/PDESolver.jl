@@ -457,6 +457,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #  println("eqn.q[:, :, 10180] = \n", eqn.q[:, :, 10180])
 #  println("coords = \n", mesh.coords[:, :, 10180])
 
+#=
   # replace abnormally small density values with element average
   # this is a really terrible idea
   q_tmp = zeros(Tsol, mesh.numDofPerNode)
@@ -479,7 +480,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       end
     end
   end
-
+=#
 
   # apply filtering to input
   if eqn.params.use_filter

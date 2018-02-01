@@ -60,8 +60,14 @@
 function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
                     ctx_residual, t=0.0;)
 
-  #TODO: get rid of is_preconditioned
   #TODO: add start_comm option
+
+  # this function should not be called when A is a matrix-free jacobian,
+  # but it can be called for the preconditioner matrix of jac_type == 4
+  if typeof(jac) <: PetscMat
+    @assert MatGetType(jac) != PETSc2.MATSHELL
+  end
+
   verbose = opts["newton_verbosity"]::Int
 
   myrank = mesh.myrank
@@ -107,13 +113,13 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
       res_copy = copy(eqn.res)  # copy unperturbed residual
 
       tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac, t)
-    elseif jac_type == 3  # Petsc sparse jacobian
+    elseif jac_type == 3 || jac_type == 4  # Petsc sparse jacobian
       @verbose5 @mpi_master println(BSTDOUT, "calculating sparse FD jacobian")
       res_copy = copy(eqn.res)  # copy unperturbed residual
       tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, opts, func, res_copy, pert, jac, t)
-    elseif jac_type == 4  # Petsc jacobian-vector product
-      throw(ErrorException("No handling of jac_method = 1 and jac_type = 4: 
-                           finite differencing isn't permitted for Petsc mat-free"))
+#    elseif jac_type == 4  # Petsc jacobian-vector product
+#      throw(ErrorException("No handling of jac_method = 1 and jac_type = 4: 
+#                           finite differencing isn't permitted for Petsc mat-free"))
     end
 
   elseif jac_method == 2
@@ -135,7 +141,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, 
                                             opts, func, res_dummy, pert, jac, t)
       end
-    elseif jac_type == 3 # Petsc sparse jacobian
+    elseif jac_type == 3 || jac_type == 4 # Petsc sparse jacobian
 
        @verbose5 @mpi_master println(BSTDOUT, "calculating Petsc jacobian")
       if calc_jac_explicit

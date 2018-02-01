@@ -43,11 +43,16 @@ function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
 
   pc = createPetscPC(mesh, sbp, eqn, opts)
   A = createPetscMat(mesh, sbp, eqn, opts)
+  println("Petsc type of Ap = ", MatGetType(A))
   xtmp = createPetscVec(mesh, sbp, eqn, opts)
   btmp = createPetscVec(mesh, sbp, eqn, opts)
   is_assembled = Bool[false]
   is_setup = false
-  if opts["use_jac_precond"]  # this must match the condition in LOPetscMat
+
+  # we can't reliably detect whether the LO (which is constructed *after* the
+  # PC) will share the jacobian or not.  We make a best guess here and correct
+  # the is_shared flag in the LO constructor if needed
+  if opts["use_jac_precond"] || opts["jac_type"] == 4  # this must match the condition in LOPetscMat
     is_shared = false
   else
     is_shared = true

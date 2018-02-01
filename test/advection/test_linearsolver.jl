@@ -401,8 +401,10 @@ function test_petscmat_matfree(mesh, sbp, eqn, opts)
 
   # set petsc options
   petsc_opts = opts["petsc_options"]
-  petsc_opts["-pc_type"] = "jacobi"
+  petsc_opts["-pc_type"] = "bjacobi"
+  println("petsc_opts = ", petsc_opts)
   PetscSetOptions(petsc_opts)
+  PetscOptionsView()
 
   pc = TestMatPC(mesh, sbp, eqn, opts)
   lo = TestMatFreeLO(pc, mesh, sbp, eqn, opts)
@@ -410,6 +412,8 @@ function test_petscmat_matfree(mesh, sbp, eqn, opts)
   ctx_residual = (evalResidual, vals)
   t = 0.0
 
+  println("pc.is_shared = ", getBasePC(pc).is_shared)
+  println("lo.is_shared = ", getBaseLO(lo).is_shared)
   setTolerances(ls, 1e-16, 1e-16, -1, -1)
 
   # for testing
