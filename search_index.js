@@ -3081,6 +3081,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/bc.html#EulerEquationMod.calcBoundaryFlux_nopre-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},ODLCommonTools.BCType,UnitRange{T<:Real},AbstractArray{ODLCommonTools.Boundary,1}}",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.calcBoundaryFlux_nopre",
+    "category": "Method",
+    "text": "Staggered grid version\n\n\n\n"
+},
+
+{
     "location": "solver/euler/bc.html#EulerEquationMod.calcBoundaryFlux_nopre-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},ODLCommonTools.BCType,UnitRange{T<:Real},AbstractArray{ODLCommonTools.Boundary,1}}",
     "page": "Boundary Integrals",
     "title": "EulerEquationMod.calcBoundaryFlux_nopre",
@@ -3606,6 +3614,14 @@ var documenterSearchIndex = {"docs": [
     "title": "EulerEquationMod.calcFreeStream_dAlpha",
     "category": "Method",
     "text": "EulerEquationMod.calcFreeStream_daoa\n\nThis function calculates the free stream solution for an airfoil problem   based on the angle of attack and Mach number in nondimensionalized variables.\n\nDensity and energy are set to params.rho_free (usually 1.0) and params.E_free,   (usually 1/(gammagamma_1) + 0.5Ma*Ma), and the x and y momenta as\n\nrhoMacos(angle of attack)  and rhoMasin(angle of attack).\n\nThe angle of attack must be in radians.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcInvChannelFreeStream-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcInvChannelFreeStream",
+    "category": "Method",
+    "text": "Free stream conditions for SU2 inviscid channel\n\n\n\n"
 },
 
 {
@@ -4617,7 +4633,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/homotopy_diff.html#EulerEquationMod.getLambdaMaxSimple_diff-Tuple{EulerEquationMod.ParamType{Tdim,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tmsh,1},AbstractArray{Tsol,1},AbstractArray{Tsol,1}}",
+    "location": "solver/euler/homotopy_diff.html#EulerEquationMod.getLambdaMaxSimple_diff-Tuple{EulerEquationMod.ParamType{Tdim,var_type,Tsol,Tres,Tmsh},AbstractArray{Tsol,1},AbstractArray{Tsol,1},AbstractArray{Tmsh,1},AbstractArray{Tres,1},AbstractArray{Tres,1}}",
     "page": "Homotopy Jacobian",
     "title": "EulerEquationMod.getLambdaMaxSimple_diff",
     "category": "Method",
@@ -5297,6 +5313,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "linearsolvers/lo.html#LinearSolvers.getBaseObject",
+    "page": "Linear Operators",
+    "title": "LinearSolvers.getBaseObject",
+    "category": "Function",
+    "text": "This function calls either getBasePC or getBaseLO   depending on the type of its argument.\n\nInputs\n\nlo: either an \nAbstractLO\n or \nAbstractPC\n object\n\nOutputs\n\nthe base PC or LO object\n\n\n\n"
+},
+
+{
     "location": "linearsolvers/lo.html#Utils.free-Tuple{LinearSolvers.AbstractLO}",
     "page": "Linear Operators",
     "title": "Utils.free",
@@ -5309,7 +5333,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Operators",
     "title": "API",
     "category": "section",
-    "text": "Every linear operator supports the following functions.  When defining a new linear operator, some of the functions must be extended with new methods, while others will be created automatically based on the supertype of the linear operator.calcLinearOperator\napplyLinearOperator\napplyLinearOperatorTranspose\ngetBaseLO\nfree(::AbstractLO)"
+    "text": "Every linear operator supports the following functions.  When defining a new linear operator, some of the functions must be extended with new methods, while others will be created automatically based on the supertype of the linear operator.calcLinearOperator\napplyLinearOperator\napplyLinearOperatorTranspose\ngetBaseLO\ngetBaseObject\nfree(::AbstractLO)"
 },
 
 {
@@ -5509,7 +5533,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Linear Solvers",
     "title": "LinearSolvers.linearSolveTranspose",
     "category": "Function",
-    "text": "Similar to [linearSolver](@ref), but solves A.'x = b.  See that function   for details.\n\n\n\n"
+    "text": "Similar to linearSolve, but solves A.'x = b.  See that function   for details.\n\n\n\n"
 },
 
 {
@@ -5565,7 +5589,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "NonlinearSolvers Introduction",
     "category": "section",
-    "text": "This module contains both the time-stepping methods and the methods for solving steady problems. When solving a CFD problem, these are the functions that drive the code. The purpose of the physics modules is to evaluate the spatial residual.  The purpose of the NonlinearSolvers is to solve the problem. The steady methods and implicit time-marching methods generally use some kind of Newton iteration to solve a nonlinear problem.The first two pages describe the steady and unsteady methods, respectively, and the final pages describe the Newton implementation used by them.  Pages = [ \"steady.md\"\n            \"unsteady.md\"\n            \"newton.md\"\n            \"matrix.md\"\n            \"newton_inner.md\"\n          ]\n  Depth = 1"
+    "text": "This module contains both the time-stepping methods and the methods for solving steady problems. When solving a CFD problem, these are the functions that drive the code. The purpose of the physics modules is to evaluate the spatial residual.  The purpose of the NonlinearSolvers is to solve the problem. The steady methods and implicit time-marching methods generally use some kind of Newton iteration to solve a nonlinear problem.The first two pages describe the steady and unsteady methods, respectively, and the final pages describe the Newton implementation used by them.  Pages = [ \"steady.md\"\n            \"unsteady.md\"\n            \"newton.md\"\n            \"jacobian.md\"\n            \"jac_recalc.md\"\n            \"matrix.md\"\n            \"newton_inner.md\"\n          ]\n  Depth = 1"
 },
 
 {
@@ -5749,7 +5773,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton's Method",
     "title": "NonlinearSolvers.newtonInner",
     "category": "Function",
-    "text": "This function contains the algorithm for Newton's method.  It is intended   to be used by other functions rather than invoked as a solver directly.   For example newton uses newtonInner to solve steady problems while   crank_nicolson uses it to solve the nonlinear problem arising   from the time discretization.\n\nFor reference, Newton's method solves the problem R(q) = 0 using     dR/dq delta q = -R(q)   where R is the rsidual and q is the solution\n\nOn entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec   will contain the solution to f(q) = 0.  eqn.q will also be consistent with   eqn.q_vec, as will the send and receive buffers in eqn.shared_data\n\nOn exit, rhs_vec will have the residual corresponding to eqn.q_vec in it,   with the imaginary part set to zero.\n\nThe AbstractLO and AbstractPC supplied   inside the LinearSolver object must match the jac_type.\n\nWhen doing inexact Newton-Krylov, newonInner modifies the tolerances   of the linear solver.  Users calling newtonInner repeatedly with the   same linear solver object should reset the initial tolerances as needed.\n\nInputs:\n\nnewton_data: NewtonData object, typically obtained from setupNewton\nmesh: a mesh object\nsbp: an SBP operator\neqn: a solution data object\nopts: options dictionary\nls: a LinearSolver with the preconditioner and linear operator fully          initialized.  \nrhs_vec: vector to store R(q) in\nctx_residual: extra data required by rhs_func\n\nThe user must supply tow functions, one to calculate the residual vector   (referred to as rhs_vec), and another to compute the Jacobian.\n\nrhs_func should compute (eqn.q_vec) -> (rhs_vec) and have the signature\n\nrhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t=0.0)\n\nNote that the ctx_residual passed into newtonInner is passed directly   to rhs_func.  The contents of ctx_residual can be whatever is needed by   rhs_func to perform its computation.  See physicsRhs for   the specific requirements on rhs_func and for an example implementation.\n\nThe same ctx_residual passed into newtonInner is passed directly to   calcLinearOperator..\n\nAliasing restrictions: None.  In particular, rhs_vec can alias eqn.res_vec,                          and this leads so some efficiency because it avoids                          needlessly copying data.\n\n\n\n"
+    "text": "This function contains the algorithm for Newton's method.  It is intended   to be used by other functions rather than invoked as a solver directly.   For example newton uses newtonInner to solve steady problems while   crank_nicolson uses it to solve the nonlinear problem arising   from the time discretization.\n\nFor reference, Newton's method solves the problem R(q) = 0 using     dR/dq delta q = -R(q)   where R is the rsidual and q is the solution\n\nOn entry, eqn.q_vec must contain the initial guess for q.  On exit, eqn.q_vec   will contain the solution to f(q) = 0.  eqn.q will also be consistent with   eqn.q_vec, as will the send and receive buffers in eqn.shared_data\n\nOn exit, rhs_vec will have the residual corresponding to eqn.q_vec in it,   with the imaginary part set to zero.\n\nThe AbstractLO and AbstractPC supplied   inside the LinearSolver object must match the jac_type.\n\nWhen doing inexact Newton-Krylov, newonInner modifies the tolerances   of the linear solver.  Users calling newtonInner repeatedly with the   same linear solver object should reset the initial tolerances as needed.\n\nInputs:\n\nnewton_data: NewtonData object, typically obtained from setupNewton\nmesh: a mesh object\nsbp: an SBP operator\neqn: a solution data object\nopts: options dictionary\nls: a LinearSolver with the preconditioner and linear operator fully          initialized.  \nrhs_vec: vector to store R(q) in\nctx_residual: extra data required by rhs_func\n\nThe user must supply two functions, one to calculate the residual vector   (referred to as rhs_vec), and another to compute the Jacobian.\n\nrhs_func should compute (eqn.q_vec) -> (rhs_vec) and have the signature\n\nrhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t=0.0)\n\nNote that the ctx_residual passed into newtonInner is passed directly   to rhs_func.  The contents of ctx_residual can be whatever is needed by   rhs_func to perform its computation.  See physicsRhs for   the specific requirements on rhs_func and for an example implementation.\n\nThe same ctx_residual passed into newtonInner is passed directly to   calcLinearOperator..\n\nThis function supports jacobian/preconditioner freezing using the   prefix \"newton\".\n\nAliasing restrictions: None.  In particular, rhs_vec can alias eqn.res_vec,                          and this leads so some efficiency because it avoids                          needlessly copying data.\n\n\n\n"
 },
 
 {
@@ -5797,7 +5821,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton's Method",
     "title": "NonlinearSolvers.NewtonData",
     "category": "Type",
-    "text": "This type holds the data required by newtonInner as well as   configuration settings.\n\nPublic Fields\n\nmyrank: MPI rank\ncommsize: MPI communicator size\nitr: number of iterations\nres_norm_i: current iteration residual norm\nres_norm_i_1: previous iteration residual norm\nstep_norm_i: current iteration newton step norm\nstep_norm_i_1: previous iteration newton step norm\nres_norm_rel: norm of residual used as the reference point when computing                    relative residuals.  If this is -1 on entry to newtonInner,                    then the norm of the initial residual is used.\nstep_fac: factor used in step size limiter\nres_reltol: nonlinear relative residual tolerance\nres_abstol: nonlinear residual absolute tolerance\nstep_tol: step norm tolerance\nitermax: maximum number of newton iterations\nkrylov_gamma: parameter used by inexact newton-krylov\nls: a \nLinearSolver\nfconv: convergence.dat file handle (or DevNull if not used)\nverbose: how much logging/output to do\n\nOptions Keys\n\nIf res_reltol0 is negative, the residual of the initial condition will be   used for res_norm_rel\n\nnewton_verbosity is used to the verbose field\n\n\n\n"
+    "text": "This type holds the data required by newtonInner as well as   configuration settings.\n\nPublic Fields\n\nmyrank: MPI rank\ncommsize: MPI communicator size\nitr: number of iterations\nres_norm_i: current iteration residual norm\nres_norm_i_1: previous iteration residual norm\nstep_norm_i: current iteration newton step norm\nstep_norm_i_1: previous iteration newton step norm\nres_norm_rel: norm of residual used as the reference point when computing                    relative residuals.  If this is -1 on entry to newtonInner,                    then the norm of the initial residual is used.\nstep_fac: factor used in step size limiter\nres_reltol: nonlinear relative residual tolerance\nres_abstol: nonlinear residual absolute tolerance\nstep_tol: step norm tolerance\nitermax: maximum number of newton iterations\nkrylov_gamma: parameter used by inexact newton-krylov\nrecalc_policy: a \nRecalculationPolicy\n.\nls: a \nLinearSolver\nfconv: convergence.dat file handle (or DevNull if not used)\nverbose: how much logging/output to do\n\nOptions Keys\n\nIf res_reltol0 is negative, the residual of the initial condition will be   used for res_norm_rel\n\nnewton_verbosity is used to the verbose field\n\n\n\n"
 },
 
 {
@@ -6077,7 +6101,119 @@ var documenterSearchIndex = {"docs": [
     "page": "Jacobian Calculation",
     "title": "Explicit Calculation",
     "category": "section",
-    "text": "The most efficient method to compute the Jacobian is to explicitly compute all its entries and assemble them into a matrix. An overview of how this was done for the Euler physics is described here. The evalJacobian function must be extended by each physics module for this to work. This function is passed all the same arguments as evalResidual plus an additional _AssembleElementData object which is used to assemble the contribution of each element or interface into the matrix._AssembleElementData\n_AssembleElementData(::AbstractMatrix, ::Any, ::Any, ::Any, ::Any)\nNullAssembleElementData\nassembleElement(::_AssembleElementData, ::AbstractMesh, ::Integer, ::Array{Float64, 4})\nassembleInterface\nassembleSharedFace\nassembleBoundary"
+    "text": "The most efficient method to compute the Jacobian is to explicitly compute all its entries and assemble them into a matrix. The evalJacobian function must be extended by each physics module for this to work. This function is passed all the same arguments as evalResidual plus an additional _AssembleElementData object which is used to assemble the contribution of each element or interface into the matrix._AssembleElementData\n_AssembleElementData(::AbstractMatrix, ::Any, ::Any, ::Any, ::Any)\nNullAssembleElementData\nassembleElement(::_AssembleElementData, ::AbstractMesh, ::Integer, ::Array{Float64, 4})\nassembleInterface\nassembleSharedFace\nassembleBoundary"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#",
+    "page": "Jacobian Freezing",
+    "title": "Jacobian Freezing",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#Jacobian-and-Preconditioner-Freezing-1",
+    "page": "Jacobian Freezing",
+    "title": "Jacobian and Preconditioner Freezing",
+    "category": "section",
+    "text": "  CurrentModule = NonlinearSolversIt is often faster to reuse the Jacobian and/or preconditioner than calculate a new one each major iteration.  The functions described here provide a consistant API for doing so.Each method in NonlinearSolvers should specify if it supports Jacobian and PC freezing.  If it does, it should specify the prefix (see Construction).Note that some methods use newtonInner internally.  It is sometimes beneficial to have newtonInner recompute the Jacobian and PC.  In other cases, using the same Jacobian and PC for several calls to newtonInner is beneficial.  Both these use cases are supported. Both newtonInner and the outer method can have their own RecalculationPolicy objects. When the newtonInner RecalculationPolicy is RecalculateNever, it will never recalculate the Jacobian and PC and the outer method will be the soley responsible for updaing the Jacobian and PC.  In the reverse case, the outer method can use RecalculateNever and let newtonInner recalculate the Jacobian and PC."
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.doRecalculation",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.doRecalculation",
+    "category": "Function",
+    "text": "This function uses decideRecalculation and the LinearSolver   interface to recalculate the PC and/or LO as specified by the policy.\n\nThis is the main interface the different methods should use for   recalculating the PC and/or LO.  The only case when   decideRecalculation is better is when the method is not using   the LinearSolvers module to define the PC and LO.\n\nInputs\n\npolicy: a \nRecalculationPolicy\nitr: current iteration number\n\nThe following arguments exactly match the signature of calcPCandLO\n\nls\nmesh\nsbp\neqn\nopts\nctx_residual\nt\n\nWhen this function exits, the PC and/or LO will have been updated, if   specified by the RecalculationPolicy.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.decideRecalculation",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.decideRecalculation",
+    "category": "Function",
+    "text": "This function returns the enum specifying whether the PC and/or LO should   be recalculated.\n\nEvery implementation of RecalculationPolicy should extend this   function with a new method.\n\nInputs\n\npolicy: a \nRecalculationPolicy\nitr: the current iteration\n\nOutputs\n\nthe num: see \nRECALC_BOTH\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.resetRecalculationPolicy",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.resetRecalculationPolicy",
+    "category": "Function",
+    "text": "This function should reset the RecalculationPolicy to its initial state.   This function is called at the beginning of Newton's method (making it   safe to reuse the RecalculationPolicy for repeated calls to Newton)\n\nEvery RecalculationPolicy should extend function with a new   method.\n\nInputs\n\npolicy: a \nRecalculationPolicy\n\nOutputs\n\nnone\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.RECALC_BOTH",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.RECALC_BOTH",
+    "category": "Constant",
+    "text": "Enums returned by decideRecalculation telling the caller what to   recalculate.\n\nEnum Names\n\nRECALC_BOTH: recalculate PC and LO\nRECALC_PC: recalculate PC only\nRECALC_LO: recalculate LO only\nRECALC_NONE: don't recalculate anything\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#API-1",
+    "page": "Jacobian Freezing",
+    "title": "API",
+    "category": "section",
+    "text": "doRecalculation\ndecideRecalculation\nresetRecalculationPolicy\nRECALC_BOTH"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.getRecalculationPolicy",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.getRecalculationPolicy",
+    "category": "Function",
+    "text": "This function constructs and returns the recalculation policy specified by   the options dictionary.\n\nMethods that want to use a RecalculationPolicy should this this function   to get it (do not call the constructors directly).\n\nInputs\n\nopts: options dictionary\nprefix: prefix of options to use.  This is usually the name of the method              the returned object will be used in, eg. \"newton\"\n\nOutputs\n\npolicy: a RecalculationPolicy of some kind\n\nOptions Keys\n\n\"\nprefix_recalculation_policy\n\": name of recalculation policy to get\n\nCurrent Policies\n\nASCIIString[\"RecalculateFixedIntervals\",\"RecalculateNever\"]\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.RecalculationPolicyDict",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.RecalculationPolicyDict",
+    "category": "Constant",
+    "text": "Maps names to RecalculationPolicy constructors.  All new   recalculation policies must be added to this list.\n\nThe constructors must have the signature:\n\nMyPolicyName(opts::Dict, prefix::ASCIIString)\n\nwhere opts is the options dictionary and prefix is the prefix passed into   getRecalculationPolicy.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#Construction-1",
+    "page": "Jacobian Freezing",
+    "title": "Construction",
+    "category": "section",
+    "text": "getRecalculationPolicy\nRecalculationPolicyDict"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.RecalculateFixedIntervals",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.RecalculateFixedIntervals",
+    "category": "Type",
+    "text": "This RecalculationPolicy recalculates the LO and PC every x    number if iterations.\n\nOptions Keys\n\n\"\nprefix_prec_recalc_freq\n\": frequency of PC recalculation\n\"\nprefix_jac_recalc_freq\n\": frequency of LO recalculation\n\"\nprefix_recalc_first\n\": if true, recalculate the PC and LO on the first                               iteration, even if other criteria not met.\n\nwhere \"prefix\" is the prefix passed into getRecalculationPolicy\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.RecalculateNever",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.RecalculateNever",
+    "category": "Type",
+    "text": "This RecalculationPolicy never recalculates the PC or LO.  This is useful when Newton's method is used inside other methods to solve  easy problems.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#NonlinearSolvers.RecalculationPolicy",
+    "page": "Jacobian Freezing",
+    "title": "NonlinearSolvers.RecalculationPolicy",
+    "category": "Type",
+    "text": "This is the supertype of all types that tell a method when to recalculate   the Jacobian.  Each subtype defines a different policy for when to   recalculate.\n\n\n\n"
+},
+
+{
+    "location": "NonlinearSolvers/jac_recalc.html#Recalculation-Policies-1",
+    "page": "Jacobian Freezing",
+    "title": "Recalculation Policies",
+    "category": "section",
+    "text": "Modules = [NonlinearSolvers]\nPages = [\"jac_recalc.jl\"]\nOrder = [:type]"
 },
 
 {
