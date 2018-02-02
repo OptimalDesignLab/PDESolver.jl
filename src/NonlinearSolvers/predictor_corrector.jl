@@ -127,6 +127,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
 
   # counters/loop variables
+  #TODO: make a type to store these
   iter = 1
   homotopy_tol = 1e-2
   delta_max = 1.0  # step size limit, set to 1 initially,

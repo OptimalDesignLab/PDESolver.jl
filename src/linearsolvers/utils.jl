@@ -19,7 +19,8 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::AbstractSolutionData, opts)
 
 #  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
-  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
+#  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
+  const mattype = PETSc2.MATBAIJ
   numDofPerNode = mesh.numDofPerNode
 
   comm = eqn.comm
@@ -68,11 +69,11 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
   # preallocate A
   @mpi_master println(BSTDOUT, "preallocating A")
 
-  if mattype == PETSc2.MATMPIAIJ
-    MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
-  else
+#  if mattype == PETSc2.MATMPIAIJ
+#    MatMPIAIJSetPreallocation(A, PetscInt(0),  dnnz, PetscInt(0), onnz)
+#  else
     MatXAIJSetPreallocation(A, bs, dnnz, onnz, PetscIntNullArray, PetscIntNullArray)
-  end
+#  end
   MatZeroEntries(A)
 
   # Petsc objects if this comes before preallocation

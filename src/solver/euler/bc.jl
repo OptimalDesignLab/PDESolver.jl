@@ -609,8 +609,8 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
 
 
 #  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
-  calcLFFlux(params, q, v_vals, aux_vars, nrm_xy, bndryflux)
-#  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
+#  calcLFFlux(params, q, v_vals, aux_vars, nrm_xy, bndryflux)
+  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
