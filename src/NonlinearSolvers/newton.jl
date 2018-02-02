@@ -152,7 +152,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   jac_method = opts["jac_method"]::Int  # finite difference or complex step
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
   epsilon = opts["epsilon"]::Float64
-  recalc_prec_freq = opts["recalc_prec_freq"]::Int
+#  recalc_prec_freq = opts["recalc_prec_freq"]::Int
 
   @assert opts["parallel_type"] == 2
 
@@ -210,11 +210,22 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     @verbose5 @mpi_master println(BSTDOUT, "===== newton iteration: ", i)
     newton_data.itr = i
 
+    recalc_type = decideRecalculation(newton_data.recalc_policy, i)
+    if recalc_type == RECALC_BOTH
+      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
+    elseif recalc_type == RECALC_PC
+      calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, t)
+    elseif recalc_type == RECALC_LO
+      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
+    end
+
+    #=
     if ((i % recalc_prec_freq)) == 0 || i == 1
       calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
     else  # only recalculate the linear operator
       calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
     end
+    =#
 
     # compute eigs, condition number, etc.
     doMatrixCalculations(newton_data, opts)

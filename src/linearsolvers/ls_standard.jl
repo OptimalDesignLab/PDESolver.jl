@@ -120,6 +120,7 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
     end
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif ls.shared_mat
+    println(BSTDOUT, "matrix is shared")
     if start_comm && needParallelData(ls.lo)
       startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     end
@@ -222,7 +223,7 @@ function linearSolve(ls::StandardLinearSolver, b::AbstractVector,
 end
 
 """
-  Similar to [`linearSolver]`(@ref), but solves A.'x = b.  See that function
+  Similar to [`linearSolve`](@ref), but solves A.'x = b.  See that function
   for details.
 """
 function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,

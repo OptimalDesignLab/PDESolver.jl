@@ -36,14 +36,16 @@ end
 # res_norm_i_1 and res_norm_i, updated inside newton's method
 # This is a bad way to pass parameters to updateEuler(), but I can't find a
 # better way that retains the composability of the linear operator abstraction.
-global const EulerConstants = Float64[0, 0]
+global const EulerConstants_LO = Float64[0, 0]
+global const EulerConstants_PC = Float64[0, 0]
 
 """
   Reinitailize the underlying data.  This function should be called every
   time newtonInner() is entered
 """
 function clearEulerConstants()
-  fill!(EulerConstants, 0.0)
+  fill!(EulerConstants_LO, 0.0)
+  fill!(EulerConstants_PC, 0.0)
 end
 
 """
@@ -54,27 +56,59 @@ end
    * res_norm_i: must be a real number
 """
 function recordEulerResidual(res_norm_i)
-  EulerConstants[1] = EulerConstants[2]
-  EulerConstants[2] = res_norm_i
+#  EulerConstants[1] = EulerConstants[2]
+  EulerConstants_LO[2] = res_norm_i
+  EulerConstants_PC[2] = res_norm_i
 end
 
 """
-  Get the two most recent residual norms
+  Get the most recent residual norm and the residual norm the last time
+  the PC was recalculated.  This function should be used to inspect the
+  values only.  [`useEulerConstants`](@ref) should be used when updating the
+  diagonal term in the Jacobian.
+
+  **Inputs**
+
+   * pc or lo: a PC or LO object
 
   **Outputs**
 
    * res_norm_i_1: second most recent residual norm
    * res_norm_i: most recent residual norm
 """
-function getEulerConstants()
-  return EulerConstants[1], EulerConstants[2]
+function getEulerConstants(pc::AbstractPC)
+  return EulerConstants_PC[1], EulerConstants_PC[2]
 end
+
+function getEulerConstants(lo::AbstractLO)
+  return EulerConstants_LO[1], EulerConstants_LO[2]
+end
+
+"""
+  Similar to [`getEulerConstants`](@ref), this function both returns the
+  Euler constants and shifts them so that the next relative residual will
+  be correct.
+"""
+function useEulerConstants(pc::AbstractPC)
+  t1 = EulerConstants_PC[1]
+  t2 = EulerConstants_PC[2]
+  EulerConstants_PC[1] = EulerConstants_PC[2]
+  return t1, t2
+end
+
+function useEulerConstants(pc::AbstractLO)
+  t1 = EulerConstants_LO[1]
+  t2 = EulerConstants_LO[2]
+  EulerConstants_LO[1] = EulerConstants_LO[2]
+  return t1, t2
+end
+
 
 """
   Check if Euler globalization is initialized
 """
 function isEulerInitialized()
-  if EulerConstants[1] == EulerConstants[2] == 0
+  if EulerConstants_LO[1] == EulerConstants_LO[2] == 0
     return false
   else
     return true
@@ -176,7 +210,7 @@ function updateEuler(lo::NewtonLinearObject)
 
   println(BSTDOUT, "typeof(lo) = ", typeof(lo))
   tau_l_old = lo.tau_l
-  res_norm_i_1, res_norm_i = getEulerConstants()
+  res_norm_i_1, res_norm_i = useEulerConstants(lo)
 
   # on the first Jacobian calculate, don't update
   if res_norm_i_1 == 0

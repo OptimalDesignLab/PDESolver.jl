@@ -304,6 +304,42 @@ function getBasePC(pc::AbstractPC)
 end
 
 """
+  This function allows extracting a specific type of pc_inner.
+
+  Note: this is not type-stable in julia 0.4, but can be rewritten to be so
+        in later version of Julia
+
+  **Inputs**
+
+   * pc: a PC
+   * T2: a (possibly abstract) type that is contained as an inner PC somewhere
+         inside pc.
+
+  **Outputs**
+
+   * pc2: a PC that is a subtype of PC2
+"""
+function getInnerPC{T1 <: AbstractPC, T2 <: AbstractPC}(pc::T1, ::Type{T2})
+  if T1 <: T2
+    return pc
+  else
+    getInnerPC(pc.pc_inner, T2)
+  end
+  return pc
+end
+
+# This can be rewritten in future version of Julia as:
+#=
+function getInnerPC(pc::T1, ::Type{T2}) where {T1 <: T2, T2 <: AbstractPC}
+  return pc
+end
+
+function getInnerPC(pc::T1, ::Type{T2}) where {T1 <:AbstractPC, T2 <: AbstractPC}
+  return getInnerPC(pc.pc_inner, T2)
+end
+=#
+
+"""
   Returns `true` if `calcPC` needs parallel communication started before
   it is called, false otherwise.  Defaults to true.  Users should extend this
   function with a new method if that particular PC does not require parallel
