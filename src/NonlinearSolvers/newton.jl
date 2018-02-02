@@ -112,7 +112,7 @@ end
    * ctx_residual: extra data required by rhs_func
 
 
-  The user must supply tow functions, one to calculate the residual vector
+  The user must supply two functions, one to calculate the residual vector
   (referred to as rhs_vec), and another to compute the Jacobian.
 
   rhs_func should compute (eqn.q_vec) -> (rhs_vec) and have the signature
@@ -126,6 +126,9 @@ end
 
   The same ctx_residual passed into newtonInner is passed directly to
   [`calcLinearOperator`](@ref)..
+
+  This function supports jacobian/preconditioner freezing using the
+  prefix "newton".
 
   Aliasing restrictions: None.  In particular, rhs_vec *can* alias eqn.res_vec,
                          and this leads so some efficiency because it avoids
@@ -210,6 +213,10 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     @verbose5 @mpi_master println(BSTDOUT, "===== newton iteration: ", i)
     newton_data.itr = i
 
+    # recalculate PC and Jacobian if needed
+    doRecalculation(newton_data.recalc_policy, i,
+                    ls, mesh, sbp, eqn, opts, ctx_residual, t)
+    #=             
     recalc_type = decideRecalculation(newton_data.recalc_policy, i)
     if recalc_type == RECALC_BOTH
       calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -218,7 +225,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     elseif recalc_type == RECALC_LO
       calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
     end
-
+    =# 
     #=
     if ((i % recalc_prec_freq)) == 0 || i == 1
       calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)

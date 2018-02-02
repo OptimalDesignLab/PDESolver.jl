@@ -378,6 +378,10 @@ get!(arg_dict, "newton_recalc_first", true)
 
 # homotopy options
 get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
+get!(arg_dict, "homotopy_recalculation_policy", "RecalculateNever")
+
+# Crank-Nicolson options
+get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")
 
 # majorIterationCallback options
 get!(arg_dict, "callback_write_qvec", false)

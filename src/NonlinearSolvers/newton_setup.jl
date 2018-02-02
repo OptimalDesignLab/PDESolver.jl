@@ -23,6 +23,7 @@
    * step_tol: step norm tolerance
    * itermax: maximum number of newton iterations
    * krylov_gamma: parameter used by inexact newton-krylov
+   * recalc_policy: a [`RecalculationPolicy`](@ref).
    * ls: a [`LinearSolver`](@ref)
    * fconv: convergence.dat file handle (or DevNull if not used)
    * verbose: how much logging/output to do

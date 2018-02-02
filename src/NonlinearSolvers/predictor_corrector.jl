@@ -45,6 +45,12 @@
    * res_reltol
    * res_abstol
    * krylov_reltol
+
+  This function supports jacobian/preconditioner freezing using the
+  prefix "newton".  Note that this recalcuation policy only affects
+  this function, and not newtonInner, and defaults to never recalculating
+  (and letting newtonInner update the jacobian/preconditioner according to
+  its recalculationPolicy).
 """
 function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
                                     g_func::Function,
@@ -139,6 +145,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   res_norm_0 = 0.0  # residual norm of initial guess
   h = 0.05  # step size
   lambda -= h  # the jacobian is ill-conditioned at lambda=1, so skip it
+  recalc_policy = getRecalculationPolicy(opts, "homotopy")
   # log file
   @mpi_master fconv = BufferedIO("convergence.dat", "a+")
 
@@ -213,6 +220,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       end
     end
 
+    # calculate the PC and LO if needed
+    doRecalculation(recalc_policy, iter, newton_data.ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+
     # do corrector steps
     newton_data.res_reltol = homotopy_tol
     setTolerances(newton_data.ls, krylov_reltol0, -1, -1, -1)
@@ -223,6 +233,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     for i=1:length(eqn.q)
       delta_q[i] = eqn.q_vec[i] - q_vec0[i]
     end
+    #TODO: compute SBP L2 norm?
     delta = calcEuclidianNorm(mesh.comm, delta_q)
     if iter == 2
       delta_max = delta
@@ -238,7 +249,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
       # calculate tangent vector dH/dq * t = dH/dLambda
       @mpi_master println(BSTDOUT, "solving for tangent vector")
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+#      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
 #      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
       tsolve = @elapsed linearSolve(ls, dHdLambda_real, tan_vec)

@@ -50,6 +50,10 @@ crank_nicolson
 
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
    should be eqn.q_vec and eqn.res_vec.
+
+   This function supported jacobian/preconditioner freezing with the prefix
+   "CN", with the default setting to never recalculate either.  newtonInner
+   will use its recalculation policy to recalculate the PC and jacobian.
 """->
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
@@ -93,8 +97,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # TODO: copyForMultistage! does not give correct values.
   #     deepcopy works for now, but uses more memory than copyForMultistage!, if it worked
   # eqn_nextstep = copyForMultistage!(eqn)
-  eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode,
+                           mesh.numNodesPerElement, mesh.numEl)
+  eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode,
+                             mesh.numNodesPerElement, mesh.numEl)
 
   @debug1 println("============ In CN ============")
 
@@ -110,6 +116,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
   newton_data, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
   newton_data.itermax = 30
+  recalc_policy = getRecalculationPolicy(opts, "CN")
 
   # this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
@@ -142,6 +149,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       MatZeroEntries(jac)
     end
 =#
+
     # TODO: Allow for some kind of stage loop: ES-Dirk
 
     # TODO: output freq
@@ -157,6 +165,12 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     else
 
       ctx_residual = (f, eqn, h, newton_data)
+
+      # recalculate PC and LO if needed
+      doRecalculation(recalc_policy, i,
+                    ls, mesh, sbp, eqn_nextstep, opts, ctx_residual, t_nextstep)
+
+
       newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, ls, 
                   rhs_vec, ctx_residual, t_nextstep)
     end
