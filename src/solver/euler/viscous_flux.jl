@@ -75,12 +75,25 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   # sigma = calcTraceInverseInequalityConst(sbp, sbpface)
   # println("rho_max = ", sigma)
 
+  # peeridx explanation:
+  #   peeridx contains the index in a range of peers (starting at 1, ending at npeers).
+  #   If peeridx is 0, then perform some action on the local part, using serial logic.
+  #   If it is anything but 0, then we are working with one of the peers, and then parallel logic
+  #     must be used.
+  if peeridx != 0         # AAAAA3
+    start_elnum = mesh.shared_element_offsets[peeridx]
+  end
+
   for f = 1:nfaces    # loop over faces
 
     flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
     face = interfaces[f]          # AA: think this section is OK for parallel, because interfaces is set properly above
     elemL = face.elementL
-    elemR = face.elementR
+    if peeridx == 0               # AAAAA3: forgot mesh.shared_element_offsets[peeridx]
+      elemR = face.elementR
+    else
+      elemR = face.elementR - start_elnum + 1
+    end
     faceL = face.faceL
     faceR = face.faceR
     permL = sview(sbpface.perm, :, faceL)
@@ -107,19 +120,44 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       q_elemR = sview(eqn.q, :, :, elemR)
     else            # AAAAA parallelized
       data = eqn.shared_data[peeridx]
-      #--- for debugging
-      # myrank = mesh.myrank        # required for use by @mpi_master
-      # @mpi_master println(" typeof(data): ", typeof(data))
-      # @mpi_master println(" fieldnames(data): ", fieldnames(data))
-      # @mpi_master println(" typeof(eqn.shared_data): ", typeof(eqn.shared_data))
-      # @mpi_master println(" size(eqn.shared_data): ", size(eqn.shared_data))
-      # @mpi_master println(" typeof(eqn.q): ", typeof(eqn.q))
-      # @mpi_master println(" size(eqn.q): ", size(eqn.q))
-      #--- for debugging
       q_elemL = ro_sview(eqn.q, :, :, elemL)
       # q_elemR: for comparison, see line 686 & 703 in flux.jl
       q_elemR = ro_sview(data.q_recv, :, :, elemR)
       # q_face*: for comparison, see flux.jl, line 702.
+
+      #--- for debugging
+      myrank = mesh.myrank        # required for use by @mpi_master
+      MPI.Barrier(mesh.comm)
+      @mpi_master println(" ")
+      @mpi_master println(" < in calcViscousFlux_interior >")
+      @mpi_master println(" f: ", f)
+      @mpi_master println(" ---")
+      @mpi_master println(" elemL: ", elemL)
+      @mpi_master println(" size(elemL): ", size(elemL))
+      @mpi_master println(" q_elemL: ", q_elemL)
+      @mpi_master println(" size(q_elemL): ", size(q_elemL))
+      @mpi_master println(" eqn.q: ", eqn.q)
+      @mpi_master println(" ---")
+      @mpi_master println(" elemR: ", elemR)
+      @mpi_master println(" size(elemR): ", size(elemR))
+      @mpi_master println(" q_elemR: ", q_elemR)
+      @mpi_master println(" size(q_elemR): ", size(q_elemR))
+      @mpi_master println(" data.q_recv: ", data.q_recv)
+      @mpi_master println(" ---")
+      @mpi_master println(" size(data.q_recv): ", size(data.q_recv))
+      @mpi_master println(" typeof(data): ", typeof(data))
+      @mpi_master println(" fieldnames(data): ", fieldnames(data))
+      @mpi_master println(" typeof(eqn.shared_data): ", typeof(eqn.shared_data))
+      @mpi_master println(" size(eqn.shared_data): ", size(eqn.shared_data))
+      @mpi_master println(" typeof(eqn.q): ", typeof(eqn.q))
+      @mpi_master println(" size(eqn.q): ", size(eqn.q))
+      @mpi_master println(" typeof(q_elemL): ", typeof(q_elemL))
+      @mpi_master println(" size(q_elemL): ", size(q_elemL))
+      @mpi_master println(" typeof(q_elemR): ", typeof(q_elemR))
+      @mpi_master println(" size(q_elemR): ", size(q_elemR))
+      MPI.Barrier(mesh.comm)
+      #--- for debugging
+
       interiorFaceInterpolate!(mesh.sbpface, face, q_elemL, q_elemR, q_faceL, q_faceR)
       # face: same as iface_j in calcSharedFaceIntegral_nopre_element_inner.
       #   face = interfaces[j] where j = 1:length(mesh.interfaces)
@@ -167,8 +205,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       jacR = ro_sview(mesh.jac, :, elemR)
       dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
     else
-      jacR = ro_sview(mesh.remote_metrics.jac, :, elemR)
-      dxidxR = ro_sview(mesh.remote_metrics.dxidx, :, :, :, elemR)
+      dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
+      jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
     end
 
     calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
