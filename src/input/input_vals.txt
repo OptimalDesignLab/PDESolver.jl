@@ -328,11 +328,21 @@ Note that any values associated with these options are shared with the regular
                     if steady newton, 4 otherwise (ie. when Newton is used by
                     another method in NonlinearSolvers).  When 4 or less,
                     Newton does not call majorIterationCallback
+"use_exact_nk": use inexact Newton-Krylov (dynamic updating of linear solve
+                relative tolerance), (Bool), default true for run type 5, 
+                false otherwise.
+"krylov_gamma"  : parameter for updating krylov_reltol, (Float64), default 2.0
 
 # Homotopy options
+"homotopy_recalculation_policy": jacobian recalculation policy for homotopy,
+                                 (ASCIIString), default "RecalculateNever"
 "homotopy_addBoundaryIntegrals": add boundary term to homotopy, (Bool), default
                                  false (the boundary terms slow convergence
                                  in some cases)
+
+# Crank-Nicolson options
+"CN_recalculation_policy": jacbian recalculation policy for CN, (ASCIIString),
+                           default "RecalculateNever"
 
 # majorIterationCallback options
 "callback_write_qvec": write eqn.q_vec to a file named 
@@ -349,7 +359,6 @@ Note that any values associated with these options are shared with the regular
 "krylov_dtol"  : relative residual tolerance for detecting divergence,
                  (Float64), default 1e5
 "krylov_itermax"  : maximum number of krylov iterations, (Int), default 1000
-"krylov_gamma"  : parameter for updating krylov_reltol, (Float64), default 2.0
 
 
 

@@ -375,6 +375,10 @@ get!(arg_dict, "newton_prec_recalc_freq", 1)
 get!(arg_dict, "newton_jac_recalc_freq", 1)
 get!(arg_dict, "newton_recalc_first", true)
 
+get!(arg_dict, "use_inexact_nk", arg_dict["run_type"] == 5 ? true : false)
+get!(arg_dict, "krylov_gamma", 2)
+
+
 
 # homotopy options
 get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
@@ -413,8 +417,6 @@ get!(arg_dict, "krylov_reltol", 1e-2)
 get!(arg_dict, "krylov_abstol", 1e-12)
 get!(arg_dict, "krylov_dtol", 1e5)
 get!(arg_dict, "krylov_itermax", 1000)
-get!(arg_dict, "krylov_gamma", 2)
-
 # testing options
 get!(arg_dict, "solve", true)
 

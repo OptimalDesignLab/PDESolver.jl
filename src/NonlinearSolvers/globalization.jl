@@ -18,12 +18,14 @@
 """->
 function updateKrylov(newton_data::NewtonData)
 
-  norm_i = newton_data.res_norm_i
-  norm_i_1 = newton_data.res_norm_i_1
-  gamma = newton_data.krylov_gamma
-  reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
-  setTolerances(newton_data.ls, reltol, -1, -1, -1)
-#  println("updating krylov reltol to ", reltol)
+  if newton_data.use_inexact_nk
+    norm_i = newton_data.res_norm_i
+    norm_i_1 = newton_data.res_norm_i_1
+    gamma = newton_data.krylov_gamma
+    reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+    setTolerances(newton_data.ls, reltol, -1, -1, -1)
+    #println("updating krylov reltol to ", reltol)
+  end
 
   return nothing
 end

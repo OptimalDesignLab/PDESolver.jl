@@ -22,6 +22,7 @@
    * res_abstol: nonlinear residual absolute tolerance
    * step_tol: step norm tolerance
    * itermax: maximum number of newton iterations
+   * use_inexact_nk: true if inexact-NK should be used, false otherwise
    * krylov_gamma: parameter used by inexact newton-krylov
    * recalc_policy: a [`RecalculationPolicy`](@ref).
    * ls: a [`LinearSolver`](@ref)
@@ -60,6 +61,7 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
   itermax::Int
 
   # inexact Newton-Krylov parameters
+  use_inexact_nk::Bool
   krylov_gamma::Float64  # update parameter for krylov tolerance
 
   recalc_policy::RecalculationPolicy
@@ -94,6 +96,7 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
   step_tol = opts["step_tol"]
   itermax = opts["itermax"]
 
+  use_inexact_nk = opts["use_inexact_nk"]
   krylov_gamma = opts["krylov_gamma"]
 
   recalc_policy = getRecalculationPolicy(opts, "newton")
@@ -118,8 +121,8 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
                     res_norm_i, res_norm_i_1, step_norm_i, step_norm_i_1,
                     res_norm_rel, set_rel_norm, step_fac,
                     res_reltol, res_abstol, step_tol, itermax,
-                    krylov_gamma, recalc_policy, ls, res_0, delta_q_vec, fconv,
-                    verbose)
+                    use_inexact_nk, krylov_gamma, recalc_policy, ls, res_0,
+                    delta_q_vec, fconv, verbose)
 end
 
 include("residual_evaluation.jl")  # some functions for residual evaluation
