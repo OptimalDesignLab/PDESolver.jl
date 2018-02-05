@@ -90,7 +90,7 @@ function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
   var_type = opts["variable_type"]
 
   Tdim = mesh.dim
-  Tmsh, Tsbp, Tsol, Tres = PDESolver.getDataTypes(opts)
+  Tmsh, Tsbp, Tsol, Tres = getDataTypes(opts)
 
   eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 

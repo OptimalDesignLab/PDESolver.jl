@@ -7,7 +7,8 @@ using SummationByParts
 using ODLCommonTools
 using Utils
 using LinearSolvers
-using NonlinearSolvers  # need jacobian calculation function
+using NonlinearSolvers  # need jacobian calculation function  # unneded?
+using PdePumiInterface  # need write vtk files
 
 # steady_adjoint.jl
 export calcAdjoint
