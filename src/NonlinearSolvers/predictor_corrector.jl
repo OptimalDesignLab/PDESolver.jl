@@ -212,6 +212,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       reltol = res_reltol*1e-3  # smaller than newton tolerance
       abstol = res_abstol*1e-3  # smaller than newton tolerance
       setTolerances(newton_data.ls, reltol, abstol, -1, -1)
+      krylov_reltol0 = reltol  # do this so the call to setTolerances below
+                               # does not reset the tolerance
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
@@ -225,6 +227,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
     # do corrector steps
     newton_data.res_reltol = homotopy_tol
+    # reset tolerances in case newton is doing inexact-NK and thus has changed
+    # the tolerances
     setTolerances(newton_data.ls, krylov_reltol0, -1, -1, -1)
     newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
                 rhs_vec, ctx_residual)
@@ -234,6 +238,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       delta_q[i] = eqn.q_vec[i] - q_vec0[i]
     end
     #TODO: compute SBP L2 norm?
+    delta = calcNorm(eqn, delta_q)
     delta = calcEuclidianNorm(mesh.comm, delta_q)
     if iter == 2
       delta_max = delta
@@ -251,24 +256,31 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       @mpi_master println(BSTDOUT, "solving for tangent vector")
 #      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
-#      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
       tsolve = @elapsed linearSolve(ls, dHdLambda_real, tan_vec)
       eqn.params.time.t_solve += tsolve
-#      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
 
       # normalize tangent vector
-      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
+      tan_norm = calcNorm(eqn, tan_vec)
+#      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
       tan_norm = sqrt(tan_norm*tan_norm + 1)
-#      tan_norm = sqrt(dot(tan_vec, tan_vec) + 1)  # + 1 ?
       scale!(tan_vec, 1/tan_norm)
 
+      println("after normalization, calcNorm(tan_vec) = ", calcNorm(eqn, tan_vec))
+      println("norm(tan_vec) = ", norm(tan_vec))
       psi = psi_max
       if iter > 1
-        tan_term = dot(tan_vec_1, tan_vec)
-        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
-        tan_norm_term = (1/tan_norm)*(1/tan_norm_1) 
+        # compute phi = acos(tangent_i_1 dot tangent_i)
+        # however, use the L2 norm for the q part of the tangent vector
+#        tan_term = dot(tan_vec_1, tan_vec)
+        tan_term = calcL2InnerProduct(eqn, tan_vec_1, tan_vec)
+        println("tan_term = ", tan_term)
+#        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
+        tan_norm_term = (1/tan_norm)*(1/tan_norm_1)
+        println("tan_norm_term = ", tan_norm_term)
         arg = tan_term + tan_norm_term
+        println("arg = ", arg)
         arg = clamp(arg, -1.0, 1.0)
+        println("clamped arg = ", arg)
         psi = acos( arg )
       end
 
@@ -277,7 +289,13 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       tan_norm_1 = tan_norm
 
       # calculate step size
-      fac = max(psi/psi_max, delta/delta_max)
+      println("psi = ", psi)
+      println("psi_max = ", psi_max)
+      println("delta = ", delta)
+      println("delta_max = ", delta_max)
+      println("psi/psi_max = ", psi/psi_max)
+      println("delta/delta_max = ", delta/delta_max)
+      fac = max(psi/psi_max, sqrt(delta/delta_max))
       h /= fac
 
       # take predictor step

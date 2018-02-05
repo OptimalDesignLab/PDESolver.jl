@@ -27,7 +27,7 @@ include("checkpoint.jl")
 
 export free
 export disassembleSolution, writeQ, assembleSolution, assembleArray
-export calcNorm, calcMeshH, calcEuclidianNorm
+export calcNorm, calcL2InnerProduct, calcMeshH, calcEuclidianNorm
 #export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 #export startDataExchange
 #export exchangeElementData
@@ -388,6 +388,50 @@ function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; stron
   val = sqrt(val)
   return val
 end     # end of calcNorm function
+
+"""
+  This function calculate the SBP approximation to the L2 inner product of
+  two vectors of length mesh.numDof.
+
+  L2_product = u^T H conj(v)
+
+  Note that this function does not take a square root like [`calcNorm`](@ref)
+  does.
+
+  **Inputs**
+
+   * eqn: AbstractSolutionData
+   * u: first vector, of length mesh.numDof
+   * v: second vector, of length mesh.numDof.  If complex, this vector gets
+        conjugated
+
+  **Outputs**
+
+   * val: the value of the inner product
+
+  **Keyword Arguments**
+
+   * globalnrm: if true, computes the norm of the entire (parallel) vector,
+                if false, computes the norm of only the local part
+"""
+function calcL2InnerProduct{T, T2}(eqn::AbstractSolutionData, u::AbstractArray{T}, v::AbstractArray{T2}; globalnrm=true)
+
+  # TODO: generalize this to 1, mesh.numDofPerNode vectors
+  @assert length(u) == length(eqn.M)
+  @assert length(v) == length(eqn.M)
+
+  val = zero(real(promote_type(T, T2)))
+
+  for i=1:length(u)
+    val += real( u[i] * eqn.M[i] * conj(v[i]) )
+  end
+
+  eqn.params.time.t_allreduce = @elapsed if globalnrm
+    val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+  end
+
+  return val
+end
 
 
 """

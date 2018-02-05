@@ -327,6 +327,7 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
 
   # do the solve
   ksp = ls.ksp
+  println("doing solve, setting reltol = ", ls.reltol, ", abstol = ", ls.abstol)
   SetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
   if trans

@@ -623,6 +623,6 @@ end
 
 
 
-add_func1!(AdvectionTests, test_linearsolver, [TAG_TMP, TAG_SHORTTEST])
+add_func1!(AdvectionTests, test_linearsolver, [TAG_SHORTTEST])
 
 
