@@ -39,9 +39,9 @@ function checkOptions(opts)
   # viscous options handling
   if opts["isViscous"]
     # TODO: need to get this all working for the no-precompute case
-    # if ! opts["precompute_face_flux"]
-      # error("precompute_face_flux must be on for viscous flux (because of line 269, viscous_flux.jl)")
-    # end
+    if ! opts["precompute_face_flux"]
+      error("precompute_face_flux must be on for viscous flux (because of line 269, viscous_flux.jl)")
+    end
     if opts["operator_type"] == "SBPDiagonalE"    # TODO: fix diagE & viscous soon
       error("DiagE SBP elements not yet implemented for viscous solution.")
     end

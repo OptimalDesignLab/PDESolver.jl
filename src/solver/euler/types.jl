@@ -673,6 +673,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
     else
       eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+      # TODO (nopre)
     end
 
     eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
@@ -681,7 +682,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
         if opts["precompute_face_flux"]
           eqn.flux_sharedface[i] = zeros(Tres, mesh.numDofPerNode, numfacenodes,
                                          mesh.peer_face_counts[i])
-        end
+        end # TODO (nopre)
         eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end

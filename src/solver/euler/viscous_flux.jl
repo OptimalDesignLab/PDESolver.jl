@@ -23,6 +23,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
                                                           peeridx::Int=0)
 
   println(eqn.params.f, "Entered calcViscousFlux_interior")
+  println(eqn.params.f, " size(mesh.shared_interfaces):", size(mesh.shared_interfaces))
+  println(eqn.params.f, " size(eqn.flux_sharedface): ", size(eqn.flux_sharedface))
 
   # note about eqn.shared_data: when this function is called by
   #   calcSharedFaceIntegrals_nopre_element_inner, finishExchangeData will have made the proper
