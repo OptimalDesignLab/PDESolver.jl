@@ -528,11 +528,10 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
   # variables for viscous terms
   #
   area_sum::Array{Tmsh, 1}			    # the wet area of each element
-	# vecflux_face::Array{Tres, 4}    # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 	vecflux_faceL::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 	vecflux_faceR::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 	vecflux_bndry::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
-  vecflux_faceL_shared::Array{Tres, 4}     # same as vecflux_faceL, but for shared calls.
+  vecflux_faceL_shared::Array{Array{Tres, 4}, 1}     # same as vecflux_faceL, but for shared calls.
 
   # inner constructor
   function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true)
@@ -645,7 +644,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
         eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes,
                                     mesh.numInterfaces)
       else
-        eqn.flux_face = zeros(Tres, 0, 0, 0)
+        # Initialize this to non-zero size, even in the noprecompute case because viscous terms need it
+        # TODO (nopre)
+        eqn.flux_face = zeros(Tres, mesh.numDofPerNode, numfacenodes,
+                                    mesh.numInterfaces)
+        # eqn.flux_face = zeros(Tres, 0, 0, 0)
       end
 
 
@@ -759,20 +762,21 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
      numfaces = mesh.numInterfaces
      numBndFaces = mesh.numBoundaryFaces
      numvars  = mesh.numDofPerNode
-     # eqn.vecflux_face = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
      eqn.vecflux_faceL = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
      eqn.vecflux_faceR = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
      eqn.vecflux_bndry = zeros(Tsol, Tdim, numvars, numfacenodes, numBndFaces)
      # AAAAA2: new array for shared vec flux
-     eqn.vecflux_faceL_shared = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces) # TODO: check dims AAAAA2
+     eqn.vecflux_faceL_shared = Array(Array{Tsol, 4}, mesh.npeers)     # same as vecflux_faceL, but for shared calls.
+     for i = 1:mesh.npeers
+       eqn.vecflux_faceL_shared[i] = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+     end
      eqn.area_sum = zeros(Tmsh, mesh.numEl)
      calcElemSurfaceArea(mesh, sbp, eqn)
    else
-     # eqn.vecflux_face  = Array(Tsol, 0, 0, 0, 0)
      eqn.vecflux_faceL = Array(Tsol, 0, 0, 0, 0)
      eqn.vecflux_faceR = Array(Tsol, 0, 0, 0, 0)
      eqn.vecflux_bndry = Array(Tsol, 0, 0, 0, 0)
-     eqn.vecflux_faceL_shared = Array(Tsol, 0, 0, 0, 0)
+     eqn.vecflux_faceL_shared = Array(Array{Tsol, 4}, 0)     # same as vecflux_faceL, but for shared calls.
      eqn.area_sum = Array(Tsol, 0)
    end
    return eqn
