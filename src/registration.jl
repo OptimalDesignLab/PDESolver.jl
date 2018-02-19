@@ -176,13 +176,14 @@ end
 function registerBC(mod::Module, fname::ASCIIString, func::BCType)
 
   # check if name is already registered
-  if haskey(mod.BCDict, fname)
+  # special case for reanalysisBC because it is special
+  if haskey(mod.BCDict, fname) && fname != "reanalysisBC"
     throw(ErrorException("BC name $fname is already registered with physics module $mod"))
   end
 
   # check if function is already registered
   for (key, val) in mod.BCDict
-    if val == func
+    if val == func && key != "reanalysisBC"
       throw(ErrorException("BC functor $func is already registered with physics module $mod"))
     end
   end

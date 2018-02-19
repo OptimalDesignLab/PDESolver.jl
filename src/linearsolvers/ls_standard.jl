@@ -114,13 +114,14 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
                      start_comm=false)
 
 
+  #TODO: why is wait=true here? shouldn't the physics module wait if it hasn't
+  #      been done yet?
   if typeof(ls.pc) <: PCNone
     if start_comm && needParallelData(ls.lo)
       startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     end
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif ls.shared_mat
-    println(BSTDOUT, "matrix is shared")
     if start_comm && needParallelData(ls.lo)
       startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     end

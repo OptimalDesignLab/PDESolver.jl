@@ -104,12 +104,13 @@ function calcBoundaryFlux_nopre_diff{Tsol1, Tres1, Tmsh}(mesh::AbstractDGMesh{Tm
       coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
       nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
 
+      bndry_node = BoundaryNode(bndry_i, i, j)
       # compute the jacobian of the flux wrt q_face
       for k=1:mesh.numDofPerNode
         q_j[k] += pert
         aux_vars[1] = calcPressure(params, q_j)
 
-        functor(params, q_j, aux_vars, coords, nrm_xy, flux_k)
+        functor(params, q_j, aux_vars, coords, nrm_xy, flux_k, bndry_node)
 
         for p=1:mesh.numDofPerNode
           flux_jac[p, k, j] = imag(flux_k[p])/h
