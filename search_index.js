@@ -221,7 +221,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Required Fields",
     "category": "section",
-    "text": "The required fields of an AbstractSolutionData are:  q::AbstractArray{Tsol, 3}\n  q_vec::AbstractArray{Tsol, 1}\n  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}\n  res::AbstractArray{Tres, 3}\n  res_vec::AbstractArray{Tres, 1}\n  M::AbstractArray{Float64, 1}\n  Minv::AbstractArray{Float64, 1}\n  disassembleSolution::Function\n  assembleSolution::Function\n  multiplyA0inv::Function\n  majorIterationCallback::Function\n  params{Tsol..., Tdim}::AbstractParamType{Tdim}"
+    "text": "The required fields of an AbstractSolutionData are:  q::AbstractArray{Tsol, 3}\n  q_vec::AbstractArray{Tsol, 1}\n  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}\n  res::AbstractArray{Tres, 3}\n  res_vec::AbstractArray{Tres, 1}\n  M::AbstractArray{Float64, 1}\n  Minv::AbstractArray{Float64, 1}\n  multiplyA0inv::Function\n  majorIterationCallback::Function\n  params{Tsol..., Tdim}::AbstractParamType{Tdim}"
 },
 
 {
@@ -245,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Field Meanings",
     "category": "section",
-    "text": "  CurrentModule = UtilsThe purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).  See Utils.disassembleSolution  and Utils.assembleSolution.shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.disassembleSolution:  Function that takes the a vector such as q_vec and                         scatters it to an array such as q.                         This function must have the signature:                         disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})                         Because this variable is a field of a type, it will be dynamically dispatched.                         Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.assembleSolution:  Function that takes an array such as res and performs an additive reduction to a vector such as res_vec.                      This function must have the signature:                      assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)                      The argument zero_resvec determines whether res_vec is zeroed before the reduction is performed.                      Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.                      Thus the default is true.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:  CurrentModule = ODLCommonToolsAbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) * x_design: vector of design variables that don't fit into any other catagory               (ie. shape variables or other aerodynamic variables like angle of               attack) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
+    "text": "  CurrentModule = UtilsThe purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).  See Utils.disassembleSolution  and Utils.assembleSolution.shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:  CurrentModule = ODLCommonToolsAbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) * x_design: vector of design variables that don't fit into any other catagory               (ie. shape variables or other aerodynamic variables like angle of               attack) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
 },
 
 {
@@ -269,7 +269,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Required Fields",
     "category": "section",
-    "text": "  # counts\n  numVert::Integer\n  numEl::Integer\n  numNodes::Integer\n  numDof::Integer\n  numDofPerNode::Integer\n  numNodesPerElement::Integer\n  order::Integer\n  numNodesPerFace::Int\n\n  # parallel counts\n  npeers::Int\n  numGlobalEl::Int\n  numSharedEl::Int\n  peer_face_counts::Array{Int, 1}\n  local_element_counts::Array{Int, 1}\n  remote_element_counts::array{Int, 1}\n\n  # MPI Info\n  comm::MPI.Comm\n  myrank::Int\n  commsize::Int\n  peer_parts::Array{Int, 1}\n\n  # Discretization type\n  isDG::Bool\n  isInterpolated::bool\n\n  # mesh data\n  coords::AbstractArray{Tmsh, 3}\n  dxidx::AbstractArray{Tmsh, 4}\n  jac::AbstractArray{Tmsh, 2}\n\n  # interpolated data\n  coords_bndry::Array{Tmsh, 3}\n  dxidx_bndry::Array{Tmsh, 4}\n  jac_bndry::Array{T1, 2}\n  dxidx_face::Array{Tmsh, 4}\n  jac_face::Array{Tmsh, 2}\n\n  # parallel data\n  coords_sharedface::Array{Array{Tmsh, 3}, 1}\n  dxidx_sharedface::Array{Array{Tmsh, 4}, 1}\n  jac_sharedface::Array{Array{Tmsh, 2}, 1}  \n\n  # boundary condition data\n  numBC::Integer\n  numBoundaryEdges::Integer\n  bndryfaces::AbstractArray{Boundary, 1}\n  bndry_offsets::AbstractArray{Integer, 1}\n  bndry_funcs::AbstractArray{BCType, 1}\n\n  # interior edge data\n  numInterfaces::Integer\n  interfaces::AbstractArray{Interface, 1}\n\n  # degree of freedom number data\n  dofs::AbstractArray{Integer, 3}\n  dof_offset::Int\n  sparsity_bnds::AbstractArray{Integer, 2}\n  sparsity_nodebnds::AbstractArray{Integer, 2}\n\n  # mesh coloring data\n  numColors::Integer\n  maxColors::Integer\n  color_masks::AbstractArray{ AbstractArray{Number, 1}, 1}\n  shared_element_colormasks::Array{Array{BitArray{1}, 1}, 1}\n  pertNeighborEls::AbstractArray{Integer, 2}\n\n  # parallel bookkeeping\n  bndries_local::Array{Array{Boundary, 1}, 1}\n  bndries_remote::Array{Array{Boundary, 1}, 1}\n  shared_interfaces::Array{Array{Interface, 1}, 1}\n  shared_element_offsets::Array{Int, 1}\n  local_element_lists::Array{Array{Int, 1}, 1}\nTODO: update with vert_coords etc"
+    "text": "  # counts\n  numVert::Integer\n  numEl::Integer\n  numNodes::Integer\n  numDof::Integer\n  numDofPerNode::Integer\n  numNodesPerElement::Integer\n  order::Integer\n  numNodesPerFace::Int\n\n  # parallel counts\n  npeers::Int\n  numGlobalEl::Int\n  numSharedEl::Int\n  peer_face_counts::Array{Int, 1}\n  local_element_counts::Array{Int, 1}\n  remote_element_counts::array{Int, 1}\n\n  # MPI Info\n  comm::MPI.Comm\n  myrank::Int\n  commsize::Int\n  peer_parts::Array{Int, 1}\n\n  # Discretization type\n  isDG::Bool\n  isInterpolated::bool\n\n  # mesh data\n  coords::AbstractArray{Tmsh, 3}\n  dxidx::AbstractArray{Tmsh, 4}\n  jac::AbstractArray{Tmsh, 2}\n\n  # boundary data\n  coords_bndry::Array{Tmsh, 3}\n  dxidx_bndry::Array{Tmsh, 4}\n  jac_bndry::Array{Tmsh, 2}\n  nrm_bndry::Array{Tmsh, 3}\n\n  # interior face data\n  coords_interface::Array{Tmsh, 3}\n  dxidx_face::Array{Tmsh, 4}\n  jac_face::Array{Tmsh, 2}\n  nrm_face::Array{Tmsh, 3}\n\n  # parallel data\n  coords_sharedface::Array{Array{Tmsh, 3}, 1}\n  dxidx_sharedface::Array{Array{Tmsh, 4}, 1}\n  jac_sharedface::Array{Array{Tmsh, 2}, 1}  \n  nrm_sharedface::Array{Array{Tmsh, 3}, 1}\n\n  # boundary condition data\n  numBC::Integer\n  numBoundaryEdges::Integer\n  bndryfaces::AbstractArray{Boundary, 1}\n  bndry_offsets::AbstractArray{Integer, 1}\n  bndry_funcs::AbstractArray{BCType, 1}\n\n  # interior edge data\n  numInterfaces::Integer\n  interfaces::AbstractArray{Interface, 1}\n\n  # degree of freedom number data\n  dofs::AbstractArray{Integer, 3}\n  dof_offset::Int\n  sparsity_bnds::AbstractArray{Integer, 2}\n  sparsity_nodebnds::AbstractArray{Integer, 2}\n\n  # mesh coloring data\n  numColors::Integer\n  maxColors::Integer\n  color_masks::AbstractArray{ AbstractArray{Number, 1}, 1}\n  shared_element_colormasks::Array{Array{BitArray{1}, 1}, 1}\n  pertNeighborEls::AbstractArray{Integer, 2}\n\n  # parallel bookkeeping\n  bndries_local::Array{Array{Boundary, 1}, 1}\n  bndries_remote::Array{Array{Boundary, 1}, 1}\n  shared_interfaces::Array{Array{Interface, 1}, 1}\n  shared_element_offsets::Array{Int, 1}\n  local_element_lists::Array{Array{Int, 1}, 1}\nTODO: update with vert_coords etc"
 },
 
 {
@@ -313,11 +313,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "interfaces.html#Interpolated-Data-1",
+    "location": "interfaces.html#Boundary-Data-1",
     "page": "Code Interfaces",
-    "title": "Interpolated Data",
+    "title": "Boundary Data",
     "category": "section",
-    "text": "This data is used for interpolated mesh only.coords_bndry: coordinates of nodes on the boundary of the mesh,                 2 x numFaceNodes x numBoundaryEdgesdxidx_bndry: 2 x 2 x numFaceNodes x numBoundary edges array of `dxidx                interpolated to the boundary of the meshjac_bndry: numFaceNodes x numBoundaryEdges array of jac interpolated               to the boundarydxidx_face: 2 x 2 x numFaceNodes x numInterfaces array of dxidx               interpolated to the face shared between two elementsjac_face: numNodesPerFace x numInterfaces array of jac interpolated              to the face shared between two element"
+    "text": "This data is used for interpolated mesh only.coords_bndry: coordinates of nodes on the boundary of the mesh,                 2 x numFaceNodes x numBoundaryEdgesdxidx_bndry: 2 x 2 x numFaceNodes x numBoundary edges array of `dxidx                interpolated to the boundary of the mesh.  This fields is                deprecated, use nrm_bndry instead.jac_bndry: numFaceNodes x numBoundaryEdges array of jac interpolated               to the boundary.  This fields is deprecated, use nrm_bndry               instead.nrm_bndry: dim x numNodesPerFace x numBoundaryFaces array containing the              scaled face normal vector at each face node of each boundary face.              The scaling factor is believed to be 1/|J|, where |J| is the              determinant of the mapping jacobian, however this needs to be              verified.  The normal vector is oriented outwards."
+},
+
+{
+    "location": "interfaces.html#Interior-Face-Data-1",
+    "page": "Code Interfaces",
+    "title": "Interior Face Data",
+    "category": "section",
+    "text": "coords_face: a mesh.dim x mesh.numNodesPerFace x mesh.numInterfaces                array containing he coordinates at each face node of each                interface.dxidx_face: 2 x 2 x numFaceNodes x numInterfaces array of dxidx               interpolated to the face shared between two elements.jac_face: numNodesPerFace x numInterfaces array of jac interpolated              to the face shared between two elementnrm_face: dim x numNodesPerFace x numInterfaces containing the scaled             face normal vector at each face node as each interface.  The scaling             factor is believed to be 1/|J| where |J| is the determinant of              the mapping jacobian, however this needs to be verified.  The normal             vector is oriented outwards from the perspective of elementL of             the corresponding entry of interfaces."
 },
 
 {
@@ -325,7 +333,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Parallel Data",
     "category": "section",
-    "text": "This data is required for parallelizing interpolated DG meshescoords_sharedface: array of arrays, one array for each peer process,                      containing the coordinates of the nodes on the faces                      shared between a local element on a non-local element.                      Each array is 2 x numFaceNodes x number of faces shared                      with this process. dxidx_sharedface: similar to coords_sharedface, dxidx interpolated to                     faces between elements in different processes, each                     array is 2 x 2 x numFaceNodes x number of faces shared                     with this process. jac_sharedface: similar to coords_sharedface, jac interpolated to faces                   between a local element and a non-local element. Each array                   is numFaceNodes x number of faces shared with this process."
+    "text": "This data is required for parallelizing interpolated DG meshescoords_sharedface: array of arrays, one array for each peer process,                      containing the coordinates of the nodes on the faces                      shared between a local element on a non-local element.                      Each array is 2 x numFaceNodes x number of faces shared                      with this process. dxidx_sharedface: similar to coords_sharedface, dxidx interpolated to                     faces between elements in different processes, each                     array is 2 x 2 x numFaceNodes x number of faces shared                     with this process.  This field is deprecated, use                      nrm_sharedface` instead.jac_sharedface: similar to coords_sharedface, jac interpolated to faces                   between a local element and a non-local element. Each array                   is numFaceNodes x number of faces shared with this process.                   This field is deprecated, use nrm_sharedface.nrm_sharedface; similar to coords_sharedface, the inner array contains the                   scaled normal vector at each node of each shared face.  Each                   inner array is dim x numNodesPerFace x number of faces                    shared with this process.  The normal vector is oriented                   outward from the perspective of the local element."
 },
 
 {
@@ -1097,6 +1105,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/SolverCommon.html#SolverCommon.getDataTypes-Tuple{Dict{K,V}}",
+    "page": "Solver Common",
+    "title": "SolverCommon.getDataTypes",
+    "category": "Method",
+    "text": "This function determines the datatypes of the elements of the arrays of the   mesh quantities, sbp operator, solution variables and residual.\n\nIf the datatypes cannot be determined, an error is thrown.\n\nInputs:     opts: the options dictionary\n\nOutputs     Tmsh     Tsbp     Tsol     Tres\n\n\n\n"
+},
+
+{
     "location": "solver/SolverCommon.html#SolverCommon.loadRestartState",
     "page": "Solver Common",
     "title": "SolverCommon.loadRestartState",
@@ -1118,14 +1134,6 @@ var documenterSearchIndex = {"docs": [
     "title": "SolverCommon.createSBPOperator",
     "category": "Function",
     "text": "This function constructs the SBP operator and the associated SBP face   operator, as specified by the options dictionary.  It also determines   the shape_type that PumiInterface uses to describe the SBP operator to   Pumi.\n\nInputs:     opts: the options dictionary     Tsbp: the DataType specifying the Tsbp passed to the SBP operator           constructor     suffix: this suffix is added to all keys accessed in the options dictionary.             Usually the suffix is either the empty string or an integer.  This             provides a convenient way for the input file to specify several             different SBP operator and have this operator construct them.             Default value is the empty string.\n\nOutputs:     sbp: the SBP operator     sbpface: the SBP face operator     shape_type: an integer passed to the mesh constructor to describe the                 operator     topo: in the 3D DG case, an ElementTopology describing the SBP reference           element, otherwise the integer 0.\n\n\n\n"
-},
-
-{
-    "location": "solver/SolverCommon.html#SolverCommon.getDataTypes-Tuple{Dict{K,V}}",
-    "page": "Solver Common",
-    "title": "SolverCommon.getDataTypes",
-    "category": "Method",
-    "text": "This function determines the datatypes of the elements of the arrays of the   mesh quantities, sbp operator, solution variables and residual.\n\nIf the datatypes cannot be determined, an error is thrown.\n\nInputs:     opts: the options dictionary\n\nOutputs     Tmsh     Tsbp     Tsol     Tres\n\n\n\n"
 },
 
 {
@@ -3109,7 +3117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Boundary Integrals",
     "title": "EulerEquationMod.getBCFunctors",
     "category": "Method",
-    "text": "EulerEquationMod.getBCFunctors\n\nThis function uses the opts dictionary to populate mesh.bndry_funcs with   the the functors\n\nThis is a high level function.\n\n\n\n"
+    "text": "EulerEquationMod.getBCFunctors\n\nThis function uses the opts dictionary to populate mesh.bndry_funcs with   the the functors\n\nfunc(params::ParamType,\n     q::AbstractArray{Tsol,1},\n     aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},\n     nrm_xy::AbstractArray{Tmsh,1},\n     bndryflux::AbstractArray{Tres, 1},\n     bndry::BoundaryNode=NullBoundaryNode)\n\nThis is a high level function.\n\n\n\n"
 },
 
 {
@@ -3134,6 +3142,30 @@ var documenterSearchIndex = {"docs": [
     "title": "Functions",
     "category": "section",
     "text": "  Modules = [EulerEquationMod]\n  Order = [:function]\n  Pages = [\"euler/bc.jl\"]"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.BCDict",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.BCDict",
+    "category": "Constant",
+    "text": "Maps boundary conditions names to the functor objects.   Each functor should be callable with the signature\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.NullBoundaryNode",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.NullBoundaryNode",
+    "category": "Constant",
+    "text": "Null boundary node (all fields zero).  This is useful as a default value   for a functiona argument (if the argument is unused).\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.BoundaryNode",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.BoundaryNode",
+    "category": "Type",
+    "text": "Type that identified a particular node on a particular face of   a particular boundary.  It also contains the index of the face within   the array of Boundaries with the same boundary condition\n\nFields\n\nelement: the element the face is part of\nface: the local face number\nfaceidx: the index within the array of Boundaries with this BC\nnode: the node on the face\n\n\n\n"
 },
 
 {
@@ -3198,6 +3230,14 @@ var documenterSearchIndex = {"docs": [
     "title": "EulerEquationMod.noPenetrationBC_revm",
     "category": "Type",
     "text": "###EulerEquationMod.noPenetrationBC_revm\n\nReverse mode for noPenetrationBC.\n\nInput\n\nobj\n : Type of the Boundary condition being evaluated. Its a subtype of           BCType_revm\nq\n   : Solution variable\naux_vars\n : Auxiliary variables\nx\n     : Node coordinates\ndxidx\n : Mapping jacobian matrix for the SBP node\nnrm\n   : sbpface normal vector\nbndryflux_bar\n : Input flux value seed that is used to compute the reverse                     mode derivative.\nparams\n        : equation object parameters\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/bc.html#EulerEquationMod.reanalysisBC",
+    "page": "Boundary Integrals",
+    "title": "EulerEquationMod.reanalysisBC",
+    "category": "Type",
+    "text": "This is a special boundary condition used for imposing a numerical    solution as a boundary condition.\n\nFields\n\n* bc_vals: an array of size numDofPerNode x numNodesPerFace x numFaces with\n           this boundary condition on it.  This array can be accessed\n           using the `faceidx` field of [`BoundaryNode`](@ref).\n\nThis BC is special because it has to store the boundary values it is imposing.   Whenever this boundary condition is needed, the user should construct a   new object, with the data inside it, and then register it just before   constructing the EulerData object.\n\n\n\n"
 },
 
 {
@@ -5821,7 +5861,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Newton's Method",
     "title": "NonlinearSolvers.NewtonData",
     "category": "Type",
-    "text": "This type holds the data required by newtonInner as well as   configuration settings.\n\nPublic Fields\n\nmyrank: MPI rank\ncommsize: MPI communicator size\nitr: number of iterations\nres_norm_i: current iteration residual norm\nres_norm_i_1: previous iteration residual norm\nstep_norm_i: current iteration newton step norm\nstep_norm_i_1: previous iteration newton step norm\nres_norm_rel: norm of residual used as the reference point when computing                    relative residuals.  If this is -1 on entry to newtonInner,                    then the norm of the initial residual is used.\nstep_fac: factor used in step size limiter\nres_reltol: nonlinear relative residual tolerance\nres_abstol: nonlinear residual absolute tolerance\nstep_tol: step norm tolerance\nitermax: maximum number of newton iterations\nkrylov_gamma: parameter used by inexact newton-krylov\nrecalc_policy: a \nRecalculationPolicy\n.\nls: a \nLinearSolver\nfconv: convergence.dat file handle (or DevNull if not used)\nverbose: how much logging/output to do\n\nOptions Keys\n\nIf res_reltol0 is negative, the residual of the initial condition will be   used for res_norm_rel\n\nnewton_verbosity is used to the verbose field\n\n\n\n"
+    "text": "This type holds the data required by newtonInner as well as   configuration settings.\n\nPublic Fields\n\nmyrank: MPI rank\ncommsize: MPI communicator size\nitr: number of iterations\nres_norm_i: current iteration residual norm\nres_norm_i_1: previous iteration residual norm\nstep_norm_i: current iteration newton step norm\nstep_norm_i_1: previous iteration newton step norm\nres_norm_rel: norm of residual used as the reference point when computing                    relative residuals.  If this is -1 on entry to newtonInner,                    then the norm of the initial residual is used.\nstep_fac: factor used in step size limiter\nres_reltol: nonlinear relative residual tolerance\nres_abstol: nonlinear residual absolute tolerance\nstep_tol: step norm tolerance\nitermax: maximum number of newton iterations\nuse_inexact_nk: true if inexact-NK should be used, false otherwise\nkrylov_gamma: parameter used by inexact newton-krylov\nrecalc_policy: a \nRecalculationPolicy\n.\nls: a \nLinearSolver\nfconv: convergence.dat file handle (or DevNull if not used)\nverbose: how much logging/output to do\n\nOptions Keys\n\nIf res_reltol0 is negative, the residual of the initial condition will be   used for res_norm_rel\n\nnewton_verbosity is used to the verbose field\n\n\n\n"
 },
 
 {
@@ -7054,6 +7094,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Utils.calcEuclidianNorm",
     "category": "Method",
     "text": "This function computes the Euclidian norm of a vector where each MPI   process owns part of the vector\n\nInputs:     comm: an MPI communicator     vec: the local part of the vector\n\nOutputs:     val: the Euclidian norm of the entire vector\n\nNote that unlike calcNorm, the time spent in the Allreduce is not logged   for this function.\n\n\n\n"
+},
+
+{
+    "location": "Utils/misc.html#Utils.calcL2InnerProduct-Tuple{ODLCommonTools.AbstractSolutionData{Tsol,Tres},AbstractArray{T,N},AbstractArray{T2,N}}",
+    "page": "Misccellaneous",
+    "title": "Utils.calcL2InnerProduct",
+    "category": "Method",
+    "text": "This function calculate the SBP approximation to the L2 inner product of   two vectors of length mesh.numDof.\n\nL2_product = u^T H conj(v)\n\nNote that this function does not take a square root like calcNorm   does.\n\nInputs\n\neqn: AbstractSolutionData\nu: first vector, of length mesh.numDof\nv: second vector, of length mesh.numDof.  If complex, this vector gets         conjugated\n\nOutputs\n\nval: the value of the inner product\n\nKeyword Arguments\n\nglobalnrm: if true, computes the norm of the entire (parallel) vector,                 if false, computes the norm of only the local part\n\n\n\n"
 },
 
 {
