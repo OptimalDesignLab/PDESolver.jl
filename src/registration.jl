@@ -110,6 +110,9 @@ end
   The physics module must have an associative container called `ICDict` that
   accepts ASCIIStrings as keys and functions as values.
 
+  It is an error to register two functions under the same name or to register
+  one function under two different names.
+
   Inputs:
 
     mod: physics module to register the function with
@@ -161,17 +164,26 @@ end
   signature, so the user should take care to ensure it is correct for the
   physics module.
 
-  Inputs:
+  It is an error to register two functors with the same name or the same
+  functor under two different names.  An exception is made for "reanalysisBC",
+  because it is special.
 
-    mod: module to register the the functor with
-    fname: the name associated with this function, used as the value for any
-           key in the options dictionary that specifies a boundary condition,
-           for example `BC1_name`
-    func: the functor itself
+  **Inputs**
 
-  Outputs:
+   * mod: module to register the the functor with
+   * fname: the name associated with this function, used as the value for any
+            key in the options dictionary that specifies a boundary condition,
+            for example `BC1_name`
+   * func: the functor itself
+
+  **Outputs**
 
     none
+
+  **Notes For Implementers**
+
+  This function works by utilizing `mod.BCDict`, which must be an associative
+  collection mapping BC names to functors.
 """
 function registerBC(mod::Module, fname::ASCIIString, func::BCType)
 
