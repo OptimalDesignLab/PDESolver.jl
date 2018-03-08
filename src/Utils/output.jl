@@ -152,16 +152,22 @@ function print_qvec_coords(mesh, eqn; new_file=false, filename="null", other_fie
 
   myrank = mesh.myrank  # required for @mpi_master
 
+  if other_field == 0
+    header_string = "x-coord    y-coord    elnum    nodenum  dofnum   val"
+  else
+    header_string = string("x-coord    y-coord    elnum    nodenum  dofnum   ",:other_field)
+  end
+
   if new_file
     if filename == "null"
       error("filename has not been specified but print_qvec_coords has been passed the to_file=true arg.")
     end
     fh = open(filename, "w")
-    write(fh,"x-coord    y-coord    elnum    nodenum  dofnum   val\n")
+    write(fh, string(header_string,"\n"))
   elseif filename == "null"
-    @mpi_master println("x-coord    y-coord    elnum    nodenum  dofnum   val")
+    @mpi_master println(header_string)
   elseif filename == eqn.params.f
-    println(filename, "x-coord    y-coord    elnum    nodenum  dofnum   val")
+    println(filename, header_string)
 
   end
 
@@ -187,6 +193,7 @@ function print_qvec_coords(mesh, eqn; new_file=false, filename="null", other_fie
       val_this_dof = eqn.q_vec[dof_ix]
     else
       val_this_dof = other_field[dof_ix]      # assuming ordering of other_field is the same as eqn.q_vec
+      # val_this_dof = eval(parse(other_field[dof_ix]))      # TODO: try to get this working, so you can pass in a string
     end
 
     if new_file

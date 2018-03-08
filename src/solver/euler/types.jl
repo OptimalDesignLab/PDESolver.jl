@@ -633,6 +633,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
 
     if opts["precompute_q_face"]
+      # 2: this is two sides of the face
       eqn.q_face = zeros(Tsol, mesh.numDofPerNode, 2, numfacenodes, mesh.numInterfaces)
     else
       eqn.q_face = zeros(Tsol, 0, 0, 0, 0)
@@ -768,8 +769,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
      eqn.vecflux_bndry = zeros(Tsol, Tdim, numvars, numfacenodes, numBndFaces)
      # AAAAA2: new array for shared vec flux
      eqn.vecflux_faceL_shared = Array(Array{Tsol, 4}, mesh.npeers)     # same as vecflux_faceL, but for shared calls.
+     println(" Creating eqn.vecflux_faceL_shared, mesh.npeers: ", mesh.npeers)
      for i = 1:mesh.npeers
-       eqn.vecflux_faceL_shared[i] = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+        println(" Creating eqn.vecflux_faceL_shared, peer $i, mesh.peer_face_counts[$i]: ", mesh.peer_face_counts[i])
+       # eqn.vecflux_faceL_shared[i] = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
+       eqn.vecflux_faceL_shared[i] = zeros(Tsol, Tdim, numvars, numfacenodes, mesh.peer_face_counts[i])
      end
      eqn.area_sum = zeros(Tmsh, mesh.numEl)
      calcElemSurfaceArea(mesh, sbp, eqn)

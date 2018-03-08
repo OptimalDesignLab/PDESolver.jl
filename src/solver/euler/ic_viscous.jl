@@ -128,6 +128,118 @@ function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end
 
+#-----------------------------------------------------------------------------
+# This is intended to be ICPolynomial, but, for the 2x2 mesh test case,
+#   has slightly perturbed values along the bottom center interface.
+#   This could be useful when debugging parallelism, as it forces the 
+#   flux between elements to be non-zero.
+#
+# fluxdbg stands for flux debug.
+#-----------------------------------------------------------------------------
+function ICPolynomial_fluxdbg{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                                        sbp::AbstractSBP{Tsbp}, 
+                                        eqn::EulerData{Tsol, Tsol, 2}, 
+                                        opts, 
+                                        u0::AbstractVector{Tsol})
+  # populate u0 with initial values
+  # this is a template for all other initial conditions
+  sigma   = 0.01
+  Tdim    = 2
+  params  = eqn.params
+  gamma   = params.gamma
+  gamma_1 = gamma - 1.0
+  aoa     = eqn.params.aoa
+  q       = zeros(Float64, Tdim+2)
+  qRef    = zeros(Float64, Tdim+2)
+  qRef[1] = 1.0
+  qRef[2] = params.Ma*cos(aoa)
+  qRef[3] = params.Ma*sin(aoa)
+  qRef[4] = 1.0
+
+  numEl = mesh.numEl
+  nnodes = mesh.numNodesPerElement
+  dofpernode = mesh.numDofPerNode
+
+  println("---------------- Setting IC - rank: ", mesh.myrank, " ----------------")
+
+  # -----------
+  # |\   |\   |
+  # | \  | \  |
+  # |  \ |  \ |
+  # |   \|   \|
+  # -----------
+  # |\ X |\   |       Seeking to perturb the values on only this element.
+  # | \  | \  |       Serial: element 3
+  # |  \ |  \ |       Parallel: element 2, part 1
+  # |   \|   \|
+  # -----------
+  for i=1:numEl
+
+    perturb_flag = 0
+    # need to flag the left element
+    if mesh.commsize == 1
+      if i == 3
+        perturb_flag = 1
+      end
+    elseif mesh.commsize == 2 && mesh.myrank == 1     # parallel run with 2 parts, this part's rank is 1
+      if i == 2
+        perturb_flag = 1
+      end
+    end
+
+    for j=1:nnodes
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+
+      if mesh.myrank == 0
+        println(" rank: ", mesh.myrank, "  i: $i  j: $j")
+        println(" rank: ", mesh.myrank, "   coords_j: ", round(coords_j,2))
+        println(" rank: ", mesh.myrank, "   dofnums_j: ", dofnums_j)
+      end
+      # how to set left side- maybe part # check? el num check?
+
+      x = coords_j[1]
+      y = coords_j[2]
+
+      # calcFreeStream(eqn.params, coords_j, sol)
+
+      q[1] = (x-x*x)*(y-y*y) 
+      q[2] = (x-x*x)*(y-y*y)
+      q[3] = (x-x*x)*(y-y*y)
+      q[4] = (x-x*x)*(y-y*y)
+      q[1] = (sigma*q[1] + 1.0)*qRef[1] 
+      q[2] = (sigma*q[2] + 1.0)*qRef[2]
+      q[3] = (sigma*q[3] + 1.0)*qRef[3]
+      q[4] = (sigma*q[4] + 1.0)*qRef[4]
+
+      u0[dofnums_j[1]] = q[1]
+      u0[dofnums_j[2]] = q[1]*q[2]
+      u0[dofnums_j[3]] = q[1]*q[3]
+      u0[dofnums_j[4]] = q[4]/(gamma*gamma_1) + 0.5*(q[2]*q[2] + q[3]*q[3])
+      u0[dofnums_j[4]] *= q[1]
+
+      if perturb_flag == 1
+        perturb = 1.0       # 1e-1 & 1e-2 worked, gave k3d differences in stage 2 of ~1e-3
+        println(" rank: ", mesh.myrank, " perturbing by $perturb - this el's coords: ")
+        for node_ix = 1:3
+          println("  ", round(mesh.coords[:, node_ix, i], 2))
+        end
+        for u0_ix = 1:4
+          println(" perturbing u0[", dofnums_j[u0_ix], "]: ", u0[dofnums_j[u0_ix]])
+          u0[dofnums_j[u0_ix]] += perturb   # if the perturb_flag is set, add perturb to all dofs on this node
+        end
+      end
+
+    end
+  end
+
+  println("---------------- Done setting IC - rank: ", mesh.myrank, " ----------------")
+
+  return nothing
+
+end
+
+
 function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                                      operator::AbstractSBP{Tsbp}, 
                                      eqn::EulerData{Tsol, Tsol, 3}, 

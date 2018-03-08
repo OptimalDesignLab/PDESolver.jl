@@ -52,7 +52,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     interfaces = mesh.shared_interfaces[peeridx]
     nfaces = length(interfaces)
 
-    flux_location = eqn.flux_sharedface[peeridx]    # TODO: verify
+    flux_location = eqn.flux_sharedface[peeridx]
 
   end
 
@@ -127,53 +127,25 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # compute viscous flux and diffusion tensor
     q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
     q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    q_faceL = slice(eqn.q_face, :, 1, :, f)
-    q_faceR = slice(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
-                                                  # TODO: or just use interiorFaceInterpolate like in the par case below
+
+    # q_face{L,R} computed below this if statement now
+
     if peeridx == 0
       q_elemL = sview(eqn.q, :, :, elemL)
       q_elemR = sview(eqn.q, :, :, elemR)
+
+      q_faceL = slice(eqn.q_face, :, 1, :, f)
+      q_faceR = slice(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
+
+      # replace the above with this?
+      # interiorFaceInterpolate!(mesh.sbpface, face, q_elemL, q_elemR, q_faceL, q_faceR)
+
     else            # AAAAA parallelized
       data = eqn.shared_data[peeridx]
       q_elemL = ro_sview(eqn.q, :, :, elemL)
       # q_elemR: for comparison, see line 686 & 703 in flux.jl
       q_elemR = ro_sview(data.q_recv, :, :, elemR)
       # q_face*: for comparison, see flux.jl, line 702.
-
-      #--- for debugging
-      myrank = mesh.myrank        # required for use by @mpi_master
-      MPI.Barrier(mesh.comm)
-      #=
-      @mpi_master println(" ")
-      @mpi_master println(" < in calcViscousFlux_interior >")
-      @mpi_master println(" f: ", f)
-      @mpi_master println(" ---")
-      @mpi_master println(" elemL: ", elemL)
-      @mpi_master println(" size(elemL): ", size(elemL))
-      @mpi_master println(" q_elemL: ", q_elemL)
-      @mpi_master println(" size(q_elemL): ", size(q_elemL))
-      @mpi_master println(" eqn.q: ", eqn.q)
-      @mpi_master println(" ---")
-      @mpi_master println(" elemR: ", elemR)
-      @mpi_master println(" size(elemR): ", size(elemR))
-      @mpi_master println(" q_elemR: ", q_elemR)
-      @mpi_master println(" size(q_elemR): ", size(q_elemR))
-      @mpi_master println(" data.q_recv: ", data.q_recv)
-      @mpi_master println(" ---")
-      @mpi_master println(" size(data.q_recv): ", size(data.q_recv))
-      @mpi_master println(" typeof(data): ", typeof(data))
-      @mpi_master println(" fieldnames(data): ", fieldnames(data))
-      @mpi_master println(" typeof(eqn.shared_data): ", typeof(eqn.shared_data))
-      @mpi_master println(" size(eqn.shared_data): ", size(eqn.shared_data))
-      @mpi_master println(" typeof(eqn.q): ", typeof(eqn.q))
-      @mpi_master println(" size(eqn.q): ", size(eqn.q))
-      @mpi_master println(" typeof(q_elemL): ", typeof(q_elemL))
-      @mpi_master println(" size(q_elemL): ", size(q_elemL))
-      @mpi_master println(" typeof(q_elemR): ", typeof(q_elemR))
-      @mpi_master println(" size(q_elemR): ", size(q_elemR))
-      =#
-      MPI.Barrier(mesh.comm)
-      #--- for debugging
 
       interiorFaceInterpolate!(mesh.sbpface, face, q_elemL, q_elemR, q_faceL, q_faceR)
       # face: same as iface_j in calcSharedFaceIntegral_nopre_element_inner.
@@ -192,6 +164,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     dqdx_elemR = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
     calcGradient(mesh, sbp, elemL, q_elemL, dqdx_elemL)
     calcGradient(mesh, sbp, elemR, q_elemR, dqdx_elemR)
+    # TODO: elemR? set above as (in peeridx > 0 case) 
+    #     elemR = face.elementR - start_elnum + 1
 
     #
     # TODO: we can consider the first 2 dimension as a single dimension,
@@ -226,6 +200,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
     end
 
+    # TODO: in peeridx > 0 case, Fv_faceR?
     calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
     Fv_faceL = sview(Fv_face, :,:,1,:)
     Fv_faceR = sview(Fv_face, :,:,2,:)
@@ -330,10 +305,37 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         #   remember there are two groups of viscous fluxes, and this is the *scalar* one.
         #   *evalFaceIntegrals_vector* takes care of the *vector* one.
 
-        flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
+        # flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim    # DISABLING scalar flux- problem is in vector flux 20180223
       end
     end
   end # end of loop over all interfaces
+
+  #=
+  if mesh.myrank == 0
+    println(" ")
+    println(" (in calcViscousFlux_interior)")
+    for f_ix = 1:nfaces
+      println(" eqn.vecflux_faceL[:, :, :, $f_ix]: ", eqn.vecflux_faceL[:, :, :, f_ix])
+    end
+    println(" ")
+    if mesh.commsize == 1
+      for f_ix = 1:nfaces
+        println(" eqn.vecflux_faceR[:, :, :, $f_ix]: ", eqn.vecflux_faceR[:, :, :, f_ix])
+      end
+    elseif mesh.commsize > 1
+      if peeridx == 1
+      # println(" size(eqn.vecflux_faceL_shared): ", size(eqn.vecflux_faceL_shared))
+      # println(" peeridx: ", peeridx)
+      # println(" size(eqn.vecflux_faceL_shared[peeridx]): ", size(eqn.vecflux_faceL_shared[peeridx]))
+        for f_ix = 1:nfaces
+          println(" eqn.vecflux_faceL_shared[peeridx][:, :, :, $f_ix]: ", eqn.vecflux_faceL_shared[peeridx][:, :, :, f_ix])
+        end
+        # TODO: print out the mesh coords of these fluxes. use peeridx and f_ix to index mesh.shared_interfaces or shared coords or whatever
+      end
+    end
+    println(" ")
+  end
+  =#
 
   return nothing
 end # end of function calcViscousFlux_interior
@@ -550,9 +552,13 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   DxL = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
   DxR = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
 
+  # TODO (speed): are these needed here?
+  #=
   GtL = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
   GtR = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
+  =#
 
+  # TODO: why colon????
   R = sview(sbpface.interp[:,:])
   w = sview(sbpface.wface, :)
   res = sview(eqn.res, :,:,:)
@@ -564,12 +570,14 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   RDxL = Array(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
   RDxR = Array(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
   # TODO (speed): are these needed?
+  #=
   FvL  = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement) # AA: unused?
   FvR  = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement) # AA: unused?
   GtRDxL = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)   # AA: unused?
   GtRDxR = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)   # AA: unused?
   nrm    = Array(Tmsh, Tdim, mesh.numNodesPerFace)      # AA: unused?
   dq     =  Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)   # AA: unused?
+  =#
 
   if peeridx == 0
     interfaces = mesh.interfaces
@@ -584,6 +592,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   end
 
   for f = 1 : nfaces
+
     face = interfaces[f]
 
     elemL = face.elementL
@@ -594,7 +603,8 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     end
 
     faceL = face.faceL
-    pL = sview(sbpface.perm, :, faceL)
+    pL = sview(sbpface.perm, :, faceL)      # WRONG in shared face. correct in local face.
+                                            # ser: [1,2]  par: [3,1]
     if peeridx == 0
       faceR = face.faceR
       pR = sview(sbpface.perm, :, faceR)
@@ -603,6 +613,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     println(eqn.params.f, "in vec visc flux. elemL:", elemL, " elemR:", elemR, " f:", f)
 
     # compute RDx
+    # Dx: moves SBP's D matrix to the physical domain
     calcDx(mesh, sbp, elemL, DxL)
     if peeridx == 0
       calcDx(mesh, sbp, elemR, DxR)
@@ -618,7 +629,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     for d =  1 : Tdim    
       for row = 1 : numNodes_face
         if peeridx == 0
-          rowR = sbpface.nbrperm[row, face.orient]
+          rowR = sbpface.nbrperm[row, face.orient]      # this is an integer. 1 or 2 in the 2D test case
         end
         for col = 1 : numNodes_elem
           for s = 1 : stencilsize
@@ -631,6 +642,61 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       end
     end
 
+    #----------------------------------------------------------------------------
+    # DEBUG: bottom center interface comparison
+    print_now = 0
+    if mesh.commsize == 1   # serial
+      if f == 4
+        print_now = 2
+      end
+      if f == 5
+        print_now = 1
+      end
+    else    # parallel
+      if mesh.myrank == 0 && peeridx == 1     # if we're running parallel and if we're on a shared iface
+        if f == 1
+          print_now = 2
+        end
+      end
+      if mesh.myrank == 0 && peeridx == 0
+        if f == 1
+          print_now = 1
+        end
+      end
+    end
+
+    if print_now > 0
+      println("----------------------- selected values for this face ------------------------")
+      if print_now == 2
+        println(" SHARED FACE")
+      elseif print_now == 1
+        println(" LOCAL FACE")
+      end
+      println(" mesh.commsize: ", mesh.commsize)
+      println(" peeridx: ", peeridx)
+      println(" mesh.myrank: ", mesh.myrank)
+      println(" f: ", f)
+      println(" ")
+      println(" w: ", w)
+      println(" RDxL: ", RDxL)
+      if print_now == 1 || mesh.commsize == 1
+        println(" RDxR: ", RDxR)
+        # println(" rowR: ", rowR)
+      end
+      println(" DxL: ", DxL)
+      if print_now == 1 || mesh.commsize == 1
+        println(" DxR: ", DxR)
+      end
+      println(" pL: ", pL)
+      if print_now == 1 || mesh.commsize == 1
+        println(" pR: ", pR)
+      end
+      println(" stencilsize: ", stencilsize)
+      println("------------------------------------------------------------------------------")
+    end
+    #----------------------------------------------------------------------------
+
+
     # Why we need a shared version of vecflux_faceL:
     #   the local part only needs to care about its local element on the shared interface
     #   This is why there are all these "if peeridx == 0" statements around the R computations
@@ -640,6 +706,42 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       vecfluxR = sview(eqn.vecflux_faceR,:,:,:,f)
     else
       vecfluxL = sview(eqn.vecflux_faceL_shared[peeridx],:,:,:,f)     # AAAA2: if statement around this for assigning to the shared vecflux
+    end
+
+    if mesh.myrank == 0
+      println(" ")
+      println(" (in viscflux)")
+      println(" mesh.commsize: ", mesh.commsize)
+      println(" peeridx: ", peeridx)
+      println(" mesh.myrank: ", mesh.myrank)
+      println(" f: ", f)
+      println(" print_now: ", print_now)
+      if peeridx == 0
+        println(" mesh.interfaces[", f, "].elementL: ", mesh.interfaces[f].elementL)
+        println(" mesh.interfaces[", f, "].elementR: ", mesh.interfaces[f].elementR)
+        println(" mesh.coords_interface[:, :, ", f, "]: ", mesh.coords_interface[:, :, f])
+      else
+        println(" mesh.shared_interfaces[1][", f, "].elementL: ", mesh.shared_interfaces[1][f].elementL)
+        println(" mesh.shared_interfaces[1][", f, "].elementR: ", mesh.shared_interfaces[1][f].elementR)
+        println(" mesh.coords_sharedface[1][:, :, ", f, "]: ", mesh.coords_sharedface[1][:, :, f])
+      end
+      println(" elemL: ", elemL)
+      println(" elemR: ", elemR)
+      println(" face.elementR: ", face.elementR)
+      println(" ")
+      if mesh.commsize > 1
+        println(" size(eqn.vecflux_faceL_shared): ", size(eqn.vecflux_faceL_shared))
+        println(" size(eqn.vecflux_faceL_shared[1]): ", size(eqn.vecflux_faceL_shared[1]))
+        # println(" eqn.vecflux_faceL_shared: ", eqn.vecflux_faceL_shared)
+      else
+        # println(" eqn.vecflux_faceL: ", eqn.vecflux_faceL)
+      end
+      println(" ")
+      println(" size(eqn.vecflux_faceL): ", size(eqn.vecflux_faceL))
+      # println(" eqn.vecflux_faceL: ", eqn.vecflux_faceL)
+      println(" size(vecfluxL): ", size(vecfluxL))
+      println(" vecfluxL: ", vecfluxL)
+      println(" ")
     end
 
     for i = 1 : numNodes_elem
@@ -663,10 +765,10 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
           if peeridx == 0
             res[iDof, i, elemR] += tmpR * w[j]
           end
-        end
-      end
-    end
-  end
+        end   # end of loop 'iDof = 2 : mesh.numDofPerNode'
+      end   # end of loop 'j = 1 : numNodes_face'
+    end   # end of loop 'i = 1 : numNodes_elem'
+  end   # end of loop 'f = 1 : nfaces'
 
   return nothing
 end

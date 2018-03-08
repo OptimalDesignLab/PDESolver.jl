@@ -271,6 +271,36 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   end
 
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
+  if mesh.myrank == 0
+    println("call_nlsolver complete.")
+  end
+
+  #----------------------------------------------------------------------------------------------
+  # Utils.disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  #=
+  if mesh.commsize == 1
+    max_el_num = 8
+  elseif mesh.commsize == 2
+    max_el_num = 4
+  elseif mesh.commsize == 4
+    max_el_num = 2
+  end
+  if mesh.myrank == 0
+    println("'''''''''''''''''''''' evalResidual called '''''''''''''''''''''''''")
+    for el_ix = 1:max_el_num
+      for node_ix = 1:3
+        println(" q[:, $node_ix, $el_ix]: ", eqn.q[:, node_ix, el_ix])
+        println(" res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
+        # println(" mesh.coords[:, $node_ix, $el_ix]: ", mesh.coords[:, node_ix, el_ix])
+        println(" mesh.coords[:, $node_ix, $el_ix]: ", round(mesh.coords[:, node_ix, el_ix], 2))
+      end
+      println(" ")
+    end
+  end
+  MPI.Barrier(mesh.comm)
+  =#
+  #----------------------------------------------------------------------------------------------
+
   postproc(mesh, sbp, eqn, opts)
 
   cleanup(mesh, sbp, eqn, opts)

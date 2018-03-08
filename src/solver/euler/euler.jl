@@ -126,16 +126,18 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
 
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  # println("dataPrep @time printed above")
 
+  # DEBUGAA
   debug_output_iface(mesh, sbp, eqn, opts, "After dataPrep")
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
-#    println("volume integral @time printed above")
+    # println("volume integral @time printed above")
   end
 
-  debug_output_iface(mesh, sbp, eqn, opts, "After evalVolumeIntegrals")
+  # DEBUGAA
+  # debug_output_iface(mesh, sbp, eqn, opts, "After evalVolumeIntegrals")
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -161,39 +163,49 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
-#   println("boundary integral @time printed above")
+    # println("boundary integral @time printed above")
   end
 
+  # DEBUGAA
   debug_output_iface(mesh, sbp, eqn, opts, "After evalBoundaryIntegrals")
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
-#    println("stabilizing @time printed above")
+    # println("stabilizing @time printed above")
   end
 
+  # DEBUGAA
   debug_output_iface(mesh, sbp, eqn, opts, "After addStabilization")
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("face integral @time printed above")
+    # println("face integral @time printed above")
   end
+
+  # DEBUGAA
+  debug_output_iface(mesh, sbp, eqn, opts, "After evalFaceIntegrals")
 
   # assembles eqn.vecfluxL & eqn.vecfluxR into res: this is viscous flux, vector portion, for peeridx == 0
   if opts["isViscous"]
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
   end
 
+  # DEBUGAA
+  debug_output_iface(mesh, sbp, eqn, opts, "After evalFaceIntegrals_vector")
+
   # scalar viscous flux is called in this
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("evalSharedFaceIntegrals @time printed above")
+    # println("evalSharedFaceIntegrals @time printed above")
   end
 
+  # DEBUGAA
   debug_output_iface(mesh, sbp, eqn, opts, "After evalSharedFaceIntegrals")
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-#  println("source integral @time printed above")
+  # println("source integral @time printed above")
 
+  # DEBUGAA
   debug_output_iface(mesh, sbp, eqn, opts, "After evalSourceTerm")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
@@ -220,16 +232,22 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
   println(eqn.params.f, " >>>>>>>> End of evalResidual <<<<<<<<< ")
+  # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   print_qvec_coords(mesh, eqn, filename=eqn.params.f)
+  # print_qvec_coords(mesh, eqn, filename=eqn.params.f, other_field=eqn.res_vec)    # this doesn't work?
 
-  debug_output_iface(mesh, sbp, eqn, opts, "End of evalResidual")
+
+  # DEBUGAA
+  # println(eqn.params.f, " >>>>>>>> End of evalResidual <<<<<<<<< ")
+  # debug_output_iface(mesh, sbp, eqn, opts, "End of evalResidual")
 
   # println(" opts[precompute_face_flux]: ", opts["precompute_face_flux"])
   # println(" opts[face_integral_type]: ", opts["face_integral_type"])
-  debug_output_iface(mesh, sbp, eqn, opts, "After evalFaceIntegrals")
-  println(eqn.params.f, "\nAfter evalFaceIntegrals")
-  println(eqn.params.f, " mesh.commsize: ", mesh.commsize)
-  println(eqn.params.f, " myrank: ", myrank)
+  # DEBUG AA
+  # debug_output_iface(mesh, sbp, eqn, opts, "After evalFaceIntegrals")
+  # println(eqn.params.f, "\nAfter evalFaceIntegrals")
+  # println(eqn.params.f, " mesh.commsize: ", mesh.commsize)
+  # println(eqn.params.f, " myrank: ", myrank)
   #=
   if mesh.commsize == 1
     println(" size(eqn.flux_face): ", size(eqn.flux_face))
@@ -240,6 +258,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
   =#
 
+  # DEBUGAA
+  #=
   if mesh.commsize == 1
     println(eqn.params.f, " mesh.numInterfaces: ", mesh.numInterfaces)
     # println(" mesh.interfaces: ", mesh.interfaces)
@@ -279,6 +299,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     end
 
   end
+  =#
 
   # DEBUG BEGIN
   # res_vec = zeros(Float64, length(eqn.res))
@@ -297,6 +318,28 @@ function debug_output_iface(mesh, sbp, eqn, opts, phrase)
   myrank = mesh.myrank
   disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
+  if mesh.commsize == 1
+    max_el_num = 8
+  elseif mesh.commsize == 2
+    max_el_num = 4
+  elseif mesh.commsize == 4
+    max_el_num = 2
+  end
+  if mesh.myrank == 0
+    # println("'''''''''''''''''''''' evalResidual called '''''''''''''''''''''''''")
+    println("'''''''''''''''''''''' in evalResidual: ", phrase, " '''''''''''''''''''''''''")
+    for el_ix = 1:max_el_num
+      for node_ix = 1:3
+        println(" q[:, $node_ix, $el_ix]: ", eqn.q[:, node_ix, el_ix])
+        println(" res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
+        # println(" mesh.coords[:, $node_ix, $el_ix]: ", mesh.coords[:, node_ix, el_ix])
+        println(" mesh.coords[:, $node_ix, $el_ix]: ", round(mesh.coords[:, node_ix, el_ix], 2))
+      end
+      println(" ")
+    end
+  end
+
+  #=
   if mesh.commsize == 1
     println(" ")
     println(" -------->>>>>>>> ", phrase, " <<<<<<<<<-------- ")
@@ -346,6 +389,7 @@ function debug_output_iface(mesh, sbp, eqn, opts, phrase)
       =#
     end
   end
+  =#
 
 end
 
@@ -672,6 +716,11 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 		fill!(eqn.vecflux_faceL, 0.0)
 		fill!(eqn.vecflux_faceR, 0.0)
+    if mesh.commsize > 1
+      for peer_ix = 1:mesh.npeers
+        fill!(eqn.vecflux_faceL_shared[peer_ix], 0.0)
+      end
+    end
 		fill!(eqn.vecflux_bndry, 0.0)
 
     # viscous fluxes for peeridx == 0
@@ -938,8 +987,31 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
       #         * res_vec -> q_vec
       #   2) When are res_vec & res made consistent?
       #       In NLSolvers.
+      if mesh.myrank == 0
+        println(" ~~~~~ in evalFaceIntegrals, before interiorfaceintegrate! ~~~~~")
+        if mesh.commsize == 1
+          el_ix = 4
+        elseif mesh.commsize == 2
+          el_ix = 1
+        end
+        for node_ix = 1:3
+          println("  eqn.res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
+        end
+      end
       interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, 
                              eqn.res, SummationByParts.Subtract())
+
+      if mesh.myrank == 0
+        println(" ~~~~~ in evalFaceIntegrals, after interiorfaceintegrate! ~~~~~")
+        if mesh.commsize == 1
+          el_ix = 4
+        elseif mesh.commsize == 2
+          el_ix = 1
+        end
+        for node_ix = 1:3
+          println("  eqn.res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
+        end
+      end
 
     else
       calcFaceIntegral_nopre(mesh, sbp, eqn, opts, eqn.flux_func, mesh.interfaces)

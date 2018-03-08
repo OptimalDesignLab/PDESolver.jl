@@ -285,7 +285,7 @@ function calcSharedFaceElementIntegrals_element_inner{Tmsh, Tsol, Tres}(
                             flux_functor::FluxType)
 
   if opts["parallel_data"] != "element"
-    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+    throw(ErrorException("cannot use calcSharedFaceElementIntegrals_element without parallel element data"))
   end
 
   q = eqn.q
@@ -355,7 +355,7 @@ function calcSharedFaceElementIntegralsStaggered_element_inner{Tmsh, Tsol, Tres}
                             flux_functor::FluxType)
 
   if opts["parallel_data"] != "element"
-    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+    throw(ErrorException("cannot use calcSharedFaceElementIntegralsStaggered_element without parallel element data"))
   end
 
   q = eqn.q_flux
@@ -747,6 +747,8 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
     println(eqn.params.f, " isViscous check hit in calcSharedFaceIntegrals_nopre_element_inner. peeridx:", idx)
     calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
   end
+
+  # test comment
 
   @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 

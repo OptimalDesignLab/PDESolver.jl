@@ -231,6 +231,17 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 		# TODO TODO TODO: remove when done debugging viscous par
 		(mesh, sbp, eqn) = ctx
+    k3d = zeros(eqn.res)
+
+    if mesh.myrank == 0
+      for j = 1:8
+        println(" ")
+      end
+      println(" RK4RK4RK4RK4RK4RK4RK4RK4 RK4 top: i = $i")
+      for j = 1:4
+        println(" ")
+      end
+    end
 
 		# if mesh.commsize == 1
 			# println("   >>>>>>>> End of evalResidual <<<<<<<<< ")
@@ -251,12 +262,14 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 				# println(" ")
 			# end
 		# end
-		if mesh.commsize == 1
-			println(">>>>> in RK4, stage 1 call <<<<<")
-		else
-			if mesh.myrank == 0
-				println(">>>>> in RK4, stage 1 call <<<<<")
-			end
+    if mesh.myrank == 0
+      println(">>>>> in RK4, starting stage 1 call <<<<<")
+      println(" size(eqn.vecflux_faceL): ", size(eqn.vecflux_faceL))
+      println(" size(eqn.vecflux_faceR): ", size(eqn.vecflux_faceR))
+      if mesh.commsize > 1
+        println(" size(eqn.vecflux_faceL_shared): ", size(eqn.vecflux_faceL_shared))
+        println(" size(eqn.vecflux_faceL_shared[1]): ", size(eqn.vecflux_faceL_shared[1]))
+      end
 		end
 
 
@@ -272,7 +285,15 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
-		# TODO TODO: need to figure out how to isolate the highlighed dof from res_vec
+    disassembleSolution(mesh, sbp, eqn, opts, k3d, k1)
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    print_all_q_res_coords(mesh, eqn, k3d, "after stage 1")
+    #------------------------------------------------------------------------------
+    # added 20180308
+    print_all_vecflux(mesh, eqn)
+    #------------------------------------------------------------------------------
+    #=
 		if mesh.commsize == 1
 			println("res_vec, after stage 1")
 			println("on interface: res[:, 3, 4]: ")
@@ -296,6 +317,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 				println(q_vec[17:20])
 			end
 		end
+    =#
 
     # logging
     @mpi_master if i % 1 == 0
@@ -326,13 +348,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
-		if mesh.commsize == 1
-			println(">>>>> in RK4, stage 2 call <<<<<")
-		else
-			if mesh.myrank == 0
-				println(">>>>> in RK4, stage 2 call <<<<<")
-			end
-		end
+    if mesh.myrank == 0
+      println(">>>>> in RK4, starting stage 2 call <<<<<")
+    end
 
     # stage 2
     pre_func(ctx..., opts) 
@@ -343,14 +361,19 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k2[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k2[j]
     end
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, k3d, k2)
+    print_all_q_res_coords(mesh, eqn, k3d, "after stage 2")
 
-		if mesh.commsize == 1
-			println(">>>>> in RK4, stage 3 call <<<<<")
-		else
-			if mesh.myrank == 0
-				println(">>>>> in RK4, stage 3 call <<<<<")
-			end
-		end
+    #------------------------------------------------------------------------------
+    # added 20180308
+    print_all_vecflux(mesh, eqn)
+    #------------------------------------------------------------------------------
+
+    if mesh.myrank == 0
+      println(">>>>> in RK4, starting stage 3 call <<<<<")
+    end
 
     # stage 3
     pre_func(ctx..., opts)
@@ -362,14 +385,18 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k3[j] = res_vec[j]
       q_vec[j] = x_old[j] + h*k3[j]
     end
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, k3d, k3)
+    print_all_q_res_coords(mesh, eqn, k3d, "after stage 3")
+    #------------------------------------------------------------------------------
+    # added 20180308
+    print_all_vecflux(mesh, eqn)
+    #------------------------------------------------------------------------------
 
-		if mesh.commsize == 1
-			println(">>>>> in RK4, stage 4 call <<<<<")
-		else
-			if mesh.myrank == 0
-				println(">>>>> in RK4, stage 4 call <<<<<")
-			end
-		end
+    if mesh.myrank == 0
+      println(">>>>> in RK4, starting stage 4 call <<<<<")
+    end
 
     # stage 4
     pre_func(ctx..., opts)
@@ -380,12 +407,8 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k4[j] = res_vec[j]
     end
 
-		if mesh.commsize == 1
-			println(">>>>> in RK4, end <<<<<")
-		else
-			if mesh.myrank == 0
-				println(">>>>> in RK4, end <<<<<")
-			end
+    if mesh.myrank == 0
+      println(">>>>> in RK4, end <<<<<")
 		end
 
 #     println("k1 = \n", k1)
@@ -400,6 +423,14 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
       q_vec[j] = x_old[j]
     end
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, k3d, k4)
+    print_all_q_res_coords(mesh, eqn, k3d, "after stage 4")
+    #------------------------------------------------------------------------------
+    # added 20180308
+    print_all_vecflux(mesh, eqn)
+    #------------------------------------------------------------------------------
 
 #     println("q_vec = \n", q_vec)
 
@@ -556,4 +587,55 @@ function globalNorm(vec)
   local_norm = norm(vec)
   global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, MPI.COMM_WORLD)
   return sqrt(global_norm)
+end
+
+# another debugging function
+function print_all_q_res_coords(mesh, eqn, k3d, phrase)
+  if mesh.commsize == 1
+    max_el_num = 8
+  elseif mesh.commsize == 2
+    max_el_num = 4
+  elseif mesh.commsize == 4
+    max_el_num = 2
+  end
+  if mesh.myrank == 0
+    println("'''''''''''''''''''''' in RK4: ", phrase, " '''''''''''''''''''''''''")
+    for el_ix = 1:max_el_num
+      for node_ix = 1:3
+        # println(" q[:, $node_ix, $el_ix]: ", eqn.q[:, node_ix, el_ix])
+        # println(" res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
+        # println(" mesh.coords[:, $node_ix, $el_ix]: ", round(mesh.coords[:, node_ix, el_ix], 2))
+        println(" k3d[:, $node_ix, $el_ix]: ", k3d[:, node_ix, el_ix])
+      end
+      println(" ")
+    end
+  end
+end
+
+function print_all_vecflux(mesh, eqn)
+  if mesh.myrank == 0
+    println(" ")
+    println(" (in rk4)")
+    for f_ix = 1:size(eqn.vecflux_faceL,4)
+      println(" eqn.vecflux_faceL[:, :, :, $f_ix]: ", eqn.vecflux_faceL[:, :, :, f_ix])
+    end
+    println(" ")
+    if mesh.commsize == 1
+      for f_ix = 1:size(eqn.vecflux_faceR,4)
+        println(" eqn.vecflux_faceR[:, :, :, $f_ix]: ", eqn.vecflux_faceR[:, :, :, f_ix])
+      end
+    elseif mesh.commsize > 1
+      peeridx = 1
+      # println(" size(eqn.vecflux_faceL_shared): ", size(eqn.vecflux_faceL_shared))
+      # println(" peeridx: ", peeridx)
+      # println(" size(eqn.vecflux_faceL_shared[peeridx]): ", size(eqn.vecflux_faceL_shared[peeridx]))
+        for f_ix = 1:size(eqn.vecflux_faceL_shared[peeridx], 4)
+          println(" eqn.vecflux_faceL_shared[peeridx][:, :, :, $f_ix]: ", eqn.vecflux_faceL_shared[peeridx][:, :, :, f_ix])
+        end
+        # TODO: print out the mesh coords of these fluxes. use peeridx and f_ix to index mesh.shared_interfaces or shared coords or whatever
+  #=
+  =#
+    end
+    println(" ")
+  end
 end

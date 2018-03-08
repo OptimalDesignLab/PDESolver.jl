@@ -289,7 +289,9 @@ function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # currently we only allow 1 source functor
   eqn.src_func = SRCDict[opts["SRCname"]]
-  println("using source term functor ", eqn.src_func)
+  if mesh.myrank == 0
+    println("using source term functor ", eqn.src_func)
+  end
   return nothing
 end
 

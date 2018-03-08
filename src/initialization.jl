@@ -623,11 +623,20 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     params.time.t_nlsolve += t_nlsolve
     myrank = mesh.myrank
 
+    if mesh.myrank == 0 println("write_timings starting.") end
     if opts["write_timing"]
       MPI.Barrier(mesh.comm)
       fname = "timing_breakdown_$myrank"
       write_timings(params.time, fname)
     end
+    if mesh.myrank == 0 println("write_timings complete.") end
+
+    #=
+    if mesh.myrank == 0
+      println("{{{{{{{{{{{{{{{{{{{{ before need_res")
+      println(eqn.res)
+    end
+    =#
 
     # evaluate residual at final q value
     need_res = true
@@ -639,9 +648,23 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       # TODO: better way to update final time
       evalResidual(mesh, sbp, eqn, opts, t)
 
-      eqn.res_vec[:] = 0.0
+      #=
+      if mesh.myrank == 0
+        println("{{{{{{{{{{{{{{{{{{{{ in need_res, after evalResidual")
+        println(eqn.res)
+      end
+      =#
+
       assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     end
+    if mesh.myrank == 0 println("need_res complete.") end
+
+    #=
+    if mesh.myrank == 0
+      println("{{{{{{{{{{{{{{{{{{{{ after need_res")
+      println(eqn.res)
+    end
+    =#
 
     if opts["write_finalsolution"]
       println("writing final solution")

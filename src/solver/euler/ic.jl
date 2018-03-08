@@ -897,6 +897,7 @@ global const ICDict = Dict{Any, Function}(
   "ICSedovExplosion" => ICSedovExplosion,
   "ICTrigonometric" => ICTrigonometric,
   "ICPolynomial" => ICPolynomial,
+  "ICPolynomial_fluxdbg" => ICPolynomial_fluxdbg,
   "ICChannel" => ICChannel,
   "ICDoubleSquare" => ICDoubleSquare,
 )
