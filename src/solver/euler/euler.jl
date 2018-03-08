@@ -996,31 +996,8 @@ function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
       #         * res_vec -> q_vec
       #   2) When are res_vec & res made consistent?
       #       In NLSolvers.
-      if mesh.myrank == 0
-        println(" ~~~~~ in evalFaceIntegrals, before interiorfaceintegrate! ~~~~~")
-        if mesh.commsize == 1
-          el_ix = 4
-        elseif mesh.commsize == 2
-          el_ix = 1
-        end
-        for node_ix = 1:3
-          println("  eqn.res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
-        end
-      end
       interiorfaceintegrate!(mesh.sbpface, mesh.interfaces, eqn.flux_face, 
                              eqn.res, SummationByParts.Subtract())
-
-      if mesh.myrank == 0
-        println(" ~~~~~ in evalFaceIntegrals, after interiorfaceintegrate! ~~~~~")
-        if mesh.commsize == 1
-          el_ix = 4
-        elseif mesh.commsize == 2
-          el_ix = 1
-        end
-        for node_ix = 1:3
-          println("  eqn.res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
-        end
-      end
 
     else
       calcFaceIntegral_nopre(mesh, sbp, eqn, opts, eqn.flux_func, mesh.interfaces)
