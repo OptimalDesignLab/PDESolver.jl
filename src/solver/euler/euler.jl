@@ -325,7 +325,16 @@ function debug_output_iface(mesh, sbp, eqn, opts, phrase)
   elseif mesh.commsize == 4
     max_el_num = 2
   end
-  if mesh.myrank == 0
+  do_print = false
+  if mesh.commsize == 1
+    do_print = true
+  elseif mesh.commsize > 1
+    if mesh.myrank == 0
+      do_print = true
+    end
+  end
+
+  if do_print == true
     # println("'''''''''''''''''''''' evalResidual called '''''''''''''''''''''''''")
     println("'''''''''''''''''''''' in evalResidual: ", phrase, " '''''''''''''''''''''''''")
     for el_ix = 1:max_el_num

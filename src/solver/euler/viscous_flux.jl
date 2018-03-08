@@ -305,7 +305,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         #   remember there are two groups of viscous fluxes, and this is the *scalar* one.
         #   *evalFaceIntegrals_vector* takes care of the *vector* one.
 
-        # flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim    # DISABLING scalar flux- problem is in vector flux 20180223
+        flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
       end
     end
   end # end of loop over all interfaces
