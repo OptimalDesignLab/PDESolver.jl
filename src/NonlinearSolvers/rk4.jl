@@ -231,8 +231,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 		# TODO TODO TODO: remove when done debugging viscous par
 		(mesh, sbp, eqn) = ctx
-    k3d = zeros(eqn.res)
+    # k3d = zeros(eqn.res)    # DEBUGAA
 
+    # DEBUGAA
+    #=
     if mesh.myrank == 0
       for j = 1:8
         println(" ")
@@ -242,26 +244,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(" ")
       end
     end
+    =#
 
-		# if mesh.commsize == 1
-			# println("   >>>>>>>> End of evalResidual <<<<<<<<< ")
-			# println("   on interface: eqn.q[:, 3, 4]: ")
-			# println(eqn.q[:, 3, 4])
-
-			# println("   on RHS: eqn.q[:, 2, 7]: ")
-			# println(eqn.q[:, 2, 7])
-			# println(" ")
-		# else
-			# if myrank == 0
-				# println("   >>>>>>>> End of evalResidual <<<<<<<<< ")
-				# println("  on interface: eqn.q[:, 3, 1]:")
-				# println(eqn.q[:, 3, 1])
-
-				# println("  on RHS: eqn.q[:, 2, 2]:")
-				# println(eqn.q[:, 2, 2])
-				# println(" ")
-			# end
-		# end
+    #=
     if mesh.myrank == 0
       println(">>>>> in RK4, starting stage 1 call <<<<<")
       println(" size(eqn.vecflux_faceL): ", size(eqn.vecflux_faceL))
@@ -271,6 +256,7 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(" size(eqn.vecflux_faceL_shared[1]): ", size(eqn.vecflux_faceL_shared[1]))
       end
 		end
+    =#
 
 
     # stage 1
@@ -285,39 +271,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
 
-    disassembleSolution(mesh, sbp, eqn, opts, k3d, k1)
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    print_all_q_res_coords(mesh, eqn, k3d, "after stage 1")
-    #------------------------------------------------------------------------------
-    # added 20180308
-    print_all_vecflux(mesh, eqn)
-    #------------------------------------------------------------------------------
-    #=
-		if mesh.commsize == 1
-			println("res_vec, after stage 1")
-			println("on interface: res[:, 3, 4]: ")
-			println(res_vec[45:48])
-			println("on RHS: res[:, 2, 7]: ")
-			println(res_vec[77:80])
-			println("on interface: q[:, 3, 4]: ")
-			println(q_vec[45:48])
-			println("on RHS: q[:, 2, 7]: ")
-			println(q_vec[77:80])
-		else
-			if mesh.myrank == 0
-				println("res_vec, after stage 1")
-				println("on interface: res[:, 3, 1]: ")
-				println(res_vec[9:12])
-				println("on RHS: res[:, 2, 2]: ")
-				println(res_vec[17:20])
-				println("on interface: q[:, 3, 1]: ")
-				println(q_vec[9:12])
-				println("on RHS: q[:, 2, 2]: ")
-				println(q_vec[17:20])
-			end
-		end
-    =#
+    # DEBUGAA
+    # disassembleSolution(mesh, sbp, eqn, opts, k3d, k1)
+    # print_all_q_res_coords(mesh, eqn, k3d, "after stage 1")
+    # print_all_vecflux(mesh, eqn)
 
     # logging
     @mpi_master if i % 1 == 0
@@ -348,9 +305,12 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
+    # DEBUGAA
+    #=
     if mesh.myrank == 0
       println(">>>>> in RK4, starting stage 2 call <<<<<")
     end
+    =#
 
     # stage 2
     pre_func(ctx..., opts) 
@@ -361,19 +321,18 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k2[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k2[j]
     end
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-    disassembleSolution(mesh, sbp, eqn, opts, k3d, k2)
-    print_all_q_res_coords(mesh, eqn, k3d, "after stage 2")
 
-    #------------------------------------------------------------------------------
-    # added 20180308
-    print_all_vecflux(mesh, eqn)
-    #------------------------------------------------------------------------------
+    # DEBUGAA
+    # disassembleSolution(mesh, sbp, eqn, opts, k3d, k2)
+    # print_all_q_res_coords(mesh, eqn, k3d, "after stage 2")
+    # print_all_vecflux(mesh, eqn)
 
+    # DEBUGAA
+    #=
     if mesh.myrank == 0
       println(">>>>> in RK4, starting stage 3 call <<<<<")
     end
+    =#
 
     # stage 3
     pre_func(ctx..., opts)
@@ -385,18 +344,19 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k3[j] = res_vec[j]
       q_vec[j] = x_old[j] + h*k3[j]
     end
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+    # DEBUGAA
+    #=
     disassembleSolution(mesh, sbp, eqn, opts, k3d, k3)
     print_all_q_res_coords(mesh, eqn, k3d, "after stage 3")
-    #------------------------------------------------------------------------------
-    # added 20180308
     print_all_vecflux(mesh, eqn)
-    #------------------------------------------------------------------------------
+    =#
 
+    #=
     if mesh.myrank == 0
       println(">>>>> in RK4, starting stage 4 call <<<<<")
     end
+    =#
 
     # stage 4
     pre_func(ctx..., opts)
@@ -407,40 +367,34 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k4[j] = res_vec[j]
     end
 
+    # DEBUGAA
+    #=
     if mesh.myrank == 0
       println(">>>>> in RK4, end <<<<<")
 		end
-
-#     println("k1 = \n", k1)
-#     println("k2 = \n", k2)
-#     println("k3 = \n", k3)
-#     println("k4 = \n", k4)
-
-#     println("q_old = \n", x_old)
+    =#
 
     # update
     for j=1:m
       x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
       q_vec[j] = x_old[j]
     end
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+    # DEBUGAA
+    #=
     disassembleSolution(mesh, sbp, eqn, opts, k3d, k4)
     print_all_q_res_coords(mesh, eqn, k3d, "after stage 4")
-    #------------------------------------------------------------------------------
-    # added 20180308
     print_all_vecflux(mesh, eqn)
-    #------------------------------------------------------------------------------
+    =#
 
-#     println("q_vec = \n", q_vec)
 
     #TODO: is this necessary?
-#    fill!(k1, 0.0)
-#    fill!(k2, 0.0)
-#    fill!(k3, 0.0)
-#    fill!(k4, 0.0)
+   # fill!(k1, 0.0)
+   # fill!(k2, 0.0)
+   # fill!(k3, 0.0)
+   # fill!(k4, 0.0)
 
-#    t = t + h
+   # t = t + h
 
   end   # end of RK4 time stepping loop
 
@@ -517,16 +471,21 @@ end
 """->
 function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  # myrank = mesh.myrank
+  # DEBUGAA
+  #=
   println(eqn.params.f, " >>>>>>>> Start of RK4 loop <<<<<<<<< ")
   print_qvec_coords(mesh, eqn, filename=eqn.params.f)
+  =#
 
   t = rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
       (mesh, sbp, eqn), opts, eqn.params.time;
       majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
 
+  # DEBUGAA
+  #=
   println(eqn.params.f, " >>>>>>>> End of RK4 loop <<<<<<<<< ")
   print_qvec_coords(mesh, eqn, filename=eqn.params.f)
+  =#
 
   return t
 
