@@ -309,7 +309,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         end   # end 'for iDof = 2 : Tdim+2'
       end   # end 'for n = 1:mesh.numNodesPerFace'
     end   # end 'if peeridx == 0'
-      =#
+    =#
     #------------------------------------------------------------
 
 
@@ -791,7 +791,8 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     for i = 1 : numNodes_elem
       for j = 1 : numNodes_face
         for iDof = 2 : mesh.numDofPerNode
-          println(eqn.params.f, " vector flux -> res, iDof:", iDof, " i:", i, " elemL:", elemL, " elemR:", elemR)
+          # DEBUGAA
+          # println(eqn.params.f, " vector flux -> res, iDof:", iDof, " i:", i, " elemL:", elemL, " elemR:", elemR)
           tmpL = 0.0
           # AAAAA2: R only needed in local interface case
           if peeridx == 0

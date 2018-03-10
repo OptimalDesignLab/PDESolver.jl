@@ -215,7 +215,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # calculated vector
   if eqn.params.isViscous == true
-    println(eqn.params.f, " isViscous check hit at bottom of evalResidual")
+    # DEBUGAA
+    # println(eqn.params.f, " isViscous check hit at bottom of evalResidual")
     evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
 
     # Notes:
@@ -654,11 +655,6 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 # this is almost the exact list of everything we *shouldn't* be storing, but
 # rather recalculating on the fly
 
-#println("Entered dataPrep()")
-
-#  println("typeof(eqn) = ", typeof(eqn))
-#  println("typeof(eqn.params) = ", typeof(eqn.params))
-
   # apply filtering to input
   if eqn.params.use_filter
     applyFilter(mesh, sbp, eqn, eqn.q, opts)
@@ -669,17 +665,17 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   fill!(eqn.res_edge, 0.0)
 
   getAuxVars(mesh, eqn)
-#  println("  getAuxVars @time printed above")
+  # println("  getAuxVars @time printed above")
 
   if opts["check_density"]
     checkDensity(eqn)
-#    println("  checkDensity @time printed above")
+    # println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
-#    throw(ErrorException("I'm done"))
+    # throw(ErrorException("I'm done"))
     checkPressure(eqn)
-#    println("  checkPressure @time printed above")
+    # println("  checkPressure @time printed above")
   end
 
   # calculate fluxes
@@ -696,7 +692,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
   end
-#  println("  getEulerFlux @time printed above")
+  # println("  getEulerFlux @time printed above")
 
 
   if mesh.isDG
@@ -715,12 +711,14 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if opts["precompute_boundary_flux"]
     fill!(eqn.bndryflux, 0.0)
     getBCFluxes(mesh, sbp, eqn, opts)
-#     println("  getBCFluxes @time printed above")
+    # println("  getBCFluxes @time printed above")
   end
   
   if eqn.params.isViscous == true
-    println(eqn.params.f, " isViscous check hit in dataPrep")
+    # DEBUGAA
+    # println(eqn.params.f, " isViscous check hit in dataPrep")
 
+    # TODO (speed) isn't there only one accumulate line in viscous_flux? Can't we just overwrite and not additively accumulate?
 		fill!(eqn.vecflux_faceL, 0.0)
 		fill!(eqn.vecflux_faceR, 0.0)
     if mesh.commsize > 1
@@ -740,7 +738,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   if eqn.params.use_edgestab
     stabscale(mesh, sbp, eqn)
   end
-#  println("  stabscale @time printed above")
+  # println("  stabscale @time printed above")
 
   return nothing
 end # end function dataPrep

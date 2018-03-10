@@ -641,11 +641,13 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     end
   end  # end loop over interfaces
 
-  println(eqn.params.f, "functor in calcSharedFaceIntegrals_element_inner: ", functor)
+  # DEBUGAA
+  # println(eqn.params.f, "functor in calcSharedFaceIntegrals_element_inner: ", functor)
 
   # AAAAA3: fixed this not being present in the precomputed case
   if opts["isViscous"]
-    println(eqn.params.f, " isViscous check hit in calcSharedFaceIntegrals_element_inner")
+    # DEBUGAA
+    # println(eqn.params.f, " isViscous check hit in calcSharedFaceIntegrals_element_inner")
 
     # assembles eqn.flux_face and eqn.vecflux_faceL & R for peeridx > 0
     calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
@@ -653,10 +655,10 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts, idx)
   end
 
-  # M:S
-  for iface_ix = 1:length(mesh.shared_interfaces[1])
-    println(eqn.params.f, "(in cSFI_e_i) eqn.flux_sharedface[1][:, :, ", iface_ix, "]: ", eqn.flux_sharedface[1][:,:,iface_ix])
-  end
+  # DEBUGAA
+  # for iface_ix = 1:length(mesh.shared_interfaces[1])
+    # println(eqn.params.f, "(in cSFI_e_i) eqn.flux_sharedface[1][:, :, ", iface_ix, "]: ", eqn.flux_sharedface[1][:,:,iface_ix])
+  # end
 
   # evaluate integral. This needs to be done after the viscous flux functions above.
   # the scalar viscous flux for peeridx > 0 will be accumulated into res with this as well
