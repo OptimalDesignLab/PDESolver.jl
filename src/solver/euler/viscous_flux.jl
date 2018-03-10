@@ -89,6 +89,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   if peeridx != 0         # AAAAA3
     start_elnum = mesh.shared_element_offsets[peeridx]
   end
+  # TODO (speed): make start_elnum = -1 in the peeridx == 0 case, so that elemR is face.elementR? see lines 100-104
 
   for f = 1:nfaces    # loop over faces
     # println(eqn.params.f, "----- in loop f = 1:nfaces, f = ", f, "  nfaces = ", nfaces,"  peeridx = ", peeridx, " -----")
@@ -283,6 +284,39 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         end
       end
     end
+
+    #------------------------------------------------------------
+    # Method 2: peeridx if statement outside outermost loop
+    # accumulate fluxes
+    #=
+    if peeridx == 0
+      for n = 1:mesh.numNodesPerFace
+        for iDof = 2 : Tdim+2
+          for iDim = 1 : Tdim
+            eqn.vecflux_faceL[iDim, iDof, n, f] -=  vecfluxL[iDim, iDof, n]*coef_nondim
+            eqn.vecflux_faceR[iDim, iDof, n, f] -=  vecfluxR[iDim, iDof, n]*coef_nondim
+          end   # end 'for iDim = 1 : Tdim'
+          flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
+        end   # end 'for iDof = 2 : Tdim+2'
+      end   # end 'for n = 1:mesh.numNodesPerFace'
+    else    # if peeridx != 0
+      for n = 1:mesh.numNodesPerFace
+        for iDof = 2 : Tdim+2
+          for iDim = 1 : Tdim
+            eqn.vecflux_faceL_shared[peeridx][iDim, iDof, n, f] -= vecfluxL[iDim, iDof, n]*coef_nondim
+          end   # end 'for iDim = 1 : Tdim'
+          flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
+        end   # end 'for iDof = 2 : Tdim+2'
+      end   # end 'for n = 1:mesh.numNodesPerFace'
+    end   # end 'if peeridx == 0'
+      =#
+    #------------------------------------------------------------
+
+
+
+
+    #------------------------------------------------------------
+    # Method 1: peeridx if statement inside innermost loop
     # accumulate fluxes
     for n = 1:mesh.numNodesPerFace
       for iDof = 2 : Tdim+2
@@ -297,8 +331,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
           else
             # AAAAA2: different array for shared case
             eqn.vecflux_faceL_shared[peeridx][iDim, iDof, n, f] -= vecfluxL[iDim, iDof, n]*coef_nondim
-          end
-        end
+          end   # end 'if peeridx == 0'
+        end   # end 'for iDim = 1 : Tdim'
 
         # This line accumulates the scalar part of the numerical viscous flux here.
         #   *eqn.flux_face* which also stores inviscid flux and will be integrated and assembled
@@ -307,8 +341,10 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         #   *evalFaceIntegrals_vector* takes care of the *vector* one.
 
         flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
-      end
-    end
+      end   # end 'for iDof = 2 : Tdim+2'
+    end   # end 'for n = 1:mesh.numNodesPerFace'
+    #------------------------------------------------------------
+
   end     # end of loop over all interfaces
 
   #=
