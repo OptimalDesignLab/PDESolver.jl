@@ -6,7 +6,7 @@ must be passed to the solver as the the first optional argument.  For example,
 to launch a PDESolver run, execute
 
 ```
-julia /path/to/startup.jl "path/to/dictonary"
+julia /path/to/startup.jl "path/to/dictionary"
 ```
 
 Descriptions of the valid keys and values can be found in the file
