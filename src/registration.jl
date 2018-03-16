@@ -204,3 +204,5 @@ function registerBC(mod::Module, fname::ASCIIString, func::BCType)
 
   return nothing
 end
+
+#TODO: add method to register source terms

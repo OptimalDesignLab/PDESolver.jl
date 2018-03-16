@@ -459,6 +459,7 @@ get!(arg_dict, "checkpoint_freq", 200)
 get!(arg_dict, "use_checkpointing", false)
 
 get!(arg_dict, "force_solution_complex", false)
+get!(arg_dict, "force_mesh_complex", false)
 
 # Options passed directly to Petsc
 petsc_opts = Dict{AbstractString, AbstractString}(

@@ -41,8 +41,8 @@ function checkOptions(opts)
   #TODO: what to do for jac_type 4?
   if opts["use_DG"] && opts["face_integral_type"] == 1 && 
      opts["Flux_name"] in keys(FluxDict_diff) && 
-     (run_type == 5 || run_type == 40 || run_type == 20) && opts["jac_type"] >= 2 && 
-     !opts["use_src_term"]
+     (run_type == 5 || run_type == 40 || run_type == 20) && opts["jac_type"] >= 2 #&& 
+#     !opts["use_src_term"]
     get!(opts, "calc_jac_explicit", true)
   else
     get!(opts, "calc_jac_explicit", false)

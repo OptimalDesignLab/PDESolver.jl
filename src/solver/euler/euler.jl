@@ -276,6 +276,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     writedlm(fname, real(eqn.q_vec))
   end
 
+  #=
   # compute norms of individual components, both max and L2
   max_vars = zeros(Tres, mesh.numDofPerNode)
   L2_vars = zeros(Tres, mesh.numDofPerNode)
@@ -292,15 +293,17 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     end
   end
 
+  
   # don't forget the square root
   for j=1:mesh.numDofPerNode
     L2_vars[j] = sqrt(L2_vars[j])
-    println("var 1: max residual = ", max_vars[j], ", L2 residual = ", L2_vars[j])
+    println("var $i: max residual = ", max_vars[j], ", L2 residual = ", L2_vars[j])
   end
+  =#
 
 
 
-  
+  #=
   # compute max residual of rho and E
   max_rho = 0.0
   max_E = 0.0
@@ -317,7 +320,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   end
 
   println(BSTDOUT, "iteration", itr, " Res[Rho] = ", max_rho, " Res[E] = ", max_E)
-
+  =#
   
     # add an option on control this or something.  Large blocks of commented
     # out code are bad

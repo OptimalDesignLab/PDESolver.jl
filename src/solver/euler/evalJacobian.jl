@@ -323,12 +323,15 @@ function evalSourceTerm_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      opts, assembler::AssembleElementData)
 
 
+  # source terms are not a function of q, so they don't affect the Jacobian
+
+  #=
   # placeholder for multiple source term functionality (similar to how
   # boundary conditions are done)
   if opts["use_src_term"]
     error("source terms not supported by evalJacobian()")
   end
-
+  =#
   return nothing
 end  # end function
 

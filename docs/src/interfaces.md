@@ -79,6 +79,7 @@ The required fields of an `AbstractSolutionData` are:
   shared_data::AbstractArray{SharedFaceData{Tsol}, 1}
   res::AbstractArray{Tres, 3}
   res_vec::AbstractArray{Tres, 1}
+  res_edge::AbstractArray{Tres, 4}
   M::AbstractArray{Float64, 1}
   Minv::AbstractArray{Float64, 1}
   multiplyA0inv::Function
@@ -133,6 +134,9 @@ and [`Utils.assembleSolution`](@ref).
            For continuous Galerkin discretizations, the corresponding "scatter"
            (ie. `res_vec` -> res`) may not exist.
 
+`res_edge`: a 4 dimensional array sometimes used for edge-based data structure.
+            This feature does not work.  This array must exist and should be
+            of size 0.
 `M`:  The mass matrix of the entire mesh.  Because SBP operators have diagonal
       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where
       numNodes is the number of nodes in the entire mesh).
@@ -175,6 +179,9 @@ The only required fields are:
               attack)
  *  `time::Timings`: an object to record how long different parts of the code take,
   defined in the Utils module.
+ * `f`: a file handle that prints to the file `log_myrank.dat`, where `myrank`
+        is the MPI rank of the current process, but only in debug mode.  In
+        non-debug mode, this file should not be opened.
 
 `file_dict`: dictionary that maps from the file name to a file handle.  This
              field is not required, but if it is present, all copies of the

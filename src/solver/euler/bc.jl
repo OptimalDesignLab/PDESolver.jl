@@ -57,13 +57,15 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:(end_index - 1)
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
-
+#=
     if opts["use_staggered_grid"]
 
       calcBoundaryFlux_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, functor_i,
                              idx_range, bndry_facenums_i)
       
-    elseif opts["precompute_boundary_flux"]
+    else
+=#
+    if opts["precompute_boundary_flux"]
       bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
 
       # call the function that calculates the flux for this boundary condition
@@ -1711,7 +1713,7 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-    println("BCDict[val] = ", BCDict[val])
+#    println("BCDict[val] = ", BCDict[val])
     mesh.bndry_funcs[i] = BCDict[val]
   end
 
@@ -1730,7 +1732,7 @@ function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData
   for i = 1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-    println("BCDict_revm[$val] = ", BCDict_revm[val])
+#    println("BCDict_revm[$val] = ", BCDict_revm[val])
     mesh.bndry_funcs_revm[i] = BCDict_revm[val]
   end # End for i = 1:mesh.numBC
 

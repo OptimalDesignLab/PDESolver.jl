@@ -246,27 +246,22 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 #  phys_nrm = zeros(Tmsh, Tdim)
 
   # loop over boundary conditions that have this functional
-  println("functional bcnums = ", functionalData.bcnums)
   for itr = 1:length(functionalData.bcnums)
     bcnum = functionalData.bcnums[itr]
-    println("bcnum = ", bcnum)
 
     start_index = mesh.bndry_offsets[bcnum]
     end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
-    println("bndry_facenums = ", idx_range)
     nfaces = length(bndry_facenums)
     boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
     q2 = zeros(Tsol, mesh.numDofPerNode)
 
     for i = 1:nfaces
-      println("face ", i)
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
-        println("j = ", j)
         q = ro_sview(eqn.q_bndry, :, j, global_facenum)
         convertToConservative(eqn.params, q, q2)
         aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
@@ -274,9 +269,6 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
         phys_nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
-
-        println("coords = ", x)
-        println("r = ", sqrt(x[1]^2 + x[2]^2))
 
         calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
                                         node_info, functionalData, b_integrand_ji)

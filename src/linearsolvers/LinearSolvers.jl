@@ -246,7 +246,7 @@ end
    * mesh
    * sbp
    * eqn: this argument should generally not be used because all the solution
-          related data should be stored in the pc ovject by [`calcPC`](@ref)
+          related data should be stored in the pc object by [`calcPC`](@ref)
    * opts
    * t: current time
    * b: a AbstractVector representing the local part of the solution (ie
