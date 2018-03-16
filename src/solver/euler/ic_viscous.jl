@@ -25,12 +25,7 @@ function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                                         eqn::EulerData{Tsol, Tsol, 3}, 
                                         opts, 
                                         u0::AbstractVector{Tsol})
-  # sigma = 0.01
-  sigma = 0.0001
-  # sigma note: conversation w/ Jianfeng, 20180313:
-  # And then to reduce relative resolution, we can reduce the magnitude of perturbation to
-  #   freestream, `sigma`. Sigma also denotes the magnitude of source terms. When source terms
-  #   are large compared to gradient of fluxes, usually we got convergence trouble.
+  sigma = 0.01
 
   params = eqn.params
   gamma = params.gamma
@@ -456,7 +451,13 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                                            u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
-  sigma = 0.01
+  # sigma = 0.01
+  sigma = 0.0001
+  # sigma note: conversation w/ Jianfeng, 20180313:
+  # And then to reduce relative resolution, we can reduce the magnitude of perturbation to
+  #   freestream, `sigma`. Sigma also denotes the magnitude of source terms. When source terms
+  #   are large compared to gradient of fluxes, usually we got convergence trouble.
+
   gamma = 1.4
   gamma_1 = gamma - 1.0
   aoa = eqn.params.aoa
@@ -525,7 +526,13 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                                  u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
-  sigma = 0.01
+  # sigma = 0.01
+  sigma = 0.0001
+  # sigma note: conversation w/ Jianfeng, 20180313:
+  # And then to reduce relative resolution, we can reduce the magnitude of perturbation to
+  #   freestream, `sigma`. Sigma also denotes the magnitude of source terms. When source terms
+  #   are large compared to gradient of fluxes, usually we got convergence trouble.
+
   pi = 3.14159265358979323846264338
   gamma = 1.4
   gamma_1 = gamma - 1.0
