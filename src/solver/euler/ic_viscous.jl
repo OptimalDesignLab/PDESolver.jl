@@ -25,7 +25,13 @@ function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
                                         eqn::EulerData{Tsol, Tsol, 3}, 
                                         opts, 
                                         u0::AbstractVector{Tsol})
-  sigma = 0.01
+  # sigma = 0.01
+  sigma = 0.0001
+  # sigma note: conversation w/ Jianfeng, 20180313:
+  # And then to reduce relative resolution, we can reduce the magnitude of perturbation to
+  #   freestream, `sigma`. Sigma also denotes the magnitude of source terms. When source terms
+  #   are large compared to gradient of fluxes, usually we got convergence trouble.
+
   params = eqn.params
   gamma = params.gamma
 	gamma_1 = params.gamma_1
@@ -542,10 +548,11 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 
       calcFreeStream(eqn.params, xyz, sol)
 
+      xyz1 = 1 * pi * xyz
       xyz2 = 2 * pi * xyz
       xyz4 = 4 * pi * xyz
-      sin_val_1 = sin(xyz)
-      cos_val_1 = cos(xyz)
+      sin_val_1 = sin(xyz1)
+      cos_val_1 = cos(xyz1)
       sin_val_2 = sin(xyz2)
       cos_val_2 = cos(xyz2)
       sin_val_4 = sin(xyz4)
