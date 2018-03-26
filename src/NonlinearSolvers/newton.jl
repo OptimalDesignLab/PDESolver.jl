@@ -264,7 +264,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     res_0_norm = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
     recordResNorm(newton_data, res_0_norm)
     
-
     # extract real component to res_0
     for j=1:m
       res_0[j] = real(rhs_vec[j])

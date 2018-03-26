@@ -196,7 +196,7 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType2,
   Ma = params.Ma
 
   sol[2] = rho*Ma*cos(params.aoa)
-  sol[3] = -rho*Ma*sin(params.aoa)
+  sol[3] = rho*Ma*sin(params.aoa)
 
   return nothing
 end

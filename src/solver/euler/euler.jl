@@ -79,6 +79,7 @@ type parameters as the EulerEquation object, so it can be used for dispatch.
 
 import PDESolver.evalResidual
 
+
 @doc """
 ### EulerEquationMod.evalResidual
 
@@ -110,8 +111,6 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
-#  println("\n----- entered evalResidual -----")
-
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
@@ -139,7 +138,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #   println("boundary integral @time printed above")
   end
 
-
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
 #    println("stabilizing @time printed above")
@@ -149,6 +147,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalFaceIntegrals(mesh, sbp, eqn, opts)
 #    println("face integral @time printed above")
   end
+
+
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
@@ -162,7 +162,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   if opts["use_Minv"]
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
-
+  
   return nothing
 end  # end evalResidual
 
