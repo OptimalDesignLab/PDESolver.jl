@@ -135,7 +135,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   # counters/loop variables
   #TODO: make a type to store these
   iter = 1
-  homotopy_tol = 1e-2
+  homotopy_tol = 1e-4
   delta_max = 1.0  # step size limit, set to 1 initially,
   psi_max = 10*pi/180  # angle between tangent limiter
   psi = 0.0  # angle between tangent vectors

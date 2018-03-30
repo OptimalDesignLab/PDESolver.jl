@@ -522,13 +522,13 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #  println("  getAuxVars @time printed above")
 
   if opts["check_density"]
-    checkDensity(eqn)
+    checkDensity(eqn, mesh)
 #    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
 #    throw(ErrorException("I'm done"))
-    checkPressure(eqn)
+    checkPressure(eqn, mesh)
 #    println("  checkPressure @time printed above")
   end
 
@@ -594,11 +594,12 @@ end # end function dataPrep
 
   Arguments:
     * EulerData
+    * mesh
 
   This is a mid level function.
 """->
 # mid level function
-function checkDensity{Tsol}(eqn::EulerData{Tsol})
+function checkDensity{Tsol}(eqn::EulerData{Tsol}, mesh)
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -606,10 +607,20 @@ q_cons = zeros(Tsol, ndof)  # conservative variables
 for i=1:numel
   for j=1:nnodes
     convertToConservative(eqn.params, sview(eqn.q, :, j, i), q_cons)
+
+    if real(q_cons[1]) <= 0.0
+      println(STDERR, "Negative density at element ", i, ", node ", j)
+      println(STDERR, "Coordinates = ", mesh.coords[:, j, i])
+      println(STDERR, "q = ", q)
+      error("Negative density detected")
+    end
+
+    #=
     if real(q_cons[1]) < 0.0
       println("q_conservative = ", q_cons)
     end
     @assert( real(q_cons[1]) > 0.0, "element $i, node $j. Density < 0")
+    =#
   end
 end
 
@@ -627,10 +638,11 @@ end
 
   Arguments:
     * EulerData
+    * mesh
 
   This is a mid level function
 """->
-function checkPressure(eqn::EulerData)
+function checkPressure(eqn::EulerData, mesh)
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -642,7 +654,14 @@ for i=1:numel
     q = sview(eqn.q, :, j, i)
     aux_vars = sview(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
-    @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
+    if real(press) <= 0.0
+      println(STDERR, "Negative pressure at element ", i, ", node ", j)
+      println(STDERR, "Coordinates = ", mesh.coords[:, j, i])
+      println(STDERR, "q = ", q)
+      println(STDERR, "press = ", press)
+      error("Negative pressure detected")
+    end
+#    @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
   end
 end
 

@@ -37,7 +37,6 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
-  #TODO: have this return the value, get rid of functionalData.val field
   val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
   return val
@@ -171,13 +170,11 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
                              opts, functionalData::MassFlowData)
 
   functional_val = zeros(Tres, 1)
-  println("evaluating functional")
 
   # loop over boundary conditions that have this functional
   for itr = 1:length(functionalData.bcnums)
     bcnum = functionalData.bcnums[itr]
 
-    println("boundary condition ", bcnum)
     start_index = mesh.bndry_offsets[bcnum]
     end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
@@ -188,11 +185,9 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
  
     for i = 1:nfaces
-      println("face ", i)
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
-        println("node ", j)
         q = ro_sview(eqn.q_bndry, :, j, global_facenum)
 #        convertToConservative(eqn.params, q, q2)
         aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
@@ -308,6 +303,20 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     return functionalData.drag_val
   end
 end
+
+function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             opts, functionalData::LiftCoefficient)
+
+  val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData.lift)
+  fac = 0.5*eqn.params.rho_free*eqn.params.Ma*eqn.params.Ma
+
+  functionalData.val = val/fac
+
+  return functionalData.val
+end
+
+
 
 @doc """
 ### EulerEquationMod.calcBndryFunctional_revm
