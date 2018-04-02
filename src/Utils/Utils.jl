@@ -48,6 +48,7 @@ export absvalue, absvalue_deriv
 # output.jl
 export printSolution, printCoordinates, printMatrix
 export print_qvec_coords
+export check_nan_q_res
 
 # mass_matrix.jl
 export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,

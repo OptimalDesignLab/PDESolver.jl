@@ -31,6 +31,8 @@ function run_solver(input_file::AbstractString)
   # get the module and startup function
   mod, func = retrieve_physics(physics_name)
 
+  println("Physics function: ", func)
+
   # call the function
   mesh, sbp, eqn, opts = func(input_file)
 

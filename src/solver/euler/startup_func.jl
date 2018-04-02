@@ -13,13 +13,69 @@
     mesh: an AbstractMesh object
     sbp: the SBP operator used in solving the equation
     eqn: the AbstractSolutionData object used to solve the equation
-    opts: the options dictonary
+    opts: the options dictionary
 
 """
 function run_euler(input_file::AbstractString)
 
   mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
+
+  if mesh.myrank == 0
+    println(" ")
+    println("============ in run_euler, selected elements ==============")
+
+    if mesh.commsize == 1
+      println(" -- off shared interface --")
+      # off-shared-interface element: 33. (par el is 13)
+      # touches: 35 (elementL)
+      # touches: 34 (elementR)
+      println(" mesh.coords[:,:,33]: ", round(mesh.coords[:,:,33],2))
+      println(" mesh.coords[:,:,34]: ", round(mesh.coords[:,:,34],2))
+      println(" mesh.coords[:,:,35]: ", round(mesh.coords[:,:,35],2))
+      println(" -- on shared interface --")
+      # on-shared-interface element: 37 (par el is 15)
+      # touches: 36, 40 (elementL)
+      # touches: 46, 38 (elementR)
+      println(" mesh.coords[:,:,37]: ", round(mesh.coords[:,:,37],2))
+      println(" mesh.coords[:,:,36]: ", round(mesh.coords[:,:,36],2))
+      println(" mesh.coords[:,:,40]: ", round(mesh.coords[:,:,40],2))
+      println(" mesh.coords[:,:,46]: ", round(mesh.coords[:,:,46],2))
+      println(" mesh.coords[:,:,38]: ", round(mesh.coords[:,:,38],2))
+    elseif mesh.commsize == 2
+      # off-shared-interface element: 13. (ser el is 33)
+      # touches: 5 (13 is elemL)
+      # touches: 17 (13 is elemR)
+      println(" -- off shared interface --")
+      println(" mesh.coords[:,:,13]: ", round(mesh.coords[:,:,13],2))
+      println(" mesh.coords[:,:,5]: ", round(mesh.coords[:,:,5],2))
+      println(" mesh.coords[:,:,17]: ", round(mesh.coords[:,:,17],2))
+      # on-shared-interface element: 15 (par el is 37)
+      # touches: 28, 3 (15 is elemL)  - peeridx == 1
+      # touches: 16, 19 (15 is elemR) - peeridx == 0
+      println(" -- on shared interface --")
+      println(" mesh.coords[:,:,15]: ", round(mesh.coords[:,:,15],2))
+      # println(" mesh.coords[:,:,28]: ", round(mesh.coords[:,:,28],2))     # over shared iface
+      for rem_el_ix = 1:mesh.remote_element_counts[1]
+        println(" mesh.remote_metrics[1].vert_coords[:,:,$rem_el_ix]: ", mesh.remote_metrics[1].vert_coords[:,:,rem_el_ix])
+      end
+      println(" mesh.coords[:,:,3]: ", round(mesh.coords[:,:,3],2))
+      println(" mesh.coords[:,:,16]: ", round(mesh.coords[:,:,16],2))
+      println(" mesh.coords[:,:,19]: ", round(mesh.coords[:,:,19],2))
+      println(" ")
+      println(" size(mesh.coords_sharedface): ", size(mesh.coords_sharedface))
+      println(" size(mesh.coords_sharedface[1]): ", size(mesh.coords_sharedface[1]))
+      println(" size(eqn.vecflux_faceL_shared: ", size(eqn.vecflux_faceL_shared))
+      println(" size(eqn.vecflux_faceL_shared[1]): ", size(eqn.vecflux_faceL_shared[1]))
+      for shared_face_ix = 1:size(mesh.coords_sharedface[1], 3)
+        println(" mesh.coords_sharedface[1][:,:,$shared_face_ix]: ", round(mesh.coords_sharedface[1][:,:,shared_face_ix],3))
+      end
+    end
+
+    println(" ")
+  end
+
   solve_euler(mesh, sbp, eqn, opts, pmesh)
+
 
   return mesh, sbp, eqn, opts
 end
@@ -193,6 +249,9 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   @mpi_master println("ICfunc = ", ICfunc)
   ICfunc(mesh, sbp, eqn, opts, q_vec)
 
+  # DEBUGAA3D
+  # check_nan_q_res(mesh, eqn)
+
   if var_type == :entropy
     for i=1:mesh.numDofPerNode:mesh.numDof
       q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
@@ -270,6 +329,8 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     loadRestartState(mesh, sbp, eqn, opts, pmesh)
   end
 
+  # This is called even if opts[solve] == false. The option check 
+  #     is within (basically wrapped around the entire contents of call_nlsolver.
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   if mesh.myrank == 0
     println("call_nlsolver complete.")

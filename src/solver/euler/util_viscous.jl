@@ -68,6 +68,10 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
   @assert(size(Dx, 3) == size(mesh.dxidx, 1))
   dxidx = sview(mesh.dxidx, :,:,:,elem) # (dim, dim, numNodesPerElement)
   jac = sview(mesh.jac, :, elem)
+
+  # I JUST FOUND IT 
+  #   WRONG DXIDX AND JAC
+
   dim = size(Dx, 3)
 
   for i = 1 : length(Dx)

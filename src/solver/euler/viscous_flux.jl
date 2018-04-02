@@ -105,7 +105,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     faceL = face.faceL
     faceR = face.faceR
     permL = sview(sbpface.perm, :, faceL)
-    permR = sview(sbpface.perm, :, faceR)
+    permR = sview(sbpface.perm, :, faceR)       # TODO TODO I have a bad feeling about this
 
     # AAAAA4: parallelized properly. mesh.nrm_sharedface
     if peeridx == 0
@@ -314,10 +314,11 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
 
 
-
     #------------------------------------------------------------
     # Method 1: peeridx if statement inside innermost loop
     # accumulate fluxes
+    HIGHLIGHTER = 1.0     # TODO TODO TODO get rid of HIGHLIGHTER after done debugging
+    # HIGHLIGHTER = 10000.0
     for n = 1:mesh.numNodesPerFace
       for iDof = 2 : Tdim+2
         for iDim = 1 : Tdim
@@ -326,11 +327,11 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
             # println(eqn.params.f, "inside cVF_i, acc into vecflux. size(eqn.vecflux_faceL):", size(eqn.vecflux_faceL), " iDim:", 
                     # iDim, " iDof:", iDof, " n:", n, " f:", f, " size(vecfluxL):", size(vecfluxL))
 
-            eqn.vecflux_faceL[iDim, iDof, n, f] -=  vecfluxL[iDim, iDof, n]*coef_nondim
-            eqn.vecflux_faceR[iDim, iDof, n, f] -=  vecfluxR[iDim, iDof, n]*coef_nondim
+            eqn.vecflux_faceL[iDim, iDof, n, f] -=  HIGHLIGHTER*vecfluxL[iDim, iDof, n]*coef_nondim
+            eqn.vecflux_faceR[iDim, iDof, n, f] -=  HIGHLIGHTER*vecfluxR[iDim, iDof, n]*coef_nondim
           else
             # AAAAA2: different array for shared case
-            eqn.vecflux_faceL_shared[peeridx][iDim, iDof, n, f] -= vecfluxL[iDim, iDof, n]*coef_nondim
+            eqn.vecflux_faceL_shared[peeridx][iDim, iDof, n, f] -= HIGHLIGHTER*vecfluxL[iDim, iDof, n]*coef_nondim
           end   # end 'if peeridx == 0'
         end   # end 'for iDim = 1 : Tdim'
 
@@ -340,7 +341,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         #   remember there are two groups of viscous fluxes, and this is the *scalar* one.
         #   *evalFaceIntegrals_vector* takes care of the *vector* one.
 
-        flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
+        # DEBUGAA3D
+        # TODO TODO: DISABLING scalar flux for debugging 3D vector viscous flux
+        # flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
       end   # end 'for iDof = 2 : Tdim+2'
     end   # end 'for n = 1:mesh.numNodesPerFace'
     #------------------------------------------------------------
@@ -582,7 +585,9 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
                                                           peeridx::Int=0)
 
   # DEBUGAA
-  # println(eqn.params.f, "Entered evalFaceIntegrals_vector")
+  if mesh.myrank == 0 
+    println("----- entered evalFaceIntegrals_vector -----")
+  end
 
   # This part computes ∫ ∇ϕ⋅F  dΓ, 
   sbpface = mesh.sbpface
@@ -657,6 +662,10 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       calcDx(mesh, sbp, elemR, DxR)
     end
 
+    HIGHLIGHTER = 1.0
+    # HIGHLIGHTER = 10000.0
+    DxL = HIGHLIGHTER*DxL
+
     for i = 1 : length(RDxL)      # TODO (speed): maybe save on computation by using zeros?
       RDxL[i] = 0.0
       if peeridx == 0
@@ -671,7 +680,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         end
         for col = 1 : numNodes_elem
           for s = 1 : stencilsize
-            RDxL[row, col, d] +=  R[s, row]  * DxL[pL[s], col, d]     
+            RDxL[row, col, d] +=  R[s, row]  * DxL[pL[s], col, d]           # here is where pL & pR are used
             if peeridx == 0
               RDxR[row, col, d] +=  R[s, rowR] * DxR[pR[s], col, d]
             end
@@ -680,62 +689,55 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       end
     end
 
-    #----------------------------------------------------------------------------
-    # DEBUG: bottom center interface comparison
-    # DEBUGAA
     #=
-    print_now = 0
-    if mesh.commsize == 1   # serial
-      if f == 4
-        print_now = 2
-      end
-      if f == 5
-        print_now = 1
-      end
-    else    # parallel
-      if mesh.myrank == 0 && peeridx == 1     # if we're running parallel and if we're on a shared iface
-        if f == 1
-          print_now = 2
-        end
-      end
-      if mesh.myrank == 0 && peeridx == 0
-        if f == 1
-          print_now = 1
-        end
-      end
-    end
-
-    if print_now > 0
-      println("----------------------- selected values for this face ------------------------")
-      if print_now == 2
-        println(" SHARED FACE")
-      elseif print_now == 1
-        println(" LOCAL FACE")
-      end
-      println(" mesh.commsize: ", mesh.commsize)
-      println(" peeridx: ", peeridx)
-      println(" mesh.myrank: ", mesh.myrank)
-      println(" f: ", f)
+    if mesh.myrank == 0
+      face_idx = f
       println(" ")
-      println(" w: ", w)
-      println(" RDxL: ", RDxL)
-      if print_now == 1 || mesh.commsize == 1
-        println(" RDxR: ", RDxR)
-        # println(" rowR: ", rowR)
-      end
-      println(" DxL: ", DxL)
-      if print_now == 1 || mesh.commsize == 1
-        println(" DxR: ", DxR)
-      end
+      println(" face_idx: ", face_idx)
+      println(" peeridx: ", peeridx)
+
+      # TODO: 
+      #   - find out exactly which faces we care about. off-shared & on-shared
+      #   - compare perm across all.
+
+
+      # faces we care about:
+      #   ser     par
+      # (off-shared)
+      #   17      46
+      #   21      47
+      # (on-shared) (look for 15 elemLx2, 15 elemRx2; 
+      #
+
+      # remote met coords in par above must match the elemR coords in ser. because of these lines, around line 200:
+      #   dxidxR and jacR are set based on the adjusted elemR, which is offset
+      # dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
+      # jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
+
+
+
       println(" pL: ", pL)
-      if print_now == 1 || mesh.commsize == 1
+      if peeridx == 0
         println(" pR: ", pR)
+        println(" mesh.interfaces[$face_idx].elementL: ", mesh.interfaces[face_idx].elementL)
+        println(" mesh.interfaces[$face_idx].elementR: ", mesh.interfaces[face_idx].elementR)
+        println(" mesh.interfaces[$face_idx].faceL: ", mesh.interfaces[face_idx].faceL)
+        println(" mesh.interfaces[$face_idx].faceR: ", mesh.interfaces[face_idx].faceR)
+        println(" mesh.interfaces[$face_idx].orient: ", mesh.interfaces[face_idx].orient)
+        println(" mesh.coords_interface[:,:,$face_idx]: ", round(mesh.coords_interface[:,:,face_idx],3))
+      else
+        println(" mesh.shared_interfaces[$peeridx][$face_idx].elementL: ", mesh.shared_interfaces[peeridx][face_idx].elementL)
+        println(" mesh.shared_interfaces[$peeridx][$face_idx].elementR: ", mesh.shared_interfaces[peeridx][face_idx].elementR)
+        # elemR = face.elementR - start_elnum + 1
+        println(" elemR with offset: ", elemR)
+        println(" mesh.shared_interfaces[$peeridx][$face_idx].faceL: ", mesh.shared_interfaces[peeridx][face_idx].faceL)
+        println(" mesh.shared_interfaces[$peeridx][$face_idx].faceR: ", mesh.shared_interfaces[peeridx][face_idx].faceR)
+        println(" mesh.shared_interfaces[$peeridx][$face_idx].orient: ", mesh.shared_interfaces[peeridx][face_idx].orient)
+        println(" mesh.coords_sharedface[$peeridx][:,:,$face_idx]: ", round(mesh.coords_sharedface[peeridx][:,:,face_idx],3))
       end
-      println(" stencilsize: ", stencilsize)
-      println("------------------------------------------------------------------------------")
+      println(" ")
     end
     =#
-    #----------------------------------------------------------------------------
 
 
     # Why we need a shared version of vecflux_faceL:
@@ -788,6 +790,74 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     end
     =#
 
+    #------------------------------------------------------------------------------
+    # DEBUG: id'd shared face for comparo
+    #=
+    if mesh.myrank == 0
+      println("---- before vecflux -> res ----")
+
+      if mesh.commsize == 1
+        println(" mesh.coords_interface[:,:,52]: ", mesh.coords_interface[:,:,52])
+        println(" eqn.vecflux_faceL[:,:,:,52]: ", eqn.vecflux_faceL[:,:,:,52])
+      end
+      if mesh.commsize == 2
+        println(" mesh.coords_sharedface[1][:,:,4]: ", round(mesh.coords_sharedface[1][:,:,4],3))
+        println(" eqn.vecflux_faceL_shared[1][:,:,:,4]: ", eqn.vecflux_faceL_shared[1][:,:,:,4])
+      end
+    end
+    =#
+
+
+    if mesh.myrank == 0
+      print_now = 0
+      # off-shared
+      #------------------------------------------------------------------------------
+      #=
+      # MATCHES
+      if mesh.commsize == 1 && f == 46
+        print_now = 1
+      end
+      if mesh.commsize == 2 && peeridx == 0 && f == 17
+        print_now = 2
+      end
+      # MATCHES
+      if mesh.commsize == 1 && f == 54
+        print_now = 1
+      end
+      if mesh.commsize == 2 && peeridx == 0 && f == 19
+        print_now = 2
+      end
+      =#
+      # on-shared
+      #------------------------------------------------------------------------------
+      if mesh.commsize == 1 && f == 52
+        print_now = 1
+      end
+      if mesh.commsize == 2 && f == 4 && peeridx == 1
+        print_now = 2
+      end
+
+      if print_now > 0
+        println("---- before vecflux -> res ----")
+      end
+      if print_now > 0 && peeridx == 0
+        println(" mesh.coords_interface[:,:,$f]: ", round(mesh.coords_interface[:,:,f],3))
+        # println(" eqn.vecflux_faceL[:,:,:,$f]: ", eqn.vecflux_faceL[:,:,:,f])
+        # println(" RDxL: ", RDxL)
+        println(" DxL: ", DxL)
+        println(" R: ", R)
+      end
+      if print_now == 2 && peeridx == 1
+        println(" mesh.coords_sharedface[1][:,:,$f]: ", round(mesh.coords_sharedface[1][:,:,f],3))
+        # println(" eqn.vecflux_faceL_shared[1][:,:,:,$f]: ", eqn.vecflux_faceL_shared[1][:,:,:,f])
+        # println(" RDxL: ", RDxL)
+        println(" DxL: ", DxL)
+        println(" R: ", R)
+      end
+
+    end
+
+
     for i = 1 : numNodes_elem
       for j = 1 : numNodes_face
         for iDof = 2 : mesh.numDofPerNode
@@ -805,10 +875,16 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
               tmpR += RDxR[j, i, iDim] * vecfluxR[iDim, iDof, j]
             end
           end
-          res[iDof, i, elemL] += tmpL * w[j]
+
+          HIGHLIGHTER = 1.0
+          # HIGHLIGHTER = 10000.0
+
+          # ADDING HIGHLIGHTER TO VECTOR VISCOUS FOR NOW TODO TODO TODO
+          # res[iDof, i, elemL] += tmpL * w[j]
+          res[iDof, i, elemL] += HIGHLIGHTER * tmpL * w[j]
           # AAAAA2: This will generate a bounds error in the shared case, so need an if statement. 
           if peeridx == 0
-            res[iDof, i, elemR] += tmpR * w[j]
+            res[iDof, i, elemR] += HIGHLIGHTER * tmpR * w[j]
           end
         end   # end of loop 'iDof = 2 : mesh.numDofPerNode'
       end   # end of loop 'j = 1 : numNodes_face'

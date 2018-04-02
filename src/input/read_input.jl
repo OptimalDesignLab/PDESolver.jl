@@ -215,6 +215,11 @@ else
   get!(arg_dict, "parallel_type", 2)
 end
 
+# Explanation of parallel_data defaults:
+#   RK4 doesn't need element shared data, only face. Unless it's entropy stable, then it does.
+#   CN or steady Newton always needs element shared data, because it needs the Jacobian.
+#   But if you're running RK4 & viscous, you need to specify parallel_data = element. 
+#   There is an error check for that in solver/euler/check_options.jl
 if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
   if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")

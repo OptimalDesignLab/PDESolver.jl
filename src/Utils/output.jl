@@ -214,3 +214,65 @@ function print_qvec_coords(mesh, eqn; new_file=false, filename="null", other_fie
 
 end   # end function print_qvec_coords
 
+"""
+  Check all of q and res for NaNs.
+  If found at a dof, print q & res for all dof at this node.
+"""
+function check_nan_q_res(mesh, eqn, message="")
+
+  if length(message) != 0
+    if mesh.myrank == 0
+      println("++++++++++ ", message, " ++++++++++")
+    end
+  end
+
+  if mesh.myrank == 0
+
+    for el_ix = 1:mesh.numEl
+      print_now = false
+
+      # DEBUGAA3D
+      if mesh.commsize == 2
+        if el_ix == 13 || el_ix == 15
+          print_now = true
+        end
+      elseif mesh.commsize == 1
+        if el_ix == 33 || el_ix == 37
+          print_now = true
+        end
+      end
+
+      for node_ix = 1:mesh.numNodesPerElement
+        for dof_ix = 1:mesh.numDofPerNode
+
+          if isnan(eqn.res[dof_ix, node_ix, el_ix])
+            # println(" NaN found - dof: $dof_ix, node: $node_ix, el: $el_ix")
+            print_now = true
+          end
+          if isnan(eqn.q[dof_ix, node_ix, el_ix])
+            # println(" NaN found - dof: $dof_ix, node: $node_ix, el: $el_ix")
+            print_now = true
+          end
+
+        end
+
+        if print_now == true
+          # println("NaNs found")
+          println(" q[:, $node_ix, $el_ix]: ", eqn.q[:, node_ix, el_ix])
+          println(" res[:, $node_ix, $el_ix]: ", eqn.res[:, node_ix, el_ix])
+          println(" mesh.coords[:, $node_ix, $el_ix]: ", round(mesh.coords[:, node_ix, el_ix], 2))
+        end
+
+
+      end
+      if print_now == true
+        println(" ")
+      end
+
+    end   # end of 'for node_ix = 1:mesh.numNodesPerElement'
+
+  end   # end of 'for el_ix = 1:mesh.numEl'
+
+
+end   # end of function check_nan_q_res
+

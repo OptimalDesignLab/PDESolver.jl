@@ -554,9 +554,11 @@ function calcSharedFaceIntegrals_element{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   if opts["precompute_face_flux"]
     calcSharedFaceIntegrals_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
+    # check_nan_q_res(mesh, eqn, "after calcSharedFaceIntegrals_element_inner")
   else
     calcSharedFaceIntegrals_nopre_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
   end
+  # check_nan_q_res(mesh, eqn, "end of calcSharedFaceIntegrals_element")
 
   return nothing
 end
@@ -643,16 +645,21 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
   # DEBUGAA
   # println(eqn.params.f, "functor in calcSharedFaceIntegrals_element_inner: ", functor)
+  # check_nan_q_res(mesh, eqn, "before cVF_i in cSFI_n_e_i")    # DEBUGAA3D
 
   # AAAAA3: fixed this not being present in the precomputed case
   if opts["isViscous"]
     # DEBUGAA
-    # println(eqn.params.f, " isViscous check hit in calcSharedFaceIntegrals_element_inner")
+    if mesh.myrank == 0
+      println(" isViscous check hit in calcSharedFaceIntegrals_element_inner")
+    end
 
     # assembles eqn.flux_face and eqn.vecflux_faceL & R for peeridx > 0
     calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
+    # check_nan_q_res(mesh, eqn, "after cVF_i in cSFI_n_e_i")     # DEBUGAA3D
     # assembles eqn.vecflux_faceL & R into res for peeridx > 0
     evalFaceIntegrals_vector(mesh, sbp, eqn, opts, idx)
+    # check_nan_q_res(mesh, eqn, "after eFI_v in cSFI_n_e_i")     # DEBUGAA3D
   end
 
   # DEBUGAA
@@ -660,9 +667,30 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     # println(eqn.params.f, "(in cSFI_e_i) eqn.flux_sharedface[1][:, :, ", iface_ix, "]: ", eqn.flux_sharedface[1][:,:,iface_ix])
   # end
 
+  #----- check NaN flux here
+  for ff_ix = 1:length(eqn.flux_face)
+    if isnan(eqn.flux_face[ff_ix])
+      if mesh.myrank == 0
+        println("NaN found, eqn.flux_face[$ff_ix]: ", eqn.flux_face[ff_ix])
+      end
+    end
+  end
+  for ffs_ix = 1:length(eqn.flux_sharedface)
+    for ff_ix = 1:length(eqn.flux_sharedface[ffs_ix])
+      if isnan(eqn.flux_sharedface[ffs_ix][ff_ix])
+        if mesh.myrank == 0
+          println("NaN found, eqn.flux_sharedface[$ffs_ix][$ff_ix]: ", eqn.flux_sharedface[ffs_ix][ff_ix])
+        end
+      end
+    end
+  end
+
   # evaluate integral. This needs to be done after the viscous flux functions above.
   # the scalar viscous flux for peeridx > 0 will be accumulated into res with this as well
   boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res, SummationByParts.Subtract())
+  # DEBUGAA3D: boundaryintegrate version 2
+
+  # check_nan_q_res(mesh, eqn, "after boundaryintegrate! in cSFI_n_e_i")      # DEBUGAA3D
 
   @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 
@@ -746,7 +774,9 @@ function calcSharedFaceIntegrals_nopre_element_inner{Tmsh, Tsol, Tres}(
 
   # start viscous flux calculation
   if opts["isViscous"]
-    println(eqn.params.f, " isViscous check hit in calcSharedFaceIntegrals_nopre_element_inner. peeridx:", idx)
+    if mesh.myrank == 0
+      println(" isViscous check hit in calcSharedFaceIntegrals_nopre_element_inner. peeridx:", idx)
+    end
     calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
   end
 

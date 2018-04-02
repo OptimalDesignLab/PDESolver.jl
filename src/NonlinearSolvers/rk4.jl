@@ -234,17 +234,15 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # k3d = zeros(eqn.res)    # DEBUGAA
 
     # DEBUGAA
-    #=
     if mesh.myrank == 0
-      for j = 1:8
+      for line_ix = 1:8
         println(" ")
       end
       println(" RK4RK4RK4RK4RK4RK4RK4RK4 RK4 top: i = $i")
-      for j = 1:4
+      for line_ix = 1:4
         println(" ")
       end
     end
-    =#
 
     #=
     if mesh.myrank == 0

@@ -138,6 +138,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After evalVolumeIntegrals")
+  # check_nan_q_res(mesh, eqn, "After evalVolumeIntegrals")       # DEBUGAA3D
 
   # delete this if unneeded or put it in a function.  It doesn't belong here,
   # in a high level function.
@@ -168,6 +169,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After evalBoundaryIntegrals")
+  # check_nan_q_res(mesh, eqn, "After evalBoundaryIntegrals")       # DEBUGAA3D
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
@@ -176,6 +178,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After addStabilization")
+  # check_nan_q_res(mesh, eqn, "After addStabilization")      # DEBUGAA3D
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
@@ -184,6 +187,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After evalFaceIntegrals")
+  # check_nan_q_res(mesh, eqn, "After evalFaceIntegrals")       # DEBUGAA3D
 
   # assembles eqn.vecfluxL & eqn.vecfluxR into res: this is viscous flux, vector portion, for peeridx == 0
   if opts["isViscous"]
@@ -192,6 +196,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After evalFaceIntegrals_vector")
+  # check_nan_q_res(mesh, eqn, "After evalFaceIntegrals_vector")        # DEBUGAA3D
 
   # scalar viscous flux is called in this
   time.t_sharedface += @elapsed if mesh.commsize > 1
@@ -201,12 +206,14 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After evalSharedFaceIntegrals")
+  # check_nan_q_res(mesh, eqn, "After evalSharedFaceIntegrals")         # DEBUGAA3D
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
   # println("source integral @time printed above")
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After evalSourceTerm")
+  # check_nan_q_res(mesh, eqn, "After evalSourceTerm")        # DEBUGAA3D
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -309,6 +316,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   # writeVisFiles(mesh, "residual")
   # exit()
   # # DEBUG END
+
+
   return nothing
 end  # end evalResidual
 
