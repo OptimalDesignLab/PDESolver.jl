@@ -299,8 +299,8 @@ function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
   # elemR = face.elementL
   # dqdx_eL = Array(Tsol, Tdim, numDofs, numNodes)
   # dqdx_eR = Array(Tsol, Tdim, numDofs, numNodes)
-  # calcGradient(mesh, sbp, elemL, qL, dqdx_eL)
-  # calcGradient(mesh, sbp, elemR, qR, dqdx_eR)
+  # calcGradient(mesh, sbp, elemL, qL, dqdx_eL)         # cannot use this; deprecated signature for calcGradient for DJNFIX
+  # calcGradient(mesh, sbp, elemR, qR, dqdx_eR)         # cannot use this; deprecated signature for calcGradient for DJNFIX
   # for d = 1 : Tdim
     # dqdxL = slice(dqdx_elemL, d, :, :)
     # dqdxR = slice(dqdx_elemR, d, :, :)
@@ -580,7 +580,7 @@ function calcFvis_elem{Tsol, Tmsh}(params::ParamType,
   numDofs  = size(q, 1)
   dqdx     = zeros(Tsol, dim, numDofs, numNodes)
 
-  calcGradient(sbp, dxidx, jac, q, dqdx)
+  calcGradient(sbp, dxidx, jac, q, dqdx)        # ok for DJNFIX. for grep: in calcFvis_elem
 
   calcFvis(params, q, dqdx, Fv)
 

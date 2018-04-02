@@ -163,8 +163,13 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     dqdx_face  = Array(Tsol, Tdim, mesh.numDofPerNode, 2, mesh.numNodesPerFace)
     dqdx_elemL = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
     dqdx_elemR = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
-    calcGradient(mesh, sbp, elemL, q_elemL, dqdx_elemL)
-    calcGradient(mesh, sbp, elemR, q_elemR, dqdx_elemR)
+
+    # DJNFIX
+    # calcGradient(mesh, sbp, elemL, q_elemL, dqdx_elemL)
+    # calcGradient(mesh, sbp, elemR, q_elemR, dqdx_elemR)
+    calcGradient(sbp, dxidxL, jacL, q_elemL, dqdx_elemL)      # for grep: in cVF_i
+    calcGradient(sbp, dxidxR, jacR, q_elemR, dqdx_elemR)      # for grep: in cVF_i
+
     # TODO: elemR? set above as (in peeridx > 0 case) 
     #     elemR = face.elementR - start_elnum + 1
 
@@ -211,7 +216,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         # println(diffL)
     # end
     
-    cmptIPMat(mesh, sbp, eqn, opts, f, GtL, GtR, pMat)
+    # DJNFIX
+    # cmptIPMat(mesh, sbp, eqn, opts, f, GtL, GtR, pMat)
+    cmptIPMat(mesh, sbp, eqn, opts, f, jacL, jacR, GtL, GtR, pMat)
 
     # Start to compute fluxes. We have 3 terms on interfaces:
     # 1) {Fv}⋅[ϕ]
@@ -474,7 +481,12 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         Gt_functor(eqn.params, q_bnd, Gt)
       end
       q_elem = sview(eqn.q, :, :, elem)
-      calcGradient(mesh, sbp, elem, q_elem, dqdx_elem)
+
+      # DJNFIX
+      # calcGradient(mesh, sbp, elem, q_elem, dqdx_elem)
+      dxidx = ro_sview(mesh.dxidx, :,:,:,elem)
+      jac = ro_sview(mesh.jac, :, elem)
+      calcGradient(sbp, dxidx, jac, q_elem, dqdx_elem)        # for grep: in cVF_b
 
       #
       # TODO: we can consider the first 2 dimension as a single dimension,
@@ -657,9 +669,25 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     # compute RDx
     # Dx: moves SBP's D matrix to the physical domain
-    calcDx(mesh, sbp, elemL, DxL)
+    # DJNFIX
+    # calcDx(mesh, sbp, elemL, DxL)
+    # if peeridx == 0
+      # calcDx(mesh, sbp, elemR, DxR)
+    # end
+
+    jacL = ro_sview(mesh.jac, :, elemL)
+    dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
     if peeridx == 0
-      calcDx(mesh, sbp, elemR, DxR)
+      jacR = ro_sview(mesh.jac, :, elemR)
+      dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
+    else
+      jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
+      dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
+    end
+
+    calcDx(sbp, dxidxL, jacL, DxL)
+    if peeridx == 0
+      calcDx(sbp, dxidxR, jacR, DxR)
     end
 
     HIGHLIGHTER = 1.0
@@ -944,7 +972,11 @@ function evalBoundaryIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh
 
 
       # compute RDx
-      calcDx(mesh, sbp, elem, Dx)
+      # DJNFIX
+      # calcDx(mesh, sbp, elem, Dx)
+      jac = ro_sview(mesh.jac, :, elem)
+      dxidx = ro_sview(mesh.dxidx, :,:,:,elem)
+      calcDx(sbp, dxidx, jac, Dx)
 
       for i = 1 : length(RDx)
         RDx[i] = 0.0
@@ -1019,12 +1051,16 @@ function weakdifferentiate2!{Tmsh, Tsbp, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
   for elem = 1 : numElems
     # compute viscous flux
     q      = sview(eqn.q, :, :, elem)
+
+    # TODO DJNFIX
     dxidx = sview(mesh.dxidx, :,:,:,elem)
     jac      = sview(mesh.jac, :, elem)
 
     calcFvis_elem(eqn.params, sbp, q, dxidx, jac, Fv)
 
-    calcQx(mesh, sbp, elem, Qx)
+    calcQx(mesh, sbp, elem, Qx)             # for grep: in weakdifferentiate2!
+    # TODO DJNFIX
+    # calcQx(mesh, sbp, dxidx, jac, Qx)
 
     for d = 1 : dim
       for i = 1 : sbp.numnodes

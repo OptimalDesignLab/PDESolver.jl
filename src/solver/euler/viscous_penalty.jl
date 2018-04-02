@@ -14,11 +14,13 @@ function cmptIPMat{Tmsh, Tdim, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                            eqn::EulerData{Tsol, Tres, Tdim},
                                            opts,
                                            iface::Int,
+                                           jacL::AbstractArray{Tmsh, 1},        # DJNFIX
+                                           jacR::AbstractArray{Tmsh, 1},
                                            GtL::AbstractArray{Tsol, 5},
                                            GtR::AbstractArray{Tsol, 5},
                                            pMat::AbstractArray{Tsol, 3})
   if opts["SAT_type"] == "Hartman"
-    cmptIPMat_hartman(mesh, sbp, eqn, opts, iface, GtL, GtR, pMat)
+    cmptIPMat_hartman(mesh, sbp, eqn, opts, iface, jacL, jacR, GtL, GtR, pMat)
   elseif opts["SAT_type"] == "SAT-SIPG"
     cmptIPMat_SIPG(mesh, sbp, eqn, opts, iface, GtL, GtR, pMat)
   elseif opts["SAT_type"] == "SAT-BR2"
@@ -53,6 +55,8 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                              eqn::EulerData{Tsol, Tres, 2},
                                              opts,
                                              iface::Int,
+                                             jacL::AbstractArray{Tmsh, 1},        # DJNFIX
+                                             jacR::AbstractArray{Tmsh, 1},
                                              GtL::AbstractArray{Tsol, 5},
                                              GtR::AbstractArray{Tsol, 5},
                                              pMat::AbstractArray{Tsol, 3})
@@ -88,8 +92,11 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   elem_volR = 0.0
   face_area = 0.0
   for n = 1:mesh.numNodesPerElement
-    elem_volL +=  sbp.w[n]/mesh.jac[n, elemL]
-    elem_volR +=  sbp.w[n]/mesh.jac[n, elemR]
+    # DJNFIX
+    # elem_volL +=  sbp.w[n]/mesh.jac[n, elemL]
+    # elem_volR +=  sbp.w[n]/mesh.jac[n, elemR]
+    elem_volL +=  sbp.w[n]/jacL[n, elemL]
+    elem_volR +=  sbp.w[n]/jacR[n, elemR]
   end
 
   for n = 1:mesh.numNodesPerFace
@@ -174,6 +181,8 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                              eqn::EulerData{Tsol, Tres, 3},
                                              opts,
                                              iface::Int,
+                                             jacL::AbstractArray{Tmsh, 1},      # DJNFIX
+                                             jacR::AbstractArray{Tmsh, 1},
                                              GtL::AbstractArray{Tsol, 5},
                                              GtR::AbstractArray{Tsol, 5},
                                              pMat::AbstractArray{Tsol, 3})
@@ -203,8 +212,11 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   elem_volR = 0.0
   face_area = 0.0
   for n = 1:mesh.numNodesPerElement
-    elem_volL +=  sbp.w[n]/mesh.jac[n, elemL]
-    elem_volR +=  sbp.w[n]/mesh.jac[n, elemR]
+    # DJNFIX
+    # elem_volL +=  sbp.w[n]/mesh.jac[n, elemL]
+    # elem_volR +=  sbp.w[n]/mesh.jac[n, elemR]
+    elem_volL +=  sbp.w[n]/jacL[n, elemL]
+    elem_volR +=  sbp.w[n]/jacR[n, elemR]
   end
 
   for n = 1:mesh.numNodesPerFace

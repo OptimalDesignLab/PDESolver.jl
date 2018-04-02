@@ -22,9 +22,11 @@ function calcDx{Tmsh}(sbp::AbstractSBP,
   @assert(size(Dx, 2) == size(Dx, 1))
   @assert(size(Dx, 3) == size(dxidx, 1))
 
-  Dx[:,:,:] = 0.0
+  # Dx[:,:,:] = 0.0   # TODO (speed)
+  fill!(Dx, 0.0)
+
   dim = size(Dx, 3)
-  numNodes = sbp.numnodes
+  numNodes = sbp.numnodes       # equal to mesh.numNodesPerElement
 
   for d=1:dim            # loop over direction in which derivative is computing
     for dd=1:dim
@@ -47,7 +49,11 @@ function calcDx{Tmsh}(sbp::AbstractSBP,
   return nothing
 end
 
+#=
 @doc """
+DJNFIX
+
+DEPRECATE THIS: all of these Fns should be called by passing in the proper dxidx and jac
 
 Compute derivative operators
 
@@ -72,6 +78,10 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
   # I JUST FOUND IT 
   #   WRONG DXIDX AND JAC
 
+  calcDx(sbp, dxidx, jac, Dx)
+  return nothing
+
+  #=
   dim = size(Dx, 3)
 
   for i = 1 : length(Dx)
@@ -80,7 +90,7 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
 
   for d = 1 : dim            # loop over direction in which derivative is computing
     for dd = 1 : dim
-      for n1 = 1 : mesh.numNodesPerElement
+      for n1 = 1 : mesh.numNodesPerElement        # mesh.numNodesPerElement is equal to sbp.numnodes
         for n2 = 1 : mesh.numNodesPerElement
           # Since dxidx is scaled by 1/|J|, we need to get it back,
           # that's why jac is here
@@ -96,20 +106,28 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
       end
     end
   end
-
   return nothing
+  =#
+
 end
+=#
 
 function calcQx{Tmsh}(mesh::AbstractMesh{Tmsh},
                       sbp::AbstractSBP,
-                      elem::Integer,
+                      dxidx::AbstractArray{Tmsh, 3},
+                      jac::AbstractArray{Tmsh, 1},
                       Qx::AbstractArray{Tmsh, 3})
+# function calcQx{Tmsh}(mesh::AbstractMesh{Tmsh},         # DJNFIX
+                      # sbp::AbstractSBP,
+                      # elem::Integer,
+                      # Qx::AbstractArray{Tmsh, 3})
   @assert(size(Qx, 1) == mesh.numNodesPerElement)
   @assert(size(Qx, 2) == mesh.numNodesPerElement)
   @assert(size(Qx, 3) == size(mesh.dxidx, 1))
 
-  dxidx = sview(mesh.dxidx, :,:,:,elem) # (dim, dim, numNodesPerElement)
-  jac = mesh.jac[:, elem]
+  # DJNFIX
+  # dxidx = sview(mesh.dxidx, :,:,:,elem) # (dim, dim, numNodesPerElement)
+  # jac = mesh.jac[:, elem]
   fill!(Qx, 0.0)
   dim = size(Qx, 3)
 
@@ -175,7 +193,11 @@ function calcGradient{Tmsh, Tsol, Tsbp}(sbp::AbstractSBP{Tsbp},
   return nothing
 end
 
+#=
 @doc """
+DJNFIX
+
+DEPRECATE THIS: all of these Fns should be called by passing in the proper dxidx and jac
 
 Given variables q at element nodes, compute corresponding gradients
 
@@ -186,8 +208,9 @@ Input:
 	elem   : index of element
 Output :
 	q_grad : (in/out) gradient of q
+
 """->
-function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},
+function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},       # for grep: deprecated for DJNFIX
                                         sbp::AbstractSBP{Tsbp},
                                         elem::Integer,
                                         q::AbstractArray{Tsol, 2},
@@ -206,8 +229,9 @@ function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},
   Dx = Array(Tsbp, numNodes, numNodes, dim)
   # for e=1:numElems
   # First compute Dx for this element
-  calcDx(mesh, sbp, elem, Dx)
+  calcDx(mesh, sbp, elem, Dx)           # note for grep: this version of calcGradient is deprecated for DJNFIX
 
+  # TODO (speed)
   q_grad[:,:,:] = 0.0
 
   for n=1:numNodes
@@ -221,6 +245,7 @@ function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},
   end
   return nothing
 end
+=#
 
 @doc """
 Another(single face) version of interiorfaceintegrate.
