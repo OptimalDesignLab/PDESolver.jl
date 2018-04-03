@@ -86,7 +86,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   #   If peeridx is 0, then perform some action on the local part, using serial logic.
   #   If it is anything but 0, then we are working with one of the peers, and then parallel logic
   #     must be used.
-  if peeridx != 0         # AAAAA3
+  if peeridx != 0         # AAAAA3      # if shared face
     start_elnum = mesh.shared_element_offsets[peeridx]
   end
   # TODO (speed): make start_elnum = -1 in the peeridx == 0 case, so that elemR is face.elementR? see lines 100-104
@@ -97,9 +97,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
     face = interfaces[f]          # AA: think this section is OK for parallel, because interfaces is set properly above
     elemL = face.elementL
-    if peeridx == 0               # AAAAA3: forgot mesh.shared_element_offsets[peeridx]
+    if peeridx == 0               # if interior face   # AAAAA3: forgot mesh.shared_element_offsets[peeridx]
       elemR = face.elementR
-    else
+    else                          # if shared face
       elemR = face.elementR - start_elnum + 1
     end
     faceL = face.faceL
@@ -108,9 +108,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     permR = sview(sbpface.perm, :, faceR)       # TODO TODO I have a bad feeling about this
 
     # AAAAA4: parallelized properly. mesh.nrm_sharedface
-    if peeridx == 0
+    if peeridx == 0               # if interior face
       nrm_xy = ro_sview(mesh.nrm_face, :, :, f)
-    else
+    else                          # if shared face
       nrm_xy = ro_sview(mesh.nrm_sharedface[peeridx], :, :, f)
     end
 
@@ -131,7 +131,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     # q_face{L,R} computed below this if statement now
 
-    if peeridx == 0
+    if peeridx == 0               # if interior face
       q_elemL = sview(eqn.q, :, :, elemL)
       q_elemR = sview(eqn.q, :, :, elemR)
 
@@ -141,7 +141,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       # replace the above with this?
       # interiorFaceInterpolate!(mesh.sbpface, face, q_elemL, q_elemR, q_faceL, q_faceR)
 
-    else            # AAAAA parallelized
+    else                          # if shared face  # AAAAA parallelized
       data = eqn.shared_data[peeridx]
       q_elemL = ro_sview(eqn.q, :, :, elemL)
       # q_elemR: for comparison, see line 686 & 703 in flux.jl
@@ -633,15 +633,15 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   dq     =  Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)   # AA: unused?
   =#
 
-  if peeridx == 0
+  if peeridx == 0         # if interior face
     interfaces = mesh.interfaces
-  else      # AAAAA parallelized
+  else                    # if shared face
     interfaces = mesh.shared_interfaces[peeridx]
   end
 
   nfaces = length(interfaces)
 
-  if peeridx != 0
+  if peeridx != 0         # if shared face
     start_elnum = mesh.shared_element_offsets[peeridx]
   end
 
@@ -650,16 +650,16 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     face = interfaces[f]
 
     elemL = face.elementL
-    if peeridx == 0
+    if peeridx == 0       # if interior face
       elemR = face.elementR
-    else
+    else                  # if shared face
       elemR = face.elementR - start_elnum + 1     # AAAAA4
     end
 
     faceL = face.faceL
     pL = sview(sbpface.perm, :, faceL)      # WRONG in shared face. correct in local face.
                                             # ser: [1,2]  par: [3,1]
-    if peeridx == 0
+    if peeridx == 0     # if interior face
       faceR = face.faceR
       pR = sview(sbpface.perm, :, faceR)
     end
@@ -677,16 +677,16 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     jacL = ro_sview(mesh.jac, :, elemL)
     dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
-    if peeridx == 0
+    if peeridx == 0     # if interior face
       jacR = ro_sview(mesh.jac, :, elemR)
       dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
-    else
+    else                # if shared face
       jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
       dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
     end
 
     calcDx(sbp, dxidxL, jacL, DxL)
-    if peeridx == 0
+    if peeridx == 0     # if interior face
       calcDx(sbp, dxidxR, jacR, DxR)
     end
 
@@ -696,7 +696,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     for i = 1 : length(RDxL)      # TODO (speed): maybe save on computation by using zeros?
       RDxL[i] = 0.0
-      if peeridx == 0
+      if peeridx == 0     # if interior face
         RDxR[i] = 0.0
       end
     end
@@ -709,7 +709,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         for col = 1 : numNodes_elem
           for s = 1 : stencilsize
             RDxL[row, col, d] +=  R[s, row]  * DxL[pL[s], col, d]           # here is where pL & pR are used
-            if peeridx == 0
+            if peeridx == 0     # if interior face
               RDxR[row, col, d] +=  R[s, rowR] * DxR[pR[s], col, d]
             end
           end
@@ -772,10 +772,10 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     #   the local part only needs to care about its local element on the shared interface
     #   This is why there are all these "if peeridx == 0" statements around the R computations
     # TODO (speed): Should we group all R fns together around one if statement, and loop inside that?
-    if peeridx == 0
+    if peeridx == 0     # if interior face
       vecfluxL = sview(eqn.vecflux_faceL,:,:,:,f)     # AAAA2: if statement around this for assigning to the shared vecflux
       vecfluxR = sview(eqn.vecflux_faceR,:,:,:,f)
-    else
+    else                # if shared face
       vecfluxL = sview(eqn.vecflux_faceL_shared[peeridx],:,:,:,f)     # AAAA2: if statement around this for assigning to the shared vecflux
     end
 
@@ -893,13 +893,13 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
           # println(eqn.params.f, " vector flux -> res, iDof:", iDof, " i:", i, " elemL:", elemL, " elemR:", elemR)
           tmpL = 0.0
           # AAAAA2: R only needed in local interface case
-          if peeridx == 0
+          if peeridx == 0         # if interior face
             tmpR = 0.0
           end
           for iDim = 1 : Tdim
             tmpL += RDxL[j, i, iDim] * vecfluxL[iDim, iDof, j]
             # AAAAA2: R only needed in local interface case
-            if peeridx == 0
+            if peeridx == 0         # if interior face
               tmpR += RDxR[j, i, iDim] * vecfluxR[iDim, iDof, j]
             end
           end
@@ -911,7 +911,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
           # res[iDof, i, elemL] += tmpL * w[j]
           res[iDof, i, elemL] += HIGHLIGHTER * tmpL * w[j]
           # AAAAA2: This will generate a bounds error in the shared case, so need an if statement. 
-          if peeridx == 0
+          if peeridx == 0         # if interior face
             res[iDof, i, elemR] += HIGHLIGHTER * tmpR * w[j]
           end
         end   # end of loop 'iDof = 2 : mesh.numDofPerNode'
@@ -1052,15 +1052,14 @@ function weakdifferentiate2!{Tmsh, Tsbp, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
     # compute viscous flux
     q      = sview(eqn.q, :, :, elem)
 
-    # TODO DJNFIX
     dxidx = sview(mesh.dxidx, :,:,:,elem)
     jac      = sview(mesh.jac, :, elem)
 
     calcFvis_elem(eqn.params, sbp, q, dxidx, jac, Fv)
 
-    calcQx(mesh, sbp, elem, Qx)             # for grep: in weakdifferentiate2!
-    # TODO DJNFIX
-    # calcQx(mesh, sbp, dxidx, jac, Qx)
+    # DJNFIX
+    # calcQx(mesh, sbp, elem, Qx)             # for grep: in weakdifferentiate2!
+    calcQx(mesh, sbp, dxidx, jac, Qx)
 
     for d = 1 : dim
       for i = 1 : sbp.numnodes
