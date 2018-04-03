@@ -109,10 +109,13 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     # AAAAA4: parallelized properly. mesh.nrm_sharedface
     if peeridx == 0               # if interior face
-      nrm_xy = ro_sview(mesh.nrm_face, :, :, f)
+      # nrm_xy = ro_sview(mesh.nrm_face, :, :, f)
+      nrm_location = mesh.nrm_face
     else                          # if shared face
-      nrm_xy = ro_sview(mesh.nrm_sharedface[peeridx], :, :, f)
+      # nrm_xy = ro_sview(mesh.nrm_sharedface[peeridx], :, :, f)
+      nrm_location = mesh.nrm_sharedface[peeridx]
     end
+    nrm_xy = ro_sview(nrm_location, :, :, f)
 
     # DEBUGAA
     # println(eqn.params.f, "peeridx: ", peeridx, ", elemL: ", elemL, ", elemR: ", elemR, ", f: ", f, ", nrm_xy: ", nrm_xy)
@@ -218,7 +221,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     
     # DJNFIX
     # cmptIPMat(mesh, sbp, eqn, opts, f, GtL, GtR, pMat)
-    cmptIPMat(mesh, sbp, eqn, opts, f, jacL, jacR, GtL, GtR, pMat)
+    cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, jacL, jacR, GtL, GtR, pMat)
 
     # Start to compute fluxes. We have 3 terms on interfaces:
     # 1) {Fv}⋅[ϕ]
