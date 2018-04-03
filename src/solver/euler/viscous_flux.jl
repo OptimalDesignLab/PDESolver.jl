@@ -167,6 +167,21 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     dqdx_elemL = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
     dqdx_elemR = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
 
+    # Here is where we need to decide where dxidxL, dxidxR, jacL, and jacR come from.
+    # If this interface is between elements on the same partition, then the former method
+    # (using ro_sview of mesh.jac and mesh.dxidx) works. If it is between partitions,
+    # we need to obtain the data from RemoteMetrics.
+    jacL = ro_sview(mesh.jac, :, elemL)
+    dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
+    # AAAAA parallelized
+    if peeridx == 0
+      jacR = ro_sview(mesh.jac, :, elemR)
+      dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
+    else
+      dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
+      jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
+    end
+
     # DJNFIX
     # calcGradient(mesh, sbp, elemL, q_elemL, dqdx_elemL)
     # calcGradient(mesh, sbp, elemR, q_elemR, dqdx_elemR)
@@ -194,20 +209,6 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
 
     Fv_face = zeros(Tsol, Tdim, mesh.numDofPerNode, 2, mesh.numNodesPerFace)
-    # Here is where we need to decide where dxidxL, dxidxR, jacL, and jacR come from.
-    # If this interface is between elements on the same partition, then the former method
-    # (using ro_sview of mesh.jac and mesh.dxidx) works. If it is between partitions,
-    # we need to obtain the data from RemoteMetrics.
-    jacL = ro_sview(mesh.jac, :, elemL)
-    dxidxL = ro_sview(mesh.dxidx, :,:,:,elemL)
-    # AAAAA parallelized
-    if peeridx == 0
-      jacR = ro_sview(mesh.jac, :, elemR)
-      dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
-    else
-      dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
-      jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
-    end
 
     # TODO: in peeridx > 0 case, Fv_faceR?
     calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
@@ -221,7 +222,10 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     
     # DJNFIX
     # cmptIPMat(mesh, sbp, eqn, opts, f, GtL, GtR, pMat)
-    cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, jacL, jacR, GtL, GtR, pMat)
+    # cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, jacL, jacR, GtL, GtR, pMat)
+    cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, elemL, elemR, jacL, jacR, GtL, GtR, pMat)
+    # f is interface
+    # elemL & elemR set above
 
     # Start to compute fluxes. We have 3 terms on interfaces:
     # 1) {Fv}⋅[ϕ]

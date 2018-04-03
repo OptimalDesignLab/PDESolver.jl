@@ -22,13 +22,15 @@ function cmptIPMat{Tmsh, Tdim, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                            opts,
                                            iface::Int,
                                            nrm_location::AbstractArray{Tmsh, 3},      # DJNFIX
+                                           elemL::Integer,
+                                           elemR::Integer,
                                            jacL::AbstractArray{Tmsh, 1},        # DJNFIX
                                            jacR::AbstractArray{Tmsh, 1},
                                            GtL::AbstractArray{Tsol, 5},
                                            GtR::AbstractArray{Tsol, 5},
                                            pMat::AbstractArray{Tsol, 3})
   if opts["SAT_type"] == "Hartman"
-    cmptIPMat_hartman(mesh, sbp, eqn, opts, iface, nrm_location, jacL, jacR, GtL, GtR, pMat)
+    cmptIPMat_hartman(mesh, sbp, eqn, opts, iface, nrm_location, elemL, elemR, jacL, jacR, GtL, GtR, pMat)
   elseif opts["SAT_type"] == "SAT-SIPG"
     cmptIPMat_SIPG(mesh, sbp, eqn, opts, iface, GtL, GtR, pMat)
   elseif opts["SAT_type"] == "SAT-BR2"
@@ -64,6 +66,8 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                              opts,
                                              iface::Int,
                                              nrm_location::AbstractArray{Tmsh, 3},      # DJNFIX
+                                             elemL::Integer,
+                                             elemR::Integer,
                                              jacL::AbstractArray{Tmsh, 1},        # DJNFIX
                                              jacR::AbstractArray{Tmsh, 1},
                                              GtL::AbstractArray{Tsol, 5},
@@ -80,9 +84,10 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   Tdim = 2
   sbpface = mesh.sbpface
 
-  face = mesh.interfaces[iface]
-  elemL = face.elementL
-  elemR = face.elementR
+  # DJNFIX: shouldn't need face. now passing in elemL and elemR
+  # face = mesh.interfaces[iface]
+  # elemL = face.elementL
+  # elemR = face.elementR
 
   # Compute geometric info on face
   nrm1 = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
@@ -194,6 +199,8 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                              opts,
                                              iface::Int,
                                              nrm_location::AbstractArray{Tmsh, 3},      # DJNFIX
+                                             elemL::Integer,
+                                             elemR::Integer,
                                              jacL::AbstractArray{Tmsh, 1},      # DJNFIX
                                              jacR::AbstractArray{Tmsh, 1},
                                              GtL::AbstractArray{Tsol, 5},
@@ -204,9 +211,10 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   const_tii = eqn.params.const_tii
   Tdim = 3
   sbpface = mesh.sbpface
-  face = mesh.interfaces[iface]
-  elemL = face.elementL
-  elemR = face.elementR
+  # DJNFIX: shouldn't need face. now passing in elemL and elemR
+  # face = mesh.interfaces[iface]
+  # elemL = face.elementL
+  # elemR = face.elementR
 
   # Compute geometric info on face
   nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
@@ -231,8 +239,10 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
     # DJNFIX
     # elem_volL +=  sbp.w[n]/mesh.jac[n, elemL]
     # elem_volR +=  sbp.w[n]/mesh.jac[n, elemR]
-    elem_volL +=  sbp.w[n]/jacL[n, elemL]
-    elem_volR +=  sbp.w[n]/jacR[n, elemR]
+    # elem_volL +=  sbp.w[n]/jacL[n, elemL]
+    # elem_volR +=  sbp.w[n]/jacR[n, elemR]
+    elem_volL +=  sbp.w[n]/jacL[n]
+    elem_volR +=  sbp.w[n]/jacR[n]
   end
 
   for n = 1:mesh.numNodesPerFace
