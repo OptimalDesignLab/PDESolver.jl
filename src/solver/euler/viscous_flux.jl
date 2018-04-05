@@ -178,8 +178,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       jacR = ro_sview(mesh.jac, :, elemR)
       dxidxR = ro_sview(mesh.dxidx, :,:,:,elemR)
     else
-      dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
       jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
+      dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
     end
 
     # DJNFIX
@@ -224,6 +224,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # cmptIPMat(mesh, sbp, eqn, opts, f, GtL, GtR, pMat)
     # cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, jacL, jacR, GtL, GtR, pMat)
     cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, elemL, elemR, jacL, jacR, GtL, GtR, pMat)
+    # pMat = ones(pMat)   # for debugging -> tried this, made no difference. error is not in cmptIPMat.
     # f is interface
     # elemL & elemR set above
 
@@ -265,7 +266,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         for iDim = 1 : Tdim
           # vecfluxL[iDim, iDof, n] = 0.0
           # vecfluxR[iDim, iDof, n] = 0.0
-          for jDim = 1 : Tdim
+          for jDim = 1 : Tdim                                           # TODO TODO: hmm, should these R vars have peeridx == 0 around them?
             tmpL = 0.0
             tmpR = 0.0
             for jDof = 1 : mesh.numDofPerNode
@@ -331,8 +332,11 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     #------------------------------------------------------------
     # Method 1: peeridx if statement inside innermost loop
     # accumulate fluxes
-    HIGHLIGHTER = 1.0     # TODO TODO TODO get rid of HIGHLIGHTER after done debugging
-    # HIGHLIGHTER = 10000.0
+    # HIGHLIGHTER = 1.0     # TODO TODO get rid of HIGHLIGHTER after done debugging
+    HIGHLIGHTER = 10000.0
+
+    # Note: coef_nondim == Ma/Re
+
     for n = 1:mesh.numNodesPerFace
       for iDof = 2 : Tdim+2
         for iDim = 1 : Tdim
@@ -892,6 +896,40 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     end
 
+    # DEBUG, let's try this
+    # println("================= size(vecfluxL): ", size(vecfluxL))
+    # vecfluxL = eye_multidim(vecfluxL)
+    # if peeridx == 0
+      # vecfluxR = eye_multidim(vecfluxR)
+    # end
+
+    # RDxL = eye_multidim(RDxL)
+    # if peeridx == 0
+      # RDxR = eye_multidim(RDxR)
+    # end
+
+    # -> OK, well this removes the error, obviously
+    # RDxL = zeros(RDxL)
+    # if peeridx == 0
+      # RDxR = zeros(RDxR)
+    # end
+
+    # -> results in a -3e-12 error
+    # RDxL = ones(RDxL)
+    # if peeridx == 0
+      # RDxR = ones(RDxR)
+    # end
+
+    # -> results in a -3e-16 error    => error is in vecflux!
+    # facVV = 0.001
+    # vecfluxL = facVV*ones(vecfluxL)
+    # if peeridx == 0
+      # vecfluxR = facVV*ones(vecfluxR)
+    # end
+
+
+    # println("================= size(vecfluxL): ", size(vecfluxL))
+    # println(vecfluxL)
 
     for i = 1 : numNodes_elem
       for j = 1 : numNodes_face
@@ -914,7 +952,7 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
           HIGHLIGHTER = 1.0
           # HIGHLIGHTER = 10000.0
 
-          # ADDING HIGHLIGHTER TO VECTOR VISCOUS FOR NOW TODO TODO TODO
+          # ADDING HIGHLIGHTER TO VECTOR VISCOUS FOR NOW TODO TODO
           # res[iDof, i, elemL] += tmpL * w[j]
           res[iDof, i, elemL] += HIGHLIGHTER * tmpL * w[j]
           # AAAAA2: This will generate a bounds error in the shared case, so need an if statement. 
