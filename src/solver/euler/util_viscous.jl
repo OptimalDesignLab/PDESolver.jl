@@ -49,7 +49,6 @@ function calcDx{Tmsh}(sbp::AbstractSBP,
   return nothing
 end
 
-#=
 @doc """
 DJNFIX
 
@@ -69,14 +68,13 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
                       sbp::AbstractSBP,
                       elem::Integer,
                       Dx::AbstractArray{Tmsh, 3})
+
+  error("wrong calcDx version called")
   @assert(size(Dx, 1) == mesh.numNodesPerElement)
   @assert(size(Dx, 2) == mesh.numNodesPerElement)
   @assert(size(Dx, 3) == size(mesh.dxidx, 1))
   dxidx = sview(mesh.dxidx, :,:,:,elem) # (dim, dim, numNodesPerElement)
   jac = sview(mesh.jac, :, elem)
-
-  # I JUST FOUND IT 
-  #   WRONG DXIDX AND JAC
 
   calcDx(sbp, dxidx, jac, Dx)
   return nothing
@@ -110,7 +108,6 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
   =#
 
 end
-=#
 
 function calcQx{Tmsh}(mesh::AbstractMesh{Tmsh},
                       sbp::AbstractSBP,
@@ -193,7 +190,6 @@ function calcGradient{Tmsh, Tsol, Tsbp}(sbp::AbstractSBP{Tsbp},
   return nothing
 end
 
-#=
 @doc """
 DJNFIX
 
@@ -215,6 +211,7 @@ function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},       # for 
                                         elem::Integer,
                                         q::AbstractArray{Tsol, 2},
                                         q_grad::AbstractArray{Tsol, 3})
+  error("wrong calcGradient version called")
   @assert(size(q, 2) == mesh.numNodesPerElement)
   @assert(size(q, 1) == mesh.numDofPerNode)
 
@@ -245,7 +242,6 @@ function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},       # for 
   end
   return nothing
 end
-=#
 
 @doc """
 Another(single face) version of interiorfaceintegrate.

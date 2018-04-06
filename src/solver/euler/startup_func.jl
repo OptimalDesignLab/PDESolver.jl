@@ -338,6 +338,9 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     println("call_nlsolver complete.")
   end
 
+  Utils.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  println(eqn.params.f, res_vec)
+
   #----------------------------------------------------------------------------------------------
   # Utils.disassembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   #=

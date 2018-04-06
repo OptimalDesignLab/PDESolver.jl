@@ -181,6 +181,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   # check_nan_q_res(mesh, eqn, "After addStabilization")      # DEBUGAA3D
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
+    fill!(eqn.flux_face, 0.0)                 # TODO TODO remove after debugging Fri
     evalFaceIntegrals(mesh, sbp, eqn, opts)
     # println("face integral @time printed above")
   end
@@ -200,6 +201,9 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # scalar viscous flux is called in this
   time.t_sharedface += @elapsed if mesh.commsize > 1
+    for efsf_ix = 1:length(eqn.flux_sharedface)
+      fill!(eqn.flux_sharedface[efsf_ix], 0.0)             # TODO TODO remove after debugging Fri
+    end
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
     # println("evalSharedFaceIntegrals @time printed above")
   end
