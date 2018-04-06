@@ -257,7 +257,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     #     [q] = (q+ - q-) ⊗ n = Δq⊗n , 
     # Then we can consider Δq⊗n as ∇q and F as viscous flux.
     fill!(vecfluxL, 0.0)
-    fill!(vecfluxR, 0.0)
+    if peeridx == 0
+      fill!(vecfluxR, 0.0)
+    end
     for n = 1 : mesh.numNodesPerFace
       for iDof = 1 : mesh.numDofPerNode
         #
@@ -266,18 +268,27 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         for iDim = 1 : Tdim
           # vecfluxL[iDim, iDof, n] = 0.0
           # vecfluxR[iDim, iDof, n] = 0.0
-          for jDim = 1 : Tdim                                           # TODO TODO: hmm, should these R vars have peeridx == 0 around them?
+          for jDim = 1 : Tdim        # TODO TODO: hmm, should these R vars have peeridx == 0 around them?
             tmpL = 0.0
-            tmpR = 0.0
+            if peeridx == 0
+              tmpR = 0.0
+            end
             for jDof = 1 : mesh.numDofPerNode
               tmpL += GtL[iDof, jDof, iDim, jDim, n]
-              tmpR += GtR[iDof, jDof, iDim, jDim, n]
+              if peeridx == 0
+                tmpR += GtR[iDof, jDof, iDim, jDim, n]
+              end
             end
+            nrm_xy = ones(nrm_xy)
             vecfluxL[iDim, iDof, n] += tmpL * nrm_xy[jDim, n]
-            vecfluxR[iDim, iDof, n] += tmpR * nrm_xy[jDim, n]
+            if peeridx == 0
+              vecfluxR[iDim, iDof, n] += tmpR * nrm_xy[jDim, n]
+            end
           end
           vecfluxL[iDim,iDof,n] *=  dq[iDof,n]
-          vecfluxR[iDim,iDof,n] *=  dq[iDof,n]
+          if peeridx == 0
+            vecfluxR[iDim,iDof,n] *=  dq[iDof,n]
+          end
         end
       end
     end
@@ -332,8 +343,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     #------------------------------------------------------------
     # Method 1: peeridx if statement inside innermost loop
     # accumulate fluxes
-    # HIGHLIGHTER = 1.0     # TODO TODO get rid of HIGHLIGHTER after done debugging
-    HIGHLIGHTER = 10000.0
+    HIGHLIGHTER = 1.0     # TODO TODO get rid of HIGHLIGHTER after done debugging
+    # HIGHLIGHTER = 10000.0
 
     # Note: coef_nondim == Ma/Re
 
@@ -361,7 +372,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
         # DEBUGAA3D
         # TODO TODO: DISABLING scalar flux for debugging 3D vector viscous flux
-        # flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
+        flux_location[iDof, n, f] += flux[iDof, n]*coef_nondim
       end   # end 'for iDof = 2 : Tdim+2'
     end   # end 'for n = 1:mesh.numNodesPerFace'
     #------------------------------------------------------------

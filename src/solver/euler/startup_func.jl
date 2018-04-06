@@ -20,6 +20,7 @@ function run_euler(input_file::AbstractString)
 
   mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
 
+  #=
   if mesh.myrank == 0
     println(" ")
     println("============ in run_euler, selected elements ==============")
@@ -73,6 +74,7 @@ function run_euler(input_file::AbstractString)
 
     println(" ")
   end
+  =#
 
   solve_euler(mesh, sbp, eqn, opts, pmesh)
 

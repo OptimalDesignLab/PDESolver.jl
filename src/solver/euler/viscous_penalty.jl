@@ -112,8 +112,10 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
     # DJNFIX
     # elem_volL +=  sbp.w[n]/mesh.jac[n, elemL]
     # elem_volR +=  sbp.w[n]/mesh.jac[n, elemR]
-    elem_volL +=  sbp.w[n]/jacL[n, elemL]
-    elem_volR +=  sbp.w[n]/jacR[n, elemR]
+    # elem_volL +=  sbp.w[n]/jacL[n, elemL]
+    # elem_volR +=  sbp.w[n]/jacR[n, elemR]
+    elem_volL +=  sbp.w[n]/jacL[n]
+    elem_volR +=  sbp.w[n]/jacR[n]
   end
 
   for n = 1:mesh.numNodesPerFace
