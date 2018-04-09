@@ -110,30 +110,26 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
-#  println("\n----- entered evalResidual -----")
-
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-#  println("entered evalResidual")
-#  println("q1319-3 = ", eqn.q[:, 3, 1319])
   time.t_send += @elapsed if opts["parallel_type"] == 1
-    startSolutionExchange(mesh, sbp, eqn, opts)                       # MAJOR TODO: UNCOMMENT WHEN DONE WITH par debug
-                                                                        # this is required to be commented out when
-                                                                        # evalSharedFaceIntegrals is commented out
+    startSolutionExchange(mesh, sbp, eqn, opts)                 # Note for debugging: 
+                                                                #   this is required to be commented out when
+                                                                #   evalSharedFaceIntegrals is commented out
   end
 
 
-  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-  # println("dataPrep @time printed above")
+  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)    # Viscous note: this is where viscous fluxes
+                                                                #   for peeridx == 0 (interior ifaces)
+                                                                #   are computed
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After dataPrep")
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
-    # println("volume integral @time printed above")
   end
 
   # DEBUGAA
@@ -164,7 +160,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
-    # println("boundary integral @time printed above")
   end
 
   # DEBUGAA
@@ -173,7 +168,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
-    # println("stabilizing @time printed above")
   end
 
   # DEBUGAA
@@ -181,9 +175,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   # check_nan_q_res(mesh, eqn, "After addStabilization")      # DEBUGAA3D
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    fill!(eqn.flux_face, 0.0)                 # TODO TODO remove after debugging Fri
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-    # println("face integral @time printed above")
   end
 
   # DEBUGAA
@@ -202,10 +194,10 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   # scalar viscous flux is called in this
   time.t_sharedface += @elapsed if mesh.commsize > 1
     for efsf_ix = 1:length(eqn.flux_sharedface)
-      fill!(eqn.flux_sharedface[efsf_ix], 0.0)             # TODO TODO remove after debugging Fri
+      # fill!(eqn.flux_sharedface[efsf_ix], 0.0)             # TODO TODO remove after debugging Fri
     end
+    # fill!(eqn.flux_face, 0.0)                 # TODO TODO remove after debugging Fri
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-    # println("evalSharedFaceIntegrals @time printed above")
   end
 
   # DEBUGAA
@@ -213,7 +205,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   # check_nan_q_res(mesh, eqn, "After evalSharedFaceIntegrals")         # DEBUGAA3D
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-  # println("source integral @time printed above")
 
   # DEBUGAA
   # debug_output_iface(mesh, sbp, eqn, opts, "After evalSourceTerm")
@@ -242,85 +233,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
     # evalSharedFaceIntegrals_viscous(mesh, sbp, eqn, opts)
   end
-
-  # println(eqn.params.f, " >>>>>>>> End of evalResidual <<<<<<<<< ")
-  # print_qvec_coords(mesh, eqn, filename=eqn.params.f)
-
-
-  # DEBUGAA
-  # println(eqn.params.f, " >>>>>>>> End of evalResidual <<<<<<<<< ")
-  # debug_output_iface(mesh, sbp, eqn, opts, "End of evalResidual")
-
-  # println(" opts[precompute_face_flux]: ", opts["precompute_face_flux"])
-  # println(" opts[face_integral_type]: ", opts["face_integral_type"])
-  # DEBUG AA
-  # debug_output_iface(mesh, sbp, eqn, opts, "After evalFaceIntegrals")
-  # println(eqn.params.f, "\nAfter evalFaceIntegrals")
-  # println(eqn.params.f, " mesh.commsize: ", mesh.commsize)
-  # println(eqn.params.f, " myrank: ", myrank)
-  #=
-  if mesh.commsize == 1
-    println(" size(eqn.flux_face): ", size(eqn.flux_face))
-    println(" eqn.flux_face: ", eqn.flux_face)
-  else
-    println(eqn.params.f, " rank: ", myrank, " size(eqn.flux_face): ", size(eqn.flux_face))
-    println(eqn.params.f, " rank: ", myrank, " eqn.flux_face: ", eqn.flux_face)
-  end
-  =#
-
-  # DEBUGAA
-  #=
-  if mesh.commsize == 1
-    println(eqn.params.f, " mesh.numInterfaces: ", mesh.numInterfaces)
-    # println(" mesh.interfaces: ", mesh.interfaces)
-    for iface_ix = 1:mesh.numInterfaces
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "]: ", mesh.interfaces[iface_ix])
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].elementL: ", mesh.interfaces[iface_ix].elementL)
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].elementR: ", mesh.interfaces[iface_ix].elementR)
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].faceL: ", mesh.interfaces[iface_ix].faceL)
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].faceR: ", mesh.interfaces[iface_ix].faceR)
-
-      println(eqn.params.f, "eqn.flux_face[:, :, ", iface_ix,"]: ", eqn.flux_face[:,:,iface_ix])
-    end
-  else
-    # println(eqn.params.f, " rank: ", myrank, " mesh.shared_interfaces: ", mesh.shared_interfaces)
-    println(eqn.params.f, " rank: ", myrank)
-    println(eqn.params.f, " mesh.numInterfaces: ", mesh.numInterfaces)
-    # println(eqn.params.f, " mesh.interfaces: ", mesh.interfaces)
-    for iface_ix = 1:mesh.numInterfaces
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "]: ", mesh.interfaces[iface_ix])
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].elementL: ", mesh.interfaces[iface_ix].elementL)
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].elementR: ", mesh.interfaces[iface_ix].elementR)
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].faceL: ", mesh.interfaces[iface_ix].faceL)
-      println(eqn.params.f, " mesh.interfaces[", iface_ix, "].faceR: ", mesh.interfaces[iface_ix].faceR)
-
-      println(eqn.params.f, "eqn.flux_face[:, :, ", iface_ix,"]: ", eqn.flux_face[:,:,iface_ix])
-    end
-    println(eqn.params.f, " length(mesh.shared_interfaces): ", length(mesh.shared_interfaces))
-    println(eqn.params.f, " length(mesh.shared_interfaces[1]): ", length(mesh.shared_interfaces[1]))
-    println(eqn.params.f, " mesh.shared_interfaces[1]: ", mesh.shared_interfaces[1])
-    for iface_ix = 1:length(mesh.shared_interfaces[1])
-      println(eqn.params.f, " mesh.shared_interfaces[1][", iface_ix, "]: ", mesh.shared_interfaces[1][iface_ix])
-      println(eqn.params.f, " mesh.shared_interfaces[1][", iface_ix, "].elementL: ", mesh.shared_interfaces[1][iface_ix].elementL)
-      println(eqn.params.f, " mesh.shared_interfaces[1][", iface_ix, "].elementR: ", mesh.shared_interfaces[1][iface_ix].elementR)
-      println(eqn.params.f, " mesh.shared_interfaces[1][", iface_ix, "].faceL: ", mesh.shared_interfaces[1][iface_ix].faceL)
-      println(eqn.params.f, " mesh.shared_interfaces[1][", iface_ix, "].faceR: ", mesh.shared_interfaces[1][iface_ix].faceR)
-      println(eqn.params.f, "eqn.flux_sharedface[1][:, :, ", iface_ix, "]: ", eqn.flux_sharedface[1][:,:,iface_ix])
-    end
-
-  end
-  =#
-
-  # DEBUG BEGIN
-  # res_vec = zeros(Float64, length(eqn.res))
-  # for i = 1 : length(eqn.res)
-    # res_vec[i] = abs( real(eqn.res[i]))
-  # end
-  # saveSolutionToMesh(mesh, res_vec)
-  # writeVisFiles(mesh, "residual")
-  # exit()
-  # # DEBUG END
-
 
   return nothing
 end  # end evalResidual
@@ -359,58 +271,6 @@ function debug_output_iface(mesh, sbp, eqn, opts, phrase)
       println(" ")
     end
   end
-
-  #=
-  if mesh.commsize == 1
-    println(" ")
-    println(" -------->>>>>>>> ", phrase, " <<<<<<<<<-------- ")
-    println("on interface: q[:, 1, 4]: ")
-    println(eqn.q[:, 1, 4])
-    println("on interface: q[:, 2, 4]: ")
-    println(eqn.q[:, 2, 4])
-    println("on interface: q[:, 3, 4]: ")
-    println(eqn.q[:, 3, 4])
-    println("on interface: res[:, 1, 4]: ")
-    println(eqn.res[:, 1, 4])
-    println("on interface: res[:, 2, 4]: ")
-    println(eqn.res[:, 2, 4])
-    println("on interface: res[:, 3, 4]: ")
-    println(eqn.res[:, 3, 4])
-    # println(eqn.res_vec[45:48])
-    println(" ")
-    #=
-    println("on RHS: q[:, 2, 7]: ")
-    println(eqn.q[:, 2, 7])
-    println("on RHS: res[:, 2, 7]: ")
-    println(eqn.res_vec[77:80])
-    =#
-  else
-    if myrank == 0
-      println(" ")
-      println(" -------->>>>>>>> ", phrase, " <<<<<<<<<-------- ")
-      println("on interface: q[:, 1, 1]:")
-      println(eqn.q[:, 1, 1])
-      println("on interface: q[:, 2, 1]:")
-      println(eqn.q[:, 2, 1])
-      println("on interface: q[:, 3, 1]:")
-      println(eqn.q[:, 3, 1])
-      println("on interface: res[:, 1, 1]: ")
-      println(eqn.res[:, 1, 1])
-      println("on interface: res[:, 2, 1]: ")
-      println(eqn.res[:, 2, 1])
-      println("on interface: res[:, 3, 1]: ")
-      println(eqn.res[:, 3, 1])
-      # println(eqn.res_vec[9:12])
-      println(" ")
-      #=
-      println("on RHS: q[:, 2, 2]:")
-      println(eqn.q[:, 2, 2])
-      println("on RHS: res[:, 2, 2]: ")
-      println(eqn.res_vec[17:20])
-      =#
-    end
-  end
-  =#
 
 end
 
