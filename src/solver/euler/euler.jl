@@ -184,7 +184,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # assembles eqn.vecfluxL & eqn.vecfluxR into res: this is viscous flux, vector portion, for peeridx == 0
   if opts["isViscous"]
-    evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
+    # evalFaceIntegrals_vector(mesh, sbp, eqn, opts)        # TODO TODO remove after debugging!! viscous halt 20180409
   end
 
   # DEBUGAA
@@ -194,9 +194,9 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   # scalar viscous flux is called in this
   time.t_sharedface += @elapsed if mesh.commsize > 1
     for efsf_ix = 1:length(eqn.flux_sharedface)
-      # fill!(eqn.flux_sharedface[efsf_ix], 0.0)             # TODO TODO remove after debugging Fri
+      # fill!(eqn.flux_sharedface[efsf_ix], 0.0)             # a debug statement to try. 20180406
     end
-    # fill!(eqn.flux_face, 0.0)                 # TODO TODO remove after debugging Fri
+    # fill!(eqn.flux_face, 0.0)                 # a debug statement to try. 20180406
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
   end
 

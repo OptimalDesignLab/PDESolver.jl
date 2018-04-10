@@ -226,6 +226,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # cmptIPMat(mesh, sbp, eqn, opts, f, GtL, GtR, pMat)
     # cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, jacL, jacR, GtL, GtR, pMat)
     # cmptIPMat(mesh, sbp, eqn, opts, f, nrm_location, elemL, elemR, jacL, jacR, GtL, GtR, pMat)
+    # TODO TODO remove after debugging!! viscous halt 20180409
     pMat = ones(pMat)   # for debugging -> tried this, made no difference. error is not in cmptIPMat. TODO TODO
     # f is interface
     # elemL & elemR set above
@@ -299,7 +300,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     for n = 1:mesh.numNodesPerFace
       for iDof = 2 : mesh.numDofPerNode
         for jDof = 1 : mesh.numDofPerNode
-          flux[iDof, n] +=  pMat[iDof, jDof, n]*dq[jDof, n]
+          flux[iDof, n] +=  pMat[iDof, jDof, n]*dq[jDof, n]             # sign (+=) matches commit from Dec 2017
         end
       end
     end
@@ -308,7 +309,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     for n = 1:mesh.numNodesPerFace
       for iDof = 2 : mesh.numDofPerNode
         for iDim = 1 : Tdim
-          flux[iDof, n] -= Fv_avg[iDim, iDof, n]*nrm_xy[iDim,n] 
+          flux[iDof, n] -= Fv_avg[iDim, iDof, n]*nrm_xy[iDim,n]         # sign (-=) matches commit from Dec 2017
         end
       end
     end
@@ -381,7 +382,7 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     #------------------------------------------------------------
 
     xmax = 0.66
-    xmin = 0.64
+    xmin = 0.49
     ymax = 0.66
     ymin = 0.0
 
@@ -391,43 +392,63 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
       println(eqn.params.f, " peeridx: ", peeridx)
       if mesh.commsize == 1
         # println(eqn.params.f, " mesh.coords_interface[:,:,$f]: ", round(mesh.coords_interface[:,:,f],3))
-        node_ix = 1
+        node_ix = 2
         coordsX = mesh.coords_interface[1,node_ix,f]
         coordsY = mesh.coords_interface[2,node_ix,f]
-        if coordsX < xmax && coordsX > xmin
-          if coordsY < ymax && coordsY > ymin
+        # if coordsX < xmax && coordsX > xmin
+          # if coordsY < ymax && coordsY > ymin
             println(eqn.params.f, " found iface: $f")
-            println(eqn.params.f," vecfluxL: ", vecfluxL[1, :, :])
-            println(eqn.params.f," vecfluxR: ", vecfluxR[1, :, :])
-            println(eqn.params.f," mesh.coords_interface[2,:,f]: ", mesh.coords_interface[2,:,f])
-          end
-        end
+            # println(eqn.params.f," vecfluxL: ", vecfluxL[1, :, :])
+            # println(eqn.params.f," vecfluxR: ", vecfluxR[1, :, :])
+            println(eqn.params.f, " flux_location[:,:,$f]: ", flux_location[:,:,f])
+            println(eqn.params.f," mesh.coords_interface[1,:,$f]: ", mesh.coords_interface[1,:,f])
+            println(eqn.params.f," mesh.coords_interface[2,:,$f]: ", mesh.coords_interface[2,:,f])
+            println(eqn.params.f," mesh.interfaces[$f]: ", mesh.interfaces[f])
+      # jacR = ro_sview(mesh.remote_metrics[peeridx].jac, :, elemR)
+      # dxidxR = ro_sview(mesh.remote_metrics[peeridx].dxidx, :, :, :, elemR)
+          # flux[iDof, n] -= Fv_avg[iDim, iDof, n]*nrm_xy[iDim,n]         # sign (-=) matches commit from Dec 2017
+            println(eqn.params.f, " Fv_avg: ", Fv_avg)
+            println(eqn.params.f, " nrm_xy: ", nrm_xy)
+            println(eqn.params.f, " dq: ", dq)
+          # end
+        # end
       elseif mesh.commsize == 2
         if peeridx == 0
           # println(eqn.params.f, " mesh.coords_interface[:,:,$f]: ", round(mesh.coords_interface[:,:,f],3))
-          #=
-          node_ix = 1
+          node_ix = 2
           coordsX = mesh.coords_interface[1,node_ix,f]
           coordsY = mesh.coords_interface[2,node_ix,f]
-          if coordsX < xmax && coordsX > xmin
-            if coordsY < ymax && coordsY > ymin
+          # if coordsX < xmax && coordsX > xmin
+            # if coordsY < ymax && coordsY > ymin
               println(eqn.params.f, " found iface: $f")
-            end
-          end
-          =#
+              println(eqn.params.f, " flux_location[:,:,$f]: ", flux_location[:,:,f])
+              println(eqn.params.f," mesh.coords_interface[1,:,$f]: ", mesh.coords_interface[1,:,f])
+              println(eqn.params.f," mesh.coords_interface[2,:,$f]: ", mesh.coords_interface[2,:,f])
+              println(eqn.params.f," mesh.interfaces[$f]: ", mesh.interfaces[f])
+              println(eqn.params.f, " Fv_avg: ", Fv_avg)
+              println(eqn.params.f, " nrm_xy: ", nrm_xy)
+              println(eqn.params.f, " dq: ", dq)
+            # end
+          # end
         else
           # println(eqn.params.f, " mesh.coords_sharedface[$peeridx][:,:,$f]: ", round(mesh.coords_sharedface[peeridx][:,:,f],3))
-          node_ix = 1
+          node_ix = 2
           coordsX = mesh.coords_sharedface[peeridx][1,node_ix,f]
           coordsY = mesh.coords_sharedface[peeridx][2,node_ix,f]
-          if coordsX < xmax && coordsX > xmin
-            if coordsY < ymax && coordsY > ymin
+          # if coordsX < xmax && coordsX > xmin
+            # if coordsY < ymax && coordsY > ymin
               println(eqn.params.f, " found iface: $f")
-            println(eqn.params.f," vecfluxL: ", vecfluxL[1, :, :])
+            # println(eqn.params.f," vecfluxL: ", vecfluxL[1, :, :])
             # println(eqn.params.f," vecfluxR: ", vecfluxR)
-            println(eqn.params.f," mesh.coords_sharedface[peeridx][2,:,f]: ", mesh.coords_sharedface[peeridx][2,:,f])
-            end
-          end
+              println(eqn.params.f, " flux_location[:,:,$f]: ", flux_location[:,:,f])
+              println(eqn.params.f," mesh.coords_sharedface[peeridx][1,:,f]: ", mesh.coords_sharedface[peeridx][1,:,f])
+              println(eqn.params.f," mesh.coords_sharedface[peeridx][2,:,f]: ", mesh.coords_sharedface[peeridx][2,:,f])
+              println(eqn.params.f," mesh.shared_interfaces[$peeridx][$f]: ", mesh.shared_interfaces[peeridx][f])
+              println(eqn.params.f, " Fv_avg: ", Fv_avg)
+              println(eqn.params.f, " nrm_xy: ", nrm_xy)
+              println(eqn.params.f, " dq: ", dq)
+            # end
+          # end
         end
       end
     # end
@@ -810,59 +831,6 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     else                # if shared face
       vecfluxL = sview(eqn.vecflux_faceL_shared[peeridx],:,:,:,f)     # AAAA2: if statement around this for assigning to the shared vecflux
     end
-
-    xmax = 0.66
-    xmin = 0.64
-    ymax = 0.66
-    ymin = 0.0
-
-    # if mesh.myrank == 0
-      println(eqn.params.f, "-------------------- in eFI_v, after sview of vecflux")
-      println(eqn.params.f, " f: ", f)
-      println(eqn.params.f, " peeridx: ", peeridx)
-      if mesh.commsize == 1
-        # println(eqn.params.f, " mesh.coords_interface[:,:,$f]: ", round(mesh.coords_interface[:,:,f],3))
-        node_ix = 1
-        coordsX = mesh.coords_interface[1,node_ix,f]
-        coordsY = mesh.coords_interface[2,node_ix,f]
-        if coordsX < xmax && coordsX > xmin
-          if coordsY < ymax && coordsY > ymin
-            println(eqn.params.f, " found iface: $f")
-            println(eqn.params.f," vecfluxL: ", vecfluxL[1, :, :])
-            println(eqn.params.f," vecfluxR: ", vecfluxR[1, :, :])
-            println(eqn.params.f," mesh.coords_interface[2,:,f]: ", mesh.coords_interface[2,:,f])
-          end
-        end
-      elseif mesh.commsize == 2
-        if peeridx == 0
-          # println(eqn.params.f, " mesh.coords_interface[:,:,$f]: ", round(mesh.coords_interface[:,:,f],3))
-          #=
-          node_ix = 1
-          coordsX = mesh.coords_interface[1,node_ix,f]
-          coordsY = mesh.coords_interface[2,node_ix,f]
-          if coordsX < xmax && coordsX > xmin
-            if coordsY < ymax && coordsY > ymin
-              println(eqn.params.f, " found iface: $f")
-            end
-          end
-          =#
-        else
-          # println(eqn.params.f, " mesh.coords_sharedface[$peeridx][:,:,$f]: ", round(mesh.coords_sharedface[peeridx][:,:,f],3))
-          node_ix = 1
-          coordsX = mesh.coords_sharedface[peeridx][1,node_ix,f]
-          coordsY = mesh.coords_sharedface[peeridx][2,node_ix,f]
-          if coordsX < xmax && coordsX > xmin
-            if coordsY < ymax && coordsY > ymin
-              println(eqn.params.f, " found iface: $f")
-            println(eqn.params.f," vecfluxL: ", vecfluxL[1, :, :])
-            # println(eqn.params.f," vecfluxR: ", vecfluxR)
-            println(eqn.params.f," mesh.coords_sharedface[peeridx][2,:,f]: ", mesh.coords_sharedface[peeridx][2,:,f])
-            end
-          end
-        end
-      end
-    # end
-
     #------------------------------------------------------------------------------
     # DEBUG: id'd shared face for comparo
 
@@ -981,69 +949,6 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
         end   # end of loop 'iDof = 2 : mesh.numDofPerNode'
       end   # end of loop 'j = 1 : numNodes_face'
     end   # end of loop 'i = 1 : numNodes_elem'
-
-    #=
-    xmax = 0.51
-    xmin = 0.49
-    ymax = 0.51
-    ymin = 0.0
-    =#
-    xmax = 0.66
-    xmin = 0.64
-    ymax = 0.66
-    ymin = 0.0
-
-
-    # if mesh.myrank == 0
-      println(eqn.params.f, "--------------------")
-      println(eqn.params.f, " f: ", f)
-      println(eqn.params.f, " peeridx: ", peeridx)
-      if mesh.commsize == 1
-        # println(eqn.params.f, " mesh.coords_interface[:,:,$f]: ", round(mesh.coords_interface[:,:,f],3))
-        node_ix = 1
-        coordsX = mesh.coords_interface[1,node_ix,f]
-        coordsY = mesh.coords_interface[2,node_ix,f]
-        if coordsX < xmax && coordsX > xmin
-          if coordsY < ymax && coordsY > ymin
-            println(eqn.params.f, " found iface: $f")
-            println(eqn.params.f," RDxL: ", RDxL)
-            println(eqn.params.f," RDxR: ", RDxR)
-            println(eqn.params.f, " face: ", face)
-            println(eqn.params.f, " eqn.res[:,:,face.elementL]: ", eqn.res[:,:,face.elementL])
-            println(eqn.params.f, " eqn.res[:,:,face.elementR]: ", eqn.res[:,:,face.elementR])
-          end
-        end
-      elseif mesh.commsize == 2
-        if peeridx == 0
-          #=
-          # println(eqn.params.f, " mesh.coords_interface[:,:,$f]: ", round(mesh.coords_interface[:,:,f],3))
-          node_ix = 1
-          coordsX = mesh.coords_interface[1,node_ix,f]
-          coordsY = mesh.coords_interface[2,node_ix,f]
-          if coordsX < xmax && coordsX > xmin
-            if coordsY < ymax && coordsY > ymin
-              println(eqn.params.f, " found iface: $f")
-              println(eqn.params.f, " eqn.res[:,:,face.elementL]: ", eqn.res[:,:,face.elementL])
-              println(eqn.params.f, " eqn.res[:,:,face.elementR]: ", eqn.res[:,:,face.elementR])
-            end
-          end
-          =#
-        else
-          # println(eqn.params.f, " mesh.coords_sharedface[$peeridx][:,:,$f]: ", round(mesh.coords_sharedface[peeridx][:,:,f],3))
-          node_ix = 1
-          coordsX = mesh.coords_sharedface[peeridx][1,node_ix,f]
-          coordsY = mesh.coords_sharedface[peeridx][2,node_ix,f]
-          if coordsX < xmax && coordsX > xmin
-            if coordsY < ymax && coordsY > ymin
-              println(eqn.params.f, " found iface: $f")
-              println(eqn.params.f," RDxL: ", RDxL)
-              println(eqn.params.f, " face: ", face)
-              println(eqn.params.f, " eqn.res[:,:,face.elementL]: ", eqn.res[:,:,face.elementL])
-            end
-          end
-        end
-      end
-    # end
 
 
   end   # end of loop 'f = 1 : nfaces'

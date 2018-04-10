@@ -657,8 +657,9 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
     # assembles eqn.flux_face and eqn.vecflux_faceL & R for peeridx > 0
     calcViscousFlux_interior(mesh, sbp, eqn, opts, idx)     # idx: data.peeridx
     # check_nan_q_res(mesh, eqn, "after cVF_i in cSFI_n_e_i")     # DEBUGAA3D
+
     # assembles eqn.vecflux_faceL & R into res for peeridx > 0
-    evalFaceIntegrals_vector(mesh, sbp, eqn, opts, idx)
+    # evalFaceIntegrals_vector(mesh, sbp, eqn, opts, idx)     # TODO TODO remove after debugging!! viscous halt 20180409
     # check_nan_q_res(mesh, eqn, "after eFI_v in cSFI_n_e_i")     # DEBUGAA3D
   end
 
