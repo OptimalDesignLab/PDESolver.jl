@@ -385,6 +385,7 @@ get!(arg_dict, "krylov_gamma", 2)
 # homotopy options
 get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
 get!(arg_dict, "homotopy_recalculation_policy", "RecalculateNever")
+get!(arg_dict, "homotopy_globalize_euler", false)
 
 # Crank-Nicolson options
 get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")
@@ -407,6 +408,9 @@ if haskey(arg_dict, "jac_method")
     get!(arg_dict, "epsilon", 1e-20)
   end
 end
+
+# figure out if anyone is going to do euler globalization
+get!(arg_dict, "setup_globalize_euler",  arg_dict["newton_globalize_euler"] || arg_dict["homotopy_globalize_euler"])
 
 # clean-sheet Newton's method (internal to CN) option - only for debugging
 get!(arg_dict, "cleansheet_CN_newton", false)

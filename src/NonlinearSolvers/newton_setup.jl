@@ -323,7 +323,7 @@ function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   pc_inner = PetscMatPC(mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
@@ -376,7 +376,7 @@ function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
   lo_inner = DenseLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
@@ -406,7 +406,7 @@ function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
@@ -437,7 +437,7 @@ function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
@@ -476,7 +476,7 @@ function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   lo_inner = PetscMatFreeLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
