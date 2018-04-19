@@ -47,6 +47,7 @@ calcJacCol
 
 The most efficient method to compute the Jacobian is to explicitly compute
 all its entries and assemble them into a matrix.
+An overview of how this was done for the Euler physics is described [here](https://github.com/OptimalDesignLab/PDESolver.jl/wiki/files/jacobian_diff.pdf).
 The [`evalJacobian`](@ref) function must be extended by each physics module
 for this to work.
 This function is passed all the same arguments as [`evalResidual`](@ref) plus an additional [`_AssembleElementData`](@ref) object which is used to assemble

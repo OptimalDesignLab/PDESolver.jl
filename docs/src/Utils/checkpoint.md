@@ -31,6 +31,15 @@ It also checks removed entries to make sure they are the same (to floating point
 tolerance) as the entries that are preserved.
 
 
+To facilitate restarting, the checkpointing code creates a new input file called `input_vals_restart` in
+the current working directory.
+This file can be used to continue running the code from the most recent
+checkpoint.  For example
+
+```
+  julia /path/to/startup.jl "input_vals_restart"
+```
+
 ## API
 
 ### Types
