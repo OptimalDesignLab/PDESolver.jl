@@ -20,6 +20,8 @@ change log:
   made BSTDOUT a global, buffered STDOUT, to replace fstdout.  Also created
   BSTDERR
 
+  4/19/18 - JC: add updateMetricDependents to physics module interface
+
 change argument order for common_funcs.jl, BCs, flux functions to be
 (params, q, coords, nrm, flux)
 

@@ -248,6 +248,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
   return nothing
 end
 
+
 # DG version
 function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol},
@@ -277,6 +278,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       bndry_node = BoundaryNode(bndry_i, i, j)
 
       functor(params, q2, aux_vars, coords, nrm_xy, bndryflux_i, bndry_node)
+
     end
   end
 

@@ -191,6 +191,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     @mpi_master begin
       println(BSTDOUT, "\npredictor iteration ", iter, ", lambda = ", lambda)
       println(BSTDOUT, "res_norm = ", res_norm)
+      println(BSTDOUT, "res_norm recalc = ", calcNorm(eqn, eqn.res_vec, strongres=true))
       println(BSTDOUT, "res_norm_0 = ", res_norm_0)
       println(BSTDOUT, "res_norm/res_norm_0 = ", res_norm/res_norm_0)
       println(BSTDOUT, "res_norm = ", res_norm)
@@ -304,9 +305,20 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
         eqn.q_vec[i] += tan_vec[i]
       end
 
+#      prev_lambda = lambda
+#      lambda_final_step = 0.05  # maximum size of final step in lambda
       lambda = max(lambda_min, lambda - h)
       if lambda < lambda_cutoff
-        lambda = 0.0
+
+        # if this is the final step to lambda = 0, and the step is too large,
+        # force an intermediate step
+        # use 2 * lambda_final_step as heuristic for "too big"
+ #       if prev_lambda - lambda_min > 2*lambda_final_step
+ #         println(BSTDOUT, "limiting size of final step")
+ #         lambda = lambda_min + lambda_final_step
+ #       else  # otherwise set lambda to zero
+          lambda = 0.0
+#        end
       end
       if !(typeof(pc) <: PCNone)
         pc.lambda = lambda

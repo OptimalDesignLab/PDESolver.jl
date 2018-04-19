@@ -256,7 +256,12 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     vals = real(eqn.res_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     fname = string("residual_", itr)
+    println(BSTDOUT, "writing files ", fname)
+    println(BSTDOUT, "res_norm of vals = ", calcNorm(eqn, vals, strongres=true))
+    println(BSTDOUT, "res_norm of res_vec = ", calcNorm(eqn, eqn.res_vec, strongres=true))
     writeVisFiles(mesh, fname)
+    writedlm(string(fname, ".dat"), vals)
+    writedlm("Minv.dat", real(eqn.Minv))
 
 
 #=
@@ -611,7 +616,7 @@ for i=1:numel
     if real(q_cons[1]) <= 0.0
       println(STDERR, "Negative density at element ", i, ", node ", j)
       println(STDERR, "Coordinates = ", mesh.coords[:, j, i])
-      println(STDERR, "q = ", q)
+      println(STDERR, "q = ", q_cons)
       error("Negative density detected")
     end
 

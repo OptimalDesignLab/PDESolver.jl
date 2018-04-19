@@ -221,6 +221,29 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType3,
   return nothing
 end
 
+"""
+  Like [`calcFreeStream`](@ref), but assumes zero angle of attack, regardless
+  of what the options dictionary says.
+"""
+function calcFreeStream0{Tmsh, Tsol}(params::ParamType2,
+                        coords::AbstractArray{Tmsh, 1},
+                        sol::AbstractArray{Tsol, 1})
+# calculate the free stream conditions using the fields of params
+
+
+  rho = sol[1] = params.rho_free
+  E = sol[4] = params.E_free
+
+  Ma = params.Ma
+
+  sol[2] = rho*Ma
+  sol[3] = 0
+
+  return nothing
+end
+
+
+
 @doc """
 ### EulerEquationMod.calcFreeStream_daoa
 

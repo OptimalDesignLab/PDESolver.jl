@@ -161,7 +161,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   Re::Float64  # free stream Reynolds number
 
   # these quantities are dimensional (ie. used for non-dimensionalization)
-  aoa::Tsol  # angle of attack
+  aoa::Tsol  # angle of attack (radians)
   rho_free::Float64  # free stream density
   p_free::Float64  # free stream pressure
   T_free::Float64 # free stream temperature
@@ -336,7 +336,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     Ma = opts[ "Ma"]
     Re = opts[ "Re"]
-    aoa = opts[ "aoa"]
+    aoa = opts[ "aoa"]*pi/180
     rho_free = 1.0
     p_free = opts["p_free"]
     T_free = opts["T_free"]
@@ -971,3 +971,23 @@ function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{T
 
   return tuple
 end
+
+
+import PDESolver.updateMetricDependents
+
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+                                 eqn::AbstractSolutionData, opts)
+
+  #TODO: don't reallocate the arrays, update in place
+  eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
+  eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
+  eqn.M = calcMassMatrix(mesh, sbp, eqn)
+
+
+  if eqn.params.use_edgestab
+    calcEdgeStabAlpha(mesh, sbp, eqn)
+  end
+
+  return nothing
+end
+
