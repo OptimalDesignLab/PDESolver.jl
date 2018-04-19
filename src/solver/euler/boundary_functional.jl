@@ -254,7 +254,6 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     q2 = zeros(Tsol, mesh.numDofPerNode)
 
     for i = 1:nfaces
-      println("face ", i)
       bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
       for j = 1:mesh.sbpface.numnodes
@@ -265,12 +264,10 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
         phys_nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
-        println("node ", j, ", coords = ", real(x))
 
         calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
                                         node_info, functionalData, b_integrand_ji)
 
-        println("ymom = ", real(b_integrand_ji[2]))
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 

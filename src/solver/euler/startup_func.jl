@@ -200,12 +200,6 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     end
   end
 
-  # DEBUGGING
-  evalResidual(mesh, sbp, eqn, opts)
-  writedlm("initial_residual.dat", vec(real(eqn.res)))
-  saveSolutionToMesh(mesh, vec(real(eqn.res)))
-  writeVisFiles(mesh, "initial_residual")
-
   if opts["calc_error"]
     @mpi_master println("\ncalculating error of file ",
                        opts["calc_error_infname"],
