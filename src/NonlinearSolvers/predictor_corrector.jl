@@ -130,6 +130,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
   krylov_reltol0 = opts["krylov_reltol"]::Float64
+  orig_newton_globalize_euler = opts["newton_globalize_euler"]  # reset value
 
 
   # counters/loop variables
@@ -215,6 +216,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       setTolerances(newton_data.ls, reltol, abstol, -1, -1)
       krylov_reltol0 = reltol  # do this so the call to setTolerances below
                                # does not reset the tolerance
+      # enable globalization if required
+      opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
@@ -350,6 +353,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     tmp = res_norm/res_norm_0
     println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
+
+  # reset options dictionary
+  opts["newton_globalize_euler"] = orig_newton_globalize_euler
 
   free(newton_data)
 #  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)

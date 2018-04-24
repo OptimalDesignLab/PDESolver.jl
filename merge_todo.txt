@@ -22,6 +22,9 @@ change log:
 
   4/19/18 - JC: add updateMetricDependents to physics module interface
 
+  4/19/18 - JC: add setup_globalize_euler key, changes things so implicit
+                euler globalization can be used at end of homotopy
+
 change argument order for common_funcs.jl, BCs, flux functions to be
 (params, q, coords, nrm, flux)
 
