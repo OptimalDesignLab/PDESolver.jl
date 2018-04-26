@@ -330,7 +330,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     Ma = opts[ "Ma"]
     Re = opts[ "Re"]
-    aoa = opts[ "aoa"]
+    aoa = opts["aoa"]*pi/180      # This conversion was formerly done in read_input.jl,
+                                  #   but that resulted in converting every time there 
+                                  #   was a restart, which is incorrect.
     rho_free = 1.0
     p_free = opts["p_free"]
     T_free = opts["T_free"]
@@ -874,7 +876,7 @@ function openLoggingFiles(mesh, opts)
 
 
   # use the fact that the key names are formulaic
-  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy"]
+  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy", "drag"]
   @mpi_master for name in names  # only open files on the master process
     keyname = string("write_", name)
     if opts[keyname]  # if this file is being written

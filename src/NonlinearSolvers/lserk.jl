@@ -105,12 +105,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
   istart = chkpointdata.i
 
-
-
   flush(BSTDOUT)
   #-----------------------------------------------------
   # Main timestepping loop
-  timing.t_timemarch += @elapsed for i=2:(t_steps + 1)
+  timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     t = (i-2)*delta_t
 
@@ -121,19 +119,23 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
        end
     end
 
-    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
-      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
-      skip_checkpoint = false
-      # save all needed variables to the chkpointdata
-      chkpointdata.i = i
+    if use_checkpointing && i % chkpoint_freq == 0
+      if skip_checkpoint    # skip only the first checkpoint
+        skip_checkpoint = false
+      else
+        @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+        skip_checkpoint = false
+        # save all needed variables to the chkpointdata
+        chkpointdata.i = i
 
-      if countFreeCheckpoints(chkpointer) == 0
-        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
-      end
-      
-      # save the checkpoint
-      saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
-    end
+        if countFreeCheckpoints(chkpointer) == 0
+          freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+        end
+
+        # save the checkpoint
+        saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
+      end   # end of if skip_checkpoint check
+    end   # end of if use_checkpointing check
 
 
     #--------------------------------------------------------------------------
@@ -212,6 +214,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
   # final update
   t += delta_t
+
+  @mpi_master println("---------------------------------------------")
+  @mpi_master println("   LSERK: final time step reached. t = $t")
+  @mpi_master println("---------------------------------------------")
 
 
   if myrank == 0

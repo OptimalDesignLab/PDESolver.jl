@@ -62,7 +62,7 @@
 "writing_checkpoint_path": path to the directory where the checkpoint is stored,
                            (ASCIIString), default ""
 
-"is_restart": if this input file is restarting a run from a checkpont, (Bool),
+"is_restart": if this input file is restarting a run from a checkpoint, (Bool),
               default false
 
 
