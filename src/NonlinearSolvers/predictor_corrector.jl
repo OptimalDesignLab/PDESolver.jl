@@ -130,12 +130,13 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
   krylov_reltol0 = opts["krylov_reltol"]::Float64
+  orig_newton_globalize_euler = opts["newton_globalize_euler"]  # reset value
 
 
   # counters/loop variables
   #TODO: make a type to store these
   iter = 1
-  homotopy_tol = 1e-2
+  homotopy_tol = 1e-4
   delta_max = 1.0  # step size limit, set to 1 initially,
   psi_max = 10*pi/180  # angle between tangent limiter
   psi = 0.0  # angle between tangent vectors
@@ -191,9 +192,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     @mpi_master begin
       println(BSTDOUT, "\npredictor iteration ", iter, ", lambda = ", lambda)
       println(BSTDOUT, "res_norm = ", res_norm)
-      println(BSTDOUT, "res_norm_0 = ", res_norm_0)
       println(BSTDOUT, "res_norm/res_norm_0 = ", res_norm/res_norm_0)
-      println(BSTDOUT, "res_norm = ", res_norm)
       println(BSTDOUT, "h = ", h)
     end
 
@@ -214,6 +213,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       setTolerances(newton_data.ls, reltol, abstol, -1, -1)
       krylov_reltol0 = reltol  # do this so the call to setTolerances below
                                # does not reset the tolerance
+      # enable globalization if required
+      opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
@@ -265,22 +266,16 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       tan_norm = sqrt(tan_norm*tan_norm + 1)
       scale!(tan_vec, 1/tan_norm)
 
-      println("after normalization, calcNorm(tan_vec) = ", calcNorm(eqn, tan_vec))
-      println("norm(tan_vec) = ", norm(tan_vec))
       psi = psi_max
       if iter > 1
         # compute phi = acos(tangent_i_1 dot tangent_i)
         # however, use the L2 norm for the q part of the tangent vector
 #        tan_term = dot(tan_vec_1, tan_vec)
         tan_term = calcL2InnerProduct(eqn, tan_vec_1, tan_vec)
-        println("tan_term = ", tan_term)
 #        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
         tan_norm_term = (1/tan_norm)*(1/tan_norm_1)
-        println("tan_norm_term = ", tan_norm_term)
         arg = tan_term + tan_norm_term
-        println("arg = ", arg)
         arg = clamp(arg, -1.0, 1.0)
-        println("clamped arg = ", arg)
         psi = acos( arg )
       end
 
@@ -289,12 +284,6 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       tan_norm_1 = tan_norm
 
       # calculate step size
-      println("psi = ", psi)
-      println("psi_max = ", psi_max)
-      println("delta = ", delta)
-      println("delta_max = ", delta_max)
-      println("psi/psi_max = ", psi/psi_max)
-      println("delta/delta_max = ", delta/delta_max)
       fac = max(psi/psi_max, sqrt(delta/delta_max))
       h /= fac
 
@@ -304,9 +293,20 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
         eqn.q_vec[i] += tan_vec[i]
       end
 
+#      prev_lambda = lambda
+#      lambda_final_step = 0.05  # maximum size of final step in lambda
       lambda = max(lambda_min, lambda - h)
       if lambda < lambda_cutoff
-        lambda = 0.0
+
+        # if this is the final step to lambda = 0, and the step is too large,
+        # force an intermediate step
+        # use 2 * lambda_final_step as heuristic for "too big"
+ #       if prev_lambda - lambda_min > 2*lambda_final_step
+ #         println(BSTDOUT, "limiting size of final step")
+ #         lambda = lambda_min + lambda_final_step
+ #       else  # otherwise set lambda to zero
+          lambda = 0.0
+#        end
       end
       if !(typeof(pc) <: PCNone)
         pc.lambda = lambda
@@ -338,6 +338,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     tmp = res_norm/res_norm_0
     println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
+
+  # reset options dictionary
+  opts["newton_globalize_euler"] = orig_newton_globalize_euler
 
   free(newton_data)
 #  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)

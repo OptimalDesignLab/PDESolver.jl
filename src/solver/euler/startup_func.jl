@@ -323,10 +323,6 @@ function postproc(mesh, sbp, eqn, opts)
 
 
       diff_norm = calcNorm(eqn, q_diff)
-#      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
-#      diff_norm = sqrt(diff_norm)
-
-
       @mpi_master println("solution error norm = ", diff_norm)
       # TODO: make this mesh.min_el_size?
       h_avg = calcMeshH(mesh, sbp, eqn, opts)

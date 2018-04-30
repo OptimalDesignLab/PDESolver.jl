@@ -62,7 +62,7 @@
 "writing_checkpoint_path": path to the directory where the checkpoint is stored,
                            (ASCIIString), default ""
 
-"is_restart": if this input file is restarting a run from a checkpont, (Bool),
+"is_restart": if this input file is restarting a run from a checkpoint, (Bool),
               default false
 
 
@@ -72,3 +72,13 @@
 
 "force_solution_complex": force Tsol and Tres to be complex numbers, even if
                           not required by other options, (Bool), default false
+
+"setup__globalize_euler": have the PC/LO do the setup work for implicit
+                                Euler globalization.  If any user of Newton's
+                                method is going to use this globalization, this
+                                key must be set when the PC/LO are created.
+                                The *application* of the globalization is
+                                controlled by the "xxx_globalize_euler" key,
+                                where "xxx" is the name of a method that uses
+                                Newton's method (for example, "newton" or
+                                "homotopy").  This key only controls the setup.

@@ -179,3 +179,30 @@ function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   error("Generic fallback for evalFunctionalDeriv() reached: did you forget to extend evalFunctionalDeriv() with a new method for you AbstractSolutionData")
 
 end
+
+"""
+  This function recalculates all quantities that depend on the mesh metrics.
+  This function handles changes in the metric *values* only (not changed in
+  mesh topology).
+
+  This function should be called after the mesh is warped (ie. using mesh
+  movement).
+
+  Every physics module should extend this function with a new method
+  specializing the `eqn` argument type.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+                                 eqn::AbstractSolutionData, opts)
+
+
+  error("Generic fallback for updateMetricDependents() reached: did you forget to extend updateMetricDependents() with a new method for you AbstractSolutionData")
+
+  return nothing
+end

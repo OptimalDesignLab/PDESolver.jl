@@ -248,6 +248,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
   return nothing
 end
 
+
 # DG version
 function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol},
@@ -263,6 +264,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
   for i=1:nfaces  # loop over faces with this BC
     bndry_i = bndry_facenums[i]
     global_facenum = idx_range[i]
+
     for j = 1:mesh.numNodesPerFace
       # get components
       q = ro_sview(eqn.q_bndry, :, j, global_facenum)
@@ -276,6 +278,7 @@ function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
       bndry_node = BoundaryNode(bndry_i, i, j)
 
       functor(params, q2, aux_vars, coords, nrm_xy, bndryflux_i, bndry_node)
+
     end
   end
 
@@ -474,7 +477,7 @@ function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
 
   qg = params.qg
   calcIsentropicVortex(params, coords, qg)
-  RoeSolver(params, q, qg, aux_vars, dxidx, nrm, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
 
   return nothing
 
@@ -619,7 +622,6 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
               bndry::BoundaryNode=NullBoundaryNode)
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
-
 
   # calculate normal vector in xy space
   nx = nrm_xy[1]

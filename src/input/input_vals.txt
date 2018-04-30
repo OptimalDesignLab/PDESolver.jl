@@ -221,6 +221,9 @@ Note that any values associated with these options are shared with the regular
                                kinetic_energydt to, (ASCIIString), default
                                "kinetic_energydt.dat"
 
+"write_drag" : write drag every time iteration. Bool. Default false.
+"write_drag_freq" : write drag this many timesteps if "write_drag" is true. Integer. Default 1.
+"write_drag_fname" : file name (with extension) to write drag to. Default "drag.dat".
 
 
 "check_density" : whether not to check that density > 0 every residual
@@ -340,7 +343,9 @@ Note that any values associated with these options are shared with the regular
 "homotopy_addBoundaryIntegrals": add boundary term to homotopy, (Bool), default
                                  false (the boundary terms slow convergence
                                  in some cases)
-
+"homotopy_globalize_euler": use the method described by "newton_globalize_euler"
+                            on the final step of homotopy (when lambda == 0),
+                            (Bool), default false
 # Crank-Nicolson options
 "CN_recalculation_policy": jacbian recalculation policy for CN, (ASCIIString),
                            default "RecalculateNever"
