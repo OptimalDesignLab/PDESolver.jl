@@ -93,7 +93,7 @@ function test_adjoint()
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_airfoil.jl"
     include("../../src/solver/euler/startup.jl")  #TODO: use run_euler
-    @assert opts["aoa"] == 2.0*pi/180
+    @assert opts["aoa"] == 2.0
 
     lift = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
