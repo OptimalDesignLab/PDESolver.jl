@@ -130,7 +130,6 @@ get!(arg_dict, "use_staggered_grid", arg_dict["operator_type2"] != "SBPNone")
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
 aoa = get!(arg_dict, "aoa", 0.0)
-#arg_dict["aoa"] = aoa*pi/180  # convert to radians  #TODO: this could break tthings, check the tests/other code
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "p_free", 1.0)
@@ -290,6 +289,10 @@ get!(arg_dict, "write_kinetic_energydt", false)
 get!(arg_dict, "write_kinetic_energydt_fname", "kinetic_energydt.dat")
 get!(arg_dict, "write_kinetic_energydt_freq", 1)
 
+# drag
+get!(arg_dict, "write_drag", false)
+get!(arg_dict, "write_drag_fname", "drag.dat")
+get!(arg_dict, "write_drag_freq", 1)
 
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
@@ -439,6 +442,10 @@ get!(arg_dict, "num_functionals", 0)
 get!(arg_dict, "functional_error", false)
 get!(arg_dict, "functional_error_outfname", "functional_error")
 get!(arg_dict, "analytical_functional_val", 0.0)
+
+if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
+  error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
+end
 
 # Adjoint computation options
 get!(arg_dict, "need_adjoint", false)

@@ -126,19 +126,23 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 
-    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
-      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
-      skip_checkpoint = false
-      # save all needed variables to the chkpointdata
-      chkpointdata.i = i
+    if use_checkpointing && i % chkpoint_freq == 0
+      if skip_checkpoint
+        skip_checkpoint = false
+      else
+        @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+        skip_checkpoint = false
+        # save all needed variables to the chkpointdata
+        chkpointdata.i = i
 
-      if countFreeCheckpoints(chkpointer) == 0
-        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
-      end
-      
-      # save the checkpoint
-      saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpointdata)
-    end
+        if countFreeCheckpoints(chkpointer) == 0
+          freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+        end
+
+        # save the checkpoint
+        saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpointdata)
+      end   # end of if skip_checkpoint check
+    end   # end of if use_checkpointing check
 
 #=
     #----------------------------

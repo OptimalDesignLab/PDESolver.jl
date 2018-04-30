@@ -455,6 +455,20 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     end
   end
 
+  if opts["write_drag"]
+    @mpi_master f = eqn.file_dict[opts["write_drag_fname"]]
+
+    if (itr % opts["write_drag_freq"]) == 0
+      objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+      @mpi_master println(f, itr, " ", drag)
+    end
+
+    @mpi_master if (itr % opts["output_freq"]) == 0
+      flush(f)
+    end
+  end
+
   #=
   #DEBUGGING: write q_vec to file
   fname = get_parallel_fname("qvec_$itr.dat", mesh.myrank)
@@ -464,6 +478,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   return nothing
 
 end
+
 
 @doc """
 ### EulerEquationMod.dataPrep

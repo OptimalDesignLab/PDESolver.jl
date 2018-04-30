@@ -880,7 +880,7 @@ function openLoggingFiles(mesh, opts)
 
 
   # use the fact that the key names are formulaic
-  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy"]
+  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy", "drag"]
   @mpi_master for name in names  # only open files on the master process
     keyname = string("write_", name)
     if opts[keyname]  # if this file is being written
