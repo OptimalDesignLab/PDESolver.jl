@@ -90,7 +90,7 @@ function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
   var_type = opts["variable_type"]
 
   Tdim = mesh.dim
-  Tmsh, Tsbp, Tsol, Tres = PDESolver.getDataTypes(opts)
+  Tmsh, Tsbp, Tsol, Tres = getDataTypes(opts)
 
   eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
 
@@ -323,10 +323,6 @@ function postproc(mesh, sbp, eqn, opts)
 
 
       diff_norm = calcNorm(eqn, q_diff)
-#      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
-#      diff_norm = sqrt(diff_norm)
-
-
       @mpi_master println("solution error norm = ", diff_norm)
       # TODO: make this mesh.min_el_size?
       h_avg = calcMeshH(mesh, sbp, eqn, opts)

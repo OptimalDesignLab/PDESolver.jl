@@ -256,8 +256,8 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
 
     # check that checkDensity and checkPresure work
-    @fact_throws EulerEquationMod.checkDensity(eqn)
-    @fact_throws EulerEquationMod.checkPressure(eqn)
+    @fact_throws EulerEquationMod.checkDensity(eqn, mesh)
+    @fact_throws EulerEquationMod.checkPressure(eqn, mesh)
 
   end  # end facts block
 

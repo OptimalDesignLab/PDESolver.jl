@@ -104,13 +104,13 @@ function dataPrep_diff{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 #  println("  getAuxVars @time printed above")
 
   if opts["check_density"]
-    checkDensity(eqn)
+    checkDensity(eqn, mesh)
 #    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
 #    throw(ErrorException("I'm done"))
-    checkPressure(eqn)
+    checkPressure(eqn, mesh)
 #    println("  checkPressure @time printed above")
   end
 
@@ -323,12 +323,15 @@ function evalSourceTerm_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      opts, assembler::AssembleElementData)
 
 
+  # source terms are not a function of q, so they don't affect the Jacobian
+
+  #=
   # placeholder for multiple source term functionality (similar to how
   # boundary conditions are done)
   if opts["use_src_term"]
     error("source terms not supported by evalJacobian()")
   end
-
+  =#
   return nothing
 end  # end function
 

@@ -2202,8 +2202,11 @@ function calcLFFlux_diff{Tmsh, Tsol, Tres, Tdim}(
                       F_dotL::AbstractMatrix{Tres}, F_dotR::AbstractMatrix{Tres})
 
   numDofPerNode = length(qL)
-  lambda_dotL = zeros(Tres, numDofPerNode)
-  lambda_dotR = zeros(Tres, numDofPerNode)
+#  lambda_dotL = zeros(Tres, numDofPerNode)
+#  lambda_dotR = zeros(Tres, numDofPerNode)
+
+  lambda_dotL = params.lambda_dotL
+  lambda_dotR = params.lambda_dotR
 
   calcEulerFlux_diff(params, qL, aux_vars, dir, F_dotL)
   calcEulerFlux_diff(params, qR, aux_vars, dir, F_dotR)

@@ -57,6 +57,31 @@ function DragForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
                            dDragdaoa)
 end
 
+"""
+  Functional for computing lift coefficient.  Uses the lift functional to
+  compute the force and then divides by the (non-dimensional) dynamic pressure
+  0.5*rho_free*Ma^2.  Note that this assumes the chord length (in 2d) is 1
+"""
+type LiftCoefficient{Topt} <: AbstractIntegralFunctional
+  lift::BoundaryForceData{Topt, :lift}
+  val::Topt
+  bcnums::Array{Int, 1}
+end
+
+"""
+  Constructor for LiftCoefficient functional
+"""
+function LiftCoefficientConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
+                                          bcnums)
+
+  lift = LiftForceDataConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  val = 0.0
+
+  return LiftCoefficient{Topt}(lift, val, bcnums)
+end
+
+
+
 
 """
   Type for computing the mass flow rate over a boundary (integral rho*u dot n
@@ -185,6 +210,7 @@ global const FunctionalDict = Dict{ASCIIString, Function}(
 "lift" => LiftForceDataConstructor,
 "drag" => DragForceDataConstructor,
 "massflow" => MassFlowDataConstructor,
+"liftCoefficient" => LiftCoefficientConstructor
 )
 
 

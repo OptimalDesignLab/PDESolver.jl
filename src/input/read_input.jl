@@ -129,9 +129,7 @@ get!(arg_dict, "use_staggered_grid", arg_dict["operator_type2"] != "SBPNone")
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
-aoa = get!(arg_dict, "aoa", -1.0)
-# AoA note: conversion between deg and rad is now done in src/solver/euler/types/jl.
-
+aoa = get!(arg_dict, "aoa", 0.0)
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "p_free", 1.0)
@@ -361,7 +359,8 @@ get!(arg_dict, "write_vorticity_vis", false)
 get!(arg_dict, "exact_visualization", false)
 get!(arg_dict, "write_res", false)
 get!(arg_dict, "output_freq", 1)
-get!(arg_dict, "recalc_prec_freq", 1)
+#get!(arg_dict, "recalc_prec_freq", 1)
+assert( !haskey(arg_dict, "recalc_prec_freq"))
 get!(arg_dict, "jac_type", 2)
 get!(arg_dict, "use_jac_precond", false)
 get!(arg_dict, "res_abstol", 1e-6)
@@ -374,9 +373,23 @@ get!(arg_dict, "write_eigdecomp", false)
 get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
 get!(arg_dict, "use_volume_preconditioner", false)
+get!(arg_dict, "newton_recalculation_policy", "RecalculateFixedIntervals")
+get!(arg_dict, "newton_prec_recalc_freq", 1)
+get!(arg_dict, "newton_jac_recalc_freq", 1)
+get!(arg_dict, "newton_recalc_first", true)
+
+get!(arg_dict, "use_inexact_nk", arg_dict["run_type"] == 5 ? true : false)
+get!(arg_dict, "krylov_gamma", 2)
+
+
 
 # homotopy options
 get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
+get!(arg_dict, "homotopy_recalculation_policy", "RecalculateNever")
+get!(arg_dict, "homotopy_globalize_euler", false)
+
+# Crank-Nicolson options
+get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")
 
 # majorIterationCallback options
 get!(arg_dict, "callback_write_qvec", false)
@@ -397,6 +410,9 @@ if haskey(arg_dict, "jac_method")
   end
 end
 
+# figure out if anyone is going to do euler globalization
+get!(arg_dict, "setup_globalize_euler",  arg_dict["newton_globalize_euler"] || arg_dict["homotopy_globalize_euler"])
+
 # clean-sheet Newton's method (internal to CN) option - only for debugging
 get!(arg_dict, "cleansheet_CN_newton", false)
 
@@ -408,8 +424,6 @@ get!(arg_dict, "krylov_reltol", 1e-2)
 get!(arg_dict, "krylov_abstol", 1e-12)
 get!(arg_dict, "krylov_dtol", 1e5)
 get!(arg_dict, "krylov_itermax", 1000)
-get!(arg_dict, "krylov_gamma", 2)
-
 # testing options
 get!(arg_dict, "solve", true)
 
@@ -456,6 +470,7 @@ get!(arg_dict, "checkpoint_freq", 200)
 get!(arg_dict, "use_checkpointing", false)
 
 get!(arg_dict, "force_solution_complex", false)
+get!(arg_dict, "force_mesh_complex", false)
 
 # Options passed directly to Petsc
 petsc_opts = Dict{AbstractString, AbstractString}(
@@ -471,7 +486,7 @@ petsc_opts = Dict{AbstractString, AbstractString}(
 )
 
 if arg_dict["use_volume_preconditioner"]
-  get!(petsc_opts, "-pc_type", "shell")
+  petsc_opts["-pc_type"] = "shell"
 end
 
 

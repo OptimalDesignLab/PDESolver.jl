@@ -41,7 +41,9 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_lambda(eqn.params, q, nrm)
     test_lambdasimple(eqn.params, q, qg, nrm)
-    test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff, true)
+    test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
+    # make sure arrays are zerod out
+    test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]

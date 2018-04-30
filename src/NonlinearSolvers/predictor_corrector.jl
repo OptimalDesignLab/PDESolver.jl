@@ -45,6 +45,12 @@
    * res_reltol
    * res_abstol
    * krylov_reltol
+
+  This function supports jacobian/preconditioner freezing using the
+  prefix "newton".  Note that this recalcuation policy only affects
+  this function, and not newtonInner, and defaults to never recalculating
+  (and letting newtonInner update the jacobian/preconditioner according to
+  its recalculationPolicy).
 """
 function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
                                     g_func::Function,
@@ -119,15 +125,18 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
   # some parameters
   lambda_min = 0.0
+  lambda_cutoff = 0.001
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
   krylov_reltol0 = opts["krylov_reltol"]::Float64
+  orig_newton_globalize_euler = opts["newton_globalize_euler"]  # reset value
 
 
   # counters/loop variables
+  #TODO: make a type to store these
   iter = 1
-  homotopy_tol = 1e-2
+  homotopy_tol = 1e-4
   delta_max = 1.0  # step size limit, set to 1 initially,
   psi_max = 10*pi/180  # angle between tangent limiter
   psi = 0.0  # angle between tangent vectors
@@ -137,6 +146,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   res_norm_0 = 0.0  # residual norm of initial guess
   h = 0.05  # step size
   lambda -= h  # the jacobian is ill-conditioned at lambda=1, so skip it
+  recalc_policy = getRecalculationPolicy(opts, "homotopy")
   # log file
   @mpi_master fconv = BufferedIO("convergence.dat", "a+")
 
@@ -182,9 +192,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     @mpi_master begin
       println(BSTDOUT, "\npredictor iteration ", iter, ", lambda = ", lambda)
       println(BSTDOUT, "res_norm = ", res_norm)
-      println(BSTDOUT, "res_norm_0 = ", res_norm_0)
       println(BSTDOUT, "res_norm/res_norm_0 = ", res_norm/res_norm_0)
-      println(BSTDOUT, "res_norm = ", res_norm)
       println(BSTDOUT, "h = ", h)
     end
 
@@ -203,6 +211,10 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       reltol = res_reltol*1e-3  # smaller than newton tolerance
       abstol = res_abstol*1e-3  # smaller than newton tolerance
       setTolerances(newton_data.ls, reltol, abstol, -1, -1)
+      krylov_reltol0 = reltol  # do this so the call to setTolerances below
+                               # does not reset the tolerance
+      # enable globalization if required
+      opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
@@ -211,8 +223,13 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       end
     end
 
+    # calculate the PC and LO if needed
+    doRecalculation(recalc_policy, iter, newton_data.ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+
     # do corrector steps
     newton_data.res_reltol = homotopy_tol
+    # reset tolerances in case newton is doing inexact-NK and thus has changed
+    # the tolerances
     setTolerances(newton_data.ls, krylov_reltol0, -1, -1, -1)
     newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
                 rhs_vec, ctx_residual)
@@ -221,6 +238,8 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     for i=1:length(eqn.q)
       delta_q[i] = eqn.q_vec[i] - q_vec0[i]
     end
+    #TODO: compute SBP L2 norm?
+    delta = calcNorm(eqn, delta_q)
     delta = calcEuclidianNorm(mesh.comm, delta_q)
     if iter == 2
       delta_max = delta
@@ -236,24 +255,25 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
       # calculate tangent vector dH/dq * t = dH/dLambda
       @mpi_master println(BSTDOUT, "solving for tangent vector")
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+#      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
-#      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
       tsolve = @elapsed linearSolve(ls, dHdLambda_real, tan_vec)
       eqn.params.time.t_solve += tsolve
-#      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
 
       # normalize tangent vector
-      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
+      tan_norm = calcNorm(eqn, tan_vec)
+#      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
       tan_norm = sqrt(tan_norm*tan_norm + 1)
-#      tan_norm = sqrt(dot(tan_vec, tan_vec) + 1)  # + 1 ?
       scale!(tan_vec, 1/tan_norm)
 
       psi = psi_max
       if iter > 1
-        tan_term = dot(tan_vec_1, tan_vec)
-        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
-        tan_norm_term = (1/tan_norm)*(1/tan_norm_1) 
+        # compute phi = acos(tangent_i_1 dot tangent_i)
+        # however, use the L2 norm for the q part of the tangent vector
+#        tan_term = dot(tan_vec_1, tan_vec)
+        tan_term = calcL2InnerProduct(eqn, tan_vec_1, tan_vec)
+#        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
+        tan_norm_term = (1/tan_norm)*(1/tan_norm_1)
         arg = tan_term + tan_norm_term
         arg = clamp(arg, -1.0, 1.0)
         psi = acos( arg )
@@ -264,7 +284,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       tan_norm_1 = tan_norm
 
       # calculate step size
-      fac = max(psi/psi_max, delta/delta_max)
+      fac = max(psi/psi_max, sqrt(delta/delta_max))
       h /= fac
 
       # take predictor step
@@ -273,7 +293,21 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
         eqn.q_vec[i] += tan_vec[i]
       end
 
+#      prev_lambda = lambda
+#      lambda_final_step = 0.05  # maximum size of final step in lambda
       lambda = max(lambda_min, lambda - h)
+      if lambda < lambda_cutoff
+
+        # if this is the final step to lambda = 0, and the step is too large,
+        # force an intermediate step
+        # use 2 * lambda_final_step as heuristic for "too big"
+ #       if prev_lambda - lambda_min > 2*lambda_final_step
+ #         println(BSTDOUT, "limiting size of final step")
+ #         lambda = lambda_min + lambda_final_step
+ #       else  # otherwise set lambda to zero
+          lambda = 0.0
+#        end
+      end
       if !(typeof(pc) <: PCNone)
         pc.lambda = lambda
       end
@@ -304,6 +338,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     tmp = res_norm/res_norm_0
     println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
+
+  # reset options dictionary
+  opts["newton_globalize_euler"] = orig_newton_globalize_euler
 
   free(newton_data)
 #  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)

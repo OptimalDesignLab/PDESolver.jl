@@ -22,7 +22,9 @@
    * res_abstol: nonlinear residual absolute tolerance
    * step_tol: step norm tolerance
    * itermax: maximum number of newton iterations
+   * use_inexact_nk: true if inexact-NK should be used, false otherwise
    * krylov_gamma: parameter used by inexact newton-krylov
+   * recalc_policy: a [`RecalculationPolicy`](@ref).
    * ls: a [`LinearSolver`](@ref)
    * fconv: convergence.dat file handle (or DevNull if not used)
    * verbose: how much logging/output to do
@@ -40,8 +42,6 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
   myrank::Int
   commsize::Int
   itr::Int  # newton iteration number
-
-  #TODO: add newton tolerances here, remove them as keyword args to newtonInner
 
   # working variables
   res_norm_i::Float64  # current step residual norm
@@ -61,8 +61,10 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
   itermax::Int
 
   # inexact Newton-Krylov parameters
+  use_inexact_nk::Bool
   krylov_gamma::Float64  # update parameter for krylov tolerance
 
+  recalc_policy::RecalculationPolicy
   ls::Tsolver
   res_0::Array{PetscScalar, 1}
   delta_q_vec::Array{PetscScalar, 1}
@@ -94,7 +96,10 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
   step_tol = opts["step_tol"]
   itermax = opts["itermax"]
 
+  use_inexact_nk = opts["use_inexact_nk"]
   krylov_gamma = opts["krylov_gamma"]
+
+  recalc_policy = getRecalculationPolicy(opts, "newton")
 
   # temporary vectors
   res_0 = zeros(PetscScalar, mesh.numDof)  # function evaluated at u0
@@ -116,7 +121,8 @@ function NewtonData{Tsol, Tres}(mesh, sbp,
                     res_norm_i, res_norm_i_1, step_norm_i, step_norm_i_1,
                     res_norm_rel, set_rel_norm, step_fac,
                     res_reltol, res_abstol, step_tol, itermax,
-                    krylov_gamma, ls, res_0, delta_q_vec, fconv, verbose)
+                    use_inexact_nk, krylov_gamma, recalc_policy, ls, res_0,
+                    delta_q_vec, fconv, verbose)
 end
 
 include("residual_evaluation.jl")  # some functions for residual evaluation
@@ -180,6 +186,7 @@ function reinitNewtonData(newton_data::NewtonData)
   newton_data.step_norm_i = 0
   newton_data.step_norm_i_1 = 0
   newton_data.step_fac = 1.0
+  resetRecalculationPolicy(newton_data.recalc_policy)
 
   return nothing
 end
@@ -314,14 +321,14 @@ function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
 
 
   pc_inner = PetscMatPC(mesh, sbp, eqn, opts)
-    res_norm_i = 0.0
-    res_norm_i_1 = 0.0
-    if opts["newton_globalize_euler"]
-      tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-    else
-      tau_l = opts["euler_tau"]
-      tau_vec = []
-    end
+  res_norm_i = 0.0
+  res_norm_i_1 = 0.0
+  if opts["setup_globalize_euler"]
+    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
+  else
+    tau_l = opts["euler_tau"]
+    tau_vec = []
+  end
 
 
   return NewtonMatPC(pc_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
@@ -331,7 +338,7 @@ function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-  physicsJac(mesh, sbp, eqn, opts. pc.A, ctx_residual, t)
+  physicsJac(mesh, sbp, eqn, opts, getBasePC(pc).A, ctx_residual, t)
 
   if opts["newton_globalize_euler"]
     # TODO: updating the Euler parameter here is potentially wrong if we
@@ -369,7 +376,7 @@ function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
   lo_inner = DenseLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
@@ -399,7 +406,7 @@ function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
@@ -430,7 +437,7 @@ function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
 
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]
@@ -469,7 +476,7 @@ function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   lo_inner = PetscMatFreeLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
-  if opts["newton_globalize_euler"]
+  if opts["setup_globalize_euler"]
     tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
   else
     tau_l = opts["euler_tau"]

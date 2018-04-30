@@ -7,7 +7,7 @@ where input_file_name.jl is in your current directory.
 
 
 # The following keys are used for the options dictionary in the input file,
-  and do not have default values, so the user must specify them if needed
+#  and do not have default values, so the user must specify them if needed
 
 "physics" : which physics to run, ASCIIString, must match the name each
             physics module uses to register itself with the PDESolver module
@@ -37,6 +37,7 @@ where input_file_name.jl is in your current directory.
 "operator_type2": like "operator_type", but for the staggered grid, (String),
                   default "SBPNone"
 
+`itermax`: see below
 
 # time stepping options
 "real_time" : have time marching scheme advance real time instead of pseudo-time,
@@ -331,11 +332,23 @@ Note that any values associated with these options are shared with the regular
                     if steady newton, 4 otherwise (ie. when Newton is used by
                     another method in NonlinearSolvers).  When 4 or less,
                     Newton does not call majorIterationCallback
+"use_exact_nk": use inexact Newton-Krylov (dynamic updating of linear solve
+                relative tolerance), (Bool), default true for run type 5, 
+                false otherwise.
+"krylov_gamma"  : parameter for updating krylov_reltol, (Float64), default 2.0
 
 # Homotopy options
+"homotopy_recalculation_policy": jacobian recalculation policy for homotopy,
+                                 (ASCIIString), default "RecalculateNever"
 "homotopy_addBoundaryIntegrals": add boundary term to homotopy, (Bool), default
                                  false (the boundary terms slow convergence
                                  in some cases)
+"homotopy_globalize_euler": use the method described by "newton_globalize_euler"
+                            on the final step of homotopy (when lambda == 0),
+                            (Bool), default false
+# Crank-Nicolson options
+"CN_recalculation_policy": jacbian recalculation policy for CN, (ASCIIString),
+                           default "RecalculateNever"
 
 # majorIterationCallback options
 "callback_write_qvec": write eqn.q_vec to a file named 
@@ -352,7 +365,6 @@ Note that any values associated with these options are shared with the regular
 "krylov_dtol"  : relative residual tolerance for detecting divergence,
                  (Float64), default 1e5
 "krylov_itermax"  : maximum number of krylov iterations, (Int), default 1000
-"krylov_gamma"  : parameter for updating krylov_reltol, (Float64), default 2.0
 
 
 
@@ -406,6 +418,8 @@ Note that any values associated with these options are shared with the regular
                        acts on the same faces as the boundary functional.
 "objective_bcs": boundary conditions the objective functional is defined on
                  (ie. BC1, BC2, etc.), (Array{Int, 1})
+"force_mesh_complex": if true, forces Tmsh to be Complex128 even if it would
+                      not otherwise be, (Bool), default false
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved

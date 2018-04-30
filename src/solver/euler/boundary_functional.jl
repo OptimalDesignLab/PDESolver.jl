@@ -37,7 +37,6 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 
   # Calculate functional over edges
-  #TODO: have this return the value, get rid of functionalData.val field
   val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
   return val
@@ -196,6 +195,7 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
         phys_nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
+
         calcBoundaryFunctionalIntegrand(eqn.params, q, aux_vars, phys_nrm,
                                         node_info, functionalData, b_integrand_ji)
       end  # End for j = 1:mesh.sbpface.numnodes
@@ -264,8 +264,10 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
         phys_nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
         b_integrand_ji = sview(boundary_integrand,:,j,i)
+
         calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
                                         node_info, functionalData, b_integrand_ji)
+
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
@@ -302,6 +304,20 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     return functionalData.drag_val
   end
 end
+
+function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
+                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             opts, functionalData::LiftCoefficient)
+
+  val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData.lift)
+  fac = 0.5*eqn.params.rho_free*eqn.params.Ma*eqn.params.Ma
+
+  functionalData.val = val/fac
+
+  return functionalData.val
+end
+
+
 
 @doc """
 ### EulerEquationMod.calcBndryFunctional_revm

@@ -79,6 +79,7 @@ type parameters as the EulerEquation object, so it can be used for dispatch.
 
 import PDESolver.evalResidual
 
+
 @doc """
 ### EulerEquationMod.evalResidual
 
@@ -110,8 +111,6 @@ import PDESolver.evalResidual
 function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t=0.0)
 
-#  println("\n----- entered evalResidual -----")
-
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
@@ -139,7 +138,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #   println("boundary integral @time printed above")
   end
 
-
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
 #    println("stabilizing @time printed above")
@@ -149,6 +147,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalFaceIntegrals(mesh, sbp, eqn, opts)
 #    println("face integral @time printed above")
   end
+
+
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
@@ -162,7 +162,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   if opts["use_Minv"]
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
-
+  
   return nothing
 end  # end evalResidual
 
@@ -256,7 +256,12 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     vals = real(eqn.res_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     fname = string("residual_", itr)
+    println(BSTDOUT, "writing files ", fname)
+    println(BSTDOUT, "res_norm of vals = ", calcNorm(eqn, vals, strongres=true))
+    println(BSTDOUT, "res_norm of res_vec = ", calcNorm(eqn, eqn.res_vec, strongres=true))
     writeVisFiles(mesh, fname)
+    writedlm(string(fname, ".dat"), vals)
+    writedlm("Minv.dat", real(eqn.Minv))
 
 
 #=
@@ -277,6 +282,33 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   end
 
   #=
+  # compute norms of individual components, both max and L2
+  max_vars = zeros(Tres, mesh.numDofPerNode)
+  L2_vars = zeros(Tres, mesh.numDofPerNode)
+
+  for i=1:mesh.numDofPerNode:mesh.numDof
+    for j=1:mesh.numDofPerNode
+      val = eqn.res_vec[i + j - 1]
+
+      if abs(val) > max_vars[j]
+        max_vars[j] = abs(val)
+      end
+
+      L2_vars[j] += eqn.M[i + j - 1]*val*val
+    end
+  end
+
+  
+  # don't forget the square root
+  for j=1:mesh.numDofPerNode
+    L2_vars[j] = sqrt(L2_vars[j])
+    println("var $i: max residual = ", max_vars[j], ", L2 residual = ", L2_vars[j])
+  end
+  =#
+
+
+
+  #=
   # compute max residual of rho and E
   max_rho = 0.0
   max_E = 0.0
@@ -293,8 +325,8 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
   end
 
   println(BSTDOUT, "iteration", itr, " Res[Rho] = ", max_rho, " Res[E] = ", max_E)
-
   =#
+  
     # add an option on control this or something.  Large blocks of commented
     # out code are bad
 #=
@@ -472,6 +504,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #  println("eqn.q[:, :, 10180] = \n", eqn.q[:, :, 10180])
 #  println("coords = \n", mesh.coords[:, :, 10180])
 
+#=
   # replace abnormally small density values with element average
   # this is a really terrible idea
   q_tmp = zeros(Tsol, mesh.numDofPerNode)
@@ -494,7 +527,7 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       end
     end
   end
-
+=#
 
   # apply filtering to input
   if eqn.params.use_filter
@@ -509,13 +542,13 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #  println("  getAuxVars @time printed above")
 
   if opts["check_density"]
-    checkDensity(eqn)
+    checkDensity(eqn, mesh)
 #    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
 #    throw(ErrorException("I'm done"))
-    checkPressure(eqn)
+    checkPressure(eqn, mesh)
 #    println("  checkPressure @time printed above")
   end
 
@@ -581,11 +614,12 @@ end # end function dataPrep
 
   Arguments:
     * EulerData
+    * mesh
 
   This is a mid level function.
 """->
 # mid level function
-function checkDensity{Tsol}(eqn::EulerData{Tsol})
+function checkDensity{Tsol}(eqn::EulerData{Tsol}, mesh)
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -593,10 +627,20 @@ q_cons = zeros(Tsol, ndof)  # conservative variables
 for i=1:numel
   for j=1:nnodes
     convertToConservative(eqn.params, sview(eqn.q, :, j, i), q_cons)
+
+    if real(q_cons[1]) <= 0.0
+      println(STDERR, "Negative density at element ", i, ", node ", j)
+      println(STDERR, "Coordinates = ", mesh.coords[:, j, i])
+      println(STDERR, "q = ", q_cons)
+      error("Negative density detected")
+    end
+
+    #=
     if real(q_cons[1]) < 0.0
       println("q_conservative = ", q_cons)
     end
     @assert( real(q_cons[1]) > 0.0, "element $i, node $j. Density < 0")
+    =#
   end
 end
 
@@ -614,10 +658,11 @@ end
 
   Arguments:
     * EulerData
+    * mesh
 
   This is a mid level function
 """->
-function checkPressure(eqn::EulerData)
+function checkPressure(eqn::EulerData, mesh)
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -629,7 +674,14 @@ for i=1:numel
     q = sview(eqn.q, :, j, i)
     aux_vars = sview(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
-    @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
+    if real(press) <= 0.0
+      println(STDERR, "Negative pressure at element ", i, ", node ", j)
+      println(STDERR, "Coordinates = ", mesh.coords[:, j, i])
+      println(STDERR, "q = ", q)
+      println(STDERR, "press = ", press)
+      error("Negative pressure detected")
+    end
+#    @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
   end
 end
 

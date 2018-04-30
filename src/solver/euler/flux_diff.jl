@@ -185,6 +185,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
     for k=1:mesh.numNodesPerFace
       qL_k = ro_sview(q_faceL, :, k)
       qR_k = ro_sview(q_faceR, :, k)
+
       aux_vars = ro_sview(aux_vars_arr, :, k, j)
       nrm_xy = ro_sview(nrm_arr, :, k, j)
 #      flux_k = sview(flux_face, :, k)
