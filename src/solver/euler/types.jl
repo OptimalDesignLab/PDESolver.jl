@@ -976,7 +976,7 @@ end
 import PDESolver.updateMetricDependents
 
 function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
-                                 eqn::AbstractSolutionData, opts)
+                                 eqn::EulerData, opts)
 
   #TODO: don't reallocate the arrays, update in place
   eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
