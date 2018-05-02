@@ -2,12 +2,19 @@
 # conditions
 
 """
-  This dictionary maps physics module names to the module and the startup 
-  function for the module.  The fact that this dictionary exists is an
+  This dictionary maps physics module names to the module and functions needed
+  to start a simulation.  Specifically, the values in the dictionary are a
+  tuple of the form:
+
+  `(PhysicsModule, _createObjects, _checkOptions)`
+  
+  See [`register_physics`](@ref) for the meaning of each element of the tuple.
+
+  The fact that this dictionary exists is an
   implementation details, it should never be accessed directly.  Instead,
   the accessor functions below should be used.
 """
-global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function}}()
+global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function, Function}}()
 
 """
   This function registered a new physics module with the global list of all
@@ -18,11 +25,18 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function}}()
 
   Inputs:
 
-    modname:  an ASCIIString name for this entry in the list.  It is used
-              to retrieve the module and startup function in the 
-              retrieve_physics function. Typically the name is capitalized.
-    mod:  the Module itself
-    startup_func: the function for running the physics.  It must have signature
+    * modname:  an ASCIIString name for this entry in the list.  It is used
+                to retrieve the module and startup function in the 
+                retrieve_physics function. Typically the name is capitalized.
+    * mod:  the Module itself
+
+    * _createObjects: function that creates the mesh, sbp, eqn, and opts objects.
+    * _checkOptions: physics-specific function for supplying default options and
+                   checking options.  Note that most of the input option
+                   processing is done in [`read_input`](@ref Input.read_input),
+                   `_checkOptions` need only do the physics-specific part.
+                   This function must have signature `_checkOptions(opts::Dict)`.
+    * startup_func: the function for running the physics.  It must have signature
                   startup_func(fname::ASCIIString), where fname is the name of
                   an input file
 
@@ -30,7 +44,7 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function}}()
   
     none
 """
-function register_physics(modname::ASCIIString, mod::Module, startup_func::Function)
+function register_physics(modname::ASCIIString, mod::Module, _createObjects::Function, _checkOptions::Function)
 
   # check if this name is already used
   if haskey(PhysicsModDict, modname)
@@ -41,19 +55,26 @@ function register_physics(modname::ASCIIString, mod::Module, startup_func::Funct
   # check if the module or function is already registered
   for (key, val) in PhysicsModDict
     mod_i = val[1]
-    func_i = val[2]
+    _createObjects_i = val[2]
+    _checkOptions_i = val[3]
+
 
     if mod ==  mod_i
       throw(ErrorException("Physics module $mod is already registered to name $key"))
     end
 
-    if startup_func == func_i
-      throw(ErrorException("Startup function $startup_func is already registered to physics module $mod_i with name $key"))
+    if _createObjects == _createObjects_i
+      throw(ErrorException("_createObjects function $_createObjects is already registered to physics module $mod_i with name $key"))
     end
+
+    if _checkOptions == _checkOptions_i
+      throw(ErrorException("_checkOptions function $_checkOptions is already registered to physics module $mod_i with name $key"))
+    end
+ 
   end
 
   # if we get here, the registration is new
-  PhysicsModDict[modname] = (mod, startup_func)
+  PhysicsModDict[modname] = (mod, _createObjects, _checkOptions)
 
   return nothing
 end  # end function

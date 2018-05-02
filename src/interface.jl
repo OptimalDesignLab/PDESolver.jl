@@ -1,4 +1,6 @@
 # functions that each physics module must implement
+
+
 """
   This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)
   at some state q.  The state is stored in eqn.q, and eqn.res is populated with
@@ -206,3 +208,27 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+
+#TODO: ref createObjects
+"""
+  This function takes fully initialzed objects and solves the partial
+  differential equation.
+
+  Every physics should extend this function with a new method, specialzing the
+  `eqn` argument type.
+
+  **Inputs**
+  
+   * mesh: an AbstractMesh
+   * sbp: an SBP Operator
+   * eqn: an AbstractSolutionData
+   * opts: the options dictionary
+   * pmesh: mesh for preconditioning (optional)
+"""
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData,
+                  opts, pmesh::AbstractMesh=mesh)
+
+  error("Generic fallback for solvePDE() reaches: didi you forget to extend solvePDE with a new method for your AbstractSolutionData?")
+
+end
+

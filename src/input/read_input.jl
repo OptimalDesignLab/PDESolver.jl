@@ -578,6 +578,13 @@ end
 """
 function checkForIllegalOptions_pre(arg_dict)
 
+  if !haskey(arg_dict, "physics")
+    error("""the "physics" option must be specified""")
+  end
+
+  # try retrieving the physics to make sure it has been registered
+  retrieve_physics(arg_dict["physics"])
+
   # Ensure that jac-method is not specified
   if haskey(arg_dict, "jac_method")
     if arg_dict["run_type"] == 1
