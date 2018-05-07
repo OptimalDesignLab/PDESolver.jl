@@ -254,8 +254,8 @@ end
 
 
 """
-function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData,
-                  opts, pmesh::AbstractMesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+                  opts::Dict, pmesh::AbstractMesh=mesh)
 
   error("Generic fallback for solvePDE() reaches: didi you forget to extend solvePDE with a new method for your AbstractSolutionData?")
 

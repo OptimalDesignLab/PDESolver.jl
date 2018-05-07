@@ -9,7 +9,11 @@ export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
 export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
-       evalFunctional, evalFunctionalDeriv, updateMetricDependents
+       evalFunctional, evalFunctionalDeriv, updateMetricDependents,
+       solvePDE
+
+# from interface2.jl
+export createObjects
 
 # from startup_func
 export run_solver
@@ -74,6 +78,7 @@ using Input
 include("defs.jl")  # common definitions
 include("registration.jl")  # registering physics modules
 include("interface.jl")  # functions all physics modules need to implement
+include("interface2.jl") # functions physics modules don't have to implement
 include("startup_func.jl")  # unified solver invokation
 include("interactive.jl")
 # package code goes here

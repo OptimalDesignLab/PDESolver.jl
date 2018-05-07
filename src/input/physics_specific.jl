@@ -6,7 +6,7 @@
   Do not put functions into this dictionary directly, use the accessor
   function [`registerOptionsChecker`](@ref)
 """
-global const PhysicsOptionsFuncs{ASCIIString, Function}()
+global const PhysicsOptionsFuncs = Dict{ASCIIString, Function}()
 
 """
   API function for registering an options checking function for a given

@@ -37,7 +37,7 @@ function test_parallel_derivatives()
     # Check complete derivatives w.r.t alpha using finite difference
     pert = 1e-6
     eqn.params.aoa += pert
-    EulerEquationMod.solve_euler(mesh, sbp, eqn, opts, mesh)
+    solvePDE(mesh, sbp, eqn, opts, mesh)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
     lift_pert = objective.lift_val
     drag_pert = objective.drag_val

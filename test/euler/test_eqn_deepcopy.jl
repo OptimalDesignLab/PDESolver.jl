@@ -21,7 +21,7 @@ global const test_eqn_copy_inputfile = "input_vals_channel_dg.jl"
 
 function test_eqn_copy()
 
-  mesh, sbp, eqn, opts = run_euler(test_eqn_copy_inputfile)
+  mesh, sbp, eqn, opts = solvePDE(test_eqn_copy_inputfile)
 
   eqn_copy = eqn_deepcopy(mesh, sbp, eqn, opts)
 

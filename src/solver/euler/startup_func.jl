@@ -1,6 +1,6 @@
 # Description: startup function for solving an equation
 
-import solvePDE
+import PDESolver.solvePDE
 
 """
   This function invokes the solver for the Euler equations, using the

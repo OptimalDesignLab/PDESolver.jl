@@ -43,7 +43,7 @@ function test_parallel2()
     # test rk4
     cd ("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -54,7 +54,7 @@ function test_parallel2()
     # test staggered_parallel
     cd ("../staggered_parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../staggered_serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -67,7 +67,7 @@ function test_parallel2()
 
     cd ("./lserk/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -80,7 +80,7 @@ function test_parallel2()
     # test newton
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
@@ -114,7 +114,7 @@ function test_parallel_nopre()
     cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
 
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     res_orig = copy(eqn.res)
@@ -131,7 +131,7 @@ function test_parallel_nopre()
     # test_newton
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     fill!(eqn.res, 0.0)
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
@@ -158,7 +158,7 @@ function test_restart()
     # test rk4
     cd ("./rk4/parallel")
     ARGS[1] = "input_vals_restart"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -168,7 +168,7 @@ function test_restart()
 
     cd("../../lserk/parallel")
     ARGS[1] = "input_vals_restart"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -202,7 +202,7 @@ facts("----- Running Euler 2 process tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(EulerTests, run_euler, tags)
+  run_testlist(EulerTests, solvePDE, tags)
 end
 
 FactCheck.exitstatus()

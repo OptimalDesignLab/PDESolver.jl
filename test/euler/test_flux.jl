@@ -104,7 +104,7 @@ end
 """
 function test_flux_2d()
   ARGS[1] = "input_vals_channel_dg.jl"
-  mesh, sbp, eqn, opts = run_euler(ARGS[1])
+  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
   facts("----- Testing 2D Numerical Fluxes -----") do
  
@@ -354,7 +354,7 @@ end
 function test_flux_3d()
   # test 3D
   ARGS[1] = "input_vals_3d.jl"
-  mesh, sbp, eqn, opts = run_euler(ARGS[1])
+  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
   facts("----- testing 3D  Numerical Fluxes -----") do
 
     qL =  [1., 2, 3, 4, 15]
