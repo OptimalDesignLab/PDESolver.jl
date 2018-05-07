@@ -359,8 +359,6 @@ get!(arg_dict, "write_vorticity_vis", false)
 get!(arg_dict, "exact_visualization", false)
 get!(arg_dict, "write_res", false)
 get!(arg_dict, "output_freq", 1)
-#get!(arg_dict, "recalc_prec_freq", 1)
-assert( !haskey(arg_dict, "recalc_prec_freq"))
 get!(arg_dict, "jac_type", 2)
 get!(arg_dict, "use_jac_precond", false)
 get!(arg_dict, "res_abstol", 1e-6)
@@ -501,6 +499,9 @@ end
 # TODO; move these into physics module
 get!(arg_dict, "advection_velocity", [1.0, 1.0, 1.0])
 
+# get physics-specific options
+PhysicsOptionsFuncs[arg_dict["physics"]](arg_dict)
+
 checkForIllegalOptions_post(arg_dict)
 
 # write complete dictionary to file
@@ -509,23 +510,6 @@ commsize = MPI.Comm_size(MPI.COMM_WORLD)
 if myrank == 0
   fname = "arg_dict_output"
   make_input(arg_dict, fname)
-  #=
-  f = open(fname, "a+")
-
-  println(f, "arg_dict = Dict{Any, Any}(")
-  arg_keys = keys(arg_dict)
-
-
-  for key_i in arg_keys
-    show(f, key_i)
-    print(f, " => ")
-    show(f, arg_dict[key_i])
-    println(f, ",")
-  #  println(f, show(key_i), " => ", show(arg_dict[key_i]), ",")
-  end
-  println(f, ")")
-  close(f)
-  =#
 end
 # do some sanity checks here
 

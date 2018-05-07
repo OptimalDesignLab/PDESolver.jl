@@ -209,13 +209,17 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
-#TODO: ref createObjects
 """
   This function takes fully initialzed objects and solves the partial
   differential equation.
 
   Every physics should extend this function with a new method, specialzing the
   `eqn` argument type.
+
+  Objects can be created with the [`createObjects`](@ref) function.
+
+  The functions in the `SolverCommon` module are helpful in writing
+  this function.
 
   **Inputs**
   
@@ -224,6 +228,31 @@ end
    * eqn: an AbstractSolutionData
    * opts: the options dictionary
    * pmesh: mesh for preconditioning (optional)
+
+  **Outputs**
+
+   * mesh
+   * sbp
+   * eqn: on exit, eqn.q_vec should have the converged solution in it.
+   * opts
+
+  **Options Keys**
+
+   * Relfunc_name: also writes vtk files called "solution_relfunc"
+                  if key not present, ignored
+                   TODO: fix that
+   * IC_name
+   * calc_error: also write vtk files called "solution_error"
+   * calc_trunc_error
+   * perturb_ic
+   * calc_dt
+
+    For options like calc_dt and Relfunc_name, it is very important that
+    the computed quantity be saved to the options dictionary for use later
+    in the code (ie. and not passed directly to another function).  The
+    code won't restart correctly if this happens.
+
+
 """
 function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData,
                   opts, pmesh::AbstractMesh=mesh)

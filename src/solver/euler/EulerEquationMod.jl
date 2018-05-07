@@ -229,7 +229,7 @@ include("homotopy_diff.jl")
 """
 global const PhysicsName = "Euler"
 
-register_physics(PhysicsName, EulerEquationMod, run_euler)
+register_physics(PhysicsName, EulerEquationMod, createObjects, checkOptions)
 
 
 end # end module
