@@ -123,6 +123,8 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
   return nothing
 end
 
+#TODO: createFunctional
+
 """
   High level function that evaluates the given functional
   This function is agnostic to the type of the functional being
@@ -257,7 +259,7 @@ end
 function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                   opts::Dict, pmesh::AbstractMesh=mesh)
 
-  error("Generic fallback for solvePDE() reaches: didi you forget to extend solvePDE with a new method for your AbstractSolutionData?")
+  error("Generic fallback for solvePDE() reaches: did you forget to extend solvePDE with a new method for your AbstractSolutionData?")
 
 end
 

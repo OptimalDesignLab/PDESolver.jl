@@ -5,7 +5,7 @@
 function test_parallel2_comm()
 
   ARGS[1] = "input_vals_parallel2.jl"
-  mesh, sbp, eqn, opts = run_advection(ARGS[1])
+  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
   myrank = mesh.myrank
   commsize = mesh.commsize

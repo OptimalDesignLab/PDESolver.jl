@@ -1,7 +1,7 @@
 # Description: startup function for solving an equation
 
 import PDESolver.solvePDE
-
+#=
 """
   This function invokes the solver for the Euler equations, using the
   specified input file
@@ -25,7 +25,7 @@ function run_euler(input_file::AbstractString)
 
   return mesh, sbp, eqn, opts
 end
-
+=#
 
 """
   This function creates and initializes the mesh, sbp, eqn, and opts objects

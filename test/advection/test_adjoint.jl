@@ -37,7 +37,7 @@ function test_adjoint()
   facts("--- Testing Boundary Functional & Adjoint Computation On DG Mesh ---") do
 
     ARGS[1] = "input_vals_functional_DG.jl"
-    mesh, sbp, eqn, opts, pmesh = AdvectionEquationMod.createObjects(ARGS[1])
+    mesh, sbp, eqn, opts, pmesh = createObjects(ARGS[1])
 
     @assert mesh.isDG == true
     @assert opts["jac_method"] == 2
@@ -64,8 +64,8 @@ function test_adjoint()
 
     end # End context("Checking Objective Functional Object Creation")
 
-    AdvectionEquationMod.solve_advection(mesh, sbp, eqn, opts, pmesh)
-    AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    solvePDE(mesh, sbp, eqn, opts, pmesh)
+    evalFunctional(mesh, sbp, eqn, opts, objective)
 
     context("Checking Functional Computation") do
 

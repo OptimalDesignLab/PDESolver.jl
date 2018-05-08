@@ -4,7 +4,7 @@ function test_linearsolver()
 
 
   fname = "input_vals_linear.jl"
-  mesh, sbp, eqn, opts = run_advection(fname)
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   facts("----- Testing Linear Solver -----") do
     test_dense(mesh, sbp, eqn, opts)

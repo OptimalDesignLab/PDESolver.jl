@@ -6,15 +6,15 @@ function test_CN_parallel()
     cd(dirname(@__FILE__))
     cd("./m1")
     ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("../m2")
     ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
 #    cd("../m3")
 #    ARGS[1] = "input_vals1.jl"
-#    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+#    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("..")
     include(joinpath(pwd(), "calc_line.jl"))
@@ -45,7 +45,7 @@ function test_CN_parallel()
 
   facts("---- Testing restart -----") do
     cd("./m1")
-    mesh, sbp, eqn, opts = run_advection("input_vals_restart")
+    mesh, sbp, eqn, opts = solvePDE("input_vals_restart")
     MPI.Barrier(mesh.comm)
     data = readdlm("error_calc.dat")
     datas = readdlm("../../crank_nicolson_PETSc_serial/m1/error_calc.dat")
@@ -73,7 +73,7 @@ function test_CN_parallel()
                                 "-ksp_gmres_restart" => "30",
                                 )
 
-    mesh, sbp, eqn, opts = run_advection("input_vals_restart")
+    mesh, sbp, eqn, opts = solvePDE("input_vals_restart")
     MPI.Barrier(mesh.comm)
     data = readdlm("error_calc.dat")
     datas = readdlm("../../crank_nicolson_PETSc_serial/m1/error_calc.dat")

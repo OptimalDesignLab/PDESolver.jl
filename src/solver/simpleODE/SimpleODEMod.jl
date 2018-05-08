@@ -33,7 +33,7 @@ include("eqn_deepcopy.jl")
 include("startup_func.jl")
 
 global const PhysicsName = "SimpleODE"
-register_physics(PhysicsName, SimpleODEMod, run_simpleode)
+register_physics(PhysicsName, SimpleODEMod, createObjects, checkOptions)
 
 @doc """
 ### SimpleODEMod.calcMassMatrix

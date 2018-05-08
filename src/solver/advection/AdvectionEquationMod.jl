@@ -57,6 +57,6 @@ include("startup_func.jl")  # function to invoke the solver
   This physics is named `Advection`
 """
 global const PhysicsName = "Advection"
-register_physics(PhysicsName, AdvectionEquationMod, run_advection)
+register_physics(PhysicsName, AdvectionEquationMod, createObjects, checkOptions)
 
 end # end module

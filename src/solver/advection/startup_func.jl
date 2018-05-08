@@ -1,3 +1,6 @@
+import PDESolver.solvePDE
+
+#=
 # Startup function for 1 dof advection equation
 """
   This function invokes the solver for the advection equation, using the
@@ -22,32 +25,28 @@ function run_advection(input_file::AbstractString)
 
   return mesh, sbp, eqn, opts
 end
-
+=#
 
 """
   This function creates and initializes the mesh, sbp, eqn, and opts objects
 
-  Inputs:
-    file_name: input file name
+  **Inputs**
 
-  Outputs:
-    mesh: an AbstractMesh.  The concrete type is determined by the options
+   * opts: options dictionary
+
+  **Outputs**
+
+   * mesh: an AbstractMesh.  The concrete type is determined by the options
           dictionary
-    sbp: an AbstractSBP.  The concrete type is determined by the options
+   * sbp: an AbstractSBP.  The concrete type is determined by the options
          dictionary
-    eqn: an EulerData object
-    opts: the options dictionary
-    pmesh: mesh used for preconditioning, can be same object as mesh
+   * eqn: an AdvectionData object
+   * opts: the options dictionary
+   * pmesh: mesh used for preconditioning, can be same object as mesh
 """
-function createObjects(input_file::AbstractString)
+function createObjects(opts::Dict)
 
-  #function runtest(flag::Int)
-  opts = read_input(input_file)  # read input file and gets default values
-  checkOptions(opts)  # physics specific options checking
-  # timestepping parameters
   dim = opts["dimensions"]
-  # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
-
   dofpernode = 1
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
@@ -83,15 +82,9 @@ end
     pmesh: mesh used for preconditioning, can be same object as mesh.
            default value of mesh
 
-  Options Keys:
-    calc_error
-    calc_trunc_error
-    calc_havg
-    perturb_ic
-    calc_dt
-    finalize_mpi
 """
-function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
+                  opts::Dict, pmesh::AbstractMesh=mesh)
 
   myrank = mesh.myrank
 

@@ -5,15 +5,15 @@ resize!(ARGS, 1)
 
 cd("./m1")
 ARGS[1] = "input_vals1.jl"
-mesh, sbp, eqn, opts = run_advection(ARGS[1])
+mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
 cd("../m2")
 ARGS[1] = "input_vals1.jl"
-mesh, sbp, eqn, opts = run_advection(ARGS[1])
+mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
 cd("../m3")
 ARGS[1] = "input_vals1.jl"
-mesh, sbp, eqn, opts = run_advection(ARGS[1])
+mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
 cd("..")
 include("calc_line.jl")

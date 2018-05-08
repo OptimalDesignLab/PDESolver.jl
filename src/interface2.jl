@@ -88,5 +88,6 @@ end
 function solvePDE(opts::Union{Dict, AbstractString})
 
   mesh, sbp, eqn, opts, pmesh = createObjects(opts)
+  println("typeof(eqn) = ", typeof(eqn))
   return solvePDE(mesh, sbp, eqn, opts, pmesh)
 end
