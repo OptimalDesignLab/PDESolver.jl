@@ -135,7 +135,7 @@ end
   * `sbp`  : Summation-by-parts operator
   * `eqn`  : AbstractSolutionData object
   * `opts` : Options dictionary
-  * `functional_name`: the name of the functional (in [`FunctionalDict`](@ref)
+  * `functional_name`: the name of the functional
   * `functional_bcs`: the boundary condition numbers the functional is
                       computed on.
 

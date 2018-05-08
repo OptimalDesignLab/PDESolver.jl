@@ -132,7 +132,7 @@ and [`Utils.assembleSolution`](@ref).
 `res_vec`: similar to `q_vec`.  Unlike `q_vec` there are functions to perform an
            additive reduction (basically a "gather") of `res` to `res_vec`.  
            For continuous Galerkin discretizations, the corresponding "scatter"
-           (ie. `res_vec` -> res`) may not exist.
+           (ie. `res_vec` -> `res`) may not exist.
 
 `res_edge`: a 4 dimensional array sometimes used for edge-based data structure.
             This feature does not work.  This array must exist and should be
@@ -683,7 +683,7 @@ The state of the solver is determined entirely by the state of the objects that
 are passed around.
 
 
-##Variable Naming Conventions
+## Variable Naming Conventions
 In an attempt to make code more uniform and readable, certain variable names are
 reserved for certain uses.
 
