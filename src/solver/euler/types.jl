@@ -329,6 +329,13 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     cv = R/gamma_1
 
     Ma = opts[ "Ma"]
+    if opts["perturb_Ma"] == true
+      # pert = complex(0, 1e-20)
+      Ma_pert = opts["perturb_Ma_magnitude"]
+      pert = complex(0, Ma_pert)
+      Ma += pert
+    end
+
     Re = opts[ "Re"]
     aoa = opts["aoa"]*pi/180      # This conversion was formerly done in read_input.jl,
                                   #   but that resulted in converting every time there 

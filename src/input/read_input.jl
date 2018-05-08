@@ -429,9 +429,10 @@ get!(arg_dict, "functional_error", false)
 get!(arg_dict, "functional_error_outfname", "functional_error")
 get!(arg_dict, "analytical_functional_val", 0.0)
 
-if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
-  error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
-end
+# Direct sensitivity of drag wrt Ma options
+get!(arg_dict, "perturb_Ma", false)
+get!(arg_dict, "perturb_Ma_magnitude", 0.0)
+
 
 # Adjoint computation options
 get!(arg_dict, "need_adjoint", false)
@@ -640,6 +641,19 @@ end
 
   if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
     error("cannot use volume preconditioner with any method except CN")
+  end
+
+  # Direct sensitivity of drag wrt Ma checks
+  if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
+    error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
+  end
+  if arg_dict["perturb_Ma"] == true && arg_dict["write_drag"] == false
+    error(" Options error: perturb_Ma is true, but this is only implemented in the \n
+            context of direct sensitivity of Cd wrt Ma, and write_drag == false.")
+  end
+  if arg_dict["perturb_Ma"] == true && arg_dict["perturb_Ma_magnitude"] == 0.0
+    error(" Options error: perturb_Ma is true, but the option for setting the perturbation \n
+            magnitude, perturb_Ma_magnitude is unset or set to 0.0.")
   end
 
 

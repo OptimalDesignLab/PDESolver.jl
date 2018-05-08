@@ -105,10 +105,25 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
   istart = chkpointdata.i
 
+  #------------------------------------------------------------------------------
+  # direct sensitivity of Cd wrt M : setup
+  term23 = 0.0
+  Ma_pert = opts["perturb_Ma_magnitude"]
+
+  # Initialize quadrature weight for trapezoidal rule
+  #   This will be adjusted within the loop for the first & final time steps
+  quad_weight = delta_t
+
+  #------------------------------------------------------------------------------
+
   flush(BSTDOUT)
-  #-----------------------------------------------------
+  #------------------------------------------------------------------------------
   # Main timestepping loop
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
+
+    if i == istart || i == (t_steps + 1)
+      quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
+    end
 
     t = (i-2)*delta_t
 
@@ -149,7 +164,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
  
     #--------------------------------------------------------------------------
     # callback and logging
-    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
+    timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT) # dirsens note: here is where drag is written
 
     # logging
     @mpi_master if i % 1 == 0
@@ -210,7 +225,62 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
     end  # end loop over stages
 
+    #------------------------------------------------------------------------------
+    # direct sensitivity of Cd wrt M : calculation each time step
+
+    # v is the direct sensitivity, du/dM
+    # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
+    v_vec = zeros(q_vec)      # direct sensitivity vector
+    for v_ix = 1:length(v_vec)
+      v_vec[v_ix] = imag(q_vec[v_ix])/norm(Ma_pert)
+    end
+
+    # term2 is the partial deriv of the functional wrt the state: dCd/du
+    #=
+    disassembleSolution(mesh, sbp, eqn, opts, q, q_vec)     # shouldn't be necessary in DG, but just double checking
+    term2 = zeros(q)
+    calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, term2)    # term2 is func_deriv_arr
+    =#
+
+    # TODO: need mesh, functionalData
+    #   mesh: easy pack into ctx
+    #   objective: figure out this; it's created every evalResidual call otherwise. Maybe call it again? So
+    #               a new objective would be created every time step
+
+    # new method: get dCd/du analytically
+    # eqn: dCd/du = 4*D/(u^3*rho_inf*c)
+    # rho_free: eqn.params.rho_free
+    # chord: 1.0      DOUBLE CHECK THIS
+    # figure out how to get drag. it's being calculated within majorIterationCallback
+    # how to get u: for each dof: q[2]/q[1] - x component, q[3]/q[1] - y component
+    # wait---- this is u_inf?
+    #   if so, Ma = u/a, so u = Ma*a, so u_inf = a_free*Ma
+
+    # (mesh, sbp, eqn) = ctx...
+    mesh = ctx[1]   # fastest way to grab mesh from ctx?
+
+    Ma_unpert = real(eqn.params.Ma)
+    u_inf = eqn.params.a_free*Ma_unpert
+    chord = 1.0
+    rho_inf = eqn.params.rho_free
+
+    objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+
+    term2 = (4*drag) / (u_inf^3 * rho_inf * chord)
+
+    # do the dot product of the two terms, and save
+    for v_ix = 1:length(v_vec)
+      term23 += quad_weight * term2[v_ix] * v_vec[v_ix]     # this accumulation occurs across all dofs and all time steps.
+    end
+
   end  # end loop over timesteps
+
+
+
+
+  #------------------------------------------------------------------------------
+  # LSERK end of time step stuff
 
   # final update
   t += delta_t
@@ -218,6 +288,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   @mpi_master println("---------------------------------------------")
   @mpi_master println("   LSERK: final time step reached. t = $t")
   @mpi_master println("---------------------------------------------")
+
+  @mpi_master f_term23 = open("term23.dat", "w")
+  @mpi_master println(f_term23, i, " ", term23)
+  @mpi_master flush(f_term23)
+  @mpi_master close(f_term23)
+  @mpi_master f_Ma = open("Ma.dat", "w")
+  @mpi_master println(f_Ma, i, " ", real(eqn.params.Ma))
+  @mpi_master close(f_Na)
 
 
   if myrank == 0

@@ -406,6 +406,11 @@ Note that any values associated with these options are shared with the regular
 "objective_bcs": boundary conditions the objective functional is defined on
                  (ie. BC1, BC2, etc.), (Array{Int, 1})
 
+# Direct sensitivity of drag wrt Ma options
+"perturb_Ma": perturb Mach number using complex step
+"perturb_Ma_magnitude": magnitude of the complex perturbation to be applied to Ma. This is a real value, example: 1e-20.
+                        It gets complexified later, in types.jl.
+
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved
                   1: u = x^2 + t^4
