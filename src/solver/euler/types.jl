@@ -154,7 +154,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   gamma::Float64 # ratio of specific heats
   gamma_1::Float64 # = gamma - 1
 
-  Ma::Float64  # free stream Mach number
+  Ma::Tsol  # free stream Mach number
   Re::Float64  # free stream Reynolds number
 
   # these quantities are dimensional (ie. used for non-dimensionalization)
@@ -162,7 +162,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   rho_free::Float64  # free stream density
   p_free::Float64  # free stream pressure
   T_free::Float64 # free stream temperature
-  E_free::Float64 # free stream energy (4th conservative variable)
+  E_free::Tsol # free stream energy (4th conservative variable)
   a_free::Float64 # free stream speed of sound (computed from p_free and rho_free)
 
   edgestab_gamma::Float64  # edge stabilization parameter
