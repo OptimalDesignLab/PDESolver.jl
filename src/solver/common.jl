@@ -101,10 +101,17 @@ function getDataTypes(opts::Dict)
   calc_jac_explicit = opts["calc_jac_explicit"]
 
   if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
-    Tmsh = Float64
-    Tsbp = Float64
-    Tsol = Float64
-    Tres = Float64
+    if opts["perturb_Ma"]
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Complex128
+      Tres = Complex128
+    else
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Float64
+      Tres = Float64
+    end
   elseif flag == 2  # calculate dR/du
     Tmsh = Float64
     Tsbp = Float64

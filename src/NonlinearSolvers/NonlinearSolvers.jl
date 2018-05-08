@@ -15,6 +15,9 @@ using Utils
 using SummationByParts
 using LinearSolvers
 
+# for perturb_Ma
+using EulerEquationMod    # this will throw an error with any other physics!
+
 import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
                       applyLinearOperator, applyLinearOperatorTranspose,
                       needParallelData

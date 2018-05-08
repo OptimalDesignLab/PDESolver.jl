@@ -253,7 +253,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       #               a new objective would be created every time step
 
       # new method: get dCd/du analytically
-      # eqn: dCd/du = 4*D/(u^3*rho_inf*c)
+      # eqn: dCd/du = 4*D/(u_inf^3*rho_inf*c)
       # rho_free: eqn.params.rho_free
       # chord: 1.0      DOUBLE CHECK THIS
       # figure out how to get drag. it's being calculated within majorIterationCallback
@@ -266,6 +266,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       sbp = ctx[2]   # fastest way to grab mesh from ctx?
       eqn = ctx[3]   # fastest way to grab mesh from ctx?
 
+      #=
+      # this is wrong. u_inf is not correct.
       Ma_unpert = real(eqn.params.Ma)
       u_inf = eqn.params.a_free*Ma_unpert
       chord = 1.0
@@ -275,6 +277,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
 
       term2 = (4*drag) / (u_inf^3 * rho_inf * chord)
+      =#
 
       # do the dot product of the two terms, and save
       for v_ix = 1:length(v_vec)

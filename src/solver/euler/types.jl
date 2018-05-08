@@ -503,6 +503,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   # this is the ParamType object that uses the same variables as
   # the EulerData_ object
+
   params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}
   comm::MPI.Comm
   commsize::Int
