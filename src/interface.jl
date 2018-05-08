@@ -123,7 +123,40 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
   return nothing
 end
 
-#TODO: createFunctional
+"""
+  Creates a functional object.
+
+  Each physics modules should extend this function with a new method,
+  specializing the `eqn` argument.
+
+  **Inputs**
+
+  * `mesh` : Abstract PUMI mesh
+  * `sbp`  : Summation-by-parts operator
+  * `eqn`  : AbstractSolutionData object
+  * `opts` : Options dictionary
+  * `functional_name`: the name of the functional (in [`FunctionalDict`](@ref)
+  * `functional_bcs`: the boundary condition numbers the functional is
+                      computed on.
+
+  **Outputs**
+
+   * functional: an [`AbstractFunctional`](@ref).  Usually an
+                 [`AbstractIntegralFunctional`](@ref), although this is not
+                 required.
+"""
+function createFunctional{I<:Integer}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                    eqn::AbstractSolutionData, opts,
+                                    functional_name::AbstractString,
+                                    functional_bcs::Vector{I})
+
+
+
+  error("generic fallback for createFunctional() reached.  Did you forget to extend createFunctional() with a new method for your AbstractSolutionData?")
+
+end
+
+
 
 """
   High level function that evaluates the given functional

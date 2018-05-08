@@ -28,4 +28,4 @@ change log:
 change argument order for common_funcs.jl, BCs, flux functions to be
 (params, q, coords, nrm, flux)
 
-
+  5/7/18 - JC: change initialization so solvePDE is extended by each physics

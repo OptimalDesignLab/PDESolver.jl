@@ -137,8 +137,8 @@ function test_adjoint_parallel()
     # include(STARTUP_PATH)
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
-    objective = AdvectionEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-    AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    objective = createFunctional(mesh, sbp, eqn, opts, 1)
+    evalFunctional(mesh, sbp, eqn, opts, objective)
     pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
     ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 

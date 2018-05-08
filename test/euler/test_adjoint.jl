@@ -24,7 +24,7 @@ function test_adjoint()
 
     context("Checking Functional Object Creation") do
 
-      lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts,
+      lift = createFunctional(mesh, sbp, eqn, opts,
                                                    opts["num_functionals"])
       @fact lift.bcnums --> [4]
       @fact lift.ndof --> 2
@@ -36,7 +36,7 @@ function test_adjoint()
 
     end # End context("Checking Functional Object Creation")
 
-    drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    drag = createFunctional(mesh, sbp, eqn, opts, "drag", [4])
 
     context("Checking Objective Functional Object Creation") do
 
@@ -93,10 +93,10 @@ function test_adjoint()
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_airfoil.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    include("../../src/solver/euler/startup.jl")  #TODO: use solvePDE
+#    include("../../src/solver/euler/startup.jl")  #TODO: use solvePDE
     @assert opts["aoa"] == 2.0
 
-    lift = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    lift = createFunctional(mesh, sbp, eqn, opts, 1)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
 
     context("Checking functional derivative w.r.t angle of attack") do

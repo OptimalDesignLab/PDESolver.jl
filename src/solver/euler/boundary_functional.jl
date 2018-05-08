@@ -4,7 +4,7 @@ import PDESolver.evalFunctional
 @doc """
 ### EulerEquationMod.evalFunctional
 
-Hight level function that evaluates all the functionals specified over
+High level function that evaluates all the functionals specified over
 various edges. This function is agnostic to the type of the functional being
 computed and calls a mid level functional-type specific function for the actual
 evaluation.

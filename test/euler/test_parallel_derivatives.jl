@@ -7,8 +7,9 @@ function test_parallel_derivatives()
     ARGS[1] = "./input_vals_airfoil_parallel.jl"
 
     # Get the adjoint vector
-    include("../../src/solver/euler/startup.jl")
-    objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+#    include("../../src/solver/euler/startup.jl")
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    objective = createFunctional(mesh, sbp, eqn, opts, 1)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
     context("Checking functional J and ∂J/∂aoa in parallel") do

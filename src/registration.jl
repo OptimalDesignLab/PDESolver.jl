@@ -25,12 +25,12 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function, Function
 
   **Inputs**
 
-    * modname:  an ASCIIString name for this entry in the list.  It is used
+   * modname:  an ASCIIString name for this entry in the list.  It is used
                 to retrieve the module and startup function in the 
                 retrieve_physics function. Typically the name is capitalized.
-    * mod:  the Module itself
+   * mod:  the Module itself
 
-    * _createObjects: function that creates the mesh, sbp, eqn, and opts
+   * _createObjects: function that creates the mesh, sbp, eqn, and opts
                       objects. Must have a method with signature
                       `_createObjects(opt::Dict)`
                       
@@ -39,7 +39,7 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function, Function
                       `_createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)`
                       to create a new equation object.  See [`createObjects`](@ref).
       
-    * _checkOptions: physics-specific function for supplying default options and
+   * _checkOptions: physics-specific function for supplying default options and
                    checking options.  Note that most of the input option
                    processing is done in [`read_input`](@ref Input.read_input),
                    `_checkOptions` need only do the physics-specific part.
@@ -91,16 +91,16 @@ end  # end function
 """
   Retrieves the physics module and function registered using [`register_physics`](@ref)
 
-  Input:
+  **Input**
   
-    modname: an ASCIIString containing the name of the module supplied to
+   * modname: an ASCIIString containing the name of the module supplied to
              `register_physics`
 
-  Outputs:
+  **Outputs**
 
-    mod: the physics Module
-    _createObjects: function that creates the solver objects
-    _checkOptions: the options checking function
+   * mod: the physics Module
+   * _createObjects: function that creates the solver objects
+   * _checkOptions: the options checking function
 """
 function retrieve_physics(modname::ASCIIString)
 

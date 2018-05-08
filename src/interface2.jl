@@ -88,6 +88,38 @@ end
 function solvePDE(opts::Union{Dict, AbstractString})
 
   mesh, sbp, eqn, opts, pmesh = createObjects(opts)
-  println("typeof(eqn) = ", typeof(eqn))
   return solvePDE(mesh, sbp, eqn, opts, pmesh)
 end
+
+"""
+  Creates a functional object, using the data described in the options
+  dictionary
+
+  **Arguments**
+
+  * `mesh` : Abstract PUMI mesh
+  * `sbp`  : Summation-by-parts operator
+  * `eqn`  : AbstractSolutionData
+  * `opts` : Options dictionary
+  * `functional_number` : which functional (of the functionals described
+                          in the options dictionary) to create
+
+
+  **Outputs**
+
+   same as other method
+
+"""
+function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
+                                    eqn::AbstractSolutionData, opts,
+                                    functional_number::Int=1)
+
+  dict_val = string("functional_name", functional_number)
+  key = string("functional_bcs", functional_number)
+  functional_name = opts[dict_val]
+  functional_bcs = opts[key]
+
+  return createFunctional(mesh, sbp, eqn, opts, functional_name, functional_bcs)
+end
+
+
