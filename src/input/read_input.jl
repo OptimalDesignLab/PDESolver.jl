@@ -603,9 +603,12 @@ function checkForIllegalOptions_post(arg_dict)
 
   jac_type = arg_dict["jac_type"]
   if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
-  error("Invalid jacobian type for parallel run")
-end
+    error("Invalid jacobian type for parallel run")
+  end
 
+  if ! issubtype(typeof(arg_dict["dimensions"]), Integer)
+    error("dimension input value is not an Integer")
+  end
 
   if !arg_dict["use_DG"]
     keys = ["precompute_volume_flux", "precompute_face_flux", "precompute_boundary_flux"]
