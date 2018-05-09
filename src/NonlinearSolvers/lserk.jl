@@ -126,6 +126,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     if opts["perturb_Ma"]
       if i == istart || i == (t_steps + 1)
         quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
+      else
+        quad_weight = delta_t                 # all other timesteps
       end
     end   # end if opts["perturb_Ma"]
 
@@ -310,6 +312,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     @mpi_master close(f_term23)
     @mpi_master f_Ma = open("Ma.dat", "w")
     @mpi_master println(f_Ma, i, " ", real(eqn.params.Ma))
+    @mpi_master close(f_Na)
+    @mpi_master f_Ma = open("delta_t.dat", "w")
+    @mpi_master println(f_Ma, i, " ", real(delta_t))
     @mpi_master close(f_Na)
   end   # end if opts["perturb_Ma"]
 
