@@ -439,11 +439,162 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{2},
   qg[3] -= ny*normal_momentum
 
   calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
-  val[:] = euler_flux[2:3]
+  val[:] = euler_flux[2:3]      # grab just the momentum terms
 
   return nothing
 end # End calcBoundaryFunctionalIntegrand 2D
 
+@doc """
+### EulerEquationMod.calcBoundaryFunctionalIntegrand_diff
+
+Forward mode derivative of calcBoundaryFunctionalIntegrand.
+Calculates the derivative of the integrand a boundary functional
+wrt the dof's of q. This occurs at a surface SBP node.
+
+**Arguments**
+
+*  `params` : eqn.params object
+*  `q` : Nodal solution
+*  `aux_vars` : Auxiliary variables
+*  `nrm` : Face normal vector in the physical space
+*  `node_info` : Information about the SBP node
+*  `objective` : Functional data type
+*  `val_diff` : Function output value. Must be of size (2,4),
+                for 2 components of integrand by four dofs of q that the
+                derivative is taken with respect to.
+
+"""->
+function calcBoundaryFunctionalIntegrand_diff{Tsol, Tres, Tmsh}(params::ParamType{2},
+                                         q::AbstractArray{Tsol,1},
+                                         aux_vars::AbstractArray{Tres, 1},
+                                         nrm::AbstractArray{Tmsh},
+                                         node_info::AbstractArray{Int},
+                                         objective::BoundaryForceData,
+                                         val_diff::AbstractArray{Tsol,2})
+
+  # forward mode differentiation for dJdu
+  # Note: this happens at a node.
+
+  @assert( length(q) == 4 )
+
+  euler_flux = params.flux_vals1 # Reuse existing memory
+
+  fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
+  # normalize normal vector
+  nx = nrm[1]*fac
+  ny = nrm[2]*fac
+
+  normal_momentum = nx*q[2] + ny*q[3]
+
+  normal_momentum_dot1 = 0.0  # wrt q1
+  normal_momentum_dot2 = nx   # wrt q2
+  normal_momentum_dot3 = ny   # wrt q3
+  normal_momentum_dot4 = 0.0  # wrt q4
+
+  qg = params.qg
+  qg_temp = zeros(params.qg)
+  qg_temp_diff = zeros(Tsol, length(qg), length(qg))
+  for i=1:length(q)
+    qg_temp[i] = q[i]
+
+    qg_temp_diff[i,i] = 1.0
+  end
+
+  qg[1] = qg_temp[1]
+  qg[2] = qg_temp[2] - nx*normal_momentum
+  qg[3] = qg_temp[3] - ny*normal_momentum
+  qg[4] = qg_temp[4]
+
+  qg_diff = zeros(Tsol, length(qg), length(qg))
+
+  # This 4x4 array is d(qg)/d(q)
+  # 1st dimension is qg element
+  # 2nd dimension is the q element that deriv is with respect to
+  # Note: this is skipping the use of qg_temp_diff. It's like d(gqt2)/d(q3) = qg_temp_diff[2,3], if you wanted to use it
+  qg_diff[1,1] = 1.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q1) , and d(qgt1)/dq1 = 1.0    (note, qgt1 is qg_temp[1])
+  qg_diff[1,2] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q2) , and d(qgt1)/dq2 = 0.0    (note, qgt1 is qg_temp[1])
+  qg_diff[1,3] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q3) , and d(qgt1)/dq3 = 0.0    (note, qgt1 is qg_temp[1])
+  qg_diff[1,4] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q4) , and d(qgt1)/dq4 = 0.0    (note, qgt1 is qg_temp[1])
+
+  qg_diff[2,1] = 0.0      # = d(qg2)/d(qgt2)*d(qgt2)/d(q1) , and d(qgt2)/d(q1) = 0.0
+  qg_diff[2,2] = 1.0 - normal_momentum_dot2*nx
+                          # = d(qg2)/d(qgt2)*d(qgt2)/d(q2) - d(nx*normmom)/d(q2)
+                          # = d(qg2)/d(qgt2)*d(qgt2)/d(q2) - [ d(nx)/d(q2)*(normmom) + d(normmom)/d(q2)*(nx) ]
+                          #    and d(qg2)/d(qgt2) = 1.0
+                          #    and d(qgt2)/d(q2) = 1.0
+                          #    and d(nx)/d(q2) = 0.0   (from def)
+                          #    and d(normmom)/d(q2) = normal_momentum_dot2
+  qg_diff[2,3] = 0.0 - normal_momentum_dot3*nx
+                          # = d(qg2)/d(qgt2)*d(qgt2)/d(q3) - d(nx*normmom)/d(q3)
+                          # = d(qg2)/d(qgt2)*d(qgt2)/d(q3) - [ d(nx)/d(q3)*(normmom) + d(normmom)/d(q3)*(nx) ]
+                          #    and d(qgt2)/d(q3) = 0.0
+                          #    and d(nx)/d(q3) = 0.0   (from def)
+                          #    and d(normmom)/d(q3) = normal_momentum_dot3
+  qg_diff[2,4] = 0.0      # = d(qg2)/d(qgt2)*d(qgt2)/d(q4) , and d(qgt2)/d(q4) = 0.0
+
+  qg_diff[3,1] = 0.0      # = d(qg3)/d(qgt3)*d(qgt3)/d(q1) , and d(qgt3)/d(q1) = 0.0
+  qg_diff[3,2] = 0.0 - normal_momentum_dot2*ny
+                          # = d(qg3)/d(qgt3)*d(qgt3)/d(q2) - d(ny*normmom)/d(q2)
+                          # = d(qg3)/d(qgt3)*d(qgt3)/d(q2) - [ d(ny)/d(q2)*(normmom) + d(normmom)/d(q2)*(nx) ]
+                          #    and d(qgt3)/d(q2) = 0.0
+                          #    and d(ny)/d(q2) = 0.0   (from def)
+                          #    and d(normmom)/d(q2) = normal_momentum_dot2
+  qg_diff[3,3] = 1.0 - normal_momentum_dot3*ny
+                          # = d(qg3)/d(qgt3)*d(qgt3)/d(q3) - d(nx*normmom)/d(q3)
+                          # = d(qg3)/d(qgt3)*d(qgt3)/d(q3) - [ d(ny)/d(q3)*(normmom) + d(normmom)/d(q3)*(ny) ]
+                          #    and d(qg3)/d(qgt3) = 1.0
+                          #    and d(qgt3)/d(q3) = 1.0
+                          #    and d(ny)/d(q3) = 0.0   (from def)
+                          #    and d(normmom)/d(q3) = normal_momentum_dot3
+  qg_diff[3,4] = 0.0      # = d(qg3)/d(qgt3)*d(qgt3)/d(q4) , and d(qgt3)/d(q4) = 0.0
+
+  qg_diff[4,1] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q1) , and d(qgt4)/dq1 = 0.0
+  qg_diff[4,2] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q2) , and d(qgt4)/dq2 = 0.0
+  qg_diff[4,3] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q3) , and d(qgt4)/dq3 = 0.0
+  qg_diff[4,4] = 1.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q4) , and d(qgt4)/dq4 = 1.0
+
+  # euler_flux_Jac is the derivative of the euler flux wrt qg. so 4x4
+  euler_flux_Jac = zeros(Tres, length(euler_flux), length(euler_flux))
+  calcEulerFlux_diff(params, qg, aux_vars, nrm, euler_flux_Jac)
+
+  # val[:] = euler_flux[2:3]
+
+  # val_diff is passed in. Size: zeros(Tres, 2, 4)
+
+  # EF: Euler Flux
+  dEF_dq1 = euler_flux_Jac*qg_diff[:,1]       # deriv wrt q1, so qg_diff is indexed as row 1
+                                              # dEF_dq1 is a 4x1, 4 elements for each of the EF, 1 for d wrt q1
+
+  val_diff[:,1] = dEF_dq1[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q1
+
+  dEF_dq2 = euler_flux_Jac*qg_diff[:,2]       # deriv wrt q2, so qg_diff is indexed as row 2
+                                              # dEF_dq2 is a 4x1, 4 elements for each of the EF, 1 for d wrt q2
+
+  val_diff[:,2] = dEF_dq2[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q2
+
+  dEF_dq3 = euler_flux_Jac*qg_diff[:,3]       # deriv wrt q3, so qg_diff is indexed as row 3
+                                              # dEF_dq3 is a 4x1, 4 elements for each of the EF, 1 for d wrt q3
+
+  val_diff[:,3] = dEF_dq3[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q3
+
+  dEF_dq4 = euler_flux_Jac*qg_diff[:,4]       # deriv wrt q4, so qg_diff is indexed as row 4
+                                              # dEF_dq4 is a 4x1, 4 elements for each of the EF, 1 for d wrt q4
+
+  val_diff[:,4] = dEF_dq4[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q4
+
+  # Summary:
+  #   val_diff[1,2] contains d/dq2 of val1, the x-component of the boundary functional
+  #   val_diff[2,2] contains d/dq2 of val2, the y-component of the boundary functional
+  #   val_diff[1,3] contains d/dq3 of val1, the x-component of the boundary functional
+  #   val_diff[2,3] contains d/dq3 of val2, the y-component of the boundary functional
+  #   same for val_diff[:,1] and val_diff[:,4] for d/dq1 and d/dq4 respectively, but those are zero
+
+  return nothing
+
+end
+
+
+# 3D version
 function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{3},
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},
@@ -474,6 +625,7 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{3},
   return nothing
 end # End calcBoundaryFunctionalIntegrand 3D
 
+# MassFlow version
 function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{2},
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},

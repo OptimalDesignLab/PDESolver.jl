@@ -242,10 +242,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       # term2 is the partial deriv of the functional wrt the state: dCd/du
       #=
-      disassembleSolution(mesh, sbp, eqn, opts, q, q_vec)     # shouldn't be necessary in DG, but just double checking
+      # this is what needs to be adapted for fwd mode
       term2 = zeros(q)
       calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, term2)    # term2 is func_deriv_arr
       =#
+
+      term2 = zeros(q)
+      calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, term2)    # term2 is func_deriv_arr
 
       # TODO: need mesh, functionalData
       #   mesh: easy pack into ctx

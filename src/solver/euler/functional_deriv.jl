@@ -96,10 +96,11 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
         x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
         nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
         node_info = Int[itr,j,i]
-        integrand_i = sview(integrand, :, j, global_facenum)
+        integrand_i = sview(integrand, :, j, global_facenum)      # size: (4,)
 
         calcIntegrandDeriv(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info,
                            functionalData)
+        # println(" integrand_i: ", integrand_i)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
@@ -132,15 +133,15 @@ degrees of freedom at the node.
 *  None
 
 """->
-
-function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+function calcIntegrandDeriv_CS{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
                             aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
                             integrand_deriv::AbstractArray{Tsol, 1}, node_info,
                             functionalData::BoundaryForceData{Tsol,:lift})
 
-  pert = complex(0, 1e-20)
+  # This is the old complex stepped version. Retained for testing.
   aoa = params.aoa
+  pert = complex(0, 1e-20)
   momentum = zeros(Tsol,2)
 
   for i = 1:length(q)
@@ -154,15 +155,16 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
   return nothing
 end
 
-function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+function calcIntegrandDeriv_CS{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
                             aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
                             integrand_deriv::AbstractArray{Tsol, 1}, node_info,
                             functionalData::BoundaryForceData{Tsol,:drag})
 
-  pert = complex(0, 1e-20)
+  # This is the old complex stepped version. Retained for testing.
   aoa = params.aoa
   momentum = zeros(Tsol,2)
+  pert = complex(0, 1e-20)
 
   for i = 1:length(q)
     q[i] += pert
@@ -175,12 +177,83 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
   return nothing
 end
 
+
+
+function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+                            q::AbstractArray{Tsol,1},
+                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::BoundaryForceData{Tsol,:lift})
+
+  aoa = params.aoa
+
+  # error("This has not been tested against complex step")
+
+  # 2x4 array: dmomentum/dq
+  # 1st dimension: component of momentum. x & y
+  # 2nd dimension: dof of q that derivative is with respect to
+  # example: momentum_diff[2,3] is d(ymom)/d(q3)
+  momentum_diff = zeros(Tsol,2,4)
+
+  # this should only populate cols 2 & 3 of momentum diff, since d/dq1 & d/dq4 are 0
+  calcBoundaryFunctionalIntegrand_diff(params, q, aux_vars, nrm, node_info, functionalData, momentum_diff)
+
+
+  integrand_deriv[1] = -momentum_diff[1,1]*sin(aoa) + momentum_diff[2,1]*cos(aoa)     #???
+  integrand_deriv[2] = -momentum_diff[1,2]*sin(aoa) + momentum_diff[2,2]*cos(aoa)      # momx-deriv of integrand
+  integrand_deriv[3] = -momentum_diff[1,3]*sin(aoa) + momentum_diff[2,3]*cos(aoa)      # momy-deriv of integrand
+  integrand_deriv[4] = -momentum_diff[1,4]*sin(aoa) + momentum_diff[2,4]*cos(aoa)     #???
+
+  return nothing
+end
+
+function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+                            q::AbstractArray{Tsol,1},
+                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::BoundaryForceData{Tsol,:drag})
+
+  aoa = params.aoa
+
+  # 2x4 array: dmomentum/dq
+  # 1st dimension: component of momentum. x & y
+  # 2nd dimension: dof of q that derivative is with respect to
+  # example: momentum_diff[2,3] is d(ymom)/d(q3)
+  momentum_diff = zeros(Tsol,2,4)
+
+  # this should only populate cols 2 & 3 of momentum diff, since d/dq1 & d/dq4 are 0
+  calcBoundaryFunctionalIntegrand_diff(params, q, aux_vars, nrm, node_info, functionalData, momentum_diff)
+
+  integrand_deriv[1] = momentum_diff[1,1]*cos(aoa) + momentum_diff[2,1]*sin(aoa)      # ???
+  integrand_deriv[2] = momentum_diff[1,2]*cos(aoa) + momentum_diff[2,2]*sin(aoa)      # momx-deriv of integrand
+  integrand_deriv[3] = momentum_diff[1,3]*cos(aoa) + momentum_diff[2,3]*sin(aoa)      # momy-deriv of integrand
+  integrand_deriv[4] = momentum_diff[1,4]*cos(aoa) + momentum_diff[2,4]*sin(aoa)      # ???
+
+  return nothing
+end
+
+function calcIntegrandDeriv_CS{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
+                            q::AbstractArray{Tsol,1},
+                            aux_vars::AbstractArray{Tres, 1},
+                            nrm::AbstractArray{Tmsh},
+                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+                            functionalData::MassFlowData)
+
+  calcIntegrandDeriv(opts, params, q, aux_vars, nrm, integrand_deriv, node_info, functionalData)
+end
+
 function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
                             aux_vars::AbstractArray{Tres, 1},
                             nrm::AbstractArray{Tmsh},
                             integrand_deriv::AbstractArray{Tsol, 1}, node_info,
                             functionalData::MassFlowData)
+
+  if opts["perturb_Ma"]
+    error("perturb_Ma is set, but attempting calcIntegrandDeriv with a complex step.
+           You must change this function (mass flow calcIntegrandDeriv) before trying
+           to use perturb_Ma.")
+  end
 
   node_info = [1, 2, 3]
   h = 1e-20
