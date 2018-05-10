@@ -651,12 +651,12 @@ function checkForIllegalOptions_post(arg_dict)
     error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
   end
   if arg_dict["perturb_Ma"] == true && arg_dict["write_drag"] == false
-    error(" Options error: perturb_Ma is true, but this is only implemented in the \n
+    error("\n Options error: perturb_Ma is true, but this is only implemented in the
             context of direct sensitivity of Cd wrt Ma, and write_drag == false.")
   end
   if arg_dict["perturb_Ma"] == true && arg_dict["perturb_Ma_magnitude"] == 0.0
-    error(" Options error: perturb_Ma is true, but the option for setting the perturbation \n
-            magnitude, perturb_Ma_magnitude is unset or set to 0.0.")
+    error("\n Options error: perturb_Ma is true, but the option for setting the perturbation
+            magnitude, perturb_Ma_magnitude, is unset or set to 0.0.")
   end
 
 

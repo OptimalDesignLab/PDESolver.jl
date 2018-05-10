@@ -109,9 +109,15 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   # direct sensitivity of Cd wrt M : setup
   if opts["perturb_Ma"]
     term23 = 0.0
-    Ma_pert = opts["perturb_Ma_magnitude"]
+    Ma_pert_mag = opts["perturb_Ma_magnitude"]
+    Ma_pert = complex(0, Ma_pert_mag)
     quad_weight = delta_t
+
   end   # end if opts["perturb_Ma"]
+  # (mesh, sbp, eqn) = ctx...
+  mesh = ctx[1]   # fastest way to grab mesh from ctx?
+  sbp = ctx[2]   # fastest way to grab mesh from ctx?
+  eqn = ctx[3]   # fastest way to grab mesh from ctx?
 
   # Initialize quadrature weight for trapezoidal rule
   #   This will be adjusted within the loop for the first & final time steps
@@ -124,7 +130,15 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     if opts["perturb_Ma"]
-      if i == istart || i == (t_steps + 1)
+      finaltime_setby_tmax = (t_steps + 1)
+      finaltime_setby_itermax = itermax
+      if finaltime_setby_tmax <= finaltime_setby_itermax
+        finaltime = finaltime_setby_tmax
+      else
+        finaltime = finaltime_setby_itermax
+      end
+
+      if i == istart || i == finaltime
         quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
       else
         quad_weight = delta_t                 # all other timesteps
@@ -239,8 +253,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
       v_vec = zeros(q_vec)      # direct sensitivity vector
       for v_ix = 1:length(v_vec)
-        v_vec[v_ix] = imag(q_vec[v_ix])/norm(Ma_pert)
+        v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
       end
+      println(" norm(real(q_vec)): ", norm(real(q_vec)))
+      println(" norm(imag(q_vec)): ", norm(imag(q_vec)))
 
       # term2 is the partial deriv of the functional wrt the state: dCd/du
       #=
@@ -249,8 +265,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, term2)    # term2 is func_deriv_arr
       =#
 
-      term2 = zeros(q)
-      calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, term2)    # term2 is func_deriv_arr
+      term2 = zeros(eqn.q)
+      objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+      EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
       # TODO: need mesh, functionalData
       #   mesh: easy pack into ctx
@@ -266,10 +284,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       # wait---- this is u_inf?
       #   if so, Ma = u/a, so u = Ma*a, so u_inf = a_free*Ma
 
-      # (mesh, sbp, eqn) = ctx...
-      mesh = ctx[1]   # fastest way to grab mesh from ctx?
-      sbp = ctx[2]   # fastest way to grab mesh from ctx?
-      eqn = ctx[3]   # fastest way to grab mesh from ctx?
 
       #=
       # this is wrong. u_inf is not correct.
@@ -285,9 +299,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       =#
 
       # do the dot product of the two terms, and save
+      term2_vec = reshape(term2, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl, 1)
+      println(" length(term2_vec): ", length(term2_vec))
+      println(" length(term2): ", length(term2))
+      println(" size(term2): ", size(term2))
       for v_ix = 1:length(v_vec)
         term23 += quad_weight * term2[v_ix] * v_vec[v_ix]     # this accumulation occurs across all dofs and all time steps.
       end
+      println("   i: ", i,"  quad_weight: ", quad_weight,"  norm(term2_vec): ",norm(term2_vec),"  norm(v_vec): ", norm(v_vec),"  Ma_pert: ", Ma_pert)
     end   # end if opts["perturb_Ma"]
 
   end  # end loop over timesteps
@@ -307,16 +326,16 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
   if opts["perturb_Ma"]
     @mpi_master f_term23 = open("term23.dat", "w")
-    @mpi_master println(f_term23, i, " ", term23)
+    @mpi_master println(f_term23, term23)
     @mpi_master flush(f_term23)
     @mpi_master close(f_term23)
-    @mpi_master f_Ma = open("Ma.dat", "w")
-    @mpi_master println(f_Ma, i, " ", real(eqn.params.Ma))
-    @mpi_master close(f_Na)
-    @mpi_master f_Ma = open("delta_t.dat", "w")
-    @mpi_master println(f_Ma, i, " ", real(delta_t))
-    @mpi_master close(f_Na)
   end   # end if opts["perturb_Ma"]
+  @mpi_master f_Ma = open("Ma.dat", "w")
+  @mpi_master println(f_Ma, real(eqn.params.Ma))
+  @mpi_master close(f_Ma)
+  @mpi_master f_dt = open("delta_t.dat", "w")
+  @mpi_master println(f_dt, real(delta_t))
+  @mpi_master close(f_dt)
 
 
   if myrank == 0
