@@ -127,18 +127,19 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   flush(BSTDOUT)
   #------------------------------------------------------------------------------
   # Main timestepping loop
+  finaliter = 0
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     if opts["perturb_Ma"]
-      finaltime_setby_tmax = (t_steps + 1)
-      finaltime_setby_itermax = itermax
-      if finaltime_setby_tmax <= finaltime_setby_itermax
-        finaltime = finaltime_setby_tmax
+      finaliter_setby_tmax = (t_steps + 1)
+      finaliter_setby_itermax = itermax
+      if finaliter_setby_tmax <= finaliter_setby_itermax
+        finaliter = finaliter_setby_tmax
       else
-        finaltime = finaltime_setby_itermax
+        finaliter = finaliter_setby_itermax
       end
 
-      if i == istart || i == finaltime
+      if i == istart || i == finaliter
         quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
       else
         quad_weight = delta_t                 # all other timesteps
@@ -179,7 +180,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     pre_func(ctx..., opts)
     if real_time treal = t end
-    timing.t_func += @elapsed f(ctx..., opts, treal)
+    timing.t_func += @elapsed f(ctx..., opts, treal)            # evalResidual call
     sol_norm = post_func(ctx..., opts)
  
     #--------------------------------------------------------------------------
@@ -215,6 +216,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
+    if false  ######################################
 
     #--------------------------------------------------------------------------
     # remaining stages
@@ -233,7 +235,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       if real_time
         treal = t + c_coeffs[stage]*delta_t 
       end
-      timing.t_func += @elapsed f( ctx..., opts, treal)
+      timing.t_func += @elapsed f( ctx..., opts, treal)           # evalResidual call
       post_func(ctx..., opts, calc_norm=false)
 
       # update
@@ -244,6 +246,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         q_vec[j] += fac2*dq_vec[j]
       end
     end  # end loop over stages
+
+    end  ######################################
 
     #------------------------------------------------------------------------------
     # direct sensitivity of Cd wrt M : calculation each time step
@@ -266,47 +270,31 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       =#
 
       term2 = zeros(eqn.q)
+      # evalFunctional calls disassembleSolution, which puts q_vec into q
       objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
-      # TODO: need mesh, functionalData
-      #   mesh: easy pack into ctx
-      #   objective: figure out this; it's created every evalResidual call otherwise. Maybe call it again? So
-      #               a new objective would be created every time step
-
-      # new method: get dCd/du analytically
-      # eqn: dCd/du = 4*D/(u_inf^3*rho_inf*c)
-      # rho_free: eqn.params.rho_free
-      # chord: 1.0      DOUBLE CHECK THIS
-      # figure out how to get drag. it's being calculated within majorIterationCallback
-      # how to get u: for each dof: q[2]/q[1] - x component, q[3]/q[1] - y component
-      # wait---- this is u_inf?
-      #   if so, Ma = u/a, so u = Ma*a, so u_inf = a_free*Ma
-
-
-      #=
-      # this is wrong. u_inf is not correct.
-      Ma_unpert = real(eqn.params.Ma)
-      u_inf = eqn.params.a_free*Ma_unpert
-      chord = 1.0
-      rho_inf = eqn.params.rho_free
-
-      objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
-
-      term2 = (4*drag) / (u_inf^3 * rho_inf * chord)
-      =#
-
       # do the dot product of the two terms, and save
-      term2_vec = reshape(term2, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl, 1)
+      # term2_vec = reshape(term2, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl, 1)    # no difference btwn these
+      term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+      assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)
       println(" length(term2_vec): ", length(term2_vec))
       println(" length(term2): ", length(term2))
       println(" size(term2): ", size(term2))
+      new_contrib = 0.0
       for v_ix = 1:length(v_vec)
-        term23 += quad_weight * term2[v_ix] * v_vec[v_ix]     # this accumulation occurs across all dofs and all time steps.
+        new_contrib = quad_weight * term2[v_ix] * v_vec[v_ix]     # this accumulation occurs across all dofs and all time steps.
+        term23 += new_contrib
       end
-      println("   i: ", i,"  quad_weight: ", quad_weight,"  norm(term2_vec): ",norm(term2_vec),"  norm(v_vec): ", norm(v_vec),"  Ma_pert: ", Ma_pert)
+      println("   i: ", i,"  quad_weight: ", quad_weight,"  Ma_pert: ", Ma_pert)
+      println("   norm(term2_vec): ",norm(term2_vec),"  norm(v_vec): ", norm(v_vec))
+      println("   mean(term2_vec): ",mean(term2_vec),"  mean(v_vec): ", mean(v_vec))
+      println("   new_contrib: ", new_contrib)
+      # print out term23 here?
+
+
+
     end   # end if opts["perturb_Ma"]
 
   end  # end loop over timesteps
@@ -325,10 +313,34 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   @mpi_master println("---------------------------------------------")
 
   if opts["perturb_Ma"]
+
+    println(" eqn.params.Ma: ", eqn.params.Ma)
+    println(" Ma_pert: ", Ma_pert)
+    eqn.params.Ma -= Ma_pert      # need to remove perturbation now
+    println(" pert removed from Ma")
+    println(" eqn.params.Ma: ", eqn.params.Ma)
+
     @mpi_master f_term23 = open("term23.dat", "w")
     @mpi_master println(f_term23, term23)
     @mpi_master flush(f_term23)
     @mpi_master close(f_term23)
+
+    Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
+    total_dCddM = dCddM + term23
+    @mpi_master f_total_dCddM = open("total_dCddM.dat", "w")
+    @mpi_master println(f_total_dCddM, " dCd/dM: ", dCddM)
+    @mpi_master println(f_total_dCddM, " term23: ", term23)
+    @mpi_master println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
+    @mpi_master flush(f_total_dCddM)
+    @mpi_master close(f_total_dCddM)
+    #=
+    @mpi_master f_total_dCddM = open("total_dCddM.dat", "w")
+    @mpi_master println(f_total_dCddM, total_dCddM)
+    @mpi_master flush(f_total_dCddM)
+    @mpi_master close(f_total_dCddM)
+    =#
+
+
   end   # end if opts["perturb_Ma"]
   @mpi_master f_Ma = open("Ma.dat", "w")
   @mpi_master println(f_Ma, real(eqn.params.Ma))
@@ -336,6 +348,23 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   @mpi_master f_dt = open("delta_t.dat", "w")
   @mpi_master println(f_dt, real(delta_t))
   @mpi_master close(f_dt)
+  @mpi_master f_a_inf = open("a_inf.dat", "w")
+  @mpi_master println(f_a_inf, real(eqn.params.a_free))
+  @mpi_master close(f_a_inf)
+  @mpi_master f_rho_inf = open("rho_inf.dat", "w")
+  @mpi_master println(f_rho_inf, real(eqn.params.rho_free))
+  @mpi_master close(f_rho_inf)
+  println(" ")
+  println(" run parameters that were used:")
+  if opts["perturb_Ma"] 
+    println("    Ma: ", eqn.params.Ma + Ma_pert)
+  else
+    println("    Ma: ", eqn.params.Ma)
+  end
+  println("    delta_t: ", delta_t)
+  println("    a_inf: ", eqn.params.a_free)
+  println("    rho_inf: ", eqn.params.rho_free)
+  println(" ")
 
 
   if myrank == 0
@@ -363,4 +392,60 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
               real_time=real_time)
 
         return t
+end
+
+function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
+
+  dt = delta_t
+
+  Ma = eqn.params.Ma
+  data = readdlm("drag.dat")
+
+  maxiter = size(data, 1)
+  if maxiter > maxiter_nlsolver
+    error("You forgot to delete drag.dat, or there's some problem with finaliter")
+  end
+
+  iter = round(Int64, data[1:maxiter, 1])
+  drag = data[1:maxiter, 2]
+
+  iter = iter - 1     # because iter starts at 2
+
+  quad_weight = dt
+
+  drag_timeavg = 0.0
+  maxtime = dt*maxiter
+
+  println("Calculating time-averaged drag from drag.dat")
+
+  # trapezoid rule
+  for i = 1:maxiter
+    if (i == 1 || i == maxiter) 
+      quad_weight = dt/2.0
+    else
+      quad_weight = dt
+    end
+    if maxiter < 3        # if 1 or 2 timesteps, shift to regular rectangular rule
+      quad_weight = dt
+      println("small maxiter; quad_weight = dt")
+    end
+
+    drag_timeavg += quad_weight * drag[i]
+  end
+
+  drag_timeavg = drag_timeavg * 1.0/maxtime
+
+  println(" ")
+  println(" drag_timeavg: ", drag_timeavg)
+  println(" maxiter: ", maxiter)
+
+  Cd = drag_timeavg/(0.5*Ma^2)
+  println(" Cd = <D>/(0.5*M^2) = ", Cd)
+
+  dCddM = (-2.0*drag_timeavg)/(0.5*Ma^3)
+  println(" dCddM = (-2<D>)/(0.5*M^3) = ", dCddM)
+
+  return Cd, dCddM
+
+
 end

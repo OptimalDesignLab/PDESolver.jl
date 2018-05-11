@@ -232,6 +232,7 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
   return nothing
 end
 
+# forward mode not yet implemented for MassFlowData, so it's just left as complex step for now
 function calcIntegrandDeriv_CS{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             q::AbstractArray{Tsol,1},
                             aux_vars::AbstractArray{Tres, 1},
