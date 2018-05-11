@@ -110,7 +110,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   if opts["perturb_Ma"]
     term23 = 0.0
     Ma_pert_mag = opts["perturb_Ma_magnitude"]
+    println(" > assigning Ma_pert, locally. not changing eqn.params.Ma.")
     Ma_pert = complex(0, Ma_pert_mag)
+    println(" > assigning Ma_pert, locally. not changing eqn.params.Ma. -> DONE")
     quad_weight = delta_t
 
   end   # end if opts["perturb_Ma"]
@@ -128,6 +130,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   #------------------------------------------------------------------------------
   # Main timestepping loop
   finaliter = 0
+  @mpi_master f_Ma_atlserkstart = open("Ma_atlserkstart.dat", "w")
+  @mpi_master println(f_Ma_atlserkstart, eqn.params.Ma)
+  @mpi_master close(f_Ma_atlserkstart)
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     if opts["perturb_Ma"]
@@ -207,16 +212,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
-    if use_itermax && i > itermax
-      if myrank == 0
-        println(BSTDOUT, "breaking due to itermax")
-        close(f1)
-        flush(BSTDOUT)
-      end
-      break
-    end
 
-    if false  ######################################
+    # if false  ######################################
 
     #--------------------------------------------------------------------------
     # remaining stages
@@ -247,7 +244,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
     end  # end loop over stages
 
-    end  ######################################
+    # end  ######################################
 
     #------------------------------------------------------------------------------
     # direct sensitivity of Cd wrt M : calculation each time step
@@ -297,6 +294,19 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     end   # end if opts["perturb_Ma"]
 
+    # 201805
+    # moved after the q_vec update part of lserk - needed to handle itermax == 1 case. 
+    # -------------->>>>> move back after.
+    # needs to go after this check: println(BSTDOUT, "breaking due to res_tol, res norm = $sol_norm")
+    if use_itermax && i > itermax
+      if myrank == 0
+        println(BSTDOUT, "breaking due to itermax")
+        close(f1)
+        flush(BSTDOUT)
+      end
+      break
+    end
+
   end  # end loop over timesteps
 
 
@@ -325,6 +335,23 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     @mpi_master flush(f_term23)
     @mpi_master close(f_term23)
 
+    # D calculations
+    D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
+    total_dDdM = dDdM + term23
+    @mpi_master f_total_dDdM = open("total_dDdM.dat", "w")
+    @mpi_master println(f_total_dDdM, " dD/dM: ", dDdM)
+    @mpi_master println(f_total_dDdM, " term23: ", term23)
+    @mpi_master println(f_total_dDdM, " total dD/dM: ", total_dDdM)
+    @mpi_master flush(f_total_dDdM)
+    @mpi_master close(f_total_dDdM)
+    println(" ")
+    println(" dD/dM: ", dDdM)
+    println(" term23: ", term23)
+    println(" total dD/dM: ", total_dDdM)
+    println(" ")
+
+    # Cd calculations
+    #=
     Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
     total_dCddM = dCddM + term23
     @mpi_master f_total_dCddM = open("total_dCddM.dat", "w")
@@ -333,26 +360,20 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     @mpi_master println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
     @mpi_master flush(f_total_dCddM)
     @mpi_master close(f_total_dCddM)
-    #=
-    @mpi_master f_total_dCddM = open("total_dCddM.dat", "w")
-    @mpi_master println(f_total_dCddM, total_dCddM)
-    @mpi_master flush(f_total_dCddM)
-    @mpi_master close(f_total_dCddM)
     =#
-
 
   end   # end if opts["perturb_Ma"]
   @mpi_master f_Ma = open("Ma.dat", "w")
-  @mpi_master println(f_Ma, real(eqn.params.Ma))
+  @mpi_master println(f_Ma, eqn.params.Ma)
   @mpi_master close(f_Ma)
   @mpi_master f_dt = open("delta_t.dat", "w")
-  @mpi_master println(f_dt, real(delta_t))
+  @mpi_master println(f_dt, delta_t)
   @mpi_master close(f_dt)
   @mpi_master f_a_inf = open("a_inf.dat", "w")
-  @mpi_master println(f_a_inf, real(eqn.params.a_free))
+  @mpi_master println(f_a_inf, eqn.params.a_free)
   @mpi_master close(f_a_inf)
   @mpi_master f_rho_inf = open("rho_inf.dat", "w")
-  @mpi_master println(f_rho_inf, real(eqn.params.rho_free))
+  @mpi_master println(f_rho_inf, eqn.params.rho_free)
   @mpi_master close(f_rho_inf)
   println(" ")
   println(" run parameters that were used:")
@@ -439,6 +460,16 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
   println(" drag_timeavg: ", drag_timeavg)
   println(" maxiter: ", maxiter)
 
+  # D calculations (instead of Cd. trying as a debugging step)
+  D = drag_timeavg
+  println(" D = <D> = ", D)
+
+  dDdM = 0.0
+
+  return D, dDdM
+
+  # Cd calculations
+  #=
   Cd = drag_timeavg/(0.5*Ma^2)
   println(" Cd = <D>/(0.5*M^2) = ", Cd)
 
@@ -446,6 +477,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
   println(" dCddM = (-2<D>)/(0.5*M^3) = ", dCddM)
 
   return Cd, dCddM
+  =#
 
 
 end
