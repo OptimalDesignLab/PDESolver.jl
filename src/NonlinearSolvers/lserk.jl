@@ -149,6 +149,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       else
         quad_weight = delta_t                 # all other timesteps
       end
+
+      if finaliter < 3        # if 1 or 2 timesteps, shift to regular rectangular rule
+        quad_weight = delta_t
+        println("small maxiter; quad_weight = dt")
+      end
+
+      # quad_weight if maxiter == 1?
     end   # end if opts["perturb_Ma"]
 
     t = (i-2)*delta_t
@@ -187,7 +194,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)            # evalResidual call
     sol_norm = post_func(ctx..., opts)
- 
+
     #--------------------------------------------------------------------------
     # callback and logging
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT) # dirsens note: here is where drag is written
@@ -268,14 +275,20 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       term2 = zeros(eqn.q)
       # evalFunctional calls disassembleSolution, which puts q_vec into q
+      # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
       objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
-      EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+      # EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+      EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
       # do the dot product of the two terms, and save
       # term2_vec = reshape(term2, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl, 1)    # no difference btwn these
       term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
-      assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)
+      assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
+
+      # writedlm("term2_vec-DS.dat", term2_vec)
+      # writedlm("term2_vec-CS.dat", term2_vec)
+
       println(" length(term2_vec): ", length(term2_vec))
       println(" length(term2): ", length(term2))
       println(" size(term2): ", size(term2))
@@ -308,8 +321,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
   end  # end loop over timesteps
-
-
 
 
   #------------------------------------------------------------------------------

@@ -203,6 +203,8 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType2,
   # is the only contribution. That passed. Leaving this here for now though.
   # sol[2] = 0.5
   # sol[3] = 0.0
+  # sol[4] = real(sol[4])
+
 
   return nothing
 end

@@ -19,6 +19,7 @@
 function run_euler(input_file::AbstractString)
 
   mesh, sbp, eqn, opts, pmesh = createObjects(input_file)
+
   solve_euler(mesh, sbp, eqn, opts, pmesh)
 
   return mesh, sbp, eqn, opts

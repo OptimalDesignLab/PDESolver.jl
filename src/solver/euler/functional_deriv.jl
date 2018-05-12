@@ -98,9 +98,11 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
         node_info = Int[itr,j,i]
         integrand_i = sview(integrand, :, j, global_facenum)      # size: (4,)
 
-        calcIntegrandDeriv(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info,
-                           functionalData)
-        # println(" integrand_i: ", integrand_i)
+        calcIntegrandDeriv(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info, functionalData)
+
+        # for verifying calcIntegrandDeriv, CS methods are retained:
+        # calcIntegrandDeriv_CS(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info, functionalData)
+
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
