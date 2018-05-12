@@ -286,8 +286,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
       assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
 
-      # writedlm("term2_vec-DS.dat", term2_vec)
-      # writedlm("term2_vec-CS.dat", term2_vec)
 
       println(" length(term2_vec): ", length(term2_vec))
       println(" length(term2): ", length(term2))
@@ -302,6 +300,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       println("   mean(term2_vec): ",mean(term2_vec),"  mean(v_vec): ", mean(v_vec))
       println("   new_contrib: ", new_contrib)
       # print out term23 here?
+
+      #------------------------------------------------------------------------------
+      # writing all terms to disk
+      writedlm("DS-term2_vec.dat", term2_vec)
+      writedlm("DS-v_vec.dat", v_vec)
+      writedlm("DS-q_vec.dat", q_vec)
+      writedlm("DS-new_contrib.dat", new_contrib)
+      # writedlm("term2_vec-CS.dat", term2_vec)
 
 
 
@@ -341,7 +347,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     println(" pert removed from Ma")
     println(" eqn.params.Ma: ", eqn.params.Ma)
 
-    @mpi_master f_term23 = open("term23.dat", "w")
+    @mpi_master f_term23 = open("DS-term23.dat", "w")
     @mpi_master println(f_term23, term23)
     @mpi_master flush(f_term23)
     @mpi_master close(f_term23)
@@ -349,7 +355,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     # D calculations
     D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
     total_dDdM = dDdM + term23
-    @mpi_master f_total_dDdM = open("total_dDdM.dat", "w")
+    @mpi_master f_total_dDdM = open("DS-total_dDdM.dat", "w")
     @mpi_master println(f_total_dDdM, " dD/dM: ", dDdM)
     @mpi_master println(f_total_dDdM, " term23: ", term23)
     @mpi_master println(f_total_dDdM, " total dD/dM: ", total_dDdM)
@@ -374,7 +380,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     =#
 
   end   # end if opts["perturb_Ma"]
-  @mpi_master f_Ma = open("Ma.dat", "w")
+  @mpi_master f_Ma = open("DS-Ma.dat", "w")
   @mpi_master println(f_Ma, eqn.params.Ma)
   @mpi_master close(f_Ma)
   @mpi_master f_dt = open("delta_t.dat", "w")
