@@ -175,7 +175,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
 
     for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
-      q_vec[j] += fac*dq_vec[j]
+      q_vec[j] += dq_vec[j]
     end
 
     #--------------------------------------------------------------------------

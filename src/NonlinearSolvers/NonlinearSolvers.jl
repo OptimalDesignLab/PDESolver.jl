@@ -27,6 +27,9 @@ include("rk4.jl")
 include("lserk.jl")
   export lserk54
 
+include("explicit_euler.jl")
+  export explicit_euler
+
 include("preconditioning_types.jl")
 include("newton.jl")
 export getNewtonPCandLO
