@@ -100,7 +100,7 @@ function getDataTypes(opts::Dict)
 
   calc_jac_explicit = opts["calc_jac_explicit"]
 
-  if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
+  if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30 || flag == 90 # normal run
     if opts["perturb_Ma"]
       Tmsh = Float64
       Tsbp = Float64
@@ -560,6 +560,11 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
       println("Entering lserk54. Calling from call_nlsolver() in common.jl.")
       t = lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+
+    elseif flag == 90  # explicit euler
+
+      println("Entering explicit_euler. Calling from call_nlsolver() in common.jl.")
+      t = explicit_euler(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
 
     elseif flag == 40  # predictor-corrector newton

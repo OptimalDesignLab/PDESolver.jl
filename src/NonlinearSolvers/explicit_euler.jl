@@ -1,15 +1,11 @@
-# implementation of 5 stage, 4th order Low Storage Explicit Runge Kutta
-# from Carpenter and Kennedy's Fourth-Order 2N-Storage Runge Kutta Schemes
-# NASA Technical Memorandum 109112
 
-# this code borrows some infrastructure (pde_pre_func, pde_post_func) from
-# the classical rk4 file
+# this code borrows much of the infrastructure (pde_pre_func, pde_post_func) from
+# LSERK, and therefore the classical rk4 file
 # Also borrows the RK$CheckpointData
 
 
 """
-  This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
-  Carpenter and Kennedy
+  This function implements the explicit Euler. 
 
   Arguments:
     f: a function that evalutes du/dt = f(q, t)
@@ -35,31 +31,11 @@
   See the documentation for rk4.
 """
 
-function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
+function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
-
-  # LSERK coefficients
-  const a_coeffs = [0; 
-                    -567301805773.0/1357537059087.0; 
-                    -2404267990393.0/2016746695238.0; 
-                    -3550918686646.0/2091501179385.0; 
-                    -1275806237668.0/842570457699.0]
-
-  const b_coeffs = [1432997174477.0/9575080441755.0; 
-                    5161836677717.0/13612068292357.0; 
-                    1720146321549.0/2090206949498.0; 
-                    3134564353537.0/4481467310338.0; 
-                    2277821191437.0/14882151754819.0]
-
-  const c_coeffs = [0; 
-                    1432997174477/9575080441755; 
-                    2526269341429/6820363962896; 
-                    2006345519317/3224310063776; 
-                    2802321613138/2924317926251]
-
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 #  MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0
@@ -188,13 +164,19 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
 
     #--------------------------------------------------------------------------
-    # stage 1
-#    f(params, u, F_vals, t_i)
+    # single stage: q_{n+1} = q_{n} + dt*f(q_{n})
+
+    # evalResidual form: f(params, u, F_vals, t_i)
 
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)            # evalResidual call
     sol_norm = post_func(ctx..., opts)
+
+    for j=1:length(q_vec)
+      dq_vec[j] = delta_t*res_vec[j]
+      q_vec[j] += fac*dq_vec[j]
+    end
 
     #--------------------------------------------------------------------------
     # callback and logging
@@ -219,40 +201,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
       break
     end
-
-
-    # if false  ######################################
-
-    #--------------------------------------------------------------------------
-    # remaining stages
-
-    # stage 1 update
-
-    fac = b_coeffs[1]
-    for j=1:length(q_vec)
-      dq_vec[j] = delta_t*res_vec[j]
-      q_vec[j] += fac*dq_vec[j]
-    end
-
-    # loop over remaining stages
-    for stage=2:5
-      pre_func(ctx..., opts) 
-      if real_time
-        treal = t + c_coeffs[stage]*delta_t 
-      end
-      timing.t_func += @elapsed f( ctx..., opts, treal)           # evalResidual call
-      post_func(ctx..., opts, calc_norm=false)
-
-      # update
-      fac = a_coeffs[stage]
-      fac2 = b_coeffs[stage]
-      for j=1:length(q_vec)
-        dq_vec[j] = fac*dq_vec[j] + delta_t*res_vec[j]
-        q_vec[j] += fac2*dq_vec[j]
-      end
-    end  # end loop over stages
-
-    # end  ######################################
 
     #------------------------------------------------------------------------------
     # direct sensitivity of Cd wrt M : calculation each time step
@@ -345,9 +293,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   # final update
   t += delta_t
 
-  @mpi_master println("---------------------------------------------")
-  @mpi_master println("   LSERK: final time step reached. t = $t")
-  @mpi_master println("---------------------------------------------")
+  @mpi_master println("------------------------------------------------------------")
+  @mpi_master println("   explicit_euler: final time step reached. t = $t")
+  @mpi_master println("------------------------------------------------------------")
 
   if opts["perturb_Ma"]
 
@@ -455,13 +403,13 @@ end  # end lserk54
 """
   See rk4 method with same signature
 """
-function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+function explicit_euler(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts,
              timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+  t = explicit_euler(f::Function, h::AbstractFloat, t_max::AbstractFloat,
               q_vec::AbstractVector, res_vec::AbstractVector,
               pde_pre_func, pde_post_func, ctx, opts, timing; 
               majorIterationCallback=majorIterationCallback, res_tol=res_tol,

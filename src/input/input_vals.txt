@@ -16,6 +16,8 @@ where input_file_name.jl is in your current directory.
               1 = rk4
               5 = steady Newton, FD or CS is specified with jac_method
               20 = Crank-Nicolson
+              30 = LSERK
+              90 = Explicit Euler
 "jac_method" : what method to use for computing the Jacobian (finite difference,
                or complex step, determined from "run_type", 1 finite difference
                2 = complex step
@@ -132,7 +134,7 @@ where input_file_name.jl is in your current directory.
                  This option is dangerous if misused.
 
 # parameters used by boundary and initial condiitions
-"Ma" : free stream Mach number (floating point)
+"Ma" : free stream Mach number (should be floating point, but complex is supported for CSing)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
 "aoa" : angle of attack in degrees (floating point)
 #"rho_free" : free stream density

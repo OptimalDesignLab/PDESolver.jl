@@ -161,7 +161,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
-if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30)
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 90)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -207,13 +207,13 @@ else
 end
 
 # parallel options
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 90
   get!(arg_dict, "parallel_type", 1)
 else
   get!(arg_dict, "parallel_type", 2)
 end
 
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 90
   if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")
   else
@@ -602,7 +602,7 @@ function checkForIllegalOptions_post(arg_dict)
   commsize = MPI.Comm_size(MPI.COMM_WORLD)
 
   jac_type = arg_dict["jac_type"]
-  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
+  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30 && arg_dict["run_type"] != 90)
     error("Invalid jacobian type for parallel run")
   end
 
@@ -622,9 +622,9 @@ function checkForIllegalOptions_post(arg_dict)
   end
 
   # error if checkpointing not supported
-  checkpointing_run_types = [1, 30, 20]
+  checkpointing_run_types = [1, 30, 20, 90]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
-    error("checkpointing only supported with RK4 and LSERK and CN")
+    error("checkpointing only supported with RK4 and LSERK and CN and explicit Euler")
   end
 
   if arg_dict["use_checkpointing"]
