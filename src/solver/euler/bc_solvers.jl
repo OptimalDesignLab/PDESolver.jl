@@ -818,6 +818,8 @@ function calcSAT_revm{Tmsh, Tsol}(params::ParamType{2}, nrm::AbstractArray{Tmsh,
                       H::Tsol, sat_bar::AbstractArray{Tsol, 1},
                       nrm_bar::AbstractArray{Tmsh,1})
 
+  println(" +++++++++++++ entered calcSAT_revm ++++++++++++++++")
+
   # Forward Sweep
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)

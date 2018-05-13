@@ -254,7 +254,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       # writing all terms to disk
       # writedlm("DS-term2_vec.dat", term2_vec)
       # filename = string("DS-v_vec-",i,".dat")
-      # writedlm(filename, v_vec)
+      # writedlm(filename, v_vec)                             # THIS is for the DS-FD comparo. uncomment for 'run 1'
       # filename = string("DS-new_contrib-",i,".dat")
       # writedlm(filename, new_contrib)
 
@@ -264,8 +264,9 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
 
     end   # end if opts["perturb_Ma"]
 
-    # filename = string("DS-forFD-BASE-q_vec-",i,".dat")
-    # filename = string("DS-forFD-PERT-q_vec-",i,".dat")
+
+    # filename = string("DS-forFD-BASE-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 2'
+    # filename = string("DS-forFD-PERT-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 3'
     # writedlm(filename, q_vec)
 
 
@@ -313,7 +314,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     # D calculations
     D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
     total_dDdM = dDdM + term23
-    @mpi_master f_total_dDdM = open("DS-total_dDdM.dat", "w")
+    @mpi_master f_total_dDdM = open("total_dDdM.dat", "w")
     @mpi_master println(f_total_dDdM, " dD/dM: ", dDdM)
     @mpi_master println(f_total_dDdM, " term23: ", term23)
     @mpi_master println(f_total_dDdM, " total dD/dM: ", total_dDdM)
@@ -338,13 +339,14 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     =#
 
   end   # end if opts["perturb_Ma"]
-  @mpi_master f_Ma = open("DS-Ma.dat", "w")
+  # @mpi_master f_Ma = open("DS-Ma.dat", "w")
+  @mpi_master f_Ma = open("Ma.dat", "w")
   @mpi_master println(f_Ma, eqn.params.Ma)
   @mpi_master close(f_Ma)
-  #=
   @mpi_master f_dt = open("delta_t.dat", "w")
   @mpi_master println(f_dt, delta_t)
   @mpi_master close(f_dt)
+  #=
   @mpi_master f_a_inf = open("a_inf.dat", "w")
   @mpi_master println(f_a_inf, eqn.params.a_free)
   @mpi_master close(f_a_inf)
