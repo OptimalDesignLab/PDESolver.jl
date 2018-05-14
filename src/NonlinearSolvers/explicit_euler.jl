@@ -172,30 +172,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)            # evalResidual call
-    # ---------- REPLACING evalResidual with some function -----------
-    #=
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)  # putting q_vec into q
-    ctr = 1
-    for el_ix = 1:mesh.numEl
-      for node_ix = 1:mesh.numNodesPerElement
-        # q_j = ro_sview(eqn.q, :, j, i)
-        # aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
-
-        x = mesh.coords[1, node_ix, el_ix]
-        y = mesh.coords[2, node_ix, el_ix]
-        func_of_coords = (x+y)/2.0          # just avg x & y coords
-        # fac = 0.001
-        fac = 1.0
-        for dof_ix = 1:mesh.numDofPerNode
-          # res_vec[ctr] = fac*(q_vec[ctr] + dof_ix*func_of_coords)
-          res_vec[ctr] = dof_ix*func_of_coords
-          ctr += 1
-        end
-      end
-    end
-    =#
-
-
     sol_norm = post_func(ctx..., opts)
 
     for j=1:length(q_vec)
@@ -390,14 +366,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   @mpi_master f_dt = open("delta_t.dat", "w")
   @mpi_master println(f_dt, delta_t)
   @mpi_master close(f_dt)
-  #=
-  @mpi_master f_a_inf = open("a_inf.dat", "w")
-  @mpi_master println(f_a_inf, eqn.params.a_free)
-  @mpi_master close(f_a_inf)
-  @mpi_master f_rho_inf = open("rho_inf.dat", "w")
-  @mpi_master println(f_rho_inf, eqn.params.rho_free)
-  @mpi_master close(f_rho_inf)
-  =#
 
   #------------------------------------------------------------------------------
   #
