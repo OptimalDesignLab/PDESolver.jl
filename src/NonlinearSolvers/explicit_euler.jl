@@ -172,6 +172,30 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     pre_func(ctx..., opts)
     if real_time treal = t end
     timing.t_func += @elapsed f(ctx..., opts, treal)            # evalResidual call
+    # ---------- REPLACING evalResidual with some function -----------
+    #=
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)  # putting q_vec into q
+    ctr = 1
+    for el_ix = 1:mesh.numEl
+      for node_ix = 1:mesh.numNodesPerElement
+        # q_j = ro_sview(eqn.q, :, j, i)
+        # aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+        x = mesh.coords[1, node_ix, el_ix]
+        y = mesh.coords[2, node_ix, el_ix]
+        func_of_coords = (x+y)/2.0          # just avg x & y coords
+        # fac = 0.001
+        fac = 1.0
+        for dof_ix = 1:mesh.numDofPerNode
+          # res_vec[ctr] = fac*(q_vec[ctr] + dof_ix*func_of_coords)
+          res_vec[ctr] = dof_ix*func_of_coords
+          ctr += 1
+        end
+      end
+    end
+    =#
+
+
     sol_norm = post_func(ctx..., opts)
 
     for j=1:length(q_vec)
@@ -271,17 +295,23 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     end   # end if opts["perturb_Ma"]
 
 
-    if imag(eqn.params.Ma) < 1e-14 && DUMPDATA == true
-      if (eqn.params.Ma < (0.25 + 1e-10))
-        println(" ~~~~~~ writing q_vec to disk for unpert FD ~~~~~")
-        filename = string("DS-forFD-BASE-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 2'
-        writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 2'
-      else (eqn.params.Ma > (0.25 + 1e-10))
-        println(" ~~~~~~ writing q_vec to disk for pert FD ~~~~~")
-        filename = string("DS-forFD-PERT-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 3'
-        writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 3'
+    if DUMPDATA == true
+      if imag(eqn.params.Ma) > 0.0 
+        println(" ~~~~~ complex Ma detected, not writing q_vec ~~~~~")
+      else
+        if (eqn.params.Ma < (0.25 + 1e-10))
+          println(" ~~~~~~ writing q_vec to disk for unpert FD ~~~~~")
+          filename = string("DS-forFD-BASE-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 2'
+          writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 2'
+        elseif (eqn.params.Ma > (0.25 + 1e-10))
+          println(" ~~~~~~ writing q_vec to disk for pert FD ~~~~~")
+          filename = string("DS-forFD-PERT-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 3'
+          writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 3'
+        else
+          error("problem w/ writing q_vec")
+        end
       end
-    end
+    end   # end if DUMPDATA == true
 
 
 
@@ -374,6 +404,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   # loading difference between dirsense dudM and FD dudM, then plotting on mesh
   # THIS is for the DS-FD comparo. uncomment for saving vtu files to disk that show 
   #     dudM for each method and the difference btwn the two.
+
   diff_dudM_tmp = readdlm("diff_btwn_v_and_FD-2.dat")
   diff_dudM = zeros(q_vec)
   diff_dudM = diff_dudM_tmp[:,1]
