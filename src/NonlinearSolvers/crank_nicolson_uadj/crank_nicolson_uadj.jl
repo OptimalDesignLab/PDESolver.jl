@@ -669,7 +669,7 @@ end   # end of crank_nicolson function
 
 function negativeZeroCheck(t)
   # prevent floating point errors from setting t to a negative number at t = 0.0
-  if abs(t) < 1e-14 && t < 0.0
+  if absvalue(t) < 1e-14 && t < 0.0
     println("Barely negative time detected (-1e-14 < t < 0.0) , setting t = 0.0.")
     t = 0.0
   end

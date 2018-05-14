@@ -101,7 +101,7 @@ function calcIsentropicVortex{Tmsh, Tsol}(params::ParamType3,
   #println("r_xz = ", r_xz)
   x = r_xz*sin(phi_z + phi2)  # x coordinate in rotated system
   #println("x = ", x)
-  #println("diff = ", abs(x - z_orig))
+  #println("diff = ", absvalue(x - z_orig))
 
   theta3 = theta1 + phi_z + phi2 - 0.5*pi
 

@@ -29,7 +29,7 @@ function func3{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, u_::Ptr{T})
   # calculate derivative of rho here
 
   drho_dx = smoothHeavisideder(x)
-  h[1] = abs(0.5/drho_dx)  # make mesh size proportional to 1/drho/dx (larger gradient -> smaller mesh)
+  h[1] = absvalue(0.5/drho_dx)  # make mesh size proportional to 1/drho/dx (larger gradient -> smaller mesh)
      # 2 is an emperical things with weird units
 
 
@@ -101,7 +101,7 @@ function shockRefine{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr)
   drho_dx = u_node[1]  # rho  value
 #  drho_dx = smoothHeavisideder(x)
   
-  h[1] = abs(0.5/drho_dx)  # make mesh size proportional to 1/drho/dx (larger gradient -> smaller mesh)
+  h[1] = absvalue(0.5/drho_dx)  # make mesh size proportional to 1/drho/dx (larger gradient -> smaller mesh)
      # 2 is an emperical things with weird units
 
 
@@ -205,7 +205,7 @@ function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, opera
 
 
   # make mesh size proportional to 1/ drhodx
-  h[1] = abs(0.25/drho_dx) 
+  h[1] = absvalue(0.25/drho_dx) 
 
 
   ubound = 0.50

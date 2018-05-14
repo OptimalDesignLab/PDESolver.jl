@@ -5,17 +5,17 @@ function checkEigenValues(EigenValues, elementNo, elemcount)
   counter = 0
   for i = 1:length(EigenValues)
     if isreal(EigenValues[i]) ==  true
-      if EigenValues[i] < 0 && abs(EigenValues[i]) > 1e-12
+      if EigenValues[i] < 0 && absvalue(EigenValues[i]) > 1e-12
         counter += 1
         elemcount += 1
       end
     else
       # Check if the real and imaginary parts are positive
       println
-      if real(EigenValues[i]) < 0 && abs(real(EigenValues[i])) > 1e-12
+      if real(EigenValues[i]) < 0 && absvalue(real(EigenValues[i])) > 1e-12
         counter += 1
         elemcount += 1
-      elseif imag(EigenValues[i]) < 0 && abs(imag(EigenValues[i])) > 1e-12
+      elseif imag(EigenValues[i]) < 0 && absvalue(imag(EigenValues[i])) > 1e-12
         counter += 1
         elemcount += 1
       end
@@ -101,7 +101,7 @@ function elementEigenValues{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     #= println("eigen values of element ", i)
     counter = 0
     for kappa = 1:length(elem_eigen_vals)
-      if elem_eigen_vals[kappa] < 0 && abs(elem_eigen_vals[kappa]) > 1e-12
+      if elem_eigen_vals[kappa] < 0 && absvalue(elem_eigen_vals[kappa]) > 1e-12
         counter += 1
       end
     end =#
@@ -123,7 +123,7 @@ function elementEigenValues{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   eigen_values = eigvals(jac)
   counter = 0
   for i = 1:length(eigen_values)
-    if eigen_values[i] < 0 && abs(eigen_values[i]) > 1e-12
+    if eigen_values[i] < 0 && absvalue(eigen_values[i]) > 1e-12
       #println(eigen_values[i])
       counter += 1
     end

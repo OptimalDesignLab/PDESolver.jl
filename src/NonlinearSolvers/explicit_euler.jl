@@ -403,6 +403,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   println("    delta_t: ", delta_t)
   println("    a_inf: ", eqn.params.a_free)
   println("    rho_inf: ", eqn.params.rho_free)
+  println("    mesh.coord_order: ", mesh.coord_order)
   println(" ")
 
 

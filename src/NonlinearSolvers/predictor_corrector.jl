@@ -197,7 +197,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     # if we have finished traversing the homotopy path, solve the 
     # homotopy problem (= the physics problem because lambda is zero)
     # tightly
-    if abs(lambda - lambda_min) <= eps()
+    if absvalue(lambda - lambda_min) <= eps()
       @mpi_master println(BSTDOUT, "tightening homotopy tolerance")
       homotopy_tol = res_reltol
       reltol = res_reltol*1e-3  # smaller than newton tolerance
@@ -227,7 +227,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     end
 
     # predictor step calculation
-    if abs(lambda - lambda_min) > eps()
+    if absvalue(lambda - lambda_min) > eps()
       # calculate dHdLambda at new q value
       calcdHdLambda(mesh, sbp, eqn, opts, lambda, physics_func, g_func, rhs_vec)
       for i=1:length(rhs_vec)

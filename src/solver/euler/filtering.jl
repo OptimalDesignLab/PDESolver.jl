@@ -107,7 +107,7 @@ function calcFilter(sbp::AbstractSBP, filter_name::ASCIIString, opts)
 
 
   for i=1:length(F_ret)
-    if abs(F_ret[i]) < 1e-15
+    if absvalue(F_ret[i]) < 1e-15
       F_ret[i] = 0
     end
   end

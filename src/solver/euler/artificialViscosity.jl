@@ -171,7 +171,7 @@ function boundingBox{Tmsh}(coord::AbstractArray{Tmsh,2}, h::AbstractArray{Tmsh,1
   # It works at the element level. Accepts the vertex coordinates of all the nodes
   # h = zeros(Tmsh,Tdim)  # Stores the dimensions of the bounding box
   for i = 1:2
-    h[i] = abs(maximum(coord[i,1:3]) - minimum(coord[i,1:3]))
+    h[i] = absvalue(maximum(coord[i,1:3]) - minimum(coord[i,1:3]))
   end
 
 end

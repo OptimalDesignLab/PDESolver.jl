@@ -210,7 +210,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
     vals = readdlm(get_parallel_fname(opts["calc_error_infname"], myrank))
     @assert length(vals) == mesh.numDof
 
-    err_vec = abs(vals - eqn.q_vec)
+    err_vec = absvalue(vals - eqn.q_vec)
     err = calcNorm(eqn, err_vec)
 
     # calculate avg mesh size
@@ -319,7 +319,7 @@ function postproc(mesh, sbp, eqn, opts)
 
       myrank = mesh.myrank
       q_diff = eqn.q_vec - q_exact
-      saveSolutionToMesh(mesh, abs(real(q_diff)))
+      saveSolutionToMesh(mesh, absvalue(real(q_diff)))
       writeVisFiles(mesh, "solution_error")
 
 
