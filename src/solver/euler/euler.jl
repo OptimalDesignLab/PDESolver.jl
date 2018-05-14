@@ -121,7 +121,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
-
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
 #  println("dataPrep @time printed above")
 

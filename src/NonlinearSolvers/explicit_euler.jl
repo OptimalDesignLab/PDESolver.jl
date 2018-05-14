@@ -101,6 +101,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   #   This will be adjusted within the loop for the first & final time steps
 
   #------------------------------------------------------------------------------
+  DUMPDATA = false
 
   flush(BSTDOUT)
   #------------------------------------------------------------------------------
@@ -109,7 +110,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   @mpi_master f_Ma_atlserkstart = open("Ma_atlserkstart.dat", "w")
   @mpi_master println(f_Ma_atlserkstart, eqn.params.Ma)
   @mpi_master close(f_Ma_atlserkstart)
-  println("---- Ma @ LSERK start: ", eqn.params.Ma, " ----")
+  println("---- Ma @ EE start: ", eqn.params.Ma, " ----")
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     if opts["perturb_Ma"]
@@ -253,8 +254,13 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       #------------------------------------------------------------------------------
       # writing all terms to disk
       # writedlm("DS-term2_vec.dat", term2_vec)
-      # filename = string("DS-v_vec-",i,".dat")
-      # writedlm(filename, v_vec)                             # THIS is for the DS-FD comparo. uncomment for 'run 1'
+
+      if DUMPDATA == true
+        println(" ~~~~~~ writing v_vec to disk ~~~~~")
+        filename = string("DS-v_vec-",i,".dat")               # THIS is for the DS-FD comparo. uncomment for 'run 1'
+        writedlm(filename, v_vec)                             # THIS is for the DS-FD comparo. uncomment for 'run 1'
+      end
+
       # filename = string("DS-new_contrib-",i,".dat")
       # writedlm(filename, new_contrib)
 
@@ -265,9 +271,17 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     end   # end if opts["perturb_Ma"]
 
 
-    # filename = string("DS-forFD-BASE-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 2'
-    # filename = string("DS-forFD-PERT-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 3'
-    # writedlm(filename, q_vec)
+    if imag(eqn.params.Ma) < 1e-14 && DUMPDATA == true
+      if (eqn.params.Ma < (0.25 + 1e-10))
+        println(" ~~~~~~ writing q_vec to disk for unpert FD ~~~~~")
+        filename = string("DS-forFD-BASE-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 2'
+        writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 2'
+      else (eqn.params.Ma > (0.25 + 1e-10))
+        println(" ~~~~~~ writing q_vec to disk for pert FD ~~~~~")
+        filename = string("DS-forFD-PERT-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 3'
+        writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 3'
+      end
+    end
 
 
 
@@ -358,26 +372,25 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   #------------------------------------------------------------------------------
   #
   # loading difference between dirsense dudM and FD dudM, then plotting on mesh
-  #=
+  # THIS is for the DS-FD comparo. uncomment for saving vtu files to disk that show 
+  #     dudM for each method and the difference btwn the two.
   diff_dudM_tmp = readdlm("diff_btwn_v_and_FD-2.dat")
   diff_dudM = zeros(q_vec)
   diff_dudM = diff_dudM_tmp[:,1]
   saveSolutionToMesh(mesh, diff_dudM)
   writeVisFiles(mesh, "diff_btwn_v_and_FD-2")
-
   dqdM_via_FD_tmp = readdlm("dqdM_via_FD-2.dat")
   dqdM_via_FD = zeros(q_vec)
   dqdM_via_FD = dqdM_via_FD_tmp[:,1]
   saveSolutionToMesh(mesh, dqdM_via_FD)
   writeVisFiles(mesh, "dqdM_via_FD-2")
-
   DS_v_vec_tmp = readdlm("DS-v_vec-2.dat")
   DS_v_vec = zeros(q_vec)
   DS_v_vec = DS_v_vec_tmp[:,1]
   saveSolutionToMesh(mesh, DS_v_vec)
   writeVisFiles(mesh, "DS-v_vec-2")
+  #=
   =#
-
 
 
   println(" ")
