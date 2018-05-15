@@ -89,7 +89,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     println(" > assigning Ma_pert, locally. not changing eqn.params.Ma.")
     Ma_pert = complex(0, Ma_pert_mag)
     println(" > assigning Ma_pert, locally. not changing eqn.params.Ma. -> DONE")
-    quad_weight = delta_t
 
   end   # end if opts["perturb_Ma"]
   # (mesh, sbp, eqn) = ctx...
@@ -121,11 +120,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     # this is the IC, so it gets the first time step's quad_weight
     quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
 
-    if finaliter < 3        # if 1 or 2 timesteps, shift to regular rectangular rule
-      quad_weight = delta_t
-      println("small maxiter; quad_weight = dt")
-    end
-
     v_vec = zeros(q_vec)      # direct sensitivity vector
     for v_ix = 1:length(v_vec)
       v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
@@ -146,8 +140,8 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       term23 += new_contrib
     end
 
-    writedlm("term23_IC.dat", term23)
-    println("quad_weight_IC.dat", quad_weight)
+    writedlm("term23-IC.dat", term23)
+    writedlm("quad_weight-IC.dat", quad_weight)
 
   end   # end if opts["perturb_Ma"]
 
@@ -182,8 +176,8 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       end
 
       if finaliter < 3        # if 1 or 2 timesteps, shift to regular rectangular rule
-        quad_weight = delta_t
-        println("small maxiter; quad_weight = dt")
+        quad_weight = delta_t/2.0
+        println("  small maxiter; quad_weight = dt/2")
       end
 
       # quad_weight if maxiter == 1?
@@ -292,7 +286,9 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       println("   mean(term2_vec): ",mean(term2_vec),"  mean(v_vec): ", mean(v_vec))
       println("   new_contrib: ", new_contrib)
 
-      println("quad_weight_IC.dat", quad_weight)
+      writedlm(string("term23-",i,".dat"), term23)
+      writedlm(string("quad_weight-", i, ".dat"), quad_weight)
+
       if DUMPDATA == true
         println(" ~~~~~~ writing v_vec to disk ~~~~~")
         filename = string("DS-v_vec-",i,".dat")               # THIS is for the DS-FD comparo. uncomment for 'run 1'
@@ -357,13 +353,14 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     println(" pert removed from Ma")
     println(" eqn.params.Ma: ", eqn.params.Ma)
 
-    @mpi_master f_term23 = open("DS-term23.dat", "w")
+    @mpi_master f_term23 = open("term23-total.dat", "w")
     @mpi_master println(f_term23, term23)
     @mpi_master flush(f_term23)
     @mpi_master close(f_term23)
 
     # D calculations
     D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
+    term23 = term23 * 1.0/t     # final step of time average: divide by total time
     total_dDdM = dDdM + term23
     @mpi_master f_total_dDdM = open("total_dDdM.dat", "w")
     @mpi_master println(f_total_dDdM, " dD/dM: ", dDdM)
@@ -479,9 +476,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
   iter = round(Int64, data[1:maxiter, 1])
   drag = data[1:maxiter, 2]
 
-  iter = iter - 1     # because iter starts at 2
-
-  quad_weight = dt
+  # iter = iter - 1     # because iter starts at 2      ---- Now commented out bc of IC inclusion
 
   drag_timeavg = 0.0
   maxtime = dt*maxiter
@@ -496,10 +491,11 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
       quad_weight = dt
     end
     if maxiter < 3        # if 1 or 2 timesteps, shift to regular rectangular rule
-      quad_weight = dt
-      println("small maxiter; quad_weight = dt")
+      quad_weight = dt/2.0
+      println("  small maxiter; quad_weight = dt/2")
     end
 
+    println(" i: $i   quad_weight: $quad_weight   drag[i]: ", drag[i])
     drag_timeavg += quad_weight * drag[i]
   end
 
@@ -507,6 +503,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
 
   println(" ")
   println(" drag_timeavg: ", drag_timeavg)
+  println(" maxtime: ", maxtime)
   println(" maxiter: ", maxiter)
 
   # D calculations (instead of Cd. trying as a debugging step)
