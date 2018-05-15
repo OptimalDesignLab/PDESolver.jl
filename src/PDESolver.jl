@@ -2,27 +2,6 @@ __precompile__(false)
 module PDESolver
 using ODLCommonTools
 
-#------------------------------------------------------------------------------
-import Base.complex
-function complex(a::Real, b::Real)
-  println("---------------- complex number called ----------------")
-  println("---------------- a: $a")
-  println("---------------- b: $b")
-  # printbacktrace()
-  return (a + b*im)
-end
-
-#=    # doesn't work
-import Base.imag
-function imag(a::Real)
-  println("---------------- imag() called ----------------")
-  println("---------------- a: $a")
-  printbacktrace()
-  return 
-end
-=#
-#------------------------------------------------------------------------------
-
 # defs.jl
 export AssembleElementData
 
