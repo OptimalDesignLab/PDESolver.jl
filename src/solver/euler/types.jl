@@ -330,11 +330,10 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     Ma = opts[ "Ma"]
     if opts["perturb_Ma"] == true
-      # pert = complex(0, 1e-20)
       Ma_pert = opts["perturb_Ma_magnitude"]
       pert = complex(0, Ma_pert)
       Ma += pert
-      println(" === Perturbing Ma. New Ma: ", Ma, " ===")
+      # println(" === Perturbing Ma. New Ma: ", Ma, " ===")
     end
 
     Re = opts[ "Re"]

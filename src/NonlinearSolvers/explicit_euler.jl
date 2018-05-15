@@ -275,11 +275,11 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
 
   if opts["perturb_Ma"]
 
-    println(" eqn.params.Ma: ", eqn.params.Ma)
-    println(" Ma_pert: ", Ma_pert)
+    @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+    @mpi_master println(" Ma_pert: ", Ma_pert)
     eqn.params.Ma -= Ma_pert      # need to remove perturbation now
-    println(" pert removed from Ma")
-    println(" eqn.params.Ma: ", eqn.params.Ma)
+    @mpi_master println(" pert removed from Ma")
+    @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
 
     # D calculations
     finaliter = calcFinalIter(t_steps, itermax)
@@ -292,11 +292,11 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     @mpi_master println(f_total_dDdM, " total dD/dM: ", total_dDdM)
     @mpi_master flush(f_total_dDdM)
     @mpi_master close(f_total_dDdM)
-    println(" ")
-    println(" dD/dM: ", dDdM)
-    println(" term23: ", term23)
-    println(" total dD/dM: ", total_dDdM)
-    println(" ")
+    @mpi_master println(" ")
+    @mpi_master println(" dD/dM: ", dDdM)
+    @mpi_master println(" term23: ", term23)
+    @mpi_master println(" total dD/dM: ", total_dDdM)
+    @mpi_master println(" ")
 
     # Cd calculations
     #=
@@ -318,18 +318,19 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   @mpi_master println(f_dt, delta_t)
   @mpi_master close(f_dt)
 
-  println(" ")
-  println(" run parameters that were used:")
+  @mpi_master println(" ")
+  @mpi_master println(" run parameters that were used:")
   if opts["perturb_Ma"] 
-    println("    Ma: ", eqn.params.Ma + Ma_pert)
+    @mpi_master println("    Ma: ", eqn.params.Ma + Ma_pert)
   else
-    println("    Ma: ", eqn.params.Ma)
+    @mpi_master println("    Ma: ", eqn.params.Ma)
   end
-  println("    delta_t: ", delta_t)
-  println("    a_inf: ", eqn.params.a_free)
-  println("    rho_inf: ", eqn.params.rho_free)
-  println("    mesh.coord_order: ", mesh.coord_order)
-  println(" ")
+  @mpi_master println("    delta_t: ", delta_t)
+  @mpi_master println("    a_inf: ", eqn.params.a_free)
+  @mpi_master println("    rho_inf: ", eqn.params.rho_free)
+  @mpi_master println("    c: ", 1.0)
+  @mpi_master println("    mesh.coord_order: ", mesh.coord_order)
+  @mpi_master println(" ")
 
 
   if myrank == 0
@@ -381,7 +382,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
   drag_timeavg = 0.0
   maxtime = dt*itermax - dt        # needs to have the minus dt here, because the IC doesn't count as its own time step
 
-  println("Calculating time-averaged drag from drag.dat")
+  # println("Calculating time-averaged drag from drag.dat")
 
   # trapezoid rule
   for i = 1:itermax
@@ -393,10 +394,12 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
 
   drag_timeavg = drag_timeavg * 1.0/maxtime
 
+  #=
   println(" ")
   println(" drag_timeavg: ", drag_timeavg)
   println(" maxtime: ", maxtime)
   println(" itermax: ", itermax)
+  =#
 
   # D calculations (instead of Cd. trying as a debugging step)
   D = drag_timeavg
